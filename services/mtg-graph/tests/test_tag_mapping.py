@@ -381,3 +381,50 @@ def test_keyword_soup_and_keyword_counter_are_disjoint_sides_of_the_bridge():
     assert MAPPINGS["keyword-soup"].produces == ()
     assert MAPPINGS["keyword-counter"].produces == (Resource.KEYWORD_SOUP,)
     assert MAPPINGS["keyword-counter"].cares_about == ()
+
+
+# --- fast mana: the literal "Mox" cycle ------------------------------------
+
+
+def test_moxen_produces_fast_mana():
+    """The six live-corpus Mox cards, including three conditional shapes
+    (Mox Jasper needs a Dragon, Mox Opal needs metalcraft, Mox Tantalite is
+    Suspend) the `fast_mana_artifact` rule in `rules.py` deliberately
+    excludes — this tag is additive to that rule, not redundant with it."""
+    assert Resource.FAST_MANA in MAPPINGS["moxen"].produces
+
+
+def test_moxen_role_comes_from_its_mana_rock_parent_not_this_line():
+    """`moxen` is a child of `mana-rock` in Tagger's own taxonomy, so the
+    `Role.MANA_ROCK` weight is already inherited through that tag's closure —
+    this mapping adds only the resource, not a duplicate role."""
+    assert MAPPINGS["moxen"].roles == ()
+
+
+# --- free interaction: alternate-cost answers ------------------------------
+
+
+def test_free_spell_sources_are_mapped():
+    """Three tags, scattered across Tagger's taxonomy rather than one
+    closure, because `free_spell` cuts across counters, protection and
+    removal. Union eyeballed 21 cards at 100% precision — see the E1 report."""
+    for slug in ("counterspell-free", "cycle-mh2-incarnation", "cycle-c20-free-spell"):
+        assert Resource.FREE_SPELL in MAPPINGS[slug].produces, slug
+
+
+def test_counterspell_free_role_comes_from_its_counterspell_parent():
+    """`counterspell-free` is a child of `counterspell`, already mapped to
+    `Role.COUNTERSPELL` — this line adds only `free_spell`."""
+    assert MAPPINGS["counterspell-free"].roles == ()
+
+
+def test_the_broad_free_spell_candidates_are_measured_and_rejected():
+    """`pitch-spell` (Force of Will's own parent cycle tag) and
+    `manaless-value` were both surveyed and rejected: each is a mixed bag of
+    genuine free interaction and unrelated alternate-cost cards — fight
+    spells, dredge, Affinity creatures, Chancellors free only from an opening
+    hand — that a blanket mapping would misrepresent. The `mana-sink`/
+    `pinger` precedent: named here so the rejection is a decision, not an
+    oversight a future diff silently reverses."""
+    assert "pitch-spell" not in MAPPINGS
+    assert "manaless-value" not in MAPPINGS

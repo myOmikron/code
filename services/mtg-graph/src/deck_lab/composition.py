@@ -1,15 +1,18 @@
 """Deck composition targets and the speed meter.
 
 The quota ranges are *soft*. Their own arithmetic proves it: 30–40 mana sources
-+ 10–12 ramp + 10–12 draw + 10–14 interaction + 30–35 synergy sums to 90–113
-against a 99-card deck. They overlap by design — a Signet is a mana source and
-a ramp piece, Solemn Simulacrum is ramp and card advantage — so they cannot be
-satisfied one bucket at a time. See `docs/composition.md` for how the solver
-balances them.
++ 9.3–23.0 ramp + 8.5–18.6 draw + 12.4–23.8 interaction + 13.3–25.0 synergy
+sums to 73.5–130.4 against a 99-card deck. They overlap by design — a Signet
+is a mana source and a ramp piece, Solemn Simulacrum is ramp and card
+advantage — so they cannot be satisfied one bucket at a time. See
+`docs/composition.md` for how the solver balances them.
 
 The speed meter is a single scalar in [0, 1] interpolating between two
-archetype templates. It moves both the target ranges and how hard they bind:
-a tuned list is less forgiving about a missing ramp slot than a battlecruiser.
+archetype templates. For brackets 1-4 it moves the mana-sources range and
+every bucket's penalty weight; the other four ranges are one measured
+corridor (`CASUAL_CORRIDORS`, shared by both archetypes) and no longer move
+with it — a tuned list is still less forgiving about a missing ramp slot than
+a battlecruiser, it is just no longer asked for a different *amount* of it.
 """
 
 from __future__ import annotations
@@ -17,11 +20,141 @@ from __future__ import annotations
 import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
+from enum import StrEnum
 
-from .vocabulary import BUCKET_ROLES, Bucket, Role
+from .vocabulary import BUCKET_ROLES, Bucket, Resource, Role
 
 # Nonland spells are bucketed by mana value, with 6 meaning "6 or more".
 CURVE_BUCKETS: tuple[int, ...] = (0, 1, 2, 3, 4, 5, 6)
+
+# Where bracket 5 begins on the speed scale.
+#
+# `bracketSpeed` (the frontend's only setter) maps brackets 1-5 onto
+# 0.0/0.25/0.5/0.75/1.0, so this boundary is what "the deck claims cEDH"
+# means everywhere in the service. It lives here rather than in
+# `suggestions.py` — where it was first written — because the shape layer
+# needs it too and the import only runs one way: `suggestions` and
+# `type_targets` both import `composition`, never the reverse.
+SPEED_BRACKET_FIVE = 0.8
+
+
+def is_cedh(speed: float) -> bool:
+    """Whether this deck claims bracket 5.
+
+    The one predicate that decides between the casual ladder and the cEDH
+    corpus. Deliberately a threshold on the existing `speed` field rather
+    than a new request flag: every other bracket-conditioned knob in the
+    service already reads brackets off `speed` this way, and a second,
+    redundant way to say "bracket 5" is a way for the two to disagree.
+    """
+    return speed >= SPEED_BRACKET_FIVE
+
+
+# Deck locks: the cards whose plan needs a whole class of cards kept *out*.
+#
+# Almost all of this service's advice is about proportions — more interaction,
+# fewer four-drops — and every quota is soft. A lock is the exception. A
+# polymorph effect takes whatever the reveal turns up, so the eleventh
+# creature breaks it as surely as cutting the fatty; Hermit Druid mills until
+# it hits a basic land and Tainted Pact exiles until it hits a duplicate name,
+# so a single basic is the difference between milling the deck and milling
+# half of it. Nothing else in the advisor can see this: the corpus cannot
+# (the archetypes are 46 and 131 decks), Commander Spellbook cannot (these are
+# not card-to-card combos), and the card's own tags say the opposite — a
+# polymorph effect is tagged as removal, Hermit Druid as card advantage.
+#
+# A lock is only in force when the deck is actually built around it, which is
+# what `tolerates` decides. The counts, not the card, are the evidence: an
+# Oath of Druids beside thirty creatures is a value engine, and a Tainted Pact
+# beside six basics is a cantrip.
+#
+# Here rather than beside any one reader, for the reason `SPEED_BRACKET_FIVE`
+# is: `cuts` asks which cards may never be offered, `suggestions` asks which
+# may never be added, and the two must not be able to disagree.
+
+
+class LockedClass(StrEnum):
+    """A class of cards a deck lock forbids."""
+
+    CREATURE = "creature"
+    BASIC_LAND = "basic_land"
+
+
+def in_locked_class(type_line: str, locked: LockedClass) -> bool:
+    """Whether a type line puts a card in `locked`.
+
+    The one definition its two readers share — `cuts` asks it about cards it
+    already holds, `graph.DECK_LOCK_CLASSES` asks Neo4j the same question in
+    Cypher. The two are written to agree; change them together.
+    """
+    line = type_line or ""
+    if locked is LockedClass.CREATURE:
+        return "Creature" in line
+    return line.startswith("Basic")
+
+
+@dataclass(frozen=True)
+class DeckLock:
+    """One card class a deck must stay clear of for its plan to work."""
+
+    resource: Resource
+    """What a card produces to hold this lock."""
+    forbids: LockedClass
+    """The class the plan cannot afford."""
+    tolerates: int
+    """How many of that class the deck may hold and still be locked."""
+    defends: bool
+    """Whether the tolerated members are themselves the plan's payoff, and so
+    are defended from cuts rather than merely counted."""
+
+
+# How many creatures a polymorph deck may hold: measured against the cEDH
+# tournament corpus, where 1.5% of the 3,123 decks holding at most three play
+# one of these effects against 0.6% of the 13,553 holding nine or more.
+POLYMORPH_MAX_CREATURES = 3
+
+# How many basics a library-walking deck may hold. Tainted Pact's own rules
+# text sets it: it exiles until a *duplicate name*, and in a singleton format
+# the only duplicates are basics, so one is free and two are a wall. Hermit
+# Druid wants zero. The corpus agrees the band is real rather than a
+# preference — cEDH decks run a median of 0 basics overall, and the 6,210
+# playing Tainted Pact also run a median of 0.
+BASICS_MAX_WITH_LOCK = 1
+
+DECK_LOCKS: tuple[DeckLock, ...] = (
+    DeckLock(
+        resource=Resource.POLYMORPH,
+        forbids=LockedClass.CREATURE,
+        tolerates=POLYMORPH_MAX_CREATURES,
+        # The one or two creatures a polymorph deck runs are the thing it is
+        # trying to find, so they are defended from cuts as the effects are.
+        defends=True,
+    ),
+    DeckLock(
+        resource=Resource.BASIC_LAND_LOCK,
+        forbids=LockedClass.BASIC_LAND,
+        tolerates=BASICS_MAX_WITH_LOCK,
+        # A basic in a Hermit Druid deck is tolerated, never wanted; cutting
+        # the last one is an improvement, not a mistake.
+        defends=False,
+    ),
+)
+
+
+def active_locks(holders: Mapping[str, int], counts: Mapping[str, int]) -> tuple[DeckLock, ...]:
+    """The locks a deck is under, given how many holders of each lock it plays
+    and how many cards it holds of each locked class.
+
+    Takes counts rather than a deck because its callers arrive from opposite
+    directions: the cut scorer already holds the cards and their resources,
+    the suggestion engine holds only oracle ids and asks the graph.
+    """
+    return tuple(
+        lock
+        for lock in DECK_LOCKS
+        if holders.get(lock.resource, 0) > 0 and counts.get(lock.forbids, 0) <= lock.tolerates
+    )
+
 
 # Precedence for filing a card under one type. Mirrors `primaryType` in
 # frontend/src/lib/deck/selectors.js exactly — drifting from it is a silent
@@ -167,14 +300,103 @@ class DeckTemplate:
     types: Mapping[str, BucketTarget] = field(default_factory=dict)
 
 
+# Measured 2026-09-08 (`deck-lab measure-casual`, `casual_profiles.
+# measure_casual`), 415 cached casual commander pages clearing
+# `casual_profiles.MIN_DECKS_PER_COMMANDER` (200 decks), 863,527 decks,
+# deck-count weighted, each page read as its synthetic average deck
+# exactly the way `cedh_profiles.measure_cedh` reads a `/cedh` page.
+#
+# The finding this fixes: the authored `BATTLECRUISER`/`TUNED` bounds for
+# these four buckets were never measured — only `CEDH`'s were (below) — and
+# graded against the format they read as wrong. An average casual list
+# reads about half of the authored synergy_wincon target (394 of 415 pages
+# fell under the old speed-0.5 corridor entirely); ramp and interaction
+# undershoot the format the other way, authored low and measured high.
+#
+# Synthetic decks over-count lands by a measured **+5.29** against each
+# page's own stated land count (`SyntheticDeckValidation.deltas["Land"]`,
+# `_synthetic_average_deck`'s land-inclusion-rate bias — `composition.
+# CEDH`'s comment names the same artefact on the `/cedh` corpus at +3.3).
+# Every nonland bucket below is corrected for it before pooling
+# (`casual_profiles._land_correction_factor`); `Bucket.MANA_SOURCES` is not
+# — it counts lands directly, so the correction does not apply, and it is
+# never re-based here at all (`type_targets.derive_mana_sources` already
+# builds its corridor from the empirical Land row, not from this table).
+#
+#   bucket           raw   corrected mean   sd    corridor      authored BC / TUNED
+#   ramp             14.6  16.1             6.9   9.3-23.0      9-12 / 12-16
+#   card_draw        12.4  13.5             5.1   8.5-18.6      11-14 / 9-12
+#   interaction      16.6  18.1             5.7   12.4-23.8     8-11 / 12-16
+#   synergy_wincon   17.5  19.1             5.9   13.3-25.0     31-36 / 26-31
+#
+# Corridor rule, the same one `CEDH`'s comment states: half-width is one
+# measured standard deviation of that bucket's coverage across the
+# synthetic-average-deck pool, centred on the measured mean.
+#
+# Bracket-lean split check (per-commander deck-weighted mean bracket,
+# `casual_profiles._mean_bracket`/`_deck_weighted_median`): splitting the
+# 415 commanders at the deck-weighted median bracket (2.89) into a
+# 260-commander/433k-deck low pool and a 155/430k high pool, the gap
+# between the two pools' means — in units of the *pooled* corridor's own
+# sd — comes out to ramp 0.28, card_draw 0.22, interaction 0.24,
+# synergy_wincon 0.18, all well under `casual_profiles.SD_GAP_THRESHOLD`
+# (1.0). Per-bracket pooled means (weight = that bracket's own decks per
+# commander) are flat across brackets 1-4 too (synergy_wincon 19.2 / 19.0 /
+# 19.3 / 19.0). **One corridor for speed < 0.8; weights keep lerping.**
+# Caveat: these pages are all-bracket aggregates, so this check can only
+# show that bracket lean does not move the *average* deck — it cannot
+# resolve a true per-bracket difference, and bracket-1 decks (11,417 of
+# 863,527, ~1.3%) are barely represented in it. Graded at BATTLECRUISER's
+# lowest weight below is the mitigation, not a claim that the split check
+# covered them.
+#
+# BATTLECRUISER's and TUNED's weights still lerp — binding strength is the
+# one bracket effect these pages cannot measure (they read *what* an
+# average deck runs, not *how much a missing piece costs* at one bracket
+# versus another). Curve (reporting only, no change): measured {0: .011,
+# 1: .156, 2: .263, 3: .249, 4: .138, 5: .082, 6: .100} sits between the
+# authored `BATTLECRUISER`/`TUNED` curves, so the authored lerp stands.
+#
+# Consistency with cEDH: measured casual synergy_wincon 19.1 (sd 5.9)
+# against cEDH's own pooled 21.9 (sd 5.2, below) — the two corridors now
+# overlap (casual's 25.0 high reaches into cEDH's 16.7 low) instead of
+# being disjoint the way the old 31-36 authored range was.
+CASUAL_CORRIDORS: dict[Bucket, tuple[float, float]] = {
+    Bucket.RAMP: (9.3, 23.0),
+    Bucket.CARD_DRAW: (8.5, 18.6),
+    Bucket.INTERACTION: (12.4, 23.8),
+    Bucket.SYNERGY_WINCON: (13.3, 25.0),
+}
+
+
+def _casual(bucket: Bucket, weight: float) -> BucketTarget:
+    """One nonland bucket's `CASUAL_CORRIDORS` bound, carrying the
+    archetype's own penalty weight. `BATTLECRUISER` and `TUNED` differ only
+    in `weight` for these four buckets now — the *range* is one measured
+    corridor shared by both, and only how hard it binds still lerps with
+    speed (see `CASUAL_CORRIDORS`'s comment)."""
+    low, high = CASUAL_CORRIDORS[bucket]
+    return BucketTarget(low, high, weight)
+
+
+# MANA_SOURCES here and in TUNED is a fallback, not the corridor a deck is
+# graded against. Every production scorer reaches `type_targets.
+# conditioned_template`, which rebuilds it from the archetype's Land
+# corridor plus the ramp quota's non-land share (`derive_mana_sources`);
+# these authored bounds only survive on an unconditioned `template_for`,
+# which has no Land corridor to build from. They were kept at their original
+# values rather than re-authored so that path stays byte-identical, but
+# measured against 415 casual commander pages they sit 5-10 sources below
+# the format (35 lands + 7.5 rocks and dorks) — do not read them as a
+# target.
 BATTLECRUISER = DeckTemplate(
     name="battlecruiser",
     buckets={
         Bucket.MANA_SOURCES: BucketTarget(37, 40, 3.0),
-        Bucket.RAMP: BucketTarget(9, 12, 1.5),
-        Bucket.CARD_DRAW: BucketTarget(11, 14, 1.5),
-        Bucket.INTERACTION: BucketTarget(8, 11, 1.2),
-        Bucket.SYNERGY_WINCON: BucketTarget(31, 36, 0.8),
+        Bucket.RAMP: _casual(Bucket.RAMP, 1.5),
+        Bucket.CARD_DRAW: _casual(Bucket.CARD_DRAW, 1.5),
+        Bucket.INTERACTION: _casual(Bucket.INTERACTION, 1.2),
+        Bucket.SYNERGY_WINCON: _casual(Bucket.SYNERGY_WINCON, 0.8),
     },
     curve={0: 0.02, 1: 0.10, 2: 0.19, 3: 0.20, 4: 0.18, 5: 0.14, 6: 0.17},
     curve_weight=0.6,
@@ -184,14 +406,211 @@ TUNED = DeckTemplate(
     name="tuned",
     buckets={
         Bucket.MANA_SOURCES: BucketTarget(30, 34, 4.0),
-        Bucket.RAMP: BucketTarget(12, 16, 2.5),
-        Bucket.CARD_DRAW: BucketTarget(9, 12, 2.0),
-        Bucket.INTERACTION: BucketTarget(12, 16, 2.0),
-        Bucket.SYNERGY_WINCON: BucketTarget(26, 31, 1.0),
+        Bucket.RAMP: _casual(Bucket.RAMP, 2.5),
+        Bucket.CARD_DRAW: _casual(Bucket.CARD_DRAW, 2.0),
+        Bucket.INTERACTION: _casual(Bucket.INTERACTION, 2.0),
+        Bucket.SYNERGY_WINCON: _casual(Bucket.SYNERGY_WINCON, 1.0),
     },
     curve={0: 0.05, 1: 0.24, 2: 0.28, 3: 0.20, 4: 0.13, 5: 0.06, 6: 0.04},
     curve_weight=1.2,
 )
+
+# The third archetype — not a faster TUNED, a different format. Measured by
+# `cedh_profiles.measure_cedh` (`deck-lab measure-cedh --top-k 40`), pooled
+# deck-count weighted over 40 commanders and 39,657 bracket-5 decks
+# (2026-09-01). See `type_targets.CEDH_TYPE_COUNTS` for the same run's type
+# axis; this is its bucket and curve half.
+#
+# The headline the corridors below encode: cEDH runs *more* mana sources
+# than a tuned deck (~40 against TUNED's 30–34) while running *fewer* lands
+# (28.1 against TUNED's ~35, from the same measurement — see
+# `type_targets.CEDH_TYPE_COUNTS`). The missing lands are replaced by rocks
+# and dorks, not by spells. That is a shape no point on the BATTLECRUISER-
+# TUNED line can produce — interpolating harder toward "tuned" *raises*
+# lands and *lowers* mana sources together, the opposite of what cEDH does —
+# which is why this is a third template `template_for` branches to, never a
+# third anchor it interpolates toward.
+#
+# Corridor rule, applied uniformly across all five buckets: half-width is
+# one measured standard deviation of that bucket's coverage across the
+# synthetic-average-deck pool (`cedh_profiles.CedhMeasurement.bucket_sd`),
+# centred on the measured mean — the same rule `CASUAL_CORRIDORS` above
+# states for its own four buckets, applied here to a different corpus
+# (`/cedh` subpages, not flat commander pages) and all five buckets rather
+# than four, because cEDH's own `MANA_SOURCES` shape (more sources on fewer
+# lands) is exactly the headline this template exists to capture. The one
+# bound left in this file that still hand-picks rather than measures is
+# `BATTLECRUISER`/`TUNED`'s own `MANA_SOURCES` fallback — see its comment
+# for why: no production path grades a deck against it.
+#
+#   bucket           mean   sd   corridor
+#   mana_sources     40.4*  5.3  35.1-45.7
+#   ramp             19.3   6.0  13.3-25.3
+#   card_draw        12.7   3.7   9.0-16.4
+#   interaction      21.0   5.2  15.8-26.2
+#   synergy_wincon   21.9   5.2  16.7-27.1
+#
+# * Corrected. The raw pooled mean was 43.7, but the synthetic decks
+#   `measure_cedh` builds over-count lands by +3.3 against the same pages'
+#   own stated land counts (`SyntheticDeckValidation`'s Land delta) — an
+#   inference artefact of picking the highest-inclusion-rate cards until the
+#   list is full, not a property of real cEDH decks. Every land is a mana
+#   source, so that +3.3 inflates this bucket by the same amount; 40.4 is
+#   43.7 corrected for it. No other bucket's delta was material enough to
+#   warrant the same correction.
+#
+# Weights and curve_weight are TUNED's times 1.3 — a judgment call, not a
+# measurement (there is no per-deck dispersion to read a binding strength
+# off, only bucket-coverage dispersion). Stated as one: a cEDH list is
+# metagame-tuned against a field that punishes a slow draw harder than a
+# casual pod does, so a missing piece should cost more here than at TUNED,
+# the same relationship TUNED already has to BATTLECRUISER. 1.3 is not
+# derived from anything further than "more than TUNED's, by an amount in
+# the same range TUNED already sits above BATTLECRUISER's" (TUNED runs
+# 1.3-2x BATTLECRUISER's weights depending on the bucket).
+CEDH = DeckTemplate(
+    name="cedh",
+    buckets={
+        Bucket.MANA_SOURCES: BucketTarget(35.1, 45.7, 4.0 * 1.3),
+        Bucket.RAMP: BucketTarget(13.3, 25.3, 2.5 * 1.3),
+        Bucket.CARD_DRAW: BucketTarget(9.0, 16.4, 2.0 * 1.3),
+        Bucket.INTERACTION: BucketTarget(15.8, 26.2, 2.0 * 1.3),
+        Bucket.SYNERGY_WINCON: BucketTarget(16.7, 27.1, 1.0 * 1.3),
+    },
+    curve={0: 0.085, 1: 0.300, 2: 0.246, 3: 0.205, 4: 0.085, 5: 0.037, 6: 0.042},
+    curve_weight=1.2 * 1.3,
+)
+
+# The three sub-archetypes `CEDH` pooled — cEDH Pro round Task E. `CEDH`'s
+# own measured dispersion said the pool was too wide at the time it was
+# built (creature sd ~= 7; instants ran 4-31 across the 40-commander `/cedh`
+# pool); this round asked whether that dispersion has a shape, not just a
+# size. It does: `deck_lab.cedh_archetypes.classify` sorts a deck into
+# turbo / midrange / stax on two measured features (stack interaction,
+# stax/tax/denial density — see that module's docstring for the two other
+# features that were computed, checked, and rejected), and each class below
+# pools its own bucket corridor, curve and mana base directly from real
+# tournament decklists.
+#
+# Real decklists, not synthetic ones. `CEDH` above is built from `cedh_
+# profiles._synthetic_average_deck` — an *inference* about what an average
+# decklist looks like, built by taking a `/cedh` page's highest-inclusion-
+# rate cards until a 99-card list is full, because EDHREC's aggregate page
+# publishes no decklist of its own to measure directly. A `:TournamentDeck`
+# **is** a real decklist (Task A's edhtop16 ingest), so that inference step
+# drops out entirely here — this is a strictly better measurement than
+# `CEDH`'s own, not merely a different one, for exactly the reason `cedh_
+# archetypes.py`'s module docstring gives.
+#
+# Measured 2026-09-01 (`deck-lab measure-cedh --classes`), deck-count
+# weighted by construction (every observation already is one real deck,
+# unlike `CEDH`'s per-commander synthetic average): 6,035 turbo decks
+# across 387 commanders, 4,546 midrange decks across 147, 2,208 stax decks
+# across 167 — all three comfortably clear the `cedh_archetypes.
+# MIN_COMMANDERS`/`MIN_DECKS` floors this round set (3 / 1,000), out of
+# 14,611 classified decks (17,663 total in the corpus; 2,511 carry no
+# `commander_name` at all and 541 more are empty stub entries with zero
+# `PLAYED` edges — both excluded, per Task A's own review). Corridor rule
+# unchanged from `CEDH`: half-width is one measured standard deviation of
+# that class's own per-deck bucket coverage, centred on the measured mean.
+# Basic-land undercounting (`PLAYED.qty` is always 1 — `edhtop16.py`'s
+# module docstring) is corrected per deck before pooling; see `cedh_
+# archetypes._basic_land_shortfall` for the exact method and its one known
+# residual bias (a rare unresolved nonland card reads as a missing basic
+# too — immaterial at the corpus's <2% join-failure rate).
+#
+#   bucket          turbo mean/sd/corridor      midrange              stax
+#   mana_sources    39.8 / 5.6 / 34.1-45.4      38.5/4.3/34.2-42.8    40.0/5.7/34.3-45.7
+#   ramp            21.1 / 5.1 / 16.0-26.1      19.7/4.0/15.7-23.7    21.0/5.3/15.6-26.3
+#   card_draw       12.7 / 4.9 /  7.8-17.7      13.1/2.5/10.6-15.6     9.8/4.6/ 5.2-14.4
+#   interaction     19.9 / 4.9 / 15.0-24.8      21.6/3.7/17.9-25.3    15.4/5.2/10.2-20.6
+#   synergy_wincon  21.3 / 5.1 / 16.2-26.4      25.9/3.3/22.6-29.1    29.8/5.6/24.2-35.3
+#
+# The headline the split makes visible that the pooled table hid: stax's
+# INTERACTION coverage (15.4) sits *below* even its own TUNED-anchored
+# floor and well below turbo/midrange's (~20-22), while its SYNERGY_WINCON
+# coverage (29.8) is the highest of the three. `Bucket.INTERACTION` is
+# `{spot_removal, board_wipe, counterspell, graveyard_hate, protection}`
+# (`vocabulary.BUCKET_ROLES`) — it does not include `Role.STAX`, which
+# feeds SYNERGY_WINCON instead. A stax deck's disruption is real (that is
+# what `stax_count` measures to classify it in the first place) but it
+# lands on a different bucket than a turbo or midrange deck's held-up
+# countermagic does — exactly what the pooled `CEDH` corridor (INTERACTION
+# 15.8-26.2) averaged away, wide enough to hide that stax sits at the
+# bottom of that range while turbo/midrange sit in the middle of it.
+#
+# Land-shift check (`type_targets.conditioned_template`'s `is_cedh(speed)`
+# suppression of the casual mana-sources reconciliation, then a shift, now
+# `derive_mana_sources`), done **per class** rather than assumed, because the task
+# explicitly flagged that stax might not share it: it does. All three
+# classes' land means sit below the 35-card corpus median with a
+# mana_sources mean above `TUNED`'s 30-34 ceiling — turbo (27.7 / 39.8),
+# midrange (27.5 / 38.5), stax (28.5 / 40.0). The inversion the pooled
+# `CEDH` template was built to capture holds uniformly, so `type_targets.
+# conditioned_template`'s blanket suppression needs no per-class gate; no
+# change was made there.
+#
+# Weights and curve_weight carry `CEDH`'s own judgment call forward
+# unchanged (TUNED's times 1.3) rather than inventing three new ones: there
+# is still no per-deck dispersion in *how much a missing piece costs* to
+# read a binding strength off, only bucket-coverage dispersion, and nothing
+# about splitting the pool by archetype changes that reasoning.
+CEDH_TURBO = DeckTemplate(
+    name="cedh-turbo",
+    buckets={
+        Bucket.MANA_SOURCES: BucketTarget(34.1, 45.4, 4.0 * 1.3),
+        Bucket.RAMP: BucketTarget(16.0, 26.1, 2.5 * 1.3),
+        Bucket.CARD_DRAW: BucketTarget(7.8, 17.7, 2.0 * 1.3),
+        Bucket.INTERACTION: BucketTarget(15.0, 24.8, 2.0 * 1.3),
+        Bucket.SYNERGY_WINCON: BucketTarget(16.2, 26.4, 1.0 * 1.3),
+    },
+    # mv=1's share is 0.293 rather than the 3dp-rounded 0.292 the raw
+    # measurement gives (0.29232): every other bucket here rounds down as
+    # well, and the pool must sum to exactly 1 (`apply_curve`'s contract —
+    # `curve_targets` multiplies these shares straight into card-count
+    # targets). Absorbed by the largest bucket rather than split across all
+    # seven, the same rounding convention the pooled `CEDH` curve above
+    # already uses (it also sums to exactly 1.000 for the same reason).
+    curve={0: 0.085, 1: 0.293, 2: 0.254, 3: 0.203, 4: 0.082, 5: 0.044, 6: 0.039},
+    curve_weight=1.2 * 1.3,
+)
+
+CEDH_MIDRANGE = DeckTemplate(
+    name="cedh-midrange",
+    buckets={
+        Bucket.MANA_SOURCES: BucketTarget(34.2, 42.8, 4.0 * 1.3),
+        Bucket.RAMP: BucketTarget(15.7, 23.7, 2.5 * 1.3),
+        Bucket.CARD_DRAW: BucketTarget(10.6, 15.6, 2.0 * 1.3),
+        Bucket.INTERACTION: BucketTarget(17.9, 25.3, 2.0 * 1.3),
+        Bucket.SYNERGY_WINCON: BucketTarget(22.6, 29.1, 1.0 * 1.3),
+    },
+    curve={0: 0.085, 1: 0.335, 2: 0.270, 3: 0.194, 4: 0.077, 5: 0.029, 6: 0.010},
+    curve_weight=1.2 * 1.3,
+)
+
+CEDH_STAX = DeckTemplate(
+    name="cedh-stax",
+    buckets={
+        Bucket.MANA_SOURCES: BucketTarget(34.3, 45.7, 4.0 * 1.3),
+        Bucket.RAMP: BucketTarget(15.6, 26.3, 2.5 * 1.3),
+        Bucket.CARD_DRAW: BucketTarget(5.2, 14.4, 2.0 * 1.3),
+        Bucket.INTERACTION: BucketTarget(10.2, 20.6, 2.0 * 1.3),
+        Bucket.SYNERGY_WINCON: BucketTarget(24.2, 35.3, 1.0 * 1.3),
+    },
+    curve={0: 0.068, 1: 0.307, 2: 0.269, 3: 0.220, 4: 0.081, 5: 0.023, 6: 0.032},
+    curve_weight=1.2 * 1.3,
+)
+
+# Selection table for `template_for`'s `cedh_class` parameter — keyed by the
+# plain string values `cedh_archetypes.ArchetypeClass` carries (a `StrEnum`
+# member hashes and compares equal to its own string value, so a caller may
+# pass either without this module importing that one — see `template_for`'s
+# docstring for why the two modules do not import each other).
+_CEDH_CLASS_TEMPLATES: dict[str, DeckTemplate] = {
+    "turbo": CEDH_TURBO,
+    "midrange": CEDH_MIDRANGE,
+    "stax": CEDH_STAX,
+}
 
 
 def _lerp(a: float, b: float, t: float) -> float:
@@ -436,37 +855,82 @@ def template_for(
     speed: float,
     overrides: Mapping[Bucket, TargetOverride] | None = None,
     curve: Mapping[int, float] | None = None,
+    *,
+    cedh_class: str | None = None,
 ) -> DeckTemplate:
-    """Interpolate between the archetypes. 0 is battlecruiser, 1 is tuned.
+    """Brackets 1-4 interpolate between the archetypes (0 is battlecruiser,
+    ~0.75 is tuned); bracket 5 (`is_cedh`) returns `CEDH` outright, or one of
+    the three measured sub-archetype templates when `cedh_class` names one.
+
+    "Interpolate" still describes every penalty weight and `Bucket.
+    MANA_SOURCES`'s own range at every bracket 1-4 speed, but ramp/
+    card_draw/interaction/synergy_wincon no longer have two different
+    ranges to interpolate between — `BATTLECRUISER` and `TUNED` share one
+    measured range apiece for those four (`CASUAL_CORRIDORS`), so `_lerp`
+    on an identical pair returns that same value at every speed. Nothing
+    here had to change to make that true: `_lerp(a, a, t) == a` for any
+    `t`, so this function's code is unchanged and its byte-identical
+    interpolation formula simply stopped moving four of the five ranges
+    the day the archetypes stopped disagreeing about them.
 
     Exposed to the UI as a single slider, but the result is just a set of
     targets — `overrides` and `curve` are the advanced mode, layered on top:
     the quota corridors and the curve shape the builder dragged for this deck,
-    which is why they land last and win.
+    which is why they land last and win, on either path.
+
+    cEDH is not reached by turning the dial to 1.0 — see `CEDH`'s comment for
+    why a lerp cannot produce its shape (more mana sources on fewer lands is
+    not a point between "more lands, more sources" and "fewer lands, fewer
+    sources"). So `is_cedh(speed)` branches to the measured template outright
+    rather than blending it in: every deck that claims bracket 5 gets the
+    same template regardless of exactly where in [0.8, 1.0] `speed` sits,
+    the same way tier 0 (`type_targets.resolve_type_targets`) gives every
+    bracket-5 deck the same `/cedh`-conditioned type targets rather than a
+    speed-scaled blend of them.
+
+    `cedh_class` (cEDH Pro round Task E) is `"turbo"` / `"midrange"` /
+    `"stax"` — the string values of `cedh_archetypes.ArchetypeClass`, kept as
+    a plain string parameter here rather than importing that enum so this
+    module and `cedh_archetypes.py` do not import each other (that module
+    already imports *this* one for `Bucket`/`bucket_coverage_from_cards`).
+    A `StrEnum` member hashes and compares equal to its own string value
+    (the same interop `interaction.discount_board_wipe` already relies on),
+    so a caller may pass either. **Defaults to `None`**, which — together
+    with every value this dict lookup does not recognise, including
+    `"unclassified"` — falls back to the pooled `CEDH`, so every existing
+    call site that does not pass this keyword sees byte-identical behaviour
+    to before this parameter existed. No caller in this codebase passes it
+    yet: wiring a live deck's own classification in (`cedh_archetypes.
+    deck_features` + `classify`, fed from the same cards/roles/resources
+    `diagnostics.build_diagnostics` already fetches for the interaction
+    grid) is a follow-up outside this task's file ownership, not done here.
     """
     if not 0.0 <= speed <= 1.0:
         raise ValueError(f"speed must be in [0, 1], got {speed}")
 
-    slow, fast = BATTLECRUISER, TUNED
+    if is_cedh(speed):
+        template = _CEDH_CLASS_TEMPLATES.get(cedh_class, CEDH)
+    else:
+        slow, fast = BATTLECRUISER, TUNED
 
-    buckets = {
-        bucket: BucketTarget(
-            low=_lerp(slow.buckets[bucket].low, fast.buckets[bucket].low, speed),
-            high=_lerp(slow.buckets[bucket].high, fast.buckets[bucket].high, speed),
-            weight=_lerp(slow.buckets[bucket].weight, fast.buckets[bucket].weight, speed),
+        buckets = {
+            bucket: BucketTarget(
+                low=_lerp(slow.buckets[bucket].low, fast.buckets[bucket].low, speed),
+                high=_lerp(slow.buckets[bucket].high, fast.buckets[bucket].high, speed),
+                weight=_lerp(slow.buckets[bucket].weight, fast.buckets[bucket].weight, speed),
+            )
+            for bucket in slow.buckets
+        }
+
+        interpolated = {mv: _lerp(slow.curve[mv], fast.curve[mv], speed) for mv in CURVE_BUCKETS}
+
+        template = DeckTemplate(
+            name=f"speed-{speed:.2f}",
+            buckets=buckets,
+            curve=interpolated,
+            curve_weight=_lerp(slow.curve_weight, fast.curve_weight, speed),
+            deck_size=slow.deck_size,
         )
-        for bucket in slow.buckets
-    }
-
-    interpolated = {mv: _lerp(slow.curve[mv], fast.curve[mv], speed) for mv in CURVE_BUCKETS}
-
-    template = DeckTemplate(
-        name=f"speed-{speed:.2f}",
-        buckets=buckets,
-        curve=interpolated,
-        curve_weight=_lerp(slow.curve_weight, fast.curve_weight, speed),
-        deck_size=slow.deck_size,
-    )
 
     return apply_curve(apply_overrides(template, overrides or {}), curve)
 

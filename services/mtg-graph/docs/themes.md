@@ -226,6 +226,125 @@ page, `untap_combo` gets **5/9** and its misses are exactly the tapper half.
 The ninth, SPLIT UP, is the card `hate-tapped` is subtracted to exclude. So
 `tap_matters` stays out of `THEME_TAG_SLUGS` — there is no EDHREC tag for it.
 
+## Commander matters — the thirty-second theme, and the first that reads the command zone
+
+Prompted by a user pointing out that a card reading *"whenever a commander you
+control attacks"* is paid once **per commander**, so its rate is a property of
+the command zone rather than of the 99. A partner pair roughly doubles the
+family; a Rule 0 table fielding three or four does more. Nothing in the layer
+could see that, because nothing in the layer had ever read the *size* of the
+zone — only its contents.
+
+Built on a new `commander_matters` resource: **73 payoffs** on the cares side,
+**9 enablers** on the produces side, 81 cards in the retrieval channel. The
+extraction story, including why Tagger's `synergy-commander` closure is the
+wrong source, is in `docs/extraction.md`.
+
+**`landfall`'s split again.** Detection gates on **cares** — a deck holding
+Command Beacon and Sanctum of Eternity recasts its commander, which is not the
+same claim as being built to be paid when one acts. Retrieval reads **either**,
+because those enablers are exactly what a Lieutenant deck is short of: a
+commander that never comes back pays off nothing. Verified live — a partnered
+toy deck is offered Command Beacon by the resource bridge with *"supplies
+commander matters — deck wants 4 more than it makes"*.
+
+Measured lift over the 81-card family (in-family rate / corpus rate):
+
+| resource | lift | in the map? |
+|---|---|---|
+| `storm_count` | 21.07x | **no** — one printed cycle, see below |
+| `copy_spell` | 4.59x | **no** — the same cycle |
+| `protection` | 2.49x | 0.3 — keeping the commander alive *is* the plan |
+| `attack_trigger` | 2.23x | 0.3 — Lieutenant and the attack-keyed payoffs |
+| `combat_damage_trigger` | 1.42x | 0.25 |
+| `legendary_matters` | 1.22x | no — barely over base rate, and `legends`' own |
+| `haste_grant` | — | no — under six of the family grant haste |
+
+The two highest lifts are both refused. Echo, Empyrial, Fury, Genesis and Skull
+Storm, plus Hatut Zeraze and Thunderclap Drake, copy themselves *for each time
+you've cast your commander* — they read the same counter the family reads, and
+weighting their resources would answer "your commander matters" with a pile of
+storm payoffs. That is the `wheels`/`discard` overlap failure, rediscovered.
+`haste_grant` was in the draft on the strength of Lightning Greaves and measured
+out entirely: the family **wants** boots, it does not **contain** them.
+
+Every ancillary sits below `UNLOCK_WEIGHT` deliberately. At 0.4 or above,
+`attack_trigger` would hand this theme to most red commanders in Magic.
+
+**Seat scaling — the actual feature.** `SEAT_SCALED_THEMES` names the themes
+whose payoff rate is set by the zone's size, and `deck_theme_breakdown` takes a
+`seats` count from `len(effective_commanders)`. The multiplier is logarithmic —
+1.00 / 1.35 / 1.55 / 1.70 for one through four commanders — because two things
+do not double with the second seat: the mana to deploy and protect it, and the
+Lieutenant/free-spell half of the family, which asks only that *one* commander
+be on the battlefield and so gains reliability rather than rate.
+
+It is applied after the commander anchor and before the normalisation, and it
+**multiplies**, so it carries `COMMANDER_ANCHOR`'s guarantee: a deck holding
+none of the family reads zero however many commanders it fields. Verified live —
+an Elfball list with two partners is byte-identical at one seat and two, and
+never picks up the theme. Four seats are a reason to *play* Bastion Protector;
+they are not evidence that a deck already does.
+
+**Coverage is deliberately not the argument here.** 12 commanders in the corpus
+fit, and only **1 of the top 500** (Codsworth, Handy Helper) — far below the
+`poison` band (142 / 5 / 2) that the other small themes are justified against.
+That is the right shape: this family lives in the 99, not in the command zone,
+and the thing it claims is a deck property no commander card can state on its
+own. The seat count is what makes it fire.
+
+**The one overlap worth reporting honestly.** 32 of 81 (39.5%) also fit
+`spellslinger` — above the ~30% bar that dropped the wide `lands` design. It
+survives because the number is asymmetric: those 32 are the instants and
+sorceries of the Will cycle, the free-spell cycle (Deflecting Swat, Fierce
+Guardianship, Flawless Maneuver, Deadly Rollick) and the Storm cycle, and in the
+direction that tests for redundancy they are **0.48% of `spellslinger`'s 6,665
+cards**. The `energy` rejection was 93.2% *containment*; this is a small precise
+family that happens to be mostly instants.
+
+No EDHREC tag page covers it, so `commander_matters` stays out of
+`THEME_TAG_SLUGS`.
+
+**The seat grant — the retrieval half of "a reason to play".** The paragraph
+above left a promise unwired: detection reading zero for a payoff-free deck is
+honest, but it also meant a three-commander deck was never *offered* the
+family — measured on a live Rule 0 Dragons deck (Ganax + Far Traveler + Omnath),
+zero of the 81 family cards reached the top 40. Two mechanisms fix it, both on
+the retrieval side so the radar stays truthful:
+
+- `_seat_theme_provenance` — at two or more seats, and only when the theme has
+  no other voice (not detected, pinned, focused, or excluded), the family is
+  retrieved with `seat_scale(seats) − 1.0` in the detected formula's share
+  seat: 0.35 / ~0.55 / 0.70 for two through four commanders. A partner pair
+  argues below any detected theme's floor multiplier; a zone of three like a
+  detected theme at an ~11% share.
+- `_reserve_seat_slots` — the grant's scores cannot clear a themed deck's
+  top-40 cutoff (family fits run ~0.4–0.6 against cutoffs above 1.2), so
+  `min(seats, 4)` slots are guaranteed by promotion, the pin reserve's
+  mechanics with the pin promotions protected from eviction. The seat count
+  *is* the floor: two commanders, two slots.
+
+On the same Dragons deck the top 40 now holds Tyrant's Familiar (earned by
+rank, now saying why it is extra good here), Deflecting Swat and Obscuring
+Haze — and the report says "2 suggestions promoted — commander-matters cards
+are paid once per commander, and this deck fields 3."
+
+**The voiceless-seat voice — the same lesson, one seat at a time.** The same
+Rule 0 deck surfaced the general form of the problem: its white seat, Far
+Traveler, is tombstoned on EDHREC, so the empirical channel can never speak
+for it — and the deck-wide theme read cannot either until the deck already
+holds its cards (`blink` read 0.078 in a deck whose blink commander had two
+white supporters; three white cards in the top 120, ranked 98th and below).
+The graph still knows the seat fits `blink` at 1.00, so a seat with no page
+gets its strongest themes (the `/replace` floor and cap) argued quietly —
+`_seat_voice_provenance`, scaled by the commander's own fit — and floored
+**per theme**: a total floor was measured wrong when `enchantress` riders on
+cards already in the answer read as "satisfied" while `blink` landed nothing.
+After: Emiel the Blessed at #38 saying "Far Traveler's own theme — Blink,
+argued from mechanics", and the report explains itself: "1 suggestion
+promoted — no play data exists for Far Traveler, so its own themes argue from
+mechanics instead."
+
 ## Defects fixed along the way
 
 Recorded with their commits; each body carries the measurements.

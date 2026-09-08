@@ -1,9 +1,9 @@
 import { Button } from "components";
 import { TFunction } from "i18next";
 import { AnimatePresence, LayoutGroup } from "motion/react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Suggestion, SuggestionReport } from "src/api/graph-generated";
+import { Suggestion, SuggestionGroup, SuggestionReport } from "src/api/graph-generated";
 import { say } from "src/utils/advisor-phrase";
 import { splitNotes } from "src/utils/advisor-notes";
 import { batchPeaks } from "src/utils/suggestion-radar";
@@ -13,6 +13,8 @@ import { DeckAdvisorCardDialog } from "src/components/deck-advisor-card-dialog";
 import { DeckAdvisorSuggestionTile } from "src/components/deck-advisor-suggestion-tile";
 import { InlineError } from "src/components/inline-error";
 import { Printing } from "src/utils/scryfall";
+import { pointerCardOf, usePointerCard } from "src/utils/use-pointer-card";
+import { useShortcuts } from "src/utils/use-shortcuts";
 
 /**
  * The properties for {@link DeckAdvisorSuggestions}
@@ -52,7 +54,51 @@ export type DeckAdvisorSuggestionsProps = {
     onIgnore: (suggestion: Suggestion) => void;
     /** The oracle id of the card currently being added, or nothing */
     busyOracle: string | null;
+    /**
+     * Whether the cEDH cockpit applies to this deck
+     * (`src/utils/use-deck-lines.ts`'s `cedhCockpitApplies`).
+     *
+     * A cEDH deck is built backwards from its lines and what protects them,
+     * so those two groups lead the gallery here too — see
+     * {@link cedhGroupOrder}. Below the threshold the server's own order
+     * (worst shortfall first, staples last — `_build_groups` in
+     * `suggestions.py`) is left exactly as it arrives.
+     */
+    cedh?: boolean;
 };
+
+/**
+ * The group keys a cEDH deck reads first, regardless of where the server's
+ * own shortfall-first ordering would have put them — line-completing
+ * (`combo`, `_GROUP_FOR_CHANNEL`'s `combo_completion` → `"combo"`) and
+ * interaction (`bucket:interaction`, the composition bucket of the same
+ * name). Named in the order they should lead, not just membership.
+ */
+const CEDH_LEAD_GROUPS = ["combo", "bucket:interaction"];
+
+/**
+ * Moves the line-completing and interaction groups to the front of the
+ * gallery for a cEDH deck, keeping every other group in the order the
+ * server already ranked it.
+ *
+ * A frontend reorder of the existing grouping output, not a second sort
+ * built server-side: `_build_groups` (`suggestions.py`) still decides
+ * membership and every group's own internal ranking, `_GROUP_FOR_CHANNEL`
+ * still decides which channel lands in which group — this only decides
+ * which of the resulting sections reads first, and only for a deck the
+ * cEDH cockpit already applies to.
+ *
+ * @param groups the groups exactly as the report ordered them
+ *
+ * @returns the same groups, `combo` and `bucket:interaction` moved to the front
+ */
+export function cedhGroupOrder(groups: ReadonlyArray<SuggestionGroup>): Array<SuggestionGroup> {
+    const leads = CEDH_LEAD_GROUPS.map((key) => groups.find((group) => group.key === key)).filter(
+        (group): group is SuggestionGroup => group !== undefined,
+    );
+    const rest = groups.filter((group) => !CEDH_LEAD_GROUPS.includes(group.key));
+    return [...leads, ...rest];
+}
 
 /**
  * One row per oracle identity, keeping the first.
@@ -124,6 +170,13 @@ function groupLabel(t: TFunction, group: { key: string; label: string }) {
  * group, `AnimatePresence` is what lets a removed card fade out while its
  * neighbours slide up to close the gap.
  *
+ * Building a deck here means saying yes forty times, and the pointer should
+ * not have to travel to a corner of a tile to say it once: the artwork carries
+ * the add button (see the tile), and `A` adds whatever the pointer is resting
+ * on, so a reader can run down the gallery on the artwork alone. The gallery
+ * owns that key rather than the tiles, because only one card is under the
+ * pointer and forty-five listeners for it would be forty-four too many.
+ *
  * @returns the grouped gallery
  */
 export function DeckAdvisorSuggestions({
@@ -137,6 +190,7 @@ export function DeckAdvisorSuggestions({
     maybeOracles,
     onIgnore,
     busyOracle,
+    cedh = false,
 }: DeckAdvisorSuggestionsProps) {
     const [t] = useTranslation("advisor");
     // The card being looked at, by oracle id. Held rather than the suggestion
@@ -152,12 +206,47 @@ export function DeckAdvisorSuggestions({
     // tile was O(n²) for no reason.
     const peaks = useMemo(() => batchPeaks(batch), [batch]);
 
+    // The card the pointer is resting on, which is what `A` adds.
+    //
+    // A ref and one delegated `pointerover`, not state and a handler per tile:
+    // nothing on the screen changes when the pointer moves from one card to
+    // the next — the overlay reveals itself in CSS — and re-rendering a gallery
+    // of forty-five tiles for a fact only a keypress ever reads would be a
+    // frame's work per card crossed for nothing.
+    const hovered = useRef<string | null>(null);
+    // A pointer that has not moved is still pointing: adding a card refetches
+    // the report, the list closes the gap, and the card that slides under the
+    // resting pointer sends no event of its own. This reads back what is
+    // actually under it after each render, so the next `A` means the card the
+    // reader is looking at rather than the one that left.
+    usePointerCard((key) => {
+        hovered.current = key;
+    });
+
+    // One key, listed in the `?` help dialog rather than printed on every tile.
+    // Off while the card dialog is up: it has its own full-width add button,
+    // and the tile behind it is not what the reader is looking at.
+    useShortcuts(
+        {
+            a: () => {
+                const oracleId = hovered.current;
+                if (oracleId === null || busyOracle === oracleId) return;
+                const suggestion = batch.find((entry) => entry.oracle_id === oracleId);
+                if (suggestion !== undefined) onAdd(suggestion);
+            },
+        },
+        opened === null,
+    );
+
     // A report without groups still carries the flat ranking; one unnamed
     // group renders it the same way.
-    const groups =
+    const rawGroups =
         report.groups !== undefined && report.groups.length > 0
             ? report.groups
             : [{ key: "all", label: t("heading.suggestions"), reason: "", suggestions: report.suggestions }];
+    // cEDH decks build backwards from their lines and what protects them —
+    // see `cedhGroupOrder`'s own doc comment.
+    const groups = cedh ? cedhGroupOrder(rawGroups) : rawGroups;
 
     // An empty answer has two very different causes, and saying the wrong one
     // is the worst thing this panel can do: with no commander the service
@@ -181,7 +270,15 @@ export function DeckAdvisorSuggestions({
     const { headline, shaping } = splitNotes(report.notes ?? []);
 
     return (
-        <div className={"flex flex-col gap-6"}>
+        <div
+            className={"flex flex-col gap-6"}
+            onPointerOver={(event) => {
+                hovered.current = pointerCardOf(event.target);
+            }}
+            onPointerLeave={() => {
+                hovered.current = null;
+            }}
+        >
             <div className={"flex flex-col gap-1"}>
                 <DeckAdvisorNotes
                     notes={[

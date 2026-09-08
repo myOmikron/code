@@ -1,6 +1,7 @@
 import jsQR from "jsqr";
 import { useEffect, useRef } from "react";
-import { type CameraStatus, useCamera } from "src/utils/use-camera";
+import type { Camera } from "src/utils/use-camera";
+import { useCamera } from "src/utils/use-camera";
 
 /** How often a frame is inspected — 10/s is plenty for a code held still */
 const SCAN_INTERVAL_MS = 100;
@@ -23,8 +24,8 @@ type BarcodeDetectorLike = {
 export type QrScannerProps = {
     /** Called with the decoded text, at most once per mount cycle */
     onScan: (value: string) => void;
-    /** Called whenever the underlying camera's lifecycle state changes */
-    onStatusChange?: (status: CameraStatus) => void;
+    /** Called whenever the camera fails to open, so the page can say which failure it was */
+    onError?: (error: Camera["error"]) => void;
 };
 
 /**
@@ -41,23 +42,25 @@ export type QrScannerProps = {
  *
  * @returns the viewfinder
  */
-export function QrScanner({ onScan, onStatusChange }: QrScannerProps) {
-    const { videoRef, status, start, stop } = useCamera();
+export function QrScanner({ onScan, onError }: QrScannerProps) {
+    const { videoRef, active, error, start, stop } = useCamera();
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
     // Starts the instant this mounts (never on the page's own mount — the page only renders this
     // once the visitor has asked to scan) and releases the camera the instant it unmounts.
     useEffect(() => {
-        start();
+        // `start` is async here, unlike the hook this component was first written against: the
+        // page learns how it went through `onError` below, not from awaiting it.
+        void start();
         return stop;
     }, [start, stop]);
 
     useEffect(() => {
-        onStatusChange?.(status);
-    }, [status, onStatusChange]);
+        onError?.(error);
+    }, [error, onError]);
 
     useEffect(() => {
-        if (status !== "live") return;
+        if (!active) return;
 
         // Guards the whole effect: a code is reported once, then the loop stops — otherwise a
         // code left in frame fires on every tick.
@@ -112,7 +115,7 @@ export function QrScanner({ onScan, onStatusChange }: QrScannerProps) {
             done = true;
             window.clearInterval(timer);
         };
-    }, [status, videoRef, onScan]);
+    }, [active, videoRef, onScan]);
 
     return (
         <div className={"relative overflow-hidden rounded-2xl bg-black"}>

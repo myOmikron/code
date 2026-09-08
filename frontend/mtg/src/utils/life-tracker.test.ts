@@ -1,16 +1,22 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { LifeTrackerSettings } from "src/utils/life-tracker";
+import type { LifeTrackerSettings, Seating } from "src/utils/life-tracker";
 import {
     DEFAULT_LIFE_TRACKER_SETTINGS,
+    PLAYER_COUNTS,
+    SOLO_PLAYER_COUNT,
     emptyCommanderDamage,
     isEliminated,
     loadLifeTrackerGame,
     loadLifeTrackerSettings,
     opponentOrder,
+    REBOOK_REACTION,
+    rebookableHit,
     resizeCommanderDamage,
     saveLifeTrackerGame,
     saveLifeTrackerSettings,
     seatingFor,
+    trackHit,
+    withHit,
 } from "src/utils/life-tracker";
 
 afterEach(() => vi.unstubAllGlobals());
@@ -53,6 +59,18 @@ describe("life tracker seating", () => {
         expect(third.area).toBe("col-start-2 row-start-2");
         expect(second.area).toBe("col-span-2 row-start-1");
         expect(fourth.area).toBe("col-span-2 row-start-3");
+    });
+
+    it("gives a player counting alone the whole screen, read upright", () => {
+        for (const orientation of ["landscape", "portrait"] as const) {
+            for (const arrangement of ["sides", "cross"] as const) {
+                const solo = seatingFor(SOLO_PLAYER_COUNT, arrangement, orientation);
+
+                expect(solo.seats).toEqual([
+                    { seat: "bottom", area: "col-start-1 row-start-1", center: { x: 0.5, y: 0.5 } },
+                ]);
+            }
+        }
     });
 
     it("falls back to the sides for pods the cross was not built for", () => {
@@ -129,15 +147,28 @@ describe("life tracker seating", () => {
 
     it("places one tile per player", () => {
         for (const orientation of ["landscape", "portrait"] as const) {
-            for (const count of [2, 3, 4, 5, 6]) {
+            for (const count of PLAYER_COUNTS) {
                 expect(seatingFor(count, "sides", orientation).seats).toHaveLength(count);
             }
         }
     });
 });
 
+/**
+ * Every table the tracker can lay out
+ *
+ * @returns one seating per pod size, arrangement and orientation
+ */
+function everySeating(): Array<Seating> {
+    return ["landscape" as const, "portrait" as const].flatMap((orientation) =>
+        ["sides" as const, "cross" as const].flatMap((arrangement) =>
+            PLAYER_COUNTS.map((count) => seatingFor(count, arrangement, orientation)),
+        ),
+    );
+}
+
 describe("commander damage order", () => {
-    it("reads the cross left to right from every edge", () => {
+    it("runs clockwise from every edge of the cross", () => {
         const { seats } = seatingFor(4, "cross", "landscape");
 
         expect(opponentOrder(seats, 3)).toEqual([0, 1, 2]);
@@ -146,22 +177,55 @@ describe("commander damage order", () => {
         expect(opponentOrder(seats, 2)).toEqual([3, 0, 1]);
     });
 
-    it("turns the order round for the players facing the other way", () => {
+    it("starts with the player on the left, whichever way the tile is turned", () => {
         const { seats } = seatingFor(4, "sides", "landscape");
 
         expect(opponentOrder(seats, 3)).toEqual([0, 1, 2]);
-        expect(opponentOrder(seats, 0)).toEqual([2, 1, 3]);
+        expect(opponentOrder(seats, 0)).toEqual([1, 2, 3]);
     });
 
-    it("reads a portrait pod along the screen, far side first", () => {
+    it("keeps a big pod in the turn order it plays in", () => {
         const { seats } = seatingFor(6, "sides", "portrait");
 
-        expect(opponentOrder(seats, 0)).toEqual([1, 2, 5, 3, 4]);
+        expect(opponentOrder(seats, 0)).toEqual([1, 2, 3, 4, 5]);
+        expect(opponentOrder(seats, 4)).toEqual([5, 0, 1, 2, 3]);
+    });
+
+    // The rotation above is only turn order because the seats are numbered
+    // clockwise around the table. Nothing in a seating table says so out loud,
+    // so this walks the tiles the players actually sit at and checks it.
+    it("numbers every seating clockwise around the table", () => {
+        for (const { seats } of everySeating()) {
+            if (seats.length < 3) continue;
+
+            const middle = {
+                x: seats.reduce((sum, { center }) => sum + center.x, 0) / seats.length,
+                y: seats.reduce((sum, { center }) => sum + center.y, 0) / seats.length,
+            };
+            // Screen coordinates run y downwards, which turns the usual
+            // anticlockwise sweep of `atan2` into a clockwise one.
+            const bearings = seats.map(({ center }) => Math.atan2(center.y - middle.y, center.x - middle.x));
+            const steps = bearings.map((bearing, seat) => {
+                const step = bearings[(seat + 1) % bearings.length] - bearing;
+                return step <= 0 ? step + 2 * Math.PI : step;
+            });
+
+            // Every step forward and the whole lap coming to one turn: the
+            // seats go round the table once, in order, and never double back.
+            for (const step of steps) expect(step).toBeGreaterThan(0);
+            expect(steps.reduce((lap, step) => lap + step, 0)).toBeCloseTo(2 * Math.PI);
+        }
+    });
+
+    it("leaves a player counting alone without opponents", () => {
+        const { seats } = seatingFor(SOLO_PLAYER_COUNT, "sides", "portrait");
+
+        expect(opponentOrder(seats, 0)).toEqual([]);
     });
 
     it("leaves every player out of their own order", () => {
         for (const orientation of ["landscape", "portrait"] as const) {
-            for (const count of [2, 3, 4, 5, 6]) {
+            for (const count of PLAYER_COUNTS) {
                 const { seats } = seatingFor(count, "sides", orientation);
 
                 for (let player = 0; player < count; player++) {
@@ -184,13 +248,23 @@ describe("life tracker settings", () => {
             startingLife: 20,
             playerCount: 2,
             arrangement: "cross",
+            rebook: false,
         });
 
         expect(loadLifeTrackerSettings()).toEqual({
             startingLife: 20,
             playerCount: 2,
             arrangement: "cross",
+            rebook: false,
         });
+    });
+
+    it("keeps a setup for a player counting alone", () => {
+        vi.stubGlobal("localStorage", storage(new Map()));
+
+        saveLifeTrackerSettings({ startingLife: 20, playerCount: 1, arrangement: "sides", rebook: true });
+
+        expect(loadLifeTrackerSettings().playerCount).toBe(1);
     });
 
     it("keeps a typed starting total", () => {
@@ -201,6 +275,7 @@ describe("life tracker settings", () => {
             startingLife: 13,
             playerCount: 4,
             arrangement: "sides",
+            rebook: true,
         });
 
         expect(loadLifeTrackerSettings().startingLife).toBe(13);
@@ -223,7 +298,7 @@ describe("life tracker settings", () => {
 });
 
 describe("resuming a game", () => {
-    const POD: LifeTrackerSettings = { startingLife: 40, playerCount: 4, arrangement: "sides" };
+    const POD: LifeTrackerSettings = { startingLife: 40, playerCount: 4, arrangement: "sides", rebook: true };
 
     /**
      * Puts a table into storage as if it had been left there
@@ -247,9 +322,9 @@ describe("resuming a game", () => {
             [0, 0, 0, 0],
         ];
 
-        saveLifeTrackerGame({ life: [33, 40, 19, 40], damage, deltas: { 2: -21 } });
+        saveLifeTrackerGame({ life: [33, 40, 19, 40], damage, deltas: { 2: -21 }, hits: {} });
 
-        expect(loadLifeTrackerGame(POD)).toEqual({ life: [33, 40, 19, 40], damage, deltas: {} });
+        expect(loadLifeTrackerGame(POD)).toEqual({ life: [33, 40, 19, 40], damage, deltas: {}, hits: {} });
     });
 
     it("starts fresh when nothing was left behind", () => {
@@ -291,6 +366,7 @@ describe("resuming a game", () => {
                 [0, 0],
             ],
             deltas: {},
+            hits: {},
         });
     });
 
@@ -349,7 +425,7 @@ describe("resuming a game", () => {
             },
         });
 
-        expect(() => saveLifeTrackerGame({ life: [40], damage: [[0]], deltas: {} })).not.toThrow();
+        expect(() => saveLifeTrackerGame({ life: [40], damage: [[0]], deltas: {}, hits: {} })).not.toThrow();
         expect(loadLifeTrackerGame(POD)).toBeNull();
     });
 });
@@ -402,5 +478,72 @@ describe("elimination", () => {
 
     it("counts a lethal helping from one commander out", () => {
         expect(isEliminated(17, [0, 21, 0])).toBe(true);
+    });
+});
+
+describe("ups, that was commander damage", () => {
+    /** A moment to count time from, so nothing depends on the wall clock */
+    const NOW = 1_700_000_000_000;
+
+    it("carries a hit forward for the drawer to offer", () => {
+        const hit = trackHit(undefined, -5, NOW);
+
+        expect(hit).toEqual({ amount: 5, at: NOW });
+        expect(rebookableHit(hit, NOW)).toBe(5);
+    });
+
+    it("counts a run of taps as the one hit the player means", () => {
+        let hit = trackHit(undefined, -1, NOW);
+        hit = trackHit(hit, -1, NOW + 200);
+        hit = trackHit(hit, -1, NOW + 400);
+
+        expect(hit).toEqual({ amount: 3, at: NOW + 400 });
+    });
+
+    it("starts over on a tap that comes in after the window", () => {
+        const first = trackHit(undefined, -1, NOW);
+        const later = trackHit(first, -6, NOW + REBOOK_REACTION + 1);
+
+        expect(later).toEqual({ amount: 6, at: NOW + REBOOK_REACTION + 1 });
+    });
+
+    it("drops the hit as soon as the player gains life", () => {
+        const hit = trackHit(undefined, -5, NOW);
+
+        expect(trackHit(hit, 2, NOW + 100)).toBeUndefined();
+    });
+
+    it("offers nothing to a drawer opened after the window", () => {
+        const hit = trackHit(undefined, -5, NOW);
+
+        expect(rebookableHit(hit, NOW + REBOOK_REACTION)).toBe(5);
+        expect(rebookableHit(hit, NOW + REBOOK_REACTION + 1)).toBeUndefined();
+    });
+
+    it("offers nothing to a player carrying no hit", () => {
+        expect(rebookableHit(undefined, NOW)).toBeUndefined();
+    });
+
+    it("rewrites one seat's hit and leaves the rest of the table alone", () => {
+        const hits = { 0: { amount: 3, at: NOW }, 1: { amount: 7, at: NOW } };
+
+        expect(withHit(hits, 1, undefined)).toEqual({ 0: { amount: 3, at: NOW } });
+        expect(withHit(hits, 2, { amount: 4, at: NOW })).toEqual({ ...hits, 2: { amount: 4, at: NOW } });
+        expect(hits[1]).toEqual({ amount: 7, at: NOW });
+    });
+
+    it("is on for a table that has never turned it off", () => {
+        vi.stubGlobal("localStorage", storage(new Map()));
+
+        expect(loadLifeTrackerSettings().rebook).toBe(true);
+    });
+
+    it("stays on for a setup stored before it existed", () => {
+        const values = new Map([
+            ["cardlens.life-tracker.v1", JSON.stringify({ startingLife: 40, playerCount: 4, arrangement: "sides" })],
+        ]);
+        vi.stubGlobal("localStorage", storage(values));
+
+        expect(loadLifeTrackerSettings().rebook).toBe(true);
     });
 });

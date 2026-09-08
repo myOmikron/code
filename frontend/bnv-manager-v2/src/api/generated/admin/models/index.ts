@@ -307,6 +307,38 @@ export interface DomainStatsSchema {
     quota: number;
 }
 /**
+ * Errors that can occur while extending the expiry of an invitation
+ * @export
+ * @interface ExtendInviteExpiryError
+ */
+export interface ExtendInviteExpiryError {
+    /**
+     * Expiry time is in the past
+     * @type {boolean}
+     * @memberof ExtendInviteExpiryError
+     */
+    expiry_time_in_past: boolean;
+    /**
+     * Expiry time is before the current expiry time
+     * @type {boolean}
+     * @memberof ExtendInviteExpiryError
+     */
+    expiry_time_too_short: boolean;
+}
+/**
+ * Request to extend an existing invitation
+ * @export
+ * @interface ExtendInviteRequest
+ */
+export interface ExtendInviteRequest {
+    /**
+     * The point in time the invite expires
+     * @type {number}
+     * @memberof ExtendInviteRequest
+     */
+    valid_days: number;
+}
+/**
  * @type FormResultForClubUuidAndCreateClubError
  * A `Result` with a custom serialization
  * @export
@@ -369,6 +401,70 @@ export const FormResultForClubUuidAndCreateClubErrorOneOf1ResultEnum = {
     Err: 'Err'
 } as const;
 export type FormResultForClubUuidAndCreateClubErrorOneOf1ResultEnum = typeof FormResultForClubUuidAndCreateClubErrorOneOf1ResultEnum[keyof typeof FormResultForClubUuidAndCreateClubErrorOneOf1ResultEnum];
+
+/**
+ * @type FormResultForNullAndExtendInviteExpiryError
+ * A `Result` with a custom serialization
+ * @export
+ */
+export type FormResultForNullAndExtendInviteExpiryError = FormResultForNullAndExtendInviteExpiryErrorOneOf | FormResultForNullAndExtendInviteExpiryErrorOneOf1;
+/**
+ * 
+ * @export
+ * @interface FormResultForNullAndExtendInviteExpiryErrorOneOf
+ */
+export interface FormResultForNullAndExtendInviteExpiryErrorOneOf {
+    /**
+     * 
+     * @type {string}
+     * @memberof FormResultForNullAndExtendInviteExpiryErrorOneOf
+     */
+    result: FormResultForNullAndExtendInviteExpiryErrorOneOfResultEnum;
+    /**
+     * 
+     * @type {any}
+     * @memberof FormResultForNullAndExtendInviteExpiryErrorOneOf
+     */
+    value: any | null;
+}
+
+
+/**
+ * @export
+ */
+export const FormResultForNullAndExtendInviteExpiryErrorOneOfResultEnum = {
+    Ok: 'Ok'
+} as const;
+export type FormResultForNullAndExtendInviteExpiryErrorOneOfResultEnum = typeof FormResultForNullAndExtendInviteExpiryErrorOneOfResultEnum[keyof typeof FormResultForNullAndExtendInviteExpiryErrorOneOfResultEnum];
+
+/**
+ * 
+ * @export
+ * @interface FormResultForNullAndExtendInviteExpiryErrorOneOf1
+ */
+export interface FormResultForNullAndExtendInviteExpiryErrorOneOf1 {
+    /**
+     * 
+     * @type {ExtendInviteExpiryError}
+     * @memberof FormResultForNullAndExtendInviteExpiryErrorOneOf1
+     */
+    error: ExtendInviteExpiryError;
+    /**
+     * 
+     * @type {string}
+     * @memberof FormResultForNullAndExtendInviteExpiryErrorOneOf1
+     */
+    result: FormResultForNullAndExtendInviteExpiryErrorOneOf1ResultEnum;
+}
+
+
+/**
+ * @export
+ */
+export const FormResultForNullAndExtendInviteExpiryErrorOneOf1ResultEnum = {
+    Err: 'Err'
+} as const;
+export type FormResultForNullAndExtendInviteExpiryErrorOneOf1ResultEnum = typeof FormResultForNullAndExtendInviteExpiryErrorOneOf1ResultEnum[keyof typeof FormResultForNullAndExtendInviteExpiryErrorOneOf1ResultEnum];
 
 /**
  * @type FormResultForSingleLinkAndCreateInviteError

@@ -210,3 +210,161 @@ def test_symmetric_permanent_dumps_lose_their_ramp_edges():
     assert "symmetrical" not in query and "group-hug" not in query
     for resource in ("land_ramp", "extra_land_drop", "landfall_trigger", "high_power"):
         assert resource in query, f"{name} no longer strips {resource}"
+
+
+# --- cycling is replacement, not advantage -------------------------------
+
+# The Cypher's two tests, mirrored so the classification is exercised against
+# real oracle texts rather than only asserted to be present in the query.
+_CYCLING_LINE = re.compile(r"(?is)^[a-z ]{0,24}cycling ?[{—-]")
+_DRAWS_ON_CYCLE = re.compile(r"(?is)^cycling ?[{—-]")
+
+
+def _cycling_only_draw(oracle_text: str) -> bool:
+    """True when the card draws on cycling and nowhere else — the demotion set."""
+    lines = oracle_text.split("\n")
+    if not any(_DRAWS_ON_CYCLE.match(line) for line in lines):
+        return False
+    stripped = oracle_text.replace("(Do this before you draw.)", "").split("\n")
+    return not any("draw" in line.lower() and not _CYCLING_LINE.match(line) for line in stripped)
+
+
+def test_cycling_only_draw_is_demoted_but_not_deleted():
+    """Barren Moor read `card_advantage 0.9` — Divination's weight — because
+    Tagger tags every cycler `pure-draw`. Cycling costs the card it draws, so
+    it fills a fraction of a draw slot, not a whole one; the rule lowers the
+    weight and leaves `PRODUCES card_draw` alone, because a cycled card really
+    is drawn.
+    """
+    name, query = next(
+        (n, q) for n, q in STRUCTURAL_CORRECTIONS if n == "cycling_is_not_card_advantage"
+    )
+    assert "card_advantage" in query
+    assert "SET f.weight = 0.2" in query, f"{name} no longer demotes to the residual"
+    # The produces side is factually right and must survive.
+    assert "PRODUCES" not in query and "DELETE" not in query
+
+    # Cycling lands and cycling spells: the whole draw claim is the cycling.
+    assert _cycling_only_draw(
+        "This land enters tapped.\n{T}: Add {B}.\n"
+        "Cycling {B} ({B}, Discard this card: Draw a card.)"
+    )
+    assert _cycling_only_draw(
+        "Flash\nWhen this enchantment enters, exile target nonland permanent an "
+        "opponent controls until this enchantment leaves the battlefield.\n"
+        "Cycling {W} ({W}, Discard this card: Draw a card.)"
+    )
+    # Cost variants are still cycling — an em dash instead of a mana cost.
+    assert _cycling_only_draw(
+        "Swampwalk (This creature can't be blocked as long as defending player "
+        "controls a Swamp.)\nCycling—Pay 2 life. (Pay 2 life, Discard this "
+        "card: Draw a card.)"
+    )
+    # "(Do this before you draw.)" is a reminder on the *trigger* line; without
+    # stripping it, Krosan Tusker and Shefet Monitor read as real draw spells.
+    assert _cycling_only_draw(
+        "Cycling {2}{G} ({2}{G}, Discard this card: Draw a card.)\n"
+        "When you cycle this card, you may search your library for a basic land "
+        "card, reveal that card, put it into your hand, then shuffle. "
+        "(Do this before you draw.)"
+    )
+
+    # A card that draws on its own keeps its weight.
+    assert not _cycling_only_draw(
+        "Draw three cards.\nIslandcycling {1}{U} ({1}{U}, Discard this card: "
+        "Search your library for an Island card, reveal it, put it into your "
+        "hand, then shuffle.)"
+    )
+    assert not _cycling_only_draw(
+        "Whenever a creature you control deals combat damage to a player, you "
+        "may draw a card.\nCycling {2} ({2}, Discard this card: Draw a card.)"
+    )
+    # Landcycling and typecycling never draw at all: Tagger files them under
+    # `tutor`, and the rule leaves them to it.
+    assert not _cycling_only_draw(
+        "{B}: Regenerate this creature.\nSwampcycling {2} ({2}, Discard this "
+        "card: Search your library for a Swamp card, reveal it, put it into "
+        "your hand, then shuffle.)"
+    )
+
+
+# --- narrow removal is not full spot removal ------------------------------
+
+
+def _narrow_removal_correction() -> str:
+    return next(
+        q for n, q in STRUCTURAL_CORRECTIONS if n == "narrow_removal_is_not_full_spot_removal"
+    )
+
+
+def test_narrow_removal_correction_is_registered():
+    names = [name for name, _ in STRUCTURAL_CORRECTIONS]
+    assert "narrow_removal_is_not_full_spot_removal" in names
+
+
+def test_narrow_removal_correction_lowers_only():
+    """Cankerbloom and Untimely Malfunction read `spot_removal` 1.0 — the same
+    weight as a card that can answer anything on the board — because Tagger
+    tags artifact/enchantment-only removal `spot-removal` directly, a sibling
+    of `removal-artifact` rather than its parent, and `_LINK_ROLE` keeps the
+    stronger of the two. `tag_mapping.py`'s own value for `removal-artifact`
+    is 0.7, so that is the floor this correction lowers to — never lower,
+    and never higher than a card already sat at."""
+    query = _narrow_removal_correction()
+
+    assert "SET f.weight = 0.7" in query
+    assert "f.weight > 0.7" in query, "must only touch cards above the floor it sets"
+    assert "DELETE" not in query
+    assert "PRODUCES" not in query
+
+
+def test_narrow_removal_correction_reads_only_the_role_and_tag_layer():
+    """A card that also bounces or fights a creature is not narrow removal —
+    this correction reads the tag closure, not the resource layer, to decide
+    that."""
+    query = _narrow_removal_correction()
+
+    for relation in ("TAGGED", "PARENT_OF", "FILLS_ROLE"):
+        assert relation in query
+    for relation in ("PRODUCES", "CARES_ABOUT", "IS_TYPE"):
+        assert relation not in query
+
+
+def _bracket_lists(query: str) -> list[list[str]]:
+    """Every `IN [...]` slug list in the query, in source order."""
+    return [re.findall(r"'([^']+)'", block) for block in re.findall(r"IN \[([^\]]*)\]", query)]
+
+
+def test_narrow_and_broad_slug_lists_are_disjoint_and_nonempty():
+    """The two lists are read straight from the tag graph's own children of
+    `removal`/`spot-removal` (see the correction's comment) — this guards
+    against a slug drifting into both, which would make the guard vacuous
+    for any card carrying it."""
+    query = _narrow_removal_correction()
+    lists = _bracket_lists(query)
+
+    assert len(lists) == 2, "expected exactly one narrow list and one broad list"
+    narrow, broad = (set(entries) for entries in lists)
+
+    assert narrow, "narrow slug list must not be empty"
+    assert broad, "broad slug list must not be empty"
+    assert narrow.isdisjoint(broad), narrow & broad
+
+
+def test_narrow_removal_slugs_stay_within_the_artifact_enchantment_subtree():
+    """Regression guard for the actual defect: `removal-artifact` and
+    `removal-enchantment` — the two tags `tag_mapping.py` means this weight
+    for — must be in the narrow list, and the target-type-specific broad
+    tags named in the correction's comment (creature, planeswalker, land,
+    permanent, bounce) must not be."""
+    query = _narrow_removal_correction()
+    narrow, broad = (set(entries) for entries in _bracket_lists(query))
+
+    assert {"removal-artifact", "removal-enchantment"} <= narrow
+    assert {
+        "removal-creature",
+        "removal-planeswalker",
+        "removal-land",
+        "removal-permanent",
+        "removal-bounce",
+    } <= broad

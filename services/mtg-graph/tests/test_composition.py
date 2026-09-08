@@ -6,8 +6,14 @@ import pytest
 
 from deck_lab.composition import (
     BATTLECRUISER,
+    CASUAL_CORRIDORS,
+    CEDH,
+    CEDH_MIDRANGE,
+    CEDH_STAX,
+    CEDH_TURBO,
     CURVE_BUCKETS,
     OVER_TARGET_COST,
+    SPEED_BRACKET_FIVE,
     STATUS_TOLERANCE,
     TUNED,
     BucketTarget,
@@ -43,13 +49,17 @@ def test_target_penalises_both_directions():
     assert target.penalty(8) == 4.0
 
 
-@pytest.mark.parametrize("template", [BATTLECRUISER, TUNED])
+@pytest.mark.parametrize(
+    "template", [BATTLECRUISER, TUNED, CEDH, CEDH_TURBO, CEDH_MIDRANGE, CEDH_STAX]
+)
 def test_curve_distribution_sums_to_one(template):
     assert sum(template.curve.values()) == pytest.approx(1.0)
     assert set(template.curve) == set(CURVE_BUCKETS)
 
 
-@pytest.mark.parametrize("template", [BATTLECRUISER, TUNED])
+@pytest.mark.parametrize(
+    "template", [BATTLECRUISER, TUNED, CEDH, CEDH_TURBO, CEDH_MIDRANGE, CEDH_STAX]
+)
 def test_every_bucket_has_a_target(template):
     assert set(template.buckets) == set(Bucket)
 
@@ -59,22 +69,49 @@ def test_speed_endpoints_match_archetypes():
         template_for(0.0).buckets[Bucket.MANA_SOURCES].low
         == BATTLECRUISER.buckets[Bucket.MANA_SOURCES].low
     )
-    assert template_for(1.0).buckets[Bucket.RAMP].high == TUNED.buckets[Bucket.RAMP].high
+    # 0.75 is bracket 4 — the last point still on the interpolated line,
+    # `is_cedh(0.75)` is False. TUNED itself (speed=1.0) is no longer
+    # reachable by interpolation at all — see
+    # `test_bracket_five_is_never_reached_by_interpolation` below.
+    # MANA_SOURCES is still the one bucket with two different archetype
+    # bounds to interpolate between; see the next assertion for the other
+    # four, which no longer have that.
+    assert template_for(0.75).buckets[Bucket.MANA_SOURCES].low == pytest.approx(
+        BATTLECRUISER.buckets[Bucket.MANA_SOURCES].low
+        + (TUNED.buckets[Bucket.MANA_SOURCES].low - BATTLECRUISER.buckets[Bucket.MANA_SOURCES].low)
+        * 0.75
+    )
+    # RAMP/CARD_DRAW/INTERACTION/SYNERGY_WINCON: `BATTLECRUISER` and `TUNED`
+    # share one measured `CASUAL_CORRIDORS` range apiece for these four now
+    # (`composition._casual`), so every bracket-1-4 speed reads the same
+    # bound back — there is nothing left to lerp between.
+    for bucket in (Bucket.RAMP, Bucket.CARD_DRAW, Bucket.INTERACTION, Bucket.SYNERGY_WINCON):
+        low, high = CASUAL_CORRIDORS[bucket]
+        for speed in (0.0, 0.25, 0.5, 0.75):
+            target = template_for(speed).buckets[bucket]
+            assert target.low == pytest.approx(low)
+            assert target.high == pytest.approx(high)
 
 
 def test_speed_interpolates_monotonically():
-    """Turning the dial up should shed lands and add ramp, without jumps."""
-    lands = [template_for(s).buckets[Bucket.MANA_SOURCES].low for s in (0.0, 0.25, 0.5, 0.75, 1.0)]
-    ramp = [template_for(s).buckets[Bucket.RAMP].low for s in (0.0, 0.25, 0.5, 0.75, 1.0)]
+    """Turning the dial up (short of bracket 5) should shed lands, without
+    jumps. Ramp itself no longer moves with the slider — its corridor is one
+    measured range (`CASUAL_CORRIDORS`) shared by `BATTLECRUISER` and
+    `TUNED`, so only the penalty weight binds harder, not the target (see
+    `test_speed_tightens_quota_weights`). Bracket 5 is excluded on purpose —
+    it is a branch to a different template, not one more step of this line;
+    see `test_bracket_five_is_never_reached_by_interpolation`."""
+    lands = [template_for(s).buckets[Bucket.MANA_SOURCES].low for s in (0.0, 0.25, 0.5, 0.75)]
+    ramp = [template_for(s).buckets[Bucket.RAMP].low for s in (0.0, 0.25, 0.5, 0.75)]
 
     assert lands == sorted(lands, reverse=True)
-    assert ramp == sorted(ramp)
+    assert len(set(ramp)) == 1
 
 
 def test_speed_tightens_quota_weights():
     """A tuned list is less forgiving about a missing slot."""
     assert (
-        template_for(1.0).buckets[Bucket.RAMP].weight
+        template_for(0.75).buckets[Bucket.RAMP].weight
         > template_for(0.0).buckets[Bucket.RAMP].weight
     )
 
@@ -82,6 +119,197 @@ def test_speed_tightens_quota_weights():
 def test_speed_outside_range_is_rejected():
     with pytest.raises(ValueError, match=r"\[0, 1\]"):
         template_for(1.5)
+
+
+@pytest.mark.parametrize("speed", [0.0, 0.25, 0.5, 0.75])
+def test_brackets_one_through_four_are_unchanged_by_the_cedh_branch(speed):
+    """`is_cedh` only fires at bracket 5 (speed >= SPEED_BRACKET_FIVE) — the
+    casual ladder must interpolate exactly as it did before `CEDH` existed,
+    down to the exact float. Reimplements the lerp independently (rather
+    than diffing against a golden file) so a change to the interpolation
+    formula itself would also be caught here, not just a change that
+    accidentally routes a casual speed into the cEDH branch.
+
+    The lerp formula itself is unchanged for every bucket — `_lerp(a, a, t)
+    == a` — but `BATTLECRUISER` and `TUNED` no longer supply two different
+    `a`/`b` for four of the five buckets, so the general loop below is
+    joined by a direct pin to `CASUAL_CORRIDORS` for those four: a bug that
+    made both archetypes drift the *same* wrong way would pass the lerp
+    check but not this one."""
+    assert speed < SPEED_BRACKET_FIVE
+    result = template_for(speed)
+
+    for bucket in Bucket:
+        slow, fast = BATTLECRUISER.buckets[bucket], TUNED.buckets[bucket]
+        assert result.buckets[bucket].low == slow.low + (fast.low - slow.low) * speed
+        assert result.buckets[bucket].high == slow.high + (fast.high - slow.high) * speed
+        assert result.buckets[bucket].weight == slow.weight + (fast.weight - slow.weight) * speed
+
+    for bucket in (Bucket.RAMP, Bucket.CARD_DRAW, Bucket.INTERACTION, Bucket.SYNERGY_WINCON):
+        low, high = CASUAL_CORRIDORS[bucket]
+        assert result.buckets[bucket].low == pytest.approx(low)
+        assert result.buckets[bucket].high == pytest.approx(high)
+
+    for mv in CURVE_BUCKETS:
+        assert (
+            result.curve[mv]
+            == BATTLECRUISER.curve[mv] + (TUNED.curve[mv] - BATTLECRUISER.curve[mv]) * speed
+        )
+    assert (
+        result.curve_weight
+        == BATTLECRUISER.curve_weight + (TUNED.curve_weight - BATTLECRUISER.curve_weight) * speed
+    )
+
+
+@pytest.mark.parametrize("speed", [SPEED_BRACKET_FIVE, 0.9, 1.0])
+def test_bracket_five_is_never_reached_by_interpolation(speed):
+    """cEDH runs *more* mana sources than TUNED while running *fewer*
+    lands — a shape no point on the BATTLECRUISER-TUNED line can produce,
+    since interpolating harder toward "tuned" moves both together. So
+    `template_for` must branch to `CEDH` outright at every bracket-5 speed,
+    not blend toward it — proven here by pinning the exact corridor rather
+    than just its direction, and checking it holds across the whole [0.8,
+    1.0] span, not only at speed=1.0."""
+    result = template_for(speed)
+
+    assert result.buckets[Bucket.MANA_SOURCES].low == CEDH.buckets[Bucket.MANA_SOURCES].low
+    assert result.buckets[Bucket.MANA_SOURCES].high == CEDH.buckets[Bucket.MANA_SOURCES].high
+    # Nowhere near a lerp that landed short of TUNED's own range.
+    assert result.buckets[Bucket.MANA_SOURCES].low > TUNED.buckets[Bucket.MANA_SOURCES].high
+    assert result.curve == CEDH.curve
+
+
+def test_cedh_binds_harder_than_tuned():
+    """The judgment call `CEDH`'s comment states: a metagame-tuned list
+    punishes a missing piece more than a casual pod does, so every weight
+    (and the curve weight) is TUNED's, scaled up — never down or equal."""
+    for bucket in Bucket:
+        assert CEDH.buckets[bucket].weight > TUNED.buckets[bucket].weight
+    assert CEDH.curve_weight > TUNED.curve_weight
+
+
+# --- CASUAL_CORRIDORS: the measured casual bucket ranges -------------------
+
+
+def test_casual_corridors_cover_exactly_the_four_nonland_buckets():
+    """`Bucket.MANA_SOURCES` is deliberately absent — it counts lands
+    directly, so `type_targets.derive_mana_sources` builds its corridor
+    from the empirical Land row instead of anything measured here."""
+    assert set(CASUAL_CORRIDORS) == {
+        Bucket.RAMP,
+        Bucket.CARD_DRAW,
+        Bucket.INTERACTION,
+        Bucket.SYNERGY_WINCON,
+    }
+
+
+@pytest.mark.parametrize(("bucket", "bounds"), sorted(CASUAL_CORRIDORS.items()))
+def test_casual_corridor_bounds_are_ordered(bucket, bounds):
+    low, high = bounds
+    assert low < high, bucket
+
+
+def test_casual_and_cedh_synergy_wincon_corridors_now_overlap():
+    """The defect this round measured and fixed: an average casual list read
+    about half of the authored synergy_wincon target (18 of 415 casual pages
+    fell inside the old speed-0.5 corridor — see `CASUAL_CORRIDORS`'s
+    comment), because the old bracket-4 bound (27.25-32.25 at speed 0.75)
+    sat entirely above cEDH's own measured range (16.7-27.1) — disjoint by
+    0.15. The measured casual corridor overlaps cEDH's instead (16.7-25.0
+    is shared) — a real interval overlap, not just "some number is bigger
+    than some other number" in one direction."""
+    casual_low, casual_high = CASUAL_CORRIDORS[Bucket.SYNERGY_WINCON]
+    cedh = CEDH.buckets[Bucket.SYNERGY_WINCON]
+    assert casual_low <= cedh.high
+    assert casual_high >= cedh.low
+
+
+# --- cEDH Pro round Task E: turbo / midrange / stax sub-archetypes --------
+
+
+@pytest.mark.parametrize(
+    ("cedh_class", "expected"),
+    [("turbo", CEDH_TURBO), ("midrange", CEDH_MIDRANGE), ("stax", CEDH_STAX)],
+)
+def test_template_for_selects_the_matching_sub_archetype(cedh_class, expected):
+    """At bracket 5, naming a classified sub-archetype picks its own
+    measured template instead of the pooled `CEDH` — the selection this
+    round's classifier (`cedh_archetypes.classify`) feeds."""
+    result = template_for(1.0, cedh_class=cedh_class)
+
+    assert result.buckets == expected.buckets
+    assert result.curve == expected.curve
+    assert result.curve_weight == expected.curve_weight
+
+
+@pytest.mark.parametrize("cedh_class", [None, "unclassified", "not-a-real-class"])
+def test_template_for_falls_back_to_pooled_cedh(cedh_class):
+    """`None` (every existing call site, since none of them passes this new
+    keyword), the classifier's own honest miss (`"unclassified"`), and any
+    value this round's classifier never emits all land on the pooled `CEDH`
+    — the same template `template_for(speed)` returned before `cedh_class`
+    existed, byte-identical."""
+    result = template_for(1.0, cedh_class=cedh_class)
+
+    assert result.buckets == CEDH.buckets
+    assert result.curve == CEDH.curve
+
+
+@pytest.mark.parametrize("speed", [0.0, 0.25, 0.5, 0.75])
+def test_cedh_class_is_ignored_below_bracket_five(speed):
+    """`cedh_class` only means something once `is_cedh(speed)` fires — a
+    casual-ladder speed must interpolate exactly as before regardless of
+    what a caller passes here, since nothing at brackets 1-4 has a
+    sub-archetype to speak of."""
+    plain = template_for(speed)
+    with_class = template_for(speed, cedh_class="turbo")
+
+    assert with_class.buckets == plain.buckets
+    assert with_class.curve == plain.curve
+
+
+@pytest.mark.parametrize("template", [CEDH_TURBO, CEDH_MIDRANGE, CEDH_STAX])
+def test_sub_archetype_templates_carry_no_type_targets_of_their_own(template):
+    """Tier-0 precedence (the task file's binding assertion): a commander's
+    own `/cedh` page still outranks any template's type counts. This task
+    moves buckets and curve only — proven here by pinning that every new
+    template's `types` is empty, exactly like the pooled `CEDH`'s, so
+    `type_targets.conditioned_template`'s `apply_type_targets` call always
+    overwrites it wholesale with tier 0's resolution, regardless of which
+    of the four cEDH-family templates supplied the buckets and curve beside
+    it (see `test_type_targets_layer_onto_a_template_without_touching_it`,
+    which proves that overwrite for `template_for` in general)."""
+    assert template.types == {}
+
+
+@pytest.mark.parametrize("template", [CEDH, CEDH_TURBO, CEDH_MIDRANGE, CEDH_STAX])
+def test_cedh_family_names_share_the_prefix_task_c_depends_on(template):
+    """Naming constraint discovered in Wave 1 (Task C): `interaction.
+    is_cedh_template` — already landed, and out of this task's ownership —
+    decides whether the cEDH board-wipe discount and asymmetry checks apply
+    to a template by testing `template.name.startswith("cedh")`. Every
+    cEDH-family template must keep that prefix or the discount silently
+    stops applying to sub-archetype decks while nothing else looks changed.
+    Imports `interaction` only from this test, never from `composition.py`
+    itself (see `composition.py`'s `_CEDH_CLASS_TEMPLATES` comment for why
+    the two modules do not import each other)."""
+    from deck_lab.interaction import is_cedh_template
+
+    assert template.name.startswith("cedh")
+    assert is_cedh_template(template)
+
+
+def test_cedh_sub_archetype_names_are_distinct_from_the_pooled_template():
+    """The naming constraint's other half: each sub-archetype gets its own
+    name (`cedh-turbo` / `cedh-midrange` / `cedh-stax`), not the bare
+    `"cedh"` the pooled fallback keeps — so a report can tell "this deck
+    read as turbo" from "this deck fell back to the pooled template"."""
+    assert {CEDH_TURBO.name, CEDH_MIDRANGE.name, CEDH_STAX.name, CEDH.name} == {
+        "cedh-turbo",
+        "cedh-midrange",
+        "cedh-stax",
+        "cedh",
+    }
 
 
 def test_mana_rock_counts_toward_two_buckets():
@@ -123,15 +351,26 @@ def test_penalty_reports_which_bucket_is_off():
 
 
 def test_well_shaped_deck_scores_near_zero():
+    """Coverage sits at each bucket's own midpoint — the point of least
+    penalty for a soft quota with no preference for one edge over the
+    other. Built from `template_for(0.0)`'s own targets rather than
+    hardcoded counts, so this fixture tracks `CASUAL_CORRIDORS` (and any
+    future re-measurement of it) instead of needing its own re-pin."""
     template = template_for(0.0)
+    midpoints = {bucket: (t.low + t.high) / 2 for bucket, t in template.buckets.items()}
+
     role_weights = {
-        Role.LAND: 36.0,
+        # MANA_SOURCES = LAND + MANA_ROCK; RAMP = MANA_ROCK + LAND_RAMP —
+        # MANA_ROCK's 3.0 is shared between them, so each split leaves the
+        # *other* role exactly enough to land its bucket on the midpoint.
         Role.MANA_ROCK: 3.0,
-        Role.LAND_RAMP: 7.0,
-        Role.CARD_ADVANTAGE: 12.0,
-        Role.SPOT_REMOVAL: 6.0,
+        Role.LAND: midpoints[Bucket.MANA_SOURCES] - 3.0,
+        Role.LAND_RAMP: midpoints[Bucket.RAMP] - 3.0,
+        Role.CARD_ADVANTAGE: midpoints[Bucket.CARD_DRAW],
+        # INTERACTION = SPOT_REMOVAL + BOARD_WIPE, the same split.
         Role.BOARD_WIPE: 3.0,
-        Role.PAYOFF: 32.0,
+        Role.SPOT_REMOVAL: midpoints[Bucket.INTERACTION] - 3.0,
+        Role.PAYOFF: midpoints[Bucket.SYNERGY_WINCON],
     }
     total, deviations = composition_penalty(template, role_weights)
 
@@ -227,7 +466,7 @@ def test_override_replaces_both_bounds():
 
 def test_override_may_move_one_bound_only():
     """Dragging one handle must not silently reset the other."""
-    base = template_for(0.5).buckets[Bucket.RAMP]  # 10.5-14
+    base = template_for(0.5).buckets[Bucket.RAMP]  # CASUAL_CORRIDORS[Bucket.RAMP]: 9.3-23.0
     moved = template_for(0.5, {Bucket.RAMP: TargetOverride(low=11)}).buckets[Bucket.RAMP]
 
     assert moved.low == 11
@@ -597,3 +836,44 @@ def test_an_override_for_a_type_with_no_target_is_dropped():
 
 def test_no_type_overrides_is_the_identity():
     assert apply_type_overrides(_types(), {}) == _types()
+
+
+def test_a_lock_needs_both_halves():
+    """An effect with a wide creature base is a value engine, and a thin
+    creature base without the effect is just a spell deck — only the pairing
+    is a win line, and only the pairing may silence suggestions."""
+    from deck_lab.composition import POLYMORPH_MAX_CREATURES, LockedClass, active_locks
+    from deck_lab.vocabulary import Resource
+
+    def locked(effects: int, creatures: int) -> bool:
+        return bool(active_locks({Resource.POLYMORPH: effects}, {LockedClass.CREATURE: creatures}))
+
+    assert locked(1, 2)
+    assert locked(2, POLYMORPH_MAX_CREATURES)
+    assert not locked(1, POLYMORPH_MAX_CREATURES + 1)
+    assert not locked(0, 0)
+
+
+def test_the_basics_lock_tolerates_one_and_no_more():
+    """Tainted Pact's own text sets the bound: it exiles until a name repeats,
+    and in a singleton deck the only repeats are basics, so one is free."""
+    from deck_lab.composition import BASICS_MAX_WITH_LOCK, LockedClass, active_locks
+    from deck_lab.vocabulary import Resource
+
+    holders = {Resource.BASIC_LAND_LOCK: 1}
+    assert active_locks(holders, {LockedClass.BASIC_LAND: BASICS_MAX_WITH_LOCK})
+    assert not active_locks(holders, {LockedClass.BASIC_LAND: BASICS_MAX_WITH_LOCK + 1})
+
+
+def test_the_two_locks_are_independent():
+    """A polymorph deck may run basics and a Hermit Druid deck may run
+    creatures; neither lock says anything about the other's class."""
+    from deck_lab.composition import LockedClass, active_locks
+    from deck_lab.vocabulary import Resource
+
+    both = active_locks(
+        {Resource.POLYMORPH: 1, Resource.BASIC_LAND_LOCK: 1},
+        {LockedClass.CREATURE: 2, LockedClass.BASIC_LAND: 12},
+    )
+
+    assert [lock.forbids for lock in both] == [LockedClass.CREATURE]

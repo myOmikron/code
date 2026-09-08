@@ -1,6 +1,7 @@
 import { Link, Outlet, createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import {
     ArchiveBoxXMarkIcon,
+    CameraIcon,
     ChevronLeftIcon,
     LinkIcon,
     PencilSquareIcon,
@@ -25,6 +26,7 @@ import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import { CollectionDialog } from "src/components/collection-dialog";
 import { RequireAccount } from "src/components/require-account";
+import { useScannerSessions } from "src/context/scanner-session-context";
 import { ShareDialog } from "src/components/share-dialog";
 import i18n from "src/i18n";
 import { collectionShareTarget } from "src/utils/share-targets";
@@ -70,6 +72,7 @@ function RouteComponent() {
     const [sharing, setSharing] = useState(false);
     const [editing, setEditing] = useState(false);
     const [confirming, setConfirming] = useState(false);
+    const sessions = useScannerSessions();
 
     const deckUuid = collection?.deck ?? null;
     const shortcutHelpOpen = useShortcutHelpOpen();
@@ -140,6 +143,27 @@ function RouteComponent() {
                         <span className={"flex flex-col gap-3"}>
                             {collection.description !== "" && <span>{collection.description}</span>}
                             <span className={"flex flex-wrap items-center gap-2"}>
+                                {/* A scan session on this box. Everything the scanner then stages
+                                    is offered back to this collection, so sorting a box is one
+                                    walk: open the box, scan the stack, file it, keep going. Deck
+                                    collections get it too — a deck's cards are cards in a box like
+                                    any other, and they are the ones most often counted again. */}
+                                <BadgeButton
+                                    color={"zinc"}
+                                    className={ACTION_RING}
+                                    onClick={() => {
+                                        void sessions.aimAt(collectionUuid, collection.name).then(
+                                            () => navigate({ to: "/scan" }),
+                                            // The scanner is still worth opening when the session
+                                            // could not be aimed — it stages either way, and the
+                                            // filing button asks where.
+                                            () => navigate({ to: "/scan" }),
+                                        );
+                                    }}
+                                >
+                                    <CameraIcon className={"size-3.5"} />
+                                    {t("button.scan-into")}
+                                </BadgeButton>
                                 {deckUuid !== null ? (
                                     <BadgeButton
                                         color={"zinc"}

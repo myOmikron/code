@@ -68,13 +68,13 @@ impl ClubAccount {
     ) -> anyhow::Result<Self> {
         let mut guard = exe.ensure_transaction().await?;
 
-        let username = rorm::insert(guard.get_transaction(), UsernameModel)
+        let username = rorm::insert(guard.as_mut(), UsernameModel)
             .single(&UsernameModel {
                 username: new_member.username,
             })
             .await?;
 
-        let model = rorm::insert(guard.get_transaction(), ClubAccountModel)
+        let model = rorm::insert(guard.as_mut(), ClubAccountModel)
             .single(&ClubAccountModelInsert {
                 uuid: Uuid::new_v4(),
                 username: ForeignModelByField(username.username),
@@ -85,7 +85,7 @@ impl ClubAccount {
             })
             .await?;
 
-        guard.commit().await?;
+        guard.commit_if_owned().await?;
         Ok(Self::from(model))
     }
 }

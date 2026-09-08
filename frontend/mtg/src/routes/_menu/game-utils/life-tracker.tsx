@@ -13,6 +13,7 @@ import {
     AlertDescription,
     AlertTitle,
     Button,
+    Description,
     Dialog,
     DialogActions,
     DialogBody,
@@ -25,6 +26,8 @@ import {
     ListboxLabel,
     ListboxOption,
     PrimaryButton,
+    Switch,
+    SwitchField,
 } from "components";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -38,6 +41,7 @@ import { useWakeLock } from "src/utils/use-wake-lock";
 import {
     CROSS_PLAYER_COUNT,
     PLAYER_COUNTS,
+    SOLO_PLAYER_COUNT,
     STARTING_LIFE_RANGE,
     STARTING_LIFE_TOTALS,
     emptyCommanderDamage,
@@ -50,6 +54,8 @@ import {
     saveLifeTrackerGame,
     saveLifeTrackerSettings,
     seatingFor,
+    trackHit,
+    withHit,
 } from "src/utils/life-tracker";
 
 /** How long a run of taps stays readable after the last one */
@@ -121,6 +127,7 @@ function RouteComponent() {
             life: Array.from({ length: playerCount }, (_, index) => current.life[index] ?? settings.startingLife),
             damage: resizeCommanderDamage(current.damage, playerCount),
             deltas: {},
+            hits: {},
         }));
         change({ playerCount });
     }
@@ -184,10 +191,14 @@ function RouteComponent() {
      * @param amount what to add to their total
      */
     function changeLife(index: number, amount: number) {
+        const now = Date.now();
         setTable((current) => ({
             ...current,
             life: current.life.map((total, player) => (player === index ? total + amount : total)),
             deltas: { ...current.deltas, [index]: (current.deltas[index] ?? 0) + amount },
+            // Only taps on the tile itself leave a hit for the drawer to offer:
+            // this is the exact mistake the offer exists to undo.
+            hits: withHit(current.hits, index, trackHit(current.hits[index], amount, now)),
         }));
         fadeDelta(index);
     }
@@ -215,9 +226,34 @@ function RouteComponent() {
                     player === index ? row.map((value, other) => (other === opponent ? next : value)) : row,
                 ),
                 deltas: { ...current.deltas, [index]: (current.deltas[index] ?? 0) + dealt },
+                // Damage counted in the drawer already has a commander against
+                // it, so it is not a hit anyone can be asked about.
+                hits: withHit(current.hits, index, undefined),
             };
         });
         fadeDelta(index);
+    }
+
+    /**
+     * Charges a hit a player already took to one commander after the fact.
+     *
+     * The life went the moment they tapped their tile; all that is missing is
+     * whose commander it came off. So this only writes the tally, and writing
+     * it a second time is what booking it in the drawer normally does.
+     *
+     * @param index which player took it
+     * @param opponent whose commander dealt it
+     * @param amount how much of their life it cost
+     */
+    function rebookDamage(index: number, opponent: number, amount: number) {
+        hapticConfirm();
+        setTable((current) => ({
+            ...current,
+            damage: current.damage.map((row, player) =>
+                player === index ? row.map((value, other) => (other === opponent ? value + amount : value)) : row,
+            ),
+            hits: withHit(current.hits, index, undefined),
+        }));
     }
 
     /**
@@ -244,6 +280,7 @@ function RouteComponent() {
             life: current.life.map(() => settings.startingLife),
             damage: emptyCommanderDamage(current.life.length),
             deltas: {},
+            hits: {},
         }));
     }
 
@@ -275,9 +312,13 @@ function RouteComponent() {
                         <AdjustmentsHorizontalIcon />
                         <span className={"max-sm:hidden"}>{t("button.settings")}</span>
                     </Button>
-                    <Button outline={true} onClick={() => setResetting(true)} aria-label={t("button.reset")}>
+                    <Button
+                        outline={true}
+                        onClick={() => setResetting(true)}
+                        aria-label={t("button.reset", { count: settings.playerCount })}
+                    >
                         <ArrowPathIcon />
-                        <span className={"max-sm:hidden"}>{t("button.reset")}</span>
+                        <span className={"max-sm:hidden"}>{t("button.reset", { count: settings.playerCount })}</span>
                     </Button>
                 </div>
             </header>
@@ -304,6 +345,8 @@ function RouteComponent() {
                         flush={seating.flush}
                         onChange={(amount) => changeLife(index, amount)}
                         onDamage={(opponent, amount) => changeDamage(index, opponent, amount)}
+                        hit={settings.rebook ? table.hits[index] : undefined}
+                        onRebook={(opponent, amount) => rebookDamage(index, opponent, amount)}
                     />
                 ))}
             </section>
@@ -363,6 +406,17 @@ function RouteComponent() {
                                 </Listbox>
                             </Field>
                         )}
+                        {settings.playerCount > SOLO_PLAYER_COUNT && (
+                            <SwitchField>
+                                <Label>{t("label.rebook")}</Label>
+                                <Description>{t("description.rebook")}</Description>
+                                <Switch
+                                    color={"blue"}
+                                    checked={settings.rebook}
+                                    onChange={(rebook) => change({ rebook })}
+                                />
+                            </SwitchField>
+                        )}
                     </div>
                 </DialogBody>
                 <DialogActions>
@@ -375,7 +429,9 @@ function RouteComponent() {
 
             <Alert open={resetting} onClose={() => setResetting(false)}>
                 <AlertTitle>{t("heading.reset-game")}</AlertTitle>
-                <AlertDescription>{t("description.reset-game", { life: settings.startingLife })}</AlertDescription>
+                <AlertDescription>
+                    {t("description.reset-game", { count: settings.playerCount, life: settings.startingLife })}
+                </AlertDescription>
                 <AlertActions>
                     <Button plain={true} onClick={() => setResetting(false)}>
                         {tg("button.cancel")}

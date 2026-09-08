@@ -3,6 +3,7 @@ import clsx from "clsx";
 import { Button, Input, InputGroup, Label, Strong, Switch, SwitchField, Text } from "components";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { formatCurrency } from "src/utils/format";
 import { searchAllPrintings } from "src/utils/scryfall";
 import type { Printing } from "src/utils/scryfall";
 
@@ -139,6 +140,12 @@ export function DeckPrintingPicker({ name, current, onPick, startOpen = false, o
                     {shown.map((printing) => {
                         const held = printing.id === current;
                         const have = owned?.has(printing.id) === true;
+                        // The foil quote stands in where a print run has no
+                        // ordinary one — a foil-only run is priced there and
+                        // nowhere else — and says so, so the two are not read
+                        // as the same number.
+                        const price = printing.priceEur ?? printing.priceEurFoil ?? null;
+                        const foilPrice = price !== null && printing.priceEur == null;
                         return (
                             <li key={printing.id}>
                                 <button
@@ -188,8 +195,20 @@ export function DeckPrintingPicker({ name, current, onPick, startOpen = false, o
                                         <span className={"truncate text-xs text-zinc-950 dark:text-white"}>
                                             {printing.setName}
                                         </span>
-                                        <span className={"truncate text-xs text-zinc-500 dark:text-zinc-400"}>
-                                            {printing.setCode} #{printing.collectorNumber} · {printing.releasedAt}
+                                        <span
+                                            className={
+                                                "flex items-baseline justify-between gap-2 text-xs text-zinc-500 dark:text-zinc-400"
+                                            }
+                                        >
+                                            <span className={"truncate"}>
+                                                {printing.setCode} #{printing.collectorNumber} · {printing.releasedAt}
+                                            </span>
+                                            {price !== null && (
+                                                <span className={"shrink-0 tabular-nums"}>
+                                                    {formatCurrency(price)}
+                                                    {foilPrice && ` ${t("label.foil")}`}
+                                                </span>
+                                            )}
                                         </span>
                                     </span>
                                 </button>

@@ -6,6 +6,18 @@ creatures; nothing in the system said that a Talrand list averages eleven.
 The targets here are empirical where data exists and honest about the
 fallback where it does not:
 
+  0. commander×cedh subpage — outranks every tier below, including tier 1's
+     theme/tribe subpage. Gated on `is_cedh(speed)` (bracket 5) and the
+     commander's own `bracket_counts["5"]` clearing `CEDH_MIN_DECKS` —
+     EDHREC serves a `/cedh` page for every commander, including ones with
+     no real cEDH presence, so the floor is mandatory rather than
+     defensive. A cEDH spellslinger deck is a cEDH deck first: EDHREC has
+     no two-tag subpages, so there is no "commander × cedh × spellslinger"
+     page to prefer over it, and the `/cedh` page carries its own
+     taglinks, so it is already format-right even though it is
+     theme-blind. Falls back to a pooled cross-commander profile
+     (`CEDH_TYPE_COUNTS`) when this commander's own subpage is thin,
+     absent, or unreadable, before falling all the way to tier 1.
   1. commander×theme subpage — when the deck's own theme profile is
      decisive, or its typal profile names a real tribe, and EDHREC has a
      page for that pairing. Muldrotha averages ~30 creatures;
@@ -37,11 +49,12 @@ bracket conditioning, and shifting counts for a tuned deck would be inventing
 data. Only the penalty weight lerps, the same way the bucket weights bind
 harder at speed. Recorded as a gap in `docs/composition.md`, not papered over.
 
-The targets do move one thing outside this axis: the empirical land mean
-shifts the mana-sources quota (`shift_mana_sources`), so the bucket that owns
-land count knows what the archetype runs. That is the reconciliation in the
-other direction — archetype conditioning the functional quota, never speed
-conditioning the empirical counts.
+The targets do move one thing outside this axis: the empirical Land corridor
+is the base the mana-sources quota is built on (`derive_mana_sources`), so
+the bucket that counts every source knows how many of them the archetype
+runs as lands. That is the reconciliation in the other direction — archetype
+conditioning the functional quota, never speed conditioning the empirical
+counts.
 """
 
 from __future__ import annotations
@@ -57,6 +70,7 @@ from .composition import (
     apply_overrides,
     apply_type_overrides,
     apply_type_targets,
+    is_cedh,
     template_for,
 )
 from .vocabulary import Bucket
@@ -92,11 +106,25 @@ MIN_HALF_WIDTH = 2.0  # cards; a mean of 1 planeswalker must not pin [1, 1]
 # judgment stated as one.
 LAND_HALF_WIDTH = 3.5
 
-# How far the archetype may move the mana-sources quota (see
-# `shift_mana_sources`). Cached land means run 33–40 against the 35 median,
-# so ±6 is past every observed page — a cap against a parse gone wrong, not
-# a bound that real data reaches.
-MANA_SOURCES_DELTA_CAP = 6.0
+# The share of the ramp quota that is itself a mana source — rocks and
+# dorks, as opposed to land ramp and other ramp — and therefore the part of
+# the ramp quota the mana-sources quota has to leave room for (see
+# `derive_mana_sources`). Measured 2026-09-07/08 over 415 cached casual
+# commander pages (863,527 decks, deck-count weighted), each read as its
+# synthetic average deck the way `cedh_profiles.measure_cedh` reads a `/cedh`
+# page, both sides corrected for the synthetic deck's land over-count the
+# way `casual_profiles` corrects every nonland bucket: pooled non-land
+# sources 8.27 over pooled ramp coverage 16.1 = 0.51. A ratio of pooled
+# means, not the mean of per-page ratios (that came out 0.55, sd 0.19), on
+# purpose: the derivation adds this share to a *pooled* ramp corridor, so
+# only the pooled ratio reproduces the pooled mana-source mean — the
+# per-page mean overshot it by a card. The pool splits by colour — green
+# 0.46 (dorks 4.4 + rocks 3.8 against 8.2 land ramp), non-green 0.63 (rocks
+# 6.3, almost no dorks or land ramp) — but the absolute non-land source
+# counts sit closer together (8.1 vs 6.9) than the shares do. A per-colour
+# share is the obvious refinement if that ever proves too coarse; the
+# corridor has no colour identity to read today.
+NONLAND_SOURCE_SHARE = 0.51
 
 # Penalty per card outside the range, lerped by speed like the bucket
 # weights. Calibration: at speed 0.5 (weight 0.35) a deck 5.2 creatures over
@@ -105,6 +133,16 @@ MANA_SOURCES_DELTA_CAP = 6.0
 # even at the 0.4 redundancy floor.
 TYPES_WEIGHT_SLOW = 0.25
 TYPES_WEIGHT_FAST = 0.45
+
+# Tier 0's sample floor. EDHREC serves a `/cedh` subpage for every commander,
+# including ones with no real cEDH presence, so a floor here is mandatory
+# rather than defensive — the same finding that makes `TAG_MIN_DECKS` below
+# non-optional for tier 1. 150 is a judgment call, not a measurement:
+# Atraxa's cEDH page rests on 156 decks and still reads correctly (top cards
+# Mana Drain, Force of Negation, Narset, Esper Sentinel), so the floor exists
+# to reject noise on an obscure or joke commander's handful of bracket-5
+# games, not to demand a famous cEDH commander.
+CEDH_MIN_DECKS = 150
 
 # The subpage tier fires only when the deck's loudest theme is an identity
 # rather than a whisper, maps to a verified EDHREC tag, and that tag has a
@@ -462,6 +500,50 @@ ARCHETYPE_TYPE_COUNTS: dict[str, ArchetypeProfile] = {
     ),
 }
 
+# Pooled cross-commander cEDH profile for tier 0's fallback — the same
+# relationship `ARCHETYPE_TYPE_COUNTS` has to the commander page at tier
+# 2.5, one level up: when a specific commander's own `/cedh` subpage is
+# thin, absent, or unreadable, a bracket-5 deck still gets a real measured
+# profile instead of dropping straight to the theme/tribe ladder below it.
+#
+# Measured 2026-09-01 by `cedh_profiles.measure_cedh` (`deck-lab
+# measure-cedh --top-k 40`), pasted in as a reviewed diff —
+# `archetype_profiles`'s discipline, copied. Pooled deck-count weighted
+# over the 40 commanders in this dev corpus clearing `CEDH_MIN_DECKS`
+# (150) — exactly `MEASURE_TOP_K`'s default, so this reproduces with zero
+# network calls against the warmed cache — and 39,657 bracket-5 decks. The
+# same run also produced the curve and per-bucket coverage numbers behind
+# the `CEDH` `DeckTemplate` in `composition.py`; see that module's comment
+# for the corridor derivation and the land-shift trap (the casual
+# mana-sources reconciliation, `derive_mana_sources` today) this table's own
+# Land row (28.1, well below the 35 casual median) walks straight into if
+# the cEDH branch does not suppress it. To re-derive: `warm-edhrec` a corpus, then run
+# `measure-cedh --top-k 40` again inside the container — see
+# `cedh_profiles`'s module docstring for the full pipeline.
+#
+# Typed as `ArchetypeProfile | None` rather than the bare `dict[str, float]`
+# a first pass reached for: the source string below needs the
+# commander/deck counts that only the dataclass carries, and a second,
+# parallel container for the same three numbers is exactly the thing
+# `archetype_profiles`'s module docstring already argues against building
+# twice.
+CEDH_TYPE_COUNTS: ArchetypeProfile | None = ArchetypeProfile(
+    counts={
+        "Creature": 21.5,
+        "Instant": 20.1,
+        "Sorcery": 8.1,
+        "Artifact": 15.1,
+        "Enchantment": 5.0,
+        "Planeswalker": 0.9,
+        "Battle": 0.1,
+        "Land": 28.1,
+    },
+    tag="cedh",
+    commanders=40,
+    decks=39657,
+    measured="2026-09-01",
+)
+
 
 def type_weight(speed: float) -> float:
     """How hard the type ranges bind at this speed."""
@@ -473,10 +555,14 @@ def targets_from_counts(
 ) -> dict[str, BucketTarget]:
     """Point estimates -> soft ranges.
 
-    Land is a real row with weight zero: the MANA_SOURCES bucket already
-    binds land count at the loudest weight in the system, and a second
-    penalty on the same measure is one signal counted twice. The row still
-    exists so the report can show land count against the empirical target.
+    Land binds like every other type. It used to carry weight zero on the
+    argument that the MANA_SOURCES bucket already owned land count — but
+    that bucket counts rocks and dorks at full weight beside the lands, so
+    it owns *sources*, not lands, and a dork-heavy deck could sit inside its
+    corridor with five lands too few and nothing in the system minding. The
+    two rows overlap only when a deck is over on both at once (more lands is
+    more sources), and there the type weight is a tenth of the bucket's, so
+    the double count that argument feared is small where it exists at all.
 
     `scale` is deck_size/99 — a Rule 0 deck may target 60 or 150 cards, and
     every count here is a per-99 empirical mean. The mean scales; the bands
@@ -492,7 +578,7 @@ def targets_from_counts(
         out[name] = BucketTarget(
             low=max(0.0, mean - half),
             high=mean + half,
-            weight=0.0 if name == "Land" else weight,
+            weight=weight,
         )
     return out
 
@@ -507,6 +593,18 @@ def resolve_type_targets(
     typal_profile: Mapping[str, float] | None = None,
 ) -> tuple[dict[str, BucketTarget], str]:
     """Targets plus the source string that makes them auditable.
+
+    Tier 0, ahead of everything else: a bracket-5 deck (`is_cedh(speed)`)
+    reads its commander's `/cedh` subpage instead, gated on
+    `bracket_counts["5"]` clearing `CEDH_MIN_DECKS`. cEDH conditioning
+    outranks theme and tribe conditioning — a cEDH spellslinger deck is a
+    cEDH deck first, and EDHREC has no two-tag subpages, so there is no
+    "commander × cedh × spellslinger" page to prefer over it. The `/cedh`
+    page carries its own taglinks, so it is already format-right even
+    though it is theme-blind. A thin, absent, or unreadable subpage falls
+    to the pooled `CEDH_TYPE_COUNTS` before falling all the way through to
+    tier 1 below — a deck that claims bracket 5 stays cEDH-conditioned even
+    when its own commander's subpage cannot back that up.
 
     The tiers fall through independently: a theme or tribe that clears its
     share floor but has no verified slug, no taglink on this commander, too
@@ -540,8 +638,32 @@ def resolve_type_targets(
     `scale` resizes every tier the same way — see `targets_from_counts` —
     so the tier precedence never depends on the deck's target size.
     """
-    from .edhrec import THEME_TAG_SLUGS, load_type_counts, slugify
+    from .edhrec import (
+        CEDH_TAG_SLUG,
+        THEME_TAG_SLUGS,
+        load_bracket_counts,
+        load_type_counts,
+        slugify,
+    )
     from .typal import plural_forms
+
+    if is_cedh(speed):
+        bracket_decks = load_bracket_counts(commander_name).get(5, 0) if commander_name else 0
+        cedh_counts = None
+        if commander_name and bracket_decks >= CEDH_MIN_DECKS:
+            cedh_counts, _ = load_type_counts(
+                commander_name, theme_slug=CEDH_TAG_SLUG, allow_fetch=allow_fetch
+            )
+        if cedh_counts is not None:
+            source = f"edhrec:{slugify(commander_name)}/cedh ({bracket_decks:,} decks)"
+            return targets_from_counts(cedh_counts.counts, speed=speed, scale=scale), source
+
+        if CEDH_TYPE_COUNTS is not None:
+            source = (
+                f"cedh-pool ({CEDH_TYPE_COUNTS.commanders} commanders, "
+                f"{CEDH_TYPE_COUNTS.decks:,} decks)"
+            )
+            return targets_from_counts(CEDH_TYPE_COUNTS.counts, speed=speed, scale=scale), source
 
     commander_counts, taglinks = load_type_counts(commander_name) if commander_name else (None, [])
 
@@ -609,50 +731,75 @@ def resolve_type_targets(
     return targets_from_counts(DEFAULT_TYPE_COUNTS, speed=speed, scale=scale), "default"
 
 
-def shift_mana_sources(
-    template: DeckTemplate, land_target: BucketTarget | None, *, scale: float = 1.0
-) -> DeckTemplate:
-    """Move the mana-sources quota by the archetype's land deviation.
+def derive_mana_sources(template: DeckTemplate, land_target: BucketTarget | None) -> DeckTemplate:
+    """Build the mana-sources quota from the Land corridor and the ramp quota.
 
-    The Land type row is weight-zero by design — the mana-sources bucket owns
-    land count — but that bucket was speed-conditioned and *not* archetype-
-    conditioned, so the one signal that knew a landfall deck runs 39 lands
-    was mute and the signal that owned land count did not know. The observed
-    failure: a Necrobloom deck at 25 lands + 8 rocks sat *inside* the tuned
-    30–34 sources range while the empirical land mean said 39.
+    The mana-sources bucket counts lands, rocks and dorks at full weight
+    each, so its corridor is a corridor on *all* of them at once. The
+    authored `BATTLECRUISER`/`TUNED` corridors (37-40 and 30-34) never left
+    room for that: at the 35-land corpus median they allowed two to five
+    non-land sources against a ramp quota of 9-16 pieces, most of which are
+    rocks and dorks. Measured over 415 cached casual commander pages, 383
+    read as *over* the speed-0.5 corridor — the corridor said the format
+    was wrong. The observed failure: a green deck at 41 sources against a
+    34.5-38 target, with its lands already *under* the Land row, was told to
+    cut a Mountain first, because cutting a land relieved the sources
+    overage and the weight-zero Land row (since fixed) charged nothing for
+    going further under.
 
-    The reconciliation is a shift, not a floor: the quota moves by the land
-    mean's deviation from the corpus median (`DEFAULT_TYPE_COUNTS`). The
-    template captures the speed effect around a median deck; the commander
-    page captures the archetype effect around mostly-casual builds; adding
-    the archetype *delta* composes the two without dragging a tuned deck
-    back to casual land counts wholesale. Both bounds move together and the
-    weight stays — where the quota sits is archetype, how hard it binds is
-    speed. Default-tier targets shift by zero, by construction.
+    So the corridor is derived rather than authored: each Land bound plus
+    `NONLAND_SOURCE_SHARE` of the ramp corridor's *midpoint*. The Land row
+    supplies the corridor's width and its per-commander position; the ramp
+    quota supplies one point allowance for the rocks and dorks the speed
+    expects (8.2 cards at the measured casual ramp corridor,
+    `composition.CASUAL_CORRIDORS`). If the deck hits its ramp quota with the
+    measured mix of rocks and dorks to land ramp, the sources quota
+    accommodates it, and the two panels stop asking for incompatible things.
+    At the corpus median (Land 31.5-38.5, `DEFAULT_TYPE_COUNTS`'s Land mean
+    ± `LAND_HALF_WIDTH`) that is 39.7-46.7, the same at every
+    bracket-1-4 speed since brackets 1-4 share one ramp corridor; only the
+    Land row itself moves the quota, per commander.
 
-    The land mean is recovered as the range midpoint, exact because Land's
-    half-width is flat and its low never clips at zero.
+    Midpoint, not bound-for-bound. A first version added the share of the
+    matching ramp *bound* to each Land bound, which reads as "room for the
+    whole ramp corridor" but double-counts dispersion: the Land row already
+    carries ±3.5 of it, and the measured ramp corridor is ±6.9 wide, so the
+    derived corridor came out 36.6-51.2 at the median — 14.6 cards wide for
+    a quantity that measures 35 stated lands + 8.3 non-land sources =
+    43.3 with sd 3.9, and 7 of 415 casual pages could ever read over
+    it. With the midpoint the corridor is the Land corridor's own 7 cards
+    wide, which is what the sources dispersion actually is. Checked against
+    the same 415 pages with each commander's own Land corridor: 301 sit
+    inside, 84 read short and 30 read over — a corridor that fires
+    both ways, roughly in proportion. The ramp corridor's edges still land
+    inside it at the Land midpoint (35 + 0.51·9.3 = 39.7 against
+    39.7; 35 + 0.51·23.0 = 46.7 against 46.7) because
+    0.51 × ramp's half-width happens to be within a tenth of
+    `LAND_HALF_WIDTH` — a coincidence of the measured numbers, pinned by a
+    test so a re-measurement that breaks it is noticed rather than assumed.
 
-    `scale` is deck_size/99: the land mean arrives already resized to the
-    deck (see `targets_from_counts`), so the corpus median and the cap
-    resize with it — the same archetype shifts a 60-card deck's quota by
-    the same *fraction* it shifts a 99-card deck's.
+    The weight stays the template's: where the quota sits is the archetype's
+    land count plus the speed's ramp appetite, how hard it binds is speed.
+    The archetype effect the old shift carried (a landfall deck's 39 lands
+    moving the quota up) survives unchanged, because the Land corridor *is*
+    the base now rather than a delta against the corpus median. A template
+    with no Land corridor to build on (an unconditioned `template_for`) keeps
+    its authored fallback.
+
+    Both inputs arrive already sized to the deck — the template's ramp bounds
+    by `conditioned_template`'s scale pass, the Land corridor by
+    `targets_from_counts` — so nothing here is scaled again.
     """
     if land_target is None:
         return template
 
-    mean = (land_target.low + land_target.high) / 2
-    delta = mean - DEFAULT_TYPE_COUNTS["Land"] * scale
-    cap = MANA_SOURCES_DELTA_CAP * scale
-    delta = max(-cap, min(cap, delta))
-    if delta == 0.0:
-        return template
-
     sources = template.buckets[Bucket.MANA_SOURCES]
+    ramp = template.buckets[Bucket.RAMP]
+    allowance = NONLAND_SOURCE_SHARE * (ramp.low + ramp.high) / 2
     buckets = dict(template.buckets)
     buckets[Bucket.MANA_SOURCES] = BucketTarget(
-        low=sources.low + delta,
-        high=sources.high + delta,
+        low=land_target.low + allowance,
+        high=land_target.high + allowance,
         weight=sources.weight,
     )
     return DeckTemplate(
@@ -673,17 +820,30 @@ def conditioned_template(
     scale: float = 1.0,
     curve: Mapping[int, float] | None = None,
     type_overrides: Mapping[str, TargetOverride] | None = None,
+    cedh_class: str | None = None,
 ) -> DeckTemplate:
     """The one way to build a template once type targets are resolved.
 
     Order matters and is the point: interpolate by speed, resize to the
-    deck, shift the mana quota by the archetype, apply user overrides,
-    attach the type targets. Overrides land *after* the shift so a hand on
-    the handle beats the archetype nudge — the user dragged against the
-    shifted range the report showed them, and shifting their value again
-    would move it behind their back. Every scorer (diagnose, cut scoring,
-    /replace, the fill solver) must come through here, or one of them
-    scores a mana quota the report never showed.
+    deck, derive the mana quota from the Land corridor, apply user
+    overrides, attach the type targets. Overrides land *after* the
+    derivation so a hand on the handle beats the archetype — the user
+    dragged against the derived range the report showed them, and deriving
+    over their value again would move it behind their back. A ramp override
+    does not feed the derivation for the same reason: the corridor is built
+    from the speed's ramp quota, and the user's ramp handle moves ramp.
+    Every scorer (diagnose, cut scoring, /replace, the fill solver) must
+    come through here, or one of them scores a mana quota the report never
+    showed.
+
+    `cedh_class` (cEDH Pro round Task E follow-up) is threaded straight
+    through to `template_for` — `"turbo"` / `"midrange"` / `"stax"` picks
+    the matching measured sub-archetype template at `is_cedh(speed)`;
+    `None` or anything `template_for`'s selection table does not recognise
+    (including `"unclassified"`) falls back to the pooled `CEDH`, and below
+    bracket 5 this parameter does nothing at all. A caller with no
+    classification to offer — `/replace`, which never diagnoses — simply
+    omits it and gets exactly the old pooled behaviour.
 
     `scale` is deck_size/99 — a Rule 0 deck may target another size, and
     the archetype bucket ranges are tuned for 99 cards. Only the
@@ -698,16 +858,20 @@ def conditioned_template(
     handle beats the archetype.
 
     `type_overrides` are the builder's edits to the type corridors, and they
-    land *first* — before the mana-source shift, which reads the Land target.
-    A user who asks for 34 lands is asking the mana quota to move with them,
-    and a shift computed off the archetype's Land row would have the two
-    panels disagreeing about the same decision. Pass them only where the
+    land *first* — before the mana-source derivation, which reads the Land
+    target. A user who asks for 34 lands is asking the mana quota to move
+    with them, and a quota built off the archetype's Land row would have the
+    two panels disagreeing about the same decision. Pass them only where the
     targets come from `resolve_type_targets`: targets read back off a report
     with `targets_from_report` already carry the user's edits, and applying
     them again would move a corridor the user only moved once.
+
+    The mana-source derivation is skipped outright at `is_cedh(speed)` — see
+    the comment at the call site below. `CEDH`'s own corridor is already the
+    measured cEDH mana base; it needs no reconstruction layered on.
     """
     types = apply_type_overrides(types, type_overrides or {})
-    template = template_for(speed)
+    template = template_for(speed, cedh_class=cedh_class)
     if scale != 1.0:
         template = DeckTemplate(
             name=template.name,
@@ -722,7 +886,20 @@ def conditioned_template(
             deck_size=round(template.deck_size * scale),
             types=template.types,
         )
-    template = shift_mana_sources(template, types.get("Land"), scale=scale)
+    # `derive_mana_sources` builds the casual quota from a Land corridor and
+    # a ramp quota that were each authored or measured for brackets 1-4. The
+    # cEDH templates' mana-sources corridors were measured directly, lands
+    # and fast mana together, off the tournament corpus (see `CEDH` in
+    # `composition.py`): 28 lands and ~40 sources, with the gap filled by
+    # rocks and dorks at a rate no casual share describes. Rebuilding that
+    # corridor from the cEDH Land row plus 0.55 of the cEDH ramp quota would
+    # land near it by accident and drift from it on every re-measurement,
+    # while the Land row beside it kept reading correctly — a right-looking
+    # Land row next to a wrong mana-sources corridor is the trap the earlier
+    # shift-based reconciliation walked into, and it is avoided the same
+    # way: a measured cEDH corridor is never reconstructed, at any class.
+    if not is_cedh(speed):
+        template = derive_mana_sources(template, types.get("Land"))
     template = apply_curve(apply_overrides(template, overrides or {}), curve)
     return apply_type_targets(template, types)
 
@@ -741,7 +918,7 @@ def targets_from_report(types_rows: Iterable, *, speed: float) -> dict[str, Buck
         row.type: BucketTarget(
             low=row.low,
             high=row.high,
-            weight=0.0 if row.type == "Land" else weight,
+            weight=weight,
         )
         for row in types_rows
     }

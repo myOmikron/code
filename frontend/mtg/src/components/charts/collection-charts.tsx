@@ -222,6 +222,8 @@ function formatLabel(t: Translate, key: string): string {
             return t("label.format-commander");
         case "duel":
             return t("label.format-duel");
+        case "archon":
+            return t("label.format-archon");
         case "predh":
             return t("label.format-predh");
         case "pauper":

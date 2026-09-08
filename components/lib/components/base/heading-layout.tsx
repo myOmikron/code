@@ -31,7 +31,15 @@ export default function HeadingLayout(props: HeadingLayoutProps) {
             <div className="grid w-full items-end justify-between gap-4 border-b border-zinc-950/10 pb-6 sm:grid-cols-[1fr_auto] sm:gap-20 dark:border-white/10">
                 <div className={"flex flex-col gap-3"}>
                     <Heading>{props.heading}</Heading>
-                    {props.headingDescription && <div>{props.headingDescription}</div>}
+                    {/* Coloured here rather than left to the caller. A description handed in as
+                        a plain string carried no colour at all, so it inherited the browser's
+                        black — invisible on a dark background. Anything passed in as an element
+                        of its own still sets its own colour and overrides this. */}
+                    {props.headingDescription && (
+                        <div className={"text-base/6 text-zinc-500 sm:text-sm/6 dark:text-zinc-400"}>
+                            {props.headingDescription}
+                        </div>
+                    )}
                 </div>
                 {props.headingChildren !== undefined ? (
                     <div className={"flex gap-4"}>{props.headingChildren}</div>

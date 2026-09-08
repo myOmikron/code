@@ -61,6 +61,27 @@ class Resource(StrEnum):
     TUTOR_TO_HAND = "tutor_to_hand"
     TUTOR_TO_BATTLEFIELD = "tutor_to_battlefield"
     TUTOR_TO_TOP = "tutor_to_top"
+    # A creature put onto the battlefield off the top of a library rather than
+    # searched for — Polymorph, Proteus Staff, Transmogrify, Oath of Druids.
+    # Not `tutor_to_battlefield`, which finds a named card: this one takes
+    # whatever the reveal turns up, so it is only a win condition in a deck
+    # built to hold nothing else worth turning up. That makes it the rare
+    # resource whose meaning depends on the rest of the deck, which is why
+    # `cuts.deck_plan_pieces` reads it against the deck's creature count
+    # rather than treating it as a card property on its own.
+    POLYMORPH = "polymorph"
+    # A card that walks its own library from the top and is stopped by a basic
+    # land or a repeated name — Hermit Druid mills until it reveals a basic,
+    # Tainted Pact exiles until it repeats a name, and in a singleton format
+    # the only repeats are basics. Like `polymorph`, this is less a thing the
+    # card supplies than a constraint it places on the deck around it, carried
+    # here because a per-card fact is what the graph can hold.
+    BASIC_LAND_LOCK = "basic_land_lock"
+    # "Opponents can't cast spells" — Silence, Grand Abolisher, Orim's Chant,
+    # Ranger-Captain of Eos. The interaction grid's `proactive_protection`
+    # row, which counted these from the start and had nothing on the adds
+    # side to answer with: a deck could be shown a zero it could not act on.
+    PROACTIVE_PROTECTION = "proactive_protection"
     # Two-sided, though it spent a long time listed supply-only on the
     # argument that nothing wants to discard. Madness, Hellbent and the
     # "whenever you discard" payoffs want exactly that, and while the claim
@@ -96,6 +117,16 @@ class Resource(StrEnum):
     MANA_DORK = "mana_dork"
     LAND_RAMP = "land_ramp"
     RITUAL_MANA = "ritual_mana"
+    # An artifact, single-use rock or utility land that nets more mana than it
+    # cost to get onto the battlefield, usable the turn it lands — Sol Ring,
+    # Mana Vault, Lotus Petal, the Mox cycle, Ancient Tomb. `mana_rock` alone
+    # cannot say this: it spans the whole curve, including a 2-cost rock that
+    # taps for 1 (Mind Stone, Fellwar Stone), which is exactly what cEDH
+    # players mean when they say a card is *not* fast mana. A child of
+    # `ritual_mana` rather than a sibling of it — see `RESOURCE_PARENTS` — so
+    # a bottomless mana sink, which already wants a ritual's burst, wants this
+    # burst too, whether it came from a spell or a permanent.
+    FAST_MANA = "fast_mana"
     MANA_FIXING = "mana_fixing"
     COST_REDUCTION = "cost_reduction"
     EXTRA_LAND_DROP = "extra_land_drop"
@@ -216,6 +247,20 @@ class Resource(StrEnum):
     GRAVEYARD_HATE = "graveyard_hate"
     PROTECTION = "protection"
     TAX_EFFECT = "tax_effect"
+    # An answer whose real cost, this turn, is at or near zero because an
+    # alternate cost stands in for its mana cost — pitch a card, pay life,
+    # discard your hand, "if you control a commander" — not a spell that is
+    # merely cheap. Force of Will, Fierce Guardianship, Deflecting Swat, the
+    # Evoke elementals (Solitude, Grief, Endurance, Fury, Subtlety). Distinct
+    # from `hate-free-spell` in `tag_mapping.py`, which is a stax tag about
+    # *taxing* these spells, not about being one.
+    #
+    # No RESOURCE_PARENTS entry — the `high_mv_spell`/`keyword_soup`
+    # precedent. This cuts across `counterspell`, `protection` and
+    # `spot_removal` rather than narrowing any single one of them: Force of
+    # Will is a counter, Deflecting Swat is protection, Solitude is removal.
+    # No existing resource is its "kind of" parent.
+    FREE_SPELL = "free_spell"
     # Denying the table its resources — mass land destruction, Stasis effects,
     # untap-step and activation locks. Distinct from `tax_effect`: a tax makes
     # things cost more, denial stops them happening at all. Winter Orb and
@@ -255,6 +300,15 @@ class Resource(StrEnum):
     # --- Commander-zone specific (see context_rules) ---
     COMMANDER_RECURSION = "commander_recursion"
     COMMANDER_PROTECTION = "commander_protection"
+    # The one resource whose supply is partly the command zone itself. A card
+    # that reads "whenever a commander you control attacks" is paid once per
+    # commander, so its rate is a property of the *zone* — one seat, a partner
+    # pair, or a Rule 0 table's three or four — and not of the 99. Its own axis:
+    # no BROADER parent, because the family is not a kind of `legendary_matters`
+    # (Sisay counts legends and does not care that one of them is a commander)
+    # and not a kind of `commander_protection` (which is the narrow 7-card
+    # keep-it-alive slice, and stays SUPPLY_ONLY beneath its own name).
+    COMMANDER_MATTERS = "commander_matters"
 
 
 class Role(StrEnum):
@@ -331,6 +385,17 @@ TRIGGER_RESOURCES: frozenset[str] = frozenset(
     r.value for r in Resource if r.value.endswith("_trigger")
 )
 
+# The zone-supplied family, by name. `commander_matters` events come from the
+# command zone itself: a Lieutenant card's fuel is the commander it asks you
+# to control, which every Commander deck fields by construction — and a
+# partner or Rule 0 zone fields several. Producer counts over the 99 cannot
+# see that supply (the nine in-deck producers, Command Beacon and kin, only
+# make it *more reliable*), so consumers reasoning from "how many deck cards
+# produce this" must skip the family too, or they tell Tyrant's Familiar in a
+# three-commander deck that he "wants commander_matters, which nothing in the
+# deck makes" — observed live, the cut-side twin of the Cecily misread above.
+COMMAND_ZONE_RESOURCES: frozenset[str] = frozenset({Resource.COMMANDER_MATTERS.value})
+
 
 # --------------------------------------------------------------------------
 # Resource hierarchy
@@ -388,6 +453,12 @@ RESOURCE_PARENTS: dict[Resource, tuple[Resource, ...]] = {
     Resource.MANA_ROCK: (Resource.ARTIFACT_MATTERS,),
     # Impulse draw is card draw for quota purposes, but not for "draw matters".
     Resource.IMPULSE_DRAW: (Resource.CARD_DRAW,),
+    # Fast mana is a kind of burst mana — narrower (immediate, net-positive,
+    # usable the turn it lands) than the ritual family it broadens to. A
+    # bottomless mana sink already cares about `ritual_mana`; this is what
+    # lets Sol Ring answer that query as readily as Dark Ritual does, without
+    # every mana rock in the corpus also claiming to be one.
+    Resource.FAST_MANA: (Resource.RITUAL_MANA,),
 }
 
 
@@ -427,6 +498,9 @@ SUPPLY_ONLY: frozenset[Resource] = frozenset(
         Resource.GRAVEYARD_HATE,
         Resource.PROTECTION,
         Resource.TAX_EFFECT,
+        # Interaction is already supply-only; a *free* one is no different —
+        # nothing synergises with having paid nothing for an answer.
+        Resource.FREE_SPELL,
         # Nothing in Magic wants a Winter Orb. Supply-only by the nature of the
         # archetype, not by an extraction gap — same standing as mill_opponent.
         Resource.RESOURCE_DENIAL,
@@ -439,6 +513,16 @@ SUPPLY_ONLY: frozenset[Resource] = frozenset(
         Resource.TUTOR_TO_HAND,
         Resource.TUTOR_TO_TOP,
         Resource.TUTOR_TO_BATTLEFIELD,
+        # What a polymorph effect wants is a fat creature, and "fat" is not a
+        # resource — `high_power` is the closest and it is a payoff, not a
+        # demand. Supply-only by the shape of the effect, not a gap.
+        Resource.POLYMORPH,
+        # Nothing wants a deck to be unable to play basics; the lock is a cost
+        # the plan pays, not a resource anything consumes.
+        Resource.BASIC_LAND_LOCK,
+        # Interaction is supply-only throughout (see `SPOT_REMOVAL` above);
+        # protecting your own turn is no different.
+        Resource.PROACTIVE_PROTECTION,
         Resource.DISCARD_OPPONENT,
         Resource.MILL_OPPONENT,
         Resource.LIFELOSS_OPPONENT,

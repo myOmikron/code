@@ -179,7 +179,7 @@ export function CardDetailDialog({
                                             <CardFlipButton
                                                 flipped={showBack}
                                                 onFlip={() => setFlipped(!flipped)}
-                                                className={"absolute right-2 bottom-2"}
+                                                position={"bottom-right"}
                                             />
                                         )}
                                     </FoilFrame>

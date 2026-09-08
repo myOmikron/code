@@ -35,6 +35,8 @@ services:
       - NATS_URL=nats://nats:4222
       # Upstream of the authenticated /api/graph proxy
       - GRAPH_URL=http://graph:8000
+      # Index of community card art the proxy picker searches
+      - MPCFILL_URL=${MPCFILL_URL:-https://mpcfill.com/}
       # An empty OTLP endpoint disables trace export.
       - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT:-}
       - ALERTMANAGER_URL=${ALERTMANAGER_URL:-http://localhost}

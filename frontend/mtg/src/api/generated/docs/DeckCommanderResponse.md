@@ -8,6 +8,7 @@ One commander at the head of a deck
 Name | Type
 ------------ | -------------
 `color_identity` | string
+`image_art_crop` | string
 `image_normal` | string
 `image_small` | string
 `name` | string

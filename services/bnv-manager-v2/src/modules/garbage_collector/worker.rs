@@ -33,7 +33,7 @@ impl GarbageCollectorWorker {
     async fn run_once(&self) -> anyhow::Result<()> {
         let mut tx = Database::global().start_transaction().await?;
 
-        Invite::clear_expired(&mut tx).await?;
+        Invite::clear_expired_superadmin_invites(&mut tx).await?;
         CredentialReset::clear_expired(&mut tx).await?;
 
         tx.commit().await?;

@@ -5,9 +5,26 @@
         "copy-invite-link": "Copy invite link",
         "create-club-admin": "Create new club admin",
         "delete-admin": "Delete club admin",
+        "extend-invite-expiry": "Extend expiry of the invitation",
+        "refresh-invite-expiry": "Refresh expired invitation",
         "reset-credentials": "Reset credentials",
         "retract-invite": "Retract invite",
         "unlink-domain": "Unlink domain"
+    },
+    "dashboard": {
+        "admins": "Admins",
+        "created-at": "Created on",
+        "domain": "Domain:",
+        "domain-stats": "Domain Overview",
+        "email": "Email",
+        "mailbox-stats": "Mailbox Storage Usage",
+        "mailboxes": "Mailboxes",
+        "members": "Members",
+        "messages": "Messages",
+        "pending-invites": "Pending Invites",
+        "quota": "Quota",
+        "storage-used": "Used",
+        "unlimited": "Unlimited"
     },
     "heading": {
         "admins": "Admins",
@@ -17,21 +34,6 @@
         "invited": "Invited",
         "members": "Members"
     },
-    "dashboard": {
-        "admins": "Admins",
-        "created-at": "Created on",
-        "domain": "Domain:",
-        "domain-stats": "Domain Overview",
-        "mailboxes": "Mailboxes",
-        "email": "Email",
-        "mailbox-stats": "Mailbox Storage Usage",
-        "members": "Members",
-        "messages": "Messages",
-        "pending-invites": "Pending Invites",
-        "quota": "Quota",
-        "storage-used": "Used",
-        "unlimited": "Unlimited"
-    },
     "label": {
         "display-name": "Display name",
         "domain": "Domain",
@@ -39,5 +41,8 @@
         "no-members": "No members found.",
         "primary-domain": "Primary Domain",
         "username": "Username"
+    },
+    "toast": {
+        "expiry-updated": "Expiry updated"
     }
 }

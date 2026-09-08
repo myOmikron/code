@@ -62,15 +62,15 @@ impl Club {
     pub async fn delete(self, exe: impl Executor<'_>) -> anyhow::Result<()> {
         let mut guard = exe.ensure_transaction().await?;
 
-        rorm::delete(guard.get_transaction(), DomainModel)
+        rorm::delete(guard.as_mut(), DomainModel)
             .condition(DomainModel.club.equals(Some(self.uuid.0)))
             .await?;
 
-        rorm::delete(guard.get_transaction(), ClubModel)
+        rorm::delete(guard.as_mut(), ClubModel)
             .condition(ClubModel.uuid.equals(self.uuid.0))
             .await?;
 
-        guard.commit().await?;
+        guard.commit_if_owned().await?;
 
         Ok(())
     }
@@ -80,22 +80,22 @@ impl Club {
     pub async fn find_all(exe: impl Executor<'_>) -> anyhow::Result<Vec<Club>> {
         let mut guard = exe.ensure_transaction().await?;
 
-        let mut cm = rorm::query(guard.get_transaction(), ClubModel)
+        let mut cm = rorm::query(guard.as_mut(), ClubModel)
             .order_asc(ClubModel.name)
             .all()
             .await?;
 
         ClubModel
             .admins
-            .populate_bulk(guard.get_transaction(), &mut cm)
+            .populate_bulk(guard.as_mut(), &mut cm)
             .await?;
         ClubModel
             .members
-            .populate_bulk(guard.get_transaction(), &mut cm)
+            .populate_bulk(guard.as_mut(), &mut cm)
             .await?;
         ClubModel
             .domains
-            .populate_bulk(guard.get_transaction(), &mut cm)
+            .populate_bulk(guard.as_mut(), &mut cm)
             .await?;
 
         #[allow(clippy::expect_used)]
@@ -129,18 +129,18 @@ impl Club {
     ) -> anyhow::Result<Option<Club>> {
         let mut guard = exe.ensure_transaction().await?;
 
-        let cm = rorm::query(guard.get_transaction(), ClubModel)
+        let cm = rorm::query(guard.as_mut(), ClubModel)
             .condition(ClubModel.uuid.equals(uuid.0))
             .optional()
             .await?;
 
         let club = if let Some(cm) = cm {
-            Some(Self::populate(guard.get_transaction(), cm).await?)
+            Some(Self::populate(guard.as_mut(), cm).await?)
         } else {
             None
         };
 
-        guard.commit().await?;
+        guard.commit_if_owned().await?;
 
         Ok(club)
     }
@@ -153,18 +153,18 @@ impl Club {
     ) -> anyhow::Result<Option<Club>> {
         let mut guard = exe.ensure_transaction().await?;
 
-        let cm = rorm::query(guard.get_transaction(), ClubModel)
+        let cm = rorm::query(guard.as_mut(), ClubModel)
             .condition(ClubModel.name.equals(&**name))
             .optional()
             .await?;
 
         let club = if let Some(cm) = cm {
-            Some(Self::populate(guard.get_transaction(), cm).await?)
+            Some(Self::populate(guard.as_mut(), cm).await?)
         } else {
             None
         };
 
-        guard.commit().await?;
+        guard.commit_if_owned().await?;
 
         Ok(club)
     }
@@ -180,7 +180,7 @@ impl Club {
         }: CreateClub<'_>,
     ) -> anyhow::Result<Club> {
         let mut guard = exe.ensure_transaction().await?;
-        let mut club_model = rorm::insert(guard.get_transaction(), ClubModel)
+        let mut club_model = rorm::insert(guard.as_mut(), ClubModel)
             .single(&ClubModelInsert {
                 uuid: Uuid::new_v4(),
                 name,
@@ -190,7 +190,7 @@ impl Club {
 
         ClubModel
             .domains
-            .populate(guard.get_transaction(), &mut club_model)
+            .populate(guard.as_mut(), &mut club_model)
             .await?;
 
         let mut club = Club {
@@ -204,10 +204,10 @@ impl Club {
             use_xauth,
         };
 
-        club.associate_domain(guard.get_transaction(), primary_domain, true)
+        club.associate_domain(guard.as_mut(), primary_domain, true)
             .await?;
 
-        guard.commit().await?;
+        guard.commit_if_owned().await?;
 
         Ok(club)
     }
@@ -224,7 +224,7 @@ impl Club {
 
         if is_primary {
             // Set primary to false on other domains for this club
-            rorm::update(guard.get_transaction(), DomainModel)
+            rorm::update(guard.as_mut(), DomainModel)
                 .set(DomainModel.is_primary, false)
                 .condition(and![
                     DomainModel.club.equals(Some(self.uuid.0)),
@@ -233,13 +233,13 @@ impl Club {
                 .await?;
         }
 
-        rorm::update(guard.get_transaction(), DomainModel)
+        rorm::update(guard.as_mut(), DomainModel)
             .set(DomainModel.club, Some(ForeignModelByField(self.uuid.0)))
             .set(DomainModel.is_primary, is_primary)
             .condition(DomainModel.uuid.equals(domain.uuid.0))
             .await?;
 
-        guard.commit().await?;
+        guard.commit_if_owned().await?;
 
         if is_primary {
             self.primary_domain = domain.domain.clone();
@@ -263,13 +263,13 @@ impl Club {
             return Err(anyhow!("Can't unassociate primary domain"));
         }
 
-        rorm::update(guard.get_transaction(), DomainModel)
+        rorm::update(guard.as_mut(), DomainModel)
             .set(DomainModel.club, None)
             .set(DomainModel.is_primary, false)
             .condition(DomainModel.uuid.equals(domain.uuid.0))
             .await?;
 
-        guard.commit().await?;
+        guard.commit_if_owned().await?;
 
         Ok(())
     }
@@ -308,7 +308,7 @@ impl Club {
         }
         let cond_collection = DynamicCollection::and_unchecked(conditions);
 
-        let account_models = rorm::query(guard.get_transaction(), ClubAccountModel)
+        let account_models = rorm::query(guard.as_mut(), ClubAccountModel)
             .order_asc(ClubAccountModel.username)
             .condition(&cond_collection)
             .offset(offset)
@@ -318,12 +318,12 @@ impl Club {
             .try_collect::<Vec<_>>()
             .await?;
 
-        let total = rorm::query(guard.get_transaction(), ClubAccountModel.uuid.count())
+        let total = rorm::query(guard.as_mut(), ClubAccountModel.uuid.count())
             .condition(ClubAccountModel.club.equals(self.uuid.0))
             .one()
             .await?;
 
-        guard.commit().await?;
+        guard.commit_if_owned().await?;
 
         Ok(Page {
             items: account_models,
@@ -356,7 +356,7 @@ impl Club {
         }
         let cond_collection = DynamicCollection::and_unchecked(conditions);
 
-        let account_models = rorm::query(guard.get_transaction(), ClubAdminAccountModel)
+        let account_models = rorm::query(guard.as_mut(), ClubAdminAccountModel)
             .order_asc(ClubAdminAccountModel.username)
             .condition(&cond_collection)
             .offset(offset)
@@ -366,12 +366,12 @@ impl Club {
             .try_collect::<Vec<_>>()
             .await?;
 
-        let total = rorm::query(guard.get_transaction(), ClubAdminAccountModel.uuid.count())
+        let total = rorm::query(guard.as_mut(), ClubAdminAccountModel.uuid.count())
             .condition(ClubAdminAccountModel.club.equals(self.uuid.0))
             .one()
             .await?;
 
-        guard.commit().await?;
+        guard.commit_if_owned().await?;
 
         Ok(Page {
             items: account_models,

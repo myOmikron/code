@@ -24,6 +24,7 @@ Two traps, both of which produce plausible-looking nonsense:
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from enum import StrEnum
 
 import structlog
@@ -31,16 +32,28 @@ from pydantic import BaseModel, Field
 
 from .composition import (
     CURVE_BUCKETS,
+    DECK_LOCKS,
     DeckTemplate,
+    LockedClass,
+    active_locks,
     bucket_coverage_from_cards,
     curve_targets,
+    in_locked_class,
+    is_cedh,
     primary_type,
     type_counts_from_cards,
 )
+from .interaction import discount_board_wipe, is_cedh_template
 from .poolquery import PoolFilter
 from .suggestions import Phrase, _theme_gate_sides, _theme_vocabulary
 from .themes import FIT_THRESHOLD
-from .vocabulary import BUCKET_ROLES, TRIGGER_RESOURCES, Bucket, Role
+from .vocabulary import (
+    BUCKET_ROLES,
+    COMMAND_ZONE_RESOURCES,
+    TRIGGER_RESOURCES,
+    Bucket,
+    Role,
+)
 
 log = structlog.get_logger(__name__)
 
@@ -135,7 +148,7 @@ CUT_STRANDED = 0.5
 # Sized above any single prosecution term: a defence that fires should win
 # against everything but a genuine shape overage.
 CUT_TUTOR_FLOOR = 1.5
-CUT_COMBO_PIECE = 1.5
+
 
 # How far below the card it replaces an add may sit before the swap is a
 # downgrade rather than an exchange.
@@ -231,6 +244,80 @@ def _shape_penalty(
     return penalty
 
 
+def deck_plan_pieces(cards: list[dict], card_resources: Mapping[str, dict]) -> set[str]:
+    """The cards a deck's own win line is made of, when that line is one no
+    corpus and no combo database can see.
+
+    Every other defence in this module reads evidence from outside the deck:
+    how often a card is played, whether Commander Spellbook lists it in a
+    combo, whether the deck sits at its tutor floor. A polymorph deck defeats
+    all three at once. Its pieces are tagged as removal, because that is what
+    their rules text does — Polymorph destroys a creature, Proteus Staff
+    bottoms one — so they land in the interaction bucket and read as over.
+    Spellbook has no entry for them, because "Polymorph plus whatever creature
+    you happen to run" is not a card-to-card combo. And the corpus rate is
+    near zero even among the deck's nearest neighbours: measured on an Urza
+    list, Polymorph and Proteus Staff sat at 0.10 across the 30 tournament
+    decks sharing 66 or more of its 95 cards. So the advisor offered a deck
+    its own win condition as the first thing to cut.
+
+    What *is* visible is the deck itself: an effect that puts a creature onto
+    the battlefield off the top of a library, next to a creature count small
+    enough that every hit is one the pilot chose. That pairing is the line,
+    and both halves of it — the effects and the creatures they turn up — are
+    defended. Below the pairing nothing fires, so a creature deck that happens
+    to run Oath of Druids is untouched. Returns the oracle ids never to offer
+    as a cut, empty when the deck is not built around the effect.
+    """
+    holders: dict[str, set[str]] = {}
+    for card in cards:
+        produces = card_resources.get(card["oracle_id"], {}).get("produces") or ()
+        for lock in DECK_LOCKS:
+            if lock.resource in produces:
+                holders.setdefault(lock.resource, set()).add(card["oracle_id"])
+    if not holders:
+        return set()
+
+    counts = {
+        locked: sum(1 for card in cards if in_locked_class(card.get("type_line") or "", locked))
+        for locked in LockedClass
+    }
+    defended: set[str] = set()
+    for lock in active_locks({name: len(ids) for name, ids in holders.items()}, counts):
+        defended |= holders[lock.resource]
+        if lock.defends:
+            defended |= {
+                card["oracle_id"]
+                for card in cards
+                if in_locked_class(card.get("type_line") or "", lock.forbids)
+            }
+    return defended
+
+
+def apply_play_rates(cards: list[dict], rates: Mapping[str, float]) -> None:
+    """Rewrites `playability` in place with a scene's own play rate, for the
+    cards the scene answered for.
+
+    `Card.playability` is format-wide *casual* ubiquity, and every read of it
+    in this module — the rarely-played prosecution, the staple tiebreak, the
+    upgrade-candidate floor, the tutor-floor ordering, the downgrade and
+    sidegrade vetoes in `pair_swaps` — asks "how defensible is trading this
+    card away in a deck like this". At bracket 5 the casual number answers a
+    different question: Transmute Artifact reads 0.20 (rarely played) and
+    got paired with Fabricate as its upgrade (observed live on an Urza
+    list). `graph.scene_play_rates` supplies the number the question meant —
+    this commander's tournament decks, its EDHREC cEDH page, or the scene's
+    corpus — and this writes it over the casual one so every read above
+    sees the same rate. A card the lookup did not answer for (no covered
+    source) keeps its casual number; within a covered source the lookup
+    itself already answers 0.0 for a card nobody plays.
+    """
+    for card in cards:
+        rate = rates.get(card["oracle_id"])
+        if rate is not None:
+            card["playability"] = rate
+
+
 def score_cuts(
     cards: list[dict],
     card_roles: list[dict],
@@ -278,13 +365,35 @@ def score_cuts(
     combo_partners = combo_partners or {}
     by_id = {card["oracle_id"]: card for card in cards}
 
-    entries = [(_typed(row["roles"]), row["qty"]) for row in card_roles]
+    # cEDH board-wipe coverage discount (Task C2, cEDH Pro round) — applied
+    # once here, so every downstream coverage read in this function (`coverage`,
+    # `base`, every `trimmed`/`kept` variant, `after_coverage`) inherits it
+    # automatically, and reads the same INTERACTION number the diagnostics
+    # report and the fill solver do for this deck. See
+    # `interaction.discount_board_wipe`.
+    cedh = is_cedh_template(template)
+    entries = [
+        (discount_board_wipe(_typed(row["roles"]), cedh=cedh), row["qty"]) for row in card_roles
+    ]
     curve: dict[int, float] = dict.fromkeys(CURVE_BUCKETS, 0.0)
     for card in cards:
         if not card["is_land"]:
             curve[min(6, int(card["cmc"]))] += card["qty"]
 
     types = type_counts_from_cards(cards)
+
+    # A deck short on lands is never offered a land cut. The Land row is an
+    # adds question while it reads short (the basics channel answers it), and
+    # the one shape penalty a land cut can relieve is a crowded mana-sources
+    # bucket — which, on a deck already under its land target, is crowded
+    # with rocks and dorks, and those are the cards the cut should name.
+    # Observed live before the sources corridor was derived from the Land
+    # row: a green deck under on lands and over on sources led its cut list
+    # with a Mountain. The derived corridor makes that pairing rare; this
+    # keeps it from producing a land cut when it does occur, because the
+    # sources bucket still outweighs the Land row several times over.
+    land_row = template.types.get("Land")
+    land_short = land_row is not None and land_row.is_short(types.get("Land", 0.0))
 
     # What each bucket currently holds, so a reason can name the one that is
     # full rather than quoting a penalty delta.
@@ -297,6 +406,8 @@ def score_cuts(
         oracle_id = row["oracle_id"]
         card = by_id.get(oracle_id)
         if card is None or oracle_id in protected:
+            continue
+        if land_short and card["is_land"]:
             continue
 
         # One copy at a time: cutting one of nine Forests is a different
@@ -482,9 +593,16 @@ def score_cuts(
             # producer count can see — a "whenever ~ attacks" card makes its
             # own trigger by attacking, and the first version told Cecily,
             # Haunted Mage she "wants attack_trigger, which nothing in the
-            # deck makes". See `TRIGGER_RESOURCES` in vocabulary.py.
+            # deck makes". Zone-supplied resources are the same misread from
+            # the other zone: a Lieutenant card's fuel is the commander in
+            # the command zone, which the produced counts (built from the 99)
+            # can never contain — observed live on Tyrant's Familiar in a
+            # three-commander deck. See `TRIGGER_RESOURCES` and
+            # `COMMAND_ZONE_RESOURCES` in vocabulary.py.
             cares = card_resources.get(oracle_id, {}).get("cares_about", set())
-            material = {r for r in cares if r not in TRIGGER_RESOURCES}
+            material = {
+                r for r in cares if r not in TRIGGER_RESOURCES and r not in COMMAND_ZONE_RESOURCES
+            }
             if material and produced_counts is not None:
                 stranded = all(produced_counts.get(r, 0) == 0 for r in material)
                 if stranded:
@@ -508,16 +626,16 @@ def score_cuts(
                     "the deck is at its tutor count for this bracket — cutting one reopens the gap",
                 )
             )
-        partners = combo_partners.get(oracle_id) or []
-        if partners:
-            with_cards = " + ".join(partners[:2])
-            reasons.append(
-                cut_phrase(
-                    CutCode.COMBO_PIECE,
-                    f"holds a complete combo line together with {with_cards}",
-                    with_cards=with_cards,
-                )
-            )
+        # A piece of a complete combo line is never a cut. This was a 1.5
+        # term (`CUT_COMBO_PIECE`, sized like the tutor floor) until the user
+        # asked for the line itself: at bracket 5 the lines *are* the deck,
+        # and a shape overage large enough to outscore the term still names a
+        # win condition as the thing to shed. Cutting a whole line because
+        # the shape cannot support it is a different, deliberate call — not
+        # something a per-card score should stumble into. `upgrade_candidates`
+        # already refuses these outright; this makes the bare cut agree.
+        if combo_partners.get(oracle_id):
+            continue
 
         # A card that reads as a theme the user excluded is a *better* cut,
         # proportionally to how much of it is the theme — the cut-scoring
@@ -576,7 +694,6 @@ def score_cuts(
             + CUT_RARELY_PLAYED * rare
             + (CUT_STRANDED if stranded else 0.0)
             - (CUT_TUTOR_FLOOR if tutor_defended else 0.0)
-            - (CUT_COMBO_PIECE if partners else 0.0)
         )
 
         if score >= MIN_CUT_SCORE and reasons:
@@ -691,7 +808,21 @@ def pair_swaps(
 
     **Same role.** "To add this ramp piece, cut one of these ramp pieces." The
     shape is preserved by construction, and the swap is a quality upgrade —
-    which `DOWNGRADE_MARGIN` is what makes true.
+    which `DOWNGRADE_MARGIN` is what makes true. A sidegrade (inside the
+    margin) still pairs here, because the shape argument is meant to be what
+    decides close calls — *unless* the cut is on offer because its own bucket
+    reads over and the add lands back in that same bucket, in which case a
+    sidegrade recreates the exact overage the cut was supposed to relieve.
+    Observed live: Untimely Malfunction (playability 0.457, cut because
+    `interaction` was over) paired with Cankerbloom (0.353) and Archdruid's
+    Charm (0.376) — both `spot_removal` 1.0, both narrower than the cut, both
+    landing straight back in `interaction`. That exchange now needs the same
+    strict upgrade (`add.playability >= cut.playability + DOWNGRADE_MARGIN`)
+    the third pass below requires, with the same game-changer exemption as
+    the downgrade veto above. A cut offered for other reasons (rarely played,
+    off-theme) is not from an over bucket, so this leaves it untouched — and
+    a caller with no `buckets` rows gets the pre-existing behaviour exactly,
+    since there is no "over" to return to at all.
 
     **Out of a full bucket, into an empty one.** Shared roles were once
     required, and for a balanced deck that is right: an arbitrary pairing fixes
@@ -777,6 +908,30 @@ def pair_swaps(
             if (
                 not add.get("game_changer")
                 and cut.playability - add.get("playability", 0.0) > DOWNGRADE_MARGIN
+            ):
+                continue
+
+            # A sidegrade is fine when the deck's shape is genuinely what
+            # decides the exchange — but not when the add lands right back in
+            # a bucket the cut is being offered *for*. Untimely Malfunction
+            # (0.457, `interaction` over) paired with Cankerbloom (0.353) and
+            # Archdruid's Charm (0.376) — both `spot_removal` 1.0, both only
+            # answering artifacts/enchantments — put a weaker removal spell
+            # straight back into the bucket the cut was meant to relieve. The
+            # downgrade veto above only blocks a *worse* card past the margin;
+            # this blocks a same-or-worse card from re-entering an over bucket
+            # at all, the same strict direction the third (upgrade) pass uses.
+            # `frees` (un-subtracted) rather than `frees - add_buckets`: the
+            # question is whether the add touches a bucket the cut frees, not
+            # whether it leaves that bucket net-improved. Naturally scoped to
+            # the cases that matter: `frees` is empty whenever `buckets` is
+            # not passed (the old-contract path) or the cut's own bucket is
+            # not over, so a lateral sidegrade stays allowed exactly where the
+            # docstring says it should.
+            if (
+                frees & add_buckets
+                and not add.get("game_changer")
+                and add.get("playability", 0.0) < cut.playability + DOWNGRADE_MARGIN
             ):
                 continue
 
@@ -1022,7 +1177,7 @@ def suggest_swaps(
     """
     from .diagnostics import DeckEntry, diagnose
     from .eminence import apply_discount, discount_for
-    from .graph import deck_card_resources, deck_card_roles, fetch_deck
+    from .graph import deck_card_resources, deck_card_roles, fetch_deck, scene_play_rates
     from .suggestions import effective_commanders, suggest
 
     deck = quantities or dict.fromkeys(deck_oracle_ids, 1)
@@ -1032,6 +1187,17 @@ def suggest_swaps(
     apply_discount(
         cards, discount_for(cards, effective_commanders(commander_oracle_id, commander_oracle_ids))
     )
+    # At bracket 5, "how played is this" means played *in cEDH* — see
+    # `apply_play_rates`. Asked once for the deck here and once for the adds
+    # below, so both sides of every swap are judged in the same currency.
+    cedh = is_cedh(speed)
+    if cedh:
+        apply_play_rates(
+            cards,
+            scene_play_rates(
+                list(deck), effective_commanders(commander_oracle_id, commander_oracle_ids)
+            ),
+        )
     card_roles = deck_card_roles(deck)
     card_resources = deck_card_resources(deck)
 
@@ -1058,12 +1224,22 @@ def suggest_swaps(
     # advisor arguing against its own advice one click later.
     defended = set(protected or ())
     defended.update(commander_oracle_ids or ())
+    # A win line only the deck itself can testify to — see `deck_plan_pieces`.
+    # Added here rather than inside the scorer so the upgrade candidates,
+    # which are offered without any bucket being over, are defended by it too.
+    defended.update(deck_plan_pieces(cards, card_resources))
     if commander_oracle_id:
         defended.add(commander_oracle_id)
 
     # Cut scoring runs against the *reported* type targets, not a fresh
     # resolution — re-resolving could flip the prior tier between the report
-    # and the score, and a mismatch there is silent when wrong.
+    # and the score, and a mismatch there is silent when wrong. `cedh_class`
+    # (Task E follow-up, cEDH Pro round) is the same story one level up: the
+    # report already classified this deck, and re-classifying here could not
+    # possibly disagree (same cards) but would be a second, pointless pass
+    # over `card_roles`/`resources_by_card` — reading `report.cedh_class`
+    # is both cheaper and the only way to guarantee cut scoring bucket-corridor
+    # matches the report byte for byte.
     from .type_targets import conditioned_template, targets_from_report
 
     # The report's rows are already deck-sized; the scale resizes only the
@@ -1074,6 +1250,7 @@ def suggest_swaps(
         targets_from_report(report.types, speed=speed),
         scale=deck_size / 99,
         curve=curve,
+        cedh_class=report.cedh_class,
     )
 
     # The deck-relative evidence the add side already argues with, handed to
@@ -1189,13 +1366,18 @@ def suggest_swaps(
     add_ids = [s.oracle_id for s in adds.suggestions]
     add_roles = cards_role_weights(add_ids)
     cut_roles = {row["oracle_id"]: row["roles"] for row in card_roles}
+    add_rates = (
+        scene_play_rates(add_ids, effective_commanders(commander_oracle_id, commander_oracle_ids))
+        if cedh
+        else {}
+    )
 
     swaps = pair_swaps(
         [
             {
                 "oracle_id": s.oracle_id,
                 "name": s.name,
-                "playability": s.playability,
+                "playability": add_rates.get(s.oracle_id, s.playability),
                 "game_changer": s.game_changer,
             }
             for s in adds.suggestions
@@ -1273,7 +1455,13 @@ def shape_delta(
     Both halves are optional, so this also answers "what if I just cut this"
     and "what if I just add this" — the pending-changes preview needs all three.
     """
-    entries = [(_typed(row["roles"]), row["qty"]) for row in card_roles]
+    # cEDH board-wipe coverage discount (Task C2, cEDH Pro round) — see the
+    # identical comment in `score_cuts`; the same reasoning applies to a
+    # single add/remove preview.
+    cedh = is_cedh_template(template)
+    entries = [
+        (discount_board_wipe(_typed(row["roles"]), cedh=cedh), row["qty"]) for row in card_roles
+    ]
     by_id = {card["oracle_id"]: card for card in cards}
 
     curve: dict[int, float] = dict.fromkeys(CURVE_BUCKETS, 0.0)
@@ -1304,7 +1492,7 @@ def shape_delta(
             after_types[removed_type] = after_types.get(removed_type, 0.0) - 1
 
     if add_roles:
-        after_entries.append((_typed(add_roles), 1))
+        after_entries.append((discount_board_wipe(_typed(add_roles), cedh=cedh), 1))
         if not add_is_land:
             after_curve[min(6, int(add_cmc))] += 1
 
@@ -1409,7 +1597,13 @@ def find_replacements(
     `allow_network`, `identity`, `pinned_themes`, and `excluded_themes` thread
     straight through to the `suggest()` call below.
     """
-    from .graph import cards_role_weights, cards_theme_fits, deck_card_roles, fetch_deck
+    from .graph import (
+        cards_role_weights,
+        cards_theme_fits,
+        deck_card_roles,
+        fetch_deck,
+        scene_play_rates,
+    )
     from .suggestions import effective_commanders, suggest
 
     # Any seat in the command zone is refused, not just the anchor's — a
@@ -1426,6 +1620,14 @@ def find_replacements(
     apply_discount(
         cards, discount_for(cards, effective_commanders(commander_oracle_id, commander_oracle_ids))
     )
+    # Same currency as `suggest_swaps`: at bracket 5 the target and its
+    # alternatives are read at their cEDH play rate (`apply_play_rates`).
+    scene_rates: dict[str, float] = {}
+    if is_cedh(speed):
+        scene_rates = scene_play_rates(
+            list(deck), effective_commanders(commander_oracle_id, commander_oracle_ids)
+        )
+        apply_play_rates(cards, scene_rates)
     card_roles = deck_card_roles(deck)
 
     target = next((c for c in cards if c["oracle_id"] == target_oracle_id), None)
@@ -1499,13 +1701,28 @@ def find_replacements(
     report.suggestions = [s for s in report.suggestions if s.oracle_id != target_oracle_id]
 
     candidate_roles = cards_role_weights([s.oracle_id for s in report.suggestions])
+    if is_cedh(speed):
+        scene_rates.update(
+            scene_play_rates(
+                [s.oracle_id for s in report.suggestions],
+                effective_commanders(commander_oracle_id, commander_oracle_ids),
+            )
+        )
     candidate_themes = cards_theme_fits([s.oracle_id for s in report.suggestions])
 
     # Commander-tier type targets only: this path never diagnoses the deck
     # itself, so there is no theme profile and no typal profile to condition
     # on. The gap is the theme/tribe tier, not the axis — a 40-creature deck
     # still shows its creature rows moving — and threading a full diagnose
-    # through here costs a round trip /replace was shaped to avoid.
+    # through here costs a round trip /replace was shaped to avoid. The same
+    # gap skips `cedh_class` (Task E follow-up, cEDH Pro round) for the
+    # identical reason: classifying a deck needs the `card_roles`/
+    # `resources_by_card` a diagnose-shaped fetch produces, which this path
+    # does not make. A bracket-5 /replace therefore scores against the
+    # pooled `CEDH` template rather than the deck's own measured turbo/
+    # midrange/stax corridor — `conditioned_template`'s `cedh_class` stays at
+    # its `None` default below, on purpose, recorded here rather than hidden,
+    # the same way the theme/tribe gap just above is.
     from .type_targets import conditioned_template, resolve_type_targets
 
     commander_name = None
@@ -1546,7 +1763,7 @@ def find_replacements(
                     cmc=suggestion.cmc,
                     type_line=suggestion.type_line,
                     price_usd=suggestion.price_usd,
-                    playability=suggestion.playability,
+                    playability=scene_rates.get(suggestion.oracle_id, suggestion.playability),
                     game_changer=suggestion.game_changer,
                     score=suggestion.score,
                     shared_roles=sorted(shared),

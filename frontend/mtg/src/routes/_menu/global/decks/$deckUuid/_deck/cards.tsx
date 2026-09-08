@@ -7,6 +7,7 @@ import { CardDetailDialog } from "src/components/card-detail-dialog";
 import { DeckCardGrid } from "src/components/deck-card-grid";
 import { DeckCardPreview } from "src/components/deck-card-preview";
 import { DeckCardList } from "src/components/deck-card-list";
+import { DeckCardStacks } from "src/components/deck-card-stacks";
 import { DeckCardTable } from "src/components/deck-card-table";
 import { useDeckLabels } from "src/components/deck-labels";
 import { DECK_TILE_SIZES, DECK_VIEWS, DeckViewControls } from "src/components/deck-view-controls";
@@ -189,6 +190,20 @@ function RouteComponent() {
                 <div className={"min-w-0 flex-1"}>
                     {view === "grid" ? (
                         <DeckCardGrid
+                            size={size}
+                            groups={groups}
+                            grouping={grouping}
+                            violations={new Map()}
+                            tags={tags}
+                            onInspect={(card) => go({ card: card.uuid })}
+                            onActivate={(card) => setActive(card?.uuid ?? null)}
+                            isFlipped={(card) => flippedCards.isFlipped(card.uuid)}
+                            onFlip={(card) => flippedCards.toggle(card.uuid)}
+                            isCollapsed={collapsedGroups.isCollapsed}
+                            onToggleGroup={collapsedGroups.toggle}
+                        />
+                    ) : view === "stack" ? (
+                        <DeckCardStacks
                             size={size}
                             groups={groups}
                             grouping={grouping}

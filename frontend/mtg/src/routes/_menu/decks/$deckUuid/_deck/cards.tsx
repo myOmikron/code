@@ -14,7 +14,7 @@ import {
 } from "components";
 import type { CSSProperties } from "react";
 import { startTransition, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import type { CardFocus } from "src/components/deck-header-bar";
+import type { CardFocus } from "src/utils/card-focus";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import type {
@@ -28,6 +28,7 @@ import { AddCardsDialog } from "src/components/add-cards-dialog";
 import type { SearchConstraint } from "src/components/card-search-panel";
 import { CardDetailDialog } from "src/components/card-detail-dialog";
 import { DeckCardGrid } from "src/components/deck-card-grid";
+import { DeckCardStacks } from "src/components/deck-card-stacks";
 import { DeckCardList } from "src/components/deck-card-list";
 import { DeckCardTable } from "src/components/deck-card-table";
 import { DeckCardMenu } from "src/components/deck-card-menu";
@@ -45,7 +46,7 @@ import type { DeckTileSize, DeckView } from "src/components/deck-view-controls";
 import { DECK_GROUPINGS, DECK_SORTS, groupDeck } from "src/utils/deck-grouping";
 import { useCollapsedGroups } from "src/utils/use-collapsed-groups";
 import type { DeckGrouping, DeckSort } from "src/utils/deck-grouping";
-import { checkDeck, deckRuleZero, playedBracket } from "src/utils/deck-rules";
+import { checkDeck, deckRuleZero, detectedBracket, playedBracket } from "src/utils/deck-rules";
 import { DeckReplaceDialog } from "src/components/deck-replace-dialog";
 import { advisorDeck, bracketSpeed, playedNames } from "src/utils/deck-advisor";
 import { useDeckCombos } from "src/utils/use-deck-combos";
@@ -241,24 +242,24 @@ function RouteComponent() {
     const combos = useDeckCombos(advisor, played, [], deck.format === "commander");
     // A stale answer describes the deck before the last edit — or another deck
     // entirely, right after a switch. Reading it as "unanswered" keeps the
-    // band honest and, more importantly, keeps the automatic bracket raise
-    // below from acting on cards that are no longer there. Memoized so the
-    // legality check below keeps its own memo across renders that changed
-    // nothing about the answer.
-    const twoCardCombos = useMemo(
-        () =>
-            combos.data === null || combos.stale
-                ? null
-                : combos.data.complete
-                      .filter((combo) => combo.card_names.length === 2)
-                      .map((combo) => combo.card_names),
+    // menu honest and, more importantly, keeps the automatic claim below from
+    // acting on cards that are no longer there. Memoized so the legality check
+    // below keeps its own memo across renders that changed nothing about the
+    // answer.
+    //
+    // Every length goes through, not only the pairs: bracket 1 plays no
+    // intentional infinite combo at all, so a three-card line is what moves a
+    // deck off it, and `checkBracket` is where that is decided.
+    const completeCombos = useMemo(
+        () => (combos.data === null || combos.stale ? null : combos.data.complete.map((combo) => combo.card_names)),
         [combos.data, combos.stale],
     );
     const legality = useMemo(
-        () => checkDeck(deck, resolved, rules, claimed, twoCardCombos),
-        [deck, resolved, rules, claimed, twoCardCombos],
+        () => checkDeck(deck, resolved, rules, claimed, completeCombos),
+        [deck, resolved, rules, claimed, completeCombos],
     );
     const plays = playedBracket(legality, offered);
+    const detected = detectedBracket(legality, offered);
     const groups = useMemo(() => groupDeck(shown, grouping, sort, tags), [shown, grouping, sort, tags]);
     const collapsedGroups = useCollapsedGroups(deckUuid);
     // What the card search is held to: a deck is built inside its format and
@@ -431,15 +432,42 @@ function RouteComponent() {
         go({ sort: next === "name" ? undefined : next });
     }
 
-    // The claimed bracket follows the cards upward on its own: a deck that
-    // provably plays above its claim is re-labelled rather than left warning
-    // forever, and the toast says so. Only upward — the detection can prove a
-    // deck plays over a bracket, never that it plays under one, and a claim
+    // The claim follows the cards on its own, in two situations.
+    //
+    // A deck that claims nothing — every imported deck, until now — is claimed
+    // at what it reads as, but only once the deck is worth reading: a list
+    // still being pasted in matches every bracket's rules simply by being
+    // empty, and claiming Core for a deck of four cards would be a guess
+    // dressed up as a fact. The combo answer has to be in for the same reason.
+    //
+    // A deck that claims a bracket it provably plays above is re-labelled
+    // rather than left warning forever. Only upward — the detection can prove
+    // a deck plays over a bracket, never that it plays under one, and a claim
     // deliberately set high must not be argued down by an incomplete read.
+    // Both writes are remembered rather than repeated: the effect re-runs
+    // whenever the combo answer or the card count moves, and `deck.bracket`
+    // only catches up once the save has been invalidated back in — a window
+    // wide enough for a second POST and a second toast about the same claim.
+    const claimedFor = useRef<string | null>(null);
     useEffect(() => {
-        if (deck.bracket == null || plays === null || plays <= deck.bracket) return;
+        if (claimedFor.current === deckUuid) return;
+
+        if (deck.bracket == null) {
+            const full = target !== null && legality.cards >= target;
+            if (!full || detected === null || legality.combos === null) return;
+            claimedFor.current = deckUuid;
+            void saveBracket(detected, t("toast.bracket-detected", { number: detected }));
+            return;
+        }
+        if (plays === null || plays <= deck.bracket) return;
+        claimedFor.current = deckUuid;
         void saveBracket(plays, t("toast.bracket-raised", { number: plays }));
-    }, [plays, deck.bracket, deckUuid]);
+    }, [plays, detected, legality.cards, legality.combos, target, deck.bracket, deckUuid]);
+
+    // A claim written for one deck says nothing about the next one.
+    useEffect(() => {
+        claimedFor.current = null;
+    }, [deckUuid]);
 
     // A filter about one deck's remarks means nothing on another deck.
     useEffect(() => {
@@ -1007,6 +1035,25 @@ function RouteComponent() {
                         <EmptyState title={t("heading.no-cards-found")} description={t("description.no-cards-found")} />
                     ) : view === "grid" ? (
                         <DeckCardGrid
+                            groups={groups}
+                            size={size}
+                            grouping={grouping}
+                            violations={legality.slots}
+                            tags={tags}
+                            onInspect={(card) => go({ card: card.uuid })}
+                            onChangeQuantity={(card, quantity) => void changeQuantity(card, quantity)}
+                            onDelete={(card) => void remove(card)}
+                            onToggleTag={(card, tag, on) => void toggleTag(card, tag, on)}
+                            onManageTags={() => setManagingTags(true)}
+                            onActivate={(card) => setActive(card?.uuid ?? null)}
+                            isFlipped={(card) => flippedCards.isFlipped(card.uuid)}
+                            onFlip={(card) => flippedCards.toggle(card.uuid)}
+                            onMenu={(card, at) => setMenu({ card: card.uuid, at })}
+                            isCollapsed={collapsedGroups.isCollapsed}
+                            onToggleGroup={collapsedGroups.toggle}
+                        />
+                    ) : view === "stack" ? (
+                        <DeckCardStacks
                             groups={groups}
                             size={size}
                             grouping={grouping}

@@ -9,6 +9,7 @@ All URIs are relative to */api/graph*
 | [**postCombos**](DefaultApi.md#postcombos) | **POST** /combos | Post Combos |
 | [**postDiagnostics**](DefaultApi.md#postdiagnostics) | **POST** /diagnostics | Post Diagnostics |
 | [**postFill**](DefaultApi.md#postfill) | **POST** /fill | Post Fill |
+| [**postLines**](DefaultApi.md#postlines) | **POST** /lines | Post Lines |
 | [**postPoolQuery**](DefaultApi.md#postpoolquery) | **POST** /pool-query | Post Pool Query |
 | [**postReplace**](DefaultApi.md#postreplace) | **POST** /replace | Post Replace |
 | [**postSearch**](DefaultApi.md#postsearch) | **POST** /search | Post Search |
@@ -316,6 +317,74 @@ example().catch(console.error);
 ### Return type
 
 [**FillResult**](FillResult.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | Successful Response |  -  |
+| **422** | Validation Error |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## postLines
+
+> LineReportResponse postLines(LinesRequest)
+
+Post Lines
+
+Complete combo lines and near-misses: cost, colours, zones, prerequisites, fold classes, tutor reach, and redundancy.  No HTTP fallback: unlike &#x60;/combos&#x60;, the cost/zone/prerequisite data this endpoint exists for only lives on the ingested graph, so a combo layer that has never been ingested is reported as a note, not silently answered from a shape that cannot carry the fields at all.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { PostLinesRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // LinesRequest
+    LinesRequest: ...,
+  } satisfies PostLinesRequest;
+
+  try {
+    const data = await api.postLines(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **LinesRequest** | [LinesRequest](LinesRequest.md) |  | |
+
+### Return type
+
+[**LineReportResponse**](LineReportResponse.md)
 
 ### Authorization
 

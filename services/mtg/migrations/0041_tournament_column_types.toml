@@ -1,0 +1,257 @@
+[Migration]
+Hash = "1514607936886525442"
+Initial = false
+Dependency = 40
+Replaces = []
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "tournament"
+Name = "name"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "tournament"
+Name = "name"
+MaxLength = 128
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "tournament"
+Name = "description"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "tournament"
+Name = "description"
+MaxLength = 1024
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "tournament"
+Name = "format"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "tournament"
+Name = "format"
+MaxLength = 32
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "tournament"
+Name = "pairing_system"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "tournament"
+Name = "pairing_system"
+MaxLength = 255
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "tournament"
+Name = "seat_policy"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "tournament"
+Name = "seat_policy"
+MaxLength = 255
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "tournament"
+Name = "status"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "tournament"
+Name = "status"
+MaxLength = 255
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "tournament"
+Name = "visibility"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "tournament"
+Name = "visibility"
+MaxLength = 255
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "tournament"
+Name = "share_token"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "tournament"
+Name = "share_token"
+MaxLength = 64
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "tournament"
+Name = "join_code"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "tournament"
+Name = "join_code"
+MaxLength = 8
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "tournament"
+Name = "venue"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "tournament"
+Name = "venue"
+MaxLength = 255
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "tournament"
+Name = "decklist_policy"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "tournament"
+Name = "decklist_policy"
+MaxLength = 255
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "tournament"
+Name = "participant_audience"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "tournament"
+Name = "participant_audience"
+MaxLength = 255
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "tournament_organizer"
+Name = "role"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "tournament_organizer"
+Name = "role"
+MaxLength = 255
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "tournament_audit"
+Name = "action"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "tournament_audit"
+Name = "action"
+MaxLength = 255
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "tournament_audit"
+Name = "detail"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "tournament_audit"
+Name = "detail"
+MaxLength = 1024
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "tournament_decklist"
+Name = "text"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "tournament_decklist"
+Name = "text"
+MaxLength = 16384
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "tournament_participant"
+Name = "display_name"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "tournament_participant"
+Name = "display_name"
+MaxLength = 64
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "tournament_participant"
+Name = "name_normalized"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "tournament_participant"
+Name = "name_normalized"
+MaxLength = 64
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "tournament_participant"
+Name = "status"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "tournament_participant"
+Name = "status"
+MaxLength = 255
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "tournament_participant"
+Name = "claim_token"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "tournament_participant"
+Name = "claim_token"
+MaxLength = 64
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "tournament_participant"
+Name = "notes"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "tournament_participant"
+Name = "notes"
+MaxLength = 512

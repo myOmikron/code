@@ -128,19 +128,17 @@ impl Account {
 
         let mut account = None;
 
-        if let Some(club_member) = ClubAccount::get_by_uuid(guard.get_transaction(), uuid).await? {
+        if let Some(club_member) = ClubAccount::get_by_uuid(guard.as_mut(), uuid).await? {
             account = Some(Account::ClubMember(club_member));
-        } else if let Some(club_admin) =
-            ClubAdminAccount::get_by_uuid(guard.get_transaction(), uuid).await?
+        } else if let Some(club_admin) = ClubAdminAccount::get_by_uuid(guard.as_mut(), uuid).await?
         {
             account = Some(Account::ClubAdmin(club_admin));
-        } else if let Some(admin) =
-            AdministrativeAccount::get_by_uuid(guard.get_transaction(), uuid).await?
+        } else if let Some(admin) = AdministrativeAccount::get_by_uuid(guard.as_mut(), uuid).await?
         {
             account = Some(Account::Superadmin(admin));
         }
 
-        guard.commit().await?;
+        guard.commit_if_owned().await?;
 
         Ok(account)
     }
@@ -155,21 +153,19 @@ impl Account {
 
         let mut account = None;
 
-        if let Some(club_member) =
-            ClubAccount::get_by_username(guard.get_transaction(), username).await?
-        {
+        if let Some(club_member) = ClubAccount::get_by_username(guard.as_mut(), username).await? {
             account = Some(Account::ClubMember(club_member));
         } else if let Some(club_admin) =
-            ClubAdminAccount::get_by_username(guard.get_transaction(), username).await?
+            ClubAdminAccount::get_by_username(guard.as_mut(), username).await?
         {
             account = Some(Account::ClubAdmin(club_admin));
         } else if let Some(admin) =
-            AdministrativeAccount::get_by_username(guard.get_transaction(), username).await?
+            AdministrativeAccount::get_by_username(guard.as_mut(), username).await?
         {
             account = Some(Account::Superadmin(admin));
         }
 
-        guard.commit().await?;
+        guard.commit_if_owned().await?;
 
         Ok(account)
     }
@@ -322,7 +318,7 @@ impl Account {
 
         let reset = match self {
             Account::ClubMember(club_member) => {
-                let reset = rorm::insert(guard.get_transaction(), CredentialResetClubAccountModel)
+                let reset = rorm::insert(guard.as_mut(), CredentialResetClubAccountModel)
                     .single(&CredentialResetClubAccountModel {
                         uuid: Uuid::new_v4(),
                         account: ForeignModelByField(club_member.uuid().0),
@@ -340,7 +336,7 @@ impl Account {
                 }
             }
             Account::ClubAdmin(club_admin) => {
-                let reset = rorm::insert(guard.get_transaction(), CredentialResetClubAdminModel)
+                let reset = rorm::insert(guard.as_mut(), CredentialResetClubAdminModel)
                     .single(&CredentialResetClubAdminModel {
                         uuid: Uuid::new_v4(),
                         account: ForeignModelByField(club_admin.uuid().0),
@@ -358,7 +354,7 @@ impl Account {
                 }
             }
             Account::Superadmin(superadmin) => {
-                let reset = rorm::insert(guard.get_transaction(), CredentialResetSuperadminModel)
+                let reset = rorm::insert(guard.as_mut(), CredentialResetSuperadminModel)
                     .single(&CredentialResetSuperadminModel {
                         uuid: Uuid::new_v4(),
                         account: ForeignModelByField(superadmin.uuid().0),
@@ -377,7 +373,7 @@ impl Account {
             }
         };
 
-        guard.commit().await?;
+        guard.commit_if_owned().await?;
 
         Ok(reset)
     }

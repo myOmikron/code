@@ -10,11 +10,13 @@ import {
     checkBracket,
     checkDeck,
     deckRuleZero,
+    detectedBracket,
     hasRuleZero,
     houseRulesSummary,
     playedBracket,
     ruleZeroCount,
     ruleZeroSave,
+    type BracketCounts,
     type DeckLegality,
     type RuleZeroForm,
     type SlotViolation,
@@ -34,20 +36,28 @@ function bracket(number: number, rules: Partial<BracketRulesResponse> = {}): Bra
         slug: `b${number}`,
         max_game_changers: null,
         mass_land_denial: true,
-        extra_turns: true,
-        two_card_combos: true,
+        extra_turns: "any",
+        combos: "any",
         ...rules,
     };
 }
 
 /** The five brackets as the webserver states them */
 const BRACKETS = [
-    bracket(1, { max_game_changers: 0, mass_land_denial: false, extra_turns: false, two_card_combos: false }),
-    bracket(2, { max_game_changers: 0, mass_land_denial: false, extra_turns: false, two_card_combos: false }),
-    bracket(3, { max_game_changers: 3, mass_land_denial: false, extra_turns: false }),
+    bracket(1, { max_game_changers: 0, mass_land_denial: false, extra_turns: "none", combos: "none" }),
+    bracket(2, { max_game_changers: 0, mass_land_denial: false, extra_turns: "no-chaining", combos: "no-two-card" }),
+    bracket(3, { max_game_changers: 3, mass_land_denial: false, extra_turns: "no-chaining" }),
     bracket(4),
     bracket(5),
 ];
+
+/**
+ * The two rungs whose rules differ by more than a number, named rather than
+ * indexed: every combo and extra-turn case below turns on which of them it
+ * reads against, and `BRACKETS[1]` is bracket 2, which is one off from what
+ * anyone writing such a test means.
+ */
+const [EXHIBITION, CORE] = BRACKETS;
 
 /**
  * A counted deck, as far as the bracket rules read it
@@ -56,9 +66,7 @@ const BRACKETS = [
  *
  * @returns the legality
  */
-function counted(
-    counts: Partial<Pick<DeckLegality, "gameChangers" | "massLandDenial" | "extraTurns" | "twoCardCombos">>,
-): DeckLegality {
+function counted(counts: Partial<BracketCounts>): DeckLegality {
     return {
         deck: [],
         slots: new Map(),
@@ -68,7 +76,11 @@ function counted(
         gameChangers: [],
         massLandDenial: [],
         extraTurns: [],
-        twoCardCombos: null,
+        // Derived by `checkDeck` from the extra-turn cards, so a fixture that
+        // names two of them without saying so would be a deck that cannot be
+        // built.
+        chainsExtraTurns: (counts.extraTurns ?? []).length > 1,
+        combos: null,
         houseRules: [],
         ...counts,
     };
@@ -131,6 +143,9 @@ function formatRules(overrides: Partial<FormatRulesResponse> = {}): FormatRulesR
         commander: { kind: "required", min: 1, max: 1 },
         deck_size: { kind: "exactly", cards: 100 },
         max_copies: 1,
+        // Commander publishes none of these, and the formats that do have them
+        // fetched rather than declared — so the default is "nothing to say".
+        role_bans: { commander: [], partner: [], companion: [], pairings: [] },
         sideboard: 0,
         slug: "commander",
         ...overrides,
@@ -459,28 +474,30 @@ describe("checkBracket", () => {
     });
 
     it("reads the combo rule once the graph has answered, an empty answer included", () => {
-        const checks = checkBracket(counted({ twoCardCombos: [] }), BRACKETS[1]);
+        const checks = checkBracket(counted({ combos: [] }), EXHIBITION);
         expect(checks.map((check) => check.kind)).toStrictEqual([
             "game-changers",
             "mass-land-denial",
             "extra-turns",
-            "two-card-combos",
+            "combos",
         ]);
         expect(checks[3]).toStrictEqual({
-            kind: "two-card-combos",
+            kind: "combos",
             kept: true,
             have: 0,
             allowed: 0,
             cards: [],
             names: [],
+            step: "none",
+            breaking: 0,
         });
     });
 
     it("breaks a combo-free bracket on one complete combo, named by its pieces", () => {
         const combo = ["Thassa's Oracle", "Demonic Consultation"];
-        const checks = checkBracket(counted({ twoCardCombos: [combo] }), BRACKETS[1]);
+        const checks = checkBracket(counted({ combos: [combo] }), EXHIBITION);
         expect(checks[3]).toStrictEqual({
-            kind: "two-card-combos",
+            kind: "combos",
             kept: false,
             have: 1,
             allowed: 0,
@@ -488,12 +505,39 @@ describe("checkBracket", () => {
             // The rule counts combos; a click filters to cards, so the
             // filterable names are the pieces themselves.
             names: ["Thassa's Oracle", "Demonic Consultation"],
+            step: "none",
+            breaking: 1,
         });
     });
 
+    it("counts only the pairs where the bracket asks for two cards", () => {
+        const combos = [
+            ["Devoted Druid", "Vizier of Remedies", "Walking Ballista"],
+            ["Kinnan, Bonder Prodigy", "Basalt Monolith"],
+        ];
+        // Exhibition plays no intentional infinite combo at all, so both count.
+        expect(checkBracket(counted({ combos }), EXHIBITION)[3]).toMatchObject({
+            kept: false,
+            have: 2,
+            breaking: 2,
+            step: "none",
+        });
+
+        // Core counts only the pair, and the three-card line on its own is
+        // exactly what keeps a deck off Exhibition without moving it off Core.
+        expect(checkBracket(counted({ combos }), CORE)[3]).toMatchObject({
+            kept: false,
+            have: 2,
+            breaking: 1,
+            step: "limited",
+        });
+        expect(checkBracket(counted({ combos: [combos[0]] }), EXHIBITION)[3].kept).toBe(false);
+        expect(checkBracket(counted({ combos: [combos[0]] }), CORE)[3].kept).toBe(true);
+    });
+
     it("tolerates combos where the bracket does", () => {
-        const checks = checkBracket(counted({ twoCardCombos: [["A", "B"]] }), BRACKETS[2]);
-        expect(checks[3]).toMatchObject({ kind: "two-card-combos", kept: true, allowed: null });
+        const checks = checkBracket(counted({ combos: [["A", "B"]] }), BRACKETS[2]);
+        expect(checks[3]).toMatchObject({ kind: "combos", kept: true, allowed: null, step: "any" });
     });
 
     it("counts the Game Changers against the bracket's ceiling", () => {
@@ -505,15 +549,17 @@ describe("checkBracket", () => {
             allowed: 3,
             cards: ["Rhystic Study", "Cyclonic Rift"],
             names: ["Rhystic Study", "Cyclonic Rift"],
+            step: "limited",
+            breaking: 0,
         });
-        expect(checkBracket(counted({ gameChangers: ["Rhystic Study", "Cyclonic Rift"] }), BRACKETS[1])[0].kept).toBe(
-            false,
-        );
+        expect(
+            checkBracket(counted({ gameChangers: ["Rhystic Study", "Cyclonic Rift"] }), BRACKETS[1])[0],
+        ).toMatchObject({ kept: false, breaking: 2 });
     });
 
     it("reads a tolerated rule as no limit at all", () => {
         const checks = checkBracket(
-            counted({ massLandDenial: ["Armageddon"], extraTurns: ["Time Warp"] }),
+            counted({ massLandDenial: ["Armageddon"], extraTurns: ["Time Warp", "Temporal Manipulation"] }),
             BRACKETS[3],
         );
         expect(checks.map((check) => check.allowed)).toStrictEqual([null, null, null]);
@@ -529,7 +575,28 @@ describe("checkBracket", () => {
             allowed: 0,
             cards: ["Armageddon"],
             names: ["Armageddon"],
+            step: "none",
+            breaking: 1,
         });
+    });
+
+    it("seats an extra turn that cannot be chained, and faults the chain", () => {
+        // Exhibition plays none at all, so one is already too many there.
+        expect(checkBracket(counted({ extraTurns: ["Time Warp"] }), BRACKETS[0])[2]).toMatchObject({
+            kept: false,
+            step: "none",
+            breaking: 1,
+        });
+        // Core asks only that they cannot follow one another.
+        expect(checkBracket(counted({ extraTurns: ["Time Warp"] }), BRACKETS[1])[2]).toMatchObject({
+            kept: true,
+            have: 1,
+            step: "limited",
+            breaking: 0,
+        });
+        expect(
+            checkBracket(counted({ extraTurns: ["Time Warp", "Temporal Manipulation"] }), BRACKETS[1])[2],
+        ).toMatchObject({ kept: false, have: 2, step: "limited", breaking: 2 });
     });
 });
 
@@ -541,12 +608,19 @@ describe("playedBracket", () => {
     it("climbs to the first bracket that tolerates what the deck plays", () => {
         expect(playedBracket(counted({ gameChangers: ["Rhystic Study"] }), BRACKETS)).toBe(3);
         expect(playedBracket(counted({ gameChangers: ["a", "b", "c", "d"] }), BRACKETS)).toBe(4);
-        expect(playedBracket(counted({ extraTurns: ["Time Warp"] }), BRACKETS)).toBe(4);
+        // One extra turn is a Core card; two are a chain, which only bracket 4
+        // seats.
+        expect(playedBracket(counted({ extraTurns: ["Time Warp"] }), BRACKETS)).toBe(2);
+        expect(playedBracket(counted({ extraTurns: ["Time Warp", "Capture of Jingzhou"] }), BRACKETS)).toBe(4);
     });
 
     it("climbs on a complete two-card combo, and only on an answered one", () => {
-        expect(playedBracket(counted({ twoCardCombos: [["A", "B"]] }), BRACKETS)).toBe(3);
-        expect(playedBracket(counted({ twoCardCombos: null }), BRACKETS)).toBe(1);
+        expect(playedBracket(counted({ combos: [["A", "B"]] }), BRACKETS)).toBe(3);
+        expect(playedBracket(counted({ combos: null }), BRACKETS)).toBe(1);
+    });
+
+    it("moves a three-card combo off Exhibition but no further", () => {
+        expect(playedBracket(counted({ combos: [["A", "B", "C"]] }), BRACKETS)).toBe(2);
     });
 
     it("says nothing for a format without brackets", () => {
@@ -554,26 +628,100 @@ describe("playedBracket", () => {
     });
 });
 
+describe("the ladder a bracket falls back to", () => {
+    it("reads the served rule when it is one of the three steps", () => {
+        expect(checkBracket(counted({ extraTurns: ["a", "b"] }), CORE)[2].kept).toBe(false);
+        expect(checkBracket(counted({ extraTurns: ["a", "b"] }), BRACKETS[3])[2].kept).toBe(true);
+    });
+
+    it("falls back to what that rung is known to ask when the rule is not", () => {
+        // What a service one release behind sends: the two three-step rules as
+        // the yes/no they used to be, and no combo rule at all. The ladder is
+        // published, so the answer is the same as above rather than a shrug.
+        const stale = (number: number) =>
+            ({
+                number,
+                slug: `b${number}`,
+                max_game_changers: number >= 4 ? null : number === 3 ? 3 : 0,
+                mass_land_denial: number >= 4,
+                extra_turns: number >= 4,
+            }) as unknown as BracketRulesResponse;
+
+        const core = checkBracket(counted({ extraTurns: ["a", "b"], combos: [["A", "B"]] }), stale(2));
+        expect(core[2]).toMatchObject({ kind: "extra-turns", kept: false, step: "limited" });
+        expect(core[3]).toMatchObject({ kind: "combos", kept: false, step: "limited" });
+
+        // cEDH seats both, which is the case that read as a fault before the
+        // ladder was known: nothing on the rung is a restriction.
+        const cedh = checkBracket(counted({ extraTurns: ["a", "b"], combos: [["A", "B"]] }), stale(5));
+        expect(cedh[2]).toMatchObject({ kind: "extra-turns", kept: true, step: "any" });
+        expect(cedh[3]).toMatchObject({ kind: "combos", kept: true, step: "any" });
+    });
+
+    it("never invents a restriction for a rung it does not know", () => {
+        const seven = {
+            number: 7,
+            slug: "b7",
+            max_game_changers: null,
+            mass_land_denial: true,
+        } as unknown as BracketRulesResponse;
+        expect(
+            checkBracket(counted({ extraTurns: ["a", "b"], combos: [["A", "B"]] }), seven).every((c) => c.kept),
+        ).toBe(true);
+    });
+
+    it("always finds a rung, so a claimed deck is never told it plays as none", () => {
+        const stale = BRACKETS.map(
+            (rules) =>
+                ({
+                    number: rules.number,
+                    slug: rules.slug,
+                    max_game_changers: rules.max_game_changers,
+                    mass_land_denial: rules.mass_land_denial,
+                    extra_turns: rules.number >= 4,
+                }) as unknown as BracketRulesResponse,
+        );
+        expect(playedBracket(counted({ extraTurns: ["a", "b"], combos: [["A", "B"]] }), stale)).toBe(4);
+    });
+});
+
+describe("detectedBracket", () => {
+    it("never claims the bracket that is a statement of intent", () => {
+        // Exhibition is a themed pile and cEDH is a tournament deck; no list
+        // of cards proves either, so detection stays between them.
+        expect(detectedBracket(counted({}), BRACKETS)).toBe(2);
+        expect(detectedBracket(counted({ massLandDenial: ["Armageddon"] }), BRACKETS)).toBe(4);
+    });
+
+    it("claims what the deck plays as in between", () => {
+        expect(detectedBracket(counted({ gameChangers: ["Rhystic Study"] }), BRACKETS)).toBe(3);
+    });
+
+    it("says nothing for a format without brackets", () => {
+        expect(detectedBracket(counted({}), [])).toBeNull();
+    });
+});
+
 describe("checkDeck against a claimed bracket's combo rule", () => {
     it("faults a combo the claimed bracket plays none of", () => {
         const combos = [["Thassa's Oracle", "Demonic Consultation"]];
         const legality = checkDeck(deckHeader(), [], formatRules(), BRACKETS[1], combos);
-        expect(legality.deck).toContainEqual({ kind: "two-card-combos", combos });
-        expect(legality.twoCardCombos).toStrictEqual(combos);
+        expect(legality.deck).toContainEqual({ kind: "combos", combos });
+        expect(legality.combos).toStrictEqual(combos);
     });
 
     it("does not fault what the claimed bracket tolerates", () => {
         const legality = checkDeck(deckHeader(), [], formatRules(), BRACKETS[2], [["A", "B"]]);
-        expect(legality.deck.some((violation) => violation.kind === "two-card-combos")).toBe(false);
+        expect(legality.deck.some((violation) => violation.kind === "combos")).toBe(false);
     });
 
     it("never faults an unanswered question", () => {
         const legality = checkDeck(deckHeader(), [], formatRules(), BRACKETS[1]);
-        expect(legality.deck.some((violation) => violation.kind === "two-card-combos")).toBe(false);
-        expect(legality.twoCardCombos).toBeNull();
+        expect(legality.deck.some((violation) => violation.kind === "combos")).toBe(false);
+        expect(legality.combos).toBeNull();
     });
 
     it("carries the answer even for a format without rules", () => {
-        expect(checkDeck(deckHeader(), [], undefined, BRACKETS[1], []).twoCardCombos).toStrictEqual([]);
+        expect(checkDeck(deckHeader(), [], undefined, BRACKETS[1], []).combos).toStrictEqual([]);
     });
 });

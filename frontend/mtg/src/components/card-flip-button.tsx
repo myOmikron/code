@@ -1,6 +1,7 @@
 import { ArrowPathRoundedSquareIcon } from "@heroicons/react/20/solid";
-import clsx from "clsx";
 import { useTranslation } from "react-i18next";
+import type { CardOverlayPosition, CardOverlaySlot } from "src/components/card-overlay-action";
+import { CardOverlayAction } from "src/components/card-overlay-action";
 
 /**
  * The properties for {@link CardFlipButton}
@@ -10,7 +11,11 @@ export type CardFlipButtonProps = {
     flipped: boolean;
     /** Turns the card over */
     onFlip: () => void;
-    /** Where the chip sits, which is the caller's business */
+    /** Which corner of the artwork it is pinned to, none by default */
+    position?: CardOverlayPosition;
+    /** Which mark down that corner it is, the outermost by default */
+    slot?: CardOverlaySlot;
+    /** Anything else the caller needs on it */
     className?: string;
     /** Whether the button lies over artwork and needs stronger separation */
     overlay?: boolean;
@@ -23,37 +28,25 @@ export type CardFlipButtonProps = {
  * the mark that tells a transform card from an ordinary one while flipping
  * through a page of them.
  *
- * It lays over the artwork but is not part of it: every view makes its artwork
- * a button that opens the card, and a button inside a button is not markup a
- * browser agrees on. The caller therefore places this as a sibling, the way it
- * places the Cardmarket link.
+ * The chip itself is {@link CardOverlayAction}, the one look every action laid
+ * on artwork wears; what this adds is the icon, the wording, and the accent
+ * fill that says the back is the side on show.
  *
  * @returns the button
  */
-export function CardFlipButton({ flipped, onFlip, className, overlay = true }: CardFlipButtonProps) {
+export function CardFlipButton({ flipped, onFlip, position, slot, className, overlay = true }: CardFlipButtonProps) {
     const [tg] = useTranslation();
-    const label = tg("button.flip-card");
 
     return (
-        <button
-            type={"button"}
-            title={label}
-            aria-label={label}
-            aria-pressed={flipped}
-            onClick={(event) => {
-                // The artwork behind it opens the card; turning it over must not
-                // do both.
-                event.stopPropagation();
-                onFlip();
-            }}
-            className={clsx(
-                "inline-flex items-center justify-center rounded-full p-1.5 text-white transition",
-                overlay && "z-10 shadow-lg ring-2 ring-white/75 backdrop-blur-sm",
-                flipped ? "bg-(--color-brand-600) hover:bg-(--color-brand-500)" : "bg-zinc-950/75 hover:bg-zinc-950",
-                className,
-            )}
-        >
-            <ArrowPathRoundedSquareIcon className={"size-5"} aria-hidden={true} />
-        </button>
+        <CardOverlayAction
+            icon={ArrowPathRoundedSquareIcon}
+            label={tg("button.flip-card")}
+            active={flipped}
+            onClick={onFlip}
+            flat={!overlay}
+            position={position}
+            slot={slot}
+            className={className}
+        />
     );
 }

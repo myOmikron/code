@@ -223,6 +223,14 @@ export function violationLabel(
             return t("label.violation-too-many", { copies: violation.copies, allowed: violation.allowed });
         case "color-identity":
             return t("label.violation-color-identity", { colors: violation.colors });
+        // The card is legal and the zone is not, so these say which zone
+        // rather than repeating that something is banned.
+        case "banned-as-commander":
+            return t("label.violation-banned-as-commander");
+        case "banned-as-partner":
+            return t("label.violation-banned-as-partner");
+        case "banned-as-companion":
+            return t("label.violation-banned-as-companion");
         case "not-legal":
         case undefined:
             return zone === "Side" ? t("label.violation-not-legal-side") : t("label.violation-not-legal");

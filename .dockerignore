@@ -2,7 +2,9 @@
 # Keep heavy or host-specific directories out of the build context.
 .git
 .idea
+.vscode
 .claude
+**/.mcp.json
 
 # Rust build artifacts (images build in-container)
 target
@@ -12,6 +14,30 @@ node_modules
 **/node_modules
 **/dist
 **/dev-dist
+**/.tanstack
+.pnpm-store
+
+# Scratch space of the openapi generator (see scripts/gen-api.sh)
+**/tmp
+
+# The scanner's working data: reference scans, embeddings, OCR corpora and checkpoints, 55 GB of
+# it. No image is built from any of it — the index and the models are baked once and shipped as
+# ghcr.io/<owner>/mtg/assets — and without this line every build hands the whole lot to the daemon
+# before reading the first instruction.
+**/.cache
+
+# Fixtures, labelled photographs and debug renders. Only the harnesses under test/ read them, and
+# no image runs a harness.
+frontend/mtg/test
+
+# Generated scanner assets. Hidden from the app build on purpose: they come from the pinned
+# assets image (see frontend/mtg/Dockerfile), and a local working copy standing in for it is what
+# let released images ship with no card index at all. Of the three only data/ and the fine-tuned
+# models are irreproducible; public/models is fetched by the build and public/tesseract rebuilt
+# from node_modules plus one download.
+frontend/mtg/public/data
+frontend/mtg/public/models
+frontend/mtg/public/tesseract
 
 # Local environment
 .env

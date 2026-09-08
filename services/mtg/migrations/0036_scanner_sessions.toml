@@ -1,0 +1,291 @@
+# Persisted scanner workspaces and the editable staging stacks inside them.
+# A session belongs to one account and may remember a collection; deleting a
+# collection only clears that preference, while deleting the account or the
+# session removes the staging data with it.
+
+[Migration]
+Hash = "17985191781836599872"
+Initial = false
+Dependency = 35
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateModel"
+Name = "scanner_session"
+
+[[Migration.Operations.Fields]]
+Name = "uuid"
+Type = "uuid"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "primary_key"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/scanner_session/db.rs"
+Line = 20
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "name"
+Type = "text"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 255
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/scanner_session/db.rs"
+Line = 22
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "color"
+Type = "text"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "default_value"
+Value = "lime"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 16
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/scanner_session/db.rs"
+Line = 25
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "icon"
+Type = "text"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "default_value"
+Value = "camera"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 32
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/scanner_session/db.rs"
+Line = 28
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "created_at"
+Type = "datetime"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "auto_create_time"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/scanner_session/db.rs"
+Line = 37
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateModel"
+Name = "scanner_session_entry"
+
+[[Migration.Operations.Fields]]
+Name = "uuid"
+Type = "uuid"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "primary_key"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/scanner_session/db.rs"
+Line = 64
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "printing"
+Type = "uuid"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/scanner_session/db.rs"
+Line = 74
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "quantity"
+Type = "int32"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/scanner_session/db.rs"
+Line = 76
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "finish"
+Type = "text"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 255
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/scanner_session/db.rs"
+Line = 78
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "signed"
+Type = "boolean"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "default_value"
+Value = false
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/scanner_session/db.rs"
+Line = 81
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "purchase_price_cents"
+Type = "int64"
+Annotations = []
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/scanner_session/db.rs"
+Line = 83
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "created_at"
+Type = "datetime"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "auto_create_time"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/scanner_session/db.rs"
+Line = 86
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "scanner_session_entry"
+
+[Migration.Operations.Field]
+Name = "scanner_session"
+Type = "uuid"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "foreign_key"
+
+[Migration.Operations.Field.Annotations.Value]
+TableName = "scanner_session"
+ColumnName = "uuid"
+OnDelete = "Cascade"
+OnUpdate = "Cascade"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/scanner_session/db.rs"
+Line = 71
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "scanner_session"
+
+[Migration.Operations.Field]
+Name = "collection"
+Type = "uuid"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "foreign_key"
+
+[Migration.Operations.Field.Annotations.Value]
+TableName = "collection"
+ColumnName = "uuid"
+OnDelete = "SetNull"
+OnUpdate = "Cascade"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/scanner_session/db.rs"
+Line = 31
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "scanner_session"
+
+[Migration.Operations.Field]
+Name = "owner"
+Type = "uuid"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "foreign_key"
+
+[Migration.Operations.Field.Annotations.Value]
+TableName = "account"
+ColumnName = "uuid"
+OnDelete = "Cascade"
+OnUpdate = "Cascade"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/scanner_session/db.rs"
+Line = 34
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateIndex"
+Model = "scanner_session"
+
+[Migration.Operations.Index]
+Columns = ["owner"]
+
+[[Migration.Operations]]
+Type = "CreateIndex"
+Model = "scanner_session_entry"
+
+[Migration.Operations.Index]
+Name = "scanner_session_uuid"
+Columns = [
+    "scanner_session",
+    "uuid",
+]
+
+[[Migration.Operations]]
+Type = "CreateIndex"
+Model = "scanner_session_entry"
+
+[Migration.Operations.Index]
+Columns = ["printing"]

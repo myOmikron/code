@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import time
 from types import SimpleNamespace
@@ -15,6 +16,8 @@ from deck_lab.edhrec import (
     _cache_path,
     _theme_cache_path,
     is_tombstoned,
+    load_bracket_counts,
+    parse_bracket_counts,
     parse_curve,
     parse_recommendations,
     parse_taglinks,
@@ -192,6 +195,42 @@ def test_taglinks_missing_panel_is_empty_not_an_error():
     assert parse_taglinks({}) == []
 
 
+# --- bracket counts ---------------------------------------------------------
+# `bracket_counts["5"]` is the sample size behind a commander's `/cedh`
+# subpage (CEDH-PLAN.md's finding, verified on five real commanders) — the
+# gate `resolve_type_targets`'s tier 0 uses to decide whether that subpage is
+# trustworthy enough to condition on.
+
+
+def test_bracket_counts_reads_the_top_level_panel():
+    payload = {"bracket_counts": {"1": 12, "2": 340, "3": 1204, "4": 980, "5": 156}}
+
+    assert parse_bracket_counts(payload) == {1: 12, 2: 340, 3: 1204, 4: 980, 5: 156}
+
+
+def test_bracket_counts_missing_panel_is_empty_not_an_error():
+    assert parse_bracket_counts({}) == {}
+
+
+def test_bracket_counts_tolerates_junk_values():
+    """A schema move loses this one signal, not the page — a non-numeric key
+    or value is dropped rather than raising."""
+    payload = {
+        "bracket_counts": {
+            "5": 156,
+            "not-a-bracket": 40,
+            "3": "not-a-count",
+            "4": None,
+        }
+    }
+
+    assert parse_bracket_counts(payload) == {5: 156}
+
+
+def test_bracket_counts_non_dict_panel_is_empty():
+    assert parse_bracket_counts({"bracket_counts": "not a dict"}) == {}
+
+
 def test_curve_folds_the_tail_into_six_plus():
     """EDHREC keys run to '12'; our buckets treat 6 as '6 or more'."""
     curve = parse_curve({"panels": {"mana_curve": {"1": 4, "6": 6, "7": 5, "12": 1}}})
@@ -299,6 +338,26 @@ def test_a_later_200_removes_the_tombstone_and_caches_normally(stubbed_edhrec):
     assert edhrec._cache_path("comes-back").exists()
 
 
+# --- load_bracket_counts -----------------------------------------------------
+# Disk-only, mirroring `load_type_counts`'s no-`theme_slug` branch: the bare
+# diagnostics endpoint must stay off the network.
+
+
+def test_load_bracket_counts_reads_the_cached_page(tmp_path, monkeypatch):
+    monkeypatch.setattr("deck_lab.edhrec.settings.data_dir", tmp_path)
+    path = _cache_path(slugify("Najeela, the Blade-Blossom"))
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({"bracket_counts": {"5": 1258}}))
+
+    assert load_bracket_counts("Najeela, the Blade-Blossom") == {5: 1258}
+
+
+def test_load_bracket_counts_is_empty_for_an_uncached_commander(tmp_path, monkeypatch):
+    monkeypatch.setattr("deck_lab.edhrec.settings.data_dir", tmp_path)
+
+    assert load_bracket_counts("Never Fetched") == {}
+
+
 # --- is_tombstoned ----------------------------------------------------------
 # Distinct from "cold": a commander nobody has asked EDHREC about yet has no
 # tombstone at all, and that difference is what lets `suggest()` (Task 12)
@@ -337,10 +396,30 @@ def test_is_tombstoned_is_false_once_the_tombstone_goes_stale(tmp_path, monkeypa
 
 @pytest.fixture
 def warm(monkeypatch):
-    """Drive `warm_top_commanders` against fakes, recording sleeps and fetches."""
-    from deck_lab import edhrec, graph
+    """Drive `warm_top_commanders` against fakes, recording sleeps and fetches.
 
-    state = {"sleeps": [], "ingested": [], "cached": set(), "in_graph": set(), "raises": set()}
+    Also wires the optional cEDH pass (`cedh=True`): `bracket5` controls what
+    `load_bracket_counts` reports for a name (default 0, i.e. below the
+    floor — a test that wants the pass to fire must opt a name in), and the
+    `cedh_*` state mirrors the base pass's `cached`/`in_graph`/`raises` sets
+    one-for-one so its tests read the same way.
+    """
+    from deck_lab import edhrec, graph
+    from deck_lab.type_targets import CEDH_MIN_DECKS
+
+    state = {
+        "sleeps": [],
+        "ingested": [],
+        "cached": set(),
+        "in_graph": set(),
+        "raises": set(),
+        "bracket5": {},
+        "cedh_ingested": [],
+        "cedh_cached": set(),
+        "cedh_in_graph": set(),
+        "cedh_raises": set(),
+        "min_decks": CEDH_MIN_DECKS,
+    }
 
     def fake_ingest(name: str, *, force: bool = False) -> dict[str, int]:
         state["ingested"].append(name)
@@ -348,10 +427,24 @@ def warm(monkeypatch):
             raise RuntimeError("edhrec exploded")
         return {"fetched": 0 if name.startswith("no-page") else 200, "linked": 1}
 
+    def fake_ingest_cedh(name: str, *, force: bool = False) -> dict[str, int]:
+        state["cedh_ingested"].append(name)
+        if name in state["cedh_raises"]:
+            raise RuntimeError("edhrec cedh exploded")
+        return {"fetched": 0 if name.startswith("no-cedh-page") else 150, "linked": 1}
+
     monkeypatch.setattr(edhrec, "ingest_commander", fake_ingest)
+    monkeypatch.setattr(edhrec, "ingest_commander_cedh", fake_ingest_cedh)
     monkeypatch.setattr(edhrec, "is_cached", lambda name: name in state["cached"])
+    monkeypatch.setattr(edhrec, "_theme_cached", lambda slug, tag: slug in state["cedh_cached"])
+    monkeypatch.setattr(
+        edhrec, "load_bracket_counts", lambda name: {5: state["bracket5"].get(name, 0)}
+    )
     monkeypatch.setattr(edhrec.time, "sleep", lambda s: state["sleeps"].append(s))
     monkeypatch.setattr(graph, "has_recommendations", lambda oid: oid in state["in_graph"])
+    monkeypatch.setattr(
+        graph, "has_recommendations_cedh", lambda oid: oid in state["cedh_in_graph"]
+    )
 
     def run(names: list[str], **kwargs) -> dict[str, int]:
         rows = [{"oracle_id": f"oid-{n}", "name": n} for n in names]
@@ -414,3 +507,83 @@ def test_warm_survives_a_failing_commander(warm):
     assert counts["failed"] == 1
     assert counts["fetched"] == 1  # the walk continued
     assert warm["sleeps"] == [1.0, 1.0]  # and a failure is still throttled
+
+
+# --- the optional cEDH pass -------------------------------------------------
+# `cedh=True` adds `_warm_cedh_pass` after the base pass for each commander,
+# gated on the same `bracket_counts["5"] >= CEDH_MIN_DECKS` floor `suggest()`
+# and `resolve_type_targets` use — EDHREC serves a `/cedh` page for every
+# commander, including ones with no real cEDH presence.
+
+
+def test_warm_cedh_pass_is_off_by_default(warm):
+    """`cedh=False` (the default) must read exactly as it did before the
+    parameter existed — same six keys, no cEDH network activity at all."""
+    warm["bracket5"]["Atraxa"] = 5_000  # would clear the floor if asked
+
+    counts = warm["run"](["Atraxa"])
+
+    assert counts == {
+        "considered": 1,
+        "fetched": 1,
+        "from_disk": 0,
+        "skipped": 0,
+        "no_page": 0,
+        "failed": 0,
+    }
+    assert warm["cedh_ingested"] == []
+
+
+def test_warm_cedh_fetches_commanders_above_the_floor(warm):
+    warm["bracket5"]["Atraxa"] = warm["min_decks"]  # exactly at the floor: clears it
+
+    counts = warm["run"](["Atraxa"], cedh=True)
+
+    assert counts["cedh_fetched"] == 1
+    assert counts["cedh_below_floor"] == 0
+    assert warm["cedh_ingested"] == ["Atraxa"]
+
+
+def test_warm_cedh_skips_commanders_below_the_floor(warm):
+    """EDHREC serves a `/cedh` page for every commander, including ones with
+    no real cEDH presence — the floor exists so the walk does not spend its
+    budget fetching noise for an obscure or joke commander."""
+    warm["bracket5"]["Atraxa"] = warm["min_decks"] - 1
+
+    counts = warm["run"](["Atraxa"], cedh=True)
+
+    assert counts["cedh_below_floor"] == 1
+    assert counts["cedh_fetched"] == 0
+    assert warm["cedh_ingested"] == []
+
+
+def test_warm_cedh_skips_commanders_already_cached_and_linked(warm):
+    warm["bracket5"]["Atraxa"] = warm["min_decks"]
+    warm["cedh_cached"].add("atraxa")  # _theme_cached is keyed on the slug
+    warm["cedh_in_graph"].add("oid-Atraxa")
+
+    counts = warm["run"](["Atraxa"], cedh=True)
+
+    assert counts["cedh_skipped"] == 1
+    assert counts["cedh_fetched"] == 0
+    assert warm["cedh_ingested"] == []
+
+
+def test_warm_cedh_counts_a_commander_with_no_cedh_page(warm):
+    warm["bracket5"]["no-cedh-page-Bob"] = warm["min_decks"]
+
+    counts = warm["run"](["no-cedh-page-Bob"], cedh=True)
+
+    assert counts["cedh_no_page"] == 1
+    assert counts["cedh_fetched"] == 0
+
+
+def test_warm_cedh_survives_a_failing_commander(warm):
+    warm["bracket5"]["Krenko"] = warm["min_decks"]
+    warm["bracket5"]["Atraxa"] = warm["min_decks"]
+    warm["cedh_raises"].add("Krenko")
+
+    counts = warm["run"](["Krenko", "Atraxa"], cedh=True)
+
+    assert counts["cedh_failed"] == 1
+    assert counts["cedh_fetched"] == 1  # the walk continued

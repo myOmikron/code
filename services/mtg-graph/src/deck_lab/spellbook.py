@@ -273,8 +273,17 @@ def parse_variant(entry: dict) -> dict | None:
     would report combos closer to completion than they are — or any piece
     without an oracleId to join on.
 
-    Piece quantity is deliberately ignored: deck identity is a card *set*
-    here, exactly as in `_cache_path` and `_parse_combos`.
+    The row's overall `uses`/`names`/`pieces` keep their original meaning
+    (deck identity is a card *set*, and piece quantity does not change
+    whether a combo is "in the deck"). `pieces_detail` is the new, parallel
+    per-piece structure the line engine (`lines.py`) needs: `zoneLocations`,
+    `mustBeCommander` and `quantity` verbatim off the bulk export, keyed by
+    `oracle_id` so `UPSERT_COMBOS` can set them on each `USES` edge without
+    re-deriving anything. Combo-level cost/colour/prerequisite fields
+    (`manaNeeded`, `manaValueNeeded`, `identity`, `easyPrerequisites`,
+    `notablePrerequisites`) are taken as-is; the export's own default for "no
+    prerequisite" is an empty string, never absent, but `or ""` guards the
+    rare row that omits the key entirely.
     """
     if entry.get("status") != "OK":
         return None
@@ -285,6 +294,7 @@ def parse_variant(entry: dict) -> dict | None:
 
     uses: list[str] = []
     names: list[str] = []
+    pieces_detail: list[dict] = []
     for use in entry.get("uses") or []:
         card = use.get("card") or {}
         oracle_id = card.get("oracleId")
@@ -292,6 +302,14 @@ def parse_variant(entry: dict) -> dict | None:
             return None
         uses.append(oracle_id)
         names.append(card.get("name", ""))
+        pieces_detail.append(
+            {
+                "oracle_id": oracle_id,
+                "zones": list(use.get("zoneLocations") or []),
+                "must_be_commander": bool(use.get("mustBeCommander", False)),
+                "quantity": int(use.get("quantity") or 1),
+            }
+        )
     if not uses:
         return None
 
@@ -307,6 +325,12 @@ def parse_variant(entry: dict) -> dict | None:
         "bracket": entry.get("bracketTag") or "",
         "popularity": int(entry.get("popularity") or 0),
         "pieces": len(uses),
+        "pieces_detail": pieces_detail,
+        "mana_needed": entry.get("manaNeeded") or "",
+        "mana_value_needed": int(entry.get("manaValueNeeded") or 0),
+        "identity": entry.get("identity") or "",
+        "prereq_easy": entry.get("easyPrerequisites") or "",
+        "prereq_notable": entry.get("notablePrerequisites") or "",
     }
 
 

@@ -24,7 +24,9 @@ import type {
   CredentialResetSchema,
   DashboardStatsSchema,
   DomainSchema,
+  ExtendInviteRequest,
   FormResultForClubUuidAndCreateClubError,
+  FormResultForNullAndExtendInviteExpiryError,
   FormResultForSingleLinkAndCreateInviteError,
   GetInvite,
   OidcProvider,
@@ -57,6 +59,11 @@ export interface DeleteClubRequest {
 
 export interface DeleteClubAdminRequest {
     uuid: string;
+}
+
+export interface ExtendInviteExpiryRequest {
+    uuid: string;
+    ExtendInviteRequest?: ExtendInviteRequest;
 }
 
 export interface GetClubRequest {
@@ -287,6 +294,40 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async deleteClubAdmin(requestParameters: DeleteClubAdminRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
         await this.deleteClubAdminRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     */
+    async extendInviteExpiryRaw(requestParameters: ExtendInviteExpiryRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FormResultForNullAndExtendInviteExpiryError>> {
+        if (requestParameters['uuid'] == null) {
+            throw new runtime.RequiredError(
+                'uuid',
+                'Required parameter "uuid" was null or undefined when calling extendInviteExpiry().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        const response = await this.request({
+            path: `/api/v1/frontend/admin/invites/{uuid}/extend-expiry`.replace(`{${"uuid"}}`, encodeURIComponent(String(requestParameters['uuid']))),
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['ExtendInviteRequest'],
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     */
+    async extendInviteExpiry(requestParameters: ExtendInviteExpiryRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FormResultForNullAndExtendInviteExpiryError> {
+        const response = await this.extendInviteExpiryRaw(requestParameters, initOverrides);
+        return await response.value();
     }
 
     /**

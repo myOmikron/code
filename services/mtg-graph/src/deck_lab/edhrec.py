@@ -157,6 +157,14 @@ THEME_TAG_SLUGS: dict[str, str] = {
     "extra_turns": "extra-turns",
 }
 
+# EDHREC serves a real subpage at `pages/commanders/<slug>/cedh.json` for
+# every commander, but `cedh` never appears in `panels.taglinks` — zero hits
+# across all 670 cached pages — so it cannot join `THEME_TAG_SLUGS` above,
+# whose every entry is verified against a real taglink. `resolve_type_targets`
+# gates this subpage on `bracket_counts["5"]` instead: the deck's own claim
+# to bracket 5, not a tag count on the commander's page.
+CEDH_TAG_SLUG = "cedh"
+
 
 @dataclass(frozen=True, slots=True)
 class TypeCounts:
@@ -377,6 +385,30 @@ def parse_taglinks(payload: dict) -> list[TagLink]:
     return out
 
 
+def parse_bracket_counts(payload: dict) -> dict[int, int]:
+    """Deck counts per power bracket (1-5), from the page's top-level
+    `bracket_counts` field.
+
+    Tolerant like `parse_recommendations`: a missing panel, or an entry
+    that fails to parse, means EDHREC changed something — a schema move
+    here must lose this one signal, not the whole page. `{}` covers both
+    "the panel is absent" and "every entry was junk".
+    """
+    raw = payload.get("bracket_counts")
+    if not isinstance(raw, dict):
+        return {}
+
+    out: dict[int, int] = {}
+    for key, value in raw.items():
+        try:
+            out[int(key)] = int(value)
+        # PEP 758 (3.14): unparenthesized multi-except, tuple semantics —
+        # not Python 2's name binding. Ruff's formatter owns this form.
+        except TypeError, ValueError:
+            continue
+    return out
+
+
 def parse_curve(payload: dict) -> dict[int, float] | None:
     """The page's average mana curve, folded into the 0-6+ buckets.
 
@@ -404,6 +436,16 @@ def _theme_cache_path(slug: str, tag_slug: str) -> Path:
     # A subdirectory per commander, so theme subpages never collide with the
     # flat `<slug>.json` commander pages beside them.
     return settings.data_dir / "edhrec" / slug / f"{tag_slug}.json"
+
+
+def _theme_cached(slug: str, tag_slug: str) -> bool:
+    """`is_cached`'s freshness check, pointed at a theme/cedh subpage instead
+    of the flat commander page — used by the warm walk below to decide
+    whether fetching a subpage would touch the network."""
+    path = _theme_cache_path(slug, tag_slug)
+    if not path.exists():
+        return False
+    return (time.time() - path.stat().st_mtime) < CACHE_TTL_SECONDS
 
 
 def fetch_commander_theme(slug: str, tag_slug: str, *, force: bool = False) -> dict | None:
@@ -464,29 +506,30 @@ def fetch_commander_theme(slug: str, tag_slug: str, *, force: bool = False) -> d
 # Parsed pages memoised on (path, mtime): a dict lookup per request after the
 # first, and a forced refetch rewrites the file, changing the mtime, so the
 # memo inherits the cache's TTL discipline without its own clock.
-_PARSE_MEMO: dict[str, tuple[float, TypeCounts | None, tuple[TagLink, ...]]] = {}
+_PARSE_MEMO: dict[str, tuple[float, TypeCounts | None, tuple[TagLink, ...], dict[int, int]]] = {}
 
 
-def _parsed_page(path: Path) -> tuple[TypeCounts | None, list[TagLink]]:
+def _parsed_page(path: Path) -> tuple[TypeCounts | None, list[TagLink], dict[int, int]]:
     if not path.exists():
-        return None, []
+        return None, [], {}
 
     mtime = path.stat().st_mtime
     cached = _PARSE_MEMO.get(str(path))
     if cached is not None and cached[0] == mtime:
-        return cached[1], list(cached[2])
+        return cached[1], list(cached[2]), dict(cached[3])
 
     try:
         payload = json.loads(path.read_text())
     # PEP 758 multi-except — see parse_curve.
     except OSError, json.JSONDecodeError:
         log.warning("edhrec.unreadable_cache", path=str(path))
-        return None, []
+        return None, [], {}
 
     counts = parse_type_counts(payload)
     taglinks = parse_taglinks(payload)
-    _PARSE_MEMO[str(path)] = (mtime, counts, tuple(taglinks))
-    return counts, taglinks
+    brackets = parse_bracket_counts(payload)
+    _PARSE_MEMO[str(path)] = (mtime, counts, tuple(taglinks), brackets)
+    return counts, taglinks, brackets
 
 
 def load_type_counts(
@@ -506,10 +549,10 @@ def load_type_counts(
     which the caller uses to decide whether the subpage was worth asking for.
     """
     slug = slugify(name)
-    _, taglinks = _parsed_page(_cache_path(slug))
+    _, taglinks, _ = _parsed_page(_cache_path(slug))
 
     if theme_slug is None:
-        counts, _ = _parsed_page(_cache_path(slug))
+        counts, _, _ = _parsed_page(_cache_path(slug))
         return counts, taglinks
 
     if allow_fetch:
@@ -518,8 +561,21 @@ def load_type_counts(
         except Exception as exc:  # noqa: BLE001 — unofficial API, must not break diagnostics
             log.warning("edhrec.theme_fetch_failed", slug=f"{slug}/{theme_slug}", error=str(exc))
 
-    counts, _ = _parsed_page(_theme_cache_path(slug, theme_slug))
+    counts, _, _ = _parsed_page(_theme_cache_path(slug, theme_slug))
     return counts, taglinks
+
+
+def load_bracket_counts(name: str) -> dict[int, int]:
+    """This commander's own `bracket_counts` panel, read from disk only.
+
+    Mirrors `load_type_counts`'s no-`theme_slug` branch, for the same
+    reason: the bare diagnostics endpoint must stay off the network, so a
+    cold commander simply reads as "no counts" rather than triggering a
+    fetch. There is no theme-subpage variant — `bracket_counts` is a
+    property of the commander, not of a tag pairing.
+    """
+    _, _, brackets = _parsed_page(_cache_path(slugify(name)))
+    return brackets
 
 
 def load_commander(name: str, *, force: bool = False) -> list[Recommendation]:
@@ -549,7 +605,99 @@ def ingest_commander(name: str, *, force: bool = False) -> dict[str, int]:
     return {"fetched": len(recommendations), "linked": linked}
 
 
-def warm_top_commanders(top: int = 1000, *, delay_seconds: float = 1.0) -> dict[str, int]:
+def load_commander_cedh(name: str, *, force: bool = False) -> list[Recommendation]:
+    """Name -> recommendations from the commander's `/cedh` subpage.
+
+    `load_commander`'s discipline, copied, reading the subpage instead of
+    the flat page: `parse_recommendations` needs no change because the
+    `/cedh` page's `cardlists` share the base page's exact shape (verified
+    on Najeela: 224 cardviews across 12 lists). Empty list when EDHREC has
+    no `/cedh` page for this commander — ordinary, not an error, same as
+    `load_commander`'s empty case.
+    """
+    payload = fetch_commander_theme(slugify(name), CEDH_TAG_SLUG, force=force)
+    if payload is None:
+        return []
+
+    recommendations = parse_recommendations(payload)
+    if not recommendations:
+        # Reachable but empty means the schema moved — loud, not silent.
+        log.warning("edhrec.cedh_empty", name=name, slug=slugify(name))
+
+    return recommendations
+
+
+def ingest_commander_cedh(name: str, *, force: bool = False) -> dict[str, int]:
+    """Fetch a commander's `/cedh` subpage and persist RECOMMENDS_CEDH edges.
+
+    `ingest_commander`'s shape, copied, writing through the separate
+    relationship type `upsert_recommendations(..., cedh=True)` selects (see
+    `graph.UPSERT_RECOMMENDATIONS_CEDH` for why it is a relationship type
+    and not a property). This function does not decide *whether* a
+    commander's cEDH page is trustworthy enough to fetch — that gate
+    (`is_cedh(speed)` and `bracket_counts["5"]` clearing
+    `type_targets.CEDH_MIN_DECKS`) lives in the caller, because EDHREC
+    serves a `/cedh` page for every commander including ones with no real
+    cEDH presence.
+    """
+    from .graph import upsert_recommendations
+
+    recommendations = load_commander_cedh(name, force=force)
+    if not recommendations:
+        return {"fetched": 0, "linked": 0}
+
+    linked = upsert_recommendations(name, recommendations, cedh=True)
+    log.info("edhrec.cedh_ingested", commander=name, fetched=len(recommendations), linked=linked)
+    return {"fetched": len(recommendations), "linked": linked}
+
+
+def _warm_cedh_pass(
+    name: str, oracle_id: str, counts: dict[str, int], delay_seconds: float, min_decks: int
+) -> None:
+    """One commander's optional `/cedh` sub-pass for `warm_top_commanders`.
+
+    Split out of the main loop for readability; mirrors the base pass's
+    cache-first, sleep-after-network-only, one-bad-commander discipline
+    exactly, pointed at the subpage instead of the flat page. Gated on the
+    commander's own `bracket_counts["5"]` — read from the base page the
+    outer loop just warmed — clearing `min_decks`, the same floor
+    `suggest()` and `resolve_type_targets` use: EDHREC serves a `/cedh`
+    page for every commander, including ones with no real cEDH presence, so
+    warming it unconditionally would spend the walk's budget on noise.
+    """
+    from .graph import has_recommendations_cedh
+
+    bracket_decks = load_bracket_counts(name).get(5, 0)
+    if bracket_decks < min_decks:
+        counts["cedh_below_floor"] += 1
+        return
+
+    slug = slugify(name)
+    if _theme_cached(slug, CEDH_TAG_SLUG) and has_recommendations_cedh(oracle_id):
+        counts["cedh_skipped"] += 1
+        return
+
+    network = not _theme_cached(slug, CEDH_TAG_SLUG)
+    try:
+        result = ingest_commander_cedh(name)
+    except Exception as exc:  # noqa: BLE001 — one bad commander must not end the walk
+        counts["cedh_failed"] += 1
+        log.warning("edhrec.warm_cedh_failed", commander=name, error=str(exc))
+    else:
+        if result["fetched"] == 0:
+            counts["cedh_no_page"] += 1
+        elif network:
+            counts["cedh_fetched"] += 1
+        else:
+            counts["cedh_from_disk"] += 1
+
+    if network:
+        time.sleep(delay_seconds)
+
+
+def warm_top_commanders(
+    top: int = 1000, *, delay_seconds: float = 1.0, cedh: bool = False
+) -> dict[str, int]:
     """Pre-fetch the most-played commanders so users never pay the first fetch.
 
     The lazy path is correct but lands its cost on whoever picks a cold
@@ -560,8 +708,16 @@ def warm_top_commanders(top: int = 1000, *, delay_seconds: float = 1.0) -> dict[
     access in the codebase: one second between *network* fetches, applied after
     failures too, since an error is no reason to hurry. Commanders already on
     disk cost nothing and are not slept on.
+
+    `cedh=True` adds a second, gated pass per commander (`_warm_cedh_pass`):
+    once the base page is warm, its own `bracket_counts["5"]` decides
+    whether the `/cedh` subpage is worth a request at all. Counted under
+    separate `cedh_*` keys, present in the returned dict only when
+    `cedh=True` — so a caller not asking for the cedh pass still sees
+    exactly today's six keys.
     """
     from .graph import has_recommendations, top_commanders
+    from .type_targets import CEDH_MIN_DECKS
 
     counts = {
         "considered": 0,
@@ -571,33 +727,45 @@ def warm_top_commanders(top: int = 1000, *, delay_seconds: float = 1.0) -> dict[
         "no_page": 0,
         "failed": 0,
     }
+    if cedh:
+        counts.update(
+            cedh_fetched=0,
+            cedh_from_disk=0,
+            cedh_skipped=0,
+            cedh_below_floor=0,
+            cedh_no_page=0,
+            cedh_failed=0,
+        )
 
     for row in top_commanders(top):
         name = row["name"]
+        oracle_id = row["oracle_id"]
         counts["considered"] += 1
 
         # Disk alone is not enough: a warm cache over a re-ingested graph still
         # needs its edges rewritten, and re-parsing from disk costs no requests.
-        if is_cached(name) and has_recommendations(row["oracle_id"]):
+        if is_cached(name) and has_recommendations(oracle_id):
             counts["skipped"] += 1
-            continue
-
-        network = not is_cached(name)
-        try:
-            result = ingest_commander(name)
-        except Exception as exc:  # noqa: BLE001 — one bad commander must not end the walk
-            counts["failed"] += 1
-            log.warning("edhrec.warm_failed", commander=name, error=str(exc))
         else:
-            if result["fetched"] == 0:
-                counts["no_page"] += 1
-            elif network:
-                counts["fetched"] += 1
+            network = not is_cached(name)
+            try:
+                result = ingest_commander(name)
+            except Exception as exc:  # noqa: BLE001 — one bad commander must not end the walk
+                counts["failed"] += 1
+                log.warning("edhrec.warm_failed", commander=name, error=str(exc))
             else:
-                counts["from_disk"] += 1
+                if result["fetched"] == 0:
+                    counts["no_page"] += 1
+                elif network:
+                    counts["fetched"] += 1
+                else:
+                    counts["from_disk"] += 1
 
-        if network:
-            time.sleep(delay_seconds)
+            if network:
+                time.sleep(delay_seconds)
+
+        if cedh:
+            _warm_cedh_pass(name, oracle_id, counts, delay_seconds, CEDH_MIN_DECKS)
 
     log.info("edhrec.warmed", **counts)
     return counts

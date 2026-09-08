@@ -8,6 +8,11 @@
 //! put its slug into `TRACKED_FORMATS`, run `sync-catalog` so every printing
 //! gets its `legal_formats` rewritten, and only then add a row here. A format
 //! listed here but missing from the catalog reads as "no card is legal".
+//!
+//! One format's legality is not Scryfall's to report — see
+//! [`archon`](crate::utils::archon), which the sync derives it from and which
+//! also carries the bans this table has no room for: the ones that apply to a
+//! zone rather than to a deck.
 
 use galvyn::core::re_exports::schemars;
 use galvyn::core::re_exports::schemars::JsonSchema;
@@ -83,7 +88,7 @@ pub struct FormatRules {
 /// The singleton formats lead, because their shapes differ from one another;
 /// everything after them is the ordinary sixty card deck with a fifteen card
 /// sideboard, which is what the rest of constructed Magic is.
-pub const FORMAT_RULES: [FormatRules; 23] = [
+pub const FORMAT_RULES: [FormatRules; 24] = [
     FormatRules {
         slug: "commander",
         deck_size: DeckSize::Exactly { cards: 100 },
@@ -98,6 +103,20 @@ pub const FORMAT_RULES: [FormatRules; 23] = [
         deck_size: DeckSize::Exactly { cards: 100 },
         max_copies: 1,
         commander: CommanderRule::Required { min: 1, max: 2 },
+        sideboard: 0,
+        color_identity_locked: true,
+        has_brackets: false,
+    },
+    FormatRules {
+        slug: "archon",
+        // A hundred *at least*, unlike every other commander format: Archon
+        // drops rule 903.5a and sets no ceiling at all.
+        deck_size: DeckSize::AtLeast { cards: 100 },
+        max_copies: 1,
+        commander: CommanderRule::Required { min: 1, max: 2 },
+        // Archon does have a sideboard, of exactly one card, and that card has
+        // to be the companion. The companion has a zone of its own here and is
+        // counted there, which leaves nothing this number could permit.
         sideboard: 0,
         color_identity_locked: true,
         has_brackets: false,
@@ -306,14 +325,51 @@ pub fn has_brackets(slug: &str) -> bool {
     rules_for(slug).is_some_and(|rules| rules.has_brackets)
 }
 
+/// How much extra-turn play a bracket tolerates
+///
+/// Three values rather than a yes/no, because the published rule is not one:
+/// Exhibition plays no extra turns at all, Core and Upgraded ask only that
+/// they are not *chained*, and the top two ask nothing. A single Time Warp is
+/// a legal Core card, so a boolean here could only be wrong in one direction
+/// or the other.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "kebab-case")]
+pub enum ExtraTurnRule {
+    /// No extra turns at all
+    None,
+    /// Extra turns, as long as the deck cannot take them back to back
+    NoChaining,
+    /// No limit
+    Any,
+}
+
+/// How much combo play a bracket tolerates
+///
+/// Same three-step shape as [`ExtraTurnRule`] and for the same reason: the
+/// rule Exhibition states ("no intentional infinite combos") is stricter than
+/// the one Core states ("none of two cards"), so a deck holding a three card
+/// line sits in Core rather than in Exhibition. Upgraded's published rule is
+/// about how *early* a two card combo goes off, which nothing here can read,
+/// so it tolerates them outright — the same judgement call the table makes.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "kebab-case")]
+pub enum ComboRule {
+    /// No complete combo of any length
+    None,
+    /// Combos, as long as none of them is two cards
+    NoTwoCard,
+    /// No limit
+    Any,
+}
+
 /// What a Commander bracket asks of a deck
 ///
-/// Wizards' five brackets, from a themed pile to a tournament deck. Only one of
-/// their conditions can be checked against the catalog — how many Game Changers
-/// the deck plays, since that list is curated and Scryfall carries the flag.
-/// Mass land denial, chained extra turns, tutor density and how early a two
-/// card combo goes off are judgements about how a deck *plays*, so they are put
-/// to the builder as a checklist rather than guessed at.
+/// Wizards' five brackets, from a themed pile to a tournament deck. Four of
+/// their conditions are read against the deck: Game Changers from Scryfall's
+/// curated flag, mass land denial and extra turns from the catalog flags
+/// derived in [`crate::utils::bracket_flags`], and complete combos from the
+/// graph advisor. Tutor density and how early a combo goes off remain
+/// judgements about how a deck *plays*, so they stay with the builder.
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct BracketRules {
     /// Which bracket, one to five
@@ -326,15 +382,13 @@ pub struct BracketRules {
     ///
     /// Read as "is it allowed", which is what the values below say: bracket 1
     /// holds `false` because it plays none. The wording matters — the
-    /// legality band warns on `false`, so a reader who inverted these would
+    /// legality band warns on `false`, so a reader who inverted this would
     /// silently invert every warning.
     pub mass_land_denial: bool,
-    /// Whether the bracket permits chained extra turns, read like
-    /// [`Self::mass_land_denial`]
-    pub extra_turns: bool,
-    /// Whether the bracket permits two card infinite combos, read like
-    /// [`Self::mass_land_denial`]
-    pub two_card_combos: bool,
+    /// How much extra-turn play the bracket tolerates
+    pub extra_turns: ExtraTurnRule,
+    /// How much combo play the bracket tolerates
+    pub combos: ComboRule,
 }
 
 /// The five Commander brackets
@@ -344,40 +398,40 @@ pub const BRACKETS: [BracketRules; 5] = [
         slug: "exhibition",
         max_game_changers: Some(0),
         mass_land_denial: false,
-        extra_turns: false,
-        two_card_combos: false,
+        extra_turns: ExtraTurnRule::None,
+        combos: ComboRule::None,
     },
     BracketRules {
         number: 2,
         slug: "core",
         max_game_changers: Some(0),
         mass_land_denial: false,
-        extra_turns: false,
-        two_card_combos: false,
+        extra_turns: ExtraTurnRule::NoChaining,
+        combos: ComboRule::NoTwoCard,
     },
     BracketRules {
         number: 3,
         slug: "upgraded",
         max_game_changers: Some(3),
         mass_land_denial: false,
-        extra_turns: false,
-        two_card_combos: true,
+        extra_turns: ExtraTurnRule::NoChaining,
+        combos: ComboRule::Any,
     },
     BracketRules {
         number: 4,
         slug: "optimized",
         max_game_changers: None,
         mass_land_denial: true,
-        extra_turns: true,
-        two_card_combos: true,
+        extra_turns: ExtraTurnRule::Any,
+        combos: ComboRule::Any,
     },
     BracketRules {
         number: 5,
         slug: "cedh",
         max_game_changers: None,
         mass_land_denial: true,
-        extra_turns: true,
-        two_card_combos: true,
+        extra_turns: ExtraTurnRule::Any,
+        combos: ComboRule::Any,
     },
 ];
 
@@ -419,6 +473,21 @@ mod tests {
         assert!(bracket(6).is_none());
     }
 
+    /// The two rules that are not yes/no, at the rungs where they differ —
+    /// a Core deck may play an extra turn and a three card combo, and that is
+    /// the whole point of spelling them out in three steps.
+    #[test]
+    fn core_tolerates_what_exhibition_does_not() {
+        let exhibition = bracket(1).expect("one");
+        let core = bracket(2).expect("two");
+        assert_eq!(exhibition.extra_turns, ExtraTurnRule::None);
+        assert_eq!(exhibition.combos, ComboRule::None);
+        assert_eq!(core.extra_turns, ExtraTurnRule::NoChaining);
+        assert_eq!(core.combos, ComboRule::NoTwoCard);
+        assert_eq!(bracket(3).expect("three").combos, ComboRule::Any);
+        assert_eq!(bracket(4).expect("four").extra_turns, ExtraTurnRule::Any);
+    }
+
     #[test]
     fn only_commander_claims_a_bracket() {
         assert!(has_brackets("commander"));
@@ -429,7 +498,7 @@ mod tests {
 
     #[test]
     fn unknown_slug_has_no_rules() {
-        assert!(rules_for("archon").is_none());
+        assert!(rules_for("canadian-highlander").is_none());
         assert!(rules_for("").is_none());
     }
 

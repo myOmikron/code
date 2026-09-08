@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { ArrowRightIcon } from "@heroicons/react/20/solid";
 import { ManaCost } from "src/components/mana-cost";
+import { largerScan } from "src/utils/card-artwork";
 import { formatCurrency } from "src/utils/format";
 
 /**
@@ -18,7 +19,12 @@ export type DeckSpotlightProps = {
     /** What its format is called, already translated */
     format: string;
     /** The commanders, in the order they were put in */
-    commanders: Array<{ name: string; image_normal?: string | null; image_small?: string | null }>;
+    commanders: Array<{
+        name: string;
+        image_art_crop?: string | null;
+        image_normal?: string | null;
+        image_small?: string | null;
+    }>;
     /** The colours it plays, as the letters `WUBRG` */
     colors: Array<string>;
     /** How many cards sit in the deck proper */
@@ -61,7 +67,27 @@ export function DeckSpotlight({
     owner = null,
     action,
 }: DeckSpotlightProps) {
-    const art = commanders[0]?.image_normal ?? commanders[0]?.image_small ?? null;
+    // The panel is a band far wider than a card is, so a portrait scan arrives
+    // here to be cropped to a quarter of its height and blown up over the full
+    // width, which is what made it read soft. The illustration on its own is
+    // landscape and needs none of that, so it is what the banner asks for
+    // first; the card scan, one size up, is what a catalog that has not been
+    // synced since falls back to.
+    //
+    // Even the illustration is only some 560 pixels across, and Scryfall has
+    // nothing bigger: the full-size png keeps the art at much the same size.
+    // Stretched over a band twice that wide on a retina screen it blurs. Left
+    // at its own size it is a sliver on a wide screen, so it takes the right
+    // three fifths, a good deal less stretch than the full band, and fades
+    // out to the left under the wash, which covered that side anyway.
+    const commander = commanders[0] ?? null;
+    const scan = commander?.image_normal ?? commander?.image_small ?? null;
+    const art = commander?.image_art_crop ?? (scan === null ? null : largerScan(scan));
+    // The frame's top quarter is where a card keeps its art. The crop is art all
+    // the way through, but the band shows only a third of its height, and
+    // dead-centre cuts through what an illustration usually puts a little above
+    // the middle — so it is taken from a third of the way down instead.
+    const framing = commander?.image_art_crop != null ? "object-[center_35%]" : "object-[center_25%]";
     const filled = target === null || target === 0 ? null : Math.min(100, Math.round((cards / target) * 100));
     const done = filled !== null && cards >= target!;
 
@@ -70,7 +96,7 @@ export function DeckSpotlight({
             to={to}
             params={{ deckUuid }}
             className={
-                "group/spotlight relative isolate block overflow-hidden rounded-(--radius-card) bg-zinc-900 shadow-(--shadow-card-md) ring-1 ring-zinc-950/5 transition hover:shadow-(--shadow-card-lg) hover:ring-2 hover:ring-(--color-brand-500) focus:outline-none focus-visible:ring-2 focus-visible:ring-(--color-brand-500) dark:ring-white/10"
+                "group/spotlight relative isolate block max-w-full overflow-hidden rounded-(--radius-card) bg-zinc-900 shadow-(--shadow-card-md) ring-1 ring-zinc-950/5 transition hover:shadow-(--shadow-card-lg) hover:ring-2 hover:ring-(--color-brand-500) focus:outline-none focus-visible:ring-2 focus-visible:ring-(--color-brand-500) dark:ring-white/10"
             }
         >
             {art !== null && (
@@ -78,9 +104,7 @@ export function DeckSpotlight({
                     src={art}
                     crossOrigin={"anonymous"}
                     alt={""}
-                    className={
-                        "absolute inset-0 size-full object-cover object-[center_25%] transition duration-700 group-hover/spotlight:scale-[1.03]"
-                    }
+                    className={`absolute inset-y-0 right-0 h-full w-full object-cover sm:w-3/5 ${framing} mask-l-from-45% mask-l-to-100% transition duration-700 group-hover/spotlight:scale-[1.03]`}
                 />
             )}
             {/* Opaque where the words are, clear where the art is. The second
@@ -93,7 +117,7 @@ export function DeckSpotlight({
             <div aria-hidden={true} className={"absolute inset-0 bg-linear-to-t from-zinc-950/80 to-transparent"} />
 
             <div className={"relative flex min-h-56 flex-col justify-end gap-4 p-6 sm:min-h-64 sm:p-8"}>
-                <div className={"flex max-w-xl flex-col gap-2"}>
+                <div className={"flex max-w-xl min-w-0 flex-col gap-2"}>
                     <span className={"text-xs font-medium tracking-[0.18em] text-white/60 uppercase"}>{eyebrow}</span>
                     <h3 className={"text-2xl font-semibold tracking-tight text-balance text-white sm:text-3xl"}>
                         {name}
@@ -129,7 +153,7 @@ export function DeckSpotlight({
                         </span>
                     )}
 
-                    <span className={"flex min-w-40 flex-1 flex-col gap-1.5"}>
+                    <span className={"flex min-w-0 flex-1 basis-40 flex-col gap-1.5"}>
                         <span className={"flex items-baseline gap-1.5 text-xs text-white/70"}>
                             <span className={"font-semibold text-white tabular-nums"}>{cards}</span>
                             {target !== null && <span className={"tabular-nums"}>/ {target}</span>}

@@ -1,11 +1,17 @@
 import { HeartIcon, ShieldExclamationIcon } from "@heroicons/react/20/solid";
 import clsx from "clsx";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { CommanderDamagePanel } from "src/components/commander-damage-panel";
 import { CounterButton } from "src/components/counter-button";
-import type { Seat, SeatPlacement } from "src/utils/life-tracker";
-import { COMMANDER_DAMAGE_LETHAL, SEAT_COLORS, isEliminated } from "src/utils/life-tracker";
+import type { LooseHit, Seat, SeatPlacement } from "src/utils/life-tracker";
+import {
+    COMMANDER_DAMAGE_LETHAL,
+    REBOOK_LINGER,
+    SEAT_COLORS,
+    isEliminated,
+    rebookableHit,
+} from "src/utils/life-tracker";
 
 /** What a held life button is worth per step */
 const HOLD_STEP = 10;
@@ -60,7 +66,7 @@ export type LifeTileProps = {
     delta: number | undefined;
     /** What every seat's commander has put on them, in seat order */
     damage: Array<number>;
-    /** The other seats, in the order they sit in front of this one */
+    /** The other seats, in turn order after this one */
     opponents: Array<number>;
     /** Where they sit and where their tile goes */
     placement: SeatPlacement;
@@ -70,6 +76,13 @@ export type LifeTileProps = {
     onChange: (amount: number) => void;
     /** Books commander damage from one opponent, which costs the same life */
     onDamage: (opponent: number, amount: number) => void;
+    /**
+     * The hit they took that no commander has been charged for, where the mode
+     * that offers to rebook it is on
+     */
+    hit: LooseHit | undefined;
+    /** Charges that hit to one opponent's commander; the life is already gone */
+    onRebook: (opponent: number, amount: number) => void;
 };
 
 /**
@@ -84,6 +97,9 @@ export type LifeTileProps = {
  * a table, and a marker that has to be leaned in for is one nobody keeps up to
  * date.
  *
+ * A player counting on their own is left with the counter alone: no strip and no
+ * name, since neither has anything to point at.
+ *
  * @returns the tile
  */
 export function LifeTile({
@@ -96,12 +112,53 @@ export function LifeTile({
     flush,
     onChange,
     onDamage,
+    hit,
+    onRebook,
 }: LifeTileProps) {
     const [t] = useTranslation("game-utils");
     const [tracking, setTracking] = useState(false);
+    // Snapshotted when the drawer opens rather than read as it renders: the
+    // offer is a statement about the moment the shield was tapped, and it has
+    // to stand still while it is being read, even though the hit behind it goes
+    // stale a heartbeat later.
+    const [offer, setOffer] = useState<number | undefined>(undefined);
+    const expiry = useRef<number | undefined>(undefined);
+
+    useEffect(() => () => window.clearTimeout(expiry.current), []);
     const player = t("label.player", { number });
     const hint = t("label.hold-step", { amount: HOLD_STEP });
     const out = isEliminated(life, damage);
+    // A player counting on their own has nobody to book commander damage
+    // against, so the strip along the near edge would open on an empty panel.
+    // The name goes with it: there is no other tile to tell this one from, and
+    // what is left is the total on the whole screen.
+    const alone = opponents.length === 0;
+
+    /**
+     * Takes the offer off the drawer, however it ended
+     */
+    function dropOffer() {
+        window.clearTimeout(expiry.current);
+        expiry.current = undefined;
+        setOffer(undefined);
+    }
+
+    /**
+     * Opens or closes the drawer, arming the offer on the way in.
+     *
+     * Only the way in arms it: a drawer that is already open was not opened on
+     * the back of anything.
+     */
+    function toggleTracking() {
+        dropOffer();
+        setTracking(!tracking);
+        if (tracking) return;
+
+        const offered = rebookableHit(hit, Date.now());
+        if (offered === undefined) return;
+        setOffer(offered);
+        expiry.current = window.setTimeout(dropOffer, REBOOK_LINGER);
+    }
 
     return (
         <article
@@ -120,7 +177,20 @@ export function LifeTile({
                             number={number}
                             damage={damage}
                             opponents={opponents}
-                            onChange={onDamage}
+                            offer={offer}
+                            onChange={(opponent, amount) => {
+                                // Counting a column by hand answers the offer:
+                                // whatever the player is booking now, they are
+                                // booking it themselves.
+                                dropOffer();
+                                onDamage(opponent, amount);
+                            }}
+                            onRebook={(opponent) => {
+                                if (offer === undefined) return;
+                                dropOffer();
+                                onRebook(opponent, offer);
+                            }}
+                            onDismiss={dropOffer}
                         />
                     ) : (
                         <>
@@ -156,13 +226,15 @@ export function LifeTile({
                                     "flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center gap-[1cqh] overflow-hidden"
                                 }
                             >
-                                <h2
-                                    className={
-                                        "max-w-full truncate text-[min(11cqh,4cqw,0.95rem)] font-semibold tracking-wide text-white/80 @min-[22rem]:text-[min(11cqh,4cqw,1.9rem)]"
-                                    }
-                                >
-                                    {player}
-                                </h2>
+                                {!alone && (
+                                    <h2
+                                        className={
+                                            "max-w-full truncate text-[min(11cqh,4cqw,0.95rem)] font-semibold tracking-wide text-white/80 @min-[22rem]:text-[min(11cqh,4cqw,1.9rem)]"
+                                        }
+                                    >
+                                        {player}
+                                    </h2>
+                                )}
                                 <strong
                                     aria-label={t("label.life", { count: life })}
                                     className={
@@ -212,42 +284,44 @@ export function LifeTile({
                         </>
                     )}
                 </div>
-                <button
-                    type={"button"}
-                    aria-label={tracking ? t("button.back-to-life") : t("button.commander-damage", { player })}
-                    aria-pressed={tracking}
-                    onClick={() => setTracking((current) => !current)}
-                    className={
-                        "flex shrink-0 items-center justify-center gap-[2cqw] bg-black/25 py-[2.5cqh] transition hover:bg-black/40 active:bg-black/50"
-                    }
-                >
-                    {tracking ? (
-                        <HeartIcon
-                            className={"size-[min(20cqh,5cqw,1.4rem)] @min-[22rem]:size-[min(20cqh,5cqw,2.8rem)]"}
-                        />
-                    ) : (
-                        <ShieldExclamationIcon
-                            className={"size-[min(20cqh,5cqw,1.4rem)] @min-[22rem]:size-[min(20cqh,5cqw,2.8rem)]"}
-                        />
-                    )}
-                    {!tracking &&
-                        opponents.map((opponent) =>
-                            damage[opponent] === 0 ? null : (
-                                <span
-                                    key={opponent}
-                                    className={clsx(
-                                        "flex items-center rounded-(--radius-pill) bg-linear-to-br px-[2.5cqw] py-[0.5cqh] text-[min(20cqh,6cqw,1.25rem)] leading-tight font-black text-white tabular-nums @min-[22rem]:text-[min(20cqh,6cqw,2.5rem)]",
-                                        SEAT_COLORS[opponent],
-                                        damage[opponent] >= COMMANDER_DAMAGE_LETHAL
-                                            ? "ring-2 ring-rose-300"
-                                            : "ring-1 ring-white/30",
-                                    )}
-                                >
-                                    {damage[opponent]}
-                                </span>
-                            ),
+                {!alone && (
+                    <button
+                        type={"button"}
+                        aria-label={tracking ? t("button.back-to-life") : t("button.commander-damage", { player })}
+                        aria-pressed={tracking}
+                        onClick={toggleTracking}
+                        className={
+                            "flex shrink-0 items-center justify-center gap-[2cqw] bg-black/25 py-[2.5cqh] transition hover:bg-black/40 active:bg-black/50"
+                        }
+                    >
+                        {tracking ? (
+                            <HeartIcon
+                                className={"size-[min(20cqh,5cqw,1.4rem)] @min-[22rem]:size-[min(20cqh,5cqw,2.8rem)]"}
+                            />
+                        ) : (
+                            <ShieldExclamationIcon
+                                className={"size-[min(20cqh,5cqw,1.4rem)] @min-[22rem]:size-[min(20cqh,5cqw,2.8rem)]"}
+                            />
                         )}
-                </button>
+                        {!tracking &&
+                            opponents.map((opponent) =>
+                                damage[opponent] === 0 ? null : (
+                                    <span
+                                        key={opponent}
+                                        className={clsx(
+                                            "flex items-center rounded-(--radius-pill) bg-linear-to-br px-[2.5cqw] py-[0.5cqh] text-[min(20cqh,6cqw,1.25rem)] leading-tight font-black text-white tabular-nums @min-[22rem]:text-[min(20cqh,6cqw,2.5rem)]",
+                                            SEAT_COLORS[opponent],
+                                            damage[opponent] >= COMMANDER_DAMAGE_LETHAL
+                                                ? "ring-2 ring-rose-300"
+                                                : "ring-1 ring-white/30",
+                                        )}
+                                    >
+                                        {damage[opponent]}
+                                    </span>
+                                ),
+                            )}
+                    </button>
+                )}
             </div>
         </article>
     );

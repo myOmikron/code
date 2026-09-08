@@ -7,7 +7,7 @@ authors = ["Niklas Pfister <git@omikron.dev>"]
 
 [dependencies]
 service-bootstrap = { workspace = true }
-galvyn = { workspace = true, default-features = true }
+galvyn = { workspace = true, default-features = true, features = ["rorm-postgres-only"] }
 
 # Reading `DatabaseError::is_unique_violation` out of a `rorm::Error`, for the
 # retry-on-collision and claim-token paths that must not race a pre-query.

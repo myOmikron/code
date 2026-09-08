@@ -22,8 +22,6 @@ export type DeckBracketPickerProps = {
     bracket: number | null;
     /** Records a claimed bracket */
     onChange: (bracket: number | null) => void;
-    /** Whether the trigger is a chip beside the deck's name or a control in the deck bar */
-    variant?: "badge" | "control";
     /** Additional CSS classes for the trigger */
     className?: string;
 };
@@ -31,21 +29,18 @@ export type DeckBracketPickerProps = {
 /**
  * Which bracket the deck claims, and the menu that changes it.
  *
- * One control, two places: the chip beside the deck's name — where the claim
- * belongs, because it is the deck's own statement and every tab reads it — and
- * the deck bar on the cards tab, next to the rules it is checked against. The
- * advisor holds the deck to this number and nothing else, so it has to be
- * legible from the advisor without going looking for it.
+ * The chip beside the deck's name, where the claim belongs: it is the deck's
+ * own statement and every tab reads it. The advisor holds the deck to this
+ * number and nothing else, so it has to be legible without going looking for
+ * it.
+ *
+ * The cards tab has its own, larger control — {@link DeckBracketMenu} — which
+ * claims a bracket *and* reads the deck against it. That one needs the counted
+ * deck, which only the cards tab has, so this stays the claim on its own.
  *
  * @returns the picker
  */
-export function DeckBracketPicker({
-    brackets,
-    bracket,
-    onChange,
-    variant = "control",
-    className,
-}: DeckBracketPickerProps) {
+export function DeckBracketPicker({ brackets, bracket, onChange, className }: DeckBracketPickerProps) {
     const [t] = useTranslation("deck");
     const labels = useDeckLabels();
 
@@ -55,25 +50,14 @@ export function DeckBracketPicker({
 
     return (
         <Dropdown>
-            {variant === "badge" ? (
-                <DropdownButton as={BadgeButton} color={"zinc"} className={className}>
-                    {claimed === undefined
-                        ? t("button.set-bracket")
-                        : `${t("label.bracket")} ${claimed.number} · ${labels.bracket(claimed.slug)}`}
-                    {/* The chip sits between two badges that open dialogs, so
-                        it needs the one mark that says this one opens a menu. */}
-                    <ChevronDownIcon className={"size-3.5"} />
-                </DropdownButton>
-            ) : (
-                <DropdownButton outline={true} className={className} aria-label={t("label.bracket")}>
-                    <span className={"tabular-nums"}>
-                        {claimed === undefined ? t("label.bracket-short-none") : `B${claimed.number}`}
-                    </span>
-                    <span className={"max-lg:sr-only"}>
-                        {claimed === undefined ? "" : labels.bracket(claimed.slug)}
-                    </span>
-                </DropdownButton>
-            )}
+            <DropdownButton as={BadgeButton} color={"zinc"} className={className}>
+                {claimed === undefined
+                    ? t("button.set-bracket")
+                    : `${t("label.bracket")} ${claimed.number} · ${labels.bracket(claimed.slug)}`}
+                {/* The chip sits between two badges that open dialogs, so it
+                    needs the one mark that says this one opens a menu. */}
+                <ChevronDownIcon className={"size-3.5"} />
+            </DropdownButton>
             <DropdownMenu anchor={"bottom start"} className={"min-w-[min(18rem,calc(100vw-2rem))]"}>
                 <DropdownItem onClick={() => onChange(null)}>
                     {bracket === null ? <CheckCircleIcon /> : <span className={"size-4"} />}

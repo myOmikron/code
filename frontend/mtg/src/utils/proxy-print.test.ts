@@ -1,6 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { isBasicLand, PER_SHEET, printableImage, proxyFaces, proxySheets } from "src/utils/proxy-print";
+import {
+    deckProxyCards,
+    isBasicLand,
+    MAX_COPIES,
+    PER_SHEET,
+    printableImage,
+    proxyFaces,
+    proxySheets,
+} from "src/utils/proxy-print";
 import type { ProxyCard } from "src/utils/proxy-print";
+import type { DeckCardResponse, DeckZone } from "src/api/generated";
 
 /**
  * A card to print
@@ -16,6 +25,8 @@ function card(key: string, copies: number, back = false, basic = false): ProxyCa
     return {
         key,
         name: key,
+        set: "LEB",
+        number: "161",
         front: `https://cards.scryfall.io/normal/front/a/b/${key}.jpg`,
         back: back ? `https://cards.scryfall.io/normal/back/a/b/${key}.jpg` : null,
         copies,
@@ -94,5 +105,90 @@ describe("printableImage", () => {
     it("has nothing to print without a picture", () => {
         expect(printableImage(null)).toBeNull();
         expect(printableImage("")).toBeNull();
+    });
+});
+
+/**
+ * One slot of a deck
+ *
+ * @param name the card's name, empty for a slot the catalog has not caught up with
+ * @param zone which zone the slot sits in
+ * @param quantity how many copies it holds
+ * @param proxy whether the slot is marked as a proxy
+ *
+ * @returns the slot
+ */
+function slot(name: string, zone: DeckZone, quantity = 1, proxy = false): DeckCardResponse {
+    return {
+        uuid: `${zone}-${name}`,
+        printing: "printing",
+        quantity,
+        zone,
+        foil: false,
+        proxy,
+        tags: [],
+        card:
+            name === ""
+                ? null
+                : {
+                      name,
+                      set_code: "LEB",
+                      collector_number: "161",
+                      type_line: "Artifact",
+                      image_normal: `https://cards.scryfall.io/normal/front/a/b/${name}.jpg`,
+                      image_back_normal: null,
+                      cardmarket_id: null,
+                      color_identity: "",
+                      extra_turns: false,
+                      finishes: ["nonfoil"],
+                      game_changer: false,
+                      image_back_small: null,
+                      image_small: null,
+                      lang: "en",
+                      legal_formats: [],
+                      mana_cost: "{1}",
+                      mana_value: 1,
+                      mass_land_denial: false,
+                      oracle_id: null,
+                      price_eur_cents: null,
+                      price_eur_foil_cents: null,
+                      produced_mana: [],
+                      rarity: "Common",
+                      reserved: false,
+                      set_name: "Limited Edition Beta",
+                  },
+    };
+}
+
+describe("deckProxyCards", () => {
+    it("takes what the deck plays and leaves the rest", () => {
+        const cards = [
+            slot("Sol Ring", "Main"),
+            slot("Kenrith", "Commander"),
+            slot("Duress", "Side"),
+            slot("Ponder", "Maybe"),
+        ];
+
+        expect(deckProxyCards(cards, false).map((card) => card.name)).toStrictEqual(["Sol Ring", "Kenrith"]);
+    });
+
+    it("takes only the marked slots when that is asked for", () => {
+        const cards = [slot("Sol Ring", "Main", 1, true), slot("Ponder", "Main")];
+
+        expect(deckProxyCards(cards, true).map((card) => card.name)).toStrictEqual(["Sol Ring"]);
+    });
+
+    it("carries the print over, for a list that names it", () => {
+        expect(deckProxyCards([slot("Sol Ring", "Main")], false)[0]).toMatchObject({ set: "LEB", number: "161" });
+    });
+
+    it("keeps a slot the catalog has not caught up with", () => {
+        const [card] = deckProxyCards([slot("", "Main")], false);
+
+        expect(card).toMatchObject({ name: "", set: "", number: "", front: null });
+    });
+
+    it("holds a slot to what a list takes", () => {
+        expect(deckProxyCards([slot("Sol Ring", "Main", MAX_COPIES + 5)], false)[0]?.copies).toBe(MAX_COPIES);
     });
 });

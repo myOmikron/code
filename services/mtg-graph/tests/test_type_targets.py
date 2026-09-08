@@ -8,13 +8,21 @@ import pytest
 
 import deck_lab.edhrec as edhrec
 import deck_lab.type_targets as type_targets
-from deck_lab.composition import TargetOverride, template_for
-from deck_lab.edhrec import TagLink, TypeCounts
+from deck_lab.composition import (
+    CEDH,
+    CEDH_TURBO,
+    SPEED_BRACKET_FIVE,
+    TUNED,
+    TargetOverride,
+    template_for,
+)
+from deck_lab.edhrec import CEDH_TAG_SLUG, TagLink, TypeCounts
 from deck_lab.type_targets import (
+    CEDH_MIN_DECKS,
     DEFAULT_TYPE_COUNTS,
     LAND_HALF_WIDTH,
-    MANA_SOURCES_DELTA_CAP,
     MIN_HALF_WIDTH,
+    NONLAND_SOURCE_SHARE,
     PRIMARY_TYPES,
     RANGE_FRACTION,
     TAG_MIN_DECKS,
@@ -62,16 +70,30 @@ SPELLSLINGER = TypeCounts(
 TAGLINKS = [TagLink(slug="spellslinger", label="Spellslinger", count=2548)]
 
 
-def _fake_pages(monkeypatch, *, commander=MULDROTHA, taglinks=TAGLINKS, theme=SPELLSLINGER):
-    """Route `load_type_counts` at fakes. The commander page never fetches;
-    the subpage returns `theme` (None models an unreachable page)."""
+def _fake_pages(
+    monkeypatch,
+    *,
+    commander=MULDROTHA,
+    taglinks=TAGLINKS,
+    theme=SPELLSLINGER,
+    cedh=None,
+    bracket_counts=None,
+):
+    """Route `load_type_counts` and `load_bracket_counts` at fakes. The
+    commander page never fetches; the theme subpage returns `theme`; the
+    `/cedh` subpage returns `cedh` (None models an unreachable page for
+    either subpage). `bracket_counts` defaults to empty — below bracket 5,
+    tier 0 never even asks for it."""
 
     def load(name, *, theme_slug=None, allow_fetch=False):
         if theme_slug is None:
             return commander, taglinks
+        if theme_slug == CEDH_TAG_SLUG:
+            return cedh, taglinks
         return theme, taglinks
 
     monkeypatch.setattr(edhrec, "load_type_counts", load)
+    monkeypatch.setattr(edhrec, "load_bracket_counts", lambda name: bracket_counts or {})
 
 
 # --- ranges from point estimates ------------------------------------------
@@ -117,14 +139,16 @@ def test_land_gets_a_flat_half_width():
     assert LAND_HALF_WIDTH < RANGE_FRACTION * 39.0
 
 
-def test_land_informs_but_never_fines():
-    """The mana_sources bucket owns land count; a second penalty on the same
-    measure would count one signal twice."""
+def test_land_fines_like_any_other_type():
+    """Land used to carry weight zero on the argument that the mana_sources
+    bucket owned land count. It owns *sources* — rocks and dorks count at
+    full weight beside the lands — so a dork-heavy deck could sit inside
+    that corridor five lands short and nothing minded. The Land row is the
+    signal that does."""
     targets = targets_from_counts({"Land": 35.0}, speed=1.0)
 
-    assert targets["Land"].weight == 0.0
-    assert targets["Land"].penalty(45.0) == 0.0
-    assert targets["Creature"].weight > 0.0
+    assert targets["Land"].weight == targets["Creature"].weight > 0.0
+    assert targets["Land"].penalty(30.0) > 0.0
 
 
 def test_weight_lerps_with_speed_and_targets_do_not():
@@ -146,6 +170,140 @@ def test_weight_lerps_with_speed_and_targets_do_not():
 # --- tier precedence ------------------------------------------------------
 
 DECISIVE = {"spellslinger": 0.5, "reanimator": 0.2}
+
+
+# --- tier 0: cEDH conditioning ---------------------------------------------
+# `is_cedh(speed)` (bracket 5) outranks every tier below, including tier 1's
+# subpage — a cEDH spellslinger deck is a cEDH deck first, and EDHREC has no
+# two-tag subpage to prefer over the commander's own `/cedh` page.
+
+CEDH_COUNTS = TypeCounts(
+    counts={
+        "Creature": 22.0,
+        "Instant": 25.0,
+        "Sorcery": 9.0,
+        "Artifact": 9.0,
+        "Enchantment": 3.0,
+        "Planeswalker": 1.0,
+        "Battle": 0.0,
+        "Land": 29.0,
+    },
+    total=98,
+)
+
+
+def test_bracket_five_reaches_the_cedh_tier(monkeypatch):
+    _fake_pages(monkeypatch, cedh=CEDH_COUNTS, bracket_counts={5: 1258})
+    targets, source = resolve_type_targets("Najeela, the Blade-Blossom", {}, speed=1.0)
+
+    assert source == "edhrec:najeela-the-blade-blossom/cedh (1,258 decks)"
+    assert targets["Instant"].high == 25.0 + RANGE_FRACTION * 25.0
+
+
+def test_the_cedh_tier_outranks_a_decisive_theme(monkeypatch):
+    """cEDH conditioning outranks theme and tribe conditioning — even a
+    deck whose theme clears `TYPE_THEME_SHARE_FLOOR` and has a real
+    subpage waiting stays on the `/cedh` page instead."""
+    _fake_pages(monkeypatch, cedh=CEDH_COUNTS, bracket_counts={5: 1258})
+    targets, source = resolve_type_targets("Muldrotha, the Gravetide", DECISIVE, speed=1.0)
+
+    assert source == "edhrec:muldrotha-the-gravetide/cedh (1,258 decks)"
+    assert targets["Instant"].high == 25.0 + RANGE_FRACTION * 25.0
+
+
+def test_below_bracket_five_the_cedh_tier_is_unreachable(monkeypatch):
+    """A speed of 0.75 — under `SPEED_BRACKET_FIVE` — resolves exactly what
+    it resolves today: tier 0 never even asks about bracket counts."""
+    assert SPEED_BRACKET_FIVE > 0.75
+    _fake_pages(monkeypatch, cedh=CEDH_COUNTS, bracket_counts={5: 1258})
+    targets, source = resolve_type_targets("Muldrotha, the Gravetide", {}, speed=0.75)
+
+    assert source == "edhrec:muldrotha-the-gravetide"
+    assert targets["Creature"].high == 30.0 + RANGE_FRACTION * 30.0
+
+
+def test_a_thin_bracket_five_sample_falls_to_the_pool_not_past_cedh(monkeypatch):
+    """EDHREC serves a `/cedh` page for every commander, including ones
+    with no real cEDH presence — the floor exists to reject *that
+    commander's own* subpage as noise. It does not reject cEDH conditioning
+    itself: the deck's `speed` still claims bracket 5, so a thin per-
+    commander sample falls to the pooled `CEDH_TYPE_COUNTS` profile
+    (Task C4), the same relationship tier 2.5's archetype pool has to a
+    per-commander page — never all the way past tier 0 to the casual
+    ladder. (Before `CEDH_TYPE_COUNTS` was measured this landed on tier 2
+    instead, because there was no pool to fall to yet.)"""
+    _fake_pages(monkeypatch, cedh=CEDH_COUNTS, bracket_counts={5: CEDH_MIN_DECKS - 1})
+    targets, source = resolve_type_targets("Muldrotha, the Gravetide", {}, speed=1.0)
+
+    assert source == "cedh-pool (40 commanders, 39,657 decks)"
+    instant = type_targets.CEDH_TYPE_COUNTS.counts["Instant"]
+    assert targets["Instant"].high == instant + RANGE_FRACTION * instant
+
+
+def test_a_bracket_five_deck_falls_to_the_pool_when_its_page_is_unavailable(monkeypatch):
+    """The commander's own `/cedh` subpage is unreachable, but the deck
+    still claims bracket 5 — the pooled cross-commander profile stands in
+    before falling all the way through to the theme/tribe ladder."""
+    _fake_pages(monkeypatch, cedh=None, bracket_counts={5: 1258})
+    pool = ArchetypeProfile(
+        counts={"Creature": 20.0, "Instant": 24.0, "Land": 30.0},
+        tag="cedh",
+        commanders=40,
+        decks=52000,
+        measured="2026-09-01",
+    )
+    monkeypatch.setattr(type_targets, "CEDH_TYPE_COUNTS", pool)
+
+    targets, source = resolve_type_targets("Muldrotha, the Gravetide", {}, speed=1.0)
+
+    assert source == "cedh-pool (40 commanders, 52,000 decks)"
+    assert targets["Instant"].high == 24.0 + RANGE_FRACTION * 24.0
+
+
+def test_a_none_pool_falls_through_past_the_cedh_tier(monkeypatch):
+    """`CEDH_TYPE_COUNTS` was `None` before the `measure-cedh` CLI (Task B)
+    landed its reviewed diff (Task C4) — kept exercised via an explicit
+    monkeypatch so a thin-or-absent `/cedh` subpage with no pool to fall
+    back on still degrades to tier 1 rather than blocking. The live default
+    is no longer `None`; see `test_cedh_type_counts_is_measured`."""
+    _fake_pages(monkeypatch, cedh=None, bracket_counts={5: 1258})
+    monkeypatch.setattr(type_targets, "CEDH_TYPE_COUNTS", None)
+
+    targets, source = resolve_type_targets("Muldrotha, the Gravetide", DECISIVE, speed=1.0)
+
+    assert source == "edhrec:muldrotha-the-gravetide/spellslinger (2,548 decks)"
+    assert targets["Creature"].high == 21.0 + RANGE_FRACTION * 21.0
+
+
+def test_cedh_type_counts_is_measured():
+    """Task C4: `CEDH_TYPE_COUNTS` is the pasted `measure-cedh --top-k 40`
+    output (2026-09-01), not the `None` placeholder Task B shipped it as."""
+    profile = type_targets.CEDH_TYPE_COUNTS
+    assert profile is not None
+    assert profile.tag == "cedh"
+    assert profile.commanders == 40
+    assert profile.decks == 39657
+    assert profile.measured == "2026-09-01"
+    # Same discipline as `test_archetype_counts_sum_to_99`.
+    assert sum(profile.counts.values()) == pytest.approx(99.0, abs=0.5)
+    # The reported defect, restated as a regression guard: today's default
+    # ladder gave a cEDH deck 9 instants: this measured pool roughly
+    # doubles it.
+    assert profile.counts["Instant"] > 2 * DEFAULT_TYPE_COUNTS["Instant"]
+
+
+def test_a_bracket_five_deck_with_no_subpage_now_reaches_the_measured_pool(monkeypatch):
+    """End-to-end sanity check for C4 landing: a bracket-5 deck whose own
+    commander page has no `/cedh` subpage no longer falls past tier 0 at
+    all — it lands on the real pooled profile instead of degrading to the
+    theme ladder, because `CEDH_TYPE_COUNTS` is no longer `None`."""
+    _fake_pages(monkeypatch, cedh=None, bracket_counts={5: 1258})
+
+    targets, source = resolve_type_targets("Muldrotha, the Gravetide", DECISIVE, speed=1.0)
+
+    assert source == "cedh-pool (40 commanders, 39,657 decks)"
+    instant = type_targets.CEDH_TYPE_COUNTS.counts["Instant"]
+    assert targets["Instant"].high == instant + RANGE_FRACTION * instant
 
 
 def test_decisive_theme_reaches_the_subpage_tier(monkeypatch):
@@ -456,54 +614,89 @@ def test_archetype_profiles_clear_the_measurement_floors():
         assert profile.decks >= MIN_DECKS, theme_id
 
 
-# --- the mana quota follows the archetype ---------------------------------
+# --- the mana quota is built from the Land corridor -------------------------
+# `derive_mana_sources`: each bound is the Land bound plus the non-land share
+# of the matching ramp bound. The authored corridors could not be met at the
+# archetype's land count once the ramp quota was met with rocks and dorks —
+# 383 of 415 measured casual pages read as over at speed 0.5.
 
 
-def test_the_land_mean_shifts_the_mana_quota():
-    """The observed failure: a Necrobloom deck at 25 lands + 8 rocks sat
-    *inside* the tuned 30–34 sources range while the empirical land mean
-    said 39. The quota moves by the mean's deviation from the corpus
-    median; how hard it binds stays with speed."""
-    types = targets_from_counts({"Land": 39.0}, speed=0.5)
-    base = template_for(0.5).buckets[Bucket.MANA_SOURCES]
-    shifted = conditioned_template(0.5, None, types).buckets[Bucket.MANA_SOURCES]
-
-    delta = 39.0 - DEFAULT_TYPE_COUNTS["Land"]
-    assert shifted.low == pytest.approx(base.low + delta)
-    assert shifted.high == pytest.approx(base.high + delta)
-    assert shifted.weight == base.weight
+def _allowance(speed, scale=1.0):
+    ramp = template_for(speed).buckets[Bucket.RAMP]
+    return NONLAND_SOURCE_SHARE * (ramp.low + ramp.high) / 2 * scale
 
 
-def test_a_below_median_archetype_shifts_the_quota_down():
-    """A spellslinger deck genuinely runs fewer lands — the shift is a
-    reconciliation, not a floor, and it moves both ways."""
-    types = targets_from_counts({"Land": 33.0}, speed=0.5)
-    base = template_for(0.5).buckets[Bucket.MANA_SOURCES]
-    shifted = conditioned_template(0.5, None, types).buckets[Bucket.MANA_SOURCES]
-
-    assert shifted.low == pytest.approx(base.low - 2.0)
+def _derived(speed, land):
+    return (land.low + _allowance(speed), land.high + _allowance(speed))
 
 
-def test_the_default_tier_shifts_nothing():
-    """The corpus median deviates from itself by zero, by construction."""
+def test_the_mana_quota_is_the_land_corridor_plus_the_ramp_quotas_source_share():
+    """The observed failure: a green deck at 41 sources against a 34.5-38
+    quota, already under on lands, was told to cut a Mountain. At 35 lands
+    the derived corridor holds 41, and the Land row — not a land cut — is
+    what reads wrong."""
+    types = targets_from_counts({"Land": 35.0}, speed=0.4)
+    sources = conditioned_template(0.4, None, types).buckets[Bucket.MANA_SOURCES]
+
+    low, high = _derived(0.4, types["Land"])
+    assert (sources.low, sources.high) == pytest.approx((low, high))
+    assert sources.low <= 41.0 <= sources.high
+    assert sources.weight == template_for(0.4).buckets[Bucket.MANA_SOURCES].weight
+
+
+def test_the_archetypes_land_count_moves_the_quota_with_it():
+    """The archetype effect the old shift carried survives: a Necrobloom
+    deck's 39-land row lifts the quota by the same four cards, because the
+    Land corridor is the base rather than a delta against the median."""
+    median = conditioned_template(
+        0.5, None, targets_from_counts({"Land": 35.0}, speed=0.5)
+    ).buckets[Bucket.MANA_SOURCES]
+    landfall = conditioned_template(
+        0.5, None, targets_from_counts({"Land": 39.0}, speed=0.5)
+    ).buckets[Bucket.MANA_SOURCES]
+    spellslinger = conditioned_template(
+        0.5, None, targets_from_counts({"Land": 33.0}, speed=0.5)
+    ).buckets[Bucket.MANA_SOURCES]
+
+    assert landfall.low == pytest.approx(median.low + 4.0)
+    assert landfall.high == pytest.approx(median.high + 4.0)
+    assert spellslinger.low == pytest.approx(median.low - 2.0)
+
+
+def test_the_quota_leaves_room_for_the_ramp_quotas_rocks_and_dorks():
+    """The inconsistency the derivation exists to remove: at the Land
+    corridor's midpoint, the sources corridor must admit the ramp quota's
+    non-land share at every speed below bracket 5 — at the ramp midpoint by
+    construction, and at both ramp edges because `NONLAND_SOURCE_SHARE` ×
+    the ramp half-width happens to sit within a tenth of `LAND_HALF_WIDTH`
+    (see `derive_mana_sources`). The edge check is the one a re-measurement
+    of either corridor can break, which is why it is pinned."""
+    for speed in (0.0, 0.25, 0.5, 0.75):
+        types = targets_from_counts(DEFAULT_TYPE_COUNTS, speed=speed)
+        template = conditioned_template(speed, None, types)
+        ramp = template.buckets[Bucket.RAMP]
+        sources = template.buckets[Bucket.MANA_SOURCES]
+        lands = DEFAULT_TYPE_COUNTS["Land"]
+
+        assert sources.high - sources.low == pytest.approx(2 * LAND_HALF_WIDTH)
+        assert not sources.is_over(lands + NONLAND_SOURCE_SHARE * ramp.high), speed
+        assert not sources.is_short(lands + NONLAND_SOURCE_SHARE * ramp.low), speed
+
+
+def test_the_derivation_replaces_the_authored_corridor():
+    """The authored 30-40 corridors are a fallback for a template with no
+    Land corridor to build on, never the target a conditioned deck sees."""
     types = targets_from_counts(DEFAULT_TYPE_COUNTS, speed=0.5)
+    authored = template_for(0.5).buckets[Bucket.MANA_SOURCES]
+    derived = conditioned_template(0.5, None, types).buckets[Bucket.MANA_SOURCES]
 
-    assert conditioned_template(0.5, None, types).buckets == template_for(0.5).buckets
-
-
-def test_the_shift_is_capped_against_a_parse_gone_wrong():
-    """Cached land means run 33–40; a delta past ±6 is bad data, not an
-    archetype."""
-    types = targets_from_counts({"Land": 60.0}, speed=0.5)
-    base = template_for(0.5).buckets[Bucket.MANA_SOURCES]
-    shifted = conditioned_template(0.5, None, types).buckets[Bucket.MANA_SOURCES]
-
-    assert shifted.low == pytest.approx(base.low + MANA_SOURCES_DELTA_CAP)
+    assert derived.low > authored.high
+    assert conditioned_template(0.5, None, {}).buckets[Bucket.MANA_SOURCES] == authored
 
 
-def test_a_user_override_beats_the_archetype_shift():
-    """The user dragged against the shifted range the report showed them;
-    shifting their value again would move it behind their back."""
+def test_a_user_override_beats_the_derivation():
+    """The user dragged against the derived range the report showed them;
+    deriving over their value again would move it behind their back."""
     types = targets_from_counts({"Land": 39.0}, speed=0.5)
     template = conditioned_template(
         0.5, {Bucket.MANA_SOURCES: TargetOverride(low=30, high=33)}, types
@@ -511,6 +704,71 @@ def test_a_user_override_beats_the_archetype_shift():
 
     assert template.buckets[Bucket.MANA_SOURCES].low == 30
     assert template.buckets[Bucket.MANA_SOURCES].high == 33
+
+
+# --- THE TRAP: the casual reconciliation is wrong for cEDH -----------------
+# CEDH-PLAN.md's addendum, named ahead of time: a naive read of the measured
+# Land row (28.1, well below the 35 casual median) would rebuild `CEDH`'s own
+# measured ~40 corridor from casual assumptions — the Land row would look
+# right while the mana advice quietly got worse than before this template
+# existed. The corridor was measured with lands and fast mana together; it
+# is never reconstructed.
+
+
+def test_cedh_speed_suppresses_the_mana_source_derivation():
+    """At `is_cedh(speed)`, `conditioned_template` must leave `CEDH`'s own
+    mana-sources corridor exactly as measured — not rebuilt from the (real,
+    measured, but structurally inapplicable) casual land-plus-ramp rule."""
+    types = targets_from_counts(type_targets.CEDH_TYPE_COUNTS.counts, speed=1.0)
+    unshifted = template_for(1.0).buckets[Bucket.MANA_SOURCES]
+
+    conditioned = conditioned_template(1.0, None, types).buckets[Bucket.MANA_SOURCES]
+
+    assert conditioned.low == unshifted.low
+    assert conditioned.high == unshifted.high
+    # Pin against the reconstructed outcome explicitly, not just against
+    # "unchanged" above: the derived corridor off the cEDH Land row is a
+    # different pair of numbers.
+    assert (conditioned.low, conditioned.high) != pytest.approx(_derived(1.0, types["Land"]))
+    assert conditioned.low > TUNED.buckets[Bucket.MANA_SOURCES].high
+
+
+def test_conditioned_template_selects_the_measured_subarchetype():
+    """cEDH Pro round Task E follow-up: `conditioned_template` must forward
+    `cedh_class` to `template_for` — the wiring that turns the landed-but-
+    uncalled classifier into a live template selection. A turbo-classified
+    deck's RAMP corridor should read the measured 16.0-26.1, not the pooled
+    13.3-25.3 `CEDH` carries."""
+    types = targets_from_counts(type_targets.CEDH_TYPE_COUNTS.counts, speed=1.0)
+
+    turbo = conditioned_template(1.0, None, types, cedh_class="turbo")
+    pooled = conditioned_template(1.0, None, types)
+
+    assert turbo.buckets[Bucket.RAMP] == CEDH_TURBO.buckets[Bucket.RAMP]
+    assert pooled.buckets[Bucket.RAMP] == CEDH.buckets[Bucket.RAMP]
+    assert turbo.buckets[Bucket.RAMP] != pooled.buckets[Bucket.RAMP]
+
+
+def test_conditioned_template_unclassified_falls_back_to_pooled_cedh_byte_identically():
+    """The honest miss (`ArchetypeClass.UNCLASSIFIED`) must read exactly like
+    omitting `cedh_class` altogether — a deck the classifier could not place
+    keeps the pooled corridor, not a KeyError or a silently wrong template."""
+    types = targets_from_counts(type_targets.CEDH_TYPE_COUNTS.counts, speed=1.0)
+
+    unclassified = conditioned_template(1.0, None, types, cedh_class="unclassified")
+    assert unclassified == conditioned_template(1.0, None, types)
+
+
+def test_a_synthetic_low_land_count_still_derives_below_bracket_five():
+    """Proves the suppression is scoped to `is_cedh`, not a blanket 'skip
+    the derivation whenever land count is low' rule — the mechanism is still
+    exactly as designed for every archetype it was built for, cEDH's own
+    measured land mean included, right up until bracket 5."""
+    types = targets_from_counts({"Land": 28.1}, speed=0.75)
+
+    derived = conditioned_template(0.75, None, types).buckets[Bucket.MANA_SOURCES]
+
+    assert (derived.low, derived.high) == pytest.approx(_derived(0.75, types["Land"]))
 
 
 # --- Rule 0 deck sizes ------------------------------------------------------
@@ -526,8 +784,9 @@ def test_scale_resizes_bucket_bounds_and_leaves_the_curve_alone():
     template = conditioned_template(0.0, None, types, scale=scale)
 
     sources = template.buckets[Bucket.MANA_SOURCES]
-    assert sources.low == pytest.approx(37 * scale)  # ~22.4, from 37
-    assert sources.high == pytest.approx(40 * scale)  # ~24.2, from 40
+    # Land mean resized, its flat half-width not; the ramp allowance resized.
+    assert sources.low == pytest.approx(35 * scale - LAND_HALF_WIDTH + _allowance(0.0, scale))
+    assert sources.high == pytest.approx(35 * scale + LAND_HALF_WIDTH + _allowance(0.0, scale))
     assert sources.weight == base.buckets[Bucket.MANA_SOURCES].weight
     # Curve shares are fractions of the spell count — nothing to scale.
     assert template.curve == base.curve
@@ -545,18 +804,16 @@ def test_scale_resizes_the_type_means_not_the_floors():
     assert targets["Planeswalker"].high == pytest.approx(1.0 * scale + MIN_HALF_WIDTH)
 
 
-def test_the_archetype_shift_scales_with_the_deck():
-    """A 39-land archetype shifts a 60-card deck's quota by the same
-    *fraction* it shifts a 99-card deck's — the corpus median and the cap
-    resize with the land mean."""
+def test_the_derived_quota_scales_with_the_deck():
+    """Both inputs arrive resized — the Land corridor by `targets_from_counts`,
+    the ramp quota by the template's scale pass — so a 60-card deck's quota
+    is built from 60-card parts and nothing is scaled twice."""
     scale = 60 / 99
     types = targets_from_counts({"Land": 39.0}, speed=0.5, scale=scale)
-    base = template_for(0.5).buckets[Bucket.MANA_SOURCES]
-    shifted = conditioned_template(0.5, None, types, scale=scale).buckets[Bucket.MANA_SOURCES]
+    derived = conditioned_template(0.5, None, types, scale=scale).buckets[Bucket.MANA_SOURCES]
 
-    delta = 39.0 - DEFAULT_TYPE_COUNTS["Land"]
-    assert shifted.low == pytest.approx((base.low + delta) * scale)
-    assert shifted.high == pytest.approx((base.high + delta) * scale)
+    assert derived.low == pytest.approx(types["Land"].low + _allowance(0.5, scale))
+    assert derived.high == pytest.approx(types["Land"].high + _allowance(0.5, scale))
 
 
 def test_a_user_override_is_literal_at_any_deck_size():
@@ -616,17 +873,16 @@ def test_a_land_override_moves_the_mana_quota_with_it():
     archetype's row instead would have the role meter arguing with the type
     meter about the same number."""
     types = targets_from_counts(DEFAULT_TYPE_COUNTS, speed=0.5)
-    base = template_for(0.5).buckets[Bucket.MANA_SOURCES]
-    shifted = conditioned_template(
+    moved = conditioned_template(
         0.5, None, types, type_overrides={"Land": TargetOverride(low=39, high=39)}
     ).buckets[Bucket.MANA_SOURCES]
 
-    delta = 39.0 - DEFAULT_TYPE_COUNTS["Land"]
-    assert shifted.low == pytest.approx(base.low + delta)
+    assert moved.low == pytest.approx(39.0 + _allowance(0.5))
+    assert moved.high == pytest.approx(39.0 + _allowance(0.5))
 
 
-def test_a_bucket_override_still_beats_the_shift_a_type_override_caused():
-    """Overrides land after the shift, whichever axis moved it."""
+def test_a_bucket_override_still_beats_the_derivation_a_type_override_moved():
+    """Overrides land after the derivation, whichever axis moved it."""
     types = targets_from_counts(DEFAULT_TYPE_COUNTS, speed=0.5)
     template = conditioned_template(
         0.5,

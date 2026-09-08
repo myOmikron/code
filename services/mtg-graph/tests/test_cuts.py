@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import math
+
 import pytest
 
-from deck_lab.composition import template_for
+from deck_lab.composition import STATUS_TOLERANCE, template_for
 from deck_lab.cuts import (
     CUT_EXCLUDED_THEME,
     CUT_PINNED_THEME,
@@ -17,6 +19,7 @@ from deck_lab.cuts import (
     shape_delta,
     upgrade_candidates,
 )
+from deck_lab.vocabulary import Bucket
 
 
 def _card(oid, name, cmc=2.0, land=False, play=0.5):
@@ -37,6 +40,34 @@ def _roles(oid, roles, qty=1):
 
 
 TEMPLATE = template_for(0.5)
+
+# `_overfull_deck`/`_overfull_mana_and_interaction_deck` need enough removal
+# spells to read as genuinely over `interaction` (`BucketTarget.is_over`'s
+# own bound: strictly past `high + STATUS_TOLERANCE`) — derived from
+# `TEMPLATE` rather than hardcoded, since `composition.CASUAL_CORRIDORS`
+# put interaction's high end at 23.8 rather than the old speed-0.5 lerp's
+# 13.5, which the old flat 24/15 removal counts no longer clear. +2 past
+# the strict floor rather than +1, so the fixture stays comfortably over
+# rather than riding the boundary.
+_INTERACTION_OVERFULL_COUNT = (
+    math.ceil(TEMPLATE.buckets[Bucket.INTERACTION].high + STATUS_TOLERANCE) + 2
+)
+
+# `_shape_neutral_payoffs`'s default: the old flat 30 used to sit inside
+# the authored speed-0.5 synergy_wincon corridor (28.5-33.5); the measured
+# corridor (13.3-25.0) is both lower and narrower, so 30 now reads as over
+# rather than neutral. The corridor's own midpoint is the natural "neutral"
+# point — the fixture is named for sitting inside its corridor, not for
+# happening to land inside by luck.
+_SYNERGY_NEUTRAL_COUNT = round(
+    (TEMPLATE.buckets[Bucket.SYNERGY_WINCON].low + TEMPLATE.buckets[Bucket.SYNERGY_WINCON].high) / 2
+)
+
+# `_overfull_synergy_deck`'s old flat 36 — `_INTERACTION_OVERFULL_COUNT`'s
+# same fix, for synergy_wincon.
+_SYNERGY_OVERFULL_COUNT = (
+    math.ceil(TEMPLATE.buckets[Bucket.SYNERGY_WINCON].high + STATUS_TOLERANCE) + 2
+)
 
 
 def test_the_commander_is_never_a_cut():
@@ -73,6 +104,7 @@ def test_every_named_commander_is_defended_even_with_empty_keep(monkeypatch):
         balance: list = []
         types: list = []
         buckets: list = []
+        cedh_class: str | None = None
 
     monkeypatch.setattr(diagnostics, "diagnose", lambda *a, **kw: _Report())
 
@@ -360,6 +392,46 @@ def test_replace_keeps_the_callers_own_pins(monkeypatch):
     assert captured["pinned_themes"] == ["tutors", "wheels"]
 
 
+def test_replace_never_reads_a_cedh_class_it_never_computed(monkeypatch):
+    """cEDH Pro round Task E follow-up: `/replace` never diagnoses the deck
+    (no theme/typal profile — see the comment above its `conditioned_template`
+    call), so it has nothing to classify with. Even at bracket 5 it must keep
+    scoring against the pooled `CEDH` template rather than guess a
+    sub-archetype it was never told."""
+    from deck_lab import graph, suggestions
+    from deck_lab import type_targets as tt
+    from deck_lab.composition import CEDH
+    from deck_lab.cuts import find_replacements
+
+    cards = [_card("t", "Target"), _card("x", "Filler")]
+    roles = [_roles("t", {"payoff": 1.0}), _roles("x", {"payoff": 1.0})]
+    monkeypatch.setattr(graph, "fetch_deck", lambda deck: cards)
+    # The bracket-5 branch asks the scene for play rates; no graph here.
+    monkeypatch.setattr(graph, "scene_play_rates", lambda ids, commanders, **_: {})
+    monkeypatch.setattr(graph, "deck_card_roles", lambda deck: roles)
+    monkeypatch.setattr(graph, "cards_role_weights", lambda ids: {})
+    monkeypatch.setattr(graph, "cards_theme_fits", lambda ids: {})
+
+    def _fake_suggest(*args, **kwargs):
+        return type("_Report", (), {"suggestions": []})()
+
+    monkeypatch.setattr(suggestions, "suggest", _fake_suggest)
+
+    real_conditioned_template = tt.conditioned_template
+    captured: dict = {}
+
+    def spy(*args, **kwargs):
+        template = real_conditioned_template(*args, **kwargs)
+        captured["template"] = template
+        return template
+
+    monkeypatch.setattr(tt, "conditioned_template", spy)
+
+    find_replacements(["t", "x"], ["Target", "Filler"], "t", speed=1.0)
+
+    assert captured["template"].name == CEDH.name == "cedh"
+
+
 def _overfull_deck(**overrides):
     """A deck genuinely over its interaction quota.
 
@@ -368,7 +440,7 @@ def _overfull_deck(**overrides):
     it worse.
     """
     cards, roles = [], []
-    for i in range(24):
+    for i in range(_INTERACTION_OVERFULL_COUNT):
         oid = f"r{i}"
         cards.append(_card(oid, f"Removal {i}", play=overrides.get(oid, 0.5)))
         roles.append(_roles(oid, {"spot_removal": 1.0}))
@@ -400,7 +472,7 @@ def test_a_staple_is_labelled_as_one():
     assert any(r.code == "staple" for r in cuts["Staple"].reasons)
 
 
-def _shape_neutral_payoffs(n=30):
+def _shape_neutral_payoffs(n=_SYNERGY_NEUTRAL_COUNT):
     """A deck whose synergy bucket sits *inside* its corridor.
 
     The cards ride the land flag to stay out of the curve and the mana
@@ -480,8 +552,34 @@ def test_a_self_triggering_card_is_never_stranded():
     assert "attack_trigger" not in stranded.text
 
 
+def test_a_lieutenant_card_is_never_stranded_its_fuel_is_the_command_zone():
+    """Tyrant's Familiar cares about `commander_matters` — and its fuel is the
+    commander in the command zone, which every Commander deck fields by
+    construction and the produced counts (built from the 99) can never
+    contain. "Wants commander_matters, which nothing in the deck makes" was
+    a misread of the deck (reported live, on a three-commander Rule 0 zone).
+    Same shape as the Cecily fix: a material want alongside it is still
+    judged."""
+    cards, roles = _shape_neutral_payoffs()
+    cards[0].update(name="Tyrant")
+    resources = {"p0": {"cares_about": {"commander_matters"}, "produces": set()}}
+
+    cuts = {
+        c.name: c for c in score_cuts(cards, roles, resources, {}, TEMPLATE, produced_counts={})
+    }
+    assert "Tyrant" not in cuts or not any(r.code == "stranded" for r in cuts["Tyrant"].reasons)
+
+    resources = {"p0": {"cares_about": {"commander_matters", "creature_token"}, "produces": set()}}
+    cuts = {
+        c.name: c for c in score_cuts(cards, roles, resources, {}, TEMPLATE, produced_counts={})
+    }
+    stranded = next(r for r in cuts["Tyrant"].reasons if r.code == "stranded")
+    assert "creature_token" in stranded.text
+    assert "commander_matters" not in stranded.text
+
+
 def _overfull_synergy_deck():
-    cards, roles = _shape_neutral_payoffs(36)
+    cards, roles = _shape_neutral_payoffs(_SYNERGY_OVERFULL_COUNT)
     return cards, roles
 
 
@@ -550,17 +648,17 @@ def test_the_marginal_basic_leads_a_land_cut():
 
 
 def _overfull_mana_and_interaction_deck():
-    """Forty filler lands (over `mana_sources`, high 37.0) plus fifteen
-    removal spells (over `interaction`, high 13.5) — the shape the Plaza of
-    Heroes report needs: a deck crowded on both axes at once, so cutting a
-    card that touches both looks (wrongly, pre-fix) like it relieves twice
-    as much as cutting a plain land."""
+    """Forty filler lands (over `mana_sources`, high 37.0) plus enough
+    removal spells (over `interaction`, high 23.8 — `_INTERACTION_OVERFULL_
+    COUNT`) — the shape the Plaza of Heroes report needs: a deck crowded on
+    both axes at once, so cutting a card that touches both looks (wrongly,
+    pre-fix) like it relieves twice as much as cutting a plain land."""
     cards, roles = [], []
     for i in range(40):
         oid = f"l{i}"
         cards.append(_card(oid, f"Land {i}", cmc=0.0, land=True))
         roles.append(_roles(oid, {"land": 1.0}))
-    for i in range(15):
+    for i in range(_INTERACTION_OVERFULL_COUNT):
         oid = f"r{i}"
         cards.append(_card(oid, f"Removal {i}", play=0.5))
         roles.append(_roles(oid, {"spot_removal": 1.0}))
@@ -596,8 +694,9 @@ def test_a_lands_rider_role_never_argues_for_cutting_it():
 def test_a_lands_rider_role_can_still_defend_it():
     """The `min` asymmetry: the rider can only ever lower the case for
     cutting the land, never raise it. Same shapes as above but `interaction`
-    is short (one removal spell, low 10.0) rather than crowded, so losing
-    Plaza's protection is a real cost. Both cards are given identical
+    is short (five removal spells, low 12.4 — `composition.CASUAL_CORRIDORS`)
+    rather than crowded, so losing Plaza's protection is a real cost. Both
+    cards are given identical
     redundancy (playability 0.0, so the nonbasic's `1.0 - play` multiplier
     matches the basic's) so the only thing that can separate their scores is
     that cost — proving it survives the `min` rather than being flattened
@@ -644,6 +743,34 @@ def test_basics_lead_a_tied_land_cut():
 
     assert cuts["utility"].score == cuts["mtn"].score
     assert order.index("mtn") < order.index("utility")
+
+
+def test_a_deck_short_on_lands_is_never_offered_a_land_cut():
+    """Observed live: a green deck under on its Land row and over on mana
+    sources (the sources bucket counts its dorks and rocks at full weight)
+    led its cut list with a Mountain — cutting a land relieved the crowded
+    bucket and the Land row charged nothing for going further under. A land
+    shortfall is an adds question; the crowded bucket's cuts are the rocks
+    and dorks that crowded it."""
+    cards, roles = [], []
+    for i in range(30):
+        oid = f"l{i}"
+        cards.append(_card(oid, f"Land {i}", cmc=0.0, land=True))
+        roles.append(_roles(oid, {"land": 1.0}))
+    cards[0].update(name="Mountain", type_line="Basic Land — Mountain")
+    for i in range(12):
+        oid = f"k{i}"
+        cards.append(_card(oid, f"Rock {i}", cmc=2.0))
+        roles.append(_roles(oid, {"mana_rock": 1.0}))
+
+    short = score_cuts(cards, roles, {}, {}, _typed_template(Land=(34, 41, 0.35)))
+    assert not any(c.type_line.startswith(("Basic", "Land")) for c in short)
+    assert any(c.name.startswith("Rock") for c in short)
+
+    # The guard is the Land row reading short, not "lands are present": with
+    # the same deck inside its Land corridor the land cut is back on offer.
+    inside = score_cuts(cards, roles, {}, {}, _typed_template(Land=(26, 33, 0.35)))
+    assert any(c.name == "Mountain" for c in inside)
 
 
 def test_cut_reason_codes_never_carry_the_kind_prefix():
@@ -922,6 +1049,7 @@ def test_suggest_swaps_threads_excluded_themes_into_cut_scoring(monkeypatch):
         balance: list = []
         types: list = []
         buckets: list = []
+        cedh_class: str | None = None
 
     monkeypatch.setattr(diagnostics, "diagnose", lambda *a, **kw: _Report())
 
@@ -947,6 +1075,64 @@ def test_suggest_swaps_threads_excluded_themes_into_cut_scoring(monkeypatch):
     assert any(r.code == CutCode.EXCLUDED_THEME for r in cut.reasons)
     reason = next(r for r in cut.reasons if r.code == CutCode.EXCLUDED_THEME)
     assert reason.params["theme"] == "Artifacts"
+
+
+def test_suggest_swaps_conditions_cut_scoring_on_the_reports_cedh_class(monkeypatch):
+    """cEDH Pro round Task E follow-up — the consistency property the whole
+    task exists for: cut scoring must read `report.cedh_class` off the
+    diagnose it already ran, not default to the pooled `CEDH` template, so a
+    turbo-classified deck's cuts are scored against the SAME measured RAMP
+    corridor (16.0-26.1) the report showed rather than the pooled one
+    (13.3-25.3)."""
+    from deck_lab import diagnostics, graph, suggestions
+    from deck_lab import type_targets as tt
+    from deck_lab.composition import CEDH, CEDH_TURBO
+    from deck_lab.cuts import suggest_swaps
+    from deck_lab.vocabulary import Bucket
+
+    cards = [_card("cmd", "Commander"), _card("x", "Filler", play=0.5)]
+    roles = [_roles("cmd", {"payoff": 1.0}), _roles("x", {"spot_removal": 1.0})]
+
+    monkeypatch.setattr(graph, "fetch_deck", lambda deck: cards)
+
+    # The bracket-5 branch asks the scene for play rates; no graph here.
+
+    monkeypatch.setattr(graph, "scene_play_rates", lambda ids, commanders, **_: {})
+    monkeypatch.setattr(graph, "deck_card_roles", lambda deck: roles)
+    monkeypatch.setattr(graph, "deck_card_resources", lambda deck: {})
+    monkeypatch.setattr(graph, "cards_role_weights", lambda ids: {})
+    monkeypatch.setattr(graph, "deck_tutor_count", lambda deck: 0)
+
+    class _Report:
+        balance: list = []
+        types: list = []
+        buckets: list = []
+        cedh_class = "turbo"
+
+    monkeypatch.setattr(diagnostics, "diagnose", lambda *a, **kw: _Report())
+
+    class _Adds:
+        suggestions: list = []
+
+    monkeypatch.setattr(suggestions, "suggest", lambda *a, **kw: _Adds())
+
+    # A spy, not a stub: delegating to the real `conditioned_template` is the
+    # only way to prove the *actual* turbo corridor comes out the other end,
+    # rather than merely that `cedh_class` was passed as a keyword somewhere.
+    real_conditioned_template = tt.conditioned_template
+    captured: dict = {}
+
+    def spy(*args, **kwargs):
+        template = real_conditioned_template(*args, **kwargs)
+        captured["template"] = template
+        return template
+
+    monkeypatch.setattr(tt, "conditioned_template", spy)
+
+    suggest_swaps(["cmd", "x"], ["Commander", "Filler"], commander_oracle_id="cmd", speed=1.0)
+
+    assert captured["template"].buckets[Bucket.RAMP] == CEDH_TURBO.buckets[Bucket.RAMP]
+    assert captured["template"].buckets[Bucket.RAMP] != CEDH.buckets[Bucket.RAMP]
 
 
 # --- swap pairing ---------------------------------------------------------
@@ -1072,8 +1258,8 @@ def test_delta_reports_before_and_after_per_bucket():
     delta = shape_delta(cards, roles, TEMPLATE, remove="r0")
 
     removal = next(b for b in delta.buckets if b.bucket == "interaction")
-    assert removal.before == 24.0
-    assert removal.after == 23.0
+    assert removal.before == float(_INTERACTION_OVERFULL_COUNT)
+    assert removal.after == float(_INTERACTION_OVERFULL_COUNT - 1)
 
 
 def test_removing_from_an_overfull_bucket_improves_the_shape():
@@ -1165,7 +1351,7 @@ def test_cutting_an_overrepresented_type_outscores_its_equal():
 def test_a_deck_inside_its_type_ranges_pays_no_new_penalty():
     """Regression guard: conditioning the template must change nothing for a
     deck whose types are already in shape."""
-    cards, roles = _overfull_deck()  # 24 creatures — inside [23, 35]
+    cards, roles = _overfull_deck()  # _INTERACTION_OVERFULL_COUNT (28) creatures — inside [23, 35]
     plain = shape_delta(cards, roles, TEMPLATE, remove="r0")
     typed = shape_delta(cards, roles, _typed_template(Creature=(23, 35, 0.35)), remove="r0")
 
@@ -1222,7 +1408,12 @@ SHAPE = [_Bucket("synergy_wincon", "high"), _Bucket("ramp", "low")]
 
 
 def test_a_cut_from_a_full_bucket_prefers_an_add_to_an_empty_one():
-    """Answers the reason printed beside it instead of restating it."""
+    """Answers the reason printed beside it instead of restating it. "Another
+    Payoff" is a same-role *sidegrade* landing straight back in the bucket
+    the cut is over on, so the no-sidegrade-into-an-over-bucket gate refuses
+    it outright now — it used to be offered anyway, showing `frees == []`,
+    but a pairing that recreates the exact overage it was meant to answer
+    should not be shown at all, only ranked below the one that answers it."""
     adds = [
         {"oracle_id": "lateral", "name": "Another Payoff", "playability": 0.5},
         {"oracle_id": "fixes", "name": "A Rock", "playability": 0.5},
@@ -1234,10 +1425,9 @@ def test_a_cut_from_a_full_bucket_prefers_an_add_to_an_empty_one():
     swaps = pair_swaps(adds, cuts, add_roles, cut_roles, buckets=SHAPE)
     by_add = {s.add_name: s for s in swaps}
 
-    # Both are offered; only one claims to fix anything.
     assert by_add["A Rock"].fills == ["ramp"]
     assert by_add["A Rock"].frees == ["synergy_wincon"]
-    assert by_add["Another Payoff"].frees == []
+    assert "Another Payoff" not in by_add
 
 
 def test_a_cross_bucket_exchange_needs_no_shared_role():
@@ -1328,6 +1518,78 @@ def test_the_second_pass_does_not_invent_a_cut_nobody_paired_with():
     swaps = pair_swaps(adds, cuts, add_roles, cut_roles, per_add=1, buckets=SHAPE)
 
     assert {s.cut.name for s in swaps} == {"Payoff 0"}
+
+
+# --- no sidegrade back into an over-full bucket ----------------------------
+#
+# The same-role pass otherwise treats a sidegrade as fine — the shape
+# argument is meant to decide close calls. But when the cut is on offer
+# *because* its own bucket reads over, an add that shares its role lands
+# right back in that bucket: the swap recreates the overage it was supposed
+# to relieve. Observed live: Untimely Malfunction (0.457) was cut because
+# `interaction` was over, and paired with Cankerbloom (0.353) and Archdruid's
+# Charm (0.376) — both `spot_removal` 1.0, both narrower than the cut
+# (artifacts/enchantments only), both inside `DOWNGRADE_MARGIN` of it, both
+# landing straight back in `interaction`.
+
+
+def test_a_same_role_sidegrade_does_not_return_to_an_over_bucket():
+    """Untimely Malfunction (0.457) for Cankerbloom (0.353) — both
+    `spot_removal`, the add narrower than the cut, and the swap lands back in
+    `interaction`, the bucket the cut was offered to relieve. Inside
+    `DOWNGRADE_MARGIN`, so the plain downgrade veto alone would let it
+    through; this is the gate that stops it."""
+    adds = [{"oracle_id": "cankerbloom", "name": "Cankerbloom", "playability": 0.353}]
+    cuts = [_rock("malfunction", "Untimely Malfunction", 0.457)]
+    roles = {"spot_removal": 1.0}
+
+    swaps = pair_swaps(
+        adds,
+        cuts,
+        {"cankerbloom": roles},
+        {"malfunction": roles},
+        buckets=[_Bucket("interaction", "high")],
+    )
+
+    assert swaps == []
+
+
+def test_a_same_role_strict_upgrade_still_returns_to_an_over_bucket():
+    """The mirror case: this gate blocks sidegrades, not same-role pairing
+    outright — a real upgrade may still land back in the bucket it drains."""
+    adds = [{"oracle_id": "add", "name": "Real Upgrade", "playability": 0.6}]
+    cuts = [_rock("cut", "A Removal Spell", 0.4)]
+    roles = {"spot_removal": 1.0}
+
+    swaps = pair_swaps(
+        adds,
+        cuts,
+        {"add": roles},
+        {"cut": roles},
+        buckets=[_Bucket("interaction", "high")],
+    )
+
+    assert [s.cut.name for s in swaps] == ["A Removal Spell"]
+
+
+def test_a_same_role_sidegrade_still_pairs_when_the_bucket_is_not_over():
+    """Scopes the new gate to over buckets specifically: with `buckets` rows
+    present but the shared bucket reading fine (neither over nor short), the
+    ordinary sidegrade pairing (`test_a_sidegrade_still_pairs`) is
+    untouched."""
+    adds = [{"oracle_id": "add", "name": "A Sidegrade", "playability": 0.353}]
+    cuts = [_rock("cut", "A Removal Spell", 0.457)]
+    roles = {"spot_removal": 1.0}
+
+    swaps = pair_swaps(
+        adds,
+        cuts,
+        {"add": roles},
+        {"cut": roles},
+        buckets=[_Bucket("interaction", "ok")],
+    )
+
+    assert [s.cut.name for s in swaps] == ["A Removal Spell"]
 
 
 # --- upgrade swaps: same bucket, weak card out, strong card in -------------
@@ -1549,3 +1811,165 @@ def test_upgrades_none_or_empty_leaves_pairing_byte_identical():
     explicit_empty = pair_swaps(adds, cuts, add_roles, cut_roles, upgrades=[])
 
     assert default == explicit_none == explicit_empty
+
+
+def test_scene_play_rates_replace_casual_playability_in_place():
+    """`apply_play_rates` rewrites only the cards a covered scene answered
+    for — a card the lookup did not mention keeps its casual number."""
+    from deck_lab.cuts import apply_play_rates
+
+    cards = [_card("a", "Transmute Artifact", play=0.05), _card("b", "Fabricate", play=0.4)]
+    apply_play_rates(cards, {"a": 0.62})
+    assert cards[0]["playability"] == 0.62
+    assert cards[1]["playability"] == 0.4
+
+
+def test_cedh_staple_is_not_a_rarely_played_cut_at_bracket_five(monkeypatch):
+    """At bracket 5 cut scoring reads the scene's play rate, not casual
+    ubiquity: Transmute Artifact (casual 0.05, cEDH 0.62) must neither carry
+    the rarely-played prosecution nor be offered as an upgrade candidate,
+    while a card the scene never plays still is."""
+    from deck_lab import diagnostics, graph, suggestions
+    from deck_lab.cuts import CutCode, suggest_swaps
+
+    cards = [
+        _card("cmd", "Kess"),
+        _card("tutor", "Transmute Artifact", play=0.05),
+        _card("dud", "Fabricate", play=0.40),
+    ]
+    roles = [
+        _roles("cmd", {"payoff": 1.0}),
+        _roles("tutor", {"tutor": 1.0}),
+        _roles("dud", {"tutor": 1.0}),
+    ]
+    asked: list[list[str]] = []
+
+    def rates(ids, commanders, **_):
+        asked.append(list(ids))
+        return {"tutor": 0.62, "dud": 0.0}
+
+    monkeypatch.setattr(graph, "fetch_deck", lambda deck: cards)
+    monkeypatch.setattr(graph, "deck_card_roles", lambda deck: roles)
+    monkeypatch.setattr(graph, "deck_card_resources", lambda deck: {})
+    monkeypatch.setattr(graph, "cards_role_weights", lambda ids: {})
+    monkeypatch.setattr(graph, "deck_tutor_count", lambda deck: 0)
+    monkeypatch.setattr(graph, "scene_play_rates", rates)
+
+    class _Report:
+        balance: list = []
+        types: list = []
+        buckets: list = []
+        cedh_class: str | None = None
+
+    monkeypatch.setattr(diagnostics, "diagnose", lambda *a, **kw: _Report())
+
+    class _Adds:
+        suggestions: list = []
+
+    monkeypatch.setattr(suggestions, "suggest", lambda *a, **kw: _Adds())
+
+    result = suggest_swaps(
+        ["cmd", "tutor", "dud"],
+        ["Kess", "Transmute Artifact", "Fabricate"],
+        commander_oracle_id="cmd",
+        commander_oracle_ids=["cmd"],
+        speed=1.0,
+        protected=[],
+    )
+
+    assert asked and set(asked[0]) >= {"tutor", "dud"}
+    by_id = {c.oracle_id: c for c in result["cuts"]}
+    tutor_codes = [p.code for p in by_id["tutor"].reasons] if "tutor" in by_id else []
+    assert CutCode.RARELY_PLAYED not in tutor_codes
+    assert cards[1]["playability"] == 0.62 and cards[2]["playability"] == 0.0
+
+
+def test_casual_brackets_never_ask_the_scene(monkeypatch):
+    """Below bracket 5 the scene lookup is never made — casual decks keep
+    casual playability byte for byte."""
+    from deck_lab import diagnostics, graph, suggestions
+    from deck_lab.cuts import suggest_swaps
+
+    cards = [_card("cmd", "Cmd"), _card("x", "Filler", play=0.05)]
+    roles = [_roles("cmd", {"payoff": 1.0}), _roles("x", {"payoff": 1.0})]
+    monkeypatch.setattr(graph, "fetch_deck", lambda deck: cards)
+    monkeypatch.setattr(graph, "deck_card_roles", lambda deck: roles)
+    monkeypatch.setattr(graph, "deck_card_resources", lambda deck: {})
+    monkeypatch.setattr(graph, "cards_role_weights", lambda ids: {})
+    monkeypatch.setattr(graph, "deck_tutor_count", lambda deck: 0)
+
+    def never(*_a, **_k):
+        raise AssertionError("scene_play_rates must not run at casual speed")
+
+    monkeypatch.setattr(graph, "scene_play_rates", never)
+
+    class _Report:
+        balance: list = []
+        types: list = []
+        buckets: list = []
+        cedh_class: str | None = None
+
+    monkeypatch.setattr(diagnostics, "diagnose", lambda *a, **kw: _Report())
+
+    class _Adds:
+        suggestions: list = []
+
+    monkeypatch.setattr(suggestions, "suggest", lambda *a, **kw: _Adds())
+
+    suggest_swaps(
+        ["cmd", "x"], ["Cmd", "Filler"], commander_oracle_id="cmd", speed=0.5, protected=[]
+    )
+    assert cards[1]["playability"] == 0.05
+
+
+def test_a_polymorph_deck_never_cuts_its_own_win_line():
+    """Polymorph, Proteus Staff and the two fatties they turn up are the whole
+    win condition of an Urza Poly list, and every other defence misses them:
+    they are tagged as removal, Spellbook lists no combo for them, and their
+    play rate is near zero even among the deck's nearest tournament
+    neighbours."""
+    from deck_lab.cuts import deck_plan_pieces
+    from deck_lab.vocabulary import Resource
+
+    cards = [
+        _card("poly", "Polymorph"),
+        _card("staff", "Proteus Staff"),
+        _card("horror", "Hullbreaker Horror"),
+        _card("tyrant", "Tidespout Tyrant"),
+        _card("ring", "Sol Ring"),
+    ]
+    for card in cards:
+        card["type_line"] = (
+            "Creature — Kraken" if card["oracle_id"] in {"horror", "tyrant"} else "Artifact"
+        )
+    resources = {
+        "poly": {"produces": {Resource.POLYMORPH, Resource.SPOT_REMOVAL}},
+        "staff": {"produces": {Resource.POLYMORPH}},
+    }
+
+    assert deck_plan_pieces(cards, resources) == {"poly", "staff", "horror", "tyrant"}
+
+
+def test_a_creature_deck_running_the_same_effect_is_untouched():
+    """The effect alone is not the signal — of the 19 cards carrying it, most
+    live in creature decks where it is a value engine, not a win line. The
+    creature count is what tells the two apart."""
+    from deck_lab.composition import POLYMORPH_MAX_CREATURES
+    from deck_lab.cuts import deck_plan_pieces
+    from deck_lab.vocabulary import Resource
+
+    cards = [_card("oath", "Oath of Druids")]
+    cards[0]["type_line"] = "Enchantment"
+    for index in range(POLYMORPH_MAX_CREATURES + 1):
+        card = _card(f"c{index}", f"Creature {index}")
+        card["type_line"] = "Creature — Elf"
+        cards.append(card)
+
+    assert deck_plan_pieces(cards, {"oath": {"produces": {Resource.POLYMORPH}}}) == set()
+
+
+def test_a_deck_with_no_polymorph_effect_defends_nothing_extra():
+    from deck_lab.cuts import deck_plan_pieces
+
+    cards = [_card("a", "Island", land=True), _card("b", "Bear")]
+    assert deck_plan_pieces(cards, {}) == set()

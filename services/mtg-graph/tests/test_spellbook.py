@@ -101,6 +101,65 @@ def test_parse_variant_extracts_the_ingest_row():
     assert row["pieces"] == 2
 
 
+def test_parse_variant_keeps_the_line_engine_properties():
+    """B1: cost, colours and prerequisites the ingest used to throw away,
+    plus per-piece zones/mustBeCommander/quantity for the USES edge."""
+    row = parse_variant(
+        _variant(
+            manaNeeded="{1}{U}{U}{B}",
+            manaValueNeeded=4,
+            identity="UB",
+            easyPrerequisites="You have a way to draw a card.",
+            notablePrerequisites="You control no permanents.",
+            uses=[
+                {
+                    "card": {"oracleId": "oid-a", "name": "A"},
+                    "zoneLocations": ["H"],
+                    "mustBeCommander": False,
+                    "quantity": 1,
+                },
+                {
+                    "card": {"oracleId": "oid-b", "name": "B"},
+                    "zoneLocations": ["B", "G"],
+                    "mustBeCommander": True,
+                    "quantity": 2,
+                },
+            ],
+        )
+    )
+
+    assert row["mana_needed"] == "{1}{U}{U}{B}"
+    assert row["mana_value_needed"] == 4
+    assert row["identity"] == "UB"
+    assert row["prereq_easy"] == "You have a way to draw a card."
+    assert row["prereq_notable"] == "You control no permanents."
+    assert row["pieces_detail"] == [
+        {"oracle_id": "oid-a", "zones": ["H"], "must_be_commander": False, "quantity": 1},
+        {"oracle_id": "oid-b", "zones": ["B", "G"], "must_be_commander": True, "quantity": 2},
+    ]
+
+
+def test_parse_variant_defaults_missing_line_engine_fields_to_empty():
+    """The export's own convention is an empty string for "no prerequisite",
+    but a row that omits a key entirely must not blow up the ingest."""
+    variant = _variant()
+    del variant["uses"][0]["quantity"]
+
+    row = parse_variant(variant)
+
+    assert row["mana_needed"] == ""
+    assert row["mana_value_needed"] == 0
+    assert row["identity"] == ""
+    assert row["prereq_easy"] == ""
+    assert row["prereq_notable"] == ""
+    assert row["pieces_detail"][0] == {
+        "oracle_id": "oid-a",
+        "zones": [],
+        "must_be_commander": False,
+        "quantity": 1,
+    }
+
+
 def test_parse_variant_scope():
     """Not approved, not commander-legal, template-needing, or unjoinable — all out."""
     assert parse_variant(_variant(status="D")) is None

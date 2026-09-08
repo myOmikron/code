@@ -59,7 +59,11 @@ export default defineConfig({
                 // self-hosted OCR runtime (public/tesseract) are far too large to precache —
                 // they are cached on demand by the runtime rules below.
                 globPatterns: ["**/*.{js,css,html,svg,woff2}"],
-                globIgnores: ["data/**", "tesseract/**"],
+                // The scanner's worker carries OpenCV and weighs 16 MB, and the model and index
+                // are far larger still. None of it belongs in a precache that has to finish
+                // before the app is usable; all of it is content-addressed and cached on first
+                // use by the runtime rules below.
+                globIgnores: ["data/**", "tesseract/**", "models/**", "assets/scan-worker-*.js"],
                 // The plugin defaults this to index.html, hence turning it off by hand:
                 // it registers a route that answers every
                 // navigation out of the precache, ahead of everything below, and that is
@@ -91,6 +95,38 @@ export default defineConfig({
                                         caches.match("/index.html", { ignoreSearch: true }),
                                 },
                             ],
+                        },
+                    },
+                    {
+                        // The manifest names the index build and carries the content hash the
+                        // payload URLs below are keyed on, so it is the one file that must never
+                        // come from the cache: a stale copy pins a stale index forever.
+                        urlPattern: /\/data\/scan-index\/manifest\.json$/,
+                        handler: "NetworkFirst",
+                        options: { cacheName: "scanner-entry" },
+                    },
+                    {
+                        // The index payload, keyed by the content hash in its query string. It
+                        // gets its own cache with a tight entry limit, because a versioned URL is
+                        // never overwritten: without the limit every index build would leave its
+                        // 20 MB predecessor behind for good. Three entries is exactly one build.
+                        urlPattern: /\/data\/scan-index\/(vectors\.i8|projection\.f32|cards\.json\.gz)/,
+                        handler: "CacheFirst",
+                        options: {
+                            cacheName: "scanner-index",
+                            cacheableResponse: { statuses: [200] },
+                            expiration: { maxEntries: 3 },
+                        },
+                    },
+                    {
+                        // The scanner's own runtime: worker bundle, ONNX runtime and the model.
+                        // Each is content-hashed by vite or served from a path that changes with
+                        // the model, so a cache hit is always the right file.
+                        urlPattern: /\/(assets\/scan-worker-[^/]+\.js|assets\/ort-wasm-[^/]+\.wasm|models\/.*)$/,
+                        handler: "CacheFirst",
+                        options: {
+                            cacheName: "scanner-runtime",
+                            cacheableResponse: { statuses: [200] },
                         },
                     },
                     {
@@ -174,10 +210,37 @@ export default defineConfig({
     define: {
         __APP_VERSION__: JSON.stringify(appVersion),
     },
+    // Both are reachable only from inside the scan worker: opencv through an `await import()` in
+    // src/scanner/opencv.ts, onnxruntime-web through the embedder. Vite scans for dependencies
+    // from index.html through the main thread, so it never sees either, and discovers them only
+    // when the worker asks. That discovery re-optimizes and issues a new hash while the worker is
+    // still holding the old one, which is the "Failed to fetch dynamically imported module" on
+    // deps/@techstark_opencv-js.js — a dead URL that no reload fixes, because the worker is not
+    // rebuilt by one. Naming them here has them bundled before anything asks.
+    optimizeDeps: {
+        include: ["@techstark/opencv-js", "onnxruntime-web"],
+    },
+
     server: {
         allowedHosts: true,
+        watch: {
+            // Merged with vite's own list, so .git and node_modules stay covered. .cache holds the
+            // scanner's working data: 450000 reference scans plus the OCR training corpus, over a
+            // million files against an inotify limit of 524288, which crashes the dev server on
+            // startup with ENOSPC. The other two fill up in bulk when a harness runs and would
+            // each turn into a reload storm.
+            ignored: ["**/.cache/**", "**/test/fehlschlaege/**", "**/test/detect-output/**"],
+        },
         host: useHttps ? true : "127.0.0.1",
         https,
+        watch: {
+            // None of this is source, and all of it is huge: the scryfall bulk/image cache
+            // (several GB of jpgs), the generated card index (~430 MB) and the OCR runtime.
+            // Left alone, the dev server hands every single file to inotify and dies with
+            // `ENOSPC: System limit for number of file watchers reached` — inside the compose
+            // stack the whole cache lives under the project root, so it is watched by default.
+            ignored: ["**/.cache/**", "**/public/data/**", "**/public/tesseract/**", "**/dev-dist/**", "**/tmp/**"],
+        },
         proxy: {
             // /api/graph rides along: the webserver proxies the graph advisor
             // behind its auth layer, so dev exercises the same path as prod.

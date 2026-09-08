@@ -5,6 +5,7 @@ import { Ref, memo } from "react";
 import { useTranslation } from "react-i18next";
 import { CardFinish } from "src/api/generated";
 import { Suggestion } from "src/api/graph-generated";
+import { CardOverlayAction } from "src/components/card-overlay-action";
 import { CardThumbnail } from "src/components/card-thumbnail";
 import { ManaCost } from "src/components/mana-cost";
 import { RadarGlyph } from "src/components/charts/radar-glyph";
@@ -12,6 +13,7 @@ import { GameChangerMarker } from "src/components/game-changer-marker";
 import { formatCurrency } from "src/utils/format";
 import { Printing } from "src/utils/scryfall";
 import { sayWhy } from "src/utils/advisor-phrase";
+import { pointerCard } from "src/utils/use-pointer-card";
 import { suggestionRadar } from "src/utils/suggestion-radar";
 
 /**
@@ -90,6 +92,18 @@ function headline(suggestion: Suggestion) {
  * the fastest signal on the tile, and it was hidden one click away while four
  * clauses of prose sat in the open.
  *
+ * Adding is the one thing this whole page exists to make happen, and it used
+ * to be a sixteen-pixel plus in the corner of the footer, the same size as the
+ * two actions that decline the card. It is now the artwork itself: a scrim and
+ * a circular button in the middle of the picture on hover or focus, so the
+ * target is the card rather than a corner of it. Touch screens have no hover
+ * to reveal it, so there the button sits permanently in the corner of the
+ * artwork instead and the scrim never appears — a picture the reader is
+ * choosing by cannot be dimmed the whole time. The button is the app's shared
+ * artwork chip ({@link CardOverlayAction}), grey and translucent like every
+ * other mark laid on a card, because a saturated disc over a photograph the
+ * reader is judging fights the card it is offering.
+ *
  * Wrapped in {@link memo}: a gallery holds ~45 of these, and a single tile
  * going busy or a report refreshing must not re-render every other one — see
  * the gallery for the stable props that make the memo comparison hold.
@@ -123,6 +137,9 @@ export const DeckAdvisorSuggestionTile = memo(function DeckAdvisorSuggestionTile
     return (
         <motion.li
             ref={ref}
+            // How the gallery knows which card the `A` key means — see
+            // `usePointerCard` there, and `pointerCard` for the attribute.
+            {...pointerCard(suggestion.oracle_id)}
             layout
             layoutId={suggestion.oracle_id}
             initial={{ opacity: 0, scale: 0.95 }}
@@ -132,16 +149,7 @@ export const DeckAdvisorSuggestionTile = memo(function DeckAdvisorSuggestionTile
                 "group flex flex-col overflow-hidden rounded-(--radius-card) bg-(--surface-card) shadow-(--shadow-card-sm) ring-1 ring-zinc-950/5 transition hover:shadow-(--shadow-card-md) dark:ring-white/10"
             }
         >
-            <button
-                type={"button"}
-                onClick={() => onOpen(suggestion)}
-                disabled={printing === undefined}
-                title={t("accessibility.open-card", { name: suggestion.name })}
-                aria-label={t("accessibility.open-card", { name: suggestion.name })}
-                className={
-                    "relative block w-full cursor-zoom-in bg-zinc-100 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-(--color-accent) disabled:cursor-default dark:bg-zinc-800"
-                }
-            >
+            <div className={"relative bg-zinc-100 dark:bg-zinc-800"}>
                 <CardThumbnail
                     name={suggestion.name}
                     image={printing?.largeImageUrl ?? null}
@@ -150,8 +158,64 @@ export const DeckAdvisorSuggestionTile = memo(function DeckAdvisorSuggestionTile
                     finish={CardFinish.Nonfoil}
                     className={"w-full transition duration-300 group-hover:scale-[1.02]"}
                 />
+                {/* Laid over the artwork rather than wrapped around it: the add
+                    button sits on the same picture, and a button inside a
+                    button is not markup a browser will accept. It comes first
+                    in the tab order all the same, so a card is looked at before
+                    it is taken. */}
+                <button
+                    type={"button"}
+                    onClick={() => onOpen(suggestion)}
+                    disabled={printing === undefined}
+                    title={t("accessibility.open-card", { name: suggestion.name })}
+                    aria-label={t("accessibility.open-card", { name: suggestion.name })}
+                    className={
+                        "absolute inset-0 cursor-zoom-in focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-(--color-accent) disabled:cursor-default"
+                    }
+                />
+                {/* Under the marker, over the artwork: the trophy stays
+                    readable while the picture behind it dims. Flat rather than
+                    a gradient — a scrim that pools at the bottom would put its
+                    darkest part exactly over the rules text. */}
+                <span
+                    className={
+                        "pointer-events-none absolute inset-0 bg-zinc-950/40 opacity-0 transition duration-200 group-focus-within:opacity-100 group-hover:opacity-100 pointer-coarse:hidden"
+                    }
+                />
                 {suggestion.game_changer === true && <GameChangerMarker variant={"overlay"} />}
-            </button>
+                {/* The add, at the size of the decision it makes.
+                    Centred and revealed with the scrim where there is a
+                    pointer to reveal it; parked in the corner and always on
+                    where there is not, because a touch screen has no hover and
+                    a permanent scrim would hide the card it is offering.
+
+                    A row rather than a single slot: this is where an action on
+                    the artwork goes, and a two-faced card wants its flip beside
+                    the add rather than a second place to look.
+
+                    Faded rather than hidden, and held back by pointer-events
+                    instead: `invisible` would take the button out of the
+                    accessibility tree until something inside the tile had
+                    focus, so a screen reader browsing the gallery would be
+                    told about a card it could look at but not add. */}
+                <div
+                    className={
+                        "pointer-events-none absolute inset-0 flex scale-95 items-center justify-center gap-2 p-2 opacity-0 transition duration-200 group-focus-within:scale-100 group-focus-within:opacity-100 group-hover:scale-100 group-hover:opacity-100 pointer-coarse:scale-100 pointer-coarse:items-end pointer-coarse:justify-end pointer-coarse:opacity-100"
+                    }
+                >
+                    <CardOverlayAction
+                        icon={PlusIcon}
+                        size={"md"}
+                        label={t("accessibility.add-card", { name: suggestion.name })}
+                        onClick={() => onAdd(suggestion)}
+                        busy={busy}
+                        disabled={printing === undefined}
+                        className={
+                            "pointer-events-none group-focus-within:pointer-events-auto group-hover:pointer-events-auto pointer-coarse:pointer-events-auto"
+                        }
+                    />
+                </div>
+            </div>
 
             <div className={"flex min-w-0 flex-1 flex-col gap-2 p-3"}>
                 <div className={"flex items-baseline justify-between gap-2"}>
@@ -234,18 +298,6 @@ export const DeckAdvisorSuggestionTile = memo(function DeckAdvisorSuggestionTile
                             }
                         >
                             <BookmarkIcon className={"size-4"} />
-                        </button>
-                        <button
-                            type={"button"}
-                            onClick={() => onAdd(suggestion)}
-                            disabled={busy || printing === undefined}
-                            title={t("accessibility.add-card", { name: suggestion.name })}
-                            aria-label={t("accessibility.add-card", { name: suggestion.name })}
-                            className={
-                                "rounded-(--radius-control) bg-(--color-accent)/10 p-1.5 text-(--color-brand-700) transition hover:bg-(--color-accent)/20 disabled:opacity-40 disabled:hover:bg-(--color-accent)/10 dark:text-(--color-brand-300) pointer-coarse:p-2.5"
-                            }
-                        >
-                            <PlusIcon className={"size-4"} />
                         </button>
                     </span>
                 </div>

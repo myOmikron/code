@@ -50,3 +50,19 @@ export function artworkOf(card: ScannedCard | null | undefined, side: "front" | 
 export function hasBack(card: ScannedCard | null | undefined): boolean {
     return artworkOf(card, "back").image !== null;
 }
+
+/**
+ * The same scan one size up, for a closer look.
+ *
+ * A card record only carries Scryfall's `normal` scan, 488 pixels across, which is right for a
+ * list row and soft on a phone held at arm's length. The sizes are one path segment of the same
+ * url, so the bigger file follows from the smaller one without a second lookup, and anything that
+ * is not a Scryfall url is handed back untouched.
+ *
+ * @param url the scan a listing sent
+ *
+ * @returns the larger scan of the same side of the same card
+ */
+export function largerScan(url: string): string {
+    return url.replace("https://cards.scryfall.io/normal/", "https://cards.scryfall.io/large/");
+}

@@ -7,6 +7,7 @@ import {
 import { UUID } from "src/api/api";
 import { RequiredError, ResponseError } from "src/api/generated/club-admin";
 import { parseError } from "src/api/error";
+import { ExtendInviteRequest } from "src/api/generated/admin";
 
 const clubAdminApi = new DefaultApi(new Configuration({ basePath: window.location.origin }));
 
@@ -26,6 +27,8 @@ export const ClubAdminApi = {
             handleError(clubAdminApi.createMemberInvite({ club_uuid, CreateMemberInviteRequest: req })),
         retract: (uuid: UUID, club_uuid: UUID) =>
             handleError(clubAdminApi.retractInvite({ uuid, club_uuid: club_uuid })),
+        extendExpiry: (invite_uuid: UUID, club_uuid: UUID, req: ExtendInviteRequest) =>
+            handleError(clubAdminApi.extendInviteExpiry({ invite_uuid, club_uuid, ExtendInviteRequest: req })),
     },
 };
 

@@ -1,0 +1,88 @@
+# Dev stack for bnv-manager-v2: just dev bnv-manager-v2 up -d --build
+# Single entrypoint is traefik on http://localhost — it routes /api to the
+# webserver, /swagger-ui to the OpenAPI explorer and everything else to the
+# vite dev server.
+# No shared infra needed: this service talks to Postgres and mailcow only,
+# not to NATS.
+name: bnv-manager-v2
+
+services:
+  traefik:
+    image: traefik:3
+    ports:
+      - "80:80"
+    volumes:
+      - ./bnv-manager-v2/traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./bnv-manager-v2/traefik/dynamic.yml:/etc/traefik/dynamic.yml:ro
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: dev/common/frontend-dev.Dockerfile
+    # Same uid as the developer on the host, so everything the container writes
+    # into the bind-mounted workspace stays theirs (see the Dockerfile).
+    user: "1000:1000"
+    environment:
+      - FRONTEND=bnv-manager-v2
+      # used by `just gen-api bnv-manager-v2` (runs inside this container)
+      - WEBSERVER_URL=http://webserver:8080
+    volumes:
+      - ../:/app
+
+  # OpenAPI explorer for the webserver's specs, on http://localhost/swagger-ui.
+  # The spec urls are same-origin paths, so the browser fetches them back
+  # through traefik — no CORS, and no second host to configure.
+  #
+  # The five spec handlers are `#[cfg(debug_assertions)]`-gated (see
+  # http/handler_frontend/mod.rs) and this stack builds the release
+  # Dockerfile, so they 404 until that gate is lifted. Same for
+  # `just gen-api bnv-manager-v2`.
+  swagger:
+    # renovate: datasource=docker depName=swaggerapi/swagger-ui
+    image: swaggerapi/swagger-ui:v5.32.8
+    environment:
+      - BASE_URL=/swagger-ui
+      - 'URLS=[{ url: "/api/v1/frontend/admin.json", name: "Admin" }, { url: "/api/v1/frontend/club-admin.json", name: "Club admin" }, { url: "/api/v1/frontend/club-member.json", name: "Club member" }, { url: "/api/v1/frontend/common.json", name: "Common" }, { url: "/api/v1/frontend/auth.json", name: "Auth" }]'
+
+  webserver:
+    env_file: [ common/env.common ]
+    environment:
+      - POSTGRES_HOST=postgres
+      # Where the links the service hands out point back to — traefik's entrypoint
+      - ORIGIN=http://localhost
+      # The mailcow instance to work against. No offline mode: the module runs
+      # an initial domain sync while starting up and the service refuses to
+      # start when it fails, so this has to be reachable. DISABLE_MAILCOW only
+      # silences the version check, not that sync.
+      - MAILCOW_BASE_URL=${MAILCOW_BASE_URL:-http://localhost}
+      - MAILCOW_API_KEY=${MAILCOW_API_KEY:-dev}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    build:
+      context: ..
+      dockerfile: services/bnv-manager-v2/Dockerfile
+    volumes:
+      # The OIDC module generates its RSA signing key on first start and reads
+      # it back on every one after.
+      - vol-state:/var/lib/bnv-manager
+    # Exposed for host-side smoke tests without going through traefik
+    ports:
+      - "8080:8080"
+
+  postgres:
+    image: postgres:18
+    env_file: [ common/env.common ]
+    # set shared memory limit when using docker-compose
+    shm_size: 128mb
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+    volumes:
+      - vol-db:/var/lib/postgresql
+
+volumes:
+  vol-db:
+  vol-state:

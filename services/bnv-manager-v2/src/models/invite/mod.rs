@@ -5,6 +5,7 @@ use futures_util::TryStreamExt;
 use galvyn::core::re_exports::schemars;
 use galvyn::core::re_exports::schemars::JsonSchema;
 use galvyn::rorm;
+use galvyn::rorm::and;
 use galvyn::rorm::db::Executor;
 use galvyn::rorm::fields::types::MaxStr;
 use galvyn::rorm::prelude::ForeignModelByField;
@@ -126,7 +127,7 @@ impl Invite {
             && let Some(club) = self.club
         {
             Account::ClubMember(ClubAccount::from(
-                rorm::insert(guard.get_transaction(), ClubAccountModel)
+                rorm::insert(guard.as_mut(), ClubAccountModel)
                     .single(&ClubAccountModelInsert {
                         uuid: Uuid::new_v4(),
                         username: ForeignModelByField(self.username),
@@ -141,7 +142,7 @@ impl Invite {
         // Club admin
         else if let Some(club) = self.club {
             Account::ClubAdmin(ClubAdminAccount::from(
-                rorm::insert(guard.get_transaction(), ClubAdminAccountModel)
+                rorm::insert(guard.as_mut(), ClubAdminAccountModel)
                     .single(&ClubAdminAccountModelInsert {
                         uuid: Uuid::new_v4(),
                         username: ForeignModelByField(self.username),
@@ -155,7 +156,7 @@ impl Invite {
         // Superadmin
         else {
             Account::Superadmin(AdministrativeAccount::from(
-                rorm::insert(guard.get_transaction(), AdministrativeAccountModel)
+                rorm::insert(guard.as_mut(), AdministrativeAccountModel)
                     .single(&AdministrativeAccountModelInsert {
                         uuid: Uuid::new_v4(),
                         username: ForeignModelByField(self.username),
@@ -167,11 +168,11 @@ impl Invite {
         };
 
         // Delete invite, the related invited roles will be deleted by cascade
-        rorm::delete(guard.get_transaction(), InviteModel)
+        rorm::delete(guard.as_mut(), InviteModel)
             .condition(InviteModel.uuid.equals(self.uuid.0))
             .await?;
 
-        guard.commit().await?;
+        guard.commit_if_owned().await?;
 
         Ok(Ok(account))
     }
@@ -192,7 +193,7 @@ impl Invite {
         let mut guard = exe.ensure_transaction().await?;
         let username = MaxStr::new(username.to_lowercase())?;
 
-        let existing = rorm::query(guard.get_transaction(), UsernameModel)
+        let existing = rorm::query(guard.as_mut(), UsernameModel)
             .condition(UsernameModel.username.equals(&username))
             .optional()
             .await?;
@@ -200,11 +201,11 @@ impl Invite {
             return Ok(Err(CreateInviteError::UsernameTaken));
         }
 
-        let username = rorm::insert(guard.get_transaction(), UsernameModel)
+        let username = rorm::insert(guard.as_mut(), UsernameModel)
             .single(&UsernameModel { username })
             .await?;
 
-        let invite = rorm::insert(guard.get_transaction(), InviteModel)
+        let invite = rorm::insert(guard.as_mut(), InviteModel)
             .single(&InviteModelInsert {
                 uuid: Uuid::new_v4(),
                 username: ForeignModelByField(username.username),
@@ -222,20 +223,49 @@ impl Invite {
             })
             .await?;
 
-        guard.commit().await?;
+        guard.commit_if_owned().await?;
 
         Ok(Ok(Invite::from(invite)))
     }
 
-    /// Clear expired invites
-    #[instrument(name = "Invite::clear_expired", skip(exe))]
-    pub async fn clear_expired(exe: impl Executor<'_>) -> anyhow::Result<()> {
+    /// Extend the expiry of an invitation to a new point in time
+    ///
+    /// The new expiry must be in the future of both the current expiry and the current time.
+    #[instrument(name = "Invite::extend_expiry", skip(exe))]
+    pub async fn extend_expiry(
+        &mut self,
+        exe: impl Executor<'_>,
+        ExtendInviteParams { expires_at }: ExtendInviteParams,
+    ) -> anyhow::Result<Result<(), ExtendInviteError>> {
+        if expires_at < time::OffsetDateTime::now_utc() {
+            return Ok(Err(ExtendInviteError::ExpiryTimeInPast));
+        } else if expires_at < self.expires_at {
+            return Ok(Err(ExtendInviteError::ExpiryTimeTooShort));
+        }
+
+        let mut guard = exe.ensure_transaction().await?;
+
+        rorm::update(&mut *guard, InviteModel)
+            .set(InviteModel.expires_at, expires_at)
+            .condition(InviteModel.uuid.equals(self.uuid.0))
+            .await?;
+        self.expires_at = expires_at;
+        guard.commit_if_owned().await?;
+
+        Ok(Ok(()))
+    }
+
+    /// Clear expired invites for superadmin users
+    #[instrument(name = "Invite::clear_expired_superadmin_invites", skip(exe))]
+    pub async fn clear_expired_superadmin_invites(exe: impl Executor<'_>) -> anyhow::Result<()> {
         rorm::delete(exe, InviteModel)
-            .condition(
+            .condition(and![
                 InviteModel
                     .expires_at
                     .less_than(time::OffsetDateTime::now_utc()),
-            )
+                InviteModel.email.is_none(),
+                InviteModel.club.is_none(),
+            ])
             .await?;
 
         Ok(())
@@ -282,6 +312,13 @@ pub struct AcceptInviteParams {
     pub password: MaxStr<72>,
 }
 
+/// Parameters to extend the expiry of an invitation
+#[derive(Debug, Clone)]
+pub struct ExtendInviteParams {
+    /// The new point in time the invite should expire
+    pub expires_at: time::OffsetDateTime,
+}
+
 /// Errors that can be handled
 #[derive(Debug, Clone, Error)]
 #[allow(missing_docs)]
@@ -295,6 +332,16 @@ pub enum CreateInviteError {
 pub enum AcceptInviteError {
     #[error("Invite expired")]
     Expired,
+}
+
+/// Errors that can be handled
+#[derive(Debug, Clone, Error)]
+#[allow(missing_docs)]
+pub enum ExtendInviteError {
+    #[error("New expiry time is before the current expiry time")]
+    ExpiryTimeTooShort,
+    #[error("New expiry time is in the past")]
+    ExpiryTimeInPast,
 }
 
 impl From<InviteModel> for Invite {

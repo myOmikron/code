@@ -1,3 +1,9 @@
+# The card index and the fine-tuned OCR models, which no build can produce: they come from ~450000
+# reference scans and hours of training on the machine that holds them. Built and pushed by hand
+# with `just mtg-assets`, pinned here so a release records which index it shipped.
+ARG MTG_ASSETS_VERSION=v1
+FROM ghcr.io/myomikron/mtg/assets:${MTG_ASSETS_VERSION} AS scanner-assets
+
 FROM node:24-bookworm-slim@sha256:b506e7321f176aae77317f99d67a24b272c1f09f1d10f1761f2773447d8da26c AS build-frontend
 
 WORKDIR /app
@@ -23,6 +29,13 @@ pnpm fetch
 EOF
 
 COPY ./ .
+
+# Ahead of the build, because vite copies public/ into dist/ wholesale. The root .dockerignore
+# hides these two directories from the context on purpose: a working copy that happens to have
+# them would otherwise stand in for the pinned image and hide the fact that a checkout has
+# neither, which is how released images came to ship without a card index.
+COPY --from=scanner-assets /data frontend/mtg/public/data
+COPY --from=scanner-assets /tesseract frontend/mtg/public/tesseract
 
 # Build context is the repo root: the app is a pnpm workspace member and needs
 # the workspace manifest, lockfile, catalogs and the linked `components` package.

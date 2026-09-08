@@ -4,7 +4,8 @@ import { TypeReport } from "src/api/graph-generated";
 import { DeckAdvisorCountCards } from "src/components/deck-advisor-count-cards";
 import { TargetCorridor } from "src/components/target-corridor";
 import { CardArt } from "src/utils/deck-art";
-import { Corridor } from "src/utils/deck-targets";
+import { Corridor, MAX_CORRIDOR } from "src/utils/deck-targets";
+import { parseTypeSource, typeSourceLabel } from "src/utils/type-source";
 
 /**
  * The properties for {@link DeckAdvisorTypes}
@@ -27,6 +28,12 @@ export type DeckAdvisorTypesProps = {
     onReset: (type: string) => void;
     /** The deck's own artwork, for the cards behind each count */
     art: Map<string, CardArt>;
+    /**
+     * Which corpus the corridors above were resolved from — the graph
+     * service's `Diagnostics.type_source`. Absent on an older report; a deck
+     * held to a page that never resolved (an uncached, unknown commander).
+     */
+    source?: string;
 };
 
 /**
@@ -61,12 +68,17 @@ function count(value: number): string {
  *
  * @returns the meter list
  */
-export function DeckAdvisorTypes({ types, custom, onSet, onReset, art }: DeckAdvisorTypesProps) {
+export function DeckAdvisorTypes({ types, custom, onSet, onReset, art, source }: DeckAdvisorTypesProps) {
     const [t] = useTranslation("advisor");
     // Same reading as the role meters: running long on a type costs nothing
     // while no other type is starved, so it is drawn as a choice rather than
     // a fault.
     const anyShort = types.some((report) => report.status === "low");
+    // Parsed once for the whole panel: every row is graded against the same
+    // corpus, so this is one line under the list, not one per row. `null`
+    // for an absent field renders nothing — see `parseTypeSource`.
+    const sourceInfo = parseTypeSource(source);
+    const sourceLabel = sourceInfo === null ? null : typeSourceLabel(sourceInfo);
 
     return (
         <div className={"flex flex-col gap-4"}>
@@ -74,11 +86,13 @@ export function DeckAdvisorTypes({ types, custom, onSet, onReset, art }: DeckAdv
                 const preset = { low: report.default_low ?? report.low, high: report.default_high ?? report.high };
                 const edited = custom[report.type];
                 const corridor = edited ?? { low: report.low, high: report.high };
-                // Read off the preset and the deck alone, like the role
-                // meters' scale — the same numbers should land at the same
-                // spot on either tab, and a scale that moved with the
-                // corridor would slide the track out from under the pointer.
-                const scale = Math.ceil(Math.max(preset.high * 1.6, corridor.high * 1.1, report.count * 1.15, 6));
+                // The role meters' scale, on the same terms — the same
+                // numbers should land at the same spot on either tab,
+                // including the ceiling the service will take.
+                const scale = Math.min(
+                    MAX_CORRIDOR,
+                    Math.ceil(Math.max(preset.high * 1.6, corridor.high * 1.1, report.count * 1.15, 6)),
+                );
                 const label = t(`label.type-${report.type.toLowerCase()}`, { defaultValue: report.type });
                 // The optional-face slice of the count — MDFC land faces and
                 // transform halves. Served by the graph since the back-face
@@ -164,6 +178,15 @@ export function DeckAdvisorTypes({ types, custom, onSet, onReset, art }: DeckAdv
                     </div>
                 );
             })}
+            {/* One quiet line under the whole panel, not per row — every
+                corridor above came from the same corpus. `title` keeps the
+                raw `type_source` string reachable as the audit trail behind
+                the friendly wording. */}
+            {sourceLabel !== null && (
+                <p className={"text-xs/5 text-zinc-400 dark:text-zinc-500"} title={source}>
+                    {t(sourceLabel.key, sourceLabel.params)}
+                </p>
+            )}
         </div>
     );
 }

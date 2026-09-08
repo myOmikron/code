@@ -6,6 +6,7 @@ import {
     ArrowUturnLeftIcon,
     ChevronDownIcon,
     ChevronLeftIcon,
+    CubeIcon,
     DocumentDuplicateIcon,
     ExclamationTriangleIcon,
     FolderIcon,
@@ -45,6 +46,7 @@ import { ExportDeckDialog } from "src/components/export-deck-dialog";
 import { ImportDeckDialog } from "src/components/import-deck-dialog";
 import { useDeckLabels } from "src/components/deck-labels";
 import { RequireAccount } from "src/components/require-account";
+import { useChromeBare } from "src/context/chrome-context";
 import { ShareDialog } from "src/components/share-dialog";
 import { folderLabel } from "src/utils/deck-folders";
 import { commanderColors, letters, ruleZeroCount } from "src/utils/deck-rules";
@@ -88,6 +90,7 @@ export const Route = createFileRoute("/_menu/decks/$deckUuid/_deck")({
 function RouteComponent() {
     const { deckUuid } = Route.useParams();
     const { deck, formats, brackets, folders, drift } = Route.useLoaderData();
+    const bare = useChromeBare();
     const [t] = useTranslation("deck");
     const labels = useDeckLabels();
     const router = useRouter();
@@ -170,6 +173,14 @@ function RouteComponent() {
         await router.invalidate();
     }
 
+    if (bare) {
+        return (
+            <RequireAccount>
+                <Outlet />
+            </RequireAccount>
+        );
+    }
+
     return (
         <RequireAccount>
             {/* The one page that wants the window rather than the column: a deck
@@ -178,7 +189,7 @@ function RouteComponent() {
                 kept on either side from `lg` up, minus what the layout already
                 holds back, so the deck breathes without floating in the middle
                 of an empty screen. */}
-            <div className={"-mx-4 flex flex-col gap-2 sm:-mx-5 lg:mx-[calc(10vw-2.5rem)]"}>
+            <div className={"-mx-4 flex flex-col gap-2 sm:-mx-5 lg:-mx-6"}>
                 <Link
                     to={"/decks"}
                     className={"flex items-center gap-1 text-sm text-zinc-500 hover:underline dark:text-zinc-400"}
@@ -197,7 +208,6 @@ function RouteComponent() {
                                     advisor, two tabs over, holds the deck to
                                     this number and to nothing else. */}
                                 <DeckBracketPicker
-                                    variant={"badge"}
                                     brackets={brackets}
                                     bracket={deck.bracket ?? null}
                                     onChange={(next) => void saveBracket(next)}
@@ -287,6 +297,22 @@ function RouteComponent() {
                                         <DropdownDescription>{t("description.print-proxy-slots")}</DropdownDescription>
                                     </DropdownItem>
                                 )}
+                                <DropdownItem
+                                    onClick={() =>
+                                        void navigate({
+                                            to: "/game-utils/mpc-fill",
+                                            search: hasProxies ? { deck: deckUuid, proxies: true } : { deck: deckUuid },
+                                        })
+                                    }
+                                >
+                                    <CubeIcon />
+                                    <DropdownLabel>{t("button.order-mpc-fill")}</DropdownLabel>
+                                    <DropdownDescription>
+                                        {hasProxies
+                                            ? t("description.order-mpc-fill-proxies")
+                                            : t("description.order-mpc-fill")}
+                                    </DropdownDescription>
+                                </DropdownItem>
                                 <DropdownDivider />
                                 <DropdownItem onClick={() => setDissolving(true)}>
                                     <ArrowUturnLeftIcon />
@@ -334,6 +360,9 @@ function RouteComponent() {
                             </Tab>
                             <Tab href={"/decks/$deckUuid/statistics"} params={{ deckUuid }}>
                                 {t("heading.statistics")}
+                            </Tab>
+                            <Tab href={"/decks/$deckUuid/goldfish"} params={{ deckUuid }}>
+                                {t("heading.goldfish")}
                             </Tab>
                             {/* Opinions live behind their own tab, and only where
                                 the graph has any: the advisor reads Commander. */}

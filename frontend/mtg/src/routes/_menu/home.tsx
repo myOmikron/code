@@ -243,8 +243,8 @@ function RouteComponent() {
                 even split would make them a pair of equals, and only one of the
                 two is the thing to carry on with. */}
             {(lead !== null || guestLead !== null || (personal !== null && personal.collections.length > 0)) && (
-                <div className={"grid gap-4 lg:grid-cols-3"}>
-                    <div className={"lg:col-span-2"}>
+                <div className={"grid min-w-0 gap-4 lg:grid-cols-3"}>
+                    <div className={"min-w-0 lg:col-span-2"}>
                         {lead !== null ? (
                             <DeckSpotlight
                                 to={"/decks/$deckUuid/cards"}

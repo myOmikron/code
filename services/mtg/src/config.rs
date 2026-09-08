@@ -17,17 +17,28 @@ pub struct Config {
     ///
     /// The webserver proxies `/api/graph/*` to it. Origin only — no path.
     pub graph_url: Url,
+    /// Base url of the MPCFill server whose art index is searched.
+    ///
+    /// Their api allows cors for their own origins only, so the proxy-art
+    /// picker asks it through this service. Must end in a slash.
+    pub mpcfill_url: Url,
     /// Database connection parameters
     pub database_driver: DatabaseDriver,
     pub listen_address: IpAddr,
     pub listen_port: NonZeroU16,
 }
 
+/// The MPCFill server used when none is configured
+///
+/// The community's own, which is the one every reader of the site searches.
+const DEFAULT_MPCFILL_URL: &str = "https://mpcfill.com/";
+
 pub fn load() -> Result<Config, ConfigError> {
     let mut env = EnvLoader::new();
 
     let public_origin = env.require_parse::<Url>("PUBLIC_ORIGIN");
     let graph_url = env.require_parse::<Url>("GRAPH_URL");
+    let mpcfill_url = env.optional_parse::<Url>("MPCFILL_URL", DEFAULT_MPCFILL_URL);
 
     let postgres_host = env.require("POSTGRES_HOST");
     let postgres_db = env.require("POSTGRES_DB");
@@ -43,6 +54,7 @@ pub fn load() -> Result<Config, ConfigError> {
     Ok(Config {
         public_origin: public_origin.unwrap(),
         graph_url: graph_url.unwrap(),
+        mpcfill_url: mpcfill_url.unwrap(),
         database_driver: DatabaseDriver::Postgres {
             name: postgres_db.unwrap(),
             host: postgres_host.unwrap(),

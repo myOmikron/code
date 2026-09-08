@@ -5,9 +5,26 @@
         "copy-invite-link": "Einladungslink kopieren",
         "create-club-admin": "Neuen Vereinsadministrator anlegen",
         "delete-admin": "Clubadministrator l\u00f6schen",
+        "extend-invite-expiry": "G\u00fcltigkeit des Links verl\u00e4ngern",
+        "refresh-invite-expiry": "Abgelaufenen Link erneuern",
         "reset-credentials": "Zugangsdaten zur\u00fccksetzen",
         "retract-invite": "Einladung widerrufen",
         "unlink-domain": "Domain trennen"
+    },
+    "dashboard": {
+        "admins": "Administratoren",
+        "created-at": "Erstellt am",
+        "domain": "Domain:",
+        "domain-stats": "Domain-\u00dcbersicht",
+        "email": "E-Mail",
+        "mailbox-stats": "Postfach-Speicherverbrauch",
+        "mailboxes": "Postf\u00e4cher",
+        "members": "Mitglieder",
+        "messages": "Nachrichten",
+        "pending-invites": "Offene Einladungen",
+        "quota": "Kontingent",
+        "storage-used": "Belegt",
+        "unlimited": "Unbegrenzt"
     },
     "heading": {
         "admins": "Administratoren",
@@ -17,21 +34,6 @@
         "invited": "Eingeladen",
         "members": "Mitglieder"
     },
-    "dashboard": {
-        "admins": "Administratoren",
-        "created-at": "Erstellt am",
-        "domain": "Domain:",
-        "domain-stats": "Domain-Übersicht",
-        "mailboxes": "Postfächer",
-        "email": "E-Mail",
-        "mailbox-stats": "Postfach-Speicherverbrauch",
-        "members": "Mitglieder",
-        "messages": "Nachrichten",
-        "pending-invites": "Offene Einladungen",
-        "quota": "Kontingent",
-        "storage-used": "Belegt",
-        "unlimited": "Unbegrenzt"
-    },
     "label": {
         "display-name": "Anzeigename",
         "domain": "Domain",
@@ -39,5 +41,8 @@
         "no-members": "Keine Mitglieder vorhanden.",
         "primary-domain": "Prim\u00e4re Domain",
         "username": "Nutzername"
+    },
+    "toast": {
+        "expiry-updated": "G\u00fcltigkeit verl\u00e4ngert"
     }
 }

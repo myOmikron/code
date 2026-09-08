@@ -13,13 +13,17 @@
  * the top and bottom edges, and the same pod on a phone held upright seats them
  * left and right — the tables below are the two halves of that, one per
  * orientation.
+ *
+ * A player counting on their own is the exception to all of it: there is no
+ * table to read the screen across, so the one tile is read upright, whichever
+ * way round the device is and whatever shape that leaves it.
  */
 
 /** How the seats are spread across the screen */
 export type LifeArrangement = "sides" | "cross";
 
-/** The seat counts on offer, from a duel to a full commander pod */
-export const PLAYER_COUNTS = [2, 3, 4, 5, 6] as const;
+/** The seat counts on offer, from counting alone to a full commander pod */
+export const PLAYER_COUNTS = [1, 2, 3, 4, 5, 6] as const;
 
 /**
  * The usual starting totals, offered as shortcuts: constructed, two-headed
@@ -49,8 +53,103 @@ export function isStartingLife(total: unknown): total is number {
 /** The pod size the cross is built for: one player per edge */
 export const CROSS_PLAYER_COUNT = 4;
 
+/** The table of a player keeping their own total, with nobody sitting opposite */
+export const SOLO_PLAYER_COUNT = 1;
+
 /** How much commander damage from a single commander takes a player out */
 export const COMMANDER_DAMAGE_LETHAL = 21;
+
+/**
+ * How long after a hit the drawer still opens on it.
+ *
+ * The window is a reaction time, not a grace period: it is how long it takes a
+ * player to hit their tile, register that the swing came in over a commander,
+ * and reach for the shield. Two and a half seconds covers the realisation and
+ * the second tap without stretching to cover a player who opened the drawer for
+ * an unrelated reason a beat later.
+ */
+export const REBOOK_REACTION = 2500;
+
+/**
+ * How long the offer stands once the drawer is showing it.
+ *
+ * Longer than the window that armed it, because this is the part that is read
+ * and acted on: the player still has to find the column of the commander that
+ * hit them. The spindown around the amount counts this down, so the offer never
+ * disappears out from under a thumb without warning.
+ */
+export const REBOOK_LINGER = 5000;
+
+/**
+ * Life a player has lost that no commander has been charged for yet.
+ *
+ * Only taps on their own tile leave one. Damage booked in the drawer already
+ * has a commander against it, and life gained is nobody's hit, so both clear
+ * whatever was standing.
+ */
+export type LooseHit = {
+    /** What the run of taps cost them, as a positive number */
+    amount: number;
+    /** Unix timestamp in milliseconds of the last tap in that run */
+    at: number;
+};
+
+/**
+ * Folds a life change into the hit a player is carrying.
+ *
+ * A run of taps counts as one hit for as long as the taps keep coming inside
+ * {@link REBOOK_REACTION} of each other: three taps of one are the same swing
+ * of three, and offering the whole run is what the player means by "that".
+ *
+ * @param hit what they were carrying, if anything
+ * @param amount what was just added to their total, negative for a hit
+ * @param now when it happened
+ *
+ * @returns the hit they carry now, or `undefined` when there is nothing to
+ *   rebook
+ */
+export function trackHit(hit: LooseHit | undefined, amount: number, now: number): LooseHit | undefined {
+    // Life gained is a trigger, a lifelink swing or a slip being taken back —
+    // whatever came before it is no longer the thing the player is thinking of.
+    if (amount >= 0) return undefined;
+
+    const running = hit !== undefined && now - hit.at <= REBOOK_REACTION ? hit.amount : 0;
+    return { amount: running - amount, at: now };
+}
+
+/**
+ * Records or drops the hit one player is carrying
+ *
+ * @param hits what the whole table is carrying
+ * @param player whose hit changed, counted from zero
+ * @param hit what they carry now, or `undefined` to drop it
+ *
+ * @returns the table's hits with that one seat rewritten
+ */
+export function withHit(
+    hits: Record<number, LooseHit>,
+    player: number,
+    hit: LooseHit | undefined,
+): Record<number, LooseHit> {
+    const next = { ...hits };
+    if (hit === undefined) delete next[player];
+    else next[player] = hit;
+    return next;
+}
+
+/**
+ * What a drawer opening now would offer to rebook.
+ *
+ * @param hit what the player is carrying, if anything
+ * @param now when the drawer was opened
+ *
+ * @returns the amount to offer, or `undefined` when the drawer was not opened
+ *   on the back of a hit
+ */
+export function rebookableHit(hit: LooseHit | undefined, now: number): number | undefined {
+    if (hit === undefined || hit.amount <= 0) return undefined;
+    return now - hit.at <= REBOOK_REACTION ? hit.amount : undefined;
+}
 
 /** Distinct at a glance, including with the device lying flat on the table */
 export const SEAT_COLORS = [
@@ -123,7 +222,13 @@ export type SeatPlacement = {
     seat: Seat;
     /** Where the tile sits on the table's grid */
     area: string;
-    /** The middle of that tile, which is where the player reading it sits */
+    /**
+     * The middle of that tile, which is where the player reading it sits.
+     *
+     * Read in seat order the centres wind clockwise around the table, which is
+     * what makes turn order a rotation of the seat numbers; {@link
+     * opponentOrder} leans on that, and a test walks these to keep it true.
+     */
     center: Spot;
 };
 
@@ -133,8 +238,22 @@ export type Seating = {
     grid: string;
     /** Whether the tiles butt against each other instead of standing apart */
     flush: boolean;
-    /** One placement per player, in seat order */
+    /** One placement per player, in seat order, which runs clockwise */
     seats: Array<SeatPlacement>;
+};
+
+/**
+ * A player counting on their own: one tile, the whole screen.
+ *
+ * The only seating that the shape of the screen has no say in. A tile is turned
+ * so that the player it belongs to can read it from where they sit, and someone
+ * counting alone reads the device the way they are holding it — upright, on a
+ * phone standing tall as much as on a tablet lying the long way round.
+ */
+const SOLO: Seating = {
+    grid: "grid-cols-1 grid-rows-1",
+    flush: false,
+    seats: [{ seat: "bottom", area: "col-start-1 row-start-1", center: { x: 0.5, y: 0.5 } }],
 };
 
 /**
@@ -293,9 +412,10 @@ const PORTRAIT: Record<number, Seating> = {
  *   sides for any pod it was not built for
  */
 export function seatingFor(playerCount: number, arrangement: LifeArrangement, orientation: TableOrientation): Seating {
-    // The cross is a seating plan, not a shape the screen suggests: one player
-    // per edge is what it means, and that is the same claim whichever way round
-    // the device lies.
+    // Neither of these follows the screen: the cross is a seating plan — one
+    // player per edge is what it means, whichever way round the device lies —
+    // and the solo table has nobody to be turned towards.
+    if (playerCount === SOLO_PLAYER_COUNT) return SOLO;
     if (arrangement === "cross" && playerCount === CROSS_PLAYER_COUNT) return CROSS;
 
     const sides = orientation === "portrait" ? PORTRAIT : LANDSCAPE;
@@ -303,64 +423,28 @@ export function seatingFor(playerCount: number, arrangement: LifeArrangement, or
 }
 
 /**
- * Which way a player at a seat faces, in table coordinates.
+ * The other players, in the order their turns come after this one.
  *
- * It is the way their tile is turned: they sit at that edge and look across the
- * device at the rest of the table.
- */
-const FACING: Record<Seat, Spot> = {
-    top: { x: 0, y: 1 },
-    bottom: { x: 0, y: -1 },
-    left: { x: 1, y: 0 },
-    right: { x: -1, y: 0 },
-};
-
-/**
- * How far along an axis a tile sits
+ * Commander damage is booked under an opponent's name, and the name a table
+ * reaches for is a seat in turn order: the player on your left goes next, and
+ * the rest follow them round. So the columns run clockwise from the seat that
+ * is reading them, starting with the player on its left — the order everyone
+ * at the table already has in their head, and the one they say out loud.
  *
- * @param placement the tile
- * @param axis a unit direction in table coordinates
- *
- * @returns the tile's centre projected onto that direction
- */
-function along(placement: SeatPlacement, axis: Spot): number {
-    return placement.center.x * axis.x + placement.center.y * axis.y;
-}
-
-/**
- * The other players, in the order they sit in front of one of them.
- *
- * Commander damage is booked under an opponent's colour and name, and at a
- * table the quickest way to find one of those is to look up: the columns
- * therefore run left to right the way the players themselves do, seen from the
- * seat that is reading them. Seat order would put the same opponent in a
- * different column for every player, since each of them reads the table from a
- * different edge.
- *
- * Two opponents on the same bearing — the pair sharing a column of the grid —
- * are ordered far side first, the way the rows above are read before the ones
- * nearer to hand.
+ * Which makes it a rotation of the seat numbers, because the seats are
+ * numbered clockwise to begin with: the player after you is the one on your
+ * left, whichever edge of the device you are reading from. The seating tables
+ * carry the centres that prove it, and a test walks them so that a seating
+ * added later has to be laid out the same way round.
  *
  * @param seats the whole table, in seat order
  * @param player whose seat the table is read from, counted from zero
  *
- * @returns every other seat's index, left to right from that seat
+ * @returns every other seat's index, clockwise from that seat
  */
 export function opponentOrder(seats: Array<SeatPlacement>, player: number): Array<number> {
-    const self = seats[player];
-    if (self === undefined) return [];
-
-    const facing = FACING[self.seat];
-    const right: Spot = { x: -facing.y, y: facing.x };
-
-    return seats
-        .map((_, opponent) => opponent)
-        .filter((opponent) => opponent !== player)
-        .sort(
-            (one, other) =>
-                along(seats[one], right) - along(seats[other], right) ||
-                along(seats[other], facing) - along(seats[one], facing),
-        );
+    if (seats[player] === undefined) return [];
+    return Array.from({ length: seats.length - 1 }, (_, step) => (player + 1 + step) % seats.length);
 }
 
 /** How a device is set up for the table it sits on */
@@ -371,6 +455,11 @@ export type LifeTrackerSettings = {
     playerCount: number;
     /** How they sit around the device */
     arrangement: LifeArrangement;
+    /**
+     * Whether the drawer offers the hit a player has just taken as commander
+     * damage
+     */
+    rebook: boolean;
 };
 
 /** What a device without stored settings opens on: a commander pod */
@@ -378,6 +467,7 @@ export const DEFAULT_LIFE_TRACKER_SETTINGS: LifeTrackerSettings = {
     startingLife: 40,
     playerCount: 4,
     arrangement: "sides",
+    rebook: true,
 };
 
 const STORAGE_KEY = "cardlens.life-tracker.v1";
@@ -400,6 +490,10 @@ export function loadLifeTrackerSettings(): LifeTrackerSettings {
                 PLAYER_COUNTS.find((count) => count === stored.playerCount) ??
                 DEFAULT_LIFE_TRACKER_SETTINGS.playerCount,
             arrangement: stored.arrangement === "cross" ? "cross" : DEFAULT_LIFE_TRACKER_SETTINGS.arrangement,
+            // On unless it was turned off: anything that is not a stored `false`
+            // — a missing field on a setup from before the offer existed
+            // included — is a table that has never said no to it.
+            rebook: stored.rebook !== false,
         };
     } catch {
         return DEFAULT_LIFE_TRACKER_SETTINGS;
@@ -427,6 +521,8 @@ export type Table = {
     damage: Array<Array<number>>;
     /** What the last run of taps came to, per player */
     deltas: Record<number, number>;
+    /** The hit each player is carrying that no commander has been charged for */
+    hits: Record<number, LooseHit>;
 };
 
 const GAME_STORAGE_KEY = "cardlens.life-tracker.game.v1";
@@ -460,6 +556,7 @@ export function freshTable(settings: LifeTrackerSettings): Table {
         life: Array<number>(settings.playerCount).fill(settings.startingLife),
         damage: emptyCommanderDamage(settings.playerCount),
         deltas: {},
+        hits: {},
     };
 }
 
@@ -501,6 +598,10 @@ export function loadLifeTrackerGame(settings: LifeTrackerSettings): Table | null
             // and the timeout that fades it did not survive the reload. Kept,
             // it would sit next to a total for the rest of the game.
             deltas: {},
+            // Dropped for the same reason and one of its own: a hit is only
+            // offerable for a couple of seconds, and nothing survives a reload
+            // that fast.
+            hits: {},
         };
     } catch {
         return null;

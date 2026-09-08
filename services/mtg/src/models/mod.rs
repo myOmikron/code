@@ -8,6 +8,7 @@ pub mod deck;
 pub mod format;
 pub mod price;
 pub mod printing;
+pub mod scanner_session;
 pub mod share;
 pub mod tournament;
 pub mod visibility;

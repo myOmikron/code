@@ -11,16 +11,13 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as CollectRouteImport } from './routes/_collect'
 import { Route as MenuRouteImport } from './routes/_menu'
-import { Route as CollectListeRouteImport } from './routes/_collect/liste'
-import { Route as CollectScanRouteImport } from './routes/_collect/scan'
+import { Route as CollectScanRouteImport } from './routes/_collect/_scan'
 import { Route as MenuIndexRouteImport } from './routes/_menu/index'
 import { Route as MenuAuthRouteImport } from './routes/_menu/auth'
 import { Route as MenuGameUtilsRouteImport } from './routes/_menu/game-utils'
 import { Route as MenuHomeRouteImport } from './routes/_menu/home'
 import { Route as MenuLegalRouteImport } from './routes/_menu/legal'
 import { Route as MenuPrivacyRouteImport } from './routes/_menu/privacy'
-import { Route as CollectScanIndexRouteImport } from './routes/_collect/scan/index'
-import { Route as CollectScanLiveRouteImport } from './routes/_collect/scan/live'
 import { Route as MenuAuthLoginRouteImport } from './routes/_menu/auth/login'
 import { Route as MenuAuthRegisterRouteImport } from './routes/_menu/auth/register'
 import { Route as MenuAuthSignupRouteImport } from './routes/_menu/auth/signup'
@@ -28,10 +25,13 @@ import { Route as MenuCollectionsIndexRouteImport } from './routes/_menu/collect
 import { Route as MenuDecksIndexRouteImport } from './routes/_menu/decks/index'
 import { Route as MenuGameUtilsIndexRouteImport } from './routes/_menu/game-utils/index'
 import { Route as MenuGameUtilsLifeTrackerRouteImport } from './routes/_menu/game-utils/life-tracker'
+import { Route as MenuGameUtilsMpcFillRouteImport } from './routes/_menu/game-utils/mpc-fill'
 import { Route as MenuGameUtilsProxyPrinterRouteImport } from './routes/_menu/game-utils/proxy-printer'
 import { Route as MenuJoinIndexRouteImport } from './routes/_menu/join/index'
 import { Route as MenuJoinCodeRouteImport } from './routes/_menu/join/$code'
 import { Route as MenuProfileProfileRouteImport } from './routes/_menu/profile/_profile'
+import { Route as MenuScanIndexRouteImport } from './routes/_menu/scan/index'
+import { Route as MenuScanBenchRouteImport } from './routes/_menu/scan/bench'
 import { Route as MenuTournamentsIndexRouteImport } from './routes/_menu/tournaments/index'
 import { Route as MenuWatchListsIndexRouteImport } from './routes/_menu/watch-lists/index'
 import { Route as MenuWatchListsWatchListUuidRouteImport } from './routes/_menu/watch-lists/$watchListUuid'
@@ -43,7 +43,10 @@ import { Route as MenuJoinClaimTokenRouteImport } from './routes/_menu/join/clai
 import { Route as MenuProfileProfileIndexRouteImport } from './routes/_menu/profile/_profile/index'
 import { Route as MenuProfileProfileSecurityRouteImport } from './routes/_menu/profile/_profile/security'
 import { Route as MenuProfileProfileSettingsRouteImport } from './routes/_menu/profile/_profile/settings'
+import { Route as MenuScanStagedSessionUuidRouteImport } from './routes/_menu/scan/staged/$sessionUuid'
 import { Route as MenuTournamentsTournamentUuidTournamentRouteImport } from './routes/_menu/tournaments/$tournamentUuid/_tournament'
+import { Route as CollectScanScanLiveIndexRouteImport } from './routes/_collect/_scan/scan/live/index'
+import { Route as CollectScanScanLiveSessionUuidRouteImport } from './routes/_collect/_scan/scan/live/$sessionUuid'
 import { Route as MenuCollectionsCollectionUuidCollectionIndexRouteImport } from './routes/_menu/collections/$collectionUuid/_collection/index'
 import { Route as MenuCollectionsCollectionUuidCollectionCardsRouteImport } from './routes/_menu/collections/$collectionUuid/_collection/cards'
 import { Route as MenuCollectionsCollectionUuidCollectionOnLoanRouteImport } from './routes/_menu/collections/$collectionUuid/_collection/on-loan'
@@ -51,6 +54,7 @@ import { Route as MenuCollectionsCollectionUuidCollectionStatisticsRouteImport }
 import { Route as MenuDecksDeckUuidDeckIndexRouteImport } from './routes/_menu/decks/$deckUuid/_deck/index'
 import { Route as MenuDecksDeckUuidDeckAdvisorRouteImport } from './routes/_menu/decks/$deckUuid/_deck/advisor'
 import { Route as MenuDecksDeckUuidDeckCardsRouteImport } from './routes/_menu/decks/$deckUuid/_deck/cards'
+import { Route as MenuDecksDeckUuidDeckGoldfishRouteImport } from './routes/_menu/decks/$deckUuid/_deck/goldfish'
 import { Route as MenuDecksDeckUuidDeckSourcingRouteImport } from './routes/_menu/decks/$deckUuid/_deck/sourcing'
 import { Route as MenuDecksDeckUuidDeckStatisticsRouteImport } from './routes/_menu/decks/$deckUuid/_deck/statistics'
 import { Route as MenuGlobalCollectionsCollectionUuidCollectionRouteImport } from './routes/_menu/global/collections/$collectionUuid/_collection'
@@ -85,14 +89,8 @@ const MenuRoute = MenuRouteImport.update({
   id: '/_menu',
   getParentRoute: () => rootRouteImport,
 } as any)
-const CollectListeRoute = CollectListeRouteImport.update({
-  id: '/liste',
-  path: '/liste',
-  getParentRoute: () => CollectRoute,
-} as any)
 const CollectScanRoute = CollectScanRouteImport.update({
-  id: '/scan',
-  path: '/scan',
+  id: '/_scan',
   getParentRoute: () => CollectRoute,
 } as any)
 const MenuIndexRoute = MenuIndexRouteImport.update({
@@ -124,16 +122,6 @@ const MenuPrivacyRoute = MenuPrivacyRouteImport.update({
   id: '/privacy',
   path: '/privacy',
   getParentRoute: () => MenuRoute,
-} as any)
-const CollectScanIndexRoute = CollectScanIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => CollectScanRoute,
-} as any)
-const CollectScanLiveRoute = CollectScanLiveRouteImport.update({
-  id: '/live',
-  path: '/live',
-  getParentRoute: () => CollectScanRoute,
 } as any)
 const MenuAuthLoginRoute = MenuAuthLoginRouteImport.update({
   id: '/login',
@@ -171,6 +159,11 @@ const MenuGameUtilsLifeTrackerRoute =
     path: '/life-tracker',
     getParentRoute: () => MenuGameUtilsRoute,
   } as any)
+const MenuGameUtilsMpcFillRoute = MenuGameUtilsMpcFillRouteImport.update({
+  id: '/mpc-fill',
+  path: '/mpc-fill',
+  getParentRoute: () => MenuGameUtilsRoute,
+} as any)
 const MenuGameUtilsProxyPrinterRoute =
   MenuGameUtilsProxyPrinterRouteImport.update({
     id: '/proxy-printer',
@@ -190,6 +183,16 @@ const MenuJoinCodeRoute = MenuJoinCodeRouteImport.update({
 const MenuProfileProfileRoute = MenuProfileProfileRouteImport.update({
   id: '/profile/_profile',
   path: '/profile',
+  getParentRoute: () => MenuRoute,
+} as any)
+const MenuScanIndexRoute = MenuScanIndexRouteImport.update({
+  id: '/scan/',
+  path: '/scan/',
+  getParentRoute: () => MenuRoute,
+} as any)
+const MenuScanBenchRoute = MenuScanBenchRouteImport.update({
+  id: '/scan/bench',
+  path: '/scan/bench',
   getParentRoute: () => MenuRoute,
 } as any)
 const MenuTournamentsIndexRoute = MenuTournamentsIndexRouteImport.update({
@@ -252,11 +255,29 @@ const MenuProfileProfileSettingsRoute =
     path: '/settings',
     getParentRoute: () => MenuProfileProfileRoute,
   } as any)
+const MenuScanStagedSessionUuidRoute =
+  MenuScanStagedSessionUuidRouteImport.update({
+    id: '/scan/staged/$sessionUuid',
+    path: '/scan/staged/$sessionUuid',
+    getParentRoute: () => MenuRoute,
+  } as any)
 const MenuTournamentsTournamentUuidTournamentRoute =
   MenuTournamentsTournamentUuidTournamentRouteImport.update({
     id: '/tournaments/$tournamentUuid/_tournament',
     path: '/tournaments/$tournamentUuid',
     getParentRoute: () => MenuRoute,
+  } as any)
+const CollectScanScanLiveIndexRoute =
+  CollectScanScanLiveIndexRouteImport.update({
+    id: '/scan/live/',
+    path: '/scan/live/',
+    getParentRoute: () => CollectScanRoute,
+  } as any)
+const CollectScanScanLiveSessionUuidRoute =
+  CollectScanScanLiveSessionUuidRouteImport.update({
+    id: '/scan/live/$sessionUuid',
+    path: '/scan/live/$sessionUuid',
+    getParentRoute: () => CollectScanRoute,
   } as any)
 const MenuCollectionsCollectionUuidCollectionIndexRoute =
   MenuCollectionsCollectionUuidCollectionIndexRouteImport.update({
@@ -298,6 +319,12 @@ const MenuDecksDeckUuidDeckCardsRoute =
   MenuDecksDeckUuidDeckCardsRouteImport.update({
     id: '/cards',
     path: '/cards',
+    getParentRoute: () => MenuDecksDeckUuidDeckRoute,
+  } as any)
+const MenuDecksDeckUuidDeckGoldfishRoute =
+  MenuDecksDeckUuidDeckGoldfishRouteImport.update({
+    id: '/goldfish',
+    path: '/goldfish',
     getParentRoute: () => MenuDecksDeckUuidDeckRoute,
   } as any)
 const MenuDecksDeckUuidDeckSourcingRoute =
@@ -453,27 +480,26 @@ const MenuSharedTournamentsTokenSharedPlayersRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof MenuIndexRoute
-  '/liste': typeof CollectListeRoute
-  '/scan': typeof CollectScanRouteWithChildren
   '/auth': typeof MenuAuthRouteWithChildren
   '/game-utils': typeof MenuGameUtilsRouteWithChildren
   '/home': typeof MenuHomeRoute
   '/legal': typeof MenuLegalRoute
   '/privacy': typeof MenuPrivacyRoute
-  '/scan/live': typeof CollectScanLiveRoute
   '/auth/login': typeof MenuAuthLoginRoute
   '/auth/register': typeof MenuAuthRegisterRoute
   '/auth/signup': typeof MenuAuthSignupRoute
   '/game-utils/life-tracker': typeof MenuGameUtilsLifeTrackerRoute
+  '/game-utils/mpc-fill': typeof MenuGameUtilsMpcFillRoute
   '/game-utils/proxy-printer': typeof MenuGameUtilsProxyPrinterRoute
   '/join/$code': typeof MenuJoinCodeRoute
   '/profile': typeof MenuProfileProfileRouteWithChildren
+  '/scan/bench': typeof MenuScanBenchRoute
   '/watch-lists/$watchListUuid': typeof MenuWatchListsWatchListUuidRoute
-  '/scan/': typeof CollectScanIndexRoute
   '/collections/': typeof MenuCollectionsIndexRoute
   '/decks/': typeof MenuDecksIndexRoute
   '/game-utils/': typeof MenuGameUtilsIndexRoute
   '/join/': typeof MenuJoinIndexRoute
+  '/scan/': typeof MenuScanIndexRoute
   '/tournaments/': typeof MenuTournamentsIndexRoute
   '/watch-lists/': typeof MenuWatchListsIndexRoute
   '/collections/$collectionUuid': typeof MenuCollectionsCollectionUuidCollectionRouteWithChildren
@@ -482,14 +508,17 @@ export interface FileRoutesByFullPath {
   '/join/claim/$token': typeof MenuJoinClaimTokenRoute
   '/profile/security': typeof MenuProfileProfileSecurityRoute
   '/profile/settings': typeof MenuProfileProfileSettingsRoute
+  '/scan/staged/$sessionUuid': typeof MenuScanStagedSessionUuidRoute
   '/tournaments/$tournamentUuid': typeof MenuTournamentsTournamentUuidTournamentRouteWithChildren
   '/global/decks/': typeof MenuGlobalDecksIndexRoute
   '/profile/': typeof MenuProfileProfileIndexRoute
+  '/scan/live/$sessionUuid': typeof CollectScanScanLiveSessionUuidRoute
   '/collections/$collectionUuid/cards': typeof MenuCollectionsCollectionUuidCollectionCardsRoute
   '/collections/$collectionUuid/on-loan': typeof MenuCollectionsCollectionUuidCollectionOnLoanRoute
   '/collections/$collectionUuid/statistics': typeof MenuCollectionsCollectionUuidCollectionStatisticsRoute
   '/decks/$deckUuid/advisor': typeof MenuDecksDeckUuidDeckAdvisorRoute
   '/decks/$deckUuid/cards': typeof MenuDecksDeckUuidDeckCardsRoute
+  '/decks/$deckUuid/goldfish': typeof MenuDecksDeckUuidDeckGoldfishRoute
   '/decks/$deckUuid/sourcing': typeof MenuDecksDeckUuidDeckSourcingRoute
   '/decks/$deckUuid/statistics': typeof MenuDecksDeckUuidDeckStatisticsRoute
   '/global/collections/$collectionUuid': typeof MenuGlobalCollectionsCollectionUuidCollectionRouteWithChildren
@@ -500,6 +529,7 @@ export interface FileRoutesByFullPath {
   '/tournaments/$tournamentUuid/overview': typeof MenuTournamentsTournamentUuidTournamentOverviewRoute
   '/tournaments/$tournamentUuid/players': typeof MenuTournamentsTournamentUuidTournamentPlayersRoute
   '/tournaments/$tournamentUuid/settings': typeof MenuTournamentsTournamentUuidTournamentSettingsRoute
+  '/scan/live/': typeof CollectScanScanLiveIndexRoute
   '/collections/$collectionUuid/': typeof MenuCollectionsCollectionUuidCollectionIndexRoute
   '/decks/$deckUuid/': typeof MenuDecksDeckUuidDeckIndexRoute
   '/tournaments/$tournamentUuid/': typeof MenuTournamentsTournamentUuidTournamentIndexRoute
@@ -520,42 +550,46 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof MenuIndexRoute
-  '/liste': typeof CollectListeRoute
   '/auth': typeof MenuAuthRouteWithChildren
   '/home': typeof MenuHomeRoute
   '/legal': typeof MenuLegalRoute
   '/privacy': typeof MenuPrivacyRoute
-  '/scan/live': typeof CollectScanLiveRoute
   '/auth/login': typeof MenuAuthLoginRoute
   '/auth/register': typeof MenuAuthRegisterRoute
   '/auth/signup': typeof MenuAuthSignupRoute
   '/game-utils/life-tracker': typeof MenuGameUtilsLifeTrackerRoute
+  '/game-utils/mpc-fill': typeof MenuGameUtilsMpcFillRoute
   '/game-utils/proxy-printer': typeof MenuGameUtilsProxyPrinterRoute
   '/join/$code': typeof MenuJoinCodeRoute
+  '/scan/bench': typeof MenuScanBenchRoute
   '/watch-lists/$watchListUuid': typeof MenuWatchListsWatchListUuidRoute
-  '/scan': typeof CollectScanIndexRoute
   '/collections': typeof MenuCollectionsIndexRoute
   '/decks': typeof MenuDecksIndexRoute
   '/game-utils': typeof MenuGameUtilsIndexRoute
   '/join': typeof MenuJoinIndexRoute
+  '/scan': typeof MenuScanIndexRoute
   '/tournaments': typeof MenuTournamentsIndexRoute
   '/watch-lists': typeof MenuWatchListsIndexRoute
   '/global/profiles/$username': typeof MenuGlobalProfilesUsernameRoute
   '/join/claim/$token': typeof MenuJoinClaimTokenRoute
   '/profile/security': typeof MenuProfileProfileSecurityRoute
   '/profile/settings': typeof MenuProfileProfileSettingsRoute
+  '/scan/staged/$sessionUuid': typeof MenuScanStagedSessionUuidRoute
   '/global/decks': typeof MenuGlobalDecksIndexRoute
   '/profile': typeof MenuProfileProfileIndexRoute
+  '/scan/live/$sessionUuid': typeof CollectScanScanLiveSessionUuidRoute
   '/collections/$collectionUuid/cards': typeof MenuCollectionsCollectionUuidCollectionCardsRoute
   '/collections/$collectionUuid/on-loan': typeof MenuCollectionsCollectionUuidCollectionOnLoanRoute
   '/collections/$collectionUuid/statistics': typeof MenuCollectionsCollectionUuidCollectionStatisticsRoute
   '/decks/$deckUuid/advisor': typeof MenuDecksDeckUuidDeckAdvisorRoute
   '/decks/$deckUuid/cards': typeof MenuDecksDeckUuidDeckCardsRoute
+  '/decks/$deckUuid/goldfish': typeof MenuDecksDeckUuidDeckGoldfishRoute
   '/decks/$deckUuid/sourcing': typeof MenuDecksDeckUuidDeckSourcingRoute
   '/decks/$deckUuid/statistics': typeof MenuDecksDeckUuidDeckStatisticsRoute
   '/tournaments/$tournamentUuid/overview': typeof MenuTournamentsTournamentUuidTournamentOverviewRoute
   '/tournaments/$tournamentUuid/players': typeof MenuTournamentsTournamentUuidTournamentPlayersRoute
   '/tournaments/$tournamentUuid/settings': typeof MenuTournamentsTournamentUuidTournamentSettingsRoute
+  '/scan/live': typeof CollectScanScanLiveIndexRoute
   '/collections/$collectionUuid': typeof MenuCollectionsCollectionUuidCollectionIndexRoute
   '/decks/$deckUuid': typeof MenuDecksDeckUuidDeckIndexRoute
   '/tournaments/$tournamentUuid': typeof MenuTournamentsTournamentUuidTournamentIndexRoute
@@ -578,28 +612,28 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_collect': typeof CollectRouteWithChildren
   '/_menu': typeof MenuRouteWithChildren
-  '/_collect/liste': typeof CollectListeRoute
-  '/_collect/scan': typeof CollectScanRouteWithChildren
+  '/_collect/_scan': typeof CollectScanRouteWithChildren
   '/_menu/auth': typeof MenuAuthRouteWithChildren
   '/_menu/game-utils': typeof MenuGameUtilsRouteWithChildren
   '/_menu/home': typeof MenuHomeRoute
   '/_menu/legal': typeof MenuLegalRoute
   '/_menu/privacy': typeof MenuPrivacyRoute
   '/_menu/': typeof MenuIndexRoute
-  '/_collect/scan/live': typeof CollectScanLiveRoute
   '/_menu/auth/login': typeof MenuAuthLoginRoute
   '/_menu/auth/register': typeof MenuAuthRegisterRoute
   '/_menu/auth/signup': typeof MenuAuthSignupRoute
   '/_menu/game-utils/life-tracker': typeof MenuGameUtilsLifeTrackerRoute
+  '/_menu/game-utils/mpc-fill': typeof MenuGameUtilsMpcFillRoute
   '/_menu/game-utils/proxy-printer': typeof MenuGameUtilsProxyPrinterRoute
   '/_menu/join/$code': typeof MenuJoinCodeRoute
   '/_menu/profile/_profile': typeof MenuProfileProfileRouteWithChildren
+  '/_menu/scan/bench': typeof MenuScanBenchRoute
   '/_menu/watch-lists/$watchListUuid': typeof MenuWatchListsWatchListUuidRoute
-  '/_collect/scan/': typeof CollectScanIndexRoute
   '/_menu/collections/': typeof MenuCollectionsIndexRoute
   '/_menu/decks/': typeof MenuDecksIndexRoute
   '/_menu/game-utils/': typeof MenuGameUtilsIndexRoute
   '/_menu/join/': typeof MenuJoinIndexRoute
+  '/_menu/scan/': typeof MenuScanIndexRoute
   '/_menu/tournaments/': typeof MenuTournamentsIndexRoute
   '/_menu/watch-lists/': typeof MenuWatchListsIndexRoute
   '/_menu/collections/$collectionUuid/_collection': typeof MenuCollectionsCollectionUuidCollectionRouteWithChildren
@@ -608,14 +642,17 @@ export interface FileRoutesById {
   '/_menu/join/claim/$token': typeof MenuJoinClaimTokenRoute
   '/_menu/profile/_profile/security': typeof MenuProfileProfileSecurityRoute
   '/_menu/profile/_profile/settings': typeof MenuProfileProfileSettingsRoute
+  '/_menu/scan/staged/$sessionUuid': typeof MenuScanStagedSessionUuidRoute
   '/_menu/tournaments/$tournamentUuid/_tournament': typeof MenuTournamentsTournamentUuidTournamentRouteWithChildren
   '/_menu/global/decks/': typeof MenuGlobalDecksIndexRoute
   '/_menu/profile/_profile/': typeof MenuProfileProfileIndexRoute
+  '/_collect/_scan/scan/live/$sessionUuid': typeof CollectScanScanLiveSessionUuidRoute
   '/_menu/collections/$collectionUuid/_collection/cards': typeof MenuCollectionsCollectionUuidCollectionCardsRoute
   '/_menu/collections/$collectionUuid/_collection/on-loan': typeof MenuCollectionsCollectionUuidCollectionOnLoanRoute
   '/_menu/collections/$collectionUuid/_collection/statistics': typeof MenuCollectionsCollectionUuidCollectionStatisticsRoute
   '/_menu/decks/$deckUuid/_deck/advisor': typeof MenuDecksDeckUuidDeckAdvisorRoute
   '/_menu/decks/$deckUuid/_deck/cards': typeof MenuDecksDeckUuidDeckCardsRoute
+  '/_menu/decks/$deckUuid/_deck/goldfish': typeof MenuDecksDeckUuidDeckGoldfishRoute
   '/_menu/decks/$deckUuid/_deck/sourcing': typeof MenuDecksDeckUuidDeckSourcingRoute
   '/_menu/decks/$deckUuid/_deck/statistics': typeof MenuDecksDeckUuidDeckStatisticsRoute
   '/_menu/global/collections/$collectionUuid/_collection': typeof MenuGlobalCollectionsCollectionUuidCollectionRouteWithChildren
@@ -626,6 +663,7 @@ export interface FileRoutesById {
   '/_menu/tournaments/$tournamentUuid/_tournament/overview': typeof MenuTournamentsTournamentUuidTournamentOverviewRoute
   '/_menu/tournaments/$tournamentUuid/_tournament/players': typeof MenuTournamentsTournamentUuidTournamentPlayersRoute
   '/_menu/tournaments/$tournamentUuid/_tournament/settings': typeof MenuTournamentsTournamentUuidTournamentSettingsRoute
+  '/_collect/_scan/scan/live/': typeof CollectScanScanLiveIndexRoute
   '/_menu/collections/$collectionUuid/_collection/': typeof MenuCollectionsCollectionUuidCollectionIndexRoute
   '/_menu/decks/$deckUuid/_deck/': typeof MenuDecksDeckUuidDeckIndexRoute
   '/_menu/tournaments/$tournamentUuid/_tournament/': typeof MenuTournamentsTournamentUuidTournamentIndexRoute
@@ -648,27 +686,26 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/liste'
-    | '/scan'
     | '/auth'
     | '/game-utils'
     | '/home'
     | '/legal'
     | '/privacy'
-    | '/scan/live'
     | '/auth/login'
     | '/auth/register'
     | '/auth/signup'
     | '/game-utils/life-tracker'
+    | '/game-utils/mpc-fill'
     | '/game-utils/proxy-printer'
     | '/join/$code'
     | '/profile'
+    | '/scan/bench'
     | '/watch-lists/$watchListUuid'
-    | '/scan/'
     | '/collections/'
     | '/decks/'
     | '/game-utils/'
     | '/join/'
+    | '/scan/'
     | '/tournaments/'
     | '/watch-lists/'
     | '/collections/$collectionUuid'
@@ -677,14 +714,17 @@ export interface FileRouteTypes {
     | '/join/claim/$token'
     | '/profile/security'
     | '/profile/settings'
+    | '/scan/staged/$sessionUuid'
     | '/tournaments/$tournamentUuid'
     | '/global/decks/'
     | '/profile/'
+    | '/scan/live/$sessionUuid'
     | '/collections/$collectionUuid/cards'
     | '/collections/$collectionUuid/on-loan'
     | '/collections/$collectionUuid/statistics'
     | '/decks/$deckUuid/advisor'
     | '/decks/$deckUuid/cards'
+    | '/decks/$deckUuid/goldfish'
     | '/decks/$deckUuid/sourcing'
     | '/decks/$deckUuid/statistics'
     | '/global/collections/$collectionUuid'
@@ -695,6 +735,7 @@ export interface FileRouteTypes {
     | '/tournaments/$tournamentUuid/overview'
     | '/tournaments/$tournamentUuid/players'
     | '/tournaments/$tournamentUuid/settings'
+    | '/scan/live/'
     | '/collections/$collectionUuid/'
     | '/decks/$deckUuid/'
     | '/tournaments/$tournamentUuid/'
@@ -715,42 +756,46 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/liste'
     | '/auth'
     | '/home'
     | '/legal'
     | '/privacy'
-    | '/scan/live'
     | '/auth/login'
     | '/auth/register'
     | '/auth/signup'
     | '/game-utils/life-tracker'
+    | '/game-utils/mpc-fill'
     | '/game-utils/proxy-printer'
     | '/join/$code'
+    | '/scan/bench'
     | '/watch-lists/$watchListUuid'
-    | '/scan'
     | '/collections'
     | '/decks'
     | '/game-utils'
     | '/join'
+    | '/scan'
     | '/tournaments'
     | '/watch-lists'
     | '/global/profiles/$username'
     | '/join/claim/$token'
     | '/profile/security'
     | '/profile/settings'
+    | '/scan/staged/$sessionUuid'
     | '/global/decks'
     | '/profile'
+    | '/scan/live/$sessionUuid'
     | '/collections/$collectionUuid/cards'
     | '/collections/$collectionUuid/on-loan'
     | '/collections/$collectionUuid/statistics'
     | '/decks/$deckUuid/advisor'
     | '/decks/$deckUuid/cards'
+    | '/decks/$deckUuid/goldfish'
     | '/decks/$deckUuid/sourcing'
     | '/decks/$deckUuid/statistics'
     | '/tournaments/$tournamentUuid/overview'
     | '/tournaments/$tournamentUuid/players'
     | '/tournaments/$tournamentUuid/settings'
+    | '/scan/live'
     | '/collections/$collectionUuid'
     | '/decks/$deckUuid'
     | '/tournaments/$tournamentUuid'
@@ -772,28 +817,28 @@ export interface FileRouteTypes {
     | '__root__'
     | '/_collect'
     | '/_menu'
-    | '/_collect/liste'
-    | '/_collect/scan'
+    | '/_collect/_scan'
     | '/_menu/auth'
     | '/_menu/game-utils'
     | '/_menu/home'
     | '/_menu/legal'
     | '/_menu/privacy'
     | '/_menu/'
-    | '/_collect/scan/live'
     | '/_menu/auth/login'
     | '/_menu/auth/register'
     | '/_menu/auth/signup'
     | '/_menu/game-utils/life-tracker'
+    | '/_menu/game-utils/mpc-fill'
     | '/_menu/game-utils/proxy-printer'
     | '/_menu/join/$code'
     | '/_menu/profile/_profile'
+    | '/_menu/scan/bench'
     | '/_menu/watch-lists/$watchListUuid'
-    | '/_collect/scan/'
     | '/_menu/collections/'
     | '/_menu/decks/'
     | '/_menu/game-utils/'
     | '/_menu/join/'
+    | '/_menu/scan/'
     | '/_menu/tournaments/'
     | '/_menu/watch-lists/'
     | '/_menu/collections/$collectionUuid/_collection'
@@ -802,14 +847,17 @@ export interface FileRouteTypes {
     | '/_menu/join/claim/$token'
     | '/_menu/profile/_profile/security'
     | '/_menu/profile/_profile/settings'
+    | '/_menu/scan/staged/$sessionUuid'
     | '/_menu/tournaments/$tournamentUuid/_tournament'
     | '/_menu/global/decks/'
     | '/_menu/profile/_profile/'
+    | '/_collect/_scan/scan/live/$sessionUuid'
     | '/_menu/collections/$collectionUuid/_collection/cards'
     | '/_menu/collections/$collectionUuid/_collection/on-loan'
     | '/_menu/collections/$collectionUuid/_collection/statistics'
     | '/_menu/decks/$deckUuid/_deck/advisor'
     | '/_menu/decks/$deckUuid/_deck/cards'
+    | '/_menu/decks/$deckUuid/_deck/goldfish'
     | '/_menu/decks/$deckUuid/_deck/sourcing'
     | '/_menu/decks/$deckUuid/_deck/statistics'
     | '/_menu/global/collections/$collectionUuid/_collection'
@@ -820,6 +868,7 @@ export interface FileRouteTypes {
     | '/_menu/tournaments/$tournamentUuid/_tournament/overview'
     | '/_menu/tournaments/$tournamentUuid/_tournament/players'
     | '/_menu/tournaments/$tournamentUuid/_tournament/settings'
+    | '/_collect/_scan/scan/live/'
     | '/_menu/collections/$collectionUuid/_collection/'
     | '/_menu/decks/$deckUuid/_deck/'
     | '/_menu/tournaments/$tournamentUuid/_tournament/'
@@ -860,17 +909,10 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MenuRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_collect/liste': {
-      id: '/_collect/liste'
-      path: '/liste'
-      fullPath: '/liste'
-      preLoaderRoute: typeof CollectListeRouteImport
-      parentRoute: typeof CollectRoute
-    }
-    '/_collect/scan': {
-      id: '/_collect/scan'
-      path: '/scan'
-      fullPath: '/scan'
+    '/_collect/_scan': {
+      id: '/_collect/_scan'
+      path: ''
+      fullPath: '/'
       preLoaderRoute: typeof CollectScanRouteImport
       parentRoute: typeof CollectRoute
     }
@@ -915,20 +957,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/privacy'
       preLoaderRoute: typeof MenuPrivacyRouteImport
       parentRoute: typeof MenuRoute
-    }
-    '/_collect/scan/': {
-      id: '/_collect/scan/'
-      path: '/'
-      fullPath: '/scan/'
-      preLoaderRoute: typeof CollectScanIndexRouteImport
-      parentRoute: typeof CollectScanRoute
-    }
-    '/_collect/scan/live': {
-      id: '/_collect/scan/live'
-      path: '/live'
-      fullPath: '/scan/live'
-      preLoaderRoute: typeof CollectScanLiveRouteImport
-      parentRoute: typeof CollectScanRoute
     }
     '/_menu/auth/login': {
       id: '/_menu/auth/login'
@@ -979,6 +1007,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MenuGameUtilsLifeTrackerRouteImport
       parentRoute: typeof MenuGameUtilsRoute
     }
+    '/_menu/game-utils/mpc-fill': {
+      id: '/_menu/game-utils/mpc-fill'
+      path: '/mpc-fill'
+      fullPath: '/game-utils/mpc-fill'
+      preLoaderRoute: typeof MenuGameUtilsMpcFillRouteImport
+      parentRoute: typeof MenuGameUtilsRoute
+    }
     '/_menu/game-utils/proxy-printer': {
       id: '/_menu/game-utils/proxy-printer'
       path: '/proxy-printer'
@@ -1005,6 +1040,20 @@ declare module '@tanstack/react-router' {
       path: '/profile'
       fullPath: '/profile'
       preLoaderRoute: typeof MenuProfileProfileRouteImport
+      parentRoute: typeof MenuRoute
+    }
+    '/_menu/scan/': {
+      id: '/_menu/scan/'
+      path: '/scan'
+      fullPath: '/scan/'
+      preLoaderRoute: typeof MenuScanIndexRouteImport
+      parentRoute: typeof MenuRoute
+    }
+    '/_menu/scan/bench': {
+      id: '/_menu/scan/bench'
+      path: '/scan/bench'
+      fullPath: '/scan/bench'
+      preLoaderRoute: typeof MenuScanBenchRouteImport
       parentRoute: typeof MenuRoute
     }
     '/_menu/tournaments/': {
@@ -1084,12 +1133,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MenuProfileProfileSettingsRouteImport
       parentRoute: typeof MenuProfileProfileRoute
     }
+    '/_menu/scan/staged/$sessionUuid': {
+      id: '/_menu/scan/staged/$sessionUuid'
+      path: '/scan/staged/$sessionUuid'
+      fullPath: '/scan/staged/$sessionUuid'
+      preLoaderRoute: typeof MenuScanStagedSessionUuidRouteImport
+      parentRoute: typeof MenuRoute
+    }
     '/_menu/tournaments/$tournamentUuid/_tournament': {
       id: '/_menu/tournaments/$tournamentUuid/_tournament'
       path: '/tournaments/$tournamentUuid'
       fullPath: '/tournaments/$tournamentUuid'
       preLoaderRoute: typeof MenuTournamentsTournamentUuidTournamentRouteImport
       parentRoute: typeof MenuRoute
+    }
+    '/_collect/_scan/scan/live/': {
+      id: '/_collect/_scan/scan/live/'
+      path: '/scan/live'
+      fullPath: '/scan/live/'
+      preLoaderRoute: typeof CollectScanScanLiveIndexRouteImport
+      parentRoute: typeof CollectScanRoute
+    }
+    '/_collect/_scan/scan/live/$sessionUuid': {
+      id: '/_collect/_scan/scan/live/$sessionUuid'
+      path: '/scan/live/$sessionUuid'
+      fullPath: '/scan/live/$sessionUuid'
+      preLoaderRoute: typeof CollectScanScanLiveSessionUuidRouteImport
+      parentRoute: typeof CollectScanRoute
     }
     '/_menu/collections/$collectionUuid/_collection/': {
       id: '/_menu/collections/$collectionUuid/_collection/'
@@ -1138,6 +1208,13 @@ declare module '@tanstack/react-router' {
       path: '/cards'
       fullPath: '/decks/$deckUuid/cards'
       preLoaderRoute: typeof MenuDecksDeckUuidDeckCardsRouteImport
+      parentRoute: typeof MenuDecksDeckUuidDeckRoute
+    }
+    '/_menu/decks/$deckUuid/_deck/goldfish': {
+      id: '/_menu/decks/$deckUuid/_deck/goldfish'
+      path: '/goldfish'
+      fullPath: '/decks/$deckUuid/goldfish'
+      preLoaderRoute: typeof MenuDecksDeckUuidDeckGoldfishRouteImport
       parentRoute: typeof MenuDecksDeckUuidDeckRoute
     }
     '/_menu/decks/$deckUuid/_deck/sourcing': {
@@ -1319,13 +1396,13 @@ declare module '@tanstack/react-router' {
 }
 
 interface CollectScanRouteChildren {
-  CollectScanLiveRoute: typeof CollectScanLiveRoute
-  CollectScanIndexRoute: typeof CollectScanIndexRoute
+  CollectScanScanLiveSessionUuidRoute: typeof CollectScanScanLiveSessionUuidRoute
+  CollectScanScanLiveIndexRoute: typeof CollectScanScanLiveIndexRoute
 }
 
 const CollectScanRouteChildren: CollectScanRouteChildren = {
-  CollectScanLiveRoute: CollectScanLiveRoute,
-  CollectScanIndexRoute: CollectScanIndexRoute,
+  CollectScanScanLiveSessionUuidRoute: CollectScanScanLiveSessionUuidRoute,
+  CollectScanScanLiveIndexRoute: CollectScanScanLiveIndexRoute,
 }
 
 const CollectScanRouteWithChildren = CollectScanRoute._addFileChildren(
@@ -1333,12 +1410,10 @@ const CollectScanRouteWithChildren = CollectScanRoute._addFileChildren(
 )
 
 interface CollectRouteChildren {
-  CollectListeRoute: typeof CollectListeRoute
   CollectScanRoute: typeof CollectScanRouteWithChildren
 }
 
 const CollectRouteChildren: CollectRouteChildren = {
-  CollectListeRoute: CollectListeRoute,
   CollectScanRoute: CollectScanRouteWithChildren,
 }
 
@@ -1363,12 +1438,14 @@ const MenuAuthRouteWithChildren = MenuAuthRoute._addFileChildren(
 
 interface MenuGameUtilsRouteChildren {
   MenuGameUtilsLifeTrackerRoute: typeof MenuGameUtilsLifeTrackerRoute
+  MenuGameUtilsMpcFillRoute: typeof MenuGameUtilsMpcFillRoute
   MenuGameUtilsProxyPrinterRoute: typeof MenuGameUtilsProxyPrinterRoute
   MenuGameUtilsIndexRoute: typeof MenuGameUtilsIndexRoute
 }
 
 const MenuGameUtilsRouteChildren: MenuGameUtilsRouteChildren = {
   MenuGameUtilsLifeTrackerRoute: MenuGameUtilsLifeTrackerRoute,
+  MenuGameUtilsMpcFillRoute: MenuGameUtilsMpcFillRoute,
   MenuGameUtilsProxyPrinterRoute: MenuGameUtilsProxyPrinterRoute,
   MenuGameUtilsIndexRoute: MenuGameUtilsIndexRoute,
 }
@@ -1419,6 +1496,7 @@ const MenuCollectionsCollectionUuidCollectionRouteWithChildren =
 interface MenuDecksDeckUuidDeckRouteChildren {
   MenuDecksDeckUuidDeckAdvisorRoute: typeof MenuDecksDeckUuidDeckAdvisorRoute
   MenuDecksDeckUuidDeckCardsRoute: typeof MenuDecksDeckUuidDeckCardsRoute
+  MenuDecksDeckUuidDeckGoldfishRoute: typeof MenuDecksDeckUuidDeckGoldfishRoute
   MenuDecksDeckUuidDeckSourcingRoute: typeof MenuDecksDeckUuidDeckSourcingRoute
   MenuDecksDeckUuidDeckStatisticsRoute: typeof MenuDecksDeckUuidDeckStatisticsRoute
   MenuDecksDeckUuidDeckIndexRoute: typeof MenuDecksDeckUuidDeckIndexRoute
@@ -1427,6 +1505,7 @@ interface MenuDecksDeckUuidDeckRouteChildren {
 const MenuDecksDeckUuidDeckRouteChildren: MenuDecksDeckUuidDeckRouteChildren = {
   MenuDecksDeckUuidDeckAdvisorRoute: MenuDecksDeckUuidDeckAdvisorRoute,
   MenuDecksDeckUuidDeckCardsRoute: MenuDecksDeckUuidDeckCardsRoute,
+  MenuDecksDeckUuidDeckGoldfishRoute: MenuDecksDeckUuidDeckGoldfishRoute,
   MenuDecksDeckUuidDeckSourcingRoute: MenuDecksDeckUuidDeckSourcingRoute,
   MenuDecksDeckUuidDeckStatisticsRoute: MenuDecksDeckUuidDeckStatisticsRoute,
   MenuDecksDeckUuidDeckIndexRoute: MenuDecksDeckUuidDeckIndexRoute,
@@ -1570,16 +1649,19 @@ interface MenuRouteChildren {
   MenuIndexRoute: typeof MenuIndexRoute
   MenuJoinCodeRoute: typeof MenuJoinCodeRoute
   MenuProfileProfileRoute: typeof MenuProfileProfileRouteWithChildren
+  MenuScanBenchRoute: typeof MenuScanBenchRoute
   MenuWatchListsWatchListUuidRoute: typeof MenuWatchListsWatchListUuidRoute
   MenuCollectionsIndexRoute: typeof MenuCollectionsIndexRoute
   MenuDecksIndexRoute: typeof MenuDecksIndexRoute
   MenuJoinIndexRoute: typeof MenuJoinIndexRoute
+  MenuScanIndexRoute: typeof MenuScanIndexRoute
   MenuTournamentsIndexRoute: typeof MenuTournamentsIndexRoute
   MenuWatchListsIndexRoute: typeof MenuWatchListsIndexRoute
   MenuCollectionsCollectionUuidCollectionRoute: typeof MenuCollectionsCollectionUuidCollectionRouteWithChildren
   MenuDecksDeckUuidDeckRoute: typeof MenuDecksDeckUuidDeckRouteWithChildren
   MenuGlobalProfilesUsernameRoute: typeof MenuGlobalProfilesUsernameRoute
   MenuJoinClaimTokenRoute: typeof MenuJoinClaimTokenRoute
+  MenuScanStagedSessionUuidRoute: typeof MenuScanStagedSessionUuidRoute
   MenuTournamentsTournamentUuidTournamentRoute: typeof MenuTournamentsTournamentUuidTournamentRouteWithChildren
   MenuGlobalDecksIndexRoute: typeof MenuGlobalDecksIndexRoute
   MenuGlobalCollectionsCollectionUuidCollectionRoute: typeof MenuGlobalCollectionsCollectionUuidCollectionRouteWithChildren
@@ -1598,10 +1680,12 @@ const MenuRouteChildren: MenuRouteChildren = {
   MenuIndexRoute: MenuIndexRoute,
   MenuJoinCodeRoute: MenuJoinCodeRoute,
   MenuProfileProfileRoute: MenuProfileProfileRouteWithChildren,
+  MenuScanBenchRoute: MenuScanBenchRoute,
   MenuWatchListsWatchListUuidRoute: MenuWatchListsWatchListUuidRoute,
   MenuCollectionsIndexRoute: MenuCollectionsIndexRoute,
   MenuDecksIndexRoute: MenuDecksIndexRoute,
   MenuJoinIndexRoute: MenuJoinIndexRoute,
+  MenuScanIndexRoute: MenuScanIndexRoute,
   MenuTournamentsIndexRoute: MenuTournamentsIndexRoute,
   MenuWatchListsIndexRoute: MenuWatchListsIndexRoute,
   MenuCollectionsCollectionUuidCollectionRoute:
@@ -1609,6 +1693,7 @@ const MenuRouteChildren: MenuRouteChildren = {
   MenuDecksDeckUuidDeckRoute: MenuDecksDeckUuidDeckRouteWithChildren,
   MenuGlobalProfilesUsernameRoute: MenuGlobalProfilesUsernameRoute,
   MenuJoinClaimTokenRoute: MenuJoinClaimTokenRoute,
+  MenuScanStagedSessionUuidRoute: MenuScanStagedSessionUuidRoute,
   MenuTournamentsTournamentUuidTournamentRoute:
     MenuTournamentsTournamentUuidTournamentRouteWithChildren,
   MenuGlobalDecksIndexRoute: MenuGlobalDecksIndexRoute,

@@ -1,9 +1,11 @@
 import { describe, expect, test } from "vitest";
 import {
     DEFAULT_TARGETS,
+    MAX_CORRIDOR,
     bucketRanges,
     curveCounts,
     curvePoints,
+    heldTargets,
     isDefault,
     targetsKey,
     typeRanges,
@@ -93,5 +95,45 @@ describe("the request key", () => {
 
         expect(targetsKey(one)).toBe(targetsKey(other));
         expect(bucketRanges(one)).toEqual(bucketRanges(other));
+    });
+});
+
+describe("the corridor ceiling", () => {
+    test("a corridor is held inside what the service will take", () => {
+        const moved = withCorridor(DEFAULT_TARGETS, "interaction", { low: 9.8, high: 5550 });
+
+        expect(moved.buckets["interaction"]).toEqual({ low: 9.8, high: MAX_CORRIDOR });
+        expect(withTypeCorridor(DEFAULT_TARGETS, "Land", { low: -4, high: 300 }).types["Land"]).toEqual({
+            low: 0,
+            high: MAX_CORRIDOR,
+        });
+    });
+
+    test("a document saved before the ceiling existed is held as it is read", () => {
+        const saved = {
+            ...DEFAULT_TARGETS,
+            buckets: { interaction: { low: 9.8, high: 5550 } },
+            types: { Land: { low: 34, high: 36 } },
+        };
+        const read = heldTargets(saved);
+
+        expect(read.buckets["interaction"]).toEqual({ low: 9.8, high: MAX_CORRIDOR });
+        // Untouched where it was already inside — the same corridor comes
+        // back, so nothing is quietly rewritten on the next save.
+        expect(read.types["Land"]).toEqual({ low: 34, high: 36 });
+    });
+
+    test("targets saved before the ceiling existed are held on the way out", () => {
+        // Straight into the document, the way a settings answer from the
+        // server arrives: the deck is already broken, and asking for advice
+        // is the only way back to a panel with a reset button on it.
+        const saved = {
+            ...DEFAULT_TARGETS,
+            buckets: { interaction: { low: 9.8, high: 5550 } },
+            types: { Land: { low: 34, high: 4200 } },
+        };
+
+        expect(bucketRanges(saved)).toEqual([{ bucket: "interaction", low: 9.8, high: MAX_CORRIDOR }]);
+        expect(typeRanges(saved)).toEqual([{ type: "Land", low: 34, high: MAX_CORRIDOR }]);
     });
 });

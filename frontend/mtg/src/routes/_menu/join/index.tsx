@@ -5,7 +5,7 @@ import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { QrScanner } from "src/components/qr-scanner";
 import i18n from "src/i18n";
-import type { CameraStatus } from "src/utils/use-camera";
+import type { Camera } from "src/utils/use-camera";
 
 /** A code, typed or decoded — four to eight letters/digits, with or without its display dash */
 const CODE_PATTERN = /^[A-Za-z0-9-]{4,8}$/;
@@ -109,14 +109,19 @@ function RouteComponent() {
     );
 
     /**
-     * Tracks the scanner's camera lifecycle, so the page can show the same denied/unavailable
-     * note the camera itself would, and stop offering a viewfinder that will never show anything.
+     * Tracks why the camera would not open, so the page can say which failure it was and stop
+     * offering a viewfinder that will never show anything.
+     *
+     * The hook tells four failures apart; this page has two things to say about them. A refused
+     * permission is the one the visitor can still fix from here, so it keeps its own note —
+     * an insecure origin, a device with no camera and one that would not open all land on the
+     * same "no camera, type the code instead" line, which is the only advice that helps for any
+     * of them anyway.
      */
-    const handleCameraStatus = useCallback((status: CameraStatus) => {
-        if (status === "denied" || status === "unavailable") {
-            setCameraNote(status);
-            setScanning(false);
-        }
+    const handleCameraError = useCallback((error: Camera["error"]) => {
+        if (error === null) return;
+        setCameraNote(error === "denied" ? "denied" : "unavailable");
+        setScanning(false);
     }, []);
 
     return (
@@ -163,7 +168,7 @@ function RouteComponent() {
                         </Button>
                     ) : (
                         <>
-                            <QrScanner key={scannerKey} onScan={handleScan} onStatusChange={handleCameraStatus} />
+                            <QrScanner key={scannerKey} onScan={handleScan} onError={handleCameraError} />
                             <Button outline={true} onClick={() => setScanning(false)}>
                                 <VideoCameraSlashIcon />
                                 {t("button.stop-scan")}

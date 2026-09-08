@@ -24,6 +24,19 @@ from .cuts import CutCandidate, Replacement, Swap
 from .cuts import find_replacements as run_replacements
 from .cuts import suggest_swaps as run_swaps
 from .diagnostics import DeckEntry, Diagnostics, diagnose
+from .interaction import build_interaction_grid
+from .lines import LINE_NEAR_MISS_LIMIT, Line
+from .lines import deck_lines as run_lines
+from .lines import redundancy as run_redundancy
+from .lines import tutor_map as run_tutor_map
+from .meta import (
+    MEASURED_INTERACTION_PROFILES,
+    LineWinThroughGrade,
+    ProtectionWay,
+    grade_deck,
+    grade_line_win_through,
+)
+from .meta import resolve_expected_meta as run_resolve_expected_meta
 from .poolquery import MAX_QUERY_LENGTH, PoolFilter, PoolQueryError, parse_pool_query
 from .ratelimit import RateLimiter
 from .search import DEFAULT_SORT, SORTS, SearchQuery
@@ -191,6 +204,10 @@ def _diagnostics_key(request: DiagnosticsRequest) -> tuple:
         tuple(sorted(set(request.commander_oracle_ids))),
         # Scales every quota, so a 60-card deck must not share the 99's entry.
         request.deck_size,
+        # I3's local-meta override — pooling is order-independent (a set of
+        # decks to match against), so sorted-and-deduped is the right key,
+        # same reasoning as `commander_oracle_ids` right above it.
+        tuple(sorted(set(request.expected_meta))),
     )
 
 
@@ -297,7 +314,7 @@ app = FastAPI(
 # /facets is cached, /search is a single ~20ms query, and /health must stay
 # answerable for a load balancer — none of them are worth limiting.
 _RATE_LIMITED_PATHS = frozenset(
-    {"/suggestions", "/diagnostics", "/swaps", "/replace", "/fill", "/warm", "/combos"}
+    {"/suggestions", "/diagnostics", "/swaps", "/replace", "/fill", "/warm", "/combos", "/lines"}
 )
 _RATE_LIMITER = RateLimiter(settings.rate_limit_rps, settings.rate_limit_burst)
 
@@ -395,6 +412,17 @@ class DiagnosticsRequest(BaseModel):
     # may aim at 60 or 150. Every quota is tuned for 99 and scaled by
     # deck_size/99; the response's `deck_size` stays the observed count.
     deck_size: int = Field(99, ge=1, le=250)
+    # Task I3 (cEDH Pro round): the local-meta override. Commander names —
+    # `TournamentDeck.commander_name`'s raw pairing strings ("Kraum,
+    # Ludevic's Opus / Tymna the Weaver"), never an oracle id (partner pairs
+    # collapse under the singular id, see `meta.py`'s module docstring) —
+    # the caller expects to face. When present, `meta_grade` and
+    # `interaction_profile` are computed against just those commanders'
+    # tournament decks instead of the whole scene, with an honest floor
+    # (`meta.LOCAL_META_MIN_DECKS`) that falls back to the scene-pooled
+    # numbers for a pool too thin to trust — `meta_profile_source` says
+    # which happened. Request-scoped only; nothing here is persisted.
+    expected_meta: list[Term] = Field(default_factory=list, max_length=16)
 
 
 @app.get("/health")
@@ -490,12 +518,46 @@ def post_warm(request: WarmRequest) -> dict[str, str]:
     return {"status": _schedule_warm(request.commander_oracle_id)}
 
 
+def _apply_expected_meta(diag: Diagnostics, expected_meta: list[str]) -> Diagnostics:
+    """I3's local-meta override, layered onto an already-built `Diagnostics`.
+
+    Keeps `diagnose()`/`diagnostics.py` untouched beyond their two additive
+    fields (this task's ownership note): reuses the `interaction_grid` the
+    response already carries rather than fetching a second one, and only
+    ever replaces `meta_grade`/`interaction_profile`/`meta_profile_source` —
+    every other field is exactly what `diagnose()` computed.
+    """
+    if expected_meta:
+        context = run_resolve_expected_meta("cedh", expected_meta)
+        meta_grade = (
+            grade_deck("cedh", diag.interaction_grid, table=context.threats)
+            if diag.interaction_grid is not None
+            else None
+        )
+        return diag.model_copy(
+            update={
+                "meta_grade": meta_grade,
+                "interaction_profile": context.profile,
+                "meta_profile_source": context.source,
+            }
+        )
+    # No override requested: `meta_grade` is already the scene-pooled grade
+    # `diagnose()` computed; only the profile (Task I1, absent from that
+    # function on purpose) needs adding.
+    return diag.model_copy(
+        update={
+            "interaction_profile": MEASURED_INTERACTION_PROFILES.get("cedh"),
+            "meta_profile_source": "scene",
+        }
+    )
+
+
 @app.post("/diagnostics", response_model=Diagnostics)
 def post_diagnostics(request: DiagnosticsRequest) -> Diagnostics:
     key = _diagnostics_key(request)
 
     def compute() -> Diagnostics:
-        return diagnose(
+        diag = diagnose(
             request.cards,
             speed=request.speed,
             overrides=_as_overrides(request.overrides),
@@ -505,6 +567,7 @@ def post_diagnostics(request: DiagnosticsRequest) -> Diagnostics:
             commander_oracle_ids=request.commander_oracle_ids,
             deck_size=request.deck_size,
         )
+        return _apply_expected_meta(diag, request.expected_meta)
 
     # get_or_compute stores only on success — an exception propagates instead
     # of becoming the answer for the next five minutes — and folds in the
@@ -901,6 +964,317 @@ def post_combos(request: CombosRequest) -> CombosResponse:
     return CombosResponse(
         complete=[entry(combo) for combo in complete[: request.limit]],
         one_short=[entry(combo) for combo in one_short[: request.limit]],
+        notes=[],
+    )
+
+
+class LinesRequest(BaseModel):
+    """Mirrors `CombosRequest` field for field — the line engine reads the
+    same deck-identity shape /combos does, just answers with more of it."""
+
+    cards: list[DeckEntry] = Field(min_length=1, max_length=MAX_CARDS)
+    card_names: list[Term] = Field(default_factory=list, max_length=MAX_CARDS)
+    limit: int = Field(20, ge=1, le=60)
+    excluded: list[OracleId] = Field(default_factory=list, max_length=MAX_CARDS)
+    commander_oracle_ids: list[OracleId] = Field(default_factory=list, max_length=8)
+    identity: list[Term] | None = Field(None, max_length=5)
+    # Task I2 (cEDH Pro round): gates the per-line win-through grade the same
+    # way every other endpoint gates its cEDH-only extras — `build_interaction_grid`
+    # returns `None` below bracket 5, so a casual-speed request simply gets no
+    # `win_through` on any line, at the cost of one extra (cheap) card-role/
+    # resource fetch this endpoint did not previously pay.
+    speed: float = Field(0.5, ge=0.0, le=1.0)
+    # Task I3: the local-meta override — see `DiagnosticsRequest.expected_meta`
+    # for the full contract (commander_name pairing strings, request-scoped,
+    # floored fallback). Shifts `win_through`'s expected-interaction number.
+    expected_meta: list[Term] = Field(default_factory=list, max_length=16)
+
+
+class LinePieceEntry(BaseModel):
+    name: str
+    oracle_id: str
+    # A list, not the draft contract's single `zone`: a real Spellbook piece
+    # can name more than one acceptable starting zone (a card the sequence
+    # is happy to find in hand *or* graveyard), and collapsing that to one
+    # value would just be a lossy pick among several correct answers.
+    zones: list[str]
+    must_be_commander: bool
+    in_deck: bool
+
+
+class LinePrerequisites(BaseModel):
+    easy: str
+    notable: str
+
+
+class ProtectionWayEntry(BaseModel):
+    kind: str  # "stack" | "proactive_protection"
+    column: str  # "free" | "cheap" | "held_up"
+    count: int
+    cards: list[str]
+
+
+class LineWinThroughEntry(BaseModel):
+    """Task I2's per-line win-through grade — `protected (N ways) vs an
+    expected M pieces of stack interaction at the table`, both numbers kept
+    apart on the wire exactly as `meta.LineWinThroughGrade` keeps them apart
+    in Python (never collapsed into one score)."""
+
+    line_turn: int
+    mana_left_after_line: float
+    ways: list[ProtectionWayEntry]
+    # Real protection the deck holds that v1's coarse timing rule excludes
+    # from `protected_count` — visible, not silently dropped.
+    excluded: list[ProtectionWayEntry]
+    protected_count: int
+    expected_stack: float
+    profile_source: str
+
+
+class LineEntry(BaseModel):
+    # Every field required, not defaulted — same reasoning as `ComboEntry`:
+    # `_line_entry` always fills every one of them, and a default here would
+    # publish the field as optional in the schema the generated client trusts.
+    id: str
+    cards: list[LinePieceEntry]
+    mana_needed: str
+    mana_value_needed: int
+    # Task J (cEDH Pro round) — additive: what it actually costs to get the
+    # line's pieces into play, not just to execute it once they are there.
+    # `mana_value_needed` above stays exactly as Spellbook means it (a UI may
+    # still show that as "to execute"). Required, not defaulted, same
+    # reasoning as `mana_value_needed`: `_line_entry` always fills it in.
+    deploy_cost: int
+    # True when at least one piece counted toward `deploy_cost` had an
+    # unresolved mana value — `deploy_cost` is a floor in that case, not a
+    # settled number. Never silently 0/False.
+    deploy_cost_partial: bool
+    identity: list[str]
+    produces: list[str]
+    bracket_tag: str
+    popularity: int
+    prerequisites: LinePrerequisites
+    folds_to: list[str]
+    complete: bool
+    missing: list[str]
+    # Task I2 (cEDH Pro round) — additive, `None` below bracket 5, for a
+    # near-miss line (nothing to protect yet), or while the scene's profile
+    # is unmeasured. Same contract as `Diagnostics.meta_grade`.
+    win_through: LineWinThroughEntry | None = None
+
+
+class TutorMapEntry(BaseModel):
+    tutor: str
+    reaches: list[str]
+
+
+class SharedPieceEntry(BaseModel):
+    name: str
+    oracle_id: str
+
+
+class SharedPieceWithLines(BaseModel):
+    name: str
+    oracle_id: str
+    line_ids: list[str]
+
+
+class RedundancyBlock(BaseModel):
+    shared_pieces: list[SharedPieceWithLines]
+    single_points: list[SharedPieceEntry]
+
+
+class LineReportResponse(BaseModel):
+    lines: list[LineEntry]
+    tutor_map: list[TutorMapEntry]
+    redundancy: RedundancyBlock
+    # Said, not silent — same contract as `CombosResponse.notes`.
+    notes: list[str]
+
+
+def _empty_line_report(note: str) -> LineReportResponse:
+    return LineReportResponse(
+        lines=[],
+        tutor_map=[],
+        redundancy=RedundancyBlock(shared_pieces=[], single_points=[]),
+        notes=[note],
+    )
+
+
+def _line_identity(request: LinesRequest) -> list[str] | None:
+    """`_combo_identity`'s twin for `LinesRequest` — duplicated rather than
+    shared so the two endpoints' request models can diverge later without
+    one editing the other's helper."""
+    if request.identity is not None:
+        return list(request.identity)
+    if not request.commander_oracle_ids:
+        return None
+
+    from .graph import fetch_deck
+
+    rows = fetch_deck(dict.fromkeys(request.commander_oracle_ids, 1))
+    if not rows:
+        return None
+    union = {color for row in rows for color in row["color_identity"]}
+    return [color for color in "WUBRG" if color in union]
+
+
+def _protection_way_entry(way: ProtectionWay) -> ProtectionWayEntry:
+    return ProtectionWayEntry(
+        kind=way.kind, column=way.column, count=way.count, cards=list(way.cards)
+    )
+
+
+def _win_through_entry(grade: LineWinThroughGrade | None) -> LineWinThroughEntry | None:
+    if grade is None:
+        return None
+    return LineWinThroughEntry(
+        line_turn=grade.line_turn,
+        mana_left_after_line=grade.mana_left_after_line,
+        ways=[_protection_way_entry(w) for w in grade.ways],
+        excluded=[_protection_way_entry(w) for w in grade.excluded],
+        protected_count=grade.protected_count,
+        expected_stack=grade.expected_stack,
+        profile_source=grade.profile_source,
+    )
+
+
+def _line_entry(line: Line, *, win_through: LineWinThroughGrade | None = None) -> LineEntry:
+    return LineEntry(
+        id=line.id,
+        cards=[
+            LinePieceEntry(
+                name=card.name,
+                oracle_id=card.oracle_id,
+                zones=list(card.zones),
+                must_be_commander=card.must_be_commander,
+                in_deck=card.in_deck,
+            )
+            for card in line.cards
+        ],
+        mana_needed=line.mana_needed,
+        mana_value_needed=line.mana_value_needed,
+        deploy_cost=line.deploy_cost,
+        deploy_cost_partial=line.deploy_cost_partial,
+        identity=list(line.identity),
+        produces=list(line.produces),
+        bracket_tag=line.bracket_tag,
+        popularity=line.popularity,
+        prerequisites=LinePrerequisites(easy=line.prereq_easy, notable=line.prereq_notable),
+        folds_to=sorted(line.folds_to),
+        complete=line.complete,
+        missing=list(line.missing),
+        win_through=_win_through_entry(win_through),
+    )
+
+
+@app.post("/lines", response_model=LineReportResponse)
+def post_lines(request: LinesRequest) -> LineReportResponse:
+    """Complete combo lines and near-misses: cost, colours, zones,
+    prerequisites, fold classes, tutor reach, and redundancy.
+
+    No HTTP fallback: unlike `/combos`, the cost/zone/prerequisite data this
+    endpoint exists for only lives on the ingested graph, so a combo layer
+    that has never been ingested is reported as a note, not silently
+    answered from a shape that cannot carry the fields at all.
+    """
+    from .graph import combo_count
+
+    if combo_count() == 0:
+        return _empty_line_report(
+            "Line data requires the Spellbook graph ingest "
+            "(`deck-lab ingest-combos`) — no fallback carries cost/zone data."
+        )
+
+    try:
+        all_lines = run_lines([entry.oracle_id for entry in request.cards])
+    except Exception as exc:  # noqa: BLE001 — unofficial data path, must not 500
+        log.warning("lines.unavailable", error=str(exc))
+        return _empty_line_report(f"Line lookup unavailable: {exc}")
+
+    identity = _line_identity(request)
+    excluded = set(request.excluded)
+
+    def within_identity(line: Line) -> bool:
+        """Same rule `/combos` applies to its `one_short` list: a complete
+        line is a statement of fact about the deck and is never filtered; a
+        near-miss whose one missing piece falls outside the deck's colours
+        is not a recommendation this deck can legally play."""
+        if identity is None or line.complete:
+            return True
+        piece = next((card for card in line.cards if not card.in_deck), None)
+        if piece is None or not piece.color_identity:
+            return True
+        return all(color in identity for color in piece.color_identity)
+
+    complete_all = sorted(
+        (line for line in all_lines if line.complete),
+        key=lambda line: (len(line.missing), line.mana_value_needed, -line.popularity),
+    )
+    near_miss = sorted(
+        (
+            line
+            for line in all_lines
+            if not line.complete
+            and line.missing_oracle_id not in excluded
+            and within_identity(line)
+        ),
+        key=lambda line: -line.popularity,
+    )
+
+    shown = [
+        *complete_all[: request.limit],
+        *near_miss[: min(request.limit, LINE_NEAR_MISS_LIMIT)],
+    ]
+    tutors = run_tutor_map([entry.oracle_id for entry in request.cards], shown)
+    shared, single_points = run_redundancy(complete_all)
+
+    # Task I2: what protects each complete line's own resolution, against
+    # Task I1's expected table-wide stack interaction. `build_interaction_grid`
+    # already gates on `is_cedh(request.speed)` (returns `None` below bracket
+    # 5), so this fetch is the only new cost a casual-speed request pays —
+    # the same trio `diagnose()` fetches for the same reason, not previously
+    # needed here since /combos-shaped endpoints never built a grid before.
+    from .graph import deck_card_resources, deck_card_roles, fetch_deck
+
+    quantities = {entry.oracle_id: entry.qty for entry in request.cards}
+    grid = build_interaction_grid(
+        fetch_deck(quantities),
+        deck_card_roles(quantities),
+        deck_card_resources(quantities),
+        request.speed,
+    )
+
+    win_through_by_line: dict[str, LineWinThroughGrade] = {}
+    if grid is not None:
+        context = (
+            run_resolve_expected_meta("cedh", request.expected_meta)
+            if request.expected_meta
+            else None
+        )
+        profile = (
+            context.profile if context is not None else MEASURED_INTERACTION_PROFILES.get("cedh")
+        )
+        source = context.source if context is not None else "scene"
+        for line in shown:
+            grade = grade_line_win_through(
+                line, grid, "cedh", profile=profile, profile_source=source
+            )
+            if grade is not None:
+                win_through_by_line[line.id] = grade
+
+    return LineReportResponse(
+        lines=[_line_entry(line, win_through=win_through_by_line.get(line.id)) for line in shown],
+        tutor_map=[TutorMapEntry(tutor=t.tutor, reaches=list(t.reaches)) for t in tutors],
+        redundancy=RedundancyBlock(
+            shared_pieces=[
+                SharedPieceWithLines(name=p.name, oracle_id=p.oracle_id, line_ids=list(p.line_ids))
+                for p in shared
+            ],
+            single_points=[
+                SharedPieceEntry(name=p.name, oracle_id=p.oracle_id) for p in single_points
+            ],
+        ),
         notes=[],
     )
 

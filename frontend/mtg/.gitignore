@@ -41,3 +41,28 @@ public/tesseract/
 *.njsproj
 *.sln
 *.sw?
+
+# Output of the detection harness (see test/detect-harness.ts)
+test/detect-output/
+
+# esbuild output of the harnesses under test/ (see the scan:* and ocr:* scripts). Listed the
+# other way round on purpose: every one of these has a .ts beside it and is rebuilt by the script
+# that runs it, so the six without a .ts are the only ones worth keeping. A list of what to ignore
+# stopped covering the harnesses added after it was written, which is how four bundles ended up
+# staged for a commit.
+test/*.mjs
+!test/cdp-run.mjs
+!test/collect-failures.mjs
+!test/dataset-scan.mjs
+!test/detect-sheet.mjs
+!test/overlay-debug.mjs
+!test/printing-regression.mjs
+scripts/build-embedding-index.mjs
+
+# Photographs the scanner got wrong, cut into per-step renders (see test/failure-steps.ts).
+# Regenerated from the labelled corpus, tens of megabytes, and stale the moment the pipeline moves.
+test/fehlschlaege/
+
+# Generated model runtime (see README in scripts/)
+public/models/
+public/ort/

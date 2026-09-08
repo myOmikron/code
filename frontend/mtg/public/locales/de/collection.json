@@ -45,6 +45,7 @@
         "return-all": "Alles zurücksortieren",
         "return-card": "Zurücksortieren",
         "save-collection": "Speichern",
+        "scan-into": "Karten hineinscannen",
         "share-collection": "Teilen",
         "split-entry": "Abtrennen",
         "take-card": "{{count}} holen"
@@ -224,6 +225,7 @@
         "finish": "Finish",
         "foil": "Foil",
         "format-alchemy": "Alchemy",
+        "format-archon": "Archon",
         "format-brawl": "Brawl",
         "format-commander": "Commander",
         "format-competitivebrawl": "Brawl (kompetitiv)",

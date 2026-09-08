@@ -5,7 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "s
 import TablePagination from "src/components/table-pagination";
 import { Text } from "src/components/base/text";
 import { Button } from "src/components/base/button";
-import { EllipsisVerticalIcon, LinkIcon, PlusIcon, TrashIcon } from "@heroicons/react/20/solid";
+import { ClockIcon, EllipsisVerticalIcon, LinkIcon, PlusIcon, TrashIcon } from "@heroicons/react/20/solid";
 import React, { Suspense } from "react";
 import DialogCreateClubAdmin from "src/components/dialogs/admin-create-club-admin";
 import { Subheading } from "src/components/base/heading";
@@ -92,6 +92,31 @@ export function ClubAdmins(props: ClubAdminProps) {
                                                         <DropdownLabel>{t("button.copy-invite-link")}</DropdownLabel>
                                                     </DropdownItem>
                                                 </DropdownSection>
+                                                <DropdownItem
+                                                    onClick={async () => {
+                                                        await Api.admin.invites.extendExpiry(item.uuid, {
+                                                            valid_days: 7,
+                                                        });
+                                                        toast.success(t("toast.expiry-updated"));
+                                                        await router.invalidate({ sync: true });
+                                                    }}
+                                                >
+                                                    {new Date(item.expires_at) < new Date() ? (
+                                                        <>
+                                                            <ClockIcon />
+                                                            <DropdownLabel>
+                                                                {t("button.refresh-invite-expiry")}
+                                                            </DropdownLabel>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <PlusIcon />
+                                                            <DropdownLabel>
+                                                                {t("button.extend-invite-expiry")}
+                                                            </DropdownLabel>
+                                                        </>
+                                                    )}
+                                                </DropdownItem>
                                                 <DropdownSection>
                                                     <DropdownHeading>{tg("heading.danger-zone")}</DropdownHeading>
                                                     <DropdownItem onClick={() => setOpenRetractInvite(item.uuid)}>

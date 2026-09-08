@@ -41,13 +41,16 @@ service-bootstrap = { path = "libs/service-bootstrap" }
 service-bootstrap-build = { path = "libs/service-bootstrap-build" }
 
 # Webframework on top of `axum` and `rorm`
-galvyn = { version = "~0.5", default-features = false }
+galvyn = { version = "~0.6", features = ["rorm", "rorm-default", "rorm-postgres-only"] }
 
 # Detects a unique-constraint violation underneath `rorm::Error`, which wraps
 # it losslessly. No default features: only the `Error`/`DatabaseError` types
 # are read here, never a driver of its own — `galvyn`/`rorm` already pull in
-# every driver feature actually used at runtime.
-sqlx = { version = "~0.8.6", default-features = false }
+# every driver feature actually used at runtime. The version has to track
+# whatever `rorm-db` resolves to: two `sqlx-core`s in the graph make the very
+# same `sqlx::Error` two unrelated types, and the pattern match below stops
+# compiling with a "multiple different versions" note that names no fix.
+sqlx = { version = "~0.9", default-features = false }
 
 
 # ---- #

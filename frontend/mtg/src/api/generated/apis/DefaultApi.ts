@@ -16,6 +16,7 @@ import * as runtime from '../runtime';
 import type {
     AddCollectionEntriesRequest,
     AddDeckCardRequest,
+    AddScannerSessionEntryRequest,
     AddTournamentOrganizerRequest,
     AddTournamentParticipantRequest,
     AddWatchListEntryRequest,
@@ -36,6 +37,7 @@ import type {
     CreateDeckRequest,
     CreateDeckTagRequest,
     CreateGlobalTagRequest,
+    CreateScannerSessionRequest,
     CreateTournament200Response,
     CreateTournamentRequest,
     CreateWatchListRequest,
@@ -48,6 +50,8 @@ import type {
     DeckTagResponse,
     DeleteAccountRequest,
     EntrySort,
+    FileScannerSessionRequest,
+    FileScannerSessionResponse,
     FillDeckCollectionRequest,
     FillDeckCollectionResponse,
     FinishAddPasskeyRequest,
@@ -77,6 +81,7 @@ import type {
     ListGlobalTagsResponse,
     ListOnLoanResponse,
     ListPasskeysResponse,
+    ListScannerSessionsResponse,
     ListSharedParticipantsResponse,
     ListTournamentAuditResponse,
     ListTournamentOrganizersResponse,
@@ -90,6 +95,9 @@ import type {
     LookUpJoinCode200Response,
     MeResponse,
     MergeCollectionEntriesRequest,
+    MpcFillCardbacksResponse,
+    MpcFillSearchRequest,
+    MpcFillSearchResponse,
     PriceHistoryResponse,
     PrintingLanguagesResponse,
     PublicCollectionResponse,
@@ -106,6 +114,9 @@ import type {
     ReturnDeckCardsRequest,
     RotateDeckShareTokenResponse,
     RotateShareTokenResponse,
+    ScannerSessionDetailResponse,
+    ScannerSessionEntryResponse,
+    ScannerSessionResponse,
     SearchPublicDecksResponse,
     SetAdvisorSettingsRequest,
     SetCollectionVisibilityRequest,
@@ -141,6 +152,8 @@ import type {
     UpdateDeckRequest,
     UpdateDeckTagRequest,
     UpdateGlobalTagRequest,
+    UpdateScannerSessionEntryRequest,
+    UpdateScannerSessionRequest,
     UpdateTournamentParticipantRequest,
     UpdateWatchListEntryRequest,
     UpdateWatchListRequest,
@@ -160,6 +173,11 @@ export interface AddCollectionEntriesOperationRequest {
 export interface AddDeckCardOperationRequest {
     deck: string;
     AddDeckCardRequest?: AddDeckCardRequest;
+}
+
+export interface AddScannerSessionEntryOperationRequest {
+    session: string;
+    AddScannerSessionEntryRequest?: AddScannerSessionEntryRequest;
 }
 
 export interface AddTournamentOrganizerOperationRequest {
@@ -223,6 +241,10 @@ export interface CreateGlobalTagOperationRequest {
     CreateGlobalTagRequest?: CreateGlobalTagRequest;
 }
 
+export interface CreateScannerSessionOperationRequest {
+    CreateScannerSessionRequest?: CreateScannerSessionRequest;
+}
+
 export interface CreateTournamentOperationRequest {
     CreateTournamentRequest?: CreateTournamentRequest;
 }
@@ -270,6 +292,15 @@ export interface DeletePasskeyRequest {
     uuid: string;
 }
 
+export interface DeleteScannerSessionRequest {
+    session: string;
+}
+
+export interface DeleteScannerSessionEntryRequest {
+    session: string;
+    entry: string;
+}
+
 export interface DeleteTournamentRequest {
     tournament: string;
 }
@@ -295,6 +326,11 @@ export interface DetachDeckCollectionRequest {
 export interface DropTournamentParticipantRequest {
     tournament: string;
     participant: string;
+}
+
+export interface FileScannerSessionOperationRequest {
+    session: string;
+    FileScannerSessionRequest?: FileScannerSessionRequest;
 }
 
 export interface FillDeckCollectionOperationRequest {
@@ -370,6 +406,10 @@ export interface GetPublicDeckRequest {
 
 export interface GetPublicProfileRequest {
     username: string;
+}
+
+export interface GetScannerSessionRequest {
+    session: string;
 }
 
 export interface GetSharedCollectionRequest {
@@ -563,6 +603,10 @@ export interface RotateTournamentJoinCodeRequest {
     tournament: string;
 }
 
+export interface SearchMpcfillArtRequest {
+    MpcFillSearchRequest?: MpcFillSearchRequest;
+}
+
 export interface SearchPublicDecksRequest {
     bracket?: number | null;
     descending?: boolean;
@@ -700,6 +744,17 @@ export interface UpdateDeckTagOperationRequest {
 export interface UpdateGlobalTagOperationRequest {
     tag: string;
     UpdateGlobalTagRequest?: UpdateGlobalTagRequest;
+}
+
+export interface UpdateScannerSessionOperationRequest {
+    session: string;
+    UpdateScannerSessionRequest?: UpdateScannerSessionRequest;
+}
+
+export interface UpdateScannerSessionEntryOperationRequest {
+    session: string;
+    entry: string;
+    UpdateScannerSessionEntryRequest?: UpdateScannerSessionEntryRequest;
 }
 
 export interface UpdateTournamentRequest {
@@ -889,6 +944,56 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async addDeckCard(requestParameters: AddDeckCardOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DeckCardResponse> {
         const response = await this.addDeckCardRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for addScannerSessionEntry without sending the request
+     */
+    async addScannerSessionEntryRequestOpts(requestParameters: AddScannerSessionEntryOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['session'] == null) {
+            throw new runtime.RequiredError(
+                'session',
+                'Required parameter "session" was null or undefined when calling addScannerSessionEntry().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/scanner-sessions/{session}/entries`;
+        urlPath = urlPath.replace('{session}', encodeURIComponent(String(requestParameters['session'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['AddScannerSessionEntryRequest'],
+        };
+    }
+
+    /**
+     * Add scanned copies to a session
+     * Add scanned copies to a session
+     */
+    async addScannerSessionEntryRaw(requestParameters: AddScannerSessionEntryOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ScannerSessionEntryResponse>> {
+        const requestOptions = await this.addScannerSessionEntryRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Add scanned copies to a session
+     * Add scanned copies to a session
+     */
+    async addScannerSessionEntry(requestParameters: AddScannerSessionEntryOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ScannerSessionEntryResponse> {
+        const response = await this.addScannerSessionEntryRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -1539,6 +1644,48 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for createScannerSession without sending the request
+     */
+    async createScannerSessionRequestOpts(requestParameters: CreateScannerSessionOperationRequest): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/scanner-sessions`;
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['CreateScannerSessionRequest'],
+        };
+    }
+
+    /**
+     * Start a new persisted scanner session
+     * Start a new persisted scanner session
+     */
+    async createScannerSessionRaw(requestParameters: CreateScannerSessionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ScannerSessionResponse>> {
+        const requestOptions = await this.createScannerSessionRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Start a new persisted scanner session
+     * Start a new persisted scanner session
+     */
+    async createScannerSession(requestParameters: CreateScannerSessionOperationRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ScannerSessionResponse> {
+        const response = await this.createScannerSessionRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for createTournament without sending the request
      */
     async createTournamentRequestOpts(requestParameters: CreateTournamentOperationRequest): Promise<runtime.RequestOpts> {
@@ -2089,6 +2236,116 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for deleteScannerSession without sending the request
+     */
+    async deleteScannerSessionRequestOpts(requestParameters: DeleteScannerSessionRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['session'] == null) {
+            throw new runtime.RequiredError(
+                'session',
+                'Required parameter "session" was null or undefined when calling deleteScannerSession().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/scanner-sessions/{session}`;
+        urlPath = urlPath.replace('{session}', encodeURIComponent(String(requestParameters['session'])));
+
+        return {
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Delete a session and its staging area
+     * Delete a session and its staging area
+     */
+    async deleteScannerSessionRaw(requestParameters: DeleteScannerSessionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
+        const requestOptions = await this.deleteScannerSessionRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<any>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     * Delete a session and its staging area
+     * Delete a session and its staging area
+     */
+    async deleteScannerSession(requestParameters: DeleteScannerSessionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
+        const response = await this.deleteScannerSessionRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for deleteScannerSessionEntry without sending the request
+     */
+    async deleteScannerSessionEntryRequestOpts(requestParameters: DeleteScannerSessionEntryRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['session'] == null) {
+            throw new runtime.RequiredError(
+                'session',
+                'Required parameter "session" was null or undefined when calling deleteScannerSessionEntry().'
+            );
+        }
+
+        if (requestParameters['entry'] == null) {
+            throw new runtime.RequiredError(
+                'entry',
+                'Required parameter "entry" was null or undefined when calling deleteScannerSessionEntry().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/scanner-sessions/{session}/entries/{entry}`;
+        urlPath = urlPath.replace('{session}', encodeURIComponent(String(requestParameters['session'])));
+        urlPath = urlPath.replace('{entry}', encodeURIComponent(String(requestParameters['entry'])));
+
+        return {
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Remove a staged stack
+     * Remove a staged stack
+     */
+    async deleteScannerSessionEntryRaw(requestParameters: DeleteScannerSessionEntryRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
+        const requestOptions = await this.deleteScannerSessionEntryRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<any>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     * Remove a staged stack
+     * Remove a staged stack
+     */
+    async deleteScannerSessionEntry(requestParameters: DeleteScannerSessionEntryRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
+        const response = await this.deleteScannerSessionEntryRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for deleteTournament without sending the request
      */
     async deleteTournamentRequestOpts(requestParameters: DeleteTournamentRequest): Promise<runtime.RequestOpts> {
@@ -2415,6 +2672,56 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async dropTournamentParticipant(requestParameters: DropTournamentParticipantRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
         const response = await this.dropTournamentParticipantRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for fileScannerSession without sending the request
+     */
+    async fileScannerSessionRequestOpts(requestParameters: FileScannerSessionOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['session'] == null) {
+            throw new runtime.RequiredError(
+                'session',
+                'Required parameter "session" was null or undefined when calling fileScannerSession().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/scanner-sessions/{session}/file`;
+        urlPath = urlPath.replace('{session}', encodeURIComponent(String(requestParameters['session'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['FileScannerSessionRequest'],
+        };
+    }
+
+    /**
+     * Atomically file every staged stack and empty the session
+     * Atomically file every staged stack and empty the session
+     */
+    async fileScannerSessionRaw(requestParameters: FileScannerSessionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FileScannerSessionResponse>> {
+        const requestOptions = await this.fileScannerSessionRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Atomically file every staged stack and empty the session
+     * Atomically file every staged stack and empty the session
+     */
+    async fileScannerSession(requestParameters: FileScannerSessionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FileScannerSessionResponse> {
+        const response = await this.fileScannerSessionRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -2747,6 +3054,45 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for getAllScannerSessions without sending the request
+     */
+    async getAllScannerSessionsRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/scanner-sessions`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * List every scanner session and its current staging count
+     * List every scanner session and its current staging count
+     */
+    async getAllScannerSessionsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListScannerSessionsResponse>> {
+        const requestOptions = await this.getAllScannerSessionsRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * List every scanner session and its current staging count
+     * List every scanner session and its current staging count
+     */
+    async getAllScannerSessions(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListScannerSessionsResponse> {
+        const response = await this.getAllScannerSessionsRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for getAllWatchLists without sending the request
      */
     async getAllWatchListsRequestOpts(): Promise<runtime.RequestOpts> {
@@ -3036,7 +3382,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * What the offered formats ask of a deck  Construction rules only: size, copies, commander, sideboard. Whether a card is legal is answered per card by the catalog.
+     * What the offered formats ask of a deck  Construction rules only: size, copies, commander, sideboard. Whether a card is legal is answered per card by the catalog — except for the bans that apply to a zone rather than to a deck, which a printing row cannot carry and which ride along here instead.
      * What the offered formats ask of a deck
      */
     async getDeckFormatsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListFormatsResponse>> {
@@ -3047,7 +3393,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * What the offered formats ask of a deck  Construction rules only: size, copies, commander, sideboard. Whether a card is legal is answered per card by the catalog.
+     * What the offered formats ask of a deck  Construction rules only: size, copies, commander, sideboard. Whether a card is legal is answered per card by the catalog — except for the bans that apply to a zone rather than to a deck, which a printing row cannot carry and which ride along here instead.
      * What the offered formats ask of a deck
      */
     async getDeckFormats(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListFormatsResponse> {
@@ -3099,6 +3445,45 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async getDeckSourcing(requestParameters: GetDeckSourcingRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DeckSourcingResponse> {
         const response = await this.getDeckSourcingRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for getMpcfillCardbacks without sending the request
+     */
+    async getMpcfillCardbacksRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/mpcfill/cardbacks`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * The card backs MPCFill offers  An order names one back for every card that does not bring its own, so this is the list that choice is made from. The same for everybody, so it is fetched once and held for a few hours.
+     * The card backs MPCFill offers
+     */
+    async getMpcfillCardbacksRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MpcFillCardbacksResponse>> {
+        const requestOptions = await this.getMpcfillCardbacksRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * The card backs MPCFill offers  An order names one back for every card that does not bring its own, so this is the list that choice is made from. The same for everybody, so it is fetched once and held for a few hours.
+     * The card backs MPCFill offers
+     */
+    async getMpcfillCardbacks(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MpcFillCardbacksResponse> {
+        const response = await this.getMpcfillCardbacksRaw(initOverrides);
         return await response.value();
     }
 
@@ -3491,6 +3876,53 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async getPublicProfile(requestParameters: GetPublicProfileRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PublicProfileResponse> {
         const response = await this.getPublicProfileRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for getScannerSession without sending the request
+     */
+    async getScannerSessionRequestOpts(requestParameters: GetScannerSessionRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['session'] == null) {
+            throw new runtime.RequiredError(
+                'session',
+                'Required parameter "session" was null or undefined when calling getScannerSession().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/scanner-sessions/{session}`;
+        urlPath = urlPath.replace('{session}', encodeURIComponent(String(requestParameters['session'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Read one session from any signed-in device
+     * Read one session from any signed-in device
+     */
+    async getScannerSessionRaw(requestParameters: GetScannerSessionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ScannerSessionDetailResponse>> {
+        const requestOptions = await this.getScannerSessionRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Read one session from any signed-in device
+     * Read one session from any signed-in device
+     */
+    async getScannerSession(requestParameters: GetScannerSessionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ScannerSessionDetailResponse> {
+        const response = await this.getScannerSessionRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -4347,7 +4779,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Every card of a public deck, with the catalog data and the tags on it  The same answer the owner reads, for the same reason as a shared deck\'s: a deck has no prices paid, so nothing here has to be held back.
+     * Every card of a public deck, with the catalog data and the tags on it  The listing the owner reads, minus the proxy flags, see [`redact_slot`].
      * Every card of a public deck, with the catalog data and the tags on it
      */
     async listPublicDeckCardsRaw(requestParameters: ListPublicDeckCardsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListDeckCardsResponse>> {
@@ -4358,7 +4790,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Every card of a public deck, with the catalog data and the tags on it  The same answer the owner reads, for the same reason as a shared deck\'s: a deck has no prices paid, so nothing here has to be held back.
+     * Every card of a public deck, with the catalog data and the tags on it  The listing the owner reads, minus the proxy flags, see [`redact_slot`].
      * Every card of a public deck, with the catalog data and the tags on it
      */
     async listPublicDeckCards(requestParameters: ListPublicDeckCardsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListDeckCardsResponse> {
@@ -4481,7 +4913,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Every card of a shared deck, with the catalog data and the tags on it  The same answer the owner reads. A deck has no prices paid, so nothing here has to be held back.
+     * Every card of a shared deck, with the catalog data and the tags on it  The listing the owner reads, minus the proxy flags, see [`redact_slot`].
      * Every card of a shared deck, with the catalog data and the tags on it
      */
     async listSharedDeckCardsRaw(requestParameters: ListSharedDeckCardsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListDeckCardsResponse>> {
@@ -4492,7 +4924,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Every card of a shared deck, with the catalog data and the tags on it  The same answer the owner reads. A deck has no prices paid, so nothing here has to be held back.
+     * Every card of a shared deck, with the catalog data and the tags on it  The listing the owner reads, minus the proxy flags, see [`redact_slot`].
      * Every card of a shared deck, with the catalog data and the tags on it
      */
     async listSharedDeckCards(requestParameters: ListSharedDeckCardsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListDeckCardsResponse> {
@@ -5634,6 +6066,48 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async rotateTournamentJoinCode(requestParameters: RotateTournamentJoinCodeRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<TournamentJoinCodeResponse> {
         const response = await this.rotateTournamentJoinCodeRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for searchMpcfillArt without sending the request
+     */
+    async searchMpcfillArtRequestOpts(requestParameters: SearchMpcfillArtRequest): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/mpcfill/search`;
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['MpcFillSearchRequest'],
+        };
+    }
+
+    /**
+     * The art MPCFill has for these cards  One list per name, in the order they were asked, each in the order MPCFill ranks it. Every image carries the Google Drive id an order xml names it by, plus the thumbnails to show it with, so a client can put the art in front of a reader and write the order they pick.  Proxied rather than asked from the browser: MPCFill answers cross-origin requests for their own site only. The answers are cached for a few hours per name, so picking through a deck card by card is one request per card at worst, not one per click.
+     * The art MPCFill has for these cards
+     */
+    async searchMpcfillArtRaw(requestParameters: SearchMpcfillArtRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MpcFillSearchResponse>> {
+        const requestOptions = await this.searchMpcfillArtRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * The art MPCFill has for these cards  One list per name, in the order they were asked, each in the order MPCFill ranks it. Every image carries the Google Drive id an order xml names it by, plus the thumbnails to show it with, so a client can put the art in front of a reader and write the order they pick.  Proxied rather than asked from the browser: MPCFill answers cross-origin requests for their own site only. The answers are cached for a few hours per name, so picking through a deck card by card is one request per card at worst, not one per click.
+     * The art MPCFill has for these cards
+     */
+    async searchMpcfillArt(requestParameters: SearchMpcfillArtRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MpcFillSearchResponse> {
+        const response = await this.searchMpcfillArtRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -7105,6 +7579,118 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async updateGlobalTag(requestParameters: UpdateGlobalTagOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
         const response = await this.updateGlobalTagRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for updateScannerSession without sending the request
+     */
+    async updateScannerSessionRequestOpts(requestParameters: UpdateScannerSessionOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['session'] == null) {
+            throw new runtime.RequiredError(
+                'session',
+                'Required parameter "session" was null or undefined when calling updateScannerSession().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/scanner-sessions/{session}`;
+        urlPath = urlPath.replace('{session}', encodeURIComponent(String(requestParameters['session'])));
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['UpdateScannerSessionRequest'],
+        };
+    }
+
+    /**
+     * Rename a session or change its marker and preferred collection
+     * Rename a session or change its marker and preferred collection
+     */
+    async updateScannerSessionRaw(requestParameters: UpdateScannerSessionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
+        const requestOptions = await this.updateScannerSessionRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<any>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     * Rename a session or change its marker and preferred collection
+     * Rename a session or change its marker and preferred collection
+     */
+    async updateScannerSession(requestParameters: UpdateScannerSessionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
+        const response = await this.updateScannerSessionRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for updateScannerSessionEntry without sending the request
+     */
+    async updateScannerSessionEntryRequestOpts(requestParameters: UpdateScannerSessionEntryOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['session'] == null) {
+            throw new runtime.RequiredError(
+                'session',
+                'Required parameter "session" was null or undefined when calling updateScannerSessionEntry().'
+            );
+        }
+
+        if (requestParameters['entry'] == null) {
+            throw new runtime.RequiredError(
+                'entry',
+                'Required parameter "entry" was null or undefined when calling updateScannerSessionEntry().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/scanner-sessions/{session}/entries/{entry}`;
+        urlPath = urlPath.replace('{session}', encodeURIComponent(String(requestParameters['session'])));
+        urlPath = urlPath.replace('{entry}', encodeURIComponent(String(requestParameters['entry'])));
+
+        return {
+            path: urlPath,
+            method: 'PATCH',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['UpdateScannerSessionEntryRequest'],
+        };
+    }
+
+    /**
+     * Adjust count, finish, signed state, paid price or printing
+     * Adjust count, finish, signed state, paid price or printing
+     */
+    async updateScannerSessionEntryRaw(requestParameters: UpdateScannerSessionEntryOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ScannerSessionEntryResponse>> {
+        const requestOptions = await this.updateScannerSessionEntryRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Adjust count, finish, signed state, paid price or printing
+     * Adjust count, finish, signed state, paid price or printing
+     */
+    async updateScannerSessionEntry(requestParameters: UpdateScannerSessionEntryOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ScannerSessionEntryResponse> {
+        const response = await this.updateScannerSessionEntryRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
