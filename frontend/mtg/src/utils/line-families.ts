@@ -123,3 +123,61 @@ export function lineFamilies(
 
     return families.sort((a, b) => b.lines.length - a.lines.length || b.lines[0].popularity - a.lines[0].popularity);
 }
+
+/**
+ * Near-miss lines that miss the same card(s), so the panel can say
+ * "Reiterate → 3 lines" once instead of drawing three dimmed lines that
+ * differ only in their in-deck partner.
+ */
+export type NearMissGroup = {
+    /** A stable key — the missing names joined */
+    key: string;
+    /** The missing pieces, from the group's most-played line */
+    missing: Array<LineEntry["cards"][number]>;
+    /** Every in-deck piece any line in the group plays, deduplicated by name, most-played line first */
+    partners: Array<LineEntry["cards"][number]>;
+    /** The group's lines, most-played first */
+    lines: Array<LineEntry>;
+};
+
+/**
+ * Groups the report's incomplete lines by the card(s) they miss.
+ *
+ * The question a near-miss answers is "which one card would unlock the
+ * most", and that is a property of the missing card, not of each line
+ * that misses it — so lines are keyed by their `missing` names and the
+ * group carries the union of their in-deck partners.
+ *
+ * @param lines every line in the report
+ *
+ * @returns the groups, most lines first, ties broken by the group's
+ *   most-played line
+ */
+export function nearMissGroups(lines: ReadonlyArray<LineEntry>): Array<NearMissGroup> {
+    const grouped = new Map<string, Array<LineEntry>>();
+    for (const line of lines) {
+        if (line.complete) continue;
+        const key = [...line.missing].sort().join(" + ");
+        const held = grouped.get(key);
+        if (held === undefined) grouped.set(key, [line]);
+        else held.push(line);
+    }
+
+    const groups = [...grouped.entries()].map(([key, members]): NearMissGroup => {
+        const sorted = [...members].sort((a, b) => b.popularity - a.popularity);
+        const partners: NearMissGroup["partners"] = [];
+        for (const line of sorted) {
+            for (const card of line.cards) {
+                if (card.in_deck && !partners.some((held) => held.name === card.name)) partners.push(card);
+            }
+        }
+        return {
+            key,
+            missing: sorted[0].cards.filter((card) => !card.in_deck),
+            partners,
+            lines: sorted,
+        };
+    });
+
+    return groups.sort((a, b) => b.lines.length - a.lines.length || b.lines[0].popularity - a.lines[0].popularity);
+}

@@ -1,6 +1,6 @@
 import { Badge } from "components";
 import clsx from "clsx";
-import { Fragment, useId, useMemo, useState } from "react";
+import { Fragment, ReactNode, useId, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { CardFinish } from "src/api/generated";
 import { LineEntry, LineReportResponse, LinePieceEntry, RedundancyBlock } from "src/api/graph-generated";
@@ -9,12 +9,15 @@ import { DeckAdvisorNotes } from "src/components/deck-advisor-notes";
 import { ManaCost } from "src/components/mana-cost";
 import { SplitToggle } from "src/components/charts/split-toggle";
 import { DiagramFamily, layoutLineDiagram } from "src/utils/line-diagram";
-import { LineFamily, lineFamilies } from "src/utils/line-families";
+import { LineFamily, NearMissGroup, lineFamilies, nearMissGroups } from "src/utils/line-families";
 import { Printing } from "src/utils/scryfall";
 import { useSuggestionCards } from "src/utils/use-suggestion-cards";
 
-/** The two ways the lines panel can be read — strips is the default, the mockup's other variant sits behind it */
-type LinesVariant = "strips" | "diagram";
+/** The two ways the lines panel can be read — compact rows are the default, the mockup's diagram sits behind them */
+type LinesVariant = "compact" | "diagram";
+
+/** How many near-miss groups show before the rest sit behind a button */
+const NEAR_MISS_SHOWN = 4;
 
 /**
  * The properties for {@link DeckAdvisorLines}
@@ -39,20 +42,32 @@ function manaExtra(manaNeeded: string): string {
     return manaNeeded.replace(/\{[^}]+\}/g, "").trim();
 }
 
-/** One line's card, with its zone badge and the deck's own artwork when it has any */
-function LinePiece({ piece, printing }: { piece: LinePieceEntry; printing?: Printing }) {
+/**
+ * One line's card, drawn small with its zone badge in the corner — the name
+ * and zone live in the hover title, which is where the layout round moved
+ * everything the row does not need at a glance
+ */
+function LinePiece({
+    piece,
+    printing,
+    large = false,
+}: {
+    piece: LinePieceEntry;
+    printing?: Printing;
+    large?: boolean;
+}) {
     const [t] = useTranslation("advisor");
     const zoneNames = piece.zones
         .map((zone) => t(`accessibility.zone-${zone.toLowerCase()}`, { defaultValue: zone }))
         .join("/");
 
     return (
-        <div className={"flex flex-col items-center gap-1"}>
+        <div className={"relative"} title={zoneNames === "" ? piece.name : `${piece.name} · ${zoneNames}`}>
             <CardThumbnail
                 name={piece.name}
                 image={printing?.largeImageUrl ?? null}
                 thumbnail={printing?.imageUrl ?? null}
-                sizes={"64px"}
+                sizes={large ? "44px" : "30px"}
                 finish={CardFinish.Nonfoil}
                 compact
                 // Faded and dashed unconditionally — this is "missing from the
@@ -61,13 +76,18 @@ function LinePiece({ piece, printing }: { piece: LinePieceEntry; printing?: Prin
                 // near-miss line's absent piece must stay legible as missing
                 // whatever that switch is set to.
                 className={clsx(
-                    "w-12 rounded-(--radius-card)",
+                    "rounded-sm",
+                    large ? "w-11" : "w-[30px]",
                     !piece.in_deck &&
                         "opacity-60 outline-2 outline-offset-2 outline-zinc-400 saturate-50 outline-dashed dark:outline-zinc-500",
                 )}
             />
             {piece.zones.length > 0 && (
-                <Badge color={"zinc"} title={zoneNames} aria-label={zoneNames}>
+                <Badge
+                    color={"zinc"}
+                    aria-label={zoneNames}
+                    className={"absolute -right-1 -bottom-1 px-1 py-0 text-[8px]/3 shadow-sm sm:text-[8px]/3"}
+                >
                     {piece.zones.join("/")}
                 </Badge>
             )}
@@ -78,69 +98,186 @@ function LinePiece({ piece, printing }: { piece: LinePieceEntry; printing?: Prin
     );
 }
 
-/** One line, drawn as a card strip — the mockup's default reading */
-function LineStrip({
+/** The right-hand side of a row: cost, fold classes, and the muted counts */
+function LineMeta({
     line,
-    cards,
-    tutors,
-    dim = false,
+    tutors = [],
+    lineCount = 1,
 }: {
     line: LineEntry;
-    cards: ReadonlyMap<string, Printing>;
-    tutors: ReadonlyArray<string>;
-    dim?: boolean;
+    tutors?: ReadonlyArray<string>;
+    lineCount?: number;
 }) {
-    const [t] = useTranslation("advisor");
+    const [t, i18n] = useTranslation("advisor");
     const extra = manaExtra(line.mana_needed);
-    const hasCost = line.mana_needed !== "" || line.mana_value_needed > 0;
 
     return (
-        <div
-            className={clsx(
-                "flex flex-wrap items-center justify-between gap-3 rounded-(--radius-card) bg-(--surface-card) p-3 ring-1 ring-zinc-950/5 dark:ring-white/10",
-                dim && "opacity-70",
+        <div className={"flex flex-wrap items-center justify-end gap-1.5 sm:ml-auto"}>
+            {line.mana_needed !== "" ? (
+                <span title={extra === "" ? undefined : extra}>
+                    <ManaCost value={line.mana_needed} />
+                </span>
+            ) : (
+                line.mana_value_needed > 0 && (
+                    <Badge color={"zinc"}>{t("label.line-mana-value", { value: line.mana_value_needed })}</Badge>
+                )
             )}
-        >
-            <div className={"flex flex-wrap items-center gap-2"}>
-                {line.cards.map((piece, index) => (
-                    <Fragment key={piece.oracle_id + index}>
-                        {index > 0 && <span className={"text-zinc-400 dark:text-zinc-600"}>+</span>}
-                        <LinePiece piece={piece} printing={cards.get(piece.name)} />
-                    </Fragment>
-                ))}
-            </div>
-            <div className={"flex flex-col items-end gap-1.5"}>
-                <div className={"flex flex-wrap items-center justify-end gap-2"}>
-                    {hasCost && (
-                        <span className={"flex items-center gap-1.5"} title={extra === "" ? undefined : extra}>
-                            {line.mana_needed !== "" && <ManaCost value={line.mana_needed} />}
-                            {line.mana_value_needed > 0 && (
-                                <Badge color={"zinc"}>
-                                    {t("label.line-mana-value", { value: line.mana_value_needed })}
-                                </Badge>
-                            )}
-                        </span>
-                    )}
-                    {line.folds_to.length === 0 ? (
-                        <Badge color={"zinc"}>{t("label.fold-none")}</Badge>
-                    ) : (
-                        line.folds_to.map((fold) => (
-                            <Badge key={fold} color={"zinc"}>
-                                {t(`label.fold-${fold.replace(/_/g, "-")}`, { defaultValue: fold })}
-                            </Badge>
-                        ))
-                    )}
-                </div>
-                <div
-                    className={"flex flex-wrap items-center justify-end gap-2 text-xs text-zinc-500 dark:text-zinc-400"}
-                >
-                    {tutors.length > 0 && (
-                        <span title={tutors.join(", ")}>{t("label.tutor-count", { count: tutors.length })}</span>
-                    )}
-                    <span>{t("label.combo-popularity", { count: line.popularity })}</span>
-                </div>
-            </div>
+            {line.folds_to.length === 0 ? (
+                <Badge color={"zinc"}>{t("label.fold-none")}</Badge>
+            ) : (
+                line.folds_to.map((fold) => (
+                    <Badge key={fold} color={"zinc"}>
+                        {t(`label.fold-${fold.replace(/_/g, "-")}`, { defaultValue: fold })}
+                    </Badge>
+                ))
+            )}
+            <span className={"flex items-center gap-1.5 text-xs whitespace-nowrap text-zinc-500 dark:text-zinc-400"}>
+                {tutors.length > 0 && (
+                    <span title={tutors.join(", ")}>{t("label.tutor-count", { count: tutors.length })}</span>
+                )}
+                {lineCount > 1 && <span>{t("label.line-group-count", { count: lineCount })}</span>}
+                <span title={t("label.combo-popularity", { count: line.popularity })}>
+                    {line.popularity.toLocaleString(i18n.language)}
+                </span>
+            </span>
         </div>
+    );
+}
+
+/** A row of pieces joined by "+", one of them optionally dimmed because the column beside the row already names it */
+function PieceRow({
+    pieces,
+    cards,
+    dimmed,
+}: {
+    pieces: ReadonlyArray<LinePieceEntry>;
+    cards: ReadonlyMap<string, Printing>;
+    dimmed?: string;
+}) {
+    return (
+        <div className={"flex flex-wrap items-center gap-1.5"}>
+            {pieces.map((piece, index) => (
+                <Fragment key={piece.oracle_id + index}>
+                    {index > 0 && <span className={"text-xs text-zinc-400 dark:text-zinc-600"}>+</span>}
+                    <span className={clsx(piece.name === dimmed && "opacity-40")}>
+                        <LinePiece piece={piece} printing={cards.get(piece.name)} />
+                    </span>
+                </Fragment>
+            ))}
+        </div>
+    );
+}
+
+/** The shared frame of a family block and the near-miss block: a narrow left column, rows on the right */
+function LineBlock({ column, children }: { column: ReactNode; children: ReactNode }) {
+    return (
+        <div
+            className={
+                "flex items-start gap-3 border-t border-zinc-950/5 pt-2 first:border-t-0 first:pt-0 dark:border-white/10"
+            }
+        >
+            <div className={"flex w-16 shrink-0 flex-col items-center gap-0.5 text-center"}>{column}</div>
+            <div className={"flex min-w-0 flex-1 flex-col gap-0.5"}>{children}</div>
+        </div>
+    );
+}
+
+/** One family: the hub drawn once, every line one row of its remaining pieces */
+function FamilyBlock({ family, cards }: { family: LineFamily; cards: ReadonlyMap<string, Printing> }) {
+    const [t] = useTranslation("advisor");
+    const hubPiece = family.lines.flatMap((line) => line.cards).find((card) => card.name === family.hub);
+    // The hub leaves the rows only when every line has it — a family joined
+    // through a chain (Breach–Frantic Search–Narset on Kess) holds lines the
+    // hub is not part of, and a two-piece row there must not read as "plus
+    // the hub". In that case every row lists all its pieces, the hub dimmed
+    // so the eye still skips what the column already names.
+    const hubInEveryLine = family.lines.every((line) => line.cards.some((card) => card.name === family.hub));
+
+    return (
+        <LineBlock
+            column={
+                <>
+                    {hubPiece !== undefined && (
+                        <LinePiece piece={{ ...hubPiece, zones: [] }} printing={cards.get(family.hub)} large />
+                    )}
+                    <span className={"text-[10px]/tight text-zinc-600 dark:text-zinc-300"}>{family.hub}</span>
+                    <span className={"text-[10px] text-zinc-500 dark:text-zinc-400"}>
+                        {t("label.line-family-complete", { count: family.lines.length })}
+                    </span>
+                </>
+            }
+        >
+            {family.lines.map((line) => (
+                <div
+                    key={line.id}
+                    className={
+                        "flex flex-wrap items-center gap-2 rounded-(--radius-control) px-1.5 py-1 hover:bg-zinc-950/5 dark:hover:bg-white/5"
+                    }
+                >
+                    <PieceRow
+                        pieces={hubInEveryLine ? line.cards.filter((card) => card.name !== family.hub) : line.cards}
+                        cards={cards}
+                        dimmed={hubInEveryLine ? undefined : family.hub}
+                    />
+                    <LineMeta line={line} />
+                </div>
+            ))}
+        </LineBlock>
+    );
+}
+
+/** The near-misses, one row per missing card, the first few shown and the rest behind a count */
+function NearMissBlock({
+    groups,
+    cards,
+    tutorsByLine,
+}: {
+    groups: ReadonlyArray<NearMissGroup>;
+    cards: ReadonlyMap<string, Printing>;
+    tutorsByLine: ReadonlyMap<string, Array<string>>;
+}) {
+    const [t] = useTranslation("advisor");
+    const [expanded, setExpanded] = useState(false);
+    const shown = expanded ? groups : groups.slice(0, NEAR_MISS_SHOWN);
+    const total = groups.reduce((sum, group) => sum + group.lines.length, 0);
+
+    return (
+        <LineBlock
+            column={
+                <>
+                    <span className={"text-[10px]/tight text-zinc-600 dark:text-zinc-300"}>
+                        {t("label.near-miss-heading")}
+                    </span>
+                    <span className={"text-[10px] text-zinc-500 dark:text-zinc-400"}>
+                        {t("label.line-group-count", { count: total })}
+                    </span>
+                </>
+            }
+        >
+            {shown.map((group) => {
+                const tutors = [...new Set(group.lines.flatMap((line) => tutorsByLine.get(line.id) ?? []))];
+                return (
+                    <div
+                        key={group.key}
+                        className={
+                            "flex flex-wrap items-center gap-2 rounded-(--radius-control) px-1.5 py-1 opacity-70 hover:bg-zinc-950/5 hover:opacity-100 dark:hover:bg-white/5"
+                        }
+                    >
+                        <PieceRow pieces={[...group.missing, ...group.partners]} cards={cards} />
+                        <LineMeta line={group.lines[0]} tutors={tutors} lineCount={group.lines.length} />
+                    </div>
+                );
+            })}
+            {!expanded && groups.length > NEAR_MISS_SHOWN && (
+                <button
+                    type={"button"}
+                    onClick={() => setExpanded(true)}
+                    className={"self-start px-1.5 py-1 text-xs text-(--color-accent) hover:underline"}
+                >
+                    {t("label.near-miss-more", { count: groups.length - NEAR_MISS_SHOWN })}
+                </button>
+            )}
+        </LineBlock>
     );
 }
 
@@ -335,10 +472,15 @@ function LinesDiagram({
  * into families that share pieces, near-misses dimmed below them, and the
  * deck's redundancy read at a glance.
  *
- * Strips are the default reading (`SplitToggle` — the app's own segmented
- * idiom, `charts/split-toggle.tsx`), the diagram sits behind it. Both read
- * the same `report`; the diagram adds nothing the strips do not already say,
- * it just draws the shared-piece structure instead of listing it.
+ * Compact rows are the default reading (`SplitToggle` — the app's own
+ * segmented idiom, `charts/split-toggle.tsx`), the diagram sits behind them.
+ * The first cut drew every line as a full card strip and repeated a family's
+ * shared pieces on every line; on Kess that was 2,400 px for the panel. The
+ * hub is now drawn once per family and each line is one row of what is left,
+ * near-misses collapse onto the card they miss — the same fixture at 930 px.
+ * Both read the same `report`; the diagram adds nothing the rows do not
+ * already say, it just draws the shared-piece structure instead of listing
+ * it.
  *
  * Family grouping is a frontend derivation (`src/utils/line-families.ts`,
  * connected components over `redundancy.shared_pieces`), generalising the
@@ -350,7 +492,7 @@ function LinesDiagram({
  */
 export function DeckAdvisorLines({ report }: DeckAdvisorLinesProps) {
     const [t] = useTranslation("advisor");
-    const [variant, setVariant] = useState<LinesVariant>("strips");
+    const [variant, setVariant] = useState<LinesVariant>("compact");
 
     const allNames = useMemo(
         () => [...new Set(report.lines.flatMap((line) => line.cards.map((card) => card.name)))].sort(),
@@ -359,10 +501,7 @@ export function DeckAdvisorLines({ report }: DeckAdvisorLinesProps) {
     const { cards } = useSuggestionCards(allNames);
 
     const complete = useMemo(() => report.lines.filter((line) => line.complete), [report.lines]);
-    const nearMiss = useMemo(
-        () => [...report.lines.filter((line) => !line.complete)].sort((a, b) => b.popularity - a.popularity),
-        [report.lines],
-    );
+    const nearMiss = useMemo(() => nearMissGroups(report.lines), [report.lines]);
     const families = useMemo(
         () => lineFamilies(report.lines, report.redundancy.shared_pieces),
         [report.lines, report.redundancy.shared_pieces],
@@ -388,49 +527,22 @@ export function DeckAdvisorLines({ report }: DeckAdvisorLinesProps) {
                     {t("label.lines-count", { total: report.lines.length, complete: complete.length })}
                 </span>
                 <SplitToggle<LinesVariant>
-                    options={["strips", "diagram"]}
+                    options={["compact", "diagram"]}
                     value={variant}
                     onChange={setVariant}
-                    nameOf={(option) => t(option === "strips" ? "label.lines-view-strips" : "label.lines-view-diagram")}
+                    nameOf={(option) =>
+                        t(option === "compact" ? "label.lines-view-compact" : "label.lines-view-diagram")
+                    }
                 />
             </div>
 
-            {variant === "strips" ? (
-                <div className={"flex flex-col gap-5"}>
+            {variant === "compact" ? (
+                <div className={"flex flex-col gap-2"}>
                     {families.map((family) => (
-                        <section key={family.key} className={"flex flex-col gap-2"}>
-                            <h4 className={"flex items-baseline gap-2"}>
-                                <span className={"text-sm font-medium text-zinc-950 dark:text-white"}>
-                                    {family.hub}
-                                </span>
-                                <span className={"text-xs text-zinc-500 dark:text-zinc-400"}>
-                                    {t("label.line-family-complete", { count: family.lines.length })}
-                                </span>
-                            </h4>
-                            <div className={"flex flex-col gap-2"}>
-                                {family.lines.map((line) => (
-                                    <LineStrip
-                                        key={line.id}
-                                        line={line}
-                                        cards={cards}
-                                        tutors={tutorsByLine.get(line.id) ?? []}
-                                    />
-                                ))}
-                            </div>
-                        </section>
+                        <FamilyBlock key={family.key} family={family} cards={cards} />
                     ))}
                     {nearMiss.length > 0 && (
-                        <div className={"flex flex-col gap-2"}>
-                            {nearMiss.map((line) => (
-                                <LineStrip
-                                    key={line.id}
-                                    line={line}
-                                    cards={cards}
-                                    tutors={tutorsByLine.get(line.id) ?? []}
-                                    dim
-                                />
-                            ))}
-                        </div>
+                        <NearMissBlock groups={nearMiss} cards={cards} tutorsByLine={tutorsByLine} />
                     )}
                 </div>
             ) : (
