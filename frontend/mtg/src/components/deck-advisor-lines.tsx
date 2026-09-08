@@ -1,9 +1,11 @@
-import { Badge } from "components";
+import { MagnifyingGlassMinusIcon, MagnifyingGlassPlusIcon } from "@heroicons/react/20/solid";
+import { Badge, Button } from "components";
 import clsx from "clsx";
-import { Fragment, ReactNode, useId, useMemo, useState } from "react";
+import { Fragment, ReactNode, useEffect, useId, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { CardFinish } from "src/api/generated";
 import { LineEntry, LineReportResponse, LinePieceEntry, RedundancyBlock } from "src/api/graph-generated";
+import { CardDetailDialog } from "src/components/card-detail-dialog";
 import { CardThumbnail } from "src/components/card-thumbnail";
 import { DeckAdvisorNotes } from "src/components/deck-advisor-notes";
 import { ManaCost } from "src/components/mana-cost";
@@ -18,6 +20,12 @@ type LinesVariant = "compact" | "diagram";
 
 /** How many near-miss groups show before the rest sit behind a button */
 const NEAR_MISS_SHOWN = 4;
+
+/** The diagram's zoom steps — one click per step, ctrl/⌘ + wheel walks them too */
+const ZOOM_STEPS = [0.75, 1, 1.25, 1.5, 2, 2.5, 3] as const;
+
+/** Opens a card's detail dialog — every piece in the panel gets the same one the combos panel uses */
+type OpenCard = (printing: Printing) => void;
 
 /**
  * The properties for {@link DeckAdvisorLines}
@@ -50,10 +58,12 @@ function manaExtra(manaNeeded: string): string {
 function LinePiece({
     piece,
     printing,
+    onOpen,
     large = false,
 }: {
     piece: LinePieceEntry;
     printing?: Printing;
+    onOpen: OpenCard;
     large?: boolean;
 }) {
     const [t] = useTranslation("advisor");
@@ -62,7 +72,19 @@ function LinePiece({
         .join("/");
 
     return (
-        <div className={"relative"} title={zoneNames === "" ? piece.name : `${piece.name} · ${zoneNames}`}>
+        // The same clickable artwork the combos panel draws (`ComboThumbnails`):
+        // a button around the thumbnail, opening the card's detail dialog,
+        // inert until the catalog has placed the name.
+        <button
+            type={"button"}
+            disabled={printing === undefined}
+            onClick={() => printing !== undefined && onOpen(printing)}
+            aria-label={t("accessibility.open-card", { name: piece.name })}
+            title={zoneNames === "" ? piece.name : `${piece.name} · ${zoneNames}`}
+            className={
+                "relative block cursor-zoom-in rounded-sm transition hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-accent) disabled:cursor-default"
+            }
+        >
             <CardThumbnail
                 name={piece.name}
                 image={printing?.largeImageUrl ?? null}
@@ -94,7 +116,7 @@ function LinePiece({
             {!piece.in_deck && (
                 <span className={"sr-only"}>{t("accessibility.line-piece-missing", { name: piece.name })}</span>
             )}
-        </div>
+        </button>
     );
 }
 
@@ -148,10 +170,12 @@ function LineMeta({
 function PieceRow({
     pieces,
     cards,
+    onOpen,
     dimmed,
 }: {
     pieces: ReadonlyArray<LinePieceEntry>;
     cards: ReadonlyMap<string, Printing>;
+    onOpen: OpenCard;
     dimmed?: string;
 }) {
     return (
@@ -160,7 +184,7 @@ function PieceRow({
                 <Fragment key={piece.oracle_id + index}>
                     {index > 0 && <span className={"text-xs text-zinc-400 dark:text-zinc-600"}>+</span>}
                     <span className={clsx(piece.name === dimmed && "opacity-40")}>
-                        <LinePiece piece={piece} printing={cards.get(piece.name)} />
+                        <LinePiece piece={piece} printing={cards.get(piece.name)} onOpen={onOpen} />
                     </span>
                 </Fragment>
             ))}
@@ -183,7 +207,15 @@ function LineBlock({ column, children }: { column: ReactNode; children: ReactNod
 }
 
 /** One family: the hub drawn once, every line one row of its remaining pieces */
-function FamilyBlock({ family, cards }: { family: LineFamily; cards: ReadonlyMap<string, Printing> }) {
+function FamilyBlock({
+    family,
+    cards,
+    onOpen,
+}: {
+    family: LineFamily;
+    cards: ReadonlyMap<string, Printing>;
+    onOpen: OpenCard;
+}) {
     const [t] = useTranslation("advisor");
     const hubPiece = family.lines.flatMap((line) => line.cards).find((card) => card.name === family.hub);
     // The hub leaves the rows only when every line has it — a family joined
@@ -198,7 +230,12 @@ function FamilyBlock({ family, cards }: { family: LineFamily; cards: ReadonlyMap
             column={
                 <>
                     {hubPiece !== undefined && (
-                        <LinePiece piece={{ ...hubPiece, zones: [] }} printing={cards.get(family.hub)} large />
+                        <LinePiece
+                            piece={{ ...hubPiece, zones: [] }}
+                            printing={cards.get(family.hub)}
+                            onOpen={onOpen}
+                            large
+                        />
                     )}
                     <span className={"text-[10px]/tight text-zinc-600 dark:text-zinc-300"}>{family.hub}</span>
                     <span className={"text-[10px] text-zinc-500 dark:text-zinc-400"}>
@@ -217,6 +254,7 @@ function FamilyBlock({ family, cards }: { family: LineFamily; cards: ReadonlyMap
                     <PieceRow
                         pieces={hubInEveryLine ? line.cards.filter((card) => card.name !== family.hub) : line.cards}
                         cards={cards}
+                        onOpen={onOpen}
                         dimmed={hubInEveryLine ? undefined : family.hub}
                     />
                     <LineMeta line={line} />
@@ -231,10 +269,12 @@ function NearMissBlock({
     groups,
     cards,
     tutorsByLine,
+    onOpen,
 }: {
     groups: ReadonlyArray<NearMissGroup>;
     cards: ReadonlyMap<string, Printing>;
     tutorsByLine: ReadonlyMap<string, Array<string>>;
+    onOpen: OpenCard;
 }) {
     const [t] = useTranslation("advisor");
     const [expanded, setExpanded] = useState(false);
@@ -263,7 +303,7 @@ function NearMissBlock({
                             "flex flex-wrap items-center gap-2 rounded-(--radius-control) px-1.5 py-1 opacity-70 hover:bg-zinc-950/5 hover:opacity-100 dark:hover:bg-white/5"
                         }
                     >
-                        <PieceRow pieces={[...group.missing, ...group.partners]} cards={cards} />
+                        <PieceRow pieces={[...group.missing, ...group.partners]} cards={cards} onOpen={onOpen} />
                         <LineMeta line={group.lines[0]} tutors={tutors} lineCount={group.lines.length} />
                     </div>
                 );
@@ -316,17 +356,29 @@ function RedundancyStrip({ redundancy }: { redundancy: RedundancyBlock }) {
 }
 
 /** One family's circular node-link graph */
-function DiagramCluster({ family, cards }: { family: DiagramFamily; cards: ReadonlyMap<string, Printing> }) {
+function DiagramCluster({
+    family,
+    cards,
+    zoom,
+    onOpen,
+}: {
+    family: DiagramFamily;
+    cards: ReadonlyMap<string, Printing>;
+    zoom: number;
+    onOpen: OpenCard;
+}) {
     const [t] = useTranslation("advisor");
     const uid = useId().replace(/[^a-zA-Z0-9]/g, "");
     const nodeSize = 44;
 
     return (
         <div className={"flex flex-col items-center gap-1"}>
+            {/* Zoom scales the drawn size and leaves the viewBox alone, so the
+                layout module's coordinates stay what it computed. */}
             <svg
                 viewBox={`0 0 ${family.width} ${family.height}`}
-                width={family.width}
-                height={family.height}
+                width={family.width * zoom}
+                height={family.height * zoom}
                 role={"img"}
                 aria-label={t("accessibility.lines-diagram-family", { hub: family.hub, count: family.completeCount })}
             >
@@ -356,7 +408,21 @@ function DiagramCluster({ family, cards }: { family: DiagramFamily; cards: Reado
                     const x = node.x - nodeSize / 2;
                     const y = node.y - nodeSize / 2;
                     return (
-                        <g key={node.name} opacity={node.ghost ? 0.55 : 1}>
+                        <g
+                            key={node.name}
+                            opacity={node.ghost ? 0.55 : 1}
+                            role={printing === undefined ? undefined : "button"}
+                            tabIndex={printing === undefined ? undefined : 0}
+                            aria-label={t("accessibility.open-card", { name: node.name })}
+                            className={clsx(printing !== undefined && "cursor-zoom-in focus-visible:outline-none")}
+                            onClick={() => printing !== undefined && onOpen(printing)}
+                            onKeyDown={(event) => {
+                                if (printing !== undefined && (event.key === "Enter" || event.key === " ")) {
+                                    event.preventDefault();
+                                    onOpen(printing);
+                                }
+                            }}
+                        >
                             <clipPath id={clipId}>
                                 <rect x={x} y={y} width={nodeSize} height={nodeSize * 1.4} rx={5} />
                             </clipPath>
@@ -420,21 +486,67 @@ function LinesDiagram({
     lines,
     tutorsByLine,
     cards,
+    onOpen,
 }: {
     families: ReadonlyArray<LineFamily>;
     lines: ReadonlyArray<LineEntry>;
     tutorsByLine: ReadonlyMap<string, Array<string>>;
     cards: ReadonlyMap<string, Printing>;
+    onOpen: OpenCard;
 }) {
     const [t] = useTranslation("advisor");
     const diagrams = useMemo(() => layoutLineDiagram(families, lines, tutorsByLine), [families, lines, tutorsByLine]);
+    const [step, setStep] = useState(1);
+    const zoom = ZOOM_STEPS[step];
+    const scroller = useRef<HTMLDivElement>(null);
+
+    // ctrl/⌘ + wheel zooms the diagram instead of the page. A native listener,
+    // not React's `onWheel`: React registers wheel passively, so the page
+    // zoom could not be suppressed from there.
+    useEffect(() => {
+        const node = scroller.current;
+        if (node === null) return;
+        /**
+         * Walks one zoom step in the wheel's direction
+         *
+         * @param event the wheel event
+         */
+        function onWheel(event: WheelEvent) {
+            if (!event.ctrlKey && !event.metaKey) return;
+            event.preventDefault();
+            setStep((held) => Math.min(ZOOM_STEPS.length - 1, Math.max(0, held + (event.deltaY < 0 ? 1 : -1))));
+        }
+        node.addEventListener("wheel", onWheel, { passive: false });
+        return () => node.removeEventListener("wheel", onWheel);
+    }, []);
 
     return (
         <div className={"flex flex-col gap-3"}>
-            <div className={"flex flex-wrap justify-center gap-6"}>
-                {diagrams.map((family) => (
-                    <DiagramCluster key={family.key} family={family} cards={cards} />
-                ))}
+            <div className={"flex items-center justify-end gap-1 text-xs text-zinc-500 dark:text-zinc-400"}>
+                <Button
+                    plain
+                    disabled={step === 0}
+                    onClick={() => setStep((held) => Math.max(0, held - 1))}
+                    aria-label={t("accessibility.diagram-zoom-out")}
+                >
+                    <MagnifyingGlassMinusIcon />
+                </Button>
+                <span className={"w-10 text-center tabular-nums"}>{Math.round(zoom * 100)}%</span>
+                <Button
+                    plain
+                    disabled={step === ZOOM_STEPS.length - 1}
+                    onClick={() => setStep((held) => Math.min(ZOOM_STEPS.length - 1, held + 1))}
+                    aria-label={t("accessibility.diagram-zoom-in")}
+                >
+                    <MagnifyingGlassPlusIcon />
+                </Button>
+            </div>
+            <div ref={scroller} className={"overflow-x-auto"}>
+                <div className={"flex flex-wrap justify-center gap-6"}>
+                    {diagrams.map((family) => (
+                        <DiagramCluster key={family.key} family={family} cards={cards} zoom={zoom} onOpen={onOpen} />
+                    ))}
+                </div>
             </div>
             {/* The legend carries what the mockup's refinement round moved out
                 of in-diagram captions: solid means co-occurrence, dashed means
@@ -493,6 +605,7 @@ function LinesDiagram({
 export function DeckAdvisorLines({ report }: DeckAdvisorLinesProps) {
     const [t] = useTranslation("advisor");
     const [variant, setVariant] = useState<LinesVariant>("compact");
+    const [opened, setOpened] = useState<Printing | null>(null);
 
     const allNames = useMemo(
         () => [...new Set(report.lines.flatMap((line) => line.cards.map((card) => card.name)))].sort(),
@@ -539,17 +652,24 @@ export function DeckAdvisorLines({ report }: DeckAdvisorLinesProps) {
             {variant === "compact" ? (
                 <div className={"flex flex-col gap-2"}>
                     {families.map((family) => (
-                        <FamilyBlock key={family.key} family={family} cards={cards} />
+                        <FamilyBlock key={family.key} family={family} cards={cards} onOpen={setOpened} />
                     ))}
                     {nearMiss.length > 0 && (
-                        <NearMissBlock groups={nearMiss} cards={cards} tutorsByLine={tutorsByLine} />
+                        <NearMissBlock groups={nearMiss} cards={cards} tutorsByLine={tutorsByLine} onOpen={setOpened} />
                     )}
                 </div>
             ) : (
-                <LinesDiagram families={families} lines={report.lines} tutorsByLine={tutorsByLine} cards={cards} />
+                <LinesDiagram
+                    families={families}
+                    lines={report.lines}
+                    tutorsByLine={tutorsByLine}
+                    cards={cards}
+                    onOpen={setOpened}
+                />
             )}
 
             <RedundancyStrip redundancy={report.redundancy} />
+            <CardDetailDialog printing={opened} onClose={() => setOpened(null)} />
         </div>
     );
 }

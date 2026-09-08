@@ -7,6 +7,8 @@
         "cut-argues-keep": "argues for keeping it",
         "cut-argues-out": "argues for cutting it",
         "cut-card": "Take {{name}} out without a replacement",
+        "diagram-zoom-in": "Zoom the diagram in",
+        "diagram-zoom-out": "Zoom the diagram out",
         "fill-coverage": "{{bucket}}: {{before}} to {{after}}, target {{low}}–{{high}}",
         "ignore-card": "Never suggest {{name}}",
         "keep-card": "Keep {{name}} — stop suggesting it as a cut",

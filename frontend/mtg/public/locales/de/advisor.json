@@ -7,6 +7,8 @@
         "cut-argues-keep": "spricht fürs Behalten",
         "cut-argues-out": "spricht fürs Kürzen",
         "cut-card": "{{name}} ersatzlos aus dem Deck nehmen",
+        "diagram-zoom-in": "Diagramm vergrößern",
+        "diagram-zoom-out": "Diagramm verkleinern",
         "fill-coverage": "{{bucket}}: {{before}} auf {{after}}, Ziel {{low}}–{{high}}",
         "ignore-card": "{{name}} nie vorschlagen",
         "keep-card": "{{name}} behalten — nicht mehr als Kürzung vorschlagen",
