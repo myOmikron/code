@@ -836,3 +836,15 @@ def test_an_override_for_a_type_with_no_target_is_dropped():
 
 def test_no_type_overrides_is_the_identity():
     assert apply_type_overrides(_types(), {}) == _types()
+
+
+def test_polymorph_lock_needs_both_halves():
+    """An effect with a wide creature base is a value engine, and a thin
+    creature base without the effect is just a spell deck — only the pairing
+    is a win line, and only the pairing may silence creature suggestions."""
+    from deck_lab.composition import POLYMORPH_MAX_CREATURES, polymorph_locked
+
+    assert polymorph_locked(1, 2)
+    assert polymorph_locked(2, POLYMORPH_MAX_CREATURES)
+    assert not polymorph_locked(1, POLYMORPH_MAX_CREATURES + 1)
+    assert not polymorph_locked(0, 0)

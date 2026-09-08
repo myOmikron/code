@@ -2647,6 +2647,12 @@ def test_a_goblin_king_shaped_bridge_row_survives_without_tribes_and_dies_with_t
     from deck_lab.diagnostics import TypalShare
     from deck_lab.suggestions import suggest
 
+    # A creature candidate makes the suggestion engine ask whether this deck
+
+    # is polymorph-locked; no graph here.
+
+    monkeypatch.setattr(graph, "deck_polymorph_counts", lambda ids: (0, 0))
+
     monkeypatch.setattr(graph, "bracket_breakers", lambda ids: {})
     _stub_commander(monkeypatch)
     monkeypatch.setattr(graph, "has_recommendations", lambda oid: True)

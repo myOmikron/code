@@ -121,6 +121,7 @@
         "note-combos-unavailable": "Combo lookup unavailable: {{error}}",
         "note-commander-not-in-graph": "Commander is not in the card graph.",
         "note-commander-rejected": "The nominated commander was rejected — it is not in the card graph or cannot legally be a commander — so one was inferred instead.",
+        "note-creatures-withheld": "{{amount}} creature suggestions withheld — this deck cheats one known creature into play off the top of the library, and every creature added is another one the reveal can find instead.",
         "note-deck-size-scaled": "Targets are scaled to a {{size}}-card deck from their 99-card tuning — treat the ranges as guidance rather than measured data.",
         "note-demoted-asymmetry": "{{amount}} suggestions demoted — they would hurt this deck's own board about as much as the table's.",
         "note-demoted-bucket-saturation": "{{amount}} suggestions demoted — they add to a bucket the deck is already over ({{buckets}}).",

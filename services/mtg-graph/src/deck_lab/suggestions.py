@@ -38,7 +38,7 @@ from typing import TYPE_CHECKING
 import structlog
 from pydantic import BaseModel, Field
 
-from .composition import SPEED_BRACKET_FIVE, is_cedh
+from .composition import SPEED_BRACKET_FIVE, is_cedh, polymorph_locked
 from .poolquery import PoolFilter
 from .power import weight_within_group
 from .type_targets import CEDH_MIN_DECKS
@@ -3746,6 +3746,34 @@ def suggest(
             flags=flags,
         )
         notes.extend(withheld_notes)
+
+    # A polymorph deck's win line is the *absence* of creatures: the effect
+    # takes whatever the reveal turns up, so a deck that cheats one known
+    # fatty into play is broken by the eleventh creature as surely as by
+    # cutting the fatty itself. Every other channel is blind to this —
+    # `role_gap` sees a short wincon bucket, `edhrec_synergy` sees the
+    # commander's popular creatures — so the suppression sits here, at the
+    # end, where a card that must not be added is removed however it argued
+    # its way in. The graph is only asked when there is a creature to
+    # withhold, which on most decks is never (`deck_plan_pieces` in `cuts`
+    # is the same judgment pointed the other way, at what must not be cut).
+    if candidates and any("Creature" in c.type_line for c in candidates):
+        from .graph import deck_polymorph_counts
+
+        effects, creatures = deck_polymorph_counts(list(deck_oracle_ids))
+        if polymorph_locked(effects, creatures):
+            survivors = [c for c in candidates if "Creature" not in c.type_line]
+            if dropped := len(candidates) - len(survivors):
+                notes.append(
+                    phrase(
+                        "creatures-withheld",
+                        f"{dropped} creature suggestion{_plural(dropped)} withheld — this deck "
+                        "cheats one known creature into play off the top of the library, and "
+                        "every creature added is another one the reveal can find instead.",
+                        amount=dropped,
+                    )
+                )
+            candidates = survivors
 
     # A focus narrows the pool rather than reordering it: asking for landfall
     # and being shown three landfall cards among forty is not an answer.

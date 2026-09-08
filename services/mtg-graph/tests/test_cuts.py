@@ -1954,7 +1954,8 @@ def test_a_creature_deck_running_the_same_effect_is_untouched():
     """The effect alone is not the signal — of the 19 cards carrying it, most
     live in creature decks where it is a value engine, not a win line. The
     creature count is what tells the two apart."""
-    from deck_lab.cuts import POLYMORPH_MAX_CREATURES, deck_plan_pieces
+    from deck_lab.composition import POLYMORPH_MAX_CREATURES
+    from deck_lab.cuts import deck_plan_pieces
     from deck_lab.vocabulary import Resource
 
     cards = [_card("oath", "Oath of Druids")]

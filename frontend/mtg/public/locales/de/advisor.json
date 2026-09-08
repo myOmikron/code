@@ -121,6 +121,7 @@
         "note-combos-unavailable": "Combo-Abfrage nicht verfügbar: {{error}}",
         "note-commander-not-in-graph": "Der Commander ist nicht im Kartengraph.",
         "note-commander-rejected": "Der angegebene Commander wurde verworfen — er steht nicht im Kartengraph oder darf kein Commander sein — daher wurde einer abgeleitet.",
+        "note-creatures-withheld": "{{amount}} Kreaturen-Vorschläge zurückgehalten — dieses Deck holt eine bestimmte Kreatur von oben aus der Bibliothek ins Spiel; jede weitere Kreatur ist eine, die die Enthüllung stattdessen finden kann.",
         "note-deck-size-scaled": "Die Zielwerte sind auf ein Deck mit {{size}} Karten skaliert, abgestimmt wurden sie auf 99 — lies die Bereiche als Richtwert, nicht als Messwert.",
         "note-demoted-asymmetry": "{{amount}} Vorschläge abgewertet — sie träfen das eigene Board etwa so hart wie den Tisch.",
         "note-demoted-bucket-saturation": "{{amount}} Vorschläge abgewertet — sie füllen eine Rolle, die das Deck bereits übererfüllt ({{buckets}}).",
