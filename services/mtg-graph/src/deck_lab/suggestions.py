@@ -735,6 +735,34 @@ WEIGHT_FREE_SPELL = 1.8
 FREE_SPELL_RAMP = 4.0
 FREE_SPELL_CAP = 2.5
 
+# Proactive protection — the interaction grid's third row, and the one that
+# had no channel behind it: a deck could be told it holds none and offered
+# nothing to do about it.
+#
+# Sized off `resource_scene_supply` rather than raw castability, for the
+# reason that query's own comment gives: the class is white in practice. The
+# ratio is measured on the 17,663-deck cEDH corpus, per colour identity, as
+# (mean cards held) / (castable cards at least 5% of the scene plays) —
+# BRUW 0.86, BUW 0.80, BRW 1.11, BGUW 0.84, GUW 0.68, five-colour 0.51, mean
+# 0.80. Identities without white measure a supply of zero and so a target of
+# zero, which is the corpus's own answer: they hold 0.01 of these on average
+# while every white identity holds between 3.4 and 5.5.
+#
+# The 5% share is where the class's own playrates fall off a cliff: Silence
+# 36.0%, Ranger-Captain of Eos 30.5%, Voice of Victory 26.2%, Grand Abolisher
+# 23.5%, Orim's Chant 15.1%, then Kutzil on 4.0% and a long tail.
+PROACTIVE_PROTECTION_RATIO = 0.8
+PROACTIVE_PROTECTION_MIN_SHARE = 0.05
+# The `free_spell` shape and its ramp/cap. Calibrated live on a white cEDH
+# identity holding none of the class: the channel emits 0.65 for Grand
+# Abolisher and 0.54 for Ranger-Captain of Eos, against a 0.54 median across
+# every positive channel entry in the same answer — beside the other
+# bracket-5 demands rather than over them, which is the whole calibration
+# target (see `WEIGHT_FAST_MANA`).
+WEIGHT_PROACTIVE_PROTECTION = 1.2
+PROACTIVE_PROTECTION_RAMP = 4.0
+PROACTIVE_PROTECTION_CAP = 2.5
+
 
 def _fast_mana_target(speed: float, deck_size_scale: float = 1.0) -> float:
     """How many fast-mana cards a deck at this speed is expected to run.
@@ -774,6 +802,36 @@ def _free_spell_target(speed: float, castable: int, deck_size_scale: float = 1.0
         position = (speed - SPEED_BRACKET_FOUR) / (SPEED_BRACKET_FIVE - SPEED_BRACKET_FOUR)
         target = position * ceiling
     return target * deck_size_scale
+
+
+def _proactive_protection_target(speed: float, supply: int, deck_size_scale: float = 1.0) -> float:
+    """How many "opponents can't cast spells" effects a deck at this speed, in
+    this identity, is expected to run.
+
+    Zero below bracket 5 rather than ramping from bracket 4 like its two
+    siblings: the measurement behind it is a cEDH corpus, and protecting a
+    win attempt on the stack is the thing bracket 5 does that bracket 4 does
+    not. `supply` is `resource_scene_supply(Resource.PROACTIVE_PROTECTION,
+    identity)` — deck-agnostic, so a caller computes it once per request.
+    """
+    if not is_cedh(speed):
+        return 0.0
+    return supply * PROACTIVE_PROTECTION_RATIO * deck_size_scale
+
+
+def _proactive_protection_provenance(row: dict, current: float, target: float) -> Provenance:
+    """The `_free_spell_provenance` shape — `target` already carries the
+    identity's played-supply scaling (see `_proactive_protection_target`)."""
+    shortfall = target - current
+    return Provenance(
+        channel="proactive_protection",
+        detail=f"proactive protection — {current:.0f} against ~{target:.0f} at this bracket",
+        code="proactive-protection",
+        params={"current": f"{current:.0f}", "target": f"{target:.0f}"},
+        score=WEIGHT_PROACTIVE_PROTECTION
+        * min(shortfall / PROACTIVE_PROTECTION_RAMP, PROACTIVE_PROTECTION_CAP)
+        * weight_within_group(row.get("edhrec_rank"), rarity=row.get("rarity")),
+    )
 
 
 def _fast_mana_provenance(row: dict, current: float, target: float) -> Provenance:
@@ -2350,6 +2408,7 @@ _GROUP_FOR_CHANNEL = {
     "tutor_access": "bucket",
     "fast_mana": "bucket",
     "free_spell": "bucket",
+    "proactive_protection": "bucket",
     "resource_bridge": "resource",
     "combo_completion": "combo",
     "theme_fit": "theme",
@@ -2383,6 +2442,7 @@ _CHANNEL_PRIORITY = (
     # interaction at bracket 5 should read as exactly that, not "Resources".
     "fast_mana",
     "free_spell",
+    "proactive_protection",
     "role_gap",
     "resource_bridge",
     "combo_completion",
@@ -2906,6 +2966,7 @@ def suggest(
         # exclusion the way basics do.
         "fast_mana",
         "free_spell",
+        "proactive_protection",
     }
 
     # The combo lookup needs nothing computed below — only the deck itself —
@@ -3490,8 +3551,15 @@ def suggest(
     # below that speed does not pay two graph round trips for a channel
     # guaranteed to merge nothing, the same reasoning `combo_scale == 0.0`
     # already applies to the combo channel above.
-    if speed >= SPEED_BRACKET_FOUR and ("fast_mana" in enabled or "free_spell" in enabled):
-        from .graph import channel_resource_supply, deck_resource_count, resource_identity_supply
+    if speed >= SPEED_BRACKET_FOUR and (
+        "fast_mana" in enabled or "free_spell" in enabled or "proactive_protection" in enabled
+    ):
+        from .graph import (
+            channel_resource_supply,
+            deck_resource_count,
+            resource_identity_supply,
+            resource_scene_supply,
+        )
 
         held = {oid: counts.get(oid, 1) for oid in deck_oracle_ids}
 
@@ -3527,6 +3595,27 @@ def suggest(
                     "bucket:free interaction",
                     f"{free_spell_count:.0f} free interaction against ~{free_spell_target:.0f} "
                     "at this bracket",
+                )
+
+        if "proactive_protection" in enabled and is_cedh(speed):
+            # Identity-only and deck-agnostic like `free_spell`'s, but asked
+            # of the scene rather than the catalog — a card the format does
+            # not play is not supply, however castable it is.
+            supply = resource_scene_supply(
+                Resource.PROACTIVE_PROTECTION,
+                identity,
+                min_share=PROACTIVE_PROTECTION_MIN_SHARE,
+            )
+            held_count = deck_resource_count(Resource.PROACTIVE_PROTECTION, held)
+            target = _proactive_protection_target(speed, supply, deck_size_scale=deck_size / 99)
+            if held_count < target:
+                for row in channel_resource_supply(
+                    Resource.PROACTIVE_PROTECTION, retrieval_deck, identity, pool_filter=pool_filter
+                ):
+                    _merge(pool, row, _proactive_protection_provenance(row, held_count, target))
+                bucket_reasons.setdefault(
+                    "bucket:proactive protection",
+                    f"{held_count:.0f} proactive protection against ~{target:.0f} at this bracket",
                 )
 
     # --- Focus: what the user asked for more of ---------------------------

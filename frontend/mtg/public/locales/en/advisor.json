@@ -471,6 +471,7 @@
         "why-fast-mana": "Fast mana — {{current}} against ~{{target}} at this bracket",
         "why-fixing-lands": "Fixes {{colors}} colours — {{current}} fixing lands against ~{{target}}",
         "why-free-spell": "Free interaction — {{current}} against ~{{target}} at this bracket",
+        "why-proactive-protection": "Proactive protection — {{current}} against ~{{target}} at this bracket",
         "why-resource-bridge": "Supplies {{listed}} — deck wants {{gap}} more than it makes",
         "why-role-gap": "Fills {{label}} — deck is {{shortfall}} short at this speed",
         "why-theme-detected": "Reads as {{label}} ({{fit}} fit) — {{share}} of the deck",

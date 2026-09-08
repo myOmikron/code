@@ -2420,6 +2420,47 @@ def deck_lock_counts(oracle_ids: list[str]) -> tuple[dict[str, int], dict[str, i
         return holders, classes
 
 
+# `RESOURCE_IDENTITY_SUPPLY`'s stricter cousin: how many of a resource's
+# producers this identity can cast *and* the scene actually plays.
+#
+# Raw castability is the wrong measure for a class the format only plays in
+# one colour. Measured on the 17,663-deck cEDH corpus: an identity without
+# white can cast five or six of `proactive_protection`'s 36 cards and plays
+# 0.01 of them on average, while every white identity plays between 3.4 and
+# 5.5. Sizing a target off raw castability would offer a mono-blue list its
+# fourth-best Silence variant as though the format wanted it there. Requiring
+# a real share of scene decks to play a card cuts exactly that: the class's
+# played members stop at Orim's Chant on 15.1% and the next card is on 4.0%.
+RESOURCE_SCENE_SUPPLY = """
+MATCH (c:Card)-[:PRODUCES]->(:Resource {name: $resource})
+WHERE all(sym IN c.color_identity WHERE sym IN $identity)
+WITH collect(DISTINCT c) AS castable
+MATCH (d:TournamentDeck {scene: $scene})
+WITH castable, count(d) AS total
+UNWIND castable AS c
+OPTIONAL MATCH (c)<-[:PLAYED]-(d:TournamentDeck {scene: $scene})
+WITH c, total, count(DISTINCT d) AS played
+WHERE total > 0 AND toFloat(played) / total >= $min_share
+RETURN count(c) AS supply
+"""
+
+
+def resource_scene_supply(
+    resource: str, identity: list[str], *, scene: str = "cedh", min_share: float = 0.05
+) -> int:
+    """How many producers of `resource` this identity can cast that at least
+    `min_share` of `scene`'s decks actually play."""
+    with driver() as instance, instance.session(database=settings.neo4j_database) as session:
+        record = session.run(
+            RESOURCE_SCENE_SUPPLY,
+            resource=str(resource),
+            identity=list(identity or []),
+            scene=scene,
+            min_share=min_share,
+        ).single()
+        return int(record["supply"]) if record is not None else 0
+
+
 def top_commanders(limit: int = 1000) -> list[dict]:
     """The most-played legal commanders, most popular first.
 
