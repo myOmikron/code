@@ -1920,3 +1920,55 @@ def test_casual_brackets_never_ask_the_scene(monkeypatch):
         ["cmd", "x"], ["Cmd", "Filler"], commander_oracle_id="cmd", speed=0.5, protected=[]
     )
     assert cards[1]["playability"] == 0.05
+
+
+def test_a_polymorph_deck_never_cuts_its_own_win_line():
+    """Polymorph, Proteus Staff and the two fatties they turn up are the whole
+    win condition of an Urza Poly list, and every other defence misses them:
+    they are tagged as removal, Spellbook lists no combo for them, and their
+    play rate is near zero even among the deck's nearest tournament
+    neighbours."""
+    from deck_lab.cuts import deck_plan_pieces
+    from deck_lab.vocabulary import Resource
+
+    cards = [
+        _card("poly", "Polymorph"),
+        _card("staff", "Proteus Staff"),
+        _card("horror", "Hullbreaker Horror"),
+        _card("tyrant", "Tidespout Tyrant"),
+        _card("ring", "Sol Ring"),
+    ]
+    for card in cards:
+        card["type_line"] = (
+            "Creature — Kraken" if card["oracle_id"] in {"horror", "tyrant"} else "Artifact"
+        )
+    resources = {
+        "poly": {"produces": {Resource.POLYMORPH, Resource.SPOT_REMOVAL}},
+        "staff": {"produces": {Resource.POLYMORPH}},
+    }
+
+    assert deck_plan_pieces(cards, resources) == {"poly", "staff", "horror", "tyrant"}
+
+
+def test_a_creature_deck_running_the_same_effect_is_untouched():
+    """The effect alone is not the signal — of the 19 cards carrying it, most
+    live in creature decks where it is a value engine, not a win line. The
+    creature count is what tells the two apart."""
+    from deck_lab.cuts import POLYMORPH_MAX_CREATURES, deck_plan_pieces
+    from deck_lab.vocabulary import Resource
+
+    cards = [_card("oath", "Oath of Druids")]
+    cards[0]["type_line"] = "Enchantment"
+    for index in range(POLYMORPH_MAX_CREATURES + 1):
+        card = _card(f"c{index}", f"Creature {index}")
+        card["type_line"] = "Creature — Elf"
+        cards.append(card)
+
+    assert deck_plan_pieces(cards, {"oath": {"produces": {Resource.POLYMORPH}}}) == set()
+
+
+def test_a_deck_with_no_polymorph_effect_defends_nothing_extra():
+    from deck_lab.cuts import deck_plan_pieces
+
+    cards = [_card("a", "Island", land=True), _card("b", "Bear")]
+    assert deck_plan_pieces(cards, {}) == set()
