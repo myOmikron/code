@@ -4488,7 +4488,7 @@
         "/api/frontend/v1/explore/decks/{deck}/cards": {
             "get": {
                 "summary": "Every card of a public deck, with the catalog data and the tags on it",
-                "description": "Every card of a public deck, with the catalog data and the tags on it\n\nThe same answer the owner reads, for the same reason as a shared deck's: a\ndeck has no prices paid, so nothing here has to be held back.",
+                "description": "Every card of a public deck, with the catalog data and the tags on it\n\nThe listing the owner reads, minus the proxy flags, see [`redact_slot`].",
                 "operationId": "list_public_deck_cards",
                 "parameters": [
                     {
@@ -6392,7 +6392,7 @@
         "/api/frontend/v1/shared/decks/{token}/cards": {
             "get": {
                 "summary": "Every card of a shared deck, with the catalog data and the tags on it",
-                "description": "Every card of a shared deck, with the catalog data and the tags on it\n\nThe same answer the owner reads. A deck has no prices paid, so nothing here\nhas to be held back.",
+                "description": "Every card of a shared deck, with the catalog data and the tags on it\n\nThe listing the owner reads, minus the proxy flags, see [`redact_slot`].",
                 "operationId": "list_shared_deck_cards",
                 "parameters": [
                     {
@@ -7715,9 +7715,21 @@
                 "description": "What a Commander bracket asks of a deck",
                 "type": "object",
                 "properties": {
+                    "combos": {
+                        "description": "How much combo play the bracket tolerates",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ComboRule"
+                            }
+                        ]
+                    },
                     "extra_turns": {
-                        "description": "Whether chained extra turns are expected to stay out",
-                        "type": "boolean"
+                        "description": "How much extra-turn play the bracket tolerates",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ExtraTurnRule"
+                            }
+                        ]
                     },
                     "mass_land_denial": {
                         "description": "Whether mass land denial is expected to stay out",
@@ -7739,18 +7751,14 @@
                     "slug": {
                         "description": "The slug the client turns into a name",
                         "type": "string"
-                    },
-                    "two_card_combos": {
-                        "description": "Whether two card infinite combos are expected to stay out",
-                        "type": "boolean"
                     }
                 },
                 "required": [
+                    "combos",
                     "extra_turns",
                     "mass_land_denial",
                     "number",
-                    "slug",
-                    "two_card_combos"
+                    "slug"
                 ]
             },
             "CardCondition": {
@@ -8291,6 +8299,32 @@
                 "description": "Wrapper for the primary key of the [`Collection`] model. To have better distinguishable types.",
                 "type": "string",
                 "format": "uuid"
+            },
+            "ComboRule": {
+                "description": "How much combo play a bracket tolerates\n\nSame three-step shape as [`ExtraTurnRule`] and for the same reason: the rule Exhibition states (\"no intentional infinite combos\") is stricter than the one Core states (\"none of two cards\"), so a deck holding a three card line sits in Core rather than in Exhibition. Upgraded's published rule is about how *early* a two card combo goes off, which nothing here can read, so it tolerates them outright — the same judgement call the table makes.",
+                "oneOf": [
+                    {
+                        "description": "No complete combo of any length",
+                        "type": "string",
+                        "enum": [
+                            "none"
+                        ]
+                    },
+                    {
+                        "description": "Combos, as long as none of them is two cards",
+                        "type": "string",
+                        "enum": [
+                            "no-two-card"
+                        ]
+                    },
+                    {
+                        "description": "No limit",
+                        "type": "string",
+                        "enum": [
+                            "any"
+                        ]
+                    }
+                ]
             },
             "CommanderRule": {
                 "description": "Whether the format is played with a commander",
@@ -9526,6 +9560,32 @@
                 "type": "string",
                 "enum": [
                     "Err"
+                ]
+            },
+            "ExtraTurnRule": {
+                "description": "How much extra-turn play a bracket tolerates\n\nThree values rather than a yes/no, because the published rule is not one: Exhibition plays no extra turns at all, Core and Upgraded ask only that they are not *chained*, and the top two ask nothing. A single Time Warp is a legal Core card, so a boolean here could only be wrong in one direction or the other.",
+                "oneOf": [
+                    {
+                        "description": "No extra turns at all",
+                        "type": "string",
+                        "enum": [
+                            "none"
+                        ]
+                    },
+                    {
+                        "description": "Extra turns, as long as the deck cannot take them back to back",
+                        "type": "string",
+                        "enum": [
+                            "no-chaining"
+                        ]
+                    },
+                    {
+                        "description": "No limit",
+                        "type": "string",
+                        "enum": [
+                            "any"
+                        ]
+                    }
                 ]
             },
             "FileScannerSessionRequest": {

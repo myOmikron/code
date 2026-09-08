@@ -238,7 +238,25 @@ export function DeckAdvisorAssumptions({
                                     {!rules.mass_land_denial && (
                                         <Badge color={"zinc"}>{t("label.no-mass-land-denial")}</Badge>
                                     )}
-                                    {!rules.extra_turns && <Badge color={"zinc"}>{t("label.no-extra-turns")}</Badge>}
+                                    {/* Two of the four rules climb in three
+                                    steps rather than two, so what the badge
+                                    says is which step: a bracket that seats
+                                    extra turns but not a chain of them asks
+                                    something the old yes/no could not say. */}
+                                    {rules.extra_turns !== "any" && (
+                                        <Badge color={"zinc"}>
+                                            {rules.extra_turns === "none"
+                                                ? t("label.no-extra-turns")
+                                                : t("label.no-extra-turn-chains")}
+                                        </Badge>
+                                    )}
+                                    {rules.combos !== "any" && (
+                                        <Badge color={"zinc"}>
+                                            {rules.combos === "none"
+                                                ? t("label.no-combos")
+                                                : t("label.no-two-card-combos")}
+                                        </Badge>
+                                    )}
                                 </div>
                             )}
 

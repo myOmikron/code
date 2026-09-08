@@ -4839,7 +4839,7 @@ No authorization required
 
 Every card of a public deck, with the catalog data and the tags on it
 
-Every card of a public deck, with the catalog data and the tags on it  The same answer the owner reads, for the same reason as a shared deck\&#39;s: a deck has no prices paid, so nothing here has to be held back.
+Every card of a public deck, with the catalog data and the tags on it  The listing the owner reads, minus the proxy flags, see [&#x60;redact_slot&#x60;].
 
 ### Example
 
@@ -5009,7 +5009,7 @@ No authorization required
 
 Every card of a shared deck, with the catalog data and the tags on it
 
-Every card of a shared deck, with the catalog data and the tags on it  The same answer the owner reads. A deck has no prices paid, so nothing here has to be held back.
+Every card of a shared deck, with the catalog data and the tags on it  The listing the owner reads, minus the proxy flags, see [&#x60;redact_slot&#x60;].
 
 ### Example
 

@@ -3893,7 +3893,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Every card of a public deck, with the catalog data and the tags on it  The same answer the owner reads, for the same reason as a shared deck\'s: a deck has no prices paid, so nothing here has to be held back.
+     * Every card of a public deck, with the catalog data and the tags on it  The listing the owner reads, minus the proxy flags, see [`redact_slot`].
      * Every card of a public deck, with the catalog data and the tags on it
      */
     async listPublicDeckCardsRaw(requestParameters: ListPublicDeckCardsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListDeckCardsResponse>> {
@@ -3904,7 +3904,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Every card of a public deck, with the catalog data and the tags on it  The same answer the owner reads, for the same reason as a shared deck\'s: a deck has no prices paid, so nothing here has to be held back.
+     * Every card of a public deck, with the catalog data and the tags on it  The listing the owner reads, minus the proxy flags, see [`redact_slot`].
      * Every card of a public deck, with the catalog data and the tags on it
      */
     async listPublicDeckCards(requestParameters: ListPublicDeckCardsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListDeckCardsResponse> {
@@ -4027,7 +4027,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Every card of a shared deck, with the catalog data and the tags on it  The same answer the owner reads. A deck has no prices paid, so nothing here has to be held back.
+     * Every card of a shared deck, with the catalog data and the tags on it  The listing the owner reads, minus the proxy flags, see [`redact_slot`].
      * Every card of a shared deck, with the catalog data and the tags on it
      */
     async listSharedDeckCardsRaw(requestParameters: ListSharedDeckCardsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListDeckCardsResponse>> {
@@ -4038,7 +4038,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Every card of a shared deck, with the catalog data and the tags on it  The same answer the owner reads. A deck has no prices paid, so nothing here has to be held back.
+     * Every card of a shared deck, with the catalog data and the tags on it  The listing the owner reads, minus the proxy flags, see [`redact_slot`].
      * Every card of a shared deck, with the catalog data and the tags on it
      */
     async listSharedDeckCards(requestParameters: ListSharedDeckCardsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListDeckCardsResponse> {

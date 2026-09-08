@@ -208,7 +208,6 @@ function RouteComponent() {
                                     advisor, two tabs over, holds the deck to
                                     this number and to nothing else. */}
                                 <DeckBracketPicker
-                                    variant={"badge"}
                                     brackets={brackets}
                                     bracket={deck.bracket ?? null}
                                     onChange={(next) => void saveBracket(next)}

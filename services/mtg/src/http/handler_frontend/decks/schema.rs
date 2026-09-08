@@ -36,8 +36,10 @@ use crate::models::deck::sourcing::SourcingSlot;
 use crate::models::deck::tag::DeckTag;
 use crate::models::deck::tag::DeckTagUuid;
 use crate::models::format::BracketRules;
+use crate::models::format::ComboRule;
 use crate::models::format::CommanderRule;
 use crate::models::format::DeckSize;
+use crate::models::format::ExtraTurnRule;
 use crate::models::format::FormatRules;
 use crate::models::visibility::Visibility;
 use crate::utils::archon::RoleBans;
@@ -530,10 +532,10 @@ pub struct BracketRulesResponse {
     pub max_game_changers: Option<u8>,
     /// Whether mass land denial is expected to stay out
     pub mass_land_denial: bool,
-    /// Whether chained extra turns are expected to stay out
-    pub extra_turns: bool,
-    /// Whether two card infinite combos are expected to stay out
-    pub two_card_combos: bool,
+    /// How much extra-turn play the bracket tolerates
+    pub extra_turns: ExtraTurnRule,
+    /// How much combo play the bracket tolerates
+    pub combos: ComboRule,
 }
 
 /// The freshly minted secret of a deck's share link
@@ -927,7 +929,7 @@ impl From<&'static BracketRules> for BracketRulesResponse {
             max_game_changers: rules.max_game_changers,
             mass_land_denial: rules.mass_land_denial,
             extra_turns: rules.extra_turns,
-            two_card_combos: rules.two_card_combos,
+            combos: rules.combos,
         }
     }
 }
