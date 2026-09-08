@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { LifeTrackerSettings } from "src/utils/life-tracker";
+import type { LifeTrackerSettings, Seating } from "src/utils/life-tracker";
 import {
     DEFAULT_LIFE_TRACKER_SETTINGS,
     PLAYER_COUNTS,
@@ -154,8 +154,21 @@ describe("life tracker seating", () => {
     });
 });
 
+/**
+ * Every table the tracker can lay out
+ *
+ * @returns one seating per pod size, arrangement and orientation
+ */
+function everySeating(): Array<Seating> {
+    return ["landscape" as const, "portrait" as const].flatMap((orientation) =>
+        ["sides" as const, "cross" as const].flatMap((arrangement) =>
+            PLAYER_COUNTS.map((count) => seatingFor(count, arrangement, orientation)),
+        ),
+    );
+}
+
 describe("commander damage order", () => {
-    it("reads the cross left to right from every edge", () => {
+    it("runs clockwise from every edge of the cross", () => {
         const { seats } = seatingFor(4, "cross", "landscape");
 
         expect(opponentOrder(seats, 3)).toEqual([0, 1, 2]);
@@ -164,17 +177,44 @@ describe("commander damage order", () => {
         expect(opponentOrder(seats, 2)).toEqual([3, 0, 1]);
     });
 
-    it("turns the order round for the players facing the other way", () => {
+    it("starts with the player on the left, whichever way the tile is turned", () => {
         const { seats } = seatingFor(4, "sides", "landscape");
 
         expect(opponentOrder(seats, 3)).toEqual([0, 1, 2]);
-        expect(opponentOrder(seats, 0)).toEqual([2, 1, 3]);
+        expect(opponentOrder(seats, 0)).toEqual([1, 2, 3]);
     });
 
-    it("reads a portrait pod along the screen, far side first", () => {
+    it("keeps a big pod in the turn order it plays in", () => {
         const { seats } = seatingFor(6, "sides", "portrait");
 
-        expect(opponentOrder(seats, 0)).toEqual([1, 2, 5, 3, 4]);
+        expect(opponentOrder(seats, 0)).toEqual([1, 2, 3, 4, 5]);
+        expect(opponentOrder(seats, 4)).toEqual([5, 0, 1, 2, 3]);
+    });
+
+    // The rotation above is only turn order because the seats are numbered
+    // clockwise around the table. Nothing in a seating table says so out loud,
+    // so this walks the tiles the players actually sit at and checks it.
+    it("numbers every seating clockwise around the table", () => {
+        for (const { seats } of everySeating()) {
+            if (seats.length < 3) continue;
+
+            const middle = {
+                x: seats.reduce((sum, { center }) => sum + center.x, 0) / seats.length,
+                y: seats.reduce((sum, { center }) => sum + center.y, 0) / seats.length,
+            };
+            // Screen coordinates run y downwards, which turns the usual
+            // anticlockwise sweep of `atan2` into a clockwise one.
+            const bearings = seats.map(({ center }) => Math.atan2(center.y - middle.y, center.x - middle.x));
+            const steps = bearings.map((bearing, seat) => {
+                const step = bearings[(seat + 1) % bearings.length] - bearing;
+                return step <= 0 ? step + 2 * Math.PI : step;
+            });
+
+            // Every step forward and the whole lap coming to one turn: the
+            // seats go round the table once, in order, and never double back.
+            for (const step of steps) expect(step).toBeGreaterThan(0);
+            expect(steps.reduce((lap, step) => lap + step, 0)).toBeCloseTo(2 * Math.PI);
+        }
     });
 
     it("leaves a player counting alone without opponents", () => {
