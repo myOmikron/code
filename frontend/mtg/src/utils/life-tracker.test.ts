@@ -9,10 +9,14 @@ import {
     loadLifeTrackerGame,
     loadLifeTrackerSettings,
     opponentOrder,
+    REBOOK_REACTION,
+    rebookableHit,
     resizeCommanderDamage,
     saveLifeTrackerGame,
     saveLifeTrackerSettings,
     seatingFor,
+    trackHit,
+    withHit,
 } from "src/utils/life-tracker";
 
 afterEach(() => vi.unstubAllGlobals());
@@ -204,19 +208,21 @@ describe("life tracker settings", () => {
             startingLife: 20,
             playerCount: 2,
             arrangement: "cross",
+            rebook: false,
         });
 
         expect(loadLifeTrackerSettings()).toEqual({
             startingLife: 20,
             playerCount: 2,
             arrangement: "cross",
+            rebook: false,
         });
     });
 
     it("keeps a setup for a player counting alone", () => {
         vi.stubGlobal("localStorage", storage(new Map()));
 
-        saveLifeTrackerSettings({ startingLife: 20, playerCount: 1, arrangement: "sides" });
+        saveLifeTrackerSettings({ startingLife: 20, playerCount: 1, arrangement: "sides", rebook: true });
 
         expect(loadLifeTrackerSettings().playerCount).toBe(1);
     });
@@ -229,6 +235,7 @@ describe("life tracker settings", () => {
             startingLife: 13,
             playerCount: 4,
             arrangement: "sides",
+            rebook: true,
         });
 
         expect(loadLifeTrackerSettings().startingLife).toBe(13);
@@ -251,7 +258,7 @@ describe("life tracker settings", () => {
 });
 
 describe("resuming a game", () => {
-    const POD: LifeTrackerSettings = { startingLife: 40, playerCount: 4, arrangement: "sides" };
+    const POD: LifeTrackerSettings = { startingLife: 40, playerCount: 4, arrangement: "sides", rebook: true };
 
     /**
      * Puts a table into storage as if it had been left there
@@ -275,9 +282,9 @@ describe("resuming a game", () => {
             [0, 0, 0, 0],
         ];
 
-        saveLifeTrackerGame({ life: [33, 40, 19, 40], damage, deltas: { 2: -21 } });
+        saveLifeTrackerGame({ life: [33, 40, 19, 40], damage, deltas: { 2: -21 }, hits: {} });
 
-        expect(loadLifeTrackerGame(POD)).toEqual({ life: [33, 40, 19, 40], damage, deltas: {} });
+        expect(loadLifeTrackerGame(POD)).toEqual({ life: [33, 40, 19, 40], damage, deltas: {}, hits: {} });
     });
 
     it("starts fresh when nothing was left behind", () => {
@@ -319,6 +326,7 @@ describe("resuming a game", () => {
                 [0, 0],
             ],
             deltas: {},
+            hits: {},
         });
     });
 
@@ -377,7 +385,7 @@ describe("resuming a game", () => {
             },
         });
 
-        expect(() => saveLifeTrackerGame({ life: [40], damage: [[0]], deltas: {} })).not.toThrow();
+        expect(() => saveLifeTrackerGame({ life: [40], damage: [[0]], deltas: {}, hits: {} })).not.toThrow();
         expect(loadLifeTrackerGame(POD)).toBeNull();
     });
 });
@@ -430,5 +438,72 @@ describe("elimination", () => {
 
     it("counts a lethal helping from one commander out", () => {
         expect(isEliminated(17, [0, 21, 0])).toBe(true);
+    });
+});
+
+describe("ups, that was commander damage", () => {
+    /** A moment to count time from, so nothing depends on the wall clock */
+    const NOW = 1_700_000_000_000;
+
+    it("carries a hit forward for the drawer to offer", () => {
+        const hit = trackHit(undefined, -5, NOW);
+
+        expect(hit).toEqual({ amount: 5, at: NOW });
+        expect(rebookableHit(hit, NOW)).toBe(5);
+    });
+
+    it("counts a run of taps as the one hit the player means", () => {
+        let hit = trackHit(undefined, -1, NOW);
+        hit = trackHit(hit, -1, NOW + 200);
+        hit = trackHit(hit, -1, NOW + 400);
+
+        expect(hit).toEqual({ amount: 3, at: NOW + 400 });
+    });
+
+    it("starts over on a tap that comes in after the window", () => {
+        const first = trackHit(undefined, -1, NOW);
+        const later = trackHit(first, -6, NOW + REBOOK_REACTION + 1);
+
+        expect(later).toEqual({ amount: 6, at: NOW + REBOOK_REACTION + 1 });
+    });
+
+    it("drops the hit as soon as the player gains life", () => {
+        const hit = trackHit(undefined, -5, NOW);
+
+        expect(trackHit(hit, 2, NOW + 100)).toBeUndefined();
+    });
+
+    it("offers nothing to a drawer opened after the window", () => {
+        const hit = trackHit(undefined, -5, NOW);
+
+        expect(rebookableHit(hit, NOW + REBOOK_REACTION)).toBe(5);
+        expect(rebookableHit(hit, NOW + REBOOK_REACTION + 1)).toBeUndefined();
+    });
+
+    it("offers nothing to a player carrying no hit", () => {
+        expect(rebookableHit(undefined, NOW)).toBeUndefined();
+    });
+
+    it("rewrites one seat's hit and leaves the rest of the table alone", () => {
+        const hits = { 0: { amount: 3, at: NOW }, 1: { amount: 7, at: NOW } };
+
+        expect(withHit(hits, 1, undefined)).toEqual({ 0: { amount: 3, at: NOW } });
+        expect(withHit(hits, 2, { amount: 4, at: NOW })).toEqual({ ...hits, 2: { amount: 4, at: NOW } });
+        expect(hits[1]).toEqual({ amount: 7, at: NOW });
+    });
+
+    it("is on for a table that has never turned it off", () => {
+        vi.stubGlobal("localStorage", storage(new Map()));
+
+        expect(loadLifeTrackerSettings().rebook).toBe(true);
+    });
+
+    it("stays on for a setup stored before it existed", () => {
+        const values = new Map([
+            ["cardlens.life-tracker.v1", JSON.stringify({ startingLife: 40, playerCount: 4, arrangement: "sides" })],
+        ]);
+        vi.stubGlobal("localStorage", storage(values));
+
+        expect(loadLifeTrackerSettings().rebook).toBe(true);
     });
 });

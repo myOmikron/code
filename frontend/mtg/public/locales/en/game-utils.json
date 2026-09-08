@@ -8,6 +8,8 @@
         "more-copies": "One copy of {{name}} more",
         "next-art": "Next image for {{name}}",
         "previous-art": "Previous image for {{name}}",
+        "rebook-offer_one": "{{player}} just took 1 life. Book it as commander damage?",
+        "rebook-offer_other": "{{player}} just took {{count}} life. Book it as commander damage?",
         "starting-life-presets": "Common starting totals"
     },
     "button": {
@@ -21,6 +23,7 @@
         "confirm-reset": "Reset",
         "copy-list": "Copy list",
         "download-xml": "Download XML",
+        "dismiss-rebook": "That was not commander damage",
         "exit-fullscreen": "Leave fullscreen",
         "fullscreen": "Fullscreen",
         "load-deck": "Add",
@@ -29,6 +32,8 @@
         "pick-cardback": "Choose back",
         "preparing": "Loading images …",
         "print": "Print",
+        "rebook-commander-damage_one": "Book 1 of {{player}}'s life as commander damage from {{opponent}}",
+        "rebook-commander-damage_other": "Book {{count}} of {{player}}'s life as commander damage from {{opponent}}",
         "reset_one": "Reset",
         "reset_other": "Reset all",
         "settings": "Settings",
@@ -59,6 +64,7 @@
         "print-backs": "Two-sided cards go on the sheet with both faces.",
         "print-scale": "Nine cards at their real size per A4 sheet. Set the print dialog to 100% scale.",
         "proxy-printer": "Cards at their real size on A4, ready to cut out.",
+        "rebook": "Right after a hit, the commander damage drawer offers to charge it to the commander that dealt it.",
         "reset-game_one": "Puts you back on {{life}} life. This cannot be undone.",
         "reset-game_other": "Puts every player back on {{life}} life and clears the commander damage. This cannot be undone.",
         "skip-basics": "Basics stay off the sheet, everyone has those in a box already."
@@ -107,6 +113,7 @@
         "player-short": "P{{number}}",
         "players": "Players",
         "print-backs": "Print backs",
+        "rebook": "“Oops, that was commander damage”",
         "search-deck": "Search deck",
         "sheet-count_one": "1 sheet",
         "sheet-count_other": "{{count}} sheets",
