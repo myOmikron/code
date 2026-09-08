@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { LineEntry, SharedPieceWithLines } from "src/api/graph-generated";
-import { lineFamilies } from "src/utils/line-families";
+import { lineFamilies, nearMissGroups } from "src/utils/line-families";
 
 /**
  * A minimal line, everything the grouping never reads left blank
@@ -109,5 +109,36 @@ describe("lineFamilies", () => {
 
     test("no complete lines at all yields no families", () => {
         expect(lineFamilies([line("miss", ["X"], 1, false)], [])).toEqual([]);
+    });
+});
+
+describe("nearMissGroups", () => {
+    test("groups incomplete lines by the card they miss and unions their partners", () => {
+        const geyser = line("a", ["Reiterate", "Mana Geyser"], 100, false);
+        const narset = line("b", ["Narset's Reversal", "Reiterate"], 300, false);
+        const tyrant = line("c", ["Tidespout Tyrant", "Sol Ring"], 900, false);
+        for (const entry of [geyser, narset]) {
+            entry.missing = ["Reiterate"];
+            entry.cards.find((card) => card.name === "Reiterate")!.in_deck = false;
+        }
+        tyrant.missing = ["Tidespout Tyrant"];
+        tyrant.cards[0].in_deck = false;
+        const complete = line("d", ["Frantic Search", "Underworld Breach"], 5000);
+
+        const groups = nearMissGroups([geyser, narset, tyrant, complete]);
+
+        expect(groups.map((group) => group.key)).toEqual(["Reiterate", "Tidespout Tyrant"]);
+        expect(groups[0].lines.map((entry) => entry.id)).toEqual(["b", "a"]);
+        expect(groups[0].missing.map((card) => card.name)).toEqual(["Reiterate"]);
+        expect(groups[0].partners.map((card) => card.name)).toEqual(["Narset's Reversal", "Mana Geyser"]);
+        expect(groups[1].partners.map((card) => card.name)).toEqual(["Sol Ring"]);
+    });
+
+    test("a group of one keeps its single line", () => {
+        const only = line("a", ["Twinning Staff", "Narset's Reversal"], 10, false);
+        only.missing = ["Twinning Staff"];
+        only.cards[0].in_deck = false;
+        expect(nearMissGroups([only])).toHaveLength(1);
+        expect(nearMissGroups([only])[0].lines).toHaveLength(1);
     });
 });
