@@ -24,6 +24,8 @@ function line(id: string, cardNames: Array<string>, popularity: number, complete
         })),
         mana_needed: "",
         mana_value_needed: 0,
+        deploy_cost: 0,
+        deploy_cost_partial: false,
         identity: [],
         produces: [],
         bracket_tag: "",
