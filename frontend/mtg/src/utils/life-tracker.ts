@@ -222,7 +222,13 @@ export type SeatPlacement = {
     seat: Seat;
     /** Where the tile sits on the table's grid */
     area: string;
-    /** The middle of that tile, which is where the player reading it sits */
+    /**
+     * The middle of that tile, which is where the player reading it sits.
+     *
+     * Read in seat order the centres wind clockwise around the table, which is
+     * what makes turn order a rotation of the seat numbers; {@link
+     * opponentOrder} leans on that, and a test walks these to keep it true.
+     */
     center: Spot;
 };
 
@@ -232,7 +238,7 @@ export type Seating = {
     grid: string;
     /** Whether the tiles butt against each other instead of standing apart */
     flush: boolean;
-    /** One placement per player, in seat order */
+    /** One placement per player, in seat order, which runs clockwise */
     seats: Array<SeatPlacement>;
 };
 
@@ -417,64 +423,28 @@ export function seatingFor(playerCount: number, arrangement: LifeArrangement, or
 }
 
 /**
- * Which way a player at a seat faces, in table coordinates.
+ * The other players, in the order their turns come after this one.
  *
- * It is the way their tile is turned: they sit at that edge and look across the
- * device at the rest of the table.
- */
-const FACING: Record<Seat, Spot> = {
-    top: { x: 0, y: 1 },
-    bottom: { x: 0, y: -1 },
-    left: { x: 1, y: 0 },
-    right: { x: -1, y: 0 },
-};
-
-/**
- * How far along an axis a tile sits
+ * Commander damage is booked under an opponent's name, and the name a table
+ * reaches for is a seat in turn order: the player on your left goes next, and
+ * the rest follow them round. So the columns run clockwise from the seat that
+ * is reading them, starting with the player on its left — the order everyone
+ * at the table already has in their head, and the one they say out loud.
  *
- * @param placement the tile
- * @param axis a unit direction in table coordinates
- *
- * @returns the tile's centre projected onto that direction
- */
-function along(placement: SeatPlacement, axis: Spot): number {
-    return placement.center.x * axis.x + placement.center.y * axis.y;
-}
-
-/**
- * The other players, in the order they sit in front of one of them.
- *
- * Commander damage is booked under an opponent's colour and name, and at a
- * table the quickest way to find one of those is to look up: the columns
- * therefore run left to right the way the players themselves do, seen from the
- * seat that is reading them. Seat order would put the same opponent in a
- * different column for every player, since each of them reads the table from a
- * different edge.
- *
- * Two opponents on the same bearing — the pair sharing a column of the grid —
- * are ordered far side first, the way the rows above are read before the ones
- * nearer to hand.
+ * Which makes it a rotation of the seat numbers, because the seats are
+ * numbered clockwise to begin with: the player after you is the one on your
+ * left, whichever edge of the device you are reading from. The seating tables
+ * carry the centres that prove it, and a test walks them so that a seating
+ * added later has to be laid out the same way round.
  *
  * @param seats the whole table, in seat order
  * @param player whose seat the table is read from, counted from zero
  *
- * @returns every other seat's index, left to right from that seat
+ * @returns every other seat's index, clockwise from that seat
  */
 export function opponentOrder(seats: Array<SeatPlacement>, player: number): Array<number> {
-    const self = seats[player];
-    if (self === undefined) return [];
-
-    const facing = FACING[self.seat];
-    const right: Spot = { x: -facing.y, y: facing.x };
-
-    return seats
-        .map((_, opponent) => opponent)
-        .filter((opponent) => opponent !== player)
-        .sort(
-            (one, other) =>
-                along(seats[one], right) - along(seats[other], right) ||
-                along(seats[other], facing) - along(seats[one], facing),
-        );
+    if (seats[player] === undefined) return [];
+    return Array.from({ length: seats.length - 1 }, (_, step) => (player + 1 + step) % seats.length);
 }
 
 /** How a device is set up for the table it sits on */

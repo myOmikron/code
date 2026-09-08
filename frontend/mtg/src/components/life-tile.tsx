@@ -66,7 +66,7 @@ export type LifeTileProps = {
     delta: number | undefined;
     /** What every seat's commander has put on them, in seat order */
     damage: Array<number>;
-    /** The other seats, in the order they sit in front of this one */
+    /** The other seats, in turn order after this one */
     opponents: Array<number>;
     /** Where they sit and where their tile goes */
     placement: SeatPlacement;
