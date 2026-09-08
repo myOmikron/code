@@ -48,7 +48,30 @@ class Rule:
     params: dict[str, str] = field(default_factory=dict)
 
 
+# A creature cheated onto the battlefield off the top of a library. Tagger has
+# no tag for it, and the effect's own cards are tagged as removal (Polymorph
+# destroys a creature; Proteus Staff bottoms one), which is what put a
+# Polymorch deck's win condition in the interaction bucket and then offered it
+# as a cut. Matched against every card in the corpus: 19 hits — Polymorph,
+# Proteus Staff, Transmogrify, Chaos Mutation, Divergent Transformations,
+# Collision of Realms, Curse of Unbinding, Lukka, Riptide Shapeshifter,
+# Oath of Druids, Gamekeeper, Atla Palani, Descendants' Fury, Fireflux Squad,
+# Shifting Shadow, Thicket Elemental, Bag of Tricks, Aspiring Champion,
+# Raph & Mikey. Requiring the "onto the battlefield" half is what keeps
+# Evolutionary Leap and Foster (reveal, but to hand or graveyard) out.
+POLYMORPH_EFFECT = (
+    r"(?si).*reveals? cards from the top of (their|your) library until "
+    r"(they|you) reveals? a creature card.*(puts?|put) that card onto the battlefield.*"
+)
+
 RULES: tuple[Rule, ...] = (
+    Rule(
+        id="polymorph_effect",
+        where="c.oracle_text =~ $polymorph",
+        params={"polymorph": POLYMORPH_EFFECT},
+        produces=(R.POLYMORPH,),
+        why="Puts a creature onto the battlefield off the top of a library, without searching.",
+    ),
     Rule(
         id="etb_trigger_producer",
         where="c.oracle_text =~ $etb_own AND NOT c.oracle_text =~ $etb_payoff",

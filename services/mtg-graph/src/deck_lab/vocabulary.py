@@ -61,6 +61,15 @@ class Resource(StrEnum):
     TUTOR_TO_HAND = "tutor_to_hand"
     TUTOR_TO_BATTLEFIELD = "tutor_to_battlefield"
     TUTOR_TO_TOP = "tutor_to_top"
+    # A creature put onto the battlefield off the top of a library rather than
+    # searched for — Polymorph, Proteus Staff, Transmogrify, Oath of Druids.
+    # Not `tutor_to_battlefield`, which finds a named card: this one takes
+    # whatever the reveal turns up, so it is only a win condition in a deck
+    # built to hold nothing else worth turning up. That makes it the rare
+    # resource whose meaning depends on the rest of the deck, which is why
+    # `cuts.deck_plan_pieces` reads it against the deck's creature count
+    # rather than treating it as a card property on its own.
+    POLYMORPH = "polymorph"
     # Two-sided, though it spent a long time listed supply-only on the
     # argument that nothing wants to discard. Madness, Hellbent and the
     # "whenever you discard" payoffs want exactly that, and while the claim
@@ -492,6 +501,10 @@ SUPPLY_ONLY: frozenset[Resource] = frozenset(
         Resource.TUTOR_TO_HAND,
         Resource.TUTOR_TO_TOP,
         Resource.TUTOR_TO_BATTLEFIELD,
+        # What a polymorph effect wants is a fat creature, and "fat" is not a
+        # resource — `high_power` is the closest and it is a payoff, not a
+        # demand. Supply-only by the shape of the effect, not a gap.
+        Resource.POLYMORPH,
         Resource.DISCARD_OPPONENT,
         Resource.MILL_OPPONENT,
         Resource.LIFELOSS_OPPONENT,

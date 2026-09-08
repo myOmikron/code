@@ -43,7 +43,14 @@ from .interaction import discount_board_wipe, is_cedh_template
 from .poolquery import PoolFilter
 from .suggestions import Phrase, _theme_gate_sides, _theme_vocabulary
 from .themes import FIT_THRESHOLD
-from .vocabulary import BUCKET_ROLES, COMMAND_ZONE_RESOURCES, TRIGGER_RESOURCES, Bucket, Role
+from .vocabulary import (
+    BUCKET_ROLES,
+    COMMAND_ZONE_RESOURCES,
+    TRIGGER_RESOURCES,
+    Bucket,
+    Resource,
+    Role,
+)
 
 log = structlog.get_logger(__name__)
 
@@ -139,6 +146,17 @@ CUT_STRANDED = 0.5
 # against everything but a genuine shape overage.
 CUT_TUTOR_FLOOR = 1.5
 
+# How many creatures a deck may hold before a polymorph effect stops being a
+# win condition and goes back to being what its rules text says it is. The
+# effect takes whatever the reveal turns up, so it only *wins* when every
+# creature in the deck is one the pilot chose to hit; past a few, it is a
+# gamble nobody builds around. Measured against the cEDH tournament corpus:
+# among the 3,123 decks holding at most three creatures, 1.5% play one of
+# these effects, against 0.6% of the 13,553 holding nine or more — the
+# archetype concentrates in exactly this band, and it is small enough (46
+# decks) that no play rate could ever have carried the signal.
+POLYMORPH_MAX_CREATURES = 3
+
 # How far below the card it replaces an add may sit before the swap is a
 # downgrade rather than an exchange.
 #
@@ -231,6 +249,44 @@ def _shape_penalty(
         )
 
     return penalty
+
+
+def deck_plan_pieces(cards: list[dict], card_resources: Mapping[str, dict]) -> set[str]:
+    """The cards a deck's own win line is made of, when that line is one no
+    corpus and no combo database can see.
+
+    Every other defence in this module reads evidence from outside the deck:
+    how often a card is played, whether Commander Spellbook lists it in a
+    combo, whether the deck sits at its tutor floor. A polymorph deck defeats
+    all three at once. Its pieces are tagged as removal, because that is what
+    their rules text does — Polymorph destroys a creature, Proteus Staff
+    bottoms one — so they land in the interaction bucket and read as over.
+    Spellbook has no entry for them, because "Polymorph plus whatever creature
+    you happen to run" is not a card-to-card combo. And the corpus rate is
+    near zero even among the deck's nearest neighbours: measured on an Urza
+    list, Polymorph and Proteus Staff sat at 0.10 across the 30 tournament
+    decks sharing 66 or more of its 95 cards. So the advisor offered a deck
+    its own win condition as the first thing to cut.
+
+    What *is* visible is the deck itself: an effect that puts a creature onto
+    the battlefield off the top of a library, next to a creature count small
+    enough that every hit is one the pilot chose. That pairing is the line,
+    and both halves of it — the effects and the creatures they turn up — are
+    defended. Below the pairing nothing fires, so a creature deck that happens
+    to run Oath of Druids is untouched. Returns the oracle ids never to offer
+    as a cut, empty when the deck is not built around the effect.
+    """
+    effects = {
+        card["oracle_id"]
+        for card in cards
+        if Resource.POLYMORPH in (card_resources.get(card["oracle_id"], {}).get("produces") or ())
+    }
+    if not effects:
+        return set()
+    creatures = {card["oracle_id"] for card in cards if "Creature" in (card.get("type_line") or "")}
+    if len(creatures) > POLYMORPH_MAX_CREATURES:
+        return set()
+    return effects | creatures
 
 
 def apply_play_rates(cards: list[dict], rates: Mapping[str, float]) -> None:
@@ -1163,6 +1219,10 @@ def suggest_swaps(
     # advisor arguing against its own advice one click later.
     defended = set(protected or ())
     defended.update(commander_oracle_ids or ())
+    # A win line only the deck itself can testify to — see `deck_plan_pieces`.
+    # Added here rather than inside the scorer so the upgrade candidates,
+    # which are offered without any bucket being over, are defended by it too.
+    defended.update(deck_plan_pieces(cards, card_resources))
     if commander_oracle_id:
         defended.add(commander_oracle_id)
 
