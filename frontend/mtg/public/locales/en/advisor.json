@@ -354,6 +354,7 @@
         "grid-col-cheap": "Cheap (MV ≤ 1)",
         "grid-col-free": "Free",
         "grid-col-held-up": "Held up (MV ≥ 2)",
+        "grid-none-in-colours": "none in your colours",
         "grid-row-class-hate": "Class hate",
         "grid-row-permanent-answer": "Permanent answers",
         "grid-row-proactive-protection": "Proactive protection",
