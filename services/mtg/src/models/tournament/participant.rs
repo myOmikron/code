@@ -141,10 +141,13 @@ fn normalize_name(name: &str) -> MaxStr<64> {
         .unwrap_or_else(|_| unreachable!("kept under the maximum length by construction"))
 }
 
-/// Whether registration is open for a fresh row right now
+/// Whether a player may register *themselves* right now
 ///
 /// Shared by [`register_account`] and [`register_guest`]; the latter widens
-/// it with its own `Draft` exception before calling this.
+/// it for an organizer typing in a walk-in before calling this. A late entry
+/// is that organizer's to make: `allow_late_entry` only ever opens the
+/// self-service door while the event runs, and the client no longer offers
+/// it, so in practice a player who turns up late is added at the desk.
 fn registration_open(tournament: &Tournament) -> bool {
     matches!(tournament.status, TournamentStatus::Registration)
         || (tournament.status == TournamentStatus::Running && tournament.allow_late_entry)
@@ -221,8 +224,9 @@ pub async fn register_account(
 /// for an organizer typing in a walk-in — the caller must already have
 /// checked that account holds a role before calling this, the same
 /// discipline as everywhere else in this module tree. An organizer may add
-/// walk-ins in [`TournamentStatus::Draft`] too, which is the one way
-/// [`registration_open`]'s rule is widened here.
+/// walk-ins in [`TournamentStatus::Draft`] and — as the one route for a late
+/// entry — while [`TournamentStatus::Running`], whatever `allow_late_entry`
+/// says; that is the one way [`registration_open`]'s rule is widened here.
 ///
 /// A guest row can never collide with the partial unique index — that index
 /// is `WHERE account IS NOT NULL`, and this insert always sets `account` to
@@ -237,7 +241,11 @@ pub async fn register_guest(
     added_by: Option<AccountUuid>,
 ) -> Result<RegistrationOutcome, rorm::Error> {
     let open = registration_open(tournament)
-        || (tournament.status == TournamentStatus::Draft && added_by.is_some());
+        || (added_by.is_some()
+            && matches!(
+                tournament.status,
+                TournamentStatus::Draft | TournamentStatus::Running
+            ));
     if !open {
         return Ok(RegistrationOutcome::Closed);
     }

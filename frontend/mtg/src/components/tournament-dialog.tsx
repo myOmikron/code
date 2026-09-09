@@ -33,10 +33,11 @@ import type {
     TournamentSettingsErrors,
     TournamentSettingsRequest,
 } from "src/api/generated";
-import { FormatCombobox } from "src/components/format-combobox";
 import { InlineError } from "src/components/inline-error";
+import { TournamentFormatPicker } from "src/components/tournament-format-picker";
 import type { ValidationErrors } from "src/utils/error";
 import { handleFormError, isFormError } from "src/utils/error";
+import { DEFAULT_CONSTRUCTED_FORMAT, podSizeFor } from "src/utils/tournament-format";
 
 /**
  * The format catalog, fetched once and shared by every dialog instance
@@ -88,18 +89,26 @@ export type TournamentDialogProps = {
     onSaved: (created: TournamentResponse | null) => void;
 };
 
-/** What a fresh form starts on, before an existing tournament overrides it */
+/**
+ * What a fresh form starts on, before an existing tournament overrides it
+ *
+ * Several of these have no field any more and are sent as they stand: Swiss pairing, the usual
+ * 3/1/0 match points with a bye worth a win, guest names shown, and no self-service late entry —
+ * a player who turns up late is added by an organizer, which the backend allows regardless of
+ * `allowLateEntry`. Whether such a player's missed rounds count as losses is that organizer's
+ * call at the time, not a rule set up front, so `lateEntryAsLosses` is off and unasked too.
+ */
 const DEFAULTS = {
     name: "",
     description: "",
-    format: "commander",
+    format: DEFAULT_CONSTRUCTED_FORMAT,
     podSize: 4,
     gamesPerMatch: 1,
     pairingSystem: PairingSystem.Swiss,
     seatPolicy: SeatPolicy.Random,
     decklistPolicy: DecklistPolicy.Optional,
-    participantAudience: ParticipantAudience.Participants,
-    guestNamesPublic: false,
+    participantAudience: ParticipantAudience.Organizers,
+    guestNamesPublic: true,
     pointsWin: 3,
     pointsDraw: 1,
     pointsLoss: 0,
@@ -112,6 +121,9 @@ const DEFAULTS = {
     startsAt: "",
     visibility: Visibility.Public,
 };
+
+/** The best-of lengths a one on one match may have — odd, so a match always has a winner */
+const GAMES_PER_MATCH = [1, 3, 5];
 
 /**
  * Converts an ISO timestamp to the local `YYYY-MM-DDTHH:mm` a `datetime-local` input wants
@@ -166,7 +178,9 @@ function initialValues(tournament: TournamentResponse | null) {
  *
  * `invalid_points` names no single field — the request carries four — so it lands on the form as
  * a whole; `settings_locked` is likewise a whole-request refusal, worded the same as the
- * standing banner shown while the event is running.
+ * standing banner shown while the event is running. `invalid_pod_size` has no field either: the
+ * pod size follows from the format (see `podSizeFor`) and is never shown, so a refusal of it
+ * can only mean the derivation and the backend disagree.
  *
  * @param t the `tournament` namespace translator
  *
@@ -180,7 +194,7 @@ function settingsErrorHandlers(t: (key: string) => string): {
             errors.fields.format = t("error.invalid-format");
         },
         invalid_pod_size: (errors) => {
-            errors.fields.podSize = t("error.invalid-pod-size");
+            errors.form = t("error.invalid-pod-size");
         },
         invalid_games_per_match: (errors) => {
             errors.fields.gamesPerMatch = t("error.invalid-games-per-match");
@@ -324,165 +338,86 @@ export function TournamentDialog({ open, tournament, onClose, onSaved }: Tournam
                             )}
                         </form.Field>
 
-                        <div className={"grid grid-cols-1 gap-4 sm:grid-cols-3"}>
-                            <form.Field name={"format"}>
-                                {(fieldApi) => (
-                                    <Field>
-                                        <RequiredLabel>{t("label.format")}</RequiredLabel>
-                                        <FormatCombobox
+                        <form.Subscribe selector={(state) => state.values.podSize <= 2}>
+                            {(oneOnOne) => (
+                                <form.Field name={"format"}>
+                                    {(fieldApi) => (
+                                        <TournamentFormatPicker
                                             value={fieldApi.state.value}
                                             formats={formats}
                                             disabled={formats.length === 0}
-                                            onChange={(format) => {
-                                                fieldApi.handleChange(format.slug);
-                                                // Starting points, not something this format
-                                                // enforces: editing an existing tournament keeps
-                                                // whatever pod size/games it already has even if
-                                                // its format changes.
-                                                if (tournament === null) {
-                                                    const noCommander = format.commander.kind === "none";
-                                                    form.setFieldValue("podSize", noCommander ? 2 : 4);
-                                                    form.setFieldValue("gamesPerMatch", noCommander ? 3 : 1);
-                                                }
+                                            errors={fieldApi.state.meta.errors.map(String)}
+                                            onChange={(slug) => {
+                                                fieldApi.handleChange(slug);
+                                                // Who sits at a table follows from the format
+                                                // and is not asked for: a pod of four plays one
+                                                // game, a table of two starts on best of three —
+                                                // unless the event already exists, in which case
+                                                // it keeps the best-of it had.
+                                                const podSize = podSizeFor(slug, formats);
+                                                form.setFieldValue("podSize", podSize);
+                                                if (podSize > 2) form.setFieldValue("gamesPerMatch", 1);
+                                                else if (tournament === null) form.setFieldValue("gamesPerMatch", 3);
                                             }}
+                                            // A pod plays a single game, so best-of is only a
+                                            // question at a table of two.
+                                            aside={
+                                                oneOnOne && (
+                                                    <form.Field name={"gamesPerMatch"}>
+                                                        {(gamesApi) => (
+                                                            <Field>
+                                                                <Label>{t("label.games-per-match")}</Label>
+                                                                <Listbox
+                                                                    value={gamesApi.state.value}
+                                                                    invalid={gamesApi.state.meta.errors.length > 0}
+                                                                    onChange={gamesApi.handleChange}
+                                                                >
+                                                                    {GAMES_PER_MATCH.map((games) => (
+                                                                        <ListboxOption key={games} value={games}>
+                                                                            <ListboxLabel>
+                                                                                {t("label.best-of", { games })}
+                                                                            </ListboxLabel>
+                                                                        </ListboxOption>
+                                                                    ))}
+                                                                </Listbox>
+                                                                {gamesApi.state.meta.errors.map((error) => (
+                                                                    <ErrorMessage key={String(error)}>
+                                                                        {String(error)}
+                                                                    </ErrorMessage>
+                                                                ))}
+                                                            </Field>
+                                                        )}
+                                                    </form.Field>
+                                                )
+                                            }
                                         />
-                                        {fieldApi.state.meta.errors.map((error) => (
-                                            <ErrorMessage key={String(error)}>{String(error)}</ErrorMessage>
-                                        ))}
-                                    </Field>
-                                )}
-                            </form.Field>
+                                    )}
+                                </form.Field>
+                            )}
+                        </form.Subscribe>
 
-                            <form.Field name={"podSize"}>
-                                {(fieldApi) => (
-                                    <Field>
-                                        <Label>{t("label.pod-size")}</Label>
-                                        <Input
-                                            type={"number"}
-                                            min={2}
-                                            max={5}
-                                            invalid={fieldApi.state.meta.errors.length > 0}
-                                            value={fieldApi.state.value}
-                                            onChange={(event) => fieldApi.handleChange(Number(event.target.value))}
-                                        />
-                                        {fieldApi.state.meta.errors.map((error) => (
-                                            <ErrorMessage key={String(error)}>{String(error)}</ErrorMessage>
-                                        ))}
-                                    </Field>
-                                )}
-                            </form.Field>
-
-                            <form.Field name={"gamesPerMatch"}>
-                                {(fieldApi) => (
-                                    <Field>
-                                        <Label>{t("label.games-per-match")}</Label>
-                                        <Input
-                                            type={"number"}
-                                            min={1}
-                                            max={5}
-                                            invalid={fieldApi.state.meta.errors.length > 0}
-                                            value={fieldApi.state.value}
-                                            onChange={(event) => fieldApi.handleChange(Number(event.target.value))}
-                                        />
-                                        {fieldApi.state.meta.errors.map((error) => (
-                                            <ErrorMessage key={String(error)}>{String(error)}</ErrorMessage>
-                                        ))}
-                                    </Field>
-                                )}
-                            </form.Field>
-                        </div>
-
-                        <div className={"grid grid-cols-1 gap-4 sm:grid-cols-2"}>
-                            <form.Field name={"pairingSystem"}>
-                                {(fieldApi) => (
-                                    <Field>
-                                        <Label>{t("label.pairing-system")}</Label>
-                                        <Listbox value={fieldApi.state.value} onChange={fieldApi.handleChange}>
-                                            <ListboxOption value={PairingSystem.Swiss}>
-                                                <ListboxLabel>{t("label.pairing-swiss")}</ListboxLabel>
-                                            </ListboxOption>
-                                            <ListboxOption value={PairingSystem.Manual}>
-                                                <ListboxLabel>{t("label.pairing-manual")}</ListboxLabel>
-                                            </ListboxOption>
-                                        </Listbox>
-                                    </Field>
-                                )}
-                            </form.Field>
-
-                            <form.Field name={"seatPolicy"}>
-                                {(fieldApi) => (
-                                    <Field>
-                                        <Label>{t("label.seat-policy")}</Label>
-                                        <Listbox value={fieldApi.state.value} onChange={fieldApi.handleChange}>
-                                            <ListboxOption value={SeatPolicy.Random}>
-                                                <ListboxLabel>{t("label.seat-random")}</ListboxLabel>
-                                            </ListboxOption>
-                                            <ListboxOption value={SeatPolicy.Balanced}>
-                                                <ListboxLabel>{t("label.seat-balanced")}</ListboxLabel>
-                                            </ListboxOption>
-                                            <ListboxOption value={SeatPolicy.Organizer}>
-                                                <ListboxLabel>{t("label.seat-organizer")}</ListboxLabel>
-                                            </ListboxOption>
-                                        </Listbox>
-                                    </Field>
-                                )}
-                            </form.Field>
-                        </div>
-
-                        <div className={"grid grid-cols-2 gap-4 sm:grid-cols-4"}>
-                            <form.Field name={"pointsWin"}>
-                                {(fieldApi) => (
-                                    <Field>
-                                        <Label>{t("label.points-win")}</Label>
-                                        <Input
-                                            type={"number"}
-                                            min={0}
-                                            value={fieldApi.state.value}
-                                            onChange={(event) => fieldApi.handleChange(Number(event.target.value))}
-                                        />
-                                    </Field>
-                                )}
-                            </form.Field>
-                            <form.Field name={"pointsDraw"}>
-                                {(fieldApi) => (
-                                    <Field>
-                                        <Label>{t("label.points-draw")}</Label>
-                                        <Input
-                                            type={"number"}
-                                            min={0}
-                                            value={fieldApi.state.value}
-                                            onChange={(event) => fieldApi.handleChange(Number(event.target.value))}
-                                        />
-                                    </Field>
-                                )}
-                            </form.Field>
-                            <form.Field name={"pointsLoss"}>
-                                {(fieldApi) => (
-                                    <Field>
-                                        <Label>{t("label.points-loss")}</Label>
-                                        <Input
-                                            type={"number"}
-                                            min={0}
-                                            value={fieldApi.state.value}
-                                            onChange={(event) => fieldApi.handleChange(Number(event.target.value))}
-                                        />
-                                    </Field>
-                                )}
-                            </form.Field>
-                            <form.Field name={"pointsBye"}>
-                                {(fieldApi) => (
-                                    <Field>
-                                        <Label>{t("label.points-bye")}</Label>
-                                        <Input
-                                            type={"number"}
-                                            min={0}
-                                            value={fieldApi.state.value}
-                                            onChange={(event) => fieldApi.handleChange(Number(event.target.value))}
-                                        />
-                                    </Field>
-                                )}
-                            </form.Field>
-                        </div>
+                        <form.Field name={"seatPolicy"}>
+                            {(fieldApi) => (
+                                <Field>
+                                    <Label>{t("label.seat-policy")}</Label>
+                                    <Description>{t("description.seat-policy")}</Description>
+                                    <Listbox value={fieldApi.state.value} onChange={fieldApi.handleChange}>
+                                        <ListboxOption value={SeatPolicy.Random}>
+                                            <ListboxLabel>{t("label.seat-random")}</ListboxLabel>
+                                            <ListboxDescription>{t("description.seat-random")}</ListboxDescription>
+                                        </ListboxOption>
+                                        <ListboxOption value={SeatPolicy.Balanced}>
+                                            <ListboxLabel>{t("label.seat-balanced")}</ListboxLabel>
+                                            <ListboxDescription>{t("description.seat-balanced")}</ListboxDescription>
+                                        </ListboxOption>
+                                        <ListboxOption value={SeatPolicy.Organizer}>
+                                            <ListboxLabel>{t("label.seat-organizer")}</ListboxLabel>
+                                            <ListboxDescription>{t("description.seat-organizer")}</ListboxDescription>
+                                        </ListboxOption>
+                                    </Listbox>
+                                </Field>
+                            )}
+                        </form.Field>
 
                         <form.Field name={"roundMinutes"}>
                             {(fieldApi) => (
@@ -559,19 +494,6 @@ export function TournamentDialog({ open, tournament, onClose, onSaved }: Tournam
                             )}
                         </form.Field>
 
-                        <form.Field name={"guestNamesPublic"}>
-                            {(fieldApi) => (
-                                <CheckboxField>
-                                    <Checkbox
-                                        checked={fieldApi.state.value}
-                                        onChange={(checked) => fieldApi.handleChange(checked)}
-                                    />
-                                    <Label>{t("label.guest-names-public")}</Label>
-                                    <Description>{t("description.guest-names-public")}</Description>
-                                </CheckboxField>
-                            )}
-                        </form.Field>
-
                         <form.Field name={"requireCheckIn"}>
                             {(fieldApi) => (
                                 <CheckboxField>
@@ -580,30 +502,6 @@ export function TournamentDialog({ open, tournament, onClose, onSaved }: Tournam
                                         onChange={(checked) => fieldApi.handleChange(checked)}
                                     />
                                     <Label>{t("label.require-check-in")}</Label>
-                                </CheckboxField>
-                            )}
-                        </form.Field>
-
-                        <form.Field name={"allowLateEntry"}>
-                            {(fieldApi) => (
-                                <CheckboxField>
-                                    <Checkbox
-                                        checked={fieldApi.state.value}
-                                        onChange={(checked) => fieldApi.handleChange(checked)}
-                                    />
-                                    <Label>{t("label.allow-late-entry")}</Label>
-                                </CheckboxField>
-                            )}
-                        </form.Field>
-
-                        <form.Field name={"lateEntryAsLosses"}>
-                            {(fieldApi) => (
-                                <CheckboxField>
-                                    <Checkbox
-                                        checked={fieldApi.state.value}
-                                        onChange={(checked) => fieldApi.handleChange(checked)}
-                                    />
-                                    <Label>{t("label.late-entry-as-losses")}</Label>
                                 </CheckboxField>
                             )}
                         </form.Field>

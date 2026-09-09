@@ -809,7 +809,7 @@ fn validate_settings(
         errors.invalid_round_length = true;
     }
 
-    if format::rules_for(&settings.format).is_none() {
+    if !format::is_tournament_format(&settings.format) {
         errors.invalid_format = true;
     }
 }

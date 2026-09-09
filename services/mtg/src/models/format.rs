@@ -317,6 +317,28 @@ pub fn rules_for(slug: &str) -> Option<&'static FormatRules> {
     FORMAT_RULES.iter().find(|rules| rules.slug == slug)
 }
 
+/// The formats a tournament is played in that no deck is built for
+///
+/// Limited: the deck comes out of the packs the event hands out, built at
+/// the table. There is nothing to check in advance and no legality for the
+/// catalog to track — a booster is legal in the event it was opened for. So
+/// these are not [`FormatRules`] and never appear in [`FORMAT_RULES`]: a
+/// tournament may be played in one, a deck cannot be built for one.
+pub const LIMITED_FORMATS: [&str; 2] = ["draft", "sealed"];
+
+/// Whether a slug names one of the [`LIMITED_FORMATS`]
+pub fn is_limited(slug: &str) -> bool {
+    LIMITED_FORMATS.contains(&slug)
+}
+
+/// Whether a tournament may be played in this format
+///
+/// A format a deck can be built for, or one of the limited ones; the two
+/// sets do not overlap, see [`LIMITED_FORMATS`].
+pub fn is_tournament_format(slug: &str) -> bool {
+    rules_for(slug).is_some() || is_limited(slug)
+}
+
 /// Whether a deck built for this format may claim a bracket
 ///
 /// A slug the service does not offer claims none either: there is nothing to
@@ -500,6 +522,20 @@ mod tests {
     fn unknown_slug_has_no_rules() {
         assert!(rules_for("canadian-highlander").is_none());
         assert!(rules_for("").is_none());
+    }
+
+    /// A limited format is something to hold a tournament in, not something
+    /// to build a deck for — and the catalog must not be asked about it.
+    #[test]
+    fn limited_formats_are_played_but_never_built() {
+        for slug in LIMITED_FORMATS {
+            assert!(is_tournament_format(slug), "{slug} cannot be played");
+            assert!(rules_for(slug).is_none(), "{slug} has deck rules");
+            assert!(!TRACKED_FORMATS.contains(&slug), "{slug} is tracked");
+        }
+        assert!(is_tournament_format("commander"));
+        assert!(!is_limited("commander"));
+        assert!(!is_tournament_format("canadian-highlander"));
     }
 
     #[test]

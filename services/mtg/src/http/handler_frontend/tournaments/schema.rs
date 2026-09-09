@@ -242,9 +242,14 @@ pub struct TournamentSettingsRequest {
     pub name: MaxStr<128>,
     /// Optional description
     pub description: Option<MaxStr<1024>>,
-    /// The format being played
+    /// The format being played: a slug [`crate::models::format::rules_for`]
+    /// knows, or one of [`crate::models::format::LIMITED_FORMATS`]
     pub format: MaxStr<32>,
     /// How many players sit at one table, 2..=5
+    ///
+    /// The client derives it from the format — pods of four for the
+    /// commander formats, two for everything else — rather than asking for
+    /// it; the bound stays here because the request still carries it.
     pub pod_size: i16,
     /// Best-of how many games a 1v1 match is, odd and 1..=5 — forced to 1 above pod_size 2
     pub games_per_match: i16,
@@ -264,9 +269,14 @@ pub struct TournamentSettingsRequest {
     pub round_minutes: i16,
     /// Whether players must check in before round one is paired
     pub require_check_in: bool,
-    /// Whether players may still register after the event started
+    /// Whether players may still register *themselves* after the event
+    /// started — an organizer can always add a late entry at the desk. The
+    /// client no longer offers this and sends `false`.
     pub allow_late_entry: bool,
     /// Whether a late entry's missed rounds count as match losses
+    ///
+    /// Sent as `false` by the client: that is the organizer's call when they
+    /// add the player, not a rule fixed up front.
     pub late_entry_as_losses: bool,
     /// How the tournament requires its players to hand in a decklist
     pub decklist_policy: DecklistPolicy,
@@ -301,7 +311,8 @@ pub struct TournamentSettingsErrors {
     pub invalid_points: bool,
     /// `round_minutes` is outside 10..=600
     pub invalid_round_length: bool,
-    /// The format slug is not one [`crate::models::format::rules_for`] knows
+    /// The format slug is not one
+    /// [`crate::models::format::is_tournament_format`] accepts
     pub invalid_format: bool,
     /// The event no longer allows structural changes — see
     /// [`crate::models::tournament::Tournament::update_settings`]
