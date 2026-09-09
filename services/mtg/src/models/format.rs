@@ -345,12 +345,25 @@ pub enum ExtraTurnRule {
 
 /// How much combo play a bracket tolerates
 ///
-/// Same three-step shape as [`ExtraTurnRule`] and for the same reason: the
-/// rule Exhibition states ("no intentional infinite combos") is stricter than
-/// the one Core states ("none of two cards"), so a deck holding a three card
-/// line sits in Core rather than in Exhibition. Upgraded's published rule is
-/// about how *early* a two card combo goes off, which nothing here can read,
-/// so it tolerates them outright — the same judgement call the table makes.
+/// One step further than [`ExtraTurnRule`], because the published rules run
+/// one step further: Exhibition states "no intentional infinite combos",
+/// which is stricter than Core's "none of two cards", so a deck holding a
+/// three card line sits in Core rather than in Exhibition.
+///
+/// Upgraded is the fourth step. Its rule is not "no two card combos" and not
+/// "any" either — it bars the ones that go off in the early game, and the
+/// guidance behind it turns on how often a deck can assemble the pair before
+/// the table has a game, which is a fact about ramp and tutors and draw
+/// rather than about either card. Summing the pieces' mana values would be a
+/// threshold this cannot defend: the eight mana Notary Hobbits and Umbral
+/// Mantle ask for is a turn four play in a deck with dorks, and a turn nine
+/// one without them.
+///
+/// So it is stated as the condition it is, and the client reads a deck
+/// holding a two card line as neither inside the bracket nor outside it. The
+/// alternative — the [`ComboRule::Any`] this used to carry — answered the
+/// question by not asking it, and told a deck with a two card infinite that
+/// it kept a rule written to catch exactly that.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "kebab-case")]
 pub enum ComboRule {
@@ -358,6 +371,11 @@ pub enum ComboRule {
     None,
     /// Combos, as long as none of them is two cards
     NoTwoCard,
+    /// Two card combos, as long as they do not go off early
+    ///
+    /// The only rule here that no list of cards settles. A client reads it as
+    /// a question put to the builder, never as a verdict in either direction.
+    NoEarlyTwoCard,
     /// No limit
     Any,
 }
@@ -415,7 +433,7 @@ pub const BRACKETS: [BracketRules; 5] = [
         max_game_changers: Some(3),
         mass_land_denial: false,
         extra_turns: ExtraTurnRule::NoChaining,
-        combos: ComboRule::Any,
+        combos: ComboRule::NoEarlyTwoCard,
     },
     BracketRules {
         number: 4,
@@ -475,7 +493,7 @@ mod tests {
 
     /// The two rules that are not yes/no, at the rungs where they differ —
     /// a Core deck may play an extra turn and a three card combo, and that is
-    /// the whole point of spelling them out in three steps.
+    /// the whole point of spelling them out in steps.
     #[test]
     fn core_tolerates_what_exhibition_does_not() {
         let exhibition = bracket(1).expect("one");
@@ -484,8 +502,17 @@ mod tests {
         assert_eq!(exhibition.combos, ComboRule::None);
         assert_eq!(core.extra_turns, ExtraTurnRule::NoChaining);
         assert_eq!(core.combos, ComboRule::NoTwoCard);
-        assert_eq!(bracket(3).expect("three").combos, ComboRule::Any);
         assert_eq!(bracket(4).expect("four").extra_turns, ExtraTurnRule::Any);
+    }
+
+    /// Upgraded is the one rung whose combo rule no list of cards settles,
+    /// and the only one that states it. Pinned because the whole third state
+    /// the client draws hangs off this single value: with `Any` back in its
+    /// place, a deck playing a two card infinite reads as inside bracket 3.
+    #[test]
+    fn upgraded_asks_about_combos_without_answering() {
+        assert_eq!(bracket(3).expect("three").combos, ComboRule::NoEarlyTwoCard);
+        assert_eq!(bracket(4).expect("four").combos, ComboRule::Any);
     }
 
     #[test]
