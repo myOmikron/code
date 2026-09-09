@@ -39,10 +39,18 @@ export type CommanderDamagePanelProps = {
  * says out loud, so a hit is booked by naming a seat rather than by hunting for
  * one.
  *
- * Every column is banded and washed in the colour of the commander it counts,
- * because whose damage is being booked is the one thing that must not be got
- * wrong. A dot beside the name cannot carry that on a phone, where five columns
- * share the width of one tile and the dot is a few pixels across.
+ * Every column is painted in the colour of the commander it counts, over a
+ * ground that hides the tile's own, because whose damage is being booked is the
+ * one thing that must not be got wrong. A dot beside the name cannot carry that
+ * on a phone, where five columns share the width of one tile and the dot is a
+ * few pixels across; neither could the wash this replaces, which left a green
+ * commander's column reading blue inside a blue player's tile.
+ *
+ * The two counters are stacked rather than set either side of the total: a
+ * column is as narrow as a fifth of a tile, and a button that only has a share
+ * of that width is a few millimetres across. Stacked, each one keeps the whole
+ * width of its column and takes half of what is left of its height, which is a
+ * thumb's worth at every pod size. Up counts up, the total sits between them.
  *
  * A drawer opened in the second after a hit lands carries the offer to rebook
  * it: the same damage, charged to a commander instead of to nothing. It is the
@@ -75,54 +83,25 @@ export function CommanderDamagePanel({
                     return (
                         <div
                             key={opponent}
-                            className={clsx(
-                                "[container-type:size] relative flex min-w-0 flex-1 flex-col items-center justify-center border-l border-white/15 first:border-l-0",
-                                lethal && "bg-rose-950/60",
-                            )}
+                            className={
+                                "[container-type:size] relative flex min-w-0 flex-1 flex-col items-center justify-center border-l border-white/15 bg-zinc-950 first:border-l-0"
+                            }
                         >
                             <span
                                 aria-hidden={true}
                                 className={clsx(
-                                    "pointer-events-none absolute inset-0 bg-linear-to-b opacity-30",
+                                    "pointer-events-none absolute inset-0 bg-linear-to-b",
                                     SEAT_COLORS[opponent],
                                 )}
                             />
                             <span
-                                className={clsx(
-                                    "relative flex w-full shrink-0 items-center justify-center bg-linear-to-br py-[4cqh] text-[min(17cqh,15cqw,1rem)] font-bold text-white ring-1 ring-white/25 ring-inset",
-                                    SEAT_COLORS[opponent],
-                                )}
+                                className={
+                                    "relative flex w-full shrink-0 items-center justify-center bg-black/30 py-[4cqh] text-[min(17cqh,15cqw,1.5rem)] font-bold text-white ring-1 ring-white/25 ring-inset"
+                                }
                             >
                                 {t("label.player-short", { number: opponent + 1 })}
                             </span>
-                            <div className={"relative flex min-h-0 w-full flex-1 items-stretch"}>
-                                <CounterButton
-                                    amount={-1}
-                                    hold={-1}
-                                    label={t("button.change-commander-damage", {
-                                        player,
-                                        opponent: name,
-                                        amount: "-1",
-                                    })}
-                                    className={
-                                        "shrink-0 grow-0 basis-[28%] text-[min(35cqh,22cqw,1.75rem)] text-white/80"
-                                    }
-                                    onChange={(amount) => onChange(opponent, amount)}
-                                >
-                                    <span aria-hidden={true}>{"−"}</span>
-                                </CounterButton>
-                                <span
-                                    aria-label={t("accessibility.commander-damage-taken", {
-                                        player,
-                                        opponent: name,
-                                        count: taken,
-                                    })}
-                                    className={
-                                        "flex min-w-0 flex-1 items-center justify-center text-[min(45cqh,30cqw,3rem)] leading-none font-black tabular-nums"
-                                    }
-                                >
-                                    {taken}
-                                </span>
+                            <div className={"relative flex min-h-0 w-full flex-1 flex-col items-stretch"}>
                                 <CounterButton
                                     amount={1}
                                     hold={1}
@@ -131,14 +110,45 @@ export function CommanderDamagePanel({
                                         opponent: name,
                                         amount: "+1",
                                     })}
-                                    className={
-                                        "shrink-0 grow-0 basis-[28%] text-[min(35cqh,22cqw,1.75rem)] text-white/80"
-                                    }
+                                    className={"min-h-0 flex-1 basis-0 text-[min(28cqh,34cqw,3.5rem)] text-white/85"}
                                     onChange={(amount) => onChange(opponent, amount)}
                                 >
                                     <span aria-hidden={true}>{"+"}</span>
                                 </CounterButton>
+                                <span
+                                    aria-label={t("accessibility.commander-damage-taken", {
+                                        player,
+                                        opponent: name,
+                                        count: taken,
+                                    })}
+                                    className={
+                                        "flex w-full shrink-0 items-center justify-center border-y border-white/20 py-[1cqh] text-[min(26cqh,42cqw,4.5rem)] leading-none font-black tabular-nums"
+                                    }
+                                >
+                                    {taken}
+                                </span>
+                                <CounterButton
+                                    amount={-1}
+                                    hold={-1}
+                                    label={t("button.change-commander-damage", {
+                                        player,
+                                        opponent: name,
+                                        amount: "-1",
+                                    })}
+                                    className={"min-h-0 flex-1 basis-0 text-[min(28cqh,34cqw,3.5rem)] text-white/85"}
+                                    onChange={(amount) => onChange(opponent, amount)}
+                                >
+                                    <span aria-hidden={true}>{"\u2212"}</span>
+                                </CounterButton>
                             </div>
+                            {lethal && (
+                                <span
+                                    aria-hidden={true}
+                                    className={
+                                        "pointer-events-none absolute inset-0 bg-rose-600/25 ring-2 ring-rose-300 ring-inset"
+                                    }
+                                />
+                            )}
                         </div>
                     );
                 })}
