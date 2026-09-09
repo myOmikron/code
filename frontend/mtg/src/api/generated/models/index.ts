@@ -4881,27 +4881,6 @@ export interface SearchPublicDecksResponse {
      */
     total: number;
 }
-
-/**
- * How the seats at a table are handed out
- * @export
- */
-export const SeatPolicy = {
-    /**
-    * Shuffled
-    */
-    Random: 'Random',
-    /**
-    * Chosen to even out who has already played whom
-    */
-    Balanced: 'Balanced',
-    /**
-    * The organizer sets every seat by hand
-    */
-    Organizer: 'Organizer'
-} as const;
-export type SeatPolicy = typeof SeatPolicy[keyof typeof SeatPolicy];
-
 /**
  * Request to replace a deck's advisor settings
  * 
@@ -6304,12 +6283,6 @@ export interface TournamentResponse {
      */
     round_minutes: number;
     /**
-     * How the seats at a table are handed out
-     * @type {SeatPolicy}
-     * @memberof TournamentResponse
-     */
-    seat_policy: SeatPolicy;
-    /**
      * Secret of the share link, organizer-only — `None` for every other viewer
      * @type {string}
      * @memberof TournamentResponse
@@ -6355,7 +6328,7 @@ export interface TournamentResponse {
  */
 export interface TournamentSettingsErrors {
     /**
-     * The format slug is not one [`crate::models::format::rules_for`] knows
+     * The format slug is not one [`crate::models::format::is_tournament_format`] accepts
      * @type {boolean}
      * @memberof TournamentSettingsErrors
      */
@@ -6400,7 +6373,7 @@ export interface TournamentSettingsErrors {
  */
 export interface TournamentSettingsRequest {
     /**
-     * Whether players may still register after the event started
+     * Whether players may still register *themselves* after the event started — an organizer can always add a late entry at the desk. The client no longer offers this and sends `false`.
      * @type {boolean}
      * @memberof TournamentSettingsRequest
      */
@@ -6418,7 +6391,7 @@ export interface TournamentSettingsRequest {
      */
     description?: string | null;
     /**
-     * The format being played
+     * The format being played: a slug [`crate::models::format::rules_for`] knows, or one of [`crate::models::format::LIMITED_FORMATS`]
      * @type {string}
      * @memberof TournamentSettingsRequest
      */
@@ -6437,6 +6410,8 @@ export interface TournamentSettingsRequest {
     guest_names_public: boolean;
     /**
      * Whether a late entry's missed rounds count as match losses
+     * 
+     * Sent as `false` by the client: that is the organizer's call when they add the player, not a rule fixed up front.
      * @type {boolean}
      * @memberof TournamentSettingsRequest
      */
@@ -6461,6 +6436,8 @@ export interface TournamentSettingsRequest {
     participant_audience: ParticipantAudience;
     /**
      * How many players sit at one table, 2..=5
+     * 
+     * The client derives it from the format — pods of four for the commander formats, two for everything else — rather than asking for it; the bound stays here because the request still carries it.
      * @type {number}
      * @memberof TournamentSettingsRequest
      */
@@ -6501,12 +6478,6 @@ export interface TournamentSettingsRequest {
      * @memberof TournamentSettingsRequest
      */
     round_minutes: number;
-    /**
-     * How the seats at a table are handed out
-     * @type {SeatPolicy}
-     * @memberof TournamentSettingsRequest
-     */
-    seat_policy: SeatPolicy;
     /**
      * When the event is announced to start
      * @type {string}

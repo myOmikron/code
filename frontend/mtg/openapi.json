@@ -15211,32 +15211,6 @@
                     "total"
                 ]
             },
-            "SeatPolicy": {
-                "description": "How the seats at a table are handed out",
-                "oneOf": [
-                    {
-                        "description": "Shuffled",
-                        "type": "string",
-                        "enum": [
-                            "Random"
-                        ]
-                    },
-                    {
-                        "description": "Chosen to even out who has already played whom",
-                        "type": "string",
-                        "enum": [
-                            "Balanced"
-                        ]
-                    },
-                    {
-                        "description": "The organizer sets every seat by hand",
-                        "type": "string",
-                        "enum": [
-                            "Organizer"
-                        ]
-                    }
-                ]
-            },
             "SetAdvisorSettingsRequest": {
                 "description": "Request to replace a deck's advisor settings\n\nWhole-document, not per-field: every writer today (ignoring a card, dragging a corridor, pinning a theme) already rewrites its own slice of this, so a `PATCH` per field would buy nothing.\n\n`pool_query` is a plain string here rather than [`MaxStr`] like everywhere else in this document: the handler trims it and turns an empty result into `None` before it becomes the bounded type, so the length that is actually checked is the trimmed one.",
                 "type": "object",
@@ -16791,14 +16765,6 @@
                         "type": "integer",
                         "format": "int16"
                     },
-                    "seat_policy": {
-                        "description": "How the seats at a table are handed out",
-                        "allOf": [
-                            {
-                                "$ref": "#/components/schemas/SeatPolicy"
-                            }
-                        ]
-                    },
                     "share_token": {
                         "nullable": true,
                         "description": "Secret of the share link, organizer-only — `None` for every other viewer",
@@ -16870,7 +16836,6 @@
                     "points_win",
                     "require_check_in",
                     "round_minutes",
-                    "seat_policy",
                     "status",
                     "uuid",
                     "visibility"
@@ -16881,7 +16846,7 @@
                 "type": "object",
                 "properties": {
                     "invalid_format": {
-                        "description": "The format slug is not one [`crate::models::format::rules_for`] knows",
+                        "description": "The format slug is not one [`crate::models::format::is_tournament_format`] accepts",
                         "type": "boolean"
                     },
                     "invalid_games_per_match": {
@@ -16919,7 +16884,7 @@
                 "type": "object",
                 "properties": {
                     "allow_late_entry": {
-                        "description": "Whether players may still register after the event started",
+                        "description": "Whether players may still register *themselves* after the event started — an organizer can always add a late entry at the desk. The client no longer offers this and sends `false`.",
                         "type": "boolean"
                     },
                     "decklist_policy": {
@@ -16940,7 +16905,7 @@
                         ]
                     },
                     "format": {
-                        "description": "The format being played",
+                        "description": "The format being played: a slug [`crate::models::format::rules_for`] knows, or one of [`crate::models::format::LIMITED_FORMATS`]",
                         "allOf": [
                             {
                                 "$ref": "#/components/schemas/MaxStr_32"
@@ -16957,7 +16922,7 @@
                         "type": "boolean"
                     },
                     "late_entry_as_losses": {
-                        "description": "Whether a late entry's missed rounds count as match losses",
+                        "description": "Whether a late entry's missed rounds count as match losses\n\nSent as `false` by the client: that is the organizer's call when they add the player, not a rule fixed up front.",
                         "type": "boolean"
                     },
                     "name": {
@@ -16985,7 +16950,7 @@
                         ]
                     },
                     "pod_size": {
-                        "description": "How many players sit at one table, 2..=5",
+                        "description": "How many players sit at one table, 2..=5\n\nThe client derives it from the format — pods of four for the commander formats, two for everything else — rather than asking for it; the bound stays here because the request still carries it.",
                         "type": "integer",
                         "format": "int16"
                     },
@@ -17017,14 +16982,6 @@
                         "description": "Default round length in minutes, 10..=600",
                         "type": "integer",
                         "format": "int16"
-                    },
-                    "seat_policy": {
-                        "description": "How the seats at a table are handed out",
-                        "allOf": [
-                            {
-                                "$ref": "#/components/schemas/SeatPolicy"
-                            }
-                        ]
                     },
                     "starts_at": {
                         "nullable": true,
@@ -17061,8 +17018,7 @@
                     "points_loss",
                     "points_win",
                     "require_check_in",
-                    "round_minutes",
-                    "seat_policy"
+                    "round_minutes"
                 ]
             },
             "TournamentStatus": {

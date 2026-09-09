@@ -1,0 +1,10 @@
+[Migration]
+Hash = "10215125852651870179"
+Initial = false
+Dependency = 41
+Replaces = []
+
+[[Migration.Operations]]
+Type = "DeleteField"
+Model = "tournament"
+Name = "seat_policy"

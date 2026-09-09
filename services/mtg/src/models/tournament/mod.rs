@@ -134,22 +134,6 @@ custom_db_enum! {
     decoder: PairingSystemDecoder,
 }
 
-/// How the seats at a table are handed out
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
-pub enum SeatPolicy {
-    /// Shuffled
-    Random,
-    /// Chosen to even out who has already played whom
-    Balanced,
-    /// The organizer sets every seat by hand
-    Organizer,
-}
-custom_db_enum! {
-    enum: SeatPolicy,
-    variants: [Random, Balanced, Organizer],
-    decoder: SeatPolicyDecoder,
-}
-
 /// Where a participant stands in the event
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub enum ParticipantStatus {
@@ -424,8 +408,6 @@ pub struct Tournament {
     pub games_per_match: i16,
     /// How the next round's tables are put together
     pub pairing_system: PairingSystem,
-    /// How the seats at a table are handed out
-    pub seat_policy: SeatPolicy,
     /// Where the event stands in its lifecycle
     pub status: TournamentStatus,
     /// Match points for a win
@@ -531,8 +513,6 @@ pub struct TournamentInsert {
     pub games_per_match: i16,
     /// How the next round's tables are put together
     pub pairing_system: PairingSystem,
-    /// How the seats at a table are handed out
-    pub seat_policy: SeatPolicy,
     /// Match points for a win
     pub points_win: i16,
     /// Match points for a draw
@@ -588,8 +568,6 @@ pub struct TournamentUpdate {
     pub games_per_match: i16,
     /// How the next round's tables are put together
     pub pairing_system: PairingSystem,
-    /// How the seats at a table are handed out
-    pub seat_policy: SeatPolicy,
     /// Match points for a win
     pub points_win: i16,
     /// Match points for a draw
@@ -800,7 +778,6 @@ impl Tournament {
                 pod_size: insert.pod_size,
                 games_per_match: insert.games_per_match,
                 pairing_system: insert.pairing_system,
-                seat_policy: insert.seat_policy,
                 status: TournamentStatus::Draft,
                 points_win: insert.points_win,
                 points_draw: insert.points_draw,
@@ -844,7 +821,7 @@ impl Tournament {
     /// venue, relax/tighten the decklist requirement, or change who may see
     /// the roster and whether guests are named, while the event is running.
     /// Everything structural (format,
-    /// `pod_size`, `games_per_match`, `pairing_system`, `seat_policy`, the
+    /// `pod_size`, `games_per_match`, `pairing_system`, the
     /// point values, `require_check_in`, `allow_late_entry`,
     /// `late_entry_as_losses`) only takes while [`TournamentStatus::Draft`] or
     /// [`TournamentStatus::Registration`]: reshaping the bracket or the
@@ -882,7 +859,6 @@ impl Tournament {
             || update.pod_size != tournament.pod_size
             || update.games_per_match != tournament.games_per_match
             || update.pairing_system != tournament.pairing_system
-            || update.seat_policy != tournament.seat_policy
             || update.points_win != tournament.points_win
             || update.points_draw != tournament.points_draw
             || update.points_loss != tournament.points_loss
@@ -925,10 +901,6 @@ impl Tournament {
             .set_if(
                 TournamentModel.pairing_system,
                 unlocked.then_some(update.pairing_system),
-            )
-            .set_if(
-                TournamentModel.seat_policy,
-                unlocked.then_some(update.seat_policy),
             )
             .set_if(
                 TournamentModel.points_win,
@@ -1601,7 +1573,6 @@ impl From<TournamentModel> for Tournament {
             pod_size: value.pod_size,
             games_per_match: value.games_per_match,
             pairing_system: value.pairing_system,
-            seat_policy: value.seat_policy,
             status: value.status,
             points_win: value.points_win,
             points_draw: value.points_draw,

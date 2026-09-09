@@ -15,7 +15,6 @@ use crate::models::tournament::OrganizerRole;
 use crate::models::tournament::PairingSystem;
 use crate::models::tournament::ParticipantAudience;
 use crate::models::tournament::ParticipantStatus;
-use crate::models::tournament::SeatPolicy;
 use crate::models::tournament::TournamentStatus;
 use crate::models::visibility::Visibility;
 
@@ -65,9 +64,6 @@ pub struct TournamentModel {
 
     /// How the next round's tables are put together
     pub pairing_system: PairingSystem,
-
-    /// How the seats at a table are handed out
-    pub seat_policy: SeatPolicy,
 
     /// Where the event stands in its lifecycle
     pub status: TournamentStatus,
@@ -189,8 +185,6 @@ pub struct TournamentInsertPatch {
     pub games_per_match: i16,
     /// How the next round's tables are put together
     pub pairing_system: PairingSystem,
-    /// How the seats at a table are handed out
-    pub seat_policy: SeatPolicy,
     /// Where the event stands in its lifecycle
     pub status: TournamentStatus,
     /// Match points for a win

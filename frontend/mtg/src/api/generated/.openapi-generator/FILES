@@ -167,7 +167,6 @@ docs/ScannerSessionDetailResponse.md
 docs/ScannerSessionEntryResponse.md
 docs/ScannerSessionResponse.md
 docs/SearchPublicDecksResponse.md
-docs/SeatPolicy.md
 docs/SetAdvisorSettingsRequest.md
 docs/SetBucketResponse.md
 docs/SetCollectionVisibilityRequest.md

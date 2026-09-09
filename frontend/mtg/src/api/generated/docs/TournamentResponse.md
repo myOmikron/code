@@ -30,7 +30,6 @@ Name | Type
 `points_win` | number
 `require_check_in` | boolean
 `round_minutes` | number
-`seat_policy` | [SeatPolicy](SeatPolicy.md)
 `share_token` | string
 `starts_at` | string
 `status` | [TournamentStatus](TournamentStatus.md)

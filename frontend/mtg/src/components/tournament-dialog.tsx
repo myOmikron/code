@@ -3,7 +3,6 @@ import {
     Button,
     Checkbox,
     CheckboxField,
-    Description,
     Dialog,
     DialogActions,
     DialogBody,
@@ -26,7 +25,7 @@ import { useForm } from "@tanstack/react-form";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
-import { DecklistPolicy, PairingSystem, ParticipantAudience, SeatPolicy, Visibility } from "src/api/generated";
+import { DecklistPolicy, PairingSystem, ParticipantAudience, Visibility } from "src/api/generated";
 import type {
     FormatRulesResponse,
     TournamentResponse,
@@ -105,7 +104,6 @@ const DEFAULTS = {
     podSize: 4,
     gamesPerMatch: 1,
     pairingSystem: PairingSystem.Swiss,
-    seatPolicy: SeatPolicy.Random,
     decklistPolicy: DecklistPolicy.Optional,
     participantAudience: ParticipantAudience.Organizers,
     guestNamesPublic: true,
@@ -154,7 +152,6 @@ function initialValues(tournament: TournamentResponse | null) {
         podSize: tournament.pod_size,
         gamesPerMatch: tournament.games_per_match,
         pairingSystem: tournament.pairing_system,
-        seatPolicy: tournament.seat_policy,
         decklistPolicy: tournament.decklist_policy,
         participantAudience: tournament.participant_audience,
         guestNamesPublic: tournament.guest_names_public,
@@ -254,7 +251,6 @@ export function TournamentDialog({ open, tournament, onClose, onSaved }: Tournam
                     pod_size: value.podSize,
                     games_per_match: value.gamesPerMatch,
                     pairing_system: value.pairingSystem,
-                    seat_policy: value.seatPolicy,
                     decklist_policy: value.decklistPolicy,
                     participant_audience: value.participantAudience,
                     guest_names_public: value.guestNamesPublic,
@@ -395,29 +391,6 @@ export function TournamentDialog({ open, tournament, onClose, onSaved }: Tournam
                                 </form.Field>
                             )}
                         </form.Subscribe>
-
-                        <form.Field name={"seatPolicy"}>
-                            {(fieldApi) => (
-                                <Field>
-                                    <Label>{t("label.seat-policy")}</Label>
-                                    <Description>{t("description.seat-policy")}</Description>
-                                    <Listbox value={fieldApi.state.value} onChange={fieldApi.handleChange}>
-                                        <ListboxOption value={SeatPolicy.Random}>
-                                            <ListboxLabel>{t("label.seat-random")}</ListboxLabel>
-                                            <ListboxDescription>{t("description.seat-random")}</ListboxDescription>
-                                        </ListboxOption>
-                                        <ListboxOption value={SeatPolicy.Balanced}>
-                                            <ListboxLabel>{t("label.seat-balanced")}</ListboxLabel>
-                                            <ListboxDescription>{t("description.seat-balanced")}</ListboxDescription>
-                                        </ListboxOption>
-                                        <ListboxOption value={SeatPolicy.Organizer}>
-                                            <ListboxLabel>{t("label.seat-organizer")}</ListboxLabel>
-                                            <ListboxDescription>{t("description.seat-organizer")}</ListboxDescription>
-                                        </ListboxOption>
-                                    </Listbox>
-                                </Field>
-                            )}
-                        </form.Field>
 
                         <form.Field name={"roundMinutes"}>
                             {(fieldApi) => (

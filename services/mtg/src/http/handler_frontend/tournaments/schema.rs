@@ -23,7 +23,6 @@ use crate::models::tournament::OrganizerRole;
 use crate::models::tournament::PairingSystem;
 use crate::models::tournament::ParticipantAudience;
 use crate::models::tournament::ParticipantStatus;
-use crate::models::tournament::SeatPolicy;
 use crate::models::tournament::Tournament;
 use crate::models::tournament::TournamentAuditEntry;
 use crate::models::tournament::TournamentOrganizer;
@@ -59,8 +58,6 @@ pub struct TournamentResponse {
     pub games_per_match: i16,
     /// How the next round's tables are put together
     pub pairing_system: PairingSystem,
-    /// How the seats at a table are handed out
-    pub seat_policy: SeatPolicy,
     /// Where the event stands in its lifecycle
     pub status: TournamentStatus,
     /// Match points for a win
@@ -123,7 +120,6 @@ impl TournamentResponse {
             pod_size: tournament.pod_size,
             games_per_match: tournament.games_per_match,
             pairing_system: tournament.pairing_system,
-            seat_policy: tournament.seat_policy,
             status: tournament.status,
             points_win: tournament.points_win,
             points_draw: tournament.points_draw,
@@ -255,8 +251,6 @@ pub struct TournamentSettingsRequest {
     pub games_per_match: i16,
     /// How the next round's tables are put together
     pub pairing_system: PairingSystem,
-    /// How the seats at a table are handed out
-    pub seat_policy: SeatPolicy,
     /// Match points for a win
     pub points_win: i16,
     /// Match points for a draw

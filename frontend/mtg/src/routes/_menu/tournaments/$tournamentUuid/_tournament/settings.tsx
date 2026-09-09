@@ -19,7 +19,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import { Visibility } from "src/api/generated";
-import type { PairingSystem, SeatPolicy, TournamentStatus } from "src/api/generated";
+import type { PairingSystem, TournamentStatus } from "src/api/generated";
 import { ShareDialog } from "src/components/share-dialog";
 import { TournamentDialog } from "src/components/tournament-dialog";
 import {
@@ -46,24 +46,6 @@ function pairingLabelKey(system: PairingSystem): string {
             return "label.pairing-swiss";
         case "Manual":
             return "label.pairing-manual";
-    }
-}
-
-/**
- * The translation key naming a seat policy
- *
- * @param policy the seat policy
- *
- * @returns the `tournament` namespace key
- */
-function seatLabelKey(policy: SeatPolicy): string {
-    switch (policy) {
-        case "Random":
-            return "label.seat-random";
-        case "Balanced":
-            return "label.seat-balanced";
-        case "Organizer":
-            return "label.seat-organizer";
     }
 }
 
@@ -153,9 +135,6 @@ function RouteComponent() {
 
                     <DescriptionTerm>{t("label.pairing-system")}</DescriptionTerm>
                     <DescriptionDetails>{t(pairingLabelKey(tournament.pairing_system))}</DescriptionDetails>
-
-                    <DescriptionTerm>{t("label.seat-policy")}</DescriptionTerm>
-                    <DescriptionDetails>{t(seatLabelKey(tournament.seat_policy))}</DescriptionDetails>
 
                     <DescriptionTerm>{t("label.round-minutes")}</DescriptionTerm>
                     <DescriptionDetails>{tournament.round_minutes}</DescriptionDetails>
