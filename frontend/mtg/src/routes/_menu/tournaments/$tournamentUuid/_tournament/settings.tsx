@@ -136,6 +136,16 @@ function RouteComponent() {
                     <DescriptionTerm>{t("label.pairing-system")}</DescriptionTerm>
                     <DescriptionDetails>{t(pairingLabelKey(tournament.pairing_system))}</DescriptionDetails>
 
+                    <DescriptionTerm>{t("label.scoring")}</DescriptionTerm>
+                    <DescriptionDetails>
+                        {t("label.points-summary", {
+                            win: tournament.points_win,
+                            draw: tournament.points_draw,
+                            loss: tournament.points_loss,
+                            bye: tournament.points_bye,
+                        })}
+                    </DescriptionDetails>
+
                     <DescriptionTerm>{t("label.round-minutes")}</DescriptionTerm>
                     <DescriptionDetails>{tournament.round_minutes}</DescriptionDetails>
                 </DescriptionList>

@@ -3,6 +3,7 @@ import {
     Button,
     Checkbox,
     CheckboxField,
+    Description,
     Dialog,
     DialogActions,
     DialogBody,
@@ -10,9 +11,11 @@ import {
     ErrorMessage,
     Field,
     FieldGroup,
+    Fieldset,
     Form,
     Input,
     Label,
+    Legend,
     Listbox,
     ListboxDescription,
     ListboxLabel,
@@ -36,7 +39,7 @@ import { InlineError } from "src/components/inline-error";
 import { TournamentFormatPicker } from "src/components/tournament-format-picker";
 import type { ValidationErrors } from "src/utils/error";
 import { handleFormError, isFormError } from "src/utils/error";
-import { DEFAULT_CONSTRUCTED_FORMAT, podSizeFor } from "src/utils/tournament-format";
+import { DEFAULT_CONSTRUCTED_FORMAT, podSizeFor, pointsFor } from "src/utils/tournament-format";
 
 /**
  * The format catalog, fetched once and shared by every dialog instance
@@ -88,14 +91,19 @@ export type TournamentDialogProps = {
     onSaved: (created: TournamentResponse | null) => void;
 };
 
+/** A pod of four's scoring — what {@link DEFAULT_CONSTRUCTED_FORMAT}, Commander, seats */
+const DEFAULT_POINTS = pointsFor(4);
+
 /**
  * What a fresh form starts on, before an existing tournament overrides it
  *
- * Several of these have no field any more and are sent as they stand: Swiss pairing, the usual
- * 3/1/0 match points with a bye worth a win, guest names shown, and no self-service late entry —
- * a player who turns up late is added by an organizer, which the backend allows regardless of
- * `allowLateEntry`. Whether such a player's missed rounds count as losses is that organizer's
- * call at the time, not a rule set up front, so `lateEntryAsLosses` is off and unasked too.
+ * Several of these have no field any more and are sent as they stand: Swiss pairing, guest names
+ * shown, and no self-service late entry — a player who turns up late is added by an organizer,
+ * which the backend allows regardless of `allowLateEntry`. Whether such a player's missed rounds
+ * count as losses is that organizer's call at the time, not a rule set up front, so
+ * `lateEntryAsLosses` is off and unasked too. The four match points are asked again, but still
+ * default from the table: {@link DEFAULT_CONSTRUCTED_FORMAT} is Commander, so a pod of four's
+ * `pointsFor` is the starting point here, the same as `podSize` follows commander's own pod size.
  */
 const DEFAULTS = {
     name: "",
@@ -107,10 +115,10 @@ const DEFAULTS = {
     decklistPolicy: DecklistPolicy.Optional,
     participantAudience: ParticipantAudience.Organizers,
     guestNamesPublic: true,
-    pointsWin: 3,
-    pointsDraw: 1,
-    pointsLoss: 0,
-    pointsBye: 3,
+    pointsWin: DEFAULT_POINTS.win,
+    pointsDraw: DEFAULT_POINTS.draw,
+    pointsLoss: DEFAULT_POINTS.loss,
+    pointsBye: DEFAULT_POINTS.bye,
     roundMinutes: 50,
     requireCheckIn: true,
     allowLateEntry: false,
@@ -349,11 +357,22 @@ export function TournamentDialog({ open, tournament, onClose, onSaved }: Tournam
                                                 // and is not asked for: a pod of four plays one
                                                 // game, a table of two starts on best of three —
                                                 // unless the event already exists, in which case
-                                                // it keeps the best-of it had.
+                                                // it keeps the best-of it had. Match points follow
+                                                // the same table for the same reason, but only for
+                                                // a new event: an existing one keeps whatever
+                                                // scoring its organizer already set, even across a
+                                                // format change.
                                                 const podSize = podSizeFor(slug, formats);
                                                 form.setFieldValue("podSize", podSize);
                                                 if (podSize > 2) form.setFieldValue("gamesPerMatch", 1);
                                                 else if (tournament === null) form.setFieldValue("gamesPerMatch", 3);
+                                                if (tournament === null) {
+                                                    const points = pointsFor(podSize);
+                                                    form.setFieldValue("pointsWin", points.win);
+                                                    form.setFieldValue("pointsDraw", points.draw);
+                                                    form.setFieldValue("pointsLoss", points.loss);
+                                                    form.setFieldValue("pointsBye", points.bye);
+                                                }
                                             }}
                                             // A pod plays a single game, so best-of is only a
                                             // question at a table of two.
@@ -391,6 +410,65 @@ export function TournamentDialog({ open, tournament, onClose, onSaved }: Tournam
                                 </form.Field>
                             )}
                         </form.Subscribe>
+
+                        <Fieldset>
+                            <Legend>{t("label.scoring")}</Legend>
+                            <Description>{t("description.scoring")}</Description>
+                            <div className={"mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4"}>
+                                <form.Field name={"pointsWin"}>
+                                    {(fieldApi) => (
+                                        <Field>
+                                            <Label>{t("label.points-win")}</Label>
+                                            <Input
+                                                type={"number"}
+                                                min={0}
+                                                value={fieldApi.state.value}
+                                                onChange={(event) => fieldApi.handleChange(Number(event.target.value))}
+                                            />
+                                        </Field>
+                                    )}
+                                </form.Field>
+                                <form.Field name={"pointsDraw"}>
+                                    {(fieldApi) => (
+                                        <Field>
+                                            <Label>{t("label.points-draw")}</Label>
+                                            <Input
+                                                type={"number"}
+                                                min={0}
+                                                value={fieldApi.state.value}
+                                                onChange={(event) => fieldApi.handleChange(Number(event.target.value))}
+                                            />
+                                        </Field>
+                                    )}
+                                </form.Field>
+                                <form.Field name={"pointsLoss"}>
+                                    {(fieldApi) => (
+                                        <Field>
+                                            <Label>{t("label.points-loss")}</Label>
+                                            <Input
+                                                type={"number"}
+                                                min={0}
+                                                value={fieldApi.state.value}
+                                                onChange={(event) => fieldApi.handleChange(Number(event.target.value))}
+                                            />
+                                        </Field>
+                                    )}
+                                </form.Field>
+                                <form.Field name={"pointsBye"}>
+                                    {(fieldApi) => (
+                                        <Field>
+                                            <Label>{t("label.points-bye")}</Label>
+                                            <Input
+                                                type={"number"}
+                                                min={0}
+                                                value={fieldApi.state.value}
+                                                onChange={(event) => fieldApi.handleChange(Number(event.target.value))}
+                                            />
+                                        </Field>
+                                    )}
+                                </form.Field>
+                            </div>
+                        </Fieldset>
 
                         <form.Field name={"roundMinutes"}>
                             {(fieldApi) => (

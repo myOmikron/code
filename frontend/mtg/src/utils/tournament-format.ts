@@ -50,6 +50,29 @@ export function formatKind(slug: string): FormatKind {
     return isLimitedFormat(slug) ? "limited" : "constructed";
 }
 
+/** The match points a fresh event of this table size starts on */
+export type PointsDefaults = { win: number; draw: number; loss: number; bye: number };
+
+/**
+ * What a fresh event's match points start on, derived from the table size
+ *
+ * A table of two plays the Magic Tournament Rules' 3/1/0 with a bye worth a win — the scoring
+ * every 1v1 event, sanctioned or not, already uses. A pod scores by the judge community's
+ * Multiplayer Addendum instead (App. C): a win is worth `n` base points plus `n·(1 − 1/n)` for
+ * how much harder it is to win against more opponents, which simplifies to `2n − 1` — 7 at a pod
+ * of four, 5 at three, 9 at five. A bye counts as a win there too, and a draw or a loss does not
+ * change with the table.
+ *
+ * @param podSize how many players share a table
+ *
+ * @returns the four starting values
+ */
+export function pointsFor(podSize: number): PointsDefaults {
+    if (podSize <= 2) return { win: 3, draw: 1, loss: 0, bye: 3 };
+    const win = 2 * podSize - 1;
+    return { win, draw: 1, loss: 0, bye: win };
+}
+
 /**
  * How many players sit at one table of this format
  *
