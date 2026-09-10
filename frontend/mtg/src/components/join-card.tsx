@@ -22,6 +22,7 @@ import { DecklistPolicy } from "src/api/generated";
 import type { DeckOverviewResponse, JoinErrors, JoinLookupResponse } from "src/api/generated";
 import { InlineError } from "src/components/inline-error";
 import { tournamentStatusColor, tournamentStatusLabelKey } from "src/components/tournament-join-code";
+import { TournamentVenue } from "src/components/tournament-venue";
 import { useAccount } from "src/context/account";
 import type { ValidationErrors } from "src/utils/error";
 import { handleFormError, isFormError } from "src/utils/error";
@@ -280,7 +281,13 @@ export function JoinCard({ code, lookup, onJoined }: JoinCardProps) {
                 <Badge color={"zinc"}>{lookup.format}</Badge>
                 <Badge color={"zinc"}>{t("label.players", { count: lookup.participant_count })}</Badge>
             </div>
-            {lookup.venue != null && lookup.venue !== "" && <Text>{lookup.venue}</Text>}
+            {lookup.venue != null && lookup.venue !== "" && (
+                <TournamentVenue
+                    name={lookup.venue}
+                    address={lookup.venue_address}
+                    instructions={lookup.venue_instructions}
+                />
+            )}
             {lookup.starts_at != null && <Text>{formatDateTime(lookup.starts_at)}</Text>}
 
             {checkingMembership ? (

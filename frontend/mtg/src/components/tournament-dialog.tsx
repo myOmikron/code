@@ -3,6 +3,10 @@ import {
     Button,
     Checkbox,
     CheckboxField,
+    Combobox,
+    ComboboxDescription,
+    ComboboxLabel,
+    ComboboxOption,
     Description,
     Dialog,
     DialogActions,
@@ -36,6 +40,7 @@ import type {
     TournamentResponse,
     TournamentSettingsErrors,
     TournamentSettingsRequest,
+    TournamentVenueResponse,
 } from "src/api/generated";
 import { InlineError } from "src/components/inline-error";
 import { TournamentFormatPicker } from "src/components/tournament-format-picker";
@@ -126,6 +131,8 @@ const DEFAULTS = {
     allowLateEntry: false,
     lateEntryAsLosses: false,
     venue: "",
+    venueAddress: "",
+    venueInstructions: "",
     startsAt: "",
     visibility: Visibility.Public,
 };
@@ -174,6 +181,8 @@ function initialValues(tournament: TournamentResponse | null) {
         allowLateEntry: tournament.allow_late_entry,
         lateEntryAsLosses: tournament.late_entry_as_losses,
         venue: tournament.venue ?? "",
+        venueAddress: tournament.venue_address ?? "",
+        venueInstructions: tournament.venue_instructions ?? "",
         startsAt: tournament.starts_at == null ? "" : toLocalInputValue(tournament.starts_at),
         visibility: tournament.visibility,
     };
@@ -242,6 +251,7 @@ export function TournamentDialog({ open, tournament, onClose, onSaved }: Tournam
     const [advancedOpen, setAdvancedOpen] = useState(false);
     const [tg] = useTranslation();
     const [formats, setFormats] = useState<Array<FormatRulesResponse>>([]);
+    const [venues, setVenues] = useState<Array<TournamentVenueResponse>>([]);
 
     // Fetched on open rather than up front: nothing else on this dialog needs the account-only
     // catalog, and a visitor who never opens it never has to ask for it.
@@ -254,6 +264,25 @@ export function TournamentDialog({ open, tournament, onClose, onSaved }: Tournam
             },
             () => {
                 // Reported by `handleError` already; the picker simply stays disabled.
+            },
+        );
+        return () => {
+            cancelled = true;
+        };
+    }, [open]);
+
+    // Not cached like `loadFormats` above: the format catalog never changes, but the account's own
+    // venue book grows every time this very dialog saves a new place, so the same session opening
+    // it twice must see its own first save.
+    useEffect(() => {
+        if (!open) return;
+        let cancelled = false;
+        Api.tournaments.venues.list().then(
+            (loaded) => {
+                if (!cancelled) setVenues(loaded.venues);
+            },
+            () => {
+                // Reported by `handleError` already; the picker simply stays empty.
             },
         );
         return () => {
@@ -284,6 +313,8 @@ export function TournamentDialog({ open, tournament, onClose, onSaved }: Tournam
                     allow_late_entry: value.allowLateEntry,
                     late_entry_as_losses: value.lateEntryAsLosses,
                     venue: value.venue.trim() === "" ? null : value.venue,
+                    venue_address: value.venueAddress.trim() === "" ? null : value.venueAddress,
+                    venue_instructions: value.venueInstructions.trim() === "" ? null : value.venueInstructions,
                     starts_at: value.startsAt === "" ? null : new Date(value.startsAt).toISOString(),
                 };
 
@@ -559,7 +590,46 @@ export function TournamentDialog({ open, tournament, onClose, onSaved }: Tournam
                                             {(fieldApi) => (
                                                 <Field>
                                                     <Label>{t("label.venue")}</Label>
+                                                    {venues.length > 0 && (
+                                                        // A picker over the account's own book, not the bound
+                                                        // control itself: it only ever fills the plain `Input`
+                                                        // below on a pick and otherwise stays blank, so nothing
+                                                        // it does can clobber whatever the organizer is typing.
+                                                        <Combobox<TournamentVenueResponse | null>
+                                                            options={venues}
+                                                            by={"uuid"}
+                                                            value={null}
+                                                            displayValue={() => ""}
+                                                            placeholder={t("label.venue-saved")}
+                                                            aria-label={t("label.venue-saved")}
+                                                            onChange={(picked) => {
+                                                                if (picked === null) return;
+                                                                fieldApi.handleChange(picked.name);
+                                                                form.setFieldValue(
+                                                                    "venueAddress",
+                                                                    picked.address ?? "",
+                                                                );
+                                                                form.setFieldValue(
+                                                                    "venueInstructions",
+                                                                    picked.instructions ?? "",
+                                                                );
+                                                            }}
+                                                        >
+                                                            {(picked) => (
+                                                                <ComboboxOption value={picked}>
+                                                                    <ComboboxLabel>{picked.name}</ComboboxLabel>
+                                                                    {picked.address != null &&
+                                                                        picked.address !== "" && (
+                                                                            <ComboboxDescription>
+                                                                                {picked.address}
+                                                                            </ComboboxDescription>
+                                                                        )}
+                                                                </ComboboxOption>
+                                                            )}
+                                                        </Combobox>
+                                                    )}
                                                     <Input
+                                                        className={venues.length > 0 ? "mt-2" : undefined}
                                                         maxLength={255}
                                                         value={fieldApi.state.value}
                                                         onChange={(event) => fieldApi.handleChange(event.target.value)}
@@ -581,6 +651,34 @@ export function TournamentDialog({ open, tournament, onClose, onSaved }: Tournam
                                             )}
                                         </form.Field>
                                     </div>
+
+                                    <form.Field name={"venueAddress"}>
+                                        {(fieldApi) => (
+                                            <Field>
+                                                <Label>{t("label.venue-address")}</Label>
+                                                <Input
+                                                    maxLength={512}
+                                                    value={fieldApi.state.value}
+                                                    onChange={(event) => fieldApi.handleChange(event.target.value)}
+                                                />
+                                            </Field>
+                                        )}
+                                    </form.Field>
+
+                                    <form.Field name={"venueInstructions"}>
+                                        {(fieldApi) => (
+                                            <Field>
+                                                <Label>{t("label.venue-instructions")}</Label>
+                                                <Description>{t("description.venue-instructions")}</Description>
+                                                <Textarea
+                                                    rows={2}
+                                                    maxLength={1024}
+                                                    value={fieldApi.state.value}
+                                                    onChange={(event) => fieldApi.handleChange(event.target.value)}
+                                                />
+                                            </Field>
+                                        )}
+                                    </form.Field>
 
                                     <form.Field name={"roundMinutes"}>
                                         {(fieldApi) => (

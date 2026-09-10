@@ -2,6 +2,7 @@ import { createFileRoute, useLoaderData } from "@tanstack/react-router";
 import { Badge, DescriptionDetails, DescriptionList, DescriptionTerm, Text } from "components";
 import { useTranslation } from "react-i18next";
 import { tournamentStatusColor, tournamentStatusLabelKey } from "src/components/tournament-join-code";
+import { TournamentVenue } from "src/components/tournament-venue";
 import { formatDateTime } from "src/utils/format";
 
 export const Route = createFileRoute("/_menu/shared/tournaments/$token/_shared/")({
@@ -42,7 +43,15 @@ function RouteComponent() {
 
                 <DescriptionTerm>{t("label.venue")}</DescriptionTerm>
                 <DescriptionDetails>
-                    {tournament.venue != null && tournament.venue !== "" ? tournament.venue : "—"}
+                    {tournament.venue != null && tournament.venue !== "" ? (
+                        <TournamentVenue
+                            name={tournament.venue}
+                            address={tournament.venue_address}
+                            instructions={tournament.venue_instructions}
+                        />
+                    ) : (
+                        "—"
+                    )}
                 </DescriptionDetails>
 
                 <DescriptionTerm>{t("heading.players")}</DescriptionTerm>

@@ -12,6 +12,7 @@ import {
     tournamentStatusColor,
     tournamentStatusLabelKey,
 } from "src/components/tournament-join-code";
+import { TournamentVenue } from "src/components/tournament-venue";
 import { useAccount } from "src/context/account";
 import { formatDateTime } from "src/utils/format";
 
@@ -111,7 +112,15 @@ function RouteComponent() {
 
                 <DescriptionTerm>{t("label.venue")}</DescriptionTerm>
                 <DescriptionDetails>
-                    {tournament.venue != null && tournament.venue !== "" ? tournament.venue : "—"}
+                    {tournament.venue != null && tournament.venue !== "" ? (
+                        <TournamentVenue
+                            name={tournament.venue}
+                            address={tournament.venue_address}
+                            instructions={tournament.venue_instructions}
+                        />
+                    ) : (
+                        "—"
+                    )}
                 </DescriptionDetails>
 
                 <DescriptionTerm>{t("heading.players")}</DescriptionTerm>

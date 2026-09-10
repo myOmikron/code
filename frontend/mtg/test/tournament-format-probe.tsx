@@ -40,6 +40,15 @@ const FORMATS: Array<FormatRulesResponse> = [
 // The dialog fetches the account-only catalog on open; the probe has no account.
 Api.decks.formats = async () => ({ formats: FORMATS });
 
+// Same for the venue book behind the "Gespeicherte Orte" picker: two entries, so the picker
+// renders at all — it hides itself when the book is empty.
+Api.tournaments.venues.list = async () => ({
+    venues: [
+        { uuid: "d1", name: "Spielekiste Nord", address: "Hauptstr. 5, 12345 Berlin", instructions: null },
+        { uuid: "d2", name: "Alte Brauerei", address: null, instructions: "Hinterhof, bitte klingeln" },
+    ],
+});
+
 /** The dialog exactly as the tournaments list opens it for a new event */
 function Probe() {
     return <TournamentDialog open={true} tournament={null} onClose={() => undefined} onSaved={() => undefined} />;
