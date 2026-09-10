@@ -432,90 +432,6 @@ export function TournamentDialog({ open, tournament, onClose, onSaved }: Tournam
                             )}
                         </form.Subscribe>
 
-                        <form.Field name={"decklistPolicy"}>
-                            {(fieldApi) => (
-                                <Field>
-                                    <Label>{t("label.decklist-policy")}</Label>
-                                    <Listbox value={fieldApi.state.value} onChange={fieldApi.handleChange}>
-                                        <ListboxOption value={DecklistPolicy.Optional}>
-                                            <ListboxLabel>{t("label.decklist-policy-optional")}</ListboxLabel>
-                                            <ListboxDescription>
-                                                {t("description.decklist-policy-optional")}
-                                            </ListboxDescription>
-                                        </ListboxOption>
-                                        <ListboxOption value={DecklistPolicy.RequiredToCheckIn}>
-                                            <ListboxLabel>{t("label.decklist-policy-required-check-in")}</ListboxLabel>
-                                            <ListboxDescription>
-                                                {t("description.decklist-policy-required-check-in")}
-                                            </ListboxDescription>
-                                        </ListboxOption>
-                                        <ListboxOption value={DecklistPolicy.RequiredToRegister}>
-                                            <ListboxLabel>{t("label.decklist-policy-required-register")}</ListboxLabel>
-                                            <ListboxDescription>
-                                                {t("description.decklist-policy-required-register")}
-                                            </ListboxDescription>
-                                        </ListboxOption>
-                                    </Listbox>
-                                </Field>
-                            )}
-                        </form.Field>
-
-                        <form.Field name={"participantAudience"}>
-                            {(fieldApi) => (
-                                <Field>
-                                    <Label>{t("label.participant-audience")}</Label>
-                                    <Listbox value={fieldApi.state.value} onChange={fieldApi.handleChange}>
-                                        <ListboxOption value={ParticipantAudience.Organizers}>
-                                            <ListboxLabel>{t("label.participant-audience-organizers")}</ListboxLabel>
-                                            <ListboxDescription>
-                                                {t("description.participant-audience-organizers")}
-                                            </ListboxDescription>
-                                        </ListboxOption>
-                                        <ListboxOption value={ParticipantAudience.Participants}>
-                                            <ListboxLabel>{t("label.participant-audience-participants")}</ListboxLabel>
-                                            <ListboxDescription>
-                                                {t("description.participant-audience-participants")}
-                                            </ListboxDescription>
-                                        </ListboxOption>
-                                        <ListboxOption value={ParticipantAudience.Anyone}>
-                                            <ListboxLabel>{t("label.participant-audience-anyone")}</ListboxLabel>
-                                            <ListboxDescription>
-                                                {t("description.participant-audience-anyone")}
-                                            </ListboxDescription>
-                                        </ListboxOption>
-                                    </Listbox>
-                                </Field>
-                            )}
-                        </form.Field>
-
-                        <div className={"grid grid-cols-1 gap-4 sm:grid-cols-2"}>
-                            <form.Field name={"venue"}>
-                                {(fieldApi) => (
-                                    <Field>
-                                        <Label>{t("label.venue")}</Label>
-                                        <Input
-                                            maxLength={255}
-                                            value={fieldApi.state.value}
-                                            onChange={(event) => fieldApi.handleChange(event.target.value)}
-                                        />
-                                    </Field>
-                                )}
-                            </form.Field>
-
-                            <form.Field name={"startsAt"}>
-                                {(fieldApi) => (
-                                    <Field>
-                                        <Label>{t("label.starts-at")}</Label>
-                                        <Input
-                                            type={"datetime-local"}
-                                            value={fieldApi.state.value}
-                                            onChange={(event) => fieldApi.handleChange(event.target.value)}
-                                        />
-                                    </Field>
-                                )}
-                            </form.Field>
-                        </div>
-
                         {tournament === null && (
                             <form.Field name={"visibility"}>
                                 {(fieldApi) => (
@@ -567,32 +483,105 @@ export function TournamentDialog({ open, tournament, onClose, onSaved }: Tournam
                                     aria-hidden={true}
                                 />
                             </button>
-                            {!advancedOpen && (
-                                <form.Subscribe
-                                    selector={(state) =>
-                                        [
-                                            state.values.roundMinutes,
-                                            state.values.requireCheckIn,
-                                            state.values.pointsWin,
-                                            state.values.pointsDraw,
-                                            state.values.pointsLoss,
-                                            state.values.pointsBye,
-                                        ] as const
-                                    }
-                                >
-                                    {([minutes, checkIn, win, draw, loss, bye]) => (
-                                        <Text>
-                                            {[
-                                                t("label.round-minutes-short", { minutes }),
-                                                t(checkIn ? "label.check-in-on" : "label.check-in-off"),
-                                                `${t("label.scoring")} ${t("label.points-summary", { win, draw, loss, bye })}`,
-                                            ].join(" · ")}
-                                        </Text>
-                                    )}
-                                </form.Subscribe>
-                            )}
+                            {!advancedOpen && <Text>{t("description.advanced-settings")}</Text>}
                             {advancedOpen && (
                                 <div className={"mt-4 space-y-6"}>
+                                    <form.Field name={"decklistPolicy"}>
+                                        {(fieldApi) => (
+                                            <Field>
+                                                <Label>{t("label.decklist-policy")}</Label>
+                                                <Listbox value={fieldApi.state.value} onChange={fieldApi.handleChange}>
+                                                    <ListboxOption value={DecklistPolicy.Optional}>
+                                                        <ListboxLabel>
+                                                            {t("label.decklist-policy-optional")}
+                                                        </ListboxLabel>
+                                                        <ListboxDescription>
+                                                            {t("description.decklist-policy-optional")}
+                                                        </ListboxDescription>
+                                                    </ListboxOption>
+                                                    <ListboxOption value={DecklistPolicy.RequiredToCheckIn}>
+                                                        <ListboxLabel>
+                                                            {t("label.decklist-policy-required-check-in")}
+                                                        </ListboxLabel>
+                                                        <ListboxDescription>
+                                                            {t("description.decklist-policy-required-check-in")}
+                                                        </ListboxDescription>
+                                                    </ListboxOption>
+                                                    <ListboxOption value={DecklistPolicy.RequiredToRegister}>
+                                                        <ListboxLabel>
+                                                            {t("label.decklist-policy-required-register")}
+                                                        </ListboxLabel>
+                                                        <ListboxDescription>
+                                                            {t("description.decklist-policy-required-register")}
+                                                        </ListboxDescription>
+                                                    </ListboxOption>
+                                                </Listbox>
+                                            </Field>
+                                        )}
+                                    </form.Field>
+
+                                    <form.Field name={"participantAudience"}>
+                                        {(fieldApi) => (
+                                            <Field>
+                                                <Label>{t("label.participant-audience")}</Label>
+                                                <Listbox value={fieldApi.state.value} onChange={fieldApi.handleChange}>
+                                                    <ListboxOption value={ParticipantAudience.Organizers}>
+                                                        <ListboxLabel>
+                                                            {t("label.participant-audience-organizers")}
+                                                        </ListboxLabel>
+                                                        <ListboxDescription>
+                                                            {t("description.participant-audience-organizers")}
+                                                        </ListboxDescription>
+                                                    </ListboxOption>
+                                                    <ListboxOption value={ParticipantAudience.Participants}>
+                                                        <ListboxLabel>
+                                                            {t("label.participant-audience-participants")}
+                                                        </ListboxLabel>
+                                                        <ListboxDescription>
+                                                            {t("description.participant-audience-participants")}
+                                                        </ListboxDescription>
+                                                    </ListboxOption>
+                                                    <ListboxOption value={ParticipantAudience.Anyone}>
+                                                        <ListboxLabel>
+                                                            {t("label.participant-audience-anyone")}
+                                                        </ListboxLabel>
+                                                        <ListboxDescription>
+                                                            {t("description.participant-audience-anyone")}
+                                                        </ListboxDescription>
+                                                    </ListboxOption>
+                                                </Listbox>
+                                            </Field>
+                                        )}
+                                    </form.Field>
+
+                                    <div className={"grid grid-cols-1 gap-4 sm:grid-cols-2"}>
+                                        <form.Field name={"venue"}>
+                                            {(fieldApi) => (
+                                                <Field>
+                                                    <Label>{t("label.venue")}</Label>
+                                                    <Input
+                                                        maxLength={255}
+                                                        value={fieldApi.state.value}
+                                                        onChange={(event) => fieldApi.handleChange(event.target.value)}
+                                                    />
+                                                </Field>
+                                            )}
+                                        </form.Field>
+
+                                        <form.Field name={"startsAt"}>
+                                            {(fieldApi) => (
+                                                <Field>
+                                                    <Label>{t("label.starts-at")}</Label>
+                                                    <Input
+                                                        type={"datetime-local"}
+                                                        value={fieldApi.state.value}
+                                                        onChange={(event) => fieldApi.handleChange(event.target.value)}
+                                                    />
+                                                </Field>
+                                            )}
+                                        </form.Field>
+                                    </div>
+
                                     <form.Field name={"roundMinutes"}>
                                         {(fieldApi) => (
                                             <Field>

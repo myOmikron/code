@@ -35,6 +35,7 @@
         "unlock-decklists": "Unlock decklists"
     },
     "description": {
+        "advanced-settings": "Decklists, player list, place and time, round length, check-in and scoring — with defaults that follow the format.",
         "already-joined": "You are already registered for this tournament.",
         "claim-qr": "Let {{name}} scan this code to take over the seat on their own device, with or without an account.",
         "confirm-cancel-tournament": "The tournament will be cancelled and cannot be reopened.",
@@ -104,8 +105,6 @@
     },
     "label": {
         "best-of": "Best of {{games}}",
-        "check-in-off": "without check-in",
-        "check-in-on": "with check-in",
         "claim-token-none": "This seat already belongs to an account.",
         "co-organizer": "Co-organizer",
         "code": "Code",
@@ -159,7 +158,6 @@
         "points-win": "Points per win",
         "require-check-in": "Check-in required",
         "round-minutes": "Round length (minutes)",
-        "round-minutes-short": "{{minutes}} min",
         "scorekeeper": "Scorekeeper",
         "scoring": "Scoring",
         "show-all-formats": "Show all formats",

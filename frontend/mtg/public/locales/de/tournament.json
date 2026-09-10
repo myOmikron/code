@@ -35,6 +35,7 @@
         "unlock-decklists": "Decklisten entsperren"
     },
     "description": {
+        "advanced-settings": "Decklistenpflicht, Spielerliste, Ort und Zeit, Rundenlänge, Check-in und Wertung — mit Vorgaben, die zum Format passen.",
         "already-joined": "Du bist bereits für dieses Turnier angemeldet.",
         "claim-qr": "Lass {{name}} diesen Code scannen, um den Platz auf dem eigenen Gerät zu übernehmen — mit oder ohne Konto.",
         "confirm-cancel-tournament": "Das Turnier wird abgesagt und lässt sich nicht wieder öffnen.",
@@ -104,8 +105,6 @@
     },
     "label": {
         "best-of": "Best of {{games}}",
-        "check-in-off": "ohne Check-in",
-        "check-in-on": "mit Check-in",
         "claim-token-none": "Dieser Platz gehört bereits zu einem Konto.",
         "co-organizer": "Co-Organisator",
         "code": "Code",
@@ -159,7 +158,6 @@
         "points-win": "Punkte pro Sieg",
         "require-check-in": "Check-in erforderlich",
         "round-minutes": "Rundenlänge (Minuten)",
-        "round-minutes-short": "{{minutes}} Min",
         "scorekeeper": "Ergebnisführung",
         "scoring": "Wertung",
         "show-all-formats": "Alle Formate anzeigen",
