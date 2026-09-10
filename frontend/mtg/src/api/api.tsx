@@ -310,6 +310,13 @@ export const Api = {
             ),
         rotateJoinCode: async (uuid: UUID) => handleError(defaultApi.rotateTournamentJoinCode({ tournament: uuid })),
         revokeJoinCode: async (uuid: UUID) => handleError(defaultApi.revokeTournamentJoinCode({ tournament: uuid })),
+        // The organizer's own book of places, filled implicitly: saving a tournament with a
+        // venue writes it here, so there is nothing to create by hand — only to read back and,
+        // occasionally, to prune.
+        venues: {
+            list: async () => handleError(defaultApi.listTournamentVenues()),
+            delete: async (uuid: UUID) => handleError(defaultApi.deleteTournamentVenue({ venue: uuid })),
+        },
         // Tournament-wide, staff-only — never per row. Goes through `handleError` like the rest
         // of the management surface: only an organizer's own session can reach either button.
         decklists: {

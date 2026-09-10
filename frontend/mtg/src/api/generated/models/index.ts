@@ -2977,6 +2977,18 @@ export interface JoinLookupResponse {
      * @memberof JoinLookupResponse
      */
     venue?: string | null;
+    /**
+     * The venue's address, meaningful only alongside [`Self::venue`]
+     * @type {string}
+     * @memberof JoinLookupResponse
+     */
+    venue_address?: string | null;
+    /**
+     * How to actually get in — shown to everyone who can see this lookup, same as the address
+     * @type {string}
+     * @memberof JoinLookupResponse
+     */
+    venue_instructions?: string | null;
 }
 
 
@@ -3248,6 +3260,19 @@ export interface ListTournamentParticipantsResponse {
      * @memberof ListTournamentParticipantsResponse
      */
     participants: Array<TournamentParticipantResponse>;
+}
+/**
+ * The caller's own venue book, most recently used first
+ * @export
+ * @interface ListTournamentVenuesResponse
+ */
+export interface ListTournamentVenuesResponse {
+    /**
+     * The venues, most recently used first
+     * @type {Array<TournamentVenueResponse>}
+     * @memberof ListTournamentVenuesResponse
+     */
+    venues: Array<TournamentVenueResponse>;
 }
 /**
  * Every tournament the actor may see
@@ -5281,6 +5306,18 @@ export interface SharedTournamentResponse {
      * @memberof SharedTournamentResponse
      */
     venue?: string | null;
+    /**
+     * The venue's address, meaningful only alongside [`Self::venue`]
+     * @type {string}
+     * @memberof SharedTournamentResponse
+     */
+    venue_address?: string | null;
+    /**
+     * How to actually get in — shown to everyone who can see this link, same as the address
+     * @type {string}
+     * @memberof SharedTournamentResponse
+     */
+    venue_instructions?: string | null;
 }
 
 
@@ -6313,6 +6350,18 @@ export interface TournamentResponse {
      */
     venue?: string | null;
     /**
+     * The venue's address, meaningful only alongside [`Self::venue`]
+     * @type {string}
+     * @memberof TournamentResponse
+     */
+    venue_address?: string | null;
+    /**
+     * How to actually get in, meaningful only alongside [`Self::venue`]
+     * @type {string}
+     * @memberof TournamentResponse
+     */
+    venue_instructions?: string | null;
+    /**
      * Who may see the event at all
      * @type {Visibility}
      * @memberof TournamentResponse
@@ -6490,6 +6539,18 @@ export interface TournamentSettingsRequest {
      * @memberof TournamentSettingsRequest
      */
     venue?: string | null;
+    /**
+     * The venue's address — meaningful only alongside [`Self::venue`]; the handler blanks it when `venue` is empty
+     * @type {string}
+     * @memberof TournamentSettingsRequest
+     */
+    venue_address?: string | null;
+    /**
+     * How to actually get in ("Hinterhof, bitte klingeln") — meaningful only alongside [`Self::venue`], shown to everyone who can see the tournament
+     * @type {string}
+     * @memberof TournamentSettingsRequest
+     */
+    venue_instructions?: string | null;
 }
 
 
@@ -6522,6 +6583,37 @@ export const TournamentStatus = {
 } as const;
 export type TournamentStatus = typeof TournamentStatus[keyof typeof TournamentStatus];
 
+/**
+ * One venue from the caller's own book, as offered back by the picker
+ * @export
+ * @interface TournamentVenueResponse
+ */
+export interface TournamentVenueResponse {
+    /**
+     * Where it is
+     * @type {string}
+     * @memberof TournamentVenueResponse
+     */
+    address?: string | null;
+    /**
+     * How to actually get in
+     * @type {string}
+     * @memberof TournamentVenueResponse
+     */
+    instructions?: string | null;
+    /**
+     * Name of the place
+     * @type {string}
+     * @memberof TournamentVenueResponse
+     */
+    name: string;
+    /**
+     * Primary key
+     * @type {string}
+     * @memberof TournamentVenueResponse
+     */
+    uuid: string;
+}
 /**
  * What the viewer of a tournament may do with it
  * @export

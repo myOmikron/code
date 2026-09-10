@@ -7206,7 +7206,7 @@
             },
             "post": {
                 "summary": "Create a tournament; the caller becomes its owner",
-                "description": "Create a tournament; the caller becomes its owner",
+                "description": "Create a tournament; the caller becomes its owner\n\nA non-blank `venue` is remembered into the caller's own venue book — see\n[`remember_venue`]. It is written *before* the tournament, because\nbuilding the insert consumes the request; the two share one transaction,\nso a tournament that fails to insert takes the remembered venue with it.",
                 "operationId": "create_tournament",
                 "requestBody": {
                     "content": {
@@ -7331,7 +7331,7 @@
             },
             "put": {
                 "summary": "Update a tournament's settings",
-                "description": "Update a tournament's settings\n\nThe always-editable fields (name, description, venue, start time, round\nlength) go through even while the event is running; a structural change\n(format, pod size, pairing, scoring, ...) while [`SettingsChange::Locked`]\nanswers [`TournamentSettingsErrors::settings_locked`] instead — see\n[`Tournament::update_settings`]'s doc comment for exactly what counts as\nstructural.",
+                "description": "Update a tournament's settings\n\nThe always-editable fields (name, description, venue, start time, round\nlength) go through even while the event is running; a structural change\n(format, pod size, pairing, scoring, ...) while [`SettingsChange::Locked`]\nanswers [`TournamentSettingsErrors::settings_locked`] instead — see\n[`Tournament::update_settings`]'s doc comment for exactly what counts as\nstructural. A non-blank `venue` is remembered into the caller's own venue\nbook — see [`remember_venue`] — once the write actually goes through.",
                 "operationId": "update_tournament",
                 "parameters": [
                     {
@@ -8805,6 +8805,117 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/ListTournamentAuditResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/tournaments/venues": {
+            "get": {
+                "summary": "The caller's own venue book, most recently used first",
+                "description": "The caller's own venue book, most recently used first\n\nNote: `/venues` is a static path segment while `/{tournament}` is a\ndynamic one, so axum's router already prefers the static match here —\nnothing to arrange, just worth being aware of on a route table shaped\nlike this one.",
+                "operationId": "list_tournament_venues",
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ListTournamentVenuesResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/tournaments/venues/{venue}": {
+            "delete": {
+                "summary": "Drop one entry from the caller's own venue book",
+                "description": "Drop one entry from the caller's own venue book",
+                "operationId": "delete_tournament_venue",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "venue",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`venue::Venue`] model. To have better distinguishable types.\n\nNo `new_from_field` constructor, unlike [`TournamentUuid`] and [`TournamentParticipantUuid`]: nothing holds a `ForeignModel` pointing at a venue row — the \"no provenance FK\" decision means a venue's uuid is only ever read back as the raw primary key, never as somebody else's foreign key column. [`WatchListEntryUuid`](crate::models::watch_list::WatchListEntryUuid) and [`DeckCardUuid`](crate::models::deck::DeckCardUuid) are the same shape for the same reason.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "nullable": true
                                 }
                             }
                         }
@@ -13053,6 +13164,24 @@
                                 "$ref": "#/components/schemas/MaxStr_255"
                             }
                         ]
+                    },
+                    "venue_address": {
+                        "nullable": true,
+                        "description": "The venue's address, meaningful only alongside [`Self::venue`]",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_512"
+                            }
+                        ]
+                    },
+                    "venue_instructions": {
+                        "nullable": true,
+                        "description": "How to actually get in — shown to everyone who can see this lookup, same as the address",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_1024"
+                            }
+                        ]
                     }
                 },
                 "required": [
@@ -13383,6 +13512,22 @@
                 },
                 "required": [
                     "participants"
+                ]
+            },
+            "ListTournamentVenuesResponse": {
+                "description": "The caller's own venue book, most recently used first",
+                "type": "object",
+                "properties": {
+                    "venues": {
+                        "description": "The venues, most recently used first",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/TournamentVenueResponse"
+                        }
+                    }
+                },
+                "required": [
+                    "venues"
                 ]
             },
             "ListTournamentsResponse": {
@@ -15653,6 +15798,24 @@
                                 "$ref": "#/components/schemas/MaxStr_255"
                             }
                         ]
+                    },
+                    "venue_address": {
+                        "nullable": true,
+                        "description": "The venue's address, meaningful only alongside [`Self::venue`]",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_512"
+                            }
+                        ]
+                    },
+                    "venue_instructions": {
+                        "nullable": true,
+                        "description": "How to actually get in — shown to everyone who can see this link, same as the address",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_1024"
+                            }
+                        ]
                     }
                 },
                 "required": [
@@ -16808,6 +16971,24 @@
                             }
                         ]
                     },
+                    "venue_address": {
+                        "nullable": true,
+                        "description": "The venue's address, meaningful only alongside [`Self::venue`]",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_512"
+                            }
+                        ]
+                    },
+                    "venue_instructions": {
+                        "nullable": true,
+                        "description": "How to actually get in, meaningful only alongside [`Self::venue`]",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_1024"
+                            }
+                        ]
+                    },
                     "visibility": {
                         "description": "Who may see the event at all",
                         "allOf": [
@@ -17000,6 +17181,24 @@
                                 "$ref": "#/components/schemas/MaxStr_255"
                             }
                         ]
+                    },
+                    "venue_address": {
+                        "nullable": true,
+                        "description": "The venue's address — meaningful only alongside [`Self::venue`]; the handler blanks it when `venue` is empty",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_512"
+                            }
+                        ]
+                    },
+                    "venue_instructions": {
+                        "nullable": true,
+                        "description": "How to actually get in (\"Hinterhof, bitte klingeln\") — meaningful only alongside [`Self::venue`], shown to everyone who can see the tournament",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_1024"
+                            }
+                        ]
                     }
                 },
                 "required": [
@@ -17063,6 +17262,55 @@
             },
             "TournamentUuid": {
                 "description": "Wrapper for the primary key of the [`Tournament`] model. To have better distinguishable types.",
+                "type": "string",
+                "format": "uuid"
+            },
+            "TournamentVenueResponse": {
+                "description": "One venue from the caller's own book, as offered back by the picker",
+                "type": "object",
+                "properties": {
+                    "address": {
+                        "nullable": true,
+                        "description": "Where it is",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_512"
+                            }
+                        ]
+                    },
+                    "instructions": {
+                        "nullable": true,
+                        "description": "How to actually get in",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_1024"
+                            }
+                        ]
+                    },
+                    "name": {
+                        "description": "Name of the place",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_255"
+                            }
+                        ]
+                    },
+                    "uuid": {
+                        "description": "Primary key",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/TournamentVenueUuid"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "name",
+                    "uuid"
+                ]
+            },
+            "TournamentVenueUuid": {
+                "description": "Wrapper for the primary key of the [`venue::Venue`] model. To have better distinguishable types.\n\nNo `new_from_field` constructor, unlike [`TournamentUuid`] and [`TournamentParticipantUuid`]: nothing holds a `ForeignModel` pointing at a venue row — the \"no provenance FK\" decision means a venue's uuid is only ever read back as the raw primary key, never as somebody else's foreign key column. [`WatchListEntryUuid`](crate::models::watch_list::WatchListEntryUuid) and [`DeckCardUuid`](crate::models::deck::DeckCardUuid) are the same shape for the same reason.",
                 "type": "string",
                 "format": "uuid"
             },

@@ -37,6 +37,7 @@ All URIs are relative to *http://localhost*
 | [**deleteScannerSessionEntry**](DefaultApi.md#deletescannersessionentry) | **DELETE** /api/frontend/v1/scanner-sessions/{session}/entries/{entry} | Remove a staged stack |
 | [**deleteTournament**](DefaultApi.md#deletetournament) | **DELETE** /api/frontend/v1/tournaments/{tournament} | Delete a tournament outright — owner only |
 | [**deleteTournamentParticipant**](DefaultApi.md#deletetournamentparticipant) | **DELETE** /api/frontend/v1/tournaments/{tournament}/participants/{participant} | Remove a participant outright |
+| [**deleteTournamentVenue**](DefaultApi.md#deletetournamentvenue) | **DELETE** /api/frontend/v1/tournaments/venues/{venue} | Drop one entry from the caller\&#39;s own venue book |
 | [**deleteWatchList**](DefaultApi.md#deletewatchlist) | **DELETE** /api/frontend/v1/watch-lists/{list} | Throw a watch list away, taking every entry on it with it |
 | [**deleteWatchListEntry**](DefaultApi.md#deletewatchlistentry) | **DELETE** /api/frontend/v1/watch-lists/{list}/entries/{entry} | Take a card off a watch list |
 | [**detachDeckCollection**](DefaultApi.md#detachdeckcollection) | **DELETE** /api/frontend/v1/decks/{deck}/collection | Stop keeping them |
@@ -92,6 +93,7 @@ All URIs are relative to *http://localhost*
 | [**listTournamentAudit**](DefaultApi.md#listtournamentaudit) | **GET** /api/frontend/v1/tournaments/{tournament}/audit | A tournament\&#39;s audit log, newest first |
 | [**listTournamentOrganizers**](DefaultApi.md#listtournamentorganizers) | **GET** /api/frontend/v1/tournaments/{tournament}/organizers | The staff list, visible to any role holder |
 | [**listTournamentParticipants**](DefaultApi.md#listtournamentparticipants) | **GET** /api/frontend/v1/tournaments/{tournament}/participants | A tournament\&#39;s roster, redacted through [&#x60;public::roster_view&#x60;] |
+| [**listTournamentVenues**](DefaultApi.md#listtournamentvenues) | **GET** /api/frontend/v1/tournaments/venues | The caller\&#39;s own venue book, most recently used first |
 | [**listTournaments**](DefaultApi.md#listtournaments) | **GET** /api/frontend/v1/tournaments | Every tournament the actor may see |
 | [**listWatchListCopies**](DefaultApi.md#listwatchlistcopies) | **GET** /api/frontend/v1/watch-lists/{list}/entries/{entry}/copies | Where the copies of one watched card are |
 | [**listWatchListEntries**](DefaultApi.md#listwatchlistentries) | **GET** /api/frontend/v1/watch-lists/{list}/entries | Everything one watch list page is drawn from |
@@ -1452,7 +1454,7 @@ No authorization required
 
 Create a tournament; the caller becomes its owner
 
-Create a tournament; the caller becomes its owner
+Create a tournament; the caller becomes its owner  A non-blank &#x60;venue&#x60; is remembered into the caller\&#39;s own venue book — see [&#x60;remember_venue&#x60;]. It is written *before* the tournament, because building the insert consumes the request; the two share one transaction, so a tournament that fails to insert takes the remembered venue with it.
 
 ### Example
 
@@ -2483,6 +2485,76 @@ example().catch(console.error);
 |------------- | ------------- | ------------- | -------------|
 | **tournament** | `string` |  | [Defaults to `undefined`] |
 | **participant** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+**any**
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## deleteTournamentVenue
+
+> any deleteTournamentVenue(venue)
+
+Drop one entry from the caller\&#39;s own venue book
+
+Drop one entry from the caller\&#39;s own venue book
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { DeleteTournamentVenueRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    venue: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies DeleteTournamentVenueRequest;
+
+  try {
+    const data = await api.deleteTournamentVenue(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **venue** | `string` |  | [Defaults to `undefined`] |
 
 ### Return type
 
@@ -6395,6 +6467,68 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## listTournamentVenues
+
+> ListTournamentVenuesResponse listTournamentVenues()
+
+The caller\&#39;s own venue book, most recently used first
+
+The caller\&#39;s own venue book, most recently used first  Note: &#x60;/venues&#x60; is a static path segment while &#x60;/{tournament}&#x60; is a dynamic one, so axum\&#39;s router already prefers the static match here — nothing to arrange, just worth being aware of on a route table shaped like this one.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { ListTournamentVenuesRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  try {
+    const data = await api.listTournamentVenues();
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+This endpoint does not need any parameter.
+
+### Return type
+
+[**ListTournamentVenuesResponse**](ListTournamentVenuesResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## listTournaments
 
 > ListTournamentsResponse listTournaments()
@@ -9996,7 +10130,7 @@ No authorization required
 
 Update a tournament\&#39;s settings
 
-Update a tournament\&#39;s settings  The always-editable fields (name, description, venue, start time, round length) go through even while the event is running; a structural change (format, pod size, pairing, scoring, ...) while [&#x60;SettingsChange::Locked&#x60;] answers [&#x60;TournamentSettingsErrors::settings_locked&#x60;] instead — see [&#x60;Tournament::update_settings&#x60;]\&#39;s doc comment for exactly what counts as structural.
+Update a tournament\&#39;s settings  The always-editable fields (name, description, venue, start time, round length) go through even while the event is running; a structural change (format, pod size, pairing, scoring, ...) while [&#x60;SettingsChange::Locked&#x60;] answers [&#x60;TournamentSettingsErrors::settings_locked&#x60;] instead — see [&#x60;Tournament::update_settings&#x60;]\&#39;s doc comment for exactly what counts as structural. A non-blank &#x60;venue&#x60; is remembered into the caller\&#39;s own venue book — see [&#x60;remember_venue&#x60;] — once the write actually goes through.
 
 ### Example
 

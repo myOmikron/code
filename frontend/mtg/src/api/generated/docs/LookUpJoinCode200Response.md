@@ -17,6 +17,8 @@ Name | Type
 `status` | [TournamentStatus](TournamentStatus.md)
 `tournament` | string
 `venue` | string
+`venue_address` | string
+`venue_instructions` | string
 `error` | [JoinErrors](JoinErrors.md)
 `result` | [ErrorConstant](ErrorConstant.md)
 

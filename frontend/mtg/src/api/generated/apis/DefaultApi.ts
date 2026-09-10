@@ -86,6 +86,7 @@ import type {
     ListTournamentAuditResponse,
     ListTournamentOrganizersResponse,
     ListTournamentParticipantsResponse,
+    ListTournamentVenuesResponse,
     ListTournamentsResponse,
     ListWatchListAlarmsResponse,
     ListWatchListCopiesResponse,
@@ -308,6 +309,10 @@ export interface DeleteTournamentRequest {
 export interface DeleteTournamentParticipantRequest {
     tournament: string;
     participant: string;
+}
+
+export interface DeleteTournamentVenueRequest {
+    venue: string;
 }
 
 export interface DeleteWatchListRequest {
@@ -1708,7 +1713,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Create a tournament; the caller becomes its owner
+     * Create a tournament; the caller becomes its owner  A non-blank `venue` is remembered into the caller\'s own venue book — see [`remember_venue`]. It is written *before* the tournament, because building the insert consumes the request; the two share one transaction, so a tournament that fails to insert takes the remembered venue with it.
      * Create a tournament; the caller becomes its owner
      */
     async createTournamentRaw(requestParameters: CreateTournamentOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CreateTournament200Response>> {
@@ -1719,7 +1724,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Create a tournament; the caller becomes its owner
+     * Create a tournament; the caller becomes its owner  A non-blank `venue` is remembered into the caller\'s own venue book — see [`remember_venue`]. It is written *before* the tournament, because building the insert consumes the request; the two share one transaction, so a tournament that fails to insert takes the remembered venue with it.
      * Create a tournament; the caller becomes its owner
      */
     async createTournament(requestParameters: CreateTournamentOperationRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CreateTournament200Response> {
@@ -2452,6 +2457,57 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async deleteTournamentParticipant(requestParameters: DeleteTournamentParticipantRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
         const response = await this.deleteTournamentParticipantRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for deleteTournamentVenue without sending the request
+     */
+    async deleteTournamentVenueRequestOpts(requestParameters: DeleteTournamentVenueRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['venue'] == null) {
+            throw new runtime.RequiredError(
+                'venue',
+                'Required parameter "venue" was null or undefined when calling deleteTournamentVenue().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/tournaments/venues/{venue}`;
+        urlPath = urlPath.replace('{venue}', encodeURIComponent(String(requestParameters['venue'])));
+
+        return {
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Drop one entry from the caller\'s own venue book
+     * Drop one entry from the caller\'s own venue book
+     */
+    async deleteTournamentVenueRaw(requestParameters: DeleteTournamentVenueRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
+        const requestOptions = await this.deleteTournamentVenueRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<any>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     * Drop one entry from the caller\'s own venue book
+     * Drop one entry from the caller\'s own venue book
+     */
+    async deleteTournamentVenue(requestParameters: DeleteTournamentVenueRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
+        const response = await this.deleteTournamentVenueRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -5125,6 +5181,45 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for listTournamentVenues without sending the request
+     */
+    async listTournamentVenuesRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/tournaments/venues`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * The caller\'s own venue book, most recently used first  Note: `/venues` is a static path segment while `/{tournament}` is a dynamic one, so axum\'s router already prefers the static match here — nothing to arrange, just worth being aware of on a route table shaped like this one.
+     * The caller\'s own venue book, most recently used first
+     */
+    async listTournamentVenuesRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListTournamentVenuesResponse>> {
+        const requestOptions = await this.listTournamentVenuesRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * The caller\'s own venue book, most recently used first  Note: `/venues` is a static path segment while `/{tournament}` is a dynamic one, so axum\'s router already prefers the static match here — nothing to arrange, just worth being aware of on a route table shaped like this one.
+     * The caller\'s own venue book, most recently used first
+     */
+    async listTournamentVenues(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListTournamentVenuesResponse> {
+        const response = await this.listTournamentVenuesRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for listTournaments without sending the request
      */
     async listTournamentsRequestOpts(): Promise<runtime.RequestOpts> {
@@ -7725,7 +7820,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Update a tournament\'s settings  The always-editable fields (name, description, venue, start time, round length) go through even while the event is running; a structural change (format, pod size, pairing, scoring, ...) while [`SettingsChange::Locked`] answers [`TournamentSettingsErrors::settings_locked`] instead — see [`Tournament::update_settings`]\'s doc comment for exactly what counts as structural.
+     * Update a tournament\'s settings  The always-editable fields (name, description, venue, start time, round length) go through even while the event is running; a structural change (format, pod size, pairing, scoring, ...) while [`SettingsChange::Locked`] answers [`TournamentSettingsErrors::settings_locked`] instead — see [`Tournament::update_settings`]\'s doc comment for exactly what counts as structural. A non-blank `venue` is remembered into the caller\'s own venue book — see [`remember_venue`] — once the write actually goes through.
      * Update a tournament\'s settings
      */
     async updateTournamentRaw(requestParameters: UpdateTournamentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FormErrorResponseForTournamentSettingsErrors>> {
@@ -7736,7 +7831,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Update a tournament\'s settings  The always-editable fields (name, description, venue, start time, round length) go through even while the event is running; a structural change (format, pod size, pairing, scoring, ...) while [`SettingsChange::Locked`] answers [`TournamentSettingsErrors::settings_locked`] instead — see [`Tournament::update_settings`]\'s doc comment for exactly what counts as structural.
+     * Update a tournament\'s settings  The always-editable fields (name, description, venue, start time, round length) go through even while the event is running; a structural change (format, pod size, pairing, scoring, ...) while [`SettingsChange::Locked`] answers [`TournamentSettingsErrors::settings_locked`] instead — see [`Tournament::update_settings`]\'s doc comment for exactly what counts as structural. A non-blank `venue` is remembered into the caller\'s own venue book — see [`remember_venue`] — once the write actually goes through.
      * Update a tournament\'s settings
      */
     async updateTournament(requestParameters: UpdateTournamentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FormErrorResponseForTournamentSettingsErrors> {

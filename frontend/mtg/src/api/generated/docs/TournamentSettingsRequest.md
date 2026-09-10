@@ -26,6 +26,8 @@ Name | Type
 `round_minutes` | number
 `starts_at` | string
 `venue` | string
+`venue_address` | string
+`venue_instructions` | string
 
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)

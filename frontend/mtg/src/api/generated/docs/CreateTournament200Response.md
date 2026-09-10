@@ -34,6 +34,8 @@ Name | Type
 `status` | [TournamentStatus](TournamentStatus.md)
 `uuid` | string
 `venue` | string
+`venue_address` | string
+`venue_instructions` | string
 `visibility` | [Visibility](Visibility.md)
 `error` | [TournamentSettingsErrors](TournamentSettingsErrors.md)
 `result` | [ErrorConstant](ErrorConstant.md)

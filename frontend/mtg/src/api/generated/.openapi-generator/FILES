@@ -113,6 +113,7 @@ docs/ListSharedParticipantsResponse.md
 docs/ListTournamentAuditResponse.md
 docs/ListTournamentOrganizersResponse.md
 docs/ListTournamentParticipantsResponse.md
+docs/ListTournamentVenuesResponse.md
 docs/ListTournamentsResponse.md
 docs/ListWatchListAlarmsResponse.md
 docs/ListWatchListCopiesResponse.md
@@ -216,6 +217,7 @@ docs/TournamentResponse.md
 docs/TournamentSettingsErrors.md
 docs/TournamentSettingsRequest.md
 docs/TournamentStatus.md
+docs/TournamentVenueResponse.md
 docs/TournamentViewerResponse.md
 docs/UpdateCollectionEntryRequest.md
 docs/UpdateCollectionRequest.md
