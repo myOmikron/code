@@ -30,10 +30,12 @@ use crate::models::tournament::TournamentParticipantUuid;
 use crate::models::tournament::TournamentRole;
 use crate::models::tournament::TournamentStatus;
 use crate::models::tournament::TournamentUuid;
+use crate::models::tournament::TournamentVenueUuid;
 use crate::models::tournament::TournamentWithViewer;
 use crate::models::tournament::decklist::Decklist;
 use crate::models::tournament::listing::TournamentListEntry;
 use crate::models::tournament::participant::TournamentParticipant;
+use crate::models::tournament::venue::Venue;
 use crate::models::visibility::Visibility;
 
 /// A tournament, as an actor may see it
@@ -98,6 +100,10 @@ pub struct TournamentResponse {
     pub join_code_expires_at: Option<SchemaDateTime>,
     /// Where the event takes place
     pub venue: Option<MaxStr<255>>,
+    /// The venue's address, meaningful only alongside [`Self::venue`]
+    pub venue_address: Option<MaxStr<512>>,
+    /// How to actually get in, meaningful only alongside [`Self::venue`]
+    pub venue_instructions: Option<MaxStr<1024>>,
     /// When the event is announced to start
     pub starts_at: Option<SchemaDateTime>,
     /// When the event finished and its standings were frozen
@@ -138,6 +144,8 @@ impl TournamentResponse {
             join_code: role_holder.then_some(tournament.join_code).flatten(),
             join_code_expires_at: tournament.join_code_expires_at.map(SchemaDateTime),
             venue: tournament.venue,
+            venue_address: tournament.venue_address,
+            venue_instructions: tournament.venue_instructions,
             starts_at: tournament.starts_at.map(SchemaDateTime),
             finished_at: tournament.finished_at.map(SchemaDateTime),
             created_at: SchemaDateTime(tournament.created_at),
@@ -281,6 +289,13 @@ pub struct TournamentSettingsRequest {
     pub guest_names_public: bool,
     /// Where the event takes place
     pub venue: Option<MaxStr<255>>,
+    /// The venue's address — meaningful only alongside [`Self::venue`]; the
+    /// handler blanks it when `venue` is empty
+    pub venue_address: Option<MaxStr<512>>,
+    /// How to actually get in ("Hinterhof, bitte klingeln") — meaningful
+    /// only alongside [`Self::venue`], shown to everyone who can see the
+    /// tournament
+    pub venue_instructions: Option<MaxStr<1024>>,
     /// When the event is announced to start
     pub starts_at: Option<SchemaDateTime>,
 }
@@ -641,4 +656,35 @@ pub struct CheckInErrors {
     /// The tournament's decklist policy requires a decklist before check-in
     /// and this player has none on file
     pub decklist_missing: bool,
+}
+
+/// One venue from the caller's own book, as offered back by the picker
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct TournamentVenueResponse {
+    /// Primary key
+    pub uuid: TournamentVenueUuid,
+    /// Name of the place
+    pub name: MaxStr<255>,
+    /// Where it is
+    pub address: Option<MaxStr<512>>,
+    /// How to actually get in
+    pub instructions: Option<MaxStr<1024>>,
+}
+
+impl From<Venue> for TournamentVenueResponse {
+    fn from(venue: Venue) -> Self {
+        Self {
+            uuid: venue.uuid,
+            name: venue.name,
+            address: venue.address,
+            instructions: venue.instructions,
+        }
+    }
+}
+
+/// The caller's own venue book, most recently used first
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct ListTournamentVenuesResponse {
+    /// The venues, most recently used first
+    pub venues: Vec<TournamentVenueResponse>,
 }

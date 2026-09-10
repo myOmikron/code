@@ -65,6 +65,7 @@ pub mod extractor;
 pub mod listing;
 pub mod participant;
 pub mod public;
+pub mod venue;
 
 /// How long a freshly minted join code stays live when the tournament names
 /// no start time
@@ -325,6 +326,31 @@ impl TournamentParticipantUuid {
     }
 }
 
+/// Wrapper for the primary key of the [`venue::Venue`] model.
+/// To have better distinguishable types.
+///
+/// No `new_from_field` constructor, unlike [`TournamentUuid`] and
+/// [`TournamentParticipantUuid`]: nothing holds a `ForeignModel` pointing at
+/// a venue row — the "no provenance FK" decision means a venue's uuid is
+/// only ever read back as the raw primary key, never as somebody else's
+/// foreign key column. [`WatchListEntryUuid`](crate::models::watch_list::WatchListEntryUuid)
+/// and [`DeckCardUuid`](crate::models::deck::DeckCardUuid) are the same
+/// shape for the same reason.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, JsonSchema, Hash, Eq, PartialEq)]
+pub struct TournamentVenueUuid(Uuid);
+
+impl TournamentVenueUuid {
+    /// Get the underlying UUID type
+    pub fn into_inner(self) -> Uuid {
+        self.0
+    }
+
+    /// Wrap a uuid read back from a hand-written query
+    pub(in crate::models) fn from_uuid(uuid: Uuid) -> Self {
+        Self(uuid)
+    }
+}
+
 /// Outcome of an operation gated on holding some role in a tournament
 ///
 /// One [`Self::Denied`] for "does not exist" and "not yours to touch" alike,
@@ -446,6 +472,10 @@ pub struct Tournament {
     pub join_code_expires_at: Option<OffsetDateTime>,
     /// Where the event takes place, in the organizer's words
     pub venue: Option<MaxStr<255>>,
+    /// The venue's address, meaningful only alongside [`Self::venue`]
+    pub venue_address: Option<MaxStr<512>>,
+    /// How to actually get in, meaningful only alongside [`Self::venue`]
+    pub venue_instructions: Option<MaxStr<1024>>,
     /// When the event is announced to start
     pub starts_at: Option<OffsetDateTime>,
     /// When the event finished and its standings were frozen
@@ -540,6 +570,10 @@ pub struct TournamentInsert {
     pub visibility: Visibility,
     /// Where the event takes place
     pub venue: Option<MaxStr<255>>,
+    /// The venue's address, meaningful only alongside [`Self::venue`]
+    pub venue_address: Option<MaxStr<512>>,
+    /// How to actually get in, meaningful only alongside [`Self::venue`]
+    pub venue_instructions: Option<MaxStr<1024>>,
     /// When the event is announced to start
     pub starts_at: Option<OffsetDateTime>,
 }
@@ -556,6 +590,10 @@ pub struct TournamentUpdate {
     pub description: Option<MaxStr<1024>>,
     /// Where the event takes place
     pub venue: Option<MaxStr<255>>,
+    /// The venue's address, meaningful only alongside [`Self::venue`]
+    pub venue_address: Option<MaxStr<512>>,
+    /// How to actually get in, meaningful only alongside [`Self::venue`]
+    pub venue_instructions: Option<MaxStr<1024>>,
     /// When the event is announced to start
     pub starts_at: Option<OffsetDateTime>,
     /// Default round length in minutes
@@ -795,6 +833,8 @@ impl Tournament {
                 join_code: None,
                 join_code_expires_at: None,
                 venue: insert.venue,
+                venue_address: insert.venue_address,
+                venue_instructions: insert.venue_instructions,
                 starts_at: insert.starts_at,
             })
             .await?;
@@ -815,11 +855,12 @@ impl Tournament {
 
     /// Update a tournament's settings
     ///
-    /// `name`, `description`, `venue`, `starts_at`, `round_minutes`,
-    /// `decklist_policy`, `participant_audience` and `guest_names_public` are
-    /// always editable — an organizer must be able to fix a typo, move the
-    /// venue, relax/tighten the decklist requirement, or change who may see
-    /// the roster and whether guests are named, while the event is running.
+    /// `name`, `description`, `venue`, `venue_address`, `venue_instructions`,
+    /// `starts_at`, `round_minutes`, `decklist_policy`, `participant_audience`
+    /// and `guest_names_public` are always editable — an organizer must be
+    /// able to fix a typo, move the venue, relax/tighten the decklist
+    /// requirement, or change who may see the roster and whether guests are
+    /// named, while the event is running.
     /// Everything structural (format,
     /// `pod_size`, `games_per_match`, `pairing_system`, the
     /// point values, `require_check_in`, `allow_late_entry`,
@@ -875,6 +916,11 @@ impl Tournament {
             .set_if(TournamentModel.name, Some(update.name))
             .set_if(TournamentModel.description, Some(update.description))
             .set_if(TournamentModel.venue, Some(update.venue))
+            .set_if(TournamentModel.venue_address, Some(update.venue_address))
+            .set_if(
+                TournamentModel.venue_instructions,
+                Some(update.venue_instructions),
+            )
             .set_if(TournamentModel.starts_at, Some(update.starts_at))
             .set_if(TournamentModel.round_minutes, Some(update.round_minutes))
             .set_if(
@@ -1591,6 +1637,8 @@ impl From<TournamentModel> for Tournament {
             join_code: value.join_code,
             join_code_expires_at: value.join_code_expires_at,
             venue: value.venue,
+            venue_address: value.venue_address,
+            venue_instructions: value.venue_instructions,
             starts_at: value.starts_at,
             finished_at: value.finished_at,
             created_at: value.created_at,

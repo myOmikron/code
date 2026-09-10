@@ -21,8 +21,10 @@ use galvyn::delete;
 use galvyn::get;
 use galvyn::post;
 use galvyn::put;
+use galvyn::rorm;
 use galvyn::rorm::Database;
 use galvyn::rorm::db::transaction::Transaction;
+use galvyn::rorm::fields::types::MaxStr;
 
 use crate::http::handler_frontend::tournaments::schema::AddOrganizerErrors;
 use crate::http::handler_frontend::tournaments::schema::AddTournamentOrganizerRequest;
@@ -41,6 +43,7 @@ use crate::http::handler_frontend::tournaments::schema::ListTournamentAuditQuery
 use crate::http::handler_frontend::tournaments::schema::ListTournamentAuditResponse;
 use crate::http::handler_frontend::tournaments::schema::ListTournamentOrganizersResponse;
 use crate::http::handler_frontend::tournaments::schema::ListTournamentParticipantsResponse;
+use crate::http::handler_frontend::tournaments::schema::ListTournamentVenuesResponse;
 use crate::http::handler_frontend::tournaments::schema::ListTournamentsResponse;
 use crate::http::handler_frontend::tournaments::schema::MAX_TOURNAMENT_AUDIT_LIMIT;
 use crate::http::handler_frontend::tournaments::schema::SetDecklistRequest;
@@ -52,6 +55,7 @@ use crate::http::handler_frontend::tournaments::schema::TournamentParticipantRes
 use crate::http::handler_frontend::tournaments::schema::TournamentResponse;
 use crate::http::handler_frontend::tournaments::schema::TournamentSettingsErrors;
 use crate::http::handler_frontend::tournaments::schema::TournamentSettingsRequest;
+use crate::http::handler_frontend::tournaments::schema::TournamentVenueResponse;
 use crate::http::handler_frontend::tournaments::schema::UpdateTournamentParticipantRequest;
 use crate::models::account::Account;
 use crate::models::account::AccountUuid;
@@ -67,6 +71,7 @@ use crate::models::tournament::TournamentParticipantUuid;
 use crate::models::tournament::TournamentRole;
 use crate::models::tournament::TournamentUpdate;
 use crate::models::tournament::TournamentUuid;
+use crate::models::tournament::TournamentVenueUuid;
 use crate::models::tournament::decklist;
 use crate::models::tournament::decklist::DecklistChange;
 use crate::models::tournament::decklist::DecklistSource;
@@ -76,6 +81,7 @@ use crate::models::tournament::participant::CheckInOutcome;
 use crate::models::tournament::participant::ClaimOutcome;
 use crate::models::tournament::participant::RegistrationOutcome;
 use crate::models::tournament::public;
+use crate::models::tournament::venue;
 use crate::models::visibility::Visibility;
 
 // --- actor block: no `AuthRequiredLayer`, identity via `TournamentActor` ---
@@ -299,6 +305,11 @@ pub async fn set_participant_decklist(
 // --- management block: behind `AuthRequiredLayer`, identity via `Account` ---
 
 /// Create a tournament; the caller becomes its owner
+///
+/// A non-blank `venue` is remembered into the caller's own venue book — see
+/// [`remember_venue`]. It is written *before* the tournament, because
+/// building the insert consumes the request; the two share one transaction,
+/// so a tournament that fails to insert takes the remembered venue with it.
 #[post("/")]
 pub async fn create_tournament(
     account: Account,
@@ -313,12 +324,16 @@ pub async fn create_tournament(
 
     let mut tx = Database::global().start_transaction().await?;
 
-    let tournament = Tournament::create(
+    let insert = insert_from_settings(settings, visibility);
+    remember_venue(
         &mut tx,
         account.uuid,
-        insert_from_settings(settings, visibility),
+        &insert.venue,
+        &insert.venue_address,
+        &insert.venue_instructions,
     )
     .await?;
+    let tournament = Tournament::create(&mut tx, account.uuid, insert).await?;
 
     tx.commit().await?;
 
@@ -335,7 +350,8 @@ pub async fn create_tournament(
 /// (format, pod size, pairing, scoring, ...) while [`SettingsChange::Locked`]
 /// answers [`TournamentSettingsErrors::settings_locked`] instead — see
 /// [`Tournament::update_settings`]'s doc comment for exactly what counts as
-/// structural.
+/// structural. A non-blank `venue` is remembered into the caller's own venue
+/// book — see [`remember_venue`] — once the write actually goes through.
 #[put("/{tournament}")]
 pub async fn update_tournament(
     account: Account,
@@ -349,7 +365,9 @@ pub async fn update_tournament(
     let mut tx = Database::global().start_transaction().await?;
 
     let update = update_from_settings(settings);
-    match Tournament::update_settings(&mut tx, account.uuid, tournament_uuid, update).await? {
+    match Tournament::update_settings(&mut tx, account.uuid, tournament_uuid, update.clone())
+        .await?
+    {
         TournamentAccess::Granted(SettingsChange::Changed) => {}
         TournamentAccess::Granted(SettingsChange::Locked) => {
             let mut errors = FormErrors::<TournamentSettingsErrors>::new();
@@ -358,6 +376,14 @@ pub async fn update_tournament(
         }
         TournamentAccess::Denied => return Err(denied()),
     }
+    remember_venue(
+        &mut tx,
+        account.uuid,
+        &update.venue,
+        &update.venue_address,
+        &update.venue_instructions,
+    )
+    .await?;
 
     tx.commit().await?;
 
@@ -764,6 +790,47 @@ pub async fn list_tournament_audit(
     }))
 }
 
+/// The caller's own venue book, most recently used first
+///
+/// Note: `/venues` is a static path segment while `/{tournament}` is a
+/// dynamic one, so axum's router already prefers the static match here —
+/// nothing to arrange, just worth being aware of on a route table shaped
+/// like this one.
+#[get("/venues")]
+pub async fn list_tournament_venues(
+    account: Account,
+) -> ApiResult<ApiJson<ListTournamentVenuesResponse>> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    let venues = venue::list_for_account(&mut tx, account.uuid).await?;
+
+    tx.commit().await?;
+
+    Ok(ApiJson(ListTournamentVenuesResponse {
+        venues: venues
+            .into_iter()
+            .map(TournamentVenueResponse::from)
+            .collect(),
+    }))
+}
+
+/// Drop one entry from the caller's own venue book
+#[delete("/venues/{venue}")]
+pub async fn delete_tournament_venue(
+    account: Account,
+    Path(venue_uuid): Path<TournamentVenueUuid>,
+) -> ApiResult<ApiJson<()>> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    if !venue::forget(&mut tx, account.uuid, venue_uuid).await? {
+        return Err(denied());
+    }
+
+    tx.commit().await?;
+
+    Ok(ApiJson(()))
+}
+
 // --- shared helpers ---
 
 /// Turn a denied access into the one answer every refused request gets
@@ -814,12 +881,86 @@ fn validate_settings(
     }
 }
 
+/// Whether `venue` names an actual place — blank or `None` both read as "no venue"
+fn has_venue(venue: &Option<MaxStr<255>>) -> bool {
+    venue
+        .as_deref()
+        .is_some_and(|venue| !venue.trim().is_empty())
+}
+
+/// Blank `address`/`instructions` when `venue` does not name an actual place
+///
+/// An address with no place attached is not something any surface can
+/// render — shared by [`insert_from_settings`] and [`update_from_settings`]
+/// so the rule cannot drift between create and update.
+fn venue_pair(
+    venue: &Option<MaxStr<255>>,
+    address: Option<MaxStr<512>>,
+    instructions: Option<MaxStr<1024>>,
+) -> (Option<MaxStr<512>>, Option<MaxStr<1024>>) {
+    if has_venue(venue) {
+        (address, instructions)
+    } else {
+        (None, None)
+    }
+}
+
+/// Trim a venue line, and read a blank one as no venue at all
+///
+/// Every surface tests a venue for emptiness rather than for `None`, so a
+/// stored `"   "` would draw a venue heading with nothing under it — and
+/// [`venue_pair`] has already thrown its address away by then.
+fn venue_name(venue: Option<MaxStr<255>>) -> Option<MaxStr<255>> {
+    let venue = venue?;
+    let trimmed = venue.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+    if trimmed.len() == venue.len() {
+        return Some(venue);
+    }
+    Some(
+        MaxStr::new(trimmed.to_owned())
+            .unwrap_or_else(|_| unreachable!("trimming a MaxStr<255> keeps it under the bound")),
+    )
+}
+
+/// Write a non-blank venue into the caller's own venue book, once the
+/// tournament write that named it has gone through
+///
+/// A no-op for a blank/`None` venue. The book's name column carries the same
+/// [`MaxStr<255>`] bound as a tournament's own venue line, so a name that got
+/// this far always fits and nothing is truncated.
+async fn remember_venue(
+    tx: &mut Transaction,
+    account: AccountUuid,
+    venue: &Option<MaxStr<255>>,
+    address: &Option<MaxStr<512>>,
+    instructions: &Option<MaxStr<1024>>,
+) -> Result<(), rorm::Error> {
+    let Some(name) = venue
+        .as_deref()
+        .map(str::trim)
+        .filter(|name| !name.is_empty())
+    else {
+        return Ok(());
+    };
+    let name = MaxStr::new(name.to_owned())
+        .unwrap_or_else(|_| unreachable!("trimming a MaxStr<255> keeps it under the bound"));
+    venue::remember(tx, account, &name, address.as_ref(), instructions.as_ref()).await
+}
+
 /// Build a [`TournamentInsert`] from a validated [`TournamentSettingsRequest`] plus the
 /// visibility [`create_tournament`] takes alongside it
 fn insert_from_settings(
     settings: TournamentSettingsRequest,
     visibility: Visibility,
 ) -> TournamentInsert {
+    let (venue_address, venue_instructions) = venue_pair(
+        &settings.venue,
+        settings.venue_address,
+        settings.venue_instructions,
+    );
     TournamentInsert {
         name: settings.name,
         description: settings.description,
@@ -839,17 +980,26 @@ fn insert_from_settings(
         participant_audience: settings.participant_audience,
         guest_names_public: settings.guest_names_public,
         visibility,
-        venue: settings.venue,
+        venue: venue_name(settings.venue),
+        venue_address,
+        venue_instructions,
         starts_at: settings.starts_at.map(|starts_at| starts_at.0),
     }
 }
 
 /// Build a [`TournamentUpdate`] from a validated [`TournamentSettingsRequest`]
 fn update_from_settings(settings: TournamentSettingsRequest) -> TournamentUpdate {
+    let (venue_address, venue_instructions) = venue_pair(
+        &settings.venue,
+        settings.venue_address,
+        settings.venue_instructions,
+    );
     TournamentUpdate {
         name: settings.name,
         description: settings.description,
-        venue: settings.venue,
+        venue: venue_name(settings.venue),
+        venue_address,
+        venue_instructions,
         starts_at: settings.starts_at.map(|starts_at| starts_at.0),
         round_minutes: settings.round_minutes,
         format: settings.format,

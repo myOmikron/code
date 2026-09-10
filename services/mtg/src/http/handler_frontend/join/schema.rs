@@ -31,6 +31,11 @@ pub struct JoinLookupResponse {
     pub starts_at: Option<SchemaDateTime>,
     /// Where the event takes place
     pub venue: Option<MaxStr<255>>,
+    /// The venue's address, meaningful only alongside [`Self::venue`]
+    pub venue_address: Option<MaxStr<512>>,
+    /// How to actually get in — shown to everyone who can see this lookup,
+    /// same as the address
+    pub venue_instructions: Option<MaxStr<1024>>,
     /// How the tournament requires its players to hand in a decklist
     pub decklist_policy: DecklistPolicy,
     /// How many people are on the roster already

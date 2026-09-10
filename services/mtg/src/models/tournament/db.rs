@@ -154,6 +154,17 @@ pub struct TournamentModel {
     /// Where the event takes place, in the organizer's words
     pub venue: Option<MaxStr<255>>,
 
+    /// The venue's address — snapshotted at save time, not a foreign key
+    /// into [`TournamentVenueModel`]. See the module docs on
+    /// [`crate::models::tournament::venue`] for why there is no `venue_ref`.
+    /// Meaningful only alongside [`Self::venue`].
+    pub venue_address: Option<MaxStr<512>>,
+
+    /// How to actually get in — "Hinterhof, bitte klingeln" and the like,
+    /// snapshotted the same way as [`Self::venue_address`]. Shown to
+    /// everyone who can see the tournament, the same as the address itself.
+    pub venue_instructions: Option<MaxStr<1024>>,
+
     /// When the event is announced to start
     pub starts_at: Option<OffsetDateTime>,
 
@@ -219,6 +230,10 @@ pub struct TournamentInsertPatch {
     pub join_code_expires_at: Option<OffsetDateTime>,
     /// Where the event takes place
     pub venue: Option<MaxStr<255>>,
+    /// The venue's address
+    pub venue_address: Option<MaxStr<512>>,
+    /// How to actually get in
+    pub venue_instructions: Option<MaxStr<1024>>,
     /// When the event is announced to start
     pub starts_at: Option<OffsetDateTime>,
 }
@@ -516,4 +531,75 @@ pub struct TournamentDecklistInsertPatch {
     pub deck: Option<ForeignModel<DeckModel>>,
     /// The list itself
     pub text: MaxStr<16384>,
+}
+
+/// One place an account has run a tournament at
+///
+/// The account's own book of venues, kept for the picker — not something a
+/// tournament points into. [`TournamentModel::venue`]/`venue_address`/
+/// `venue_instructions` snapshot a copy of a row here at save time and never
+/// look back at it; renaming or deleting a row here must never rewrite an
+/// event that already ran. Modelled on [`crate::models::watch_list::db::WatchListModel`].
+#[derive(Model, Debug)]
+#[rorm(rename = "tournament_venue")]
+pub struct TournamentVenueModel {
+    /// Primary key
+    #[rorm(primary_key)]
+    pub uuid: Uuid,
+
+    /// Name of the place
+    pub name: MaxStr<255>,
+
+    /// [`Self::name`] lowercased, the upsert's lookup key
+    ///
+    /// Unique together with [`Self::owner`] — a raw-SQL index in the
+    /// migration, since rorm has no composite unique annotation. Bounded
+    /// like [`TournamentModel::venue`] rather than tighter, so every name a
+    /// tournament accepts has a key the book can store.
+    pub name_normalized: MaxStr<255>,
+
+    /// Where it is, in the organizer's words
+    pub address: Option<MaxStr<512>>,
+
+    /// How to actually get in — "Hinterhof, bitte klingeln" and the like
+    pub instructions: Option<MaxStr<1024>>,
+
+    /// The account this venue belongs to
+    ///
+    /// Indexed for the same reason as `watch_list.owner`: every read filters
+    /// on it, and a foreign key carries no index of its own.
+    #[rorm(index, on_update = "Cascade", on_delete = "Cascade")]
+    pub owner: ForeignModel<AccountModel>,
+
+    /// The point in time the venue was first used
+    #[rorm(auto_create_time)]
+    pub created_at: OffsetDateTime,
+
+    /// The point in time the venue was last used
+    ///
+    /// Plain, not `auto_update_time`: it is written explicitly by
+    /// [`crate::models::tournament::venue::remember`] alone, so that a
+    /// `DELETE` or an update of some other column can never bump it as a
+    /// side effect.
+    pub last_used_at: OffsetDateTime,
+}
+
+/// Insert patch for [`TournamentVenueModel`]
+#[derive(Patch)]
+#[rorm(model = "TournamentVenueModel")]
+pub struct TournamentVenueInsertPatch {
+    /// Primary key
+    pub uuid: Uuid,
+    /// Name of the place
+    pub name: MaxStr<255>,
+    /// The name lowercased
+    pub name_normalized: MaxStr<255>,
+    /// Where it is
+    pub address: Option<MaxStr<512>>,
+    /// How to actually get in
+    pub instructions: Option<MaxStr<1024>>,
+    /// The account this venue belongs to
+    pub owner: ForeignModel<AccountModel>,
+    /// The point in time the venue was last used
+    pub last_used_at: OffsetDateTime,
 }

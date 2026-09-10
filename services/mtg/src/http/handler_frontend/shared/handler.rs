@@ -207,6 +207,8 @@ pub async fn get_shared_tournament(
         pod_size: tournament.pod_size,
         status: tournament.status,
         venue: tournament.venue,
+        venue_address: tournament.venue_address,
+        venue_instructions: tournament.venue_instructions,
         starts_at: tournament.starts_at.map(SchemaDateTime),
         participant_count,
         roster_available,

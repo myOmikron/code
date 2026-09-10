@@ -69,6 +69,11 @@ pub struct SharedTournamentResponse {
     pub status: TournamentStatus,
     /// Where the event takes place
     pub venue: Option<MaxStr<255>>,
+    /// The venue's address, meaningful only alongside [`Self::venue`]
+    pub venue_address: Option<MaxStr<512>>,
+    /// How to actually get in — shown to everyone who can see this link,
+    /// same as the address
+    pub venue_instructions: Option<MaxStr<1024>>,
     /// When the event is announced to start
     pub starts_at: Option<SchemaDateTime>,
     /// How many people are on the roster, regardless of `roster_available`

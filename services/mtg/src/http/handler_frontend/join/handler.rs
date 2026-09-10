@@ -72,6 +72,8 @@ pub async fn look_up_join_code(
         status: tournament.status,
         starts_at: tournament.starts_at.map(SchemaDateTime),
         venue: tournament.venue,
+        venue_address: tournament.venue_address,
+        venue_instructions: tournament.venue_instructions,
         decklist_policy: tournament.decklist_policy,
         participant_count,
         registration_open: is_registration_open,
