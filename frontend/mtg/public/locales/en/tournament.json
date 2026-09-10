@@ -7,6 +7,7 @@
     },
     "button": {
         "add-player": "Add player",
+        "advanced-settings": "Advanced settings",
         "cancel-tournament": "Cancel tournament",
         "check-in": "Check in",
         "claim-qr": "Seat QR",
@@ -54,6 +55,7 @@
         "participant-audience-anyone": "Visible through the share link as well.",
         "participant-audience-organizers": "Players see only their own entry.",
         "participant-audience-participants": "Everyone registered sees the whole field.",
+        "round-minutes": "The default for each round's clock.",
         "scoring": "The default follows the table: 7 / 1 / 0 at a pod of four (2n−1 per the Multiplayer Addendum), 3 / 1 / 0 one on one. Enter 5 / 1 / 0 for a Topdeck-style event, say.",
         "settings-locked": "The tournament is running — structure and scoring are frozen.",
         "share-link": "Anyone holding the link sees the tournament, and the player list if you opened it to anyone.",
@@ -102,6 +104,8 @@
     },
     "label": {
         "best-of": "Best of {{games}}",
+        "check-in-off": "without check-in",
+        "check-in-on": "with check-in",
         "claim-token-none": "This seat already belongs to an account.",
         "co-organizer": "Co-organizer",
         "code": "Code",
@@ -155,6 +159,7 @@
         "points-win": "Points per win",
         "require-check-in": "Check-in required",
         "round-minutes": "Round length (minutes)",
+        "round-minutes-short": "{{minutes}} min",
         "scorekeeper": "Scorekeeper",
         "scoring": "Scoring",
         "show-all-formats": "Show all formats",

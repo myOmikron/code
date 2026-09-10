@@ -1,4 +1,4 @@
-import { GlobeAltIcon, LinkIcon, LockClosedIcon } from "@heroicons/react/20/solid";
+import { ChevronRightIcon, GlobeAltIcon, LinkIcon, LockClosedIcon } from "@heroicons/react/20/solid";
 import {
     Button,
     Checkbox,
@@ -22,9 +22,11 @@ import {
     ListboxOption,
     PrimaryButton,
     RequiredLabel,
+    Text,
     Textarea,
 } from "components";
 import { useForm } from "@tanstack/react-form";
+import clsx from "clsx";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
@@ -187,11 +189,19 @@ function initialValues(tournament: TournamentResponse | null) {
  * pod size follows from the format (see `podSizeFor`) and is never shown, so a refusal of it
  * can only mean the derivation and the backend disagree.
  *
+ * The two refusals that name a value inside the advanced section also open it. Round length
+ * carries a field message, and a message on a collapsed input is no message at all; the four
+ * point values carry only a form-level one, which says what is wrong but not where to fix it.
+ *
  * @param t the `tournament` namespace translator
+ * @param revealAdvanced opens the advanced section, for refusals that name a value inside it
  *
  * @returns the handler map {@link handleFormError} wants
  */
-function settingsErrorHandlers(t: (key: string) => string): {
+function settingsErrorHandlers(
+    t: (key: string) => string,
+    revealAdvanced: () => void,
+): {
     [Key in keyof TournamentSettingsErrors]: (errors: ValidationErrors) => void;
 } {
     return {
@@ -206,9 +216,11 @@ function settingsErrorHandlers(t: (key: string) => string): {
         },
         invalid_points: (errors) => {
             errors.form = t("error.invalid-points");
+            revealAdvanced();
         },
         invalid_round_length: (errors) => {
             errors.fields.roundMinutes = t("error.invalid-round-length");
+            revealAdvanced();
         },
         settings_locked: (errors) => {
             errors.form = t("description.settings-locked");
@@ -227,6 +239,7 @@ function settingsErrorHandlers(t: (key: string) => string): {
  */
 export function TournamentDialog({ open, tournament, onClose, onSaved }: TournamentDialogProps) {
     const [t] = useTranslation("tournament");
+    const [advancedOpen, setAdvancedOpen] = useState(false);
     const [tg] = useTranslation();
     const [formats, setFormats] = useState<Array<FormatRulesResponse>>([]);
 
@@ -276,14 +289,22 @@ export function TournamentDialog({ open, tournament, onClose, onSaved }: Tournam
 
                 if (tournament === null) {
                     const created = await Api.tournaments.create({ settings, visibility: value.visibility });
-                    if (isFormError(created)) return handleFormError(created.error, settingsErrorHandlers(t));
+                    if (isFormError(created))
+                        return handleFormError(
+                            created.error,
+                            settingsErrorHandlers(t, () => setAdvancedOpen(true)),
+                        );
                     form.reset();
                     onSaved(created);
                     return;
                 }
 
                 const updated = await Api.tournaments.update(tournament.uuid, settings);
-                if (isFormError(updated)) return handleFormError(updated.error, settingsErrorHandlers(t));
+                if (isFormError(updated))
+                    return handleFormError(
+                        updated.error,
+                        settingsErrorHandlers(t, () => setAdvancedOpen(true)),
+                    );
                 form.reset();
                 onSaved(null);
             },
@@ -411,84 +432,6 @@ export function TournamentDialog({ open, tournament, onClose, onSaved }: Tournam
                             )}
                         </form.Subscribe>
 
-                        <Fieldset>
-                            <Legend>{t("label.scoring")}</Legend>
-                            <Description>{t("description.scoring")}</Description>
-                            <div className={"mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4"}>
-                                <form.Field name={"pointsWin"}>
-                                    {(fieldApi) => (
-                                        <Field>
-                                            <Label>{t("label.points-win")}</Label>
-                                            <Input
-                                                type={"number"}
-                                                min={0}
-                                                value={fieldApi.state.value}
-                                                onChange={(event) => fieldApi.handleChange(Number(event.target.value))}
-                                            />
-                                        </Field>
-                                    )}
-                                </form.Field>
-                                <form.Field name={"pointsDraw"}>
-                                    {(fieldApi) => (
-                                        <Field>
-                                            <Label>{t("label.points-draw")}</Label>
-                                            <Input
-                                                type={"number"}
-                                                min={0}
-                                                value={fieldApi.state.value}
-                                                onChange={(event) => fieldApi.handleChange(Number(event.target.value))}
-                                            />
-                                        </Field>
-                                    )}
-                                </form.Field>
-                                <form.Field name={"pointsLoss"}>
-                                    {(fieldApi) => (
-                                        <Field>
-                                            <Label>{t("label.points-loss")}</Label>
-                                            <Input
-                                                type={"number"}
-                                                min={0}
-                                                value={fieldApi.state.value}
-                                                onChange={(event) => fieldApi.handleChange(Number(event.target.value))}
-                                            />
-                                        </Field>
-                                    )}
-                                </form.Field>
-                                <form.Field name={"pointsBye"}>
-                                    {(fieldApi) => (
-                                        <Field>
-                                            <Label>{t("label.points-bye")}</Label>
-                                            <Input
-                                                type={"number"}
-                                                min={0}
-                                                value={fieldApi.state.value}
-                                                onChange={(event) => fieldApi.handleChange(Number(event.target.value))}
-                                            />
-                                        </Field>
-                                    )}
-                                </form.Field>
-                            </div>
-                        </Fieldset>
-
-                        <form.Field name={"roundMinutes"}>
-                            {(fieldApi) => (
-                                <Field>
-                                    <Label>{t("label.round-minutes")}</Label>
-                                    <Input
-                                        type={"number"}
-                                        min={10}
-                                        max={600}
-                                        invalid={fieldApi.state.meta.errors.length > 0}
-                                        value={fieldApi.state.value}
-                                        onChange={(event) => fieldApi.handleChange(Number(event.target.value))}
-                                    />
-                                    {fieldApi.state.meta.errors.map((error) => (
-                                        <ErrorMessage key={String(error)}>{String(error)}</ErrorMessage>
-                                    ))}
-                                </Field>
-                            )}
-                        </form.Field>
-
                         <form.Field name={"decklistPolicy"}>
                             {(fieldApi) => (
                                 <Field>
@@ -542,18 +485,6 @@ export function TournamentDialog({ open, tournament, onClose, onSaved }: Tournam
                                         </ListboxOption>
                                     </Listbox>
                                 </Field>
-                            )}
-                        </form.Field>
-
-                        <form.Field name={"requireCheckIn"}>
-                            {(fieldApi) => (
-                                <CheckboxField>
-                                    <Checkbox
-                                        checked={fieldApi.state.value}
-                                        onChange={(checked) => fieldApi.handleChange(checked)}
-                                    />
-                                    <Label>{t("label.require-check-in")}</Label>
-                                </CheckboxField>
                             )}
                         </form.Field>
 
@@ -617,6 +548,154 @@ export function TournamentDialog({ open, tournament, onClose, onSaved }: Tournam
                                 )}
                             </form.Field>
                         )}
+
+                        <div>
+                            <button
+                                type={"button"}
+                                aria-expanded={advancedOpen}
+                                onClick={() => setAdvancedOpen((held) => !held)}
+                                className={
+                                    "flex items-center gap-1 text-base/6 font-medium text-zinc-950 sm:text-sm/6 dark:text-white"
+                                }
+                            >
+                                {t("button.advanced-settings")}
+                                <ChevronRightIcon
+                                    className={clsx(
+                                        "size-4 shrink-0 transition-transform",
+                                        advancedOpen && "rotate-90",
+                                    )}
+                                    aria-hidden={true}
+                                />
+                            </button>
+                            {!advancedOpen && (
+                                <form.Subscribe
+                                    selector={(state) =>
+                                        [
+                                            state.values.roundMinutes,
+                                            state.values.requireCheckIn,
+                                            state.values.pointsWin,
+                                            state.values.pointsDraw,
+                                            state.values.pointsLoss,
+                                            state.values.pointsBye,
+                                        ] as const
+                                    }
+                                >
+                                    {([minutes, checkIn, win, draw, loss, bye]) => (
+                                        <Text>
+                                            {[
+                                                t("label.round-minutes-short", { minutes }),
+                                                t(checkIn ? "label.check-in-on" : "label.check-in-off"),
+                                                `${t("label.scoring")} ${t("label.points-summary", { win, draw, loss, bye })}`,
+                                            ].join(" · ")}
+                                        </Text>
+                                    )}
+                                </form.Subscribe>
+                            )}
+                            {advancedOpen && (
+                                <div className={"mt-4 space-y-6"}>
+                                    <form.Field name={"roundMinutes"}>
+                                        {(fieldApi) => (
+                                            <Field>
+                                                <Label>{t("label.round-minutes")}</Label>
+                                                <Description>{t("description.round-minutes")}</Description>
+                                                <Input
+                                                    type={"number"}
+                                                    min={10}
+                                                    max={600}
+                                                    invalid={fieldApi.state.meta.errors.length > 0}
+                                                    value={fieldApi.state.value}
+                                                    onChange={(event) =>
+                                                        fieldApi.handleChange(Number(event.target.value))
+                                                    }
+                                                />
+                                                {fieldApi.state.meta.errors.map((error) => (
+                                                    <ErrorMessage key={String(error)}>{String(error)}</ErrorMessage>
+                                                ))}
+                                            </Field>
+                                        )}
+                                    </form.Field>
+
+                                    <form.Field name={"requireCheckIn"}>
+                                        {(fieldApi) => (
+                                            <CheckboxField>
+                                                <Checkbox
+                                                    checked={fieldApi.state.value}
+                                                    onChange={(checked) => fieldApi.handleChange(checked)}
+                                                />
+                                                <Label>{t("label.require-check-in")}</Label>
+                                            </CheckboxField>
+                                        )}
+                                    </form.Field>
+
+                                    <Fieldset>
+                                        <Legend>{t("label.scoring")}</Legend>
+                                        <Description>{t("description.scoring")}</Description>
+                                        <div className={"mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4"}>
+                                            <form.Field name={"pointsWin"}>
+                                                {(fieldApi) => (
+                                                    <Field>
+                                                        <Label>{t("label.points-win")}</Label>
+                                                        <Input
+                                                            type={"number"}
+                                                            min={0}
+                                                            value={fieldApi.state.value}
+                                                            onChange={(event) =>
+                                                                fieldApi.handleChange(Number(event.target.value))
+                                                            }
+                                                        />
+                                                    </Field>
+                                                )}
+                                            </form.Field>
+                                            <form.Field name={"pointsDraw"}>
+                                                {(fieldApi) => (
+                                                    <Field>
+                                                        <Label>{t("label.points-draw")}</Label>
+                                                        <Input
+                                                            type={"number"}
+                                                            min={0}
+                                                            value={fieldApi.state.value}
+                                                            onChange={(event) =>
+                                                                fieldApi.handleChange(Number(event.target.value))
+                                                            }
+                                                        />
+                                                    </Field>
+                                                )}
+                                            </form.Field>
+                                            <form.Field name={"pointsLoss"}>
+                                                {(fieldApi) => (
+                                                    <Field>
+                                                        <Label>{t("label.points-loss")}</Label>
+                                                        <Input
+                                                            type={"number"}
+                                                            min={0}
+                                                            value={fieldApi.state.value}
+                                                            onChange={(event) =>
+                                                                fieldApi.handleChange(Number(event.target.value))
+                                                            }
+                                                        />
+                                                    </Field>
+                                                )}
+                                            </form.Field>
+                                            <form.Field name={"pointsBye"}>
+                                                {(fieldApi) => (
+                                                    <Field>
+                                                        <Label>{t("label.points-bye")}</Label>
+                                                        <Input
+                                                            type={"number"}
+                                                            min={0}
+                                                            value={fieldApi.state.value}
+                                                            onChange={(event) =>
+                                                                fieldApi.handleChange(Number(event.target.value))
+                                                            }
+                                                        />
+                                                    </Field>
+                                                )}
+                                            </form.Field>
+                                        </div>
+                                    </Fieldset>
+                                </div>
+                            )}
+                        </div>
 
                         {formError !== undefined && <InlineError>{formError}</InlineError>}
                     </FieldGroup>
