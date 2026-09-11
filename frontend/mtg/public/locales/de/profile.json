@@ -22,6 +22,7 @@
         "language": "Gilt für die Oberfläche. Kartennamen kommen von Scryfall und bleiben davon unberührt.",
         "passkeys": "Mit diesen Geräten kannst du dich anmelden. Lege für jedes Gerät einen eigenen Passkey an — geht eines verloren, kommst du mit den anderen weiterhin rein.",
         "proxy-fade": "Als Proxy markierte Karten werden im Deck ausgewaschen gezeichnet, damit ein Platzhalter nicht auf den ersten Blick als echte Karte durchgeht.",
+        "public-profile": "Andere finden dein Profil und können dich zu Turnieren hinzufügen. Deine veröffentlichten Decks bleiben so oder so über die Decksuche zu finden.",
         "remove-passkey": "Mit \"{{label}}\" kannst du dich danach nicht mehr anmelden. Das lässt sich nur rückgängig machen, indem du das Gerät neu hinzufügst.",
         "theme": "„Wie das System“ folgt der Einstellung deines Geräts und wechselt mit ihr mit."
     },
@@ -43,6 +44,7 @@
         "delete-account-confirm": "Konto endgültig löschen?",
         "display": "Darstellung",
         "passkeys": "Passkeys",
+        "privacy": "Privatsphäre",
         "profile": "Profil",
         "remove-passkey": "Passkey entfernen?",
         "security": "Sicherheit",
@@ -64,6 +66,7 @@
         "never-used": "Noch nie benutzt",
         "only-passkey": "Einziger Passkey",
         "proxy-fade": "Proxy-Bilder ausbleichen",
+        "public-profile": "Öffentliches Profil",
         "theme": "Erscheinungsbild",
         "theme-dark": "Dunkel",
         "theme-light": "Hell",
@@ -76,6 +79,8 @@
         "foil-tilt-denied": "Ohne Zugriff auf die Bewegungssensoren geht das nicht. Der Zugriff lässt sich in den Einstellungen des Browsers wieder erlauben.",
         "foil-tilt-silent": "Dein Browser liefert keine Bewegungsdaten. Brave blockiert die Sensoren standardmäßig: unter Einstellungen → Website-Einstellungen → Bewegungssensoren erlauben. Über http statt https gibt es sie ebenfalls nicht.",
         "passkey-added": "Passkey hinzugefügt",
-        "passkey-removed": "Passkey entfernt"
+        "passkey-removed": "Passkey entfernt",
+        "profile-closed": "Profil ist verdeckt",
+        "profile-opened": "Profil ist öffentlich"
     }
 }

@@ -16,7 +16,9 @@ import {
 import type { Lang } from "components";
 import { useState, useSyncExternalStore } from "react";
 import { useTranslation } from "react-i18next";
+import { Api } from "src/api/api";
 import { CardmarketSettings } from "src/components/cardmarket-settings";
+import { useAccount } from "src/context/account";
 import { foilTiltEnabled, foilTiltSupported, setFoilTilt, subscribeFoilTilt } from "src/utils/foil-tilt";
 import { proxyFadeEnabled, setProxyFade, subscribeProxyFade } from "src/utils/proxy-fade";
 import { applyTheme, currentTheme } from "src/utils/theme";
@@ -32,6 +34,7 @@ export const Route = createFileRoute("/_menu/profile/_profile/settings")({
 function RouteComponent() {
     const [t, i18n] = useTranslation("profile");
     const [tg] = useTranslation();
+    const me = useAccount();
     const [theme, setTheme] = useState<Theme>(currentTheme);
     const tilt = useSyncExternalStore(subscribeFoilTilt, foilTiltEnabled);
     const proxyFade = useSyncExternalStore(subscribeProxyFade, proxyFadeEnabled);
@@ -67,6 +70,20 @@ function RouteComponent() {
         // something, not a "saved" that has been read by the time it fades.
         if (result === "denied") notify.error(t("toast.foil-tilt-denied"), { autoClose: HINT_SHOWN });
         if (result === "silent") notify.error(t("toast.foil-tilt-silent"), { autoClose: HINT_SHOWN });
+    }
+
+    /**
+     * Opens or closes the public profile.
+     *
+     * The account context holds the flag, so it is refreshed rather than kept in local state —
+     * the switch reads the same value every other surface does.
+     *
+     * @param wanted what the switch was moved to
+     */
+    async function changeProfileVisibility(wanted: boolean) {
+        await Api.accounts.setProfileVisibility(wanted);
+        await me.refresh();
+        notify.success(t(wanted ? "toast.profile-opened" : "toast.profile-closed"));
     }
 
     /**
@@ -140,6 +157,20 @@ function RouteComponent() {
                         <ListboxLabel>{tg("label.german")}</ListboxLabel>
                     </ListboxOption>
                 </Listbox>
+            </HorizontalField>
+
+            <Divider />
+
+            <Subheading>{t("heading.privacy")}</Subheading>
+            <HorizontalField>
+                <Label>{t("label.public-profile")}</Label>
+                <Description>{t("description.public-profile")}</Description>
+                <HorizontalFieldDivider />
+                <Switch
+                    color={"blue"}
+                    checked={me.account?.profile_public ?? true}
+                    onChange={(wanted) => void changeProfileVisibility(wanted)}
+                />
             </HorizontalField>
 
             <Divider />

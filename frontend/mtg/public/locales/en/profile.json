@@ -22,6 +22,7 @@
         "language": "Applies to the interface. Card names come from Scryfall and are unaffected.",
         "passkeys": "These devices can sign you in. Add a passkey per device — if you lose one, the others still get you in.",
         "proxy-fade": "Cards marked as proxies are drawn washed out in the deck, so a stand-in never passes for the real card at a glance.",
+        "public-profile": "Others can find your profile and add you to tournaments. Your published decks stay findable through the deck search either way.",
         "remove-passkey": "You will no longer be able to sign in with \"{{label}}\". The only way back is to add the device again.",
         "theme": "“Match system” follows your device's setting and changes along with it."
     },
@@ -43,6 +44,7 @@
         "delete-account-confirm": "Delete this account for good?",
         "display": "Display",
         "passkeys": "Passkeys",
+        "privacy": "Privacy",
         "profile": "Profile",
         "remove-passkey": "Remove passkey?",
         "security": "Security",
@@ -64,6 +66,7 @@
         "never-used": "Never used",
         "only-passkey": "Only passkey",
         "proxy-fade": "Fade out proxy artwork",
+        "public-profile": "Public profile",
         "theme": "Theme",
         "theme-dark": "Dark",
         "theme-light": "Light",
@@ -76,6 +79,8 @@
         "foil-tilt-denied": "This needs access to the motion sensors. You can allow it again in your browser's settings.",
         "foil-tilt-silent": "Your browser is not reporting any motion. Brave blocks the sensors by default: allow them under Settings → Site settings → Motion sensors. They are also unavailable over http rather than https.",
         "passkey-added": "Passkey added",
-        "passkey-removed": "Passkey removed"
+        "passkey-removed": "Passkey removed",
+        "profile-closed": "Profile is face down",
+        "profile-opened": "Profile is public"
     }
 }

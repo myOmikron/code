@@ -87,6 +87,14 @@ export const Api = {
         // gateway that accepts the connection and then never answers leaves the
         // fetch pending forever, and with it the navbar without a login button.
         me: (signal?: AbortSignal) => defaultApi.me({ signal }),
+        // Discovery only: what is already published stays published — see the handler's own
+        // doc comment.
+        setProfileVisibility: async (profilePublic: boolean) =>
+            handleError(
+                defaultApi.setProfileVisibility({
+                    SetProfileVisibilityRequest: { profile_public: profilePublic },
+                }),
+            ),
         passkeys: {
             list: async () => handleError(defaultApi.listPasskeys()),
             // Adding a device from an existing session; the ceremony failures are the caller's

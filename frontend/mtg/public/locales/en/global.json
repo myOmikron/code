@@ -12,6 +12,7 @@
         "no-hits": "No hits. Try another search or fewer filters.",
         "nothing-public": "Nobody has published a deck yet. Set one of yours to public and it will show up here.",
         "profile-empty": "{{owner}} has not published anything yet.",
+        "profile-private": "{{owner}} would rather not show their cards. Could be a Morph, could just be privacy.",
         "public-decks": "Every deck its builder published. Search by name, format or commander, or follow an author to everything else they built.",
         "unknown-profile": "There is no such profile."
     },
@@ -21,6 +22,7 @@
         "profile-collections": "Collections",
         "profile-decks": "Decks",
         "profile-empty": "Nothing published",
+        "profile-private": "Played face down",
         "public-decks": "Discover decks",
         "unknown-profile": "Unknown profile"
     },
