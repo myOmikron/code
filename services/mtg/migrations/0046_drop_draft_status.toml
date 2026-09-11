@@ -1,0 +1,24 @@
+# Data-only: the schema is untouched, so this carries 0045's model hash and
+# make-migrations still sees the chain as up to date.
+[Migration]
+Hash = "3660504949369430306"
+Initial = false
+Dependency = 45
+Replaces = []
+
+# `TournamentStatus` lost its `Draft` variant, and the status column is a
+# plain string — a row still holding 'Draft' would fail to decode on every
+# read. Those events were never joinable by code anyway, which is exactly why
+# the stage went; Registration is where they were headed.
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+UPDATE tournament SET status = 'Registration' WHERE status = 'Draft';
+"""
+MySQL = """
+UPDATE tournament SET status = 'Registration' WHERE status = 'Draft';
+"""
+Postgres = """
+UPDATE tournament SET status = 'Registration' WHERE status = 'Draft';
+"""

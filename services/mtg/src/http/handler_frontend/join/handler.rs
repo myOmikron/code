@@ -67,6 +67,9 @@ pub async fn look_up_join_code(
     Ok(ApiJson(JoinLookupResponse {
         tournament: tournament.uuid,
         name: tournament.name,
+        join_code: tournament.join_code.clone().unwrap_or_else(|| {
+            unreachable!("`get_by_join_code` only answers a tournament holding one")
+        }),
         format: tournament.format,
         pod_size: tournament.pod_size,
         status: tournament.status,

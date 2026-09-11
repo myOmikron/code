@@ -80,12 +80,50 @@ const JOIN_CODE_GRACE_AFTER_START: Duration = Duration::hours(12);
 /// How many times [`Tournament::rotate_join_code`] retries a colliding code
 const JOIN_CODE_MINT_ATTEMPTS: u32 = 5;
 
+/// When a join code minted or refreshed now should stop working
+///
+/// The event's announced start plus [`JOIN_CODE_GRACE_AFTER_START`] when it
+/// named one, else [`DEFAULT_JOIN_CODE_LIFETIME`] from now. Every site that
+/// writes `join_code_expires_at` goes through here, so "a code outlives its
+/// event by half a day" is stated once.
+fn join_code_expiry(starts_at: Option<OffsetDateTime>) -> OffsetDateTime {
+    match starts_at {
+        Some(starts_at) => starts_at + JOIN_CODE_GRACE_AFTER_START,
+        None => OffsetDateTime::now_utc() + DEFAULT_JOIN_CODE_LIFETIME,
+    }
+}
+
+/// Roll a join code no other tournament currently holds
+///
+/// A colliding candidate is detected by a probing SELECT and re-rolled, up to
+/// [`JOIN_CODE_MINT_ATTEMPTS`] times — the alphabet is wide enough (29^6) that
+/// this is a belt, not a plan. Probing instead of catching the unique
+/// violation is forced, not stylistic: Postgres aborts the whole transaction
+/// on a constraint violation, so an in-transaction retry after catching one
+/// could never run. The constraint stays the last word — losing the probe's
+/// race window to a concurrent mint surfaces as a plain error, which at these
+/// odds is a curiosity.
+async fn mint_join_code(tx: &mut Transaction) -> Result<MaxStr<8>, rorm::Error> {
+    let mut code = generate_join_code();
+    for _ in 0..JOIN_CODE_MINT_ATTEMPTS {
+        let taken = rorm::query(&mut *tx, TournamentModel.uuid)
+            .condition(TournamentModel.join_code.equals(Some(&code)))
+            .optional()
+            .await?
+            .is_some();
+        if !taken {
+            break;
+        }
+        code = generate_join_code();
+    }
+    Ok(code)
+}
+
 /// Where a tournament stands in its lifecycle
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub enum TournamentStatus {
-    /// Being set up by its organizers; nobody outside the staff can join yet
-    Draft,
-    /// Open for players to register or join by code
+    /// Open for players to register or join by code — where every tournament
+    /// starts
     Registration,
     /// Under way
     Running,
@@ -96,27 +134,31 @@ pub enum TournamentStatus {
 }
 custom_db_enum! {
     enum: TournamentStatus,
-    variants: [Draft, Registration, Running, Finished, Cancelled],
+    variants: [Registration, Running, Finished, Cancelled],
     decoder: TournamentStatusDecoder,
 }
 
 impl TournamentStatus {
     /// Whether the event may move from this status to `to`
     ///
-    /// The lifecycle runs forward through `Draft -> Registration -> Running ->
+    /// The lifecycle runs forward through `Registration -> Running ->
     /// Finished` one step at a time; [`Self::Cancelled`] is reachable from
-    /// any of the three non-terminal statuses, since calling an event off is
-    /// never scheduled in advance. Nothing leaves [`Self::Finished`] or
+    /// either non-terminal status, since calling an event off is never
+    /// scheduled in advance. Nothing leaves [`Self::Finished`] or
     /// [`Self::Cancelled`] — both are where a tournament's history stops
     /// changing.
+    ///
+    /// There is no draft stage. It only ever gated the join code, which
+    /// `visibility` already answers better — who may *see* an event is a
+    /// different question from whether it exists — and a code minted at
+    /// creation that silently refuses to resolve is worse than no code. An
+    /// event that should not be joinable yet wants a `registration_opens_at`,
+    /// not a status an organizer has to remember to leave.
     pub fn may_transition(self, to: Self) -> bool {
         use TournamentStatus::*;
         matches!(
             (self, to),
-            (Draft, Registration)
-                | (Registration, Running)
-                | (Running, Finished)
-                | (Draft | Registration | Running, Cancelled)
+            (Registration, Running) | (Running, Finished) | (Registration | Running, Cancelled)
         )
     }
 }
@@ -170,7 +212,7 @@ custom_db_enum! {
 /// How a tournament requires its players to hand in a decklist
 ///
 /// Always editable, unlike the structural settings [`Tournament::update_settings`]
-/// locks once the event leaves [`TournamentStatus::Draft`]/[`TournamentStatus::Registration`]:
+/// locks once the event leaves [`TournamentStatus::Registration`]:
 /// an organizer must be able to relax or tighten the requirement at any point
 /// right up to the last round, the same reasoning as `round_minutes`.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -804,6 +846,12 @@ impl Tournament {
     ///
     /// Visibility handling copied from [`crate::models::deck::Deck::create`]:
     /// [`Visibility::Unlisted`] mints a share token, the other two get none.
+    ///
+    /// A join code is minted here, not on a later click: an organizer who has
+    /// just filled in the create dialog wants a code to put on the whiteboard,
+    /// and a tournament nobody can join is not a useful resting state. The
+    /// code stays inert until the event opens registration — that rule lives
+    /// in [`Tournament::get_by_join_code`] and is unchanged by minting early.
     #[instrument(name = "Tournament::create", skip(tx))]
     pub async fn create(
         tx: &mut Transaction,
@@ -815,6 +863,8 @@ impl Tournament {
             Visibility::Private | Visibility::Public => None,
         };
 
+        let join_code = mint_join_code(&mut *tx).await?;
+
         let model = rorm::insert(&mut *tx, TournamentModel)
             .single(&TournamentInsertPatch {
                 uuid: Uuid::now_v7(),
@@ -825,7 +875,7 @@ impl Tournament {
                 pod_size: insert.pod_size,
                 games_per_match: insert.games_per_match,
                 pairing_system: insert.pairing_system,
-                status: TournamentStatus::Draft,
+                status: TournamentStatus::Registration,
                 points_win: insert.points_win,
                 points_draw: insert.points_draw,
                 points_loss: insert.points_loss,
@@ -840,8 +890,8 @@ impl Tournament {
                 guest_names_public: insert.guest_names_public,
                 visibility: insert.visibility,
                 share_token,
-                join_code: None,
-                join_code_expires_at: None,
+                join_code: Some(join_code),
+                join_code_expires_at: Some(join_code_expiry(insert.starts_at)),
                 venue: insert.venue,
                 venue_address: insert.venue_address,
                 venue_instructions: insert.venue_instructions,
@@ -874,7 +924,7 @@ impl Tournament {
     /// Everything structural (format,
     /// `pod_size`, `games_per_match`, `pairing_system`, the
     /// point values, `require_check_in`, `allow_late_entry`,
-    /// `late_entry_as_losses`) only takes while [`TournamentStatus::Draft`] or
+    /// `late_entry_as_losses`) only takes while
     /// [`TournamentStatus::Registration`]: reshaping the bracket or the
     /// scoring table mid-event would invalidate rounds already played.
     ///
@@ -902,10 +952,13 @@ impl Tournament {
             return Ok(TournamentAccess::Denied);
         }
 
-        let unlocked = matches!(
-            tournament.status,
-            TournamentStatus::Draft | TournamentStatus::Registration
-        );
+        let unlocked = matches!(tournament.status, TournamentStatus::Registration);
+        // The expiry was derived from the old start time, so moving the event
+        // has to move it too — otherwise postponing by a week silently leaves
+        // a code that dies before the doors open. Only the expiry follows; the
+        // code itself survives a reschedule.
+        let moves_start =
+            update.starts_at != tournament.starts_at && tournament.join_code.is_some();
         let changes_structure = update.format != tournament.format
             || update.pod_size != tournament.pod_size
             || update.games_per_match != tournament.games_per_match
@@ -932,6 +985,10 @@ impl Tournament {
                 Some(update.venue_instructions),
             )
             .set_if(TournamentModel.starts_at, Some(update.starts_at))
+            .set_if(
+                TournamentModel.join_code_expires_at,
+                moves_start.then(|| Some(join_code_expiry(update.starts_at))),
+            )
             .set_if(TournamentModel.round_minutes, Some(update.round_minutes))
             .set_if(
                 TournamentModel.max_participants,
@@ -1046,6 +1103,19 @@ impl Tournament {
             status,
             TournamentStatus::Finished | TournamentStatus::Cancelled
         );
+        // A tournament drafted weeks ahead carries a code minted at creation,
+        // which may well have run out before anyone could use it. Opening
+        // registration is the moment that code starts mattering, so its expiry
+        // is recomputed from the start time the event has by now. The code
+        // itself is untouched: an organizer may already have printed it.
+        let expires_at = if clears_join_code {
+            Some(None)
+        } else if matches!(status, TournamentStatus::Registration) && tournament.join_code.is_some()
+        {
+            Some(Some(join_code_expiry(tournament.starts_at)))
+        } else {
+            None
+        };
 
         let builder = rorm::update(&mut *tx, TournamentModel)
             .begin_dyn_set()
@@ -1058,10 +1128,7 @@ impl Tournament {
                 TournamentModel.join_code,
                 clears_join_code.then_some(None::<MaxStr<8>>),
             )
-            .set_if(
-                TournamentModel.join_code_expires_at,
-                clears_join_code.then_some(None::<OffsetDateTime>),
-            );
+            .set_if(TournamentModel.join_code_expires_at, expires_at);
 
         let Ok(builder) = builder.finish_dyn_set() else {
             unreachable!("the status itself is always set above")
@@ -1225,17 +1292,10 @@ impl Tournament {
 
     /// Mint a fresh join code, invalidating whatever one was live before
     ///
-    /// A colliding candidate is detected by a probing SELECT and re-rolled,
-    /// up to [`JOIN_CODE_MINT_ATTEMPTS`] times — the alphabet is wide enough
-    /// (29^6) that this is a belt, not a plan. Probing instead of catching
-    /// the unique violation is forced, not stylistic: Postgres aborts the
-    /// whole transaction on a constraint violation, so an in-transaction
-    /// retry after catching one could never run. The constraint stays the
-    /// last word — losing the probe's race window to a concurrent mint
-    /// surfaces as a plain error, which at these odds is a curiosity. The
-    /// expiry is the event's announced start plus
-    /// [`JOIN_CODE_GRACE_AFTER_START`] when it named one, else
-    /// [`DEFAULT_JOIN_CODE_LIFETIME`] from now.
+    /// [`Tournament::create`] already left a code in place, so this is the
+    /// "that one leaked, give me another" button rather than the only way to
+    /// get one. See [`mint_join_code`] for why a collision is probed for and
+    /// [`join_code_expiry`] for how long the new code lives.
     #[instrument(name = "Tournament::rotate_join_code", skip(tx))]
     pub async fn rotate_join_code(
         tx: &mut Transaction,
@@ -1252,23 +1312,8 @@ impl Tournament {
             return Ok(TournamentAccess::Denied);
         }
 
-        let expires_at = match tournament.starts_at {
-            Some(starts_at) => starts_at + JOIN_CODE_GRACE_AFTER_START,
-            None => OffsetDateTime::now_utc() + DEFAULT_JOIN_CODE_LIFETIME,
-        };
-
-        let mut code = generate_join_code();
-        for _ in 0..JOIN_CODE_MINT_ATTEMPTS {
-            let taken = rorm::query(&mut *tx, TournamentModel.uuid)
-                .condition(TournamentModel.join_code.equals(Some(&code)))
-                .optional()
-                .await?
-                .is_some();
-            if !taken {
-                break;
-            }
-            code = generate_join_code();
-        }
+        let expires_at = join_code_expiry(tournament.starts_at);
+        let code = mint_join_code(&mut *tx).await?;
 
         rorm::update(&mut *tx, TournamentModel)
             .set(TournamentModel.join_code, Some(code.clone()))
@@ -1329,8 +1374,8 @@ impl Tournament {
     ///
     /// This is the ONLY code-resolving path, so the liveness rules live here
     /// and nowhere else: an expired code, a tournament that is
-    /// [`TournamentStatus::Finished`], [`TournamentStatus::Cancelled`] or
-    /// still [`TournamentStatus::Draft`], or no code at all, all read as
+    /// [`TournamentStatus::Finished`] or [`TournamentStatus::Cancelled`], or
+    /// no code at all, all read as
     /// `None`. `set_status` already nulls the code on the two terminal
     /// statuses, so the status check here is a second, cheaper line of
     /// defence rather than the only one.

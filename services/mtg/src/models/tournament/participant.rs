@@ -280,9 +280,9 @@ pub async fn register_account(
 /// for an organizer typing in a walk-in — the caller must already have
 /// checked that account holds a role before calling this, the same
 /// discipline as everywhere else in this module tree. An organizer may add
-/// walk-ins in [`TournamentStatus::Draft`] and — as the one route for a late
-/// entry — while [`TournamentStatus::Running`], whatever `allow_late_entry`
-/// says; that is the one way [`registration_open`]'s rule is widened here.
+/// walk-ins — as the one route for a late entry — while
+/// [`TournamentStatus::Running`], whatever `allow_late_entry` says; that is the
+/// one way [`registration_open`]'s rule is widened here.
 ///
 /// A guest row can never collide with the partial unique index — that index
 /// is `WHERE account IS NOT NULL`, and this insert always sets `account` to
@@ -297,11 +297,7 @@ pub async fn register_guest(
     added_by: Option<AccountUuid>,
 ) -> Result<RegistrationOutcome, rorm::Error> {
     let open = registration_open(tournament)
-        || (added_by.is_some()
-            && matches!(
-                tournament.status,
-                TournamentStatus::Draft | TournamentStatus::Running
-            ));
+        || (added_by.is_some() && tournament.status == TournamentStatus::Running);
     if !open {
         return Ok(RegistrationOutcome::Closed);
     }

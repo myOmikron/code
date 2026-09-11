@@ -19,6 +19,9 @@ use crate::models::tournament::participant::ClaimTarget;
 pub struct JoinLookupResponse {
     /// The tournament the code names
     pub tournament: TournamentUuid,
+    /// The code itself, as stored — a typed one may have arrived lowercase or
+    /// with a separator, and a screen showing it wants the canonical form
+    pub join_code: MaxStr<8>,
     /// Name of the tournament
     pub name: MaxStr<128>,
     /// The format being played
