@@ -194,7 +194,7 @@ export function TournamentRoundPanel({
                     <TournamentRoundClock
                         clock={clock}
                         skewMs={skewMs}
-                        canControl={staff && round.status !== "Complete"}
+                        canControl={staff && round.status === "Running"}
                         onStart={() => void timer(TimerActionRequest.Start)}
                         onPause={() => void timer(TimerActionRequest.Pause)}
                         onResume={() => void timer(TimerActionRequest.Resume)}
