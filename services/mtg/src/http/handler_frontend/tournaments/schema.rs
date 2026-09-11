@@ -20,6 +20,7 @@ use crate::models::account::Username;
 use crate::models::deck::DeckUuid;
 use crate::models::tournament::AuditAction;
 use crate::models::tournament::DecklistPolicy;
+use crate::models::tournament::MatchStatus;
 use crate::models::tournament::OrganizerRole;
 use crate::models::tournament::PairingSystem;
 use crate::models::tournament::ParticipantAudience;
@@ -28,6 +29,7 @@ use crate::models::tournament::RoundKind;
 use crate::models::tournament::RoundStatus;
 use crate::models::tournament::Tournament;
 use crate::models::tournament::TournamentAuditEntry;
+use crate::models::tournament::TournamentMatchUuid;
 use crate::models::tournament::TournamentOrganizer;
 use crate::models::tournament::TournamentParticipantUuid;
 use crate::models::tournament::TournamentRole;
@@ -38,6 +40,8 @@ use crate::models::tournament::TournamentVenueUuid;
 use crate::models::tournament::TournamentWithViewer;
 use crate::models::tournament::decklist::Decklist;
 use crate::models::tournament::listing::TournamentListEntry;
+use crate::models::tournament::pairing::MatchSeat;
+use crate::models::tournament::pairing::MatchTable;
 use crate::models::tournament::participant::TournamentParticipant;
 use crate::models::tournament::round::Round;
 use crate::models::tournament::venue::Venue;
@@ -552,6 +556,119 @@ pub enum TimerActionRequest {
     Adjust,
     /// Take a new length and go back to not started
     Reset,
+}
+
+/// One seat at one table
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct MatchSeatResponse {
+    /// Who sits here
+    pub participant: TournamentParticipantUuid,
+    /// The name they appear under
+    pub display_name: MaxStr<64>,
+    /// Turn order at the table, 1-based — seat one goes first
+    pub seat: i16,
+    /// How many games this seat has won
+    pub games_won: i16,
+    /// Whether they have since left the event, so the row can say so rather
+    /// than leaving an organizer to wonder why nobody is sitting there
+    pub dropped: bool,
+    /// The table they cannot leave, if there is one — what the pin on the row
+    /// is drawn from, and the reason this table carries the number it does
+    pub fixed_table: Option<i16>,
+}
+
+/// One table of a paired round
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct MatchTableResponse {
+    /// Primary key
+    pub uuid: TournamentMatchUuid,
+    /// The number printed on it, `0` for a bye, which is not a table
+    pub table_number: i16,
+    /// How far its result has got
+    pub status: MatchStatus,
+    /// Whether it is a bye rather than a table anybody sits at
+    pub is_bye: bool,
+    /// Who won, `null` for a draw or a table nobody has reported
+    pub winner: Option<TournamentParticipantUuid>,
+    /// Whether the table was drawn
+    pub is_draw: bool,
+    /// Who sits there, in seat order
+    pub seats: Vec<MatchSeatResponse>,
+}
+
+impl From<MatchTable> for MatchTableResponse {
+    fn from(value: MatchTable) -> Self {
+        Self {
+            uuid: value.uuid,
+            table_number: value.table_number,
+            status: value.status,
+            is_bye: value.is_bye,
+            winner: value.winner,
+            is_draw: value.is_draw,
+            seats: value
+                .seats
+                .into_iter()
+                .map(MatchSeatResponse::from)
+                .collect(),
+        }
+    }
+}
+
+impl From<MatchSeat> for MatchSeatResponse {
+    fn from(value: MatchSeat) -> Self {
+        Self {
+            participant: value.participant,
+            display_name: value.display_name,
+            seat: value.seat,
+            games_won: value.games_won,
+            dropped: value.dropped,
+            fixed_table: value.fixed_table,
+        }
+    }
+}
+
+/// Every table of one round
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct ListTablesResponse {
+    /// The tables, byes last
+    pub tables: Vec<MatchTableResponse>,
+}
+
+/// A pin the layout could not honour
+///
+/// Two players who cannot leave their table asked for the same number. The
+/// lower-numbered table kept it and the other pin was dropped; nothing about
+/// who plays whom changed, so the round is still perfectly valid — an
+/// organizer simply has to move somebody by hand.
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct FixedTableConflict {
+    /// The number both asked for
+    pub table_number: i16,
+    /// Who did not get it
+    pub participant: TournamentParticipantUuid,
+}
+
+/// What pairing a round produced
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct PairRoundResponse {
+    /// The tables, byes last
+    pub tables: Vec<MatchTableResponse>,
+    /// Pins that could not be honoured
+    pub fixed_table_conflicts: Vec<FixedTableConflict>,
+}
+
+/// Why a round could not be paired
+#[derive(Default, Serialize, JsonSchema)]
+pub struct PairRoundErrors {
+    /// The round is closed, or is a deckbuilding stage, which has no tables
+    pub not_pairable: bool,
+    /// Somebody has already reported a table; re-pairing would throw it away
+    pub results_reported: bool,
+    /// Nobody is checked in, so there is nobody to seat
+    pub no_entrants: bool,
+    /// The field divides into neither full pods nor pods one smaller — five
+    /// players at a pod size of four, say. The remedy is a different pod size.
+    pub impossible_pods: bool,
 }
 
 /// What starting (or otherwise moving) a tournament did beyond the status

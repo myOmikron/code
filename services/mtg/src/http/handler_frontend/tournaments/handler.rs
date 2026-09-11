@@ -48,9 +48,11 @@ use crate::http::handler_frontend::tournaments::schema::CreateRoundRequest;
 use crate::http::handler_frontend::tournaments::schema::CreateTournamentRequest;
 use crate::http::handler_frontend::tournaments::schema::DecklistErrors;
 use crate::http::handler_frontend::tournaments::schema::DecklistResponse;
+use crate::http::handler_frontend::tournaments::schema::FixedTableConflict;
 use crate::http::handler_frontend::tournaments::schema::GetDecklistResponse;
 use crate::http::handler_frontend::tournaments::schema::GetTournamentResponse;
 use crate::http::handler_frontend::tournaments::schema::ListRoundsResponse;
+use crate::http::handler_frontend::tournaments::schema::ListTablesResponse;
 use crate::http::handler_frontend::tournaments::schema::ListTournamentAuditQuery;
 use crate::http::handler_frontend::tournaments::schema::ListTournamentAuditResponse;
 use crate::http::handler_frontend::tournaments::schema::ListTournamentOrganizersResponse;
@@ -58,7 +60,10 @@ use crate::http::handler_frontend::tournaments::schema::ListTournamentParticipan
 use crate::http::handler_frontend::tournaments::schema::ListTournamentVenuesResponse;
 use crate::http::handler_frontend::tournaments::schema::ListTournamentsResponse;
 use crate::http::handler_frontend::tournaments::schema::MAX_TOURNAMENT_AUDIT_LIMIT;
+use crate::http::handler_frontend::tournaments::schema::MatchTableResponse;
 use crate::http::handler_frontend::tournaments::schema::PLAYER_SEARCH_LIMIT;
+use crate::http::handler_frontend::tournaments::schema::PairRoundErrors;
+use crate::http::handler_frontend::tournaments::schema::PairRoundResponse;
 use crate::http::handler_frontend::tournaments::schema::PlayerSearchResultResponse;
 use crate::http::handler_frontend::tournaments::schema::RoundLifecycleErrors;
 use crate::http::handler_frontend::tournaments::schema::RoundResponse;
@@ -99,6 +104,8 @@ use crate::models::tournament::decklist;
 use crate::models::tournament::decklist::DecklistChange;
 use crate::models::tournament::decklist::DecklistSource;
 use crate::models::tournament::listing;
+use crate::models::tournament::pairing;
+use crate::models::tournament::pairing::PairOutcome;
 use crate::models::tournament::participant;
 use crate::models::tournament::participant::CheckInOutcome;
 use crate::models::tournament::participant::ClaimOutcome;
@@ -1030,6 +1037,89 @@ fn state_revision(tournament: &Tournament, round: Option<&Round>, outstanding: i
     outstanding.hash(&mut hasher);
     MaxStr::new(format!("{:016x}", hasher.finish()))
         .unwrap_or_else(|_| unreachable!("sixteen hex digits fit in thirty-two characters"))
+}
+
+/// Every table of one round
+///
+/// In the actor block beside the round list: a player's own table is the single
+/// thing their phone is open for, and an auth layer here would lock out every
+/// guest in the room.
+#[get("/{tournament}/rounds/{round}/tables")]
+pub async fn list_round_tables(
+    actor: TournamentActor,
+    Path((tournament_uuid, round_uuid)): Path<(TournamentUuid, TournamentRoundUuid)>,
+) -> ApiResult<ApiJson<ListTablesResponse>> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    if Tournament::get_for_viewer(&mut tx, &actor, tournament_uuid)
+        .await?
+        .is_none()
+    {
+        return Err(denied());
+    }
+
+    let tables = pairing::tables(&mut tx, tournament_uuid, round_uuid).await?;
+
+    tx.commit().await?;
+
+    Ok(ApiJson(ListTablesResponse {
+        tables: tables.into_iter().map(MatchTableResponse::from).collect(),
+    }))
+}
+
+/// Pair a round, replacing whatever it already held
+///
+/// One endpoint for both the first pairing and every re-pair after it. There is
+/// no preview to commit: the race a staged pairing would guard is better served
+/// by pressing this again, and writing straight through survives a crashed tab
+/// and a locked phone, which a staged one does not.
+#[post("/{tournament}/rounds/{round}/pairings")]
+pub async fn pair_tournament_round(
+    account: Account,
+    Path((tournament_uuid, round_uuid)): Path<(TournamentUuid, TournamentRoundUuid)>,
+) -> ApiResult<ApiJson<PairRoundResponse>, PairRoundErrors> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    let outcome = match pairing::pair(&mut tx, account.uuid, tournament_uuid, round_uuid).await? {
+        TournamentAccess::Granted(outcome) => outcome,
+        TournamentAccess::Denied => return Err(denied()),
+    };
+    let (tables, warnings) = match outcome {
+        PairOutcome::Paired { tables, warnings } => (tables, warnings),
+        PairOutcome::NotPairable => {
+            let mut errors = FormErrors::<PairRoundErrors>::new();
+            errors.not_pairable = true;
+            return errors.fail();
+        }
+        PairOutcome::ResultsReported => {
+            let mut errors = FormErrors::<PairRoundErrors>::new();
+            errors.results_reported = true;
+            return errors.fail();
+        }
+        PairOutcome::NoEntrants => {
+            let mut errors = FormErrors::<PairRoundErrors>::new();
+            errors.no_entrants = true;
+            return errors.fail();
+        }
+        PairOutcome::ImpossiblePods => {
+            let mut errors = FormErrors::<PairRoundErrors>::new();
+            errors.impossible_pods = true;
+            return errors.fail();
+        }
+    };
+
+    tx.commit().await?;
+
+    Ok(ApiJson(PairRoundResponse {
+        tables: tables.into_iter().map(MatchTableResponse::from).collect(),
+        fixed_table_conflicts: warnings
+            .into_iter()
+            .map(|pin| FixedTableConflict {
+                table_number: pin.table_number,
+                participant: pin.participant,
+            })
+            .collect(),
+    }))
 }
 
 /// Look accounts up by username, to seat a player whose phone is dead

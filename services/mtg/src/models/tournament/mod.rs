@@ -63,6 +63,7 @@ pub(in crate::models) mod db;
 pub mod decklist;
 pub mod extractor;
 pub mod listing;
+pub mod pairing;
 pub mod participant;
 pub mod public;
 pub mod round;
