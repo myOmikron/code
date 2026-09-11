@@ -1,0 +1,19 @@
+[Migration]
+Hash = "3001742046743090198"
+Initial = false
+Dependency = 43
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "tournament"
+
+[Migration.Operations.Field]
+Name = "max_participants"
+Type = "int16"
+Annotations = []
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 94
+Column = 9

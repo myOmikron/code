@@ -40,6 +40,8 @@ pub struct JoinLookupResponse {
     pub decklist_policy: DecklistPolicy,
     /// How many people are on the roster already
     pub participant_count: i64,
+    /// How many players fit, `None` for no limit
+    pub max_participants: Option<i16>,
     /// Whether joining right now would actually register a player
     pub registration_open: bool,
     /// Always `false` here — this route has no session to check against.
@@ -139,6 +141,8 @@ pub struct JoinErrors {
     pub registration_closed: bool,
     /// The caller already has a row in this tournament
     pub already_registered: bool,
+    /// Every seat the event offers is taken
+    pub tournament_full: bool,
     /// The display name was empty or all whitespace
     pub empty_name: bool,
     /// The tournament's [`crate::models::tournament::DecklistPolicy::RequiredToRegister`]

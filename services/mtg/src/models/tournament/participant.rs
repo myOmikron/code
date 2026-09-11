@@ -93,6 +93,8 @@ pub enum RegistrationOutcome {
     Closed,
     /// This account already has a row in this tournament; nothing was written
     AlreadyRegistered,
+    /// Every seat the event offers is taken; nothing was written
+    Full,
 }
 
 /// Outcome of [`claim`]
@@ -141,6 +143,45 @@ fn normalize_name(name: &str) -> MaxStr<64> {
         .unwrap_or_else(|_| unreachable!("kept under the maximum length by construction"))
 }
 
+/// How many seats the roster currently occupies
+///
+/// A dropped or disqualified player frees their seat again: the row stays for
+/// the standings, but the chair is available to the next person through the
+/// door.
+async fn seats_taken(tx: &mut Transaction, tournament: &Tournament) -> Result<i64, rorm::Error> {
+    let rows = rorm::query(&mut *tx, TournamentParticipantModel.status)
+        .condition(
+            TournamentParticipantModel
+                .tournament
+                .equals(tournament.uuid.into_inner()),
+        )
+        .all()
+        .await?;
+    Ok(rows
+        .into_iter()
+        .filter(|status| {
+            matches!(
+                status,
+                ParticipantStatus::Registered | ParticipantStatus::CheckedIn
+            )
+        })
+        .count() as i64)
+}
+
+/// Whether the event still has room for one more self-service registration
+///
+/// Only asked on the self-service paths. An organizer at the desk is trusted
+/// to know their own room and may seat one past the limit, the same call
+/// `allow_late_entry` already leaves to them. Read-then-write is good enough
+/// here: two phones racing the last seat is not a correctness problem worth a
+/// lock — the roster simply ends up one over, which an organizer can fix.
+async fn has_room(tx: &mut Transaction, tournament: &Tournament) -> Result<bool, rorm::Error> {
+    let Some(max) = tournament.max_participants else {
+        return Ok(true);
+    };
+    Ok(seats_taken(&mut *tx, tournament).await? < i64::from(max))
+}
+
 /// Whether a player may register *themselves* right now
 ///
 /// Shared by [`register_account`] and [`register_guest`]; the latter widens
@@ -153,9 +194,15 @@ fn registration_open(tournament: &Tournament) -> bool {
         || (tournament.status == TournamentStatus::Running && tournament.allow_late_entry)
 }
 
-/// Register a logged-in account as a participant
+/// Register an account as a participant
 ///
-/// Whether the request is open follows [`registration_open`]. The partial
+/// `added_by` says who is asking, exactly as in [`register_guest`]: `None`
+/// for a player registering themselves, `Some` for an organizer adding a
+/// known account at the desk — the phone-died case. The organizer path widens
+/// the window the same way and skips the capacity check; the caller must have
+/// checked that account holds a role before calling this.
+///
+/// Whether a self-service request is open follows [`registration_open`]. The partial
 /// unique index on `(tournament, account)` — not a pre-query — is what
 /// decides [`RegistrationOutcome::AlreadyRegistered`]: a pre-query would race
 /// a second tab submitting the same form. Because Postgres aborts the whole
@@ -169,9 +216,16 @@ pub async fn register_account(
     tournament: &Tournament,
     account: AccountUuid,
     display_name: MaxStr<64>,
+    added_by: Option<AccountUuid>,
 ) -> Result<RegistrationOutcome, rorm::Error> {
-    if !registration_open(tournament) {
+    let by_organizer = added_by.is_some();
+    let open = registration_open(tournament)
+        || (by_organizer && tournament.status == TournamentStatus::Running);
+    if !open {
         return Ok(RegistrationOutcome::Closed);
+    }
+    if !by_organizer && !has_room(&mut *tx, tournament).await? {
+        return Ok(RegistrationOutcome::Full);
     }
 
     let name_normalized = normalize_name(&display_name);
@@ -207,7 +261,7 @@ pub async fn register_account(
     Tournament::audit(
         &mut *tx,
         tournament.uuid,
-        Some(account),
+        Some(added_by.unwrap_or(account)),
         AuditAction::ParticipantAdded,
         Some(participant.uuid.into_inner()),
         None,
@@ -248,6 +302,9 @@ pub async fn register_guest(
             ));
     if !open {
         return Ok(RegistrationOutcome::Closed);
+    }
+    if added_by.is_none() && !has_room(&mut *tx, tournament).await? {
+        return Ok(RegistrationOutcome::Full);
     }
 
     let claim_token = generate_claim_token();

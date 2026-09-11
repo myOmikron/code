@@ -76,6 +76,7 @@ pub async fn look_up_join_code(
         venue_instructions: tournament.venue_instructions,
         decklist_policy: tournament.decklist_policy,
         participant_count,
+        max_participants: tournament.max_participants,
         registration_open: is_registration_open,
         already_registered: false,
     }))
@@ -139,6 +140,11 @@ pub async fn join_tournament_as_guest(
         // `AlreadyRegistered` cannot happen for a guest row (see
         // `register_guest`'s doc comment) — folded into `Closed`'s answer
         // rather than relied upon to stay unreachable forever.
+        RegistrationOutcome::Full => {
+            let mut errors = FormErrors::<JoinErrors>::new();
+            errors.tournament_full = true;
+            return errors.fail();
+        }
         RegistrationOutcome::Closed | RegistrationOutcome::AlreadyRegistered => {
             let mut errors = FormErrors::<JoinErrors>::new();
             errors.registration_closed = true;
@@ -300,9 +306,15 @@ pub async fn join_tournament_by_code(
     }
 
     let outcome =
-        participant::register_account(&mut tx, &tournament, account.uuid, display_name).await?;
+        participant::register_account(&mut tx, &tournament, account.uuid, display_name, None)
+            .await?;
     let participant = match outcome {
         RegistrationOutcome::Registered(participant, _) => participant,
+        RegistrationOutcome::Full => {
+            let mut errors = FormErrors::<JoinErrors>::new();
+            errors.tournament_full = true;
+            return errors.fail();
+        }
         RegistrationOutcome::Closed => {
             let mut errors = FormErrors::<JoinErrors>::new();
             errors.registration_closed = true;

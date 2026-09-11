@@ -78,6 +78,9 @@ pub struct SharedTournamentResponse {
     pub starts_at: Option<SchemaDateTime>,
     /// How many people are on the roster, regardless of `roster_available`
     pub participant_count: i64,
+    /// How many players fit, `None` for no limit — a reader who may not see
+    /// the roster is still told whether there is room
+    pub max_participants: Option<i16>,
     /// Whether the roster view is not `Hidden` — tells the client whether to
     /// offer the players tab at all
     pub roster_available: bool,

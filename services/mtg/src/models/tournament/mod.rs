@@ -448,6 +448,9 @@ pub struct Tournament {
     pub round_minutes: i16,
     /// Whether players must check in before round one is paired
     pub require_check_in: bool,
+
+    /// How many players fit, `None` for an event that never turns anyone away
+    pub max_participants: Option<i16>,
     /// Whether players may still register after the event started
     pub allow_late_entry: bool,
     /// Whether a late entry's missed rounds count as match losses
@@ -555,6 +558,9 @@ pub struct TournamentInsert {
     pub round_minutes: i16,
     /// Whether players must check in before round one is paired
     pub require_check_in: bool,
+
+    /// How many players fit, `None` for an event that never turns anyone away
+    pub max_participants: Option<i16>,
     /// Whether players may still register after the event started
     pub allow_late_entry: bool,
     /// Whether a late entry's missed rounds count as match losses
@@ -598,6 +604,9 @@ pub struct TournamentUpdate {
     pub starts_at: Option<OffsetDateTime>,
     /// Default round length in minutes
     pub round_minutes: i16,
+
+    /// How many players fit, `None` for an event that never turns anyone away
+    pub max_participants: Option<i16>,
     /// The format being played
     pub format: MaxStr<32>,
     /// How many players sit at one table
@@ -823,6 +832,7 @@ impl Tournament {
                 points_bye: insert.points_bye,
                 round_minutes: insert.round_minutes,
                 require_check_in: insert.require_check_in,
+                max_participants: insert.max_participants,
                 allow_late_entry: insert.allow_late_entry,
                 late_entry_as_losses: insert.late_entry_as_losses,
                 decklist_policy: insert.decklist_policy,
@@ -923,6 +933,10 @@ impl Tournament {
             )
             .set_if(TournamentModel.starts_at, Some(update.starts_at))
             .set_if(TournamentModel.round_minutes, Some(update.round_minutes))
+            .set_if(
+                TournamentModel.max_participants,
+                Some(update.max_participants),
+            )
             .set_if(
                 TournamentModel.decklist_policy,
                 Some(update.decklist_policy),
@@ -1626,6 +1640,7 @@ impl From<TournamentModel> for Tournament {
             points_bye: value.points_bye,
             round_minutes: value.round_minutes,
             require_check_in: value.require_check_in,
+            max_participants: value.max_participants,
             allow_late_entry: value.allow_late_entry,
             late_entry_as_losses: value.late_entry_as_losses,
             decklist_policy: value.decklist_policy,

@@ -90,6 +90,13 @@ pub struct TournamentModel {
     #[rorm(default = false)]
     pub require_check_in: bool,
 
+    /// How many players fit, `None` for an event that never turns anyone away
+    ///
+    /// Only self-service registration is held to it — an organizer at the desk
+    /// may seat one more than the room officially holds, the same call late
+    /// entry already leaves to them.
+    pub max_participants: Option<i16>,
+
     /// Whether players may still register after the event started
     #[rorm(default = true)]
     pub allow_late_entry: bool,
@@ -210,6 +217,8 @@ pub struct TournamentInsertPatch {
     pub round_minutes: i16,
     /// Whether players must check in before round one
     pub require_check_in: bool,
+    /// How many players fit, `None` for no limit
+    pub max_participants: Option<i16>,
     /// Whether players may still register after the start
     pub allow_late_entry: bool,
     /// Whether a late entry's missed rounds count as losses

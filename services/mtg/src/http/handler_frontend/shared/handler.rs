@@ -211,6 +211,7 @@ pub async fn get_shared_tournament(
         venue_instructions: tournament.venue_instructions,
         starts_at: tournament.starts_at.map(SchemaDateTime),
         participant_count,
+        max_participants: tournament.max_participants,
         roster_available,
     }))
 }

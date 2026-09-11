@@ -27,6 +27,7 @@ use galvyn::rorm::db::transaction::Transaction;
 use galvyn::rorm::fields::types::MaxStr;
 
 use crate::http::handler_frontend::tournaments::schema::AddOrganizerErrors;
+use crate::http::handler_frontend::tournaments::schema::AddParticipantErrors;
 use crate::http::handler_frontend::tournaments::schema::AddTournamentOrganizerRequest;
 use crate::http::handler_frontend::tournaments::schema::AddTournamentParticipantRequest;
 use crate::http::handler_frontend::tournaments::schema::CheckInErrors;
@@ -611,10 +612,11 @@ pub async fn add_tournament_participant(
     account: Account,
     Path(tournament_uuid): Path<TournamentUuid>,
     ApiJson(AddTournamentParticipantRequest {
+        account: seated_account,
         display_name,
         decklist_text,
     }): ApiJson<AddTournamentParticipantRequest>,
-) -> ApiResult<ApiJson<TournamentParticipantResponse>> {
+) -> ApiResult<ApiJson<TournamentParticipantResponse>, AddParticipantErrors> {
     let mut tx = Database::global().start_transaction().await?;
 
     let Some((_, tournament)) =
@@ -625,15 +627,55 @@ pub async fn add_tournament_participant(
         return Err(denied());
     };
 
-    let outcome =
-        participant::register_guest(&mut tx, &tournament, display_name, Some(account.uuid)).await?;
+    // Two doors into the same roster. With an account the row is claimed from
+    // the start, so the name defaults to that account's username; without one
+    // the organizer has to have typed something.
+    let outcome = match seated_account {
+        Some(seated_account) => {
+            let Some(seated) = Account::get_by_uuid(&mut tx, seated_account).await? else {
+                let mut errors = FormErrors::<AddParticipantErrors>::new();
+                errors.unknown_account = true;
+                return errors.fail();
+            };
+            // Always fits: `Username::MAX_LEN` is 32, well under `MaxStr<64>`.
+            let display_name = display_name.unwrap_or_else(|| {
+                MaxStr::new(seated.username.as_str().to_owned())
+                    .unwrap_or_else(|_| unreachable!("a username is at most 32 characters"))
+            });
+            participant::register_account(
+                &mut tx,
+                &tournament,
+                seated.uuid,
+                display_name,
+                Some(account.uuid),
+            )
+            .await?
+        }
+        None => {
+            let Some(display_name) = display_name.filter(|name| !name.trim().is_empty()) else {
+                let mut errors = FormErrors::<AddParticipantErrors>::new();
+                errors.empty_name = true;
+                return errors.fail();
+            };
+            participant::register_guest(&mut tx, &tournament, display_name, Some(account.uuid))
+                .await?
+        }
+    };
     let participant = match outcome {
         RegistrationOutcome::Registered(participant, _claim_token) => participant,
-        // `AlreadyRegistered` cannot actually happen for a guest row (see
-        // `register_guest`'s doc comment) — folded into the same answer as
-        // `Closed` rather than relied upon to stay unreachable forever.
-        RegistrationOutcome::Closed | RegistrationOutcome::AlreadyRegistered => {
-            return Err(ApiError::bad_request("Registration is closed"));
+        RegistrationOutcome::AlreadyRegistered => {
+            let mut errors = FormErrors::<AddParticipantErrors>::new();
+            errors.already_registered = true;
+            return errors.fail();
+        }
+        RegistrationOutcome::Closed => {
+            let mut errors = FormErrors::<AddParticipantErrors>::new();
+            errors.registration_closed = true;
+            return errors.fail();
+        }
+        // An organizer's own add never consults the capacity — see `has_room`.
+        RegistrationOutcome::Full => {
+            unreachable!("the desk may always seat one more")
         }
     };
 
@@ -651,7 +693,9 @@ pub async fn add_tournament_participant(
         {
             DecklistChange::Written(_) => true,
             DecklistChange::Invalid => {
-                return Err(ApiError::bad_request("A decklist must not be blank"));
+                let mut errors = FormErrors::<AddParticipantErrors>::new();
+                errors.invalid_decklist = true;
+                return errors.fail();
             }
             DecklistChange::Cleared => {
                 unreachable!("a text source is never `Cleared`")
@@ -876,6 +920,10 @@ fn validate_settings(
         errors.invalid_round_length = true;
     }
 
+    if settings.max_participants.is_some_and(|max| max < 1) {
+        errors.invalid_max_participants = true;
+    }
+
     if !format::is_tournament_format(&settings.format) {
         errors.invalid_format = true;
     }
@@ -974,6 +1022,7 @@ fn insert_from_settings(
         points_bye: settings.points_bye,
         round_minutes: settings.round_minutes,
         require_check_in: settings.require_check_in,
+        max_participants: settings.max_participants,
         allow_late_entry: settings.allow_late_entry,
         late_entry_as_losses: settings.late_entry_as_losses,
         decklist_policy: settings.decklist_policy,
@@ -1002,6 +1051,7 @@ fn update_from_settings(settings: TournamentSettingsRequest) -> TournamentUpdate
         venue_instructions,
         starts_at: settings.starts_at.map(|starts_at| starts_at.0),
         round_minutes: settings.round_minutes,
+        max_participants: settings.max_participants,
         format: settings.format,
         pod_size: settings.pod_size,
         games_per_match: settings.games_per_match,

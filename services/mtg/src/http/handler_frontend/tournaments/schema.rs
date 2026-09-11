@@ -74,6 +74,8 @@ pub struct TournamentResponse {
     pub round_minutes: i16,
     /// Whether players must check in before round one is paired
     pub require_check_in: bool,
+    /// How many players fit, `None` for no limit
+    pub max_participants: Option<i16>,
     /// Whether players may still register after the event started
     pub allow_late_entry: bool,
     /// Whether a late entry's missed rounds count as match losses
@@ -133,6 +135,7 @@ impl TournamentResponse {
             points_bye: tournament.points_bye,
             round_minutes: tournament.round_minutes,
             require_check_in: tournament.require_check_in,
+            max_participants: tournament.max_participants,
             allow_late_entry: tournament.allow_late_entry,
             late_entry_as_losses: tournament.late_entry_as_losses,
             decklist_policy: tournament.decklist_policy,
@@ -271,6 +274,10 @@ pub struct TournamentSettingsRequest {
     pub round_minutes: i16,
     /// Whether players must check in before round one is paired
     pub require_check_in: bool,
+    /// How many players fit, `None` for an event that turns nobody away.
+    /// Held against self-service registration only.
+    #[serde(default)]
+    pub max_participants: Option<i16>,
     /// Whether players may still register *themselves* after the event
     /// started — an organizer can always add a late entry at the desk. The
     /// client no longer offers this and sends `false`.
@@ -320,6 +327,8 @@ pub struct TournamentSettingsErrors {
     pub invalid_points: bool,
     /// `round_minutes` is outside 10..=600
     pub invalid_round_length: bool,
+    /// `max_participants` was given as zero or negative
+    pub invalid_max_participants: bool,
     /// The format slug is not one
     /// [`crate::models::format::is_tournament_format`] accepts
     pub invalid_format: bool,
@@ -409,15 +418,40 @@ pub struct ListTournamentParticipantsResponse {
     pub participants: Vec<TournamentParticipantResponse>,
 }
 
-/// Request to walk a guest into the roster by name
+/// Request to put a player on the roster from the desk
+///
+/// Two shapes in one request: with `account` the row belongs to that account
+/// from the start — the organizer looked the player up because their phone
+/// was dead — and `display_name` is optional, defaulting to the username.
+/// Without it the row is a guest a name was typed for, claimable later by QR.
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct AddTournamentParticipantRequest {
-    /// The name the player appears under
-    pub display_name: MaxStr<64>,
+    /// The account to seat, `None` to add a guest by name alone
+    #[serde(default)]
+    pub account: Option<AccountUuid>,
+    /// The name the player appears under; required for a guest, optional
+    /// alongside `account`
+    #[serde(default)]
+    pub display_name: Option<MaxStr<64>>,
     /// A decklist to type in for them, pasted text only — an organizer never
-    /// links a Planarium deck on a walk-in's behalf
+    /// links a Planarium deck on somebody else's behalf
     #[serde(default)]
     pub decklist_text: Option<MaxStr<16384>>,
+}
+
+/// Why a player could not be put on the roster
+#[derive(Default, Serialize, JsonSchema)]
+pub struct AddParticipantErrors {
+    /// No name was given for a guest row
+    pub empty_name: bool,
+    /// The named account does not exist
+    pub unknown_account: bool,
+    /// That account already has a row in this tournament
+    pub already_registered: bool,
+    /// The event is finished or cancelled — nothing goes on the roster now
+    pub registration_closed: bool,
+    /// The pasted decklist was blank once trimmed
+    pub invalid_decklist: bool,
 }
 
 /// Request to change a participant's display name and/or organizer notes
