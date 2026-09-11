@@ -9,4 +9,5 @@
 
 pub mod code;
 pub mod decklist;
+pub mod pairing;
 pub mod timer;
