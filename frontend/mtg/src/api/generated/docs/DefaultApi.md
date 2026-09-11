@@ -16,6 +16,7 @@ All URIs are relative to *http://localhost*
 | [**attachDeckCollection**](DefaultApi.md#attachdeckcollection) | **POST** /api/frontend/v1/decks/{deck}/collection | Start keeping the cards that are physically in this deck |
 | [**checkInTournamentParticipant**](DefaultApi.md#checkintournamentparticipant) | **POST** /api/frontend/v1/tournaments/{tournament}/participants/{participant}/check-in | Check in, self-service or by staff |
 | [**claimTournamentParticipant**](DefaultApi.md#claimtournamentparticipant) | **POST** /api/frontend/v1/tournaments/participants/claim | Attach the caller\&#39;s account to a guest row using its claim token |
+| [**completeTournamentRound**](DefaultApi.md#completetournamentround) | **POST** /api/frontend/v1/tournaments/{tournament}/rounds/{round}/complete | Close a round |
 | [**createCollection**](DefaultApi.md#createcollectionoperation) | **POST** /api/frontend/v1/collections |  |
 | [**createDeck**](DefaultApi.md#createdeckoperation) | **POST** /api/frontend/v1/decks | Create a deck |
 | [**createDeckFolder**](DefaultApi.md#createdeckfolderoperation) | **POST** /api/frontend/v1/folders | Make a folder |
@@ -23,6 +24,7 @@ All URIs are relative to *http://localhost*
 | [**createGlobalTag**](DefaultApi.md#createglobaltagoperation) | **POST** /api/frontend/v1/tags | Create a tag that follows a card through every deck and every collection |
 | [**createScannerSession**](DefaultApi.md#createscannersessionoperation) | **POST** /api/frontend/v1/scanner-sessions | Start a new persisted scanner session |
 | [**createTournament**](DefaultApi.md#createtournamentoperation) | **POST** /api/frontend/v1/tournaments | Create a tournament; the caller becomes its owner |
+| [**createTournamentRound**](DefaultApi.md#createtournamentround) | **POST** /api/frontend/v1/tournaments/{tournament}/rounds | Add a round to a running tournament |
 | [**createWatchList**](DefaultApi.md#createwatchlistoperation) | **POST** /api/frontend/v1/watch-lists | Start a new watch list |
 | [**deleteAccount**](DefaultApi.md#deleteaccountoperation) | **DELETE** /api/frontend/v1/accounts/me | Delete the logged-in account |
 | [**deleteCollection**](DefaultApi.md#deletecollection) | **DELETE** /api/frontend/v1/collections/{collection} |  |
@@ -37,6 +39,7 @@ All URIs are relative to *http://localhost*
 | [**deleteScannerSessionEntry**](DefaultApi.md#deletescannersessionentry) | **DELETE** /api/frontend/v1/scanner-sessions/{session}/entries/{entry} | Remove a staged stack |
 | [**deleteTournament**](DefaultApi.md#deletetournament) | **DELETE** /api/frontend/v1/tournaments/{tournament} | Delete a tournament outright — owner only |
 | [**deleteTournamentParticipant**](DefaultApi.md#deletetournamentparticipant) | **DELETE** /api/frontend/v1/tournaments/{tournament}/participants/{participant} | Remove a participant outright |
+| [**deleteTournamentRound**](DefaultApi.md#deletetournamentround) | **DELETE** /api/frontend/v1/tournaments/{tournament}/rounds/{round} | Delete a round nobody has played |
 | [**deleteTournamentVenue**](DefaultApi.md#deletetournamentvenue) | **DELETE** /api/frontend/v1/tournaments/venues/{venue} | Drop one entry from the caller\&#39;s own venue book |
 | [**deleteWatchList**](DefaultApi.md#deletewatchlist) | **DELETE** /api/frontend/v1/watch-lists/{list} | Throw a watch list away, taking every entry on it with it |
 | [**deleteWatchListEntry**](DefaultApi.md#deletewatchlistentry) | **DELETE** /api/frontend/v1/watch-lists/{list}/entries/{entry} | Take a card off a watch list |
@@ -75,6 +78,7 @@ All URIs are relative to *http://localhost*
 | [**getSharedDeck**](DefaultApi.md#getshareddeck) | **GET** /api/frontend/v1/shared/decks/{token} | Fetch the deck a share link points at |
 | [**getSharedTournament**](DefaultApi.md#getsharedtournament) | **GET** /api/frontend/v1/shared/tournaments/{token} | Fetch the tournament a share link points at |
 | [**getTournament**](DefaultApi.md#gettournament) | **GET** /api/frontend/v1/tournaments/{tournament} | One tournament, with what the viewer may do with it |
+| [**getTournamentState**](DefaultApi.md#gettournamentstate) | **GET** /api/frontend/v1/tournaments/{tournament}/state | What a client polls to know whether anything moved |
 | [**getWatchList**](DefaultApi.md#getwatchlist) | **GET** /api/frontend/v1/watch-lists/{list} | One watch list, without what is on it |
 | [**getWatchListAlarms**](DefaultApi.md#getwatchlistalarms) | **GET** /api/frontend/v1/watch-lists/alarms | Every alarm standing across the account\&#39;s watch lists |
 | [**importDeckCards**](DefaultApi.md#importdeckcardsoperation) | **POST** /api/frontend/v1/decks/{deck}/cards/import | Write a whole decklist into a deck |
@@ -93,6 +97,7 @@ All URIs are relative to *http://localhost*
 | [**listTournamentAudit**](DefaultApi.md#listtournamentaudit) | **GET** /api/frontend/v1/tournaments/{tournament}/audit | A tournament\&#39;s audit log, newest first |
 | [**listTournamentOrganizers**](DefaultApi.md#listtournamentorganizers) | **GET** /api/frontend/v1/tournaments/{tournament}/organizers | The staff list, visible to any role holder |
 | [**listTournamentParticipants**](DefaultApi.md#listtournamentparticipants) | **GET** /api/frontend/v1/tournaments/{tournament}/participants | A tournament\&#39;s roster, redacted through [&#x60;public::roster_view&#x60;] |
+| [**listTournamentRounds**](DefaultApi.md#listtournamentrounds) | **GET** /api/frontend/v1/tournaments/{tournament}/rounds | Every round of a tournament |
 | [**listTournamentVenues**](DefaultApi.md#listtournamentvenues) | **GET** /api/frontend/v1/tournaments/venues | The caller\&#39;s own venue book, most recently used first |
 | [**listTournaments**](DefaultApi.md#listtournaments) | **GET** /api/frontend/v1/tournaments | Every tournament the actor may see |
 | [**listWatchListCopies**](DefaultApi.md#listwatchlistcopies) | **GET** /api/frontend/v1/watch-lists/{list}/entries/{entry}/copies | Where the copies of one watched card are |
@@ -116,12 +121,15 @@ All URIs are relative to *http://localhost*
 | [**rotateTournamentJoinCode**](DefaultApi.md#rotatetournamentjoincode) | **POST** /api/frontend/v1/tournaments/{tournament}/join-code | Mint a fresh join code, invalidating whatever one was live before |
 | [**searchMpcfillArt**](DefaultApi.md#searchmpcfillart) | **POST** /api/frontend/v1/mpcfill/search | The art MPCFill has for these cards |
 | [**searchPublicDecks**](DefaultApi.md#searchpublicdecks) | **GET** /api/frontend/v1/explore/decks | Search the decks their owners put on show |
+| [**searchTournamentPlayers**](DefaultApi.md#searchtournamentplayers) | **GET** /api/frontend/v1/tournaments/{tournament}/player-search | Look accounts up by username, to seat a player whose phone is dead |
 | [**setDeckAdvisorSettings**](DefaultApi.md#setdeckadvisorsettings) | **PUT** /api/frontend/v1/decks/{deck}/advisor-settings | Replace this deck\&#39;s advisor settings |
 | [**setDeckBracket**](DefaultApi.md#setdeckbracketoperation) | **PUT** /api/frontend/v1/decks/{deck}/bracket | Say which Commander bracket the deck is built to |
 | [**setDeckColors**](DefaultApi.md#setdeckcolorsoperation) | **PUT** /api/frontend/v1/decks/{deck}/colors | Overrule which colours the deck may play |
 | [**setDeckFolder**](DefaultApi.md#setdeckfolderoperation) | **POST** /api/frontend/v1/decks/{deck}/folder | File a deck into one of the account\&#39;s folders |
 | [**setDeckRuleZero**](DefaultApi.md#setdeckrulezerooperation) | **PUT** /api/frontend/v1/decks/{deck}/rule-zero | Record the house rules the deck is played under |
 | [**setParticipantDecklist**](DefaultApi.md#setparticipantdecklist) | **PUT** /api/frontend/v1/tournaments/{tournament}/participants/{participant}/decklist | Write, replace or clear a participant\&#39;s decklist — staff, or the |
+| [**setProfileVisibility**](DefaultApi.md#setprofilevisibilityoperation) | **PUT** /api/frontend/v1/accounts/me/profile-visibility | Open or close the logged-in account\&#39;s public profile |
+| [**setTournamentRoundTimer**](DefaultApi.md#settournamentroundtimer) | **PUT** /api/frontend/v1/tournaments/{tournament}/rounds/{round}/timer | Start, pause, adjust or reset a round\&#39;s clock |
 | [**setTournamentStatus**](DefaultApi.md#settournamentstatusoperation) | **PUT** /api/frontend/v1/tournaments/{tournament}/status | Move a tournament to a new lifecycle status |
 | [**setTournamentVisibility**](DefaultApi.md#settournamentvisibilityoperation) | **PUT** /api/frontend/v1/tournaments/{tournament}/visibility | Change who may see a tournament |
 | [**setVisibilityCollection**](DefaultApi.md#setvisibilitycollection) | **POST** /api/frontend/v1/collections/{collection} | Change who may see a collection |
@@ -131,6 +139,7 @@ All URIs are relative to *http://localhost*
 | [**startAddPasskey**](DefaultApi.md#startaddpasskey) | **POST** /api/frontend/v1/accounts/passkeys/start | Start registering another passkey for the logged-in account |
 | [**startLogin**](DefaultApi.md#startloginoperation) | **POST** /api/frontend/v1/auth/login/start | Start a passkey login for a given username |
 | [**startRegistration**](DefaultApi.md#startregistrationoperation) | **POST** /api/frontend/v1/auth/register/start | Start a passkey registration |
+| [**startTournamentRound**](DefaultApi.md#starttournamentround) | **POST** /api/frontend/v1/tournaments/{tournament}/rounds/{round}/start | Hand a round to the room and start its clock |
 | [**takeDeckCards**](DefaultApi.md#takedeckcardsoperation) | **POST** /api/frontend/v1/decks/{deck}/sourcing/take | Move copies out of a collection and into the deck |
 | [**unassignCollectionEntryTag**](DefaultApi.md#unassigncollectionentrytag) | **DELETE** /api/frontend/v1/collections/{collection}/entries/{entry}/tags/{tag} | Take a card-wide tag off a stack, see [&#x60;assign_collection_entry_tag&#x60;] |
 | [**unassignDeckCardTag**](DefaultApi.md#unassigndeckcardtag) | **DELETE** /api/frontend/v1/decks/{deck}/cards/{card}/tags/{tag} | Take a tag off a card |
@@ -518,7 +527,7 @@ No authorization required
 
 ## addTournamentParticipant
 
-> TournamentParticipantResponse addTournamentParticipant(tournament, AddTournamentParticipantRequest)
+> AddTournamentParticipant200Response addTournamentParticipant(tournament, AddTournamentParticipantRequest)
 
 Walk a guest into the roster by name
 
@@ -566,7 +575,7 @@ example().catch(console.error);
 
 ### Return type
 
-[**TournamentParticipantResponse**](TournamentParticipantResponse.md)
+[**AddTournamentParticipant200Response**](AddTournamentParticipant200Response.md)
 
 ### Authorization
 
@@ -1005,6 +1014,82 @@ example().catch(console.error);
 ### Return type
 
 [**ClaimTournamentParticipant200Response**](ClaimTournamentParticipant200Response.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## completeTournamentRound
+
+> CompleteTournamentRound200Response completeTournamentRound(tournament, round, CompleteRoundRequest)
+
+Close a round
+
+Close a round
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { CompleteTournamentRoundRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    tournament: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string
+    round: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // CompleteRoundRequest (optional)
+    CompleteRoundRequest: ...,
+  } satisfies CompleteTournamentRoundRequest;
+
+  try {
+    const data = await api.completeTournamentRound(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **tournament** | `string` |  | [Defaults to `undefined`] |
+| **round** | `string` |  | [Defaults to `undefined`] |
+| **CompleteRoundRequest** | [CompleteRoundRequest](CompleteRoundRequest.md) |  | [Optional] |
+
+### Return type
+
+[**CompleteTournamentRound200Response**](CompleteTournamentRound200Response.md)
 
 ### Authorization
 
@@ -1496,6 +1581,79 @@ example().catch(console.error);
 ### Return type
 
 [**CreateTournament200Response**](CreateTournament200Response.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## createTournamentRound
+
+> CreateTournamentRound200Response createTournamentRound(tournament, CreateRoundRequest)
+
+Add a round to a running tournament
+
+Add a round to a running tournament
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { CreateTournamentRoundRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    tournament: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // CreateRoundRequest (optional)
+    CreateRoundRequest: ...,
+  } satisfies CreateTournamentRoundRequest;
+
+  try {
+    const data = await api.createTournamentRound(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **tournament** | `string` |  | [Defaults to `undefined`] |
+| **CreateRoundRequest** | [CreateRoundRequest](CreateRoundRequest.md) |  | [Optional] |
+
+### Return type
+
+[**CreateTournamentRound200Response**](CreateTournamentRound200Response.md)
 
 ### Authorization
 
@@ -2489,6 +2647,79 @@ example().catch(console.error);
 ### Return type
 
 **any**
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## deleteTournamentRound
+
+> FormErrorResponseForRoundLifecycleErrors deleteTournamentRound(tournament, round)
+
+Delete a round nobody has played
+
+Delete a round nobody has played
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { DeleteTournamentRoundRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    tournament: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string
+    round: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies DeleteTournamentRoundRequest;
+
+  try {
+    const data = await api.deleteTournamentRound(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **tournament** | `string` |  | [Defaults to `undefined`] |
+| **round** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**FormErrorResponseForRoundLifecycleErrors**](FormErrorResponseForRoundLifecycleErrors.md)
 
 ### Authorization
 
@@ -4637,7 +4868,7 @@ No authorization required
 
 Fetch an account\&#39;s public profile: what it put on show
 
-Fetch an account\&#39;s public profile: what it put on show
+Fetch an account\&#39;s public profile: what it put on show  Three answers, not two: the profile, a refusal for a name nobody holds, and the profile\&#39;s own &#x60;is_public: false&#x60; for an account that keeps it closed. That last one does tell a reader the name is taken — a deliberate trade for being able to say \&quot;they would rather not show their cards\&quot; instead of \&quot;no such person\&quot;.
 
 ### Example
 
@@ -5099,6 +5330,76 @@ example().catch(console.error);
 ### Return type
 
 [**GetTournamentResponse**](GetTournamentResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## getTournamentState
+
+> TournamentStateResponse getTournamentState(tournament)
+
+What a client polls to know whether anything moved
+
+What a client polls to know whether anything moved  In the actor block on purpose: a guest\&#39;s phone is exactly the device that needs this most, and wrapping it in an auth layer would lock the room out. Deliberately cheap — a handful of indexed reads and never a standings computation, because every phone hits it on a timer.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { GetTournamentStateRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    tournament: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies GetTournamentStateRequest;
+
+  try {
+    const data = await api.getTournamentState(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **tournament** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**TournamentStateResponse**](TournamentStateResponse.md)
 
 ### Authorization
 
@@ -6445,6 +6746,76 @@ example().catch(console.error);
 ### Return type
 
 [**ListTournamentParticipantsResponse**](ListTournamentParticipantsResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## listTournamentRounds
+
+> ListRoundsResponse listTournamentRounds(tournament)
+
+Every round of a tournament
+
+Every round of a tournament
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { ListTournamentRoundsRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    tournament: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies ListTournamentRoundsRequest;
+
+  try {
+    const data = await api.listTournamentRounds(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **tournament** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**ListRoundsResponse**](ListRoundsResponse.md)
 
 ### Authorization
 
@@ -8081,6 +8452,79 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## searchTournamentPlayers
+
+> SearchPlayersResponse searchTournamentPlayers(tournament, q)
+
+Look accounts up by username, to seat a player whose phone is dead
+
+Look accounts up by username, to seat a player whose phone is dead  Organizer-only and tournament-scoped: the guard is the role on this event, and the answer says which hits are already on this roster so the dialog can grey them out. A blank needle answers nothing rather than the whole table.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { SearchTournamentPlayersRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    tournament: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string (optional)
+    q: q_example,
+  } satisfies SearchTournamentPlayersRequest;
+
+  try {
+    const data = await api.searchTournamentPlayers(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **tournament** | `string` |  | [Defaults to `undefined`] |
+| **q** | `string` |  | [Optional] [Defaults to `undefined`] |
+
+### Return type
+
+[**SearchPlayersResponse**](SearchPlayersResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## setDeckAdvisorSettings
 
 > any setDeckAdvisorSettings(deck, SetAdvisorSettingsRequest)
@@ -8522,9 +8966,155 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## setProfileVisibility
+
+> any setProfileVisibility(SetProfileVisibilityRequest)
+
+Open or close the logged-in account\&#39;s public profile
+
+Open or close the logged-in account\&#39;s public profile  Discovery only: the decks and collections already set to [&#x60;crate::models::visibility::Visibility::Public&#x60;] stay exactly as public as they were, and the deck search keeps finding them. What closes is the profile page and the organizer\&#39;s player lookup.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { SetProfileVisibilityOperationRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // SetProfileVisibilityRequest (optional)
+    SetProfileVisibilityRequest: ...,
+  } satisfies SetProfileVisibilityOperationRequest;
+
+  try {
+    const data = await api.setProfileVisibility(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **SetProfileVisibilityRequest** | [SetProfileVisibilityRequest](SetProfileVisibilityRequest.md) |  | [Optional] |
+
+### Return type
+
+**any**
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## setTournamentRoundTimer
+
+> StartTournamentRound200Response setTournamentRoundTimer(tournament, round, SetTimerRequest)
+
+Start, pause, adjust or reset a round\&#39;s clock
+
+Start, pause, adjust or reset a round\&#39;s clock
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { SetTournamentRoundTimerRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    tournament: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string
+    round: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // SetTimerRequest (optional)
+    SetTimerRequest: ...,
+  } satisfies SetTournamentRoundTimerRequest;
+
+  try {
+    const data = await api.setTournamentRoundTimer(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **tournament** | `string` |  | [Defaults to `undefined`] |
+| **round** | `string` |  | [Defaults to `undefined`] |
+| **SetTimerRequest** | [SetTimerRequest](SetTimerRequest.md) |  | [Optional] |
+
+### Return type
+
+[**StartTournamentRound200Response**](StartTournamentRound200Response.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## setTournamentStatus
 
-> any setTournamentStatus(tournament, SetTournamentStatusRequest)
+> SetTournamentStatusResponse setTournamentStatus(tournament, SetTournamentStatusRequest)
 
 Move a tournament to a new lifecycle status
 
@@ -8572,7 +9162,7 @@ example().catch(console.error);
 
 ### Return type
 
-**any**
+[**SetTournamentStatusResponse**](SetTournamentStatusResponse.md)
 
 ### Authorization
 
@@ -9148,6 +9738,79 @@ No authorization required
 ### HTTP request headers
 
 - **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## startTournamentRound
+
+> StartTournamentRound200Response startTournamentRound(tournament, round)
+
+Hand a round to the room and start its clock
+
+Hand a round to the room and start its clock
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { StartTournamentRoundRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    tournament: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string
+    round: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies StartTournamentRoundRequest;
+
+  try {
+    const data = await api.startTournamentRound(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **tournament** | `string` |  | [Defaults to `undefined`] |
+| **round** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**StartTournamentRound200Response**](StartTournamentRound200Response.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
 - **Accept**: `application/json`
 
 

@@ -10,6 +10,8 @@ Name | Type
 `already_registered` | boolean
 `decklist_policy` | [DecklistPolicy](DecklistPolicy.md)
 `format` | string
+`join_code` | string
+`max_participants` | number
 `name` | string
 `participant_count` | number
 `pod_size` | number

@@ -78,6 +78,43 @@ export interface AddOrganizerErrors {
     unknown_account: boolean;
 }
 /**
+ * Why a player could not be put on the roster
+ * @export
+ * @interface AddParticipantErrors
+ */
+export interface AddParticipantErrors {
+    /**
+     * That account already has a row in this tournament
+     * @type {boolean}
+     * @memberof AddParticipantErrors
+     */
+    already_registered: boolean;
+    /**
+     * No name was given for a guest row
+     * @type {boolean}
+     * @memberof AddParticipantErrors
+     */
+    empty_name: boolean;
+    /**
+     * The pasted decklist was blank once trimmed
+     * @type {boolean}
+     * @memberof AddParticipantErrors
+     */
+    invalid_decklist: boolean;
+    /**
+     * The event is finished or cancelled — nothing goes on the roster now
+     * @type {boolean}
+     * @memberof AddParticipantErrors
+     */
+    registration_closed: boolean;
+    /**
+     * The named account does not exist
+     * @type {boolean}
+     * @memberof AddParticipantErrors
+     */
+    unknown_account: boolean;
+}
+/**
  * Why a passkey could not be added
  * @export
  * @interface AddPasskeyErrors
@@ -169,23 +206,37 @@ export interface AddTournamentOrganizerRequest {
 
 
 /**
- * Request to walk a guest into the roster by name
+ * @type AddTournamentParticipant200Response
+ * 
+ * @export
+ */
+export type AddTournamentParticipant200Response = FormErrorResponseForAddParticipantErrors | TournamentParticipantResponse;
+/**
+ * Request to put a player on the roster from the desk
+ * 
+ * Two shapes in one request: with `account` the row belongs to that account from the start — the organizer looked the player up because their phone was dead — and `display_name` is optional, defaulting to the username. Without it the row is a guest a name was typed for, claimable later by QR.
  * @export
  * @interface AddTournamentParticipantRequest
  */
 export interface AddTournamentParticipantRequest {
     /**
-     * A decklist to type in for them, pasted text only — an organizer never links a Planarium deck on a walk-in's behalf
+     * The account to seat, `None` to add a guest by name alone
+     * @type {string}
+     * @memberof AddTournamentParticipantRequest
+     */
+    account?: string | null;
+    /**
+     * A decklist to type in for them, pasted text only — an organizer never links a Planarium deck on somebody else's behalf
      * @type {string}
      * @memberof AddTournamentParticipantRequest
      */
     decklist_text?: string | null;
     /**
-     * The name the player appears under
+     * The name the player appears under; required for a guest, optional alongside `account`
      * @type {string}
      * @memberof AddTournamentParticipantRequest
      */
-    display_name: string;
+    display_name?: string | null;
 }
 /**
  * Request to put a card on a watch list
@@ -389,7 +440,51 @@ export const AuditAction = {
     /**
     * Every decklist in the tournament was unlocked
     */
-    DecklistsUnlocked: 'DecklistsUnlocked'
+    DecklistsUnlocked: 'DecklistsUnlocked',
+    /**
+    * A round was paired
+    */
+    RoundPaired: 'RoundPaired',
+    /**
+    * A round&#39;s pairings were thrown away and rebuilt
+    */
+    RoundRepaired: 'RoundRepaired',
+    /**
+    * A round was handed to the room
+    */
+    RoundStarted: 'RoundStarted',
+    /**
+    * A round was closed
+    */
+    RoundCompleted: 'RoundCompleted',
+    /**
+    * A round was deleted before it was played
+    */
+    RoundDeleted: 'RoundDeleted',
+    /**
+    * A round&#39;s clock was started, paused, adjusted or reset
+    */
+    RoundTimerChanged: 'RoundTimerChanged',
+    /**
+    * The desk wrote a table&#39;s result itself
+    */
+    MatchResultOverridden: 'MatchResultOverridden',
+    /**
+    * The desk took a result back off a table
+    */
+    MatchResultCleared: 'MatchResultCleared',
+    /**
+    * A table was renumbered
+    */
+    MatchTableChanged: 'MatchTableChanged',
+    /**
+    * Two players changed places
+    */
+    SeatsSwapped: 'SeatsSwapped',
+    /**
+    * A player&#39;s fixed table was set or cleared
+    */
+    ParticipantFixedTableChanged: 'ParticipantFixedTableChanged'
 } as const;
 export type AuditAction = typeof AuditAction[keyof typeof AuditAction];
 
@@ -1093,6 +1188,44 @@ export const CommanderRuleOneOf1KindEnum = {
 export type CommanderRuleOneOf1KindEnum = typeof CommanderRuleOneOf1KindEnum[keyof typeof CommanderRuleOneOf1KindEnum];
 
 /**
+ * Why closing a round was refused
+ * @export
+ * @interface CompleteRoundErrors
+ */
+export interface CompleteRoundErrors {
+    /**
+     * The round is not in a state that allows this
+     * @type {boolean}
+     * @memberof CompleteRoundErrors
+     */
+    not_editable: boolean;
+    /**
+     * Tables are still without a result — `force` would go through
+     * @type {boolean}
+     * @memberof CompleteRoundErrors
+     */
+    outstanding_tables: boolean;
+}
+/**
+ * Request to close a round
+ * @export
+ * @interface CompleteRoundRequest
+ */
+export interface CompleteRoundRequest {
+    /**
+     * Close it even though tables are missing results
+     * @type {boolean}
+     * @memberof CompleteRoundRequest
+     */
+    force?: boolean;
+}
+/**
+ * @type CompleteTournamentRound200Response
+ * 
+ * @export
+ */
+export type CompleteTournamentRound200Response = FormErrorResponseForCompleteRoundErrors | RoundResponse;
+/**
  * One bucket's target corridor, in cards
  * @export
  * @interface Corridor
@@ -1253,6 +1386,52 @@ export interface CreateGlobalTagRequest {
     name: string;
 }
 /**
+ * Why a round could not be added
+ * @export
+ * @interface CreateRoundErrors
+ */
+export interface CreateRoundErrors {
+    /**
+     * The requested length is outside 1..=600 minutes
+     * @type {boolean}
+     * @memberof CreateRoundErrors
+     */
+    invalid_length: boolean;
+    /**
+     * The round before this one is still open
+     * @type {boolean}
+     * @memberof CreateRoundErrors
+     */
+    previous_round_open: boolean;
+    /**
+     * The event is not running
+     * @type {boolean}
+     * @memberof CreateRoundErrors
+     */
+    tournament_not_running: boolean;
+}
+/**
+ * Request to add a round
+ * @export
+ * @interface CreateRoundRequest
+ */
+export interface CreateRoundRequest {
+    /**
+     * What the round is for
+     * @type {RoundKind}
+     * @memberof CreateRoundRequest
+     */
+    kind: RoundKind;
+    /**
+     * How long the clock runs for, in minutes; `null` takes the event's own
+     * @type {number}
+     * @memberof CreateRoundRequest
+     */
+    minutes?: number | null;
+}
+
+
+/**
  * Start a persisted scanner session
  * @export
  * @interface CreateScannerSessionRequest
@@ -1310,6 +1489,12 @@ export interface CreateTournamentRequest {
 }
 
 
+/**
+ * @type CreateTournamentRound200Response
+ * 
+ * @export
+ */
+export type CreateTournamentRound200Response = FormErrorResponseForCreateRoundErrors | RoundResponse;
 /**
  * Request to create a watch list
  * @export
@@ -2075,7 +2260,7 @@ export interface DecklistErrors {
 /**
  * How a tournament requires its players to hand in a decklist
  * 
- * Always editable, unlike the structural settings [`Tournament::update_settings`] locks once the event leaves [`TournamentStatus::Draft`]/[`TournamentStatus::Registration`]: an organizer must be able to relax or tighten the requirement at any point right up to the last round, the same reasoning as `round_minutes`.
+ * Always editable, unlike the structural settings [`Tournament::update_settings`] locks once the event leaves [`TournamentStatus::Registration`]: an organizer must be able to relax or tighten the requirement at any point right up to the last round, the same reasoning as `round_minutes`.
  * @export
  */
 export const DecklistPolicy = {
@@ -2422,6 +2607,27 @@ export interface FormErrorResponseForAddOrganizerErrors {
 /**
  * The response that is sent in a case of an error the caller should present his user
  * @export
+ * @interface FormErrorResponseForAddParticipantErrors
+ */
+export interface FormErrorResponseForAddParticipantErrors {
+    /**
+     * The actual error struct
+     * @type {AddParticipantErrors}
+     * @memberof FormErrorResponseForAddParticipantErrors
+     */
+    error: AddParticipantErrors;
+    /**
+     * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
+     * @type {ErrorConstant}
+     * @memberof FormErrorResponseForAddParticipantErrors
+     */
+    result: ErrorConstant;
+}
+
+
+/**
+ * The response that is sent in a case of an error the caller should present his user
+ * @export
  * @interface FormErrorResponseForAddPasskeyErrors
  */
 export interface FormErrorResponseForAddPasskeyErrors {
@@ -2477,6 +2683,48 @@ export interface FormErrorResponseForClaimErrors {
      * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
      * @type {ErrorConstant}
      * @memberof FormErrorResponseForClaimErrors
+     */
+    result: ErrorConstant;
+}
+
+
+/**
+ * The response that is sent in a case of an error the caller should present his user
+ * @export
+ * @interface FormErrorResponseForCompleteRoundErrors
+ */
+export interface FormErrorResponseForCompleteRoundErrors {
+    /**
+     * The actual error struct
+     * @type {CompleteRoundErrors}
+     * @memberof FormErrorResponseForCompleteRoundErrors
+     */
+    error: CompleteRoundErrors;
+    /**
+     * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
+     * @type {ErrorConstant}
+     * @memberof FormErrorResponseForCompleteRoundErrors
+     */
+    result: ErrorConstant;
+}
+
+
+/**
+ * The response that is sent in a case of an error the caller should present his user
+ * @export
+ * @interface FormErrorResponseForCreateRoundErrors
+ */
+export interface FormErrorResponseForCreateRoundErrors {
+    /**
+     * The actual error struct
+     * @type {CreateRoundErrors}
+     * @memberof FormErrorResponseForCreateRoundErrors
+     */
+    error: CreateRoundErrors;
+    /**
+     * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
+     * @type {ErrorConstant}
+     * @memberof FormErrorResponseForCreateRoundErrors
      */
     result: ErrorConstant;
 }
@@ -2603,6 +2851,27 @@ export interface FormErrorResponseForRegistrationErrors {
      * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
      * @type {ErrorConstant}
      * @memberof FormErrorResponseForRegistrationErrors
+     */
+    result: ErrorConstant;
+}
+
+
+/**
+ * The response that is sent in a case of an error the caller should present his user
+ * @export
+ * @interface FormErrorResponseForRoundLifecycleErrors
+ */
+export interface FormErrorResponseForRoundLifecycleErrors {
+    /**
+     * The actual error struct
+     * @type {RoundLifecycleErrors}
+     * @memberof FormErrorResponseForRoundLifecycleErrors
+     */
+    error: RoundLifecycleErrors;
+    /**
+     * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
+     * @type {ErrorConstant}
+     * @memberof FormErrorResponseForRoundLifecycleErrors
      */
     result: ErrorConstant;
 }
@@ -2893,6 +3162,12 @@ export interface JoinErrors {
      */
     registration_closed: boolean;
     /**
+     * Every seat the event offers is taken
+     * @type {boolean}
+     * @memberof JoinErrors
+     */
+    tournament_full: boolean;
+    /**
      * The code did not resolve to a live tournament
      * @type {boolean}
      * @memberof JoinErrors
@@ -2929,6 +3204,18 @@ export interface JoinLookupResponse {
      * @memberof JoinLookupResponse
      */
     format: string;
+    /**
+     * The code itself, as stored — a typed one may have arrived lowercase or with a separator, and a screen showing it wants the canonical form
+     * @type {string}
+     * @memberof JoinLookupResponse
+     */
+    join_code: string;
+    /**
+     * How many players fit, `None` for no limit
+     * @type {number}
+     * @memberof JoinLookupResponse
+     */
+    max_participants?: number | null;
     /**
      * Name of the tournament
      * @type {string}
@@ -3195,6 +3482,25 @@ export interface ListPasskeysResponse {
      * @memberof ListPasskeysResponse
      */
     passkeys: Array<SimplePasskey>;
+}
+/**
+ * Every round of a tournament
+ * @export
+ * @interface ListRoundsResponse
+ */
+export interface ListRoundsResponse {
+    /**
+     * The rounds, oldest first
+     * @type {Array<RoundResponse>}
+     * @memberof ListRoundsResponse
+     */
+    rounds: Array<RoundResponse>;
+    /**
+     * The server's own reading of the time, for clock skew
+     * @type {string}
+     * @memberof ListRoundsResponse
+     */
+    server_time: string;
 }
 /**
  * All scanner sessions owned by the account
@@ -3614,6 +3920,12 @@ export interface MarkedCard {
  */
 export interface MeResponse {
     /**
+     * Whether strangers may find this account and read its profile
+     * @type {boolean}
+     * @memberof MeResponse
+     */
+    profile_public: boolean;
+    /**
      * The account's login handle and display name
      * @type {string}
      * @memberof MeResponse
@@ -3980,6 +4292,33 @@ export const ParticipantStatus = {
 export type ParticipantStatus = typeof ParticipantStatus[keyof typeof ParticipantStatus];
 
 /**
+ * One account an organizer's player search turned up
+ * 
+ * Username only. The search exists to resolve "which of these is my player", and a username is what the organizer reads off their screen — anything else would make this a directory.
+ * @export
+ * @interface PlayerSearchResultResponse
+ */
+export interface PlayerSearchResultResponse {
+    /**
+     * Whether this account is already on this tournament's roster
+     * @type {boolean}
+     * @memberof PlayerSearchResultResponse
+     */
+    on_roster: boolean;
+    /**
+     * Its username
+     * @type {string}
+     * @memberof PlayerSearchResultResponse
+     */
+    username: string;
+    /**
+     * The account found
+     * @type {string}
+     * @memberof PlayerSearchResultResponse
+     */
+    uuid: string;
+}
+/**
  * What one card cost on one day
  * 
  * All four are euro cents and all four may be absent: Cardmarket quotes no foil price for a card that was never printed in foil, and no price at all for a product nobody is offering that day.
@@ -4342,6 +4681,14 @@ export interface PublicProfileResponse {
      * @memberof PublicProfileResponse
      */
     decks: Array<PublicDeckResponse>;
+    /**
+     * Whether this account lets strangers read its profile
+     * 
+     * `false` leaves [`Self::decks`] and [`Self::collections`] empty and [`Self::created_at`] at the unix epoch — there is nothing to show, and the client renders the "keeps their cards to themselves" note instead. The username still comes back, because the page was reached by it.
+     * @type {boolean}
+     * @memberof PublicProfileResponse
+     */
+    is_public: boolean;
     /**
      * The account's login handle and display name
      * @type {string}
@@ -4750,6 +5097,128 @@ export interface RotateShareTokenResponse {
      */
     share_token: string;
 }
+
+/**
+ * What a round is for
+ * 
+ * Only a [`Self::Swiss`] round carries a number, plays matches and moves the standings. The other two are the shape a limited event needs before it can start: a draft round groups people into pods so they open boosters together, and a deckbuilding round is a clock and nothing else. Both are rounds in the sense that they occupy the room and the timer, and in no other sense — see [`round::Round::number`].
+ * @export
+ */
+export const RoundKind = {
+    /**
+    * A scored round of matches
+    */
+    Swiss: 'Swiss',
+    /**
+    * Players sit in pods and draft; no results
+    */
+    Draft: 'Draft',
+    /**
+    * Everybody builds alone against one clock; no pairings at all
+    */
+    Deckbuilding: 'Deckbuilding'
+} as const;
+export type RoundKind = typeof RoundKind[keyof typeof RoundKind];
+
+/**
+ * Why a round's lifecycle call was refused
+ * @export
+ * @interface RoundLifecycleErrors
+ */
+export interface RoundLifecycleErrors {
+    /**
+     * The round is not in a state that allows this
+     * @type {boolean}
+     * @memberof RoundLifecycleErrors
+     */
+    not_editable: boolean;
+}
+/**
+ * One round, as every surface reads it
+ * @export
+ * @interface RoundResponse
+ */
+export interface RoundResponse {
+    /**
+     * When it was closed
+     * @type {string}
+     * @memberof RoundResponse
+     */
+    completed_at?: string | null;
+    /**
+     * What the round is for
+     * @type {RoundKind}
+     * @memberof RoundResponse
+     */
+    kind: RoundKind;
+    /**
+     * The number on the pairings sheet, `null` for a draft or deckbuilding stage — which is exactly what keeps those out of the round count
+     * @type {number}
+     * @memberof RoundResponse
+     */
+    number?: number | null;
+    /**
+     * How many players share a table
+     * @type {number}
+     * @memberof RoundResponse
+     */
+    pod_size?: number | null;
+    /**
+     * Where it sits among every round of this event
+     * @type {number}
+     * @memberof RoundResponse
+     */
+    sequence: number;
+    /**
+     * When the round was handed to the room
+     * @type {string}
+     * @memberof RoundResponse
+     */
+    started_at?: string | null;
+    /**
+     * Where the round stands
+     * @type {RoundStatus}
+     * @memberof RoundResponse
+     */
+    status: RoundStatus;
+    /**
+     * The round's clock
+     * @type {TimerResponse}
+     * @memberof RoundResponse
+     */
+    timer: TimerResponse;
+    /**
+     * Primary key
+     * @type {string}
+     * @memberof RoundResponse
+     */
+    uuid: string;
+}
+
+
+
+/**
+ * Where a round stands
+ * 
+ * There is no `Cancelled`: re-pairing replaces a round's matches in place and deleting one is a hard delete guarded on "nothing reported", so a lingering cancelled round would only be a fourth thing every read has to remember to filter out.
+ * @export
+ */
+export const RoundStatus = {
+    /**
+    * Paired, not yet handed to the room
+    */
+    Pairing: 'Pairing',
+    /**
+    * Being played
+    */
+    Running: 'Running',
+    /**
+    * Every table reported, or the organizer closed it anyway
+    */
+    Complete: 'Complete'
+} as const;
+export type RoundStatus = typeof RoundStatus[keyof typeof RoundStatus];
+
 /**
  * One session together with its staging area
  * @export
@@ -4874,6 +5343,19 @@ export interface ScannerSessionResponse {
      * @memberof ScannerSessionResponse
      */
     uuid: string;
+}
+/**
+ * What a player search answers
+ * @export
+ * @interface SearchPlayersResponse
+ */
+export interface SearchPlayersResponse {
+    /**
+     * The accounts found, alphabetically, capped by the server
+     * @type {Array<PlayerSearchResultResponse>}
+     * @memberof SearchPlayersResponse
+     */
+    accounts: Array<PlayerSearchResultResponse>;
 }
 /**
  * One page of the decks their owners put on show
@@ -5112,6 +5594,40 @@ export interface SetDecklistRequest {
  */
 export type SetParticipantDecklist200Response = FormErrorResponseForDecklistErrors | GetDecklistResponse;
 /**
+ * Request to open or close the logged-in account's public profile
+ * @export
+ * @interface SetProfileVisibilityRequest
+ */
+export interface SetProfileVisibilityRequest {
+    /**
+     * Whether strangers may find this account and read its profile
+     * @type {boolean}
+     * @memberof SetProfileVisibilityRequest
+     */
+    profile_public: boolean;
+}
+/**
+ * Request to work a round's clock
+ * @export
+ * @interface SetTimerRequest
+ */
+export interface SetTimerRequest {
+    /**
+     * What the desk did
+     * @type {TimerActionRequest}
+     * @memberof SetTimerRequest
+     */
+    action: TimerActionRequest;
+    /**
+     * Seconds to add, for `Adjust`; the new length, for `Reset`
+     * @type {number}
+     * @memberof SetTimerRequest
+     */
+    seconds?: number | null;
+}
+
+
+/**
  * Request to move a tournament to a new lifecycle status
  * @export
  * @interface SetTournamentStatusRequest
@@ -5126,6 +5642,21 @@ export interface SetTournamentStatusRequest {
 }
 
 
+/**
+ * What starting (or otherwise moving) a tournament did beyond the status
+ * @export
+ * @interface SetTournamentStatusResponse
+ */
+export interface SetTournamentStatusResponse {
+    /**
+     * How many players were dropped for never checking in
+     * 
+     * Only ever non-zero on the move to [`TournamentStatus::Running`]. The client already listed them in its confirmation, so this is the count that actually happened rather than the one it predicted.
+     * @type {number}
+     * @memberof SetTournamentStatusResponse
+     */
+    dropped_awaiting_check_in: number;
+}
 /**
  * Request to change who may see a tournament
  * @export
@@ -5264,6 +5795,12 @@ export interface SharedTournamentResponse {
      * @memberof SharedTournamentResponse
      */
     format: string;
+    /**
+     * How many players fit, `None` for no limit — a reader who may not see the roster is still told whether there is room
+     * @type {number}
+     * @memberof SharedTournamentResponse
+     */
+    max_participants?: number | null;
     /**
      * Name of the tournament
      * @type {string}
@@ -5852,6 +6389,12 @@ export interface StartRegistrationResponse {
     username: string;
 }
 /**
+ * @type StartTournamentRound200Response
+ * 
+ * @export
+ */
+export type StartTournamentRound200Response = FormErrorResponseForRoundLifecycleErrors | RoundResponse;
+/**
  * A labelled count of copies
  * 
  * The key is a stable slug — a colour letter, a type slug, a bucket name — which the client turns into a label; raw data such as artist names and set codes pass through as they are.
@@ -5941,6 +6484,101 @@ export interface TimelinePointResponse {
      */
     value_cents: number;
 }
+
+/**
+ * What the desk did to a clock
+ * @export
+ */
+export const TimerActionRequest = {
+    /**
+    * Start it from its full length
+    */
+    Start: 'Start',
+    /**
+    * Stop it where it stands
+    */
+    Pause: 'Pause',
+    /**
+    * Let it run again
+    */
+    Resume: 'Resume',
+    /**
+    * Add to or take from the time left
+    */
+    Adjust: 'Adjust',
+    /**
+    * Take a new length and go back to not started
+    */
+    Reset: 'Reset'
+} as const;
+export type TimerActionRequest = typeof TimerActionRequest[keyof typeof TimerActionRequest];
+
+/**
+ * A round's clock, with the server's own reading of the time beside it
+ * 
+ * One struct rather than two sibling fields, so that serialising a deadline without the reference point it is measured against is not expressible. A phone with a wrong clock is the normal case, not the exception.
+ * @export
+ * @interface TimerResponse
+ */
+export interface TimerResponse {
+    /**
+     * When it runs out
+     * @type {string}
+     * @memberof TimerResponse
+     */
+    ends_at?: string | null;
+    /**
+     * How long the round runs for, in seconds
+     * @type {number}
+     * @memberof TimerResponse
+     */
+    length_seconds: number;
+    /**
+     * When it was paused
+     * @type {string}
+     * @memberof TimerResponse
+     */
+    paused_at?: string | null;
+    /**
+     * Seconds left, computed by the server and never below zero
+     * @type {number}
+     * @memberof TimerResponse
+     */
+    remaining_seconds: number;
+    /**
+     * Where the clock stands
+     * @type {TimerStateResponse}
+     * @memberof TimerResponse
+     */
+    state: TimerStateResponse;
+}
+
+
+
+/**
+ * Where a clock stands
+ * @export
+ */
+export const TimerStateResponse = {
+    /**
+    * Never started
+    */
+    Idle: 'Idle',
+    /**
+    * Counting down
+    */
+    Running: 'Running',
+    /**
+    * Stopped, with time left
+    */
+    Paused: 'Paused',
+    /**
+    * Started and run out
+    */
+    Expired: 'Expired'
+} as const;
+export type TimerStateResponse = typeof TimerStateResponse[keyof typeof TimerStateResponse];
+
 /**
  * A stack worth calling out
  * @export
@@ -6254,6 +6892,12 @@ export interface TournamentResponse {
      */
     late_entry_as_losses: boolean;
     /**
+     * How many players fit, `None` for no limit
+     * @type {number}
+     * @memberof TournamentResponse
+     */
+    max_participants?: number | null;
+    /**
      * Name of the tournament
      * @type {string}
      * @memberof TournamentResponse
@@ -6277,6 +6921,12 @@ export interface TournamentResponse {
      * @memberof TournamentResponse
      */
     participant_audience: ParticipantAudience;
+    /**
+     * How many scoring rounds the event means to play, `None` while undecided
+     * @type {number}
+     * @memberof TournamentResponse
+     */
+    planned_rounds?: number | null;
     /**
      * How many players sit at one table
      * @type {number}
@@ -6307,12 +6957,6 @@ export interface TournamentResponse {
      * @memberof TournamentResponse
      */
     points_win: number;
-    /**
-     * Whether players must check in before round one is paired
-     * @type {boolean}
-     * @memberof TournamentResponse
-     */
-    require_check_in: boolean;
     /**
      * Default round length in minutes
      * @type {number}
@@ -6388,6 +7032,18 @@ export interface TournamentSettingsErrors {
      * @memberof TournamentSettingsErrors
      */
     invalid_games_per_match: boolean;
+    /**
+     * `max_participants` was given as zero or negative
+     * @type {boolean}
+     * @memberof TournamentSettingsErrors
+     */
+    invalid_max_participants: boolean;
+    /**
+     * `planned_rounds` was given as zero or negative
+     * @type {boolean}
+     * @memberof TournamentSettingsErrors
+     */
+    invalid_planned_rounds: boolean;
     /**
      * `pod_size` is outside 2..=5
      * @type {boolean}
@@ -6466,6 +7122,12 @@ export interface TournamentSettingsRequest {
      */
     late_entry_as_losses: boolean;
     /**
+     * How many players fit, `None` for an event that turns nobody away. Held against self-service registration only.
+     * @type {number}
+     * @memberof TournamentSettingsRequest
+     */
+    max_participants?: number | null;
+    /**
      * Name of the tournament
      * @type {string}
      * @memberof TournamentSettingsRequest
@@ -6483,6 +7145,12 @@ export interface TournamentSettingsRequest {
      * @memberof TournamentSettingsRequest
      */
     participant_audience: ParticipantAudience;
+    /**
+     * How many scoring rounds the event means to play, `None` while undecided. Always editable, the event's own schedule rather than a locked rule.
+     * @type {number}
+     * @memberof TournamentSettingsRequest
+     */
+    planned_rounds?: number | null;
     /**
      * How many players sit at one table, 2..=5
      * 
@@ -6516,12 +7184,6 @@ export interface TournamentSettingsRequest {
      */
     points_win: number;
     /**
-     * Whether players must check in before round one is paired
-     * @type {boolean}
-     * @memberof TournamentSettingsRequest
-     */
-    require_check_in: boolean;
-    /**
      * Default round length in minutes, 10..=600
      * @type {number}
      * @memberof TournamentSettingsRequest
@@ -6554,6 +7216,55 @@ export interface TournamentSettingsRequest {
 }
 
 
+/**
+ * What a client polls to know whether anything moved
+ * 
+ * Deliberately cheap: a handful of indexed reads and no standings, because every phone in the room hits it on a timer.
+ * @export
+ * @interface TournamentStateResponse
+ */
+export interface TournamentStateResponse {
+    /**
+     * How many of the current round's tables have no confirmed result
+     * @type {number}
+     * @memberof TournamentStateResponse
+     */
+    outstanding_tables: number;
+    /**
+     * How many scoring rounds the event means to play
+     * @type {number}
+     * @memberof TournamentStateResponse
+     */
+    planned_rounds?: number | null;
+    /**
+     * Changes exactly when something a client renders changed
+     * 
+     * A hex string, not an integer: a 64-bit counter crosses JavaScript's safe-integer range and would compare equal for unequal states on the one platform that consumes it.
+     * @type {string}
+     * @memberof TournamentStateResponse
+     */
+    revision: string;
+    /**
+     * The round the room is on
+     * @type {RoundResponse}
+     * @memberof TournamentStateResponse
+     */
+    round?: RoundResponse | null;
+    /**
+     * The server's own reading of the time, for clock skew
+     * @type {string}
+     * @memberof TournamentStateResponse
+     */
+    server_time: string;
+    /**
+     * Where the event stands
+     * @type {TournamentStatus}
+     * @memberof TournamentStateResponse
+     */
+    status: TournamentStatus;
+}
+
+
 
 /**
  * Where a tournament stands in its lifecycle
@@ -6561,11 +7272,7 @@ export interface TournamentSettingsRequest {
  */
 export const TournamentStatus = {
     /**
-    * Being set up by its organizers; nobody outside the staff can join yet
-    */
-    Draft: 'Draft',
-    /**
-    * Open for players to register or join by code
+    * Open for players to register or join by code — where every tournament starts
     */
     Registration: 'Registration',
     /**

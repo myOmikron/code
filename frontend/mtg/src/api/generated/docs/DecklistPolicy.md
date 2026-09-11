@@ -1,7 +1,7 @@
 
 # DecklistPolicy
 
-How a tournament requires its players to hand in a decklist  Always editable, unlike the structural settings [`Tournament::update_settings`] locks once the event leaves [`TournamentStatus::Draft`]/[`TournamentStatus::Registration`]: an organizer must be able to relax or tighten the requirement at any point right up to the last round, the same reasoning as `round_minutes`.
+How a tournament requires its players to hand in a decklist  Always editable, unlike the structural settings [`Tournament::update_settings`] locks once the event leaves [`TournamentStatus::Registration`]: an organizer must be able to relax or tighten the requirement at any point right up to the last round, the same reasoning as `round_minutes`.
 
 ## Properties
 

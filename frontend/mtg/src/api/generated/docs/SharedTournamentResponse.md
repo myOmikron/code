@@ -9,6 +9,7 @@ Name | Type
 ------------ | -------------
 `description` | string
 `format` | string
+`max_participants` | number
 `name` | string
 `participant_count` | number
 `pod_size` | number

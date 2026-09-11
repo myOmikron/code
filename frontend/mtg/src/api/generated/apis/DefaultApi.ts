@@ -18,6 +18,7 @@ import type {
     AddDeckCardRequest,
     AddScannerSessionEntryRequest,
     AddTournamentOrganizerRequest,
+    AddTournamentParticipant200Response,
     AddTournamentParticipantRequest,
     AddWatchListEntryRequest,
     AdvisorSettingsResponse,
@@ -32,14 +33,18 @@ import type {
     CollectionOverviewResponse,
     CollectionResponse,
     CollectionStatisticsResponse,
+    CompleteRoundRequest,
+    CompleteTournamentRound200Response,
     CreateCollectionRequest,
     CreateDeckFolderRequest,
     CreateDeckRequest,
     CreateDeckTagRequest,
     CreateGlobalTagRequest,
+    CreateRoundRequest,
     CreateScannerSessionRequest,
     CreateTournament200Response,
     CreateTournamentRequest,
+    CreateTournamentRound200Response,
     CreateWatchListRequest,
     DeckCardResponse,
     DeckDriftResponse,
@@ -64,6 +69,7 @@ import type {
     FormErrorResponseForDeletePasskeyErrors,
     FormErrorResponseForFinishLoginErrors,
     FormErrorResponseForRegistrationErrors,
+    FormErrorResponseForRoundLifecycleErrors,
     FormErrorResponseForTournamentSettingsErrors,
     GetDecklistResponse,
     GetTournamentResponse,
@@ -81,6 +87,7 @@ import type {
     ListGlobalTagsResponse,
     ListOnLoanResponse,
     ListPasskeysResponse,
+    ListRoundsResponse,
     ListScannerSessionsResponse,
     ListSharedParticipantsResponse,
     ListTournamentAuditResponse,
@@ -118,6 +125,7 @@ import type {
     ScannerSessionDetailResponse,
     ScannerSessionEntryResponse,
     ScannerSessionResponse,
+    SearchPlayersResponse,
     SearchPublicDecksResponse,
     SetAdvisorSettingsRequest,
     SetCollectionVisibilityRequest,
@@ -128,7 +136,10 @@ import type {
     SetDeckVisibilityRequest,
     SetDecklistRequest,
     SetParticipantDecklist200Response,
+    SetProfileVisibilityRequest,
+    SetTimerRequest,
     SetTournamentStatusRequest,
+    SetTournamentStatusResponse,
     SetTournamentVisibilityRequest,
     SharedCollectionResponse,
     SharedDeckResponse,
@@ -142,10 +153,11 @@ import type {
     StartLoginRequest,
     StartRegistration200Response,
     StartRegistrationRequest,
+    StartTournamentRound200Response,
     TakeDeckCardsRequest,
     TournamentJoinCodeResponse,
-    TournamentParticipantResponse,
     TournamentSettingsRequest,
+    TournamentStateResponse,
     UpdateCollectionEntryRequest,
     UpdateCollectionRequest,
     UpdateDeckCardRequest,
@@ -221,6 +233,12 @@ export interface ClaimTournamentParticipantRequest {
     ClaimParticipantRequest?: ClaimParticipantRequest;
 }
 
+export interface CompleteTournamentRoundRequest {
+    tournament: string;
+    round: string;
+    CompleteRoundRequest?: CompleteRoundRequest;
+}
+
 export interface CreateCollectionOperationRequest {
     CreateCollectionRequest?: CreateCollectionRequest;
 }
@@ -248,6 +266,11 @@ export interface CreateScannerSessionOperationRequest {
 
 export interface CreateTournamentOperationRequest {
     CreateTournamentRequest?: CreateTournamentRequest;
+}
+
+export interface CreateTournamentRoundRequest {
+    tournament: string;
+    CreateRoundRequest?: CreateRoundRequest;
 }
 
 export interface CreateWatchListOperationRequest {
@@ -309,6 +332,11 @@ export interface DeleteTournamentRequest {
 export interface DeleteTournamentParticipantRequest {
     tournament: string;
     participant: string;
+}
+
+export interface DeleteTournamentRoundRequest {
+    tournament: string;
+    round: string;
 }
 
 export interface DeleteTournamentVenueRequest {
@@ -437,6 +465,10 @@ export interface GetTournamentRequest {
     tournament: string;
 }
 
+export interface GetTournamentStateRequest {
+    tournament: string;
+}
+
 export interface GetWatchListRequest {
     list: string;
 }
@@ -535,6 +567,10 @@ export interface ListTournamentParticipantsRequest {
     tournament: string;
 }
 
+export interface ListTournamentRoundsRequest {
+    tournament: string;
+}
+
 export interface ListWatchListCopiesRequest {
     list: string;
     entry: string;
@@ -623,6 +659,11 @@ export interface SearchPublicDecksRequest {
     sort?: PublicDeckSort;
 }
 
+export interface SearchTournamentPlayersRequest {
+    tournament: string;
+    q?: string;
+}
+
 export interface SetDeckAdvisorSettingsRequest {
     deck: string;
     SetAdvisorSettingsRequest?: SetAdvisorSettingsRequest;
@@ -652,6 +693,16 @@ export interface SetParticipantDecklistRequest {
     tournament: string;
     participant: string;
     SetDecklistRequest?: SetDecklistRequest;
+}
+
+export interface SetProfileVisibilityOperationRequest {
+    SetProfileVisibilityRequest?: SetProfileVisibilityRequest;
+}
+
+export interface SetTournamentRoundTimerRequest {
+    tournament: string;
+    round: string;
+    SetTimerRequest?: SetTimerRequest;
 }
 
 export interface SetTournamentStatusOperationRequest {
@@ -690,6 +741,11 @@ export interface StartLoginOperationRequest {
 
 export interface StartRegistrationOperationRequest {
     StartRegistrationRequest?: StartRegistrationRequest;
+}
+
+export interface StartTournamentRoundRequest {
+    tournament: string;
+    round: string;
 }
 
 export interface TakeDeckCardsOperationRequest {
@@ -1086,7 +1142,7 @@ export class DefaultApi extends runtime.BaseAPI {
      * Walk a guest into the roster by name  [`participant::register_guest`] trusts its `added_by` argument to mean the caller already holds a role — this is the one place in the module tree allowed to make that promise, immediately after checking it.  `decklist_text`, if given, is written in the same transaction right after the row exists to hold it — no policy check here, the same as `register_guest` itself: an organizer may register a walk-in with or without a list regardless of [`crate::models::tournament::DecklistPolicy`], since a policy governs self-service registration, not staff typing somebody in by hand.
      * Walk a guest into the roster by name
      */
-    async addTournamentParticipantRaw(requestParameters: AddTournamentParticipantOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<TournamentParticipantResponse>> {
+    async addTournamentParticipantRaw(requestParameters: AddTournamentParticipantOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<AddTournamentParticipant200Response>> {
         const requestOptions = await this.addTournamentParticipantRequestOpts(requestParameters);
         const response = await this.request(requestOptions, initOverrides);
 
@@ -1097,7 +1153,7 @@ export class DefaultApi extends runtime.BaseAPI {
      * Walk a guest into the roster by name  [`participant::register_guest`] trusts its `added_by` argument to mean the caller already holds a role — this is the one place in the module tree allowed to make that promise, immediately after checking it.  `decklist_text`, if given, is written in the same transaction right after the row exists to hold it — no policy check here, the same as `register_guest` itself: an organizer may register a walk-in with or without a list regardless of [`crate::models::tournament::DecklistPolicy`], since a policy governs self-service registration, not staff typing somebody in by hand.
      * Walk a guest into the roster by name
      */
-    async addTournamentParticipant(requestParameters: AddTournamentParticipantOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<TournamentParticipantResponse> {
+    async addTournamentParticipant(requestParameters: AddTournamentParticipantOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AddTournamentParticipant200Response> {
         const response = await this.addTournamentParticipantRaw(requestParameters, initOverrides);
         return await response.value();
     }
@@ -1435,6 +1491,64 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for completeTournamentRound without sending the request
+     */
+    async completeTournamentRoundRequestOpts(requestParameters: CompleteTournamentRoundRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tournament'] == null) {
+            throw new runtime.RequiredError(
+                'tournament',
+                'Required parameter "tournament" was null or undefined when calling completeTournamentRound().'
+            );
+        }
+
+        if (requestParameters['round'] == null) {
+            throw new runtime.RequiredError(
+                'round',
+                'Required parameter "round" was null or undefined when calling completeTournamentRound().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/tournaments/{tournament}/rounds/{round}/complete`;
+        urlPath = urlPath.replace('{tournament}', encodeURIComponent(String(requestParameters['tournament'])));
+        urlPath = urlPath.replace('{round}', encodeURIComponent(String(requestParameters['round'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['CompleteRoundRequest'],
+        };
+    }
+
+    /**
+     * Close a round
+     * Close a round
+     */
+    async completeTournamentRoundRaw(requestParameters: CompleteTournamentRoundRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CompleteTournamentRound200Response>> {
+        const requestOptions = await this.completeTournamentRoundRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Close a round
+     * Close a round
+     */
+    async completeTournamentRound(requestParameters: CompleteTournamentRoundRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CompleteTournamentRound200Response> {
+        const response = await this.completeTournamentRoundRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for createCollection without sending the request
      */
     async createCollectionRequestOpts(requestParameters: CreateCollectionOperationRequest): Promise<runtime.RequestOpts> {
@@ -1729,6 +1843,56 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async createTournament(requestParameters: CreateTournamentOperationRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CreateTournament200Response> {
         const response = await this.createTournamentRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for createTournamentRound without sending the request
+     */
+    async createTournamentRoundRequestOpts(requestParameters: CreateTournamentRoundRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tournament'] == null) {
+            throw new runtime.RequiredError(
+                'tournament',
+                'Required parameter "tournament" was null or undefined when calling createTournamentRound().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/tournaments/{tournament}/rounds`;
+        urlPath = urlPath.replace('{tournament}', encodeURIComponent(String(requestParameters['tournament'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['CreateRoundRequest'],
+        };
+    }
+
+    /**
+     * Add a round to a running tournament
+     * Add a round to a running tournament
+     */
+    async createTournamentRoundRaw(requestParameters: CreateTournamentRoundRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CreateTournamentRound200Response>> {
+        const requestOptions = await this.createTournamentRoundRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Add a round to a running tournament
+     * Add a round to a running tournament
+     */
+    async createTournamentRound(requestParameters: CreateTournamentRoundRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CreateTournamentRound200Response> {
+        const response = await this.createTournamentRoundRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -2457,6 +2621,61 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async deleteTournamentParticipant(requestParameters: DeleteTournamentParticipantRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
         const response = await this.deleteTournamentParticipantRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for deleteTournamentRound without sending the request
+     */
+    async deleteTournamentRoundRequestOpts(requestParameters: DeleteTournamentRoundRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tournament'] == null) {
+            throw new runtime.RequiredError(
+                'tournament',
+                'Required parameter "tournament" was null or undefined when calling deleteTournamentRound().'
+            );
+        }
+
+        if (requestParameters['round'] == null) {
+            throw new runtime.RequiredError(
+                'round',
+                'Required parameter "round" was null or undefined when calling deleteTournamentRound().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/tournaments/{tournament}/rounds/{round}`;
+        urlPath = urlPath.replace('{tournament}', encodeURIComponent(String(requestParameters['tournament'])));
+        urlPath = urlPath.replace('{round}', encodeURIComponent(String(requestParameters['round'])));
+
+        return {
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Delete a round nobody has played
+     * Delete a round nobody has played
+     */
+    async deleteTournamentRoundRaw(requestParameters: DeleteTournamentRoundRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FormErrorResponseForRoundLifecycleErrors>> {
+        const requestOptions = await this.deleteTournamentRoundRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Delete a round nobody has played
+     * Delete a round nobody has played
+     */
+    async deleteTournamentRound(requestParameters: DeleteTournamentRoundRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FormErrorResponseForRoundLifecycleErrors> {
+        const response = await this.deleteTournamentRoundRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -3916,7 +4135,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Fetch an account\'s public profile: what it put on show
+     * Fetch an account\'s public profile: what it put on show  Three answers, not two: the profile, a refusal for a name nobody holds, and the profile\'s own `is_public: false` for an account that keeps it closed. That last one does tell a reader the name is taken — a deliberate trade for being able to say \"they would rather not show their cards\" instead of \"no such person\".
      * Fetch an account\'s public profile: what it put on show
      */
     async getPublicProfileRaw(requestParameters: GetPublicProfileRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PublicProfileResponse>> {
@@ -3927,7 +4146,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Fetch an account\'s public profile: what it put on show
+     * Fetch an account\'s public profile: what it put on show  Three answers, not two: the profile, a refusal for a name nobody holds, and the profile\'s own `is_public: false` for an account that keeps it closed. That last one does tell a reader the name is taken — a deliberate trade for being able to say \"they would rather not show their cards\" instead of \"no such person\".
      * Fetch an account\'s public profile: what it put on show
      */
     async getPublicProfile(requestParameters: GetPublicProfileRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PublicProfileResponse> {
@@ -4214,6 +4433,53 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async getTournament(requestParameters: GetTournamentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GetTournamentResponse> {
         const response = await this.getTournamentRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for getTournamentState without sending the request
+     */
+    async getTournamentStateRequestOpts(requestParameters: GetTournamentStateRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tournament'] == null) {
+            throw new runtime.RequiredError(
+                'tournament',
+                'Required parameter "tournament" was null or undefined when calling getTournamentState().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/tournaments/{tournament}/state`;
+        urlPath = urlPath.replace('{tournament}', encodeURIComponent(String(requestParameters['tournament'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * What a client polls to know whether anything moved  In the actor block on purpose: a guest\'s phone is exactly the device that needs this most, and wrapping it in an auth layer would lock the room out. Deliberately cheap — a handful of indexed reads and never a standings computation, because every phone hits it on a timer.
+     * What a client polls to know whether anything moved
+     */
+    async getTournamentStateRaw(requestParameters: GetTournamentStateRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<TournamentStateResponse>> {
+        const requestOptions = await this.getTournamentStateRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * What a client polls to know whether anything moved  In the actor block on purpose: a guest\'s phone is exactly the device that needs this most, and wrapping it in an auth layer would lock the room out. Deliberately cheap — a handful of indexed reads and never a standings computation, because every phone hits it on a timer.
+     * What a client polls to know whether anything moved
+     */
+    async getTournamentState(requestParameters: GetTournamentStateRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<TournamentStateResponse> {
+        const response = await this.getTournamentStateRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -5177,6 +5443,53 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async listTournamentParticipants(requestParameters: ListTournamentParticipantsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListTournamentParticipantsResponse> {
         const response = await this.listTournamentParticipantsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for listTournamentRounds without sending the request
+     */
+    async listTournamentRoundsRequestOpts(requestParameters: ListTournamentRoundsRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tournament'] == null) {
+            throw new runtime.RequiredError(
+                'tournament',
+                'Required parameter "tournament" was null or undefined when calling listTournamentRounds().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/tournaments/{tournament}/rounds`;
+        urlPath = urlPath.replace('{tournament}', encodeURIComponent(String(requestParameters['tournament'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Every round of a tournament
+     * Every round of a tournament
+     */
+    async listTournamentRoundsRaw(requestParameters: ListTournamentRoundsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListRoundsResponse>> {
+        const requestOptions = await this.listTournamentRoundsRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Every round of a tournament
+     * Every round of a tournament
+     */
+    async listTournamentRounds(requestParameters: ListTournamentRoundsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListRoundsResponse> {
+        const response = await this.listTournamentRoundsRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -6278,6 +6591,57 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for searchTournamentPlayers without sending the request
+     */
+    async searchTournamentPlayersRequestOpts(requestParameters: SearchTournamentPlayersRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tournament'] == null) {
+            throw new runtime.RequiredError(
+                'tournament',
+                'Required parameter "tournament" was null or undefined when calling searchTournamentPlayers().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['q'] != null) {
+            queryParameters['q'] = requestParameters['q'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/tournaments/{tournament}/player-search`;
+        urlPath = urlPath.replace('{tournament}', encodeURIComponent(String(requestParameters['tournament'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Look accounts up by username, to seat a player whose phone is dead  Organizer-only and tournament-scoped: the guard is the role on this event, and the answer says which hits are already on this roster so the dialog can grey them out. A blank needle answers nothing rather than the whole table.
+     * Look accounts up by username, to seat a player whose phone is dead
+     */
+    async searchTournamentPlayersRaw(requestParameters: SearchTournamentPlayersRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SearchPlayersResponse>> {
+        const requestOptions = await this.searchTournamentPlayersRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Look accounts up by username, to seat a player whose phone is dead  Organizer-only and tournament-scoped: the guard is the role on this event, and the answer says which hits are already on this roster so the dialog can grey them out. A blank needle answers nothing rather than the whole table.
+     * Look accounts up by username, to seat a player whose phone is dead
+     */
+    async searchTournamentPlayers(requestParameters: SearchTournamentPlayersRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SearchPlayersResponse> {
+        const response = await this.searchTournamentPlayersRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for setDeckAdvisorSettings without sending the request
      */
     async setDeckAdvisorSettingsRequestOpts(requestParameters: SetDeckAdvisorSettingsRequest): Promise<runtime.RequestOpts> {
@@ -6606,6 +6970,110 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for setProfileVisibility without sending the request
+     */
+    async setProfileVisibilityRequestOpts(requestParameters: SetProfileVisibilityOperationRequest): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/accounts/me/profile-visibility`;
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['SetProfileVisibilityRequest'],
+        };
+    }
+
+    /**
+     * Open or close the logged-in account\'s public profile  Discovery only: the decks and collections already set to [`crate::models::visibility::Visibility::Public`] stay exactly as public as they were, and the deck search keeps finding them. What closes is the profile page and the organizer\'s player lookup.
+     * Open or close the logged-in account\'s public profile
+     */
+    async setProfileVisibilityRaw(requestParameters: SetProfileVisibilityOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
+        const requestOptions = await this.setProfileVisibilityRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<any>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     * Open or close the logged-in account\'s public profile  Discovery only: the decks and collections already set to [`crate::models::visibility::Visibility::Public`] stay exactly as public as they were, and the deck search keeps finding them. What closes is the profile page and the organizer\'s player lookup.
+     * Open or close the logged-in account\'s public profile
+     */
+    async setProfileVisibility(requestParameters: SetProfileVisibilityOperationRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
+        const response = await this.setProfileVisibilityRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for setTournamentRoundTimer without sending the request
+     */
+    async setTournamentRoundTimerRequestOpts(requestParameters: SetTournamentRoundTimerRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tournament'] == null) {
+            throw new runtime.RequiredError(
+                'tournament',
+                'Required parameter "tournament" was null or undefined when calling setTournamentRoundTimer().'
+            );
+        }
+
+        if (requestParameters['round'] == null) {
+            throw new runtime.RequiredError(
+                'round',
+                'Required parameter "round" was null or undefined when calling setTournamentRoundTimer().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/tournaments/{tournament}/rounds/{round}/timer`;
+        urlPath = urlPath.replace('{tournament}', encodeURIComponent(String(requestParameters['tournament'])));
+        urlPath = urlPath.replace('{round}', encodeURIComponent(String(requestParameters['round'])));
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['SetTimerRequest'],
+        };
+    }
+
+    /**
+     * Start, pause, adjust or reset a round\'s clock
+     * Start, pause, adjust or reset a round\'s clock
+     */
+    async setTournamentRoundTimerRaw(requestParameters: SetTournamentRoundTimerRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<StartTournamentRound200Response>> {
+        const requestOptions = await this.setTournamentRoundTimerRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Start, pause, adjust or reset a round\'s clock
+     * Start, pause, adjust or reset a round\'s clock
+     */
+    async setTournamentRoundTimer(requestParameters: SetTournamentRoundTimerRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<StartTournamentRound200Response> {
+        const response = await this.setTournamentRoundTimerRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for setTournamentStatus without sending the request
      */
     async setTournamentStatusRequestOpts(requestParameters: SetTournamentStatusOperationRequest): Promise<runtime.RequestOpts> {
@@ -6639,22 +7107,18 @@ export class DefaultApi extends runtime.BaseAPI {
      * Move a tournament to a new lifecycle status
      * Move a tournament to a new lifecycle status
      */
-    async setTournamentStatusRaw(requestParameters: SetTournamentStatusOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
+    async setTournamentStatusRaw(requestParameters: SetTournamentStatusOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SetTournamentStatusResponse>> {
         const requestOptions = await this.setTournamentStatusRequestOpts(requestParameters);
         const response = await this.request(requestOptions, initOverrides);
 
-        if (this.isJsonMime(response.headers.get('content-type'))) {
-            return new runtime.JSONApiResponse<any>(response);
-        } else {
-            return new runtime.TextApiResponse(response) as any;
-        }
+        return new runtime.JSONApiResponse(response);
     }
 
     /**
      * Move a tournament to a new lifecycle status
      * Move a tournament to a new lifecycle status
      */
-    async setTournamentStatus(requestParameters: SetTournamentStatusOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
+    async setTournamentStatus(requestParameters: SetTournamentStatusOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SetTournamentStatusResponse> {
         const response = await this.setTournamentStatusRaw(requestParameters, initOverrides);
         return await response.value();
     }
@@ -7041,6 +7505,61 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async startRegistration(requestParameters: StartRegistrationOperationRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<StartRegistration200Response> {
         const response = await this.startRegistrationRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for startTournamentRound without sending the request
+     */
+    async startTournamentRoundRequestOpts(requestParameters: StartTournamentRoundRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tournament'] == null) {
+            throw new runtime.RequiredError(
+                'tournament',
+                'Required parameter "tournament" was null or undefined when calling startTournamentRound().'
+            );
+        }
+
+        if (requestParameters['round'] == null) {
+            throw new runtime.RequiredError(
+                'round',
+                'Required parameter "round" was null or undefined when calling startTournamentRound().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/tournaments/{tournament}/rounds/{round}/start`;
+        urlPath = urlPath.replace('{tournament}', encodeURIComponent(String(requestParameters['tournament'])));
+        urlPath = urlPath.replace('{round}', encodeURIComponent(String(requestParameters['round'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Hand a round to the room and start its clock
+     * Hand a round to the room and start its clock
+     */
+    async startTournamentRoundRaw(requestParameters: StartTournamentRoundRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<StartTournamentRound200Response>> {
+        const requestOptions = await this.startTournamentRoundRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Hand a round to the room and start its clock
+     * Hand a round to the room and start its clock
+     */
+    async startTournamentRound(requestParameters: StartTournamentRoundRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<StartTournamentRound200Response> {
+        const response = await this.startTournamentRoundRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

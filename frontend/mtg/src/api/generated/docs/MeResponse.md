@@ -7,6 +7,7 @@ The account the current session belongs to
 
 Name | Type
 ------------ | -------------
+`profile_public` | boolean
 `username` | string
 `uuid` | string
 

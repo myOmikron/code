@@ -117,6 +117,64 @@
                 }
             }
         },
+        "/api/frontend/v1/accounts/me/profile-visibility": {
+            "put": {
+                "summary": "Open or close the logged-in account's public profile",
+                "description": "Open or close the logged-in account's public profile\n\nDiscovery only: the decks and collections already set to\n[`crate::models::visibility::Visibility::Public`] stay exactly as public as\nthey were, and the deck search keeps finding them. What closes is the\nprofile page and the organizer's player lookup.",
+                "operationId": "set_profile_visibility",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SetProfileVisibilityRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "nullable": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/frontend/v1/accounts/passkeys": {
             "get": {
                 "summary": "List the passkeys of the logged-in account",
@@ -4550,7 +4608,7 @@
         "/api/frontend/v1/explore/profiles/{username}": {
             "get": {
                 "summary": "Fetch an account's public profile: what it put on show",
-                "description": "Fetch an account's public profile: what it put on show",
+                "description": "Fetch an account's public profile: what it put on show\n\nThree answers, not two: the profile, a refusal for a name nobody holds, and\nthe profile's own `is_public: false` for an account that keeps it closed.\nThat last one does tell a reader the name is taken — a deliberate trade for\nbeing able to say \"they would rather not show their cards\" instead of\n\"no such person\".",
                 "operationId": "get_public_profile",
                 "parameters": [
                     {
@@ -7559,7 +7617,14 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/TournamentParticipantResponse"
+                                    "oneOf": [
+                                        {
+                                            "$ref": "#/components/schemas/TournamentParticipantResponse"
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/FormErrorResponse_for_AddParticipantErrors"
+                                        }
+                                    ]
                                 }
                             }
                         }
@@ -7597,27 +7662,20 @@
                 }
             }
         },
-        "/api/frontend/v1/tournaments/{tournament}/participants/{participant}/check-in": {
-            "post": {
-                "summary": "Check in, self-service or by staff",
-                "description": "Check in, self-service or by staff\n\nUnder [`crate::models::tournament::DecklistPolicy::RequiredToCheckIn`], a\nplayer with no decklist on file is refused with\n[`CheckInErrors::decklist_missing`] instead of the generic denial — see\n[`participant::check_in`].",
-                "operationId": "check_in_tournament_participant",
+        "/api/frontend/v1/tournaments/{tournament}/state": {
+            "get": {
+                "summary": "What a client polls to know whether anything moved",
+                "description": "What a client polls to know whether anything moved\n\nIn the actor block on purpose: a guest's phone is exactly the device that\nneeds this most, and wrapping it in an auth layer would lock the room out.\nDeliberately cheap — a handful of indexed reads and never a standings\ncomputation, because every phone hits it on a timer.",
+                "operationId": "get_tournament_state",
                 "parameters": [
                     {
                         "in": "path",
                         "name": "tournament",
                         "required": true,
                         "schema": {
-                            "$ref": "#/components/schemas/TournamentUuid"
-                        },
-                        "style": "simple"
-                    },
-                    {
-                        "in": "path",
-                        "name": "participant",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/components/schemas/TournamentParticipantUuid"
+                            "description": "Wrapper for the primary key of the [`Tournament`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
                         },
                         "style": "simple"
                     }
@@ -7628,12 +7686,143 @@
                         "content": {
                             "application/json": {
                                 "schema": {
+                                    "$ref": "#/components/schemas/TournamentStateResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/tournaments/{tournament}/rounds": {
+            "get": {
+                "summary": "Every round of a tournament",
+                "description": "Every round of a tournament",
+                "operationId": "list_tournament_rounds",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tournament",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Tournament`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ListRoundsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "summary": "Add a round to a running tournament",
+                "description": "Add a round to a running tournament",
+                "operationId": "create_tournament_round",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tournament",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Tournament`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateRoundRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
                                     "oneOf": [
                                         {
-                                            "nullable": true
+                                            "$ref": "#/components/schemas/RoundResponse"
                                         },
                                         {
-                                            "$ref": "#/components/schemas/FormErrorResponse_for_CheckInErrors"
+                                            "$ref": "#/components/schemas/FormErrorResponse_for_CreateRoundErrors"
                                         }
                                     ]
                                 }
@@ -7927,7 +8116,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "nullable": true
+                                    "$ref": "#/components/schemas/SetTournamentStatusResponse"
                                 }
                             }
                         }
@@ -8452,6 +8641,475 @@
                             "application/json": {
                                 "schema": {
                                     "nullable": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/tournaments/{tournament}/participants/{participant}/check-in": {
+            "post": {
+                "summary": "Check in, self-service or by staff",
+                "description": "Check in, self-service or by staff\n\nUnder [`crate::models::tournament::DecklistPolicy::RequiredToCheckIn`], a\nplayer with no decklist on file is refused with\n[`CheckInErrors::decklist_missing`] instead of the generic denial — see\n[`participant::check_in`].",
+                "operationId": "check_in_tournament_participant",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tournament",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/TournamentUuid"
+                        },
+                        "style": "simple"
+                    },
+                    {
+                        "in": "path",
+                        "name": "participant",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/TournamentParticipantUuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "nullable": true
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/FormErrorResponse_for_CheckInErrors"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/tournaments/{tournament}/rounds/{round}/start": {
+            "post": {
+                "summary": "Hand a round to the room and start its clock",
+                "description": "Hand a round to the room and start its clock",
+                "operationId": "start_tournament_round",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tournament",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/TournamentUuid"
+                        },
+                        "style": "simple"
+                    },
+                    {
+                        "in": "path",
+                        "name": "round",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/TournamentRoundUuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "$ref": "#/components/schemas/RoundResponse"
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/FormErrorResponse_for_RoundLifecycleErrors"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/tournaments/{tournament}/rounds/{round}/complete": {
+            "post": {
+                "summary": "Close a round",
+                "description": "Close a round",
+                "operationId": "complete_tournament_round",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tournament",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/TournamentUuid"
+                        },
+                        "style": "simple"
+                    },
+                    {
+                        "in": "path",
+                        "name": "round",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/TournamentRoundUuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CompleteRoundRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "$ref": "#/components/schemas/RoundResponse"
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/FormErrorResponse_for_CompleteRoundErrors"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/tournaments/{tournament}/rounds/{round}": {
+            "delete": {
+                "summary": "Delete a round nobody has played",
+                "description": "Delete a round nobody has played",
+                "operationId": "delete_tournament_round",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tournament",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/TournamentUuid"
+                        },
+                        "style": "simple"
+                    },
+                    {
+                        "in": "path",
+                        "name": "round",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/TournamentRoundUuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "nullable": true
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/FormErrorResponse_for_RoundLifecycleErrors"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/tournaments/{tournament}/rounds/{round}/timer": {
+            "put": {
+                "summary": "Start, pause, adjust or reset a round's clock",
+                "description": "Start, pause, adjust or reset a round's clock",
+                "operationId": "set_tournament_round_timer",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tournament",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/TournamentUuid"
+                        },
+                        "style": "simple"
+                    },
+                    {
+                        "in": "path",
+                        "name": "round",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/TournamentRoundUuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SetTimerRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "$ref": "#/components/schemas/RoundResponse"
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/FormErrorResponse_for_RoundLifecycleErrors"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/tournaments/{tournament}/player-search": {
+            "get": {
+                "summary": "Look accounts up by username, to seat a player whose phone is dead",
+                "description": "Look accounts up by username, to seat a player whose phone is dead\n\nOrganizer-only and tournament-scoped: the guard is the role on this event,\nand the answer says which hits are already on this roster so the dialog can\ngrey them out. A blank needle answers nothing rather than the whole table.",
+                "operationId": "search_tournament_players",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tournament",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Tournament`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    },
+                    {
+                        "in": "query",
+                        "name": "q",
+                        "schema": {
+                            "description": "What the organizer typed; blank answers nothing",
+                            "type": "string"
+                        },
+                        "style": "form"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SearchPlayersResponse"
                                 }
                             }
                         }
@@ -9803,6 +10461,39 @@
                     "unknown_account"
                 ]
             },
+            "AddParticipantErrors": {
+                "description": "Why a player could not be put on the roster",
+                "type": "object",
+                "properties": {
+                    "already_registered": {
+                        "description": "That account already has a row in this tournament",
+                        "type": "boolean"
+                    },
+                    "empty_name": {
+                        "description": "No name was given for a guest row",
+                        "type": "boolean"
+                    },
+                    "invalid_decklist": {
+                        "description": "The pasted decklist was blank once trimmed",
+                        "type": "boolean"
+                    },
+                    "registration_closed": {
+                        "description": "The event is finished or cancelled — nothing goes on the roster now",
+                        "type": "boolean"
+                    },
+                    "unknown_account": {
+                        "description": "The named account does not exist",
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "already_registered",
+                    "empty_name",
+                    "invalid_decklist",
+                    "registration_closed",
+                    "unknown_account"
+                ]
+            },
             "AddPasskeyErrors": {
                 "description": "Why a passkey could not be added",
                 "type": "object",
@@ -9898,12 +10589,21 @@
                 ]
             },
             "AddTournamentParticipantRequest": {
-                "description": "Request to walk a guest into the roster by name",
+                "description": "Request to put a player on the roster from the desk\n\nTwo shapes in one request: with `account` the row belongs to that account from the start — the organizer looked the player up because their phone was dead — and `display_name` is optional, defaulting to the username. Without it the row is a guest a name was typed for, claimable later by QR.",
                 "type": "object",
                 "properties": {
+                    "account": {
+                        "nullable": true,
+                        "description": "The account to seat, `None` to add a guest by name alone",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/AccountUuid"
+                            }
+                        ]
+                    },
                     "decklist_text": {
                         "nullable": true,
-                        "description": "A decklist to type in for them, pasted text only — an organizer never links a Planarium deck on a walk-in's behalf",
+                        "description": "A decklist to type in for them, pasted text only — an organizer never links a Planarium deck on somebody else's behalf",
                         "allOf": [
                             {
                                 "$ref": "#/components/schemas/MaxStr_16384"
@@ -9911,17 +10611,15 @@
                         ]
                     },
                     "display_name": {
-                        "description": "The name the player appears under",
+                        "nullable": true,
+                        "description": "The name the player appears under; required for a guest, optional alongside `account`",
                         "allOf": [
                             {
                                 "$ref": "#/components/schemas/MaxStr_64"
                             }
                         ]
                     }
-                },
-                "required": [
-                    "display_name"
-                ]
+                }
             },
             "AddWatchListEntryRequest": {
                 "description": "Request to put a card on a watch list",
@@ -10195,6 +10893,83 @@
                         "type": "string",
                         "enum": [
                             "DecklistsUnlocked"
+                        ]
+                    },
+                    {
+                        "description": "A round was paired",
+                        "type": "string",
+                        "enum": [
+                            "RoundPaired"
+                        ]
+                    },
+                    {
+                        "description": "A round's pairings were thrown away and rebuilt",
+                        "type": "string",
+                        "enum": [
+                            "RoundRepaired"
+                        ]
+                    },
+                    {
+                        "description": "A round was handed to the room",
+                        "type": "string",
+                        "enum": [
+                            "RoundStarted"
+                        ]
+                    },
+                    {
+                        "description": "A round was closed",
+                        "type": "string",
+                        "enum": [
+                            "RoundCompleted"
+                        ]
+                    },
+                    {
+                        "description": "A round was deleted before it was played",
+                        "type": "string",
+                        "enum": [
+                            "RoundDeleted"
+                        ]
+                    },
+                    {
+                        "description": "A round's clock was started, paused, adjusted or reset",
+                        "type": "string",
+                        "enum": [
+                            "RoundTimerChanged"
+                        ]
+                    },
+                    {
+                        "description": "The desk wrote a table's result itself",
+                        "type": "string",
+                        "enum": [
+                            "MatchResultOverridden"
+                        ]
+                    },
+                    {
+                        "description": "The desk took a result back off a table",
+                        "type": "string",
+                        "enum": [
+                            "MatchResultCleared"
+                        ]
+                    },
+                    {
+                        "description": "A table was renumbered",
+                        "type": "string",
+                        "enum": [
+                            "MatchTableChanged"
+                        ]
+                    },
+                    {
+                        "description": "Two players changed places",
+                        "type": "string",
+                        "enum": [
+                            "SeatsSwapped"
+                        ]
+                    },
+                    {
+                        "description": "A player's fixed table was set or cleared",
+                        "type": "string",
+                        "enum": [
+                            "ParticipantFixedTableChanged"
                         ]
                     }
                 ]
@@ -10996,6 +11771,35 @@
                     }
                 ]
             },
+            "CompleteRoundErrors": {
+                "description": "Why closing a round was refused",
+                "type": "object",
+                "properties": {
+                    "not_editable": {
+                        "description": "The round is not in a state that allows this",
+                        "type": "boolean"
+                    },
+                    "outstanding_tables": {
+                        "description": "Tables are still without a result — `force` would go through",
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "not_editable",
+                    "outstanding_tables"
+                ]
+            },
+            "CompleteRoundRequest": {
+                "description": "Request to close a round",
+                "type": "object",
+                "properties": {
+                    "force": {
+                        "description": "Close it even though tables are missing results",
+                        "default": false,
+                        "type": "boolean"
+                    }
+                }
+            },
             "Corridor": {
                 "description": "One bucket's target corridor, in cards",
                 "type": "object",
@@ -11187,6 +11991,52 @@
                     "color",
                     "icon",
                     "name"
+                ]
+            },
+            "CreateRoundErrors": {
+                "description": "Why a round could not be added",
+                "type": "object",
+                "properties": {
+                    "invalid_length": {
+                        "description": "The requested length is outside 1..=600 minutes",
+                        "type": "boolean"
+                    },
+                    "previous_round_open": {
+                        "description": "The round before this one is still open",
+                        "type": "boolean"
+                    },
+                    "tournament_not_running": {
+                        "description": "The event is not running",
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "invalid_length",
+                    "previous_round_open",
+                    "tournament_not_running"
+                ]
+            },
+            "CreateRoundRequest": {
+                "description": "Request to add a round",
+                "type": "object",
+                "properties": {
+                    "kind": {
+                        "description": "What the round is for",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/RoundKind"
+                            }
+                        ]
+                    },
+                    "minutes": {
+                        "nullable": true,
+                        "description": "How long the clock runs for, in minutes; `null` takes the event's own",
+                        "type": "integer",
+                        "format": "int16"
+                    }
+                },
+                "required": [
+                    "kind"
                 ]
             },
             "CreateScannerSessionRequest": {
@@ -12114,7 +12964,7 @@
                 ]
             },
             "DecklistPolicy": {
-                "description": "How a tournament requires its players to hand in a decklist\n\nAlways editable, unlike the structural settings [`Tournament::update_settings`] locks once the event leaves [`TournamentStatus::Draft`]/[`TournamentStatus::Registration`]: an organizer must be able to relax or tighten the requirement at any point right up to the last round, the same reasoning as `round_minutes`.",
+                "description": "How a tournament requires its players to hand in a decklist\n\nAlways editable, unlike the structural settings [`Tournament::update_settings`] locks once the event leaves [`TournamentStatus::Registration`]: an organizer must be able to relax or tighten the requirement at any point right up to the last round, the same reasoning as `round_minutes`.",
                 "oneOf": [
                     {
                         "description": "A decklist is welcome but a player may register, check in and play without one",
@@ -12510,6 +13360,32 @@
                     "result"
                 ]
             },
+            "FormErrorResponse_for_AddParticipantErrors": {
+                "description": "The response that is sent in a case of an error the caller should present his user",
+                "type": "object",
+                "properties": {
+                    "error": {
+                        "description": "The actual error struct",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/AddParticipantErrors"
+                            }
+                        ]
+                    },
+                    "result": {
+                        "description": "A constant `\"Err\"` used to differentiate this schema from any other \"Ok\" schema",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ErrorConstant"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "error",
+                    "result"
+                ]
+            },
             "FormErrorResponse_for_AddPasskeyErrors": {
                 "description": "The response that is sent in a case of an error the caller should present his user",
                 "type": "object",
@@ -12571,6 +13447,58 @@
                         "allOf": [
                             {
                                 "$ref": "#/components/schemas/ClaimErrors"
+                            }
+                        ]
+                    },
+                    "result": {
+                        "description": "A constant `\"Err\"` used to differentiate this schema from any other \"Ok\" schema",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ErrorConstant"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "error",
+                    "result"
+                ]
+            },
+            "FormErrorResponse_for_CompleteRoundErrors": {
+                "description": "The response that is sent in a case of an error the caller should present his user",
+                "type": "object",
+                "properties": {
+                    "error": {
+                        "description": "The actual error struct",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CompleteRoundErrors"
+                            }
+                        ]
+                    },
+                    "result": {
+                        "description": "A constant `\"Err\"` used to differentiate this schema from any other \"Ok\" schema",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ErrorConstant"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "error",
+                    "result"
+                ]
+            },
+            "FormErrorResponse_for_CreateRoundErrors": {
+                "description": "The response that is sent in a case of an error the caller should present his user",
+                "type": "object",
+                "properties": {
+                    "error": {
+                        "description": "The actual error struct",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CreateRoundErrors"
                             }
                         ]
                     },
@@ -12727,6 +13655,32 @@
                         "allOf": [
                             {
                                 "$ref": "#/components/schemas/RegistrationErrors"
+                            }
+                        ]
+                    },
+                    "result": {
+                        "description": "A constant `\"Err\"` used to differentiate this schema from any other \"Ok\" schema",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ErrorConstant"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "error",
+                    "result"
+                ]
+            },
+            "FormErrorResponse_for_RoundLifecycleErrors": {
+                "description": "The response that is sent in a case of an error the caller should present his user",
+                "type": "object",
+                "properties": {
+                    "error": {
+                        "description": "The actual error struct",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/RoundLifecycleErrors"
                             }
                         ]
                     },
@@ -13066,6 +14020,10 @@
                         "description": "The tournament is not accepting new registrations right now",
                         "type": "boolean"
                     },
+                    "tournament_full": {
+                        "description": "Every seat the event offers is taken",
+                        "type": "boolean"
+                    },
                     "unknown_code": {
                         "description": "The code did not resolve to a live tournament",
                         "type": "boolean"
@@ -13081,6 +14039,7 @@
                     "empty_name",
                     "invalid_decklist",
                     "registration_closed",
+                    "tournament_full",
                     "unknown_code",
                     "unknown_deck"
                 ]
@@ -13108,6 +14067,20 @@
                                 "$ref": "#/components/schemas/MaxStr_32"
                             }
                         ]
+                    },
+                    "join_code": {
+                        "description": "The code itself, as stored — a typed one may have arrived lowercase or with a separator, and a screen showing it wants the canonical form",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_8"
+                            }
+                        ]
+                    },
+                    "max_participants": {
+                        "nullable": true,
+                        "description": "How many players fit, `None` for no limit",
+                        "type": "integer",
+                        "format": "int16"
                     },
                     "name": {
                         "description": "Name of the tournament",
@@ -13188,6 +14161,7 @@
                     "already_registered",
                     "decklist_policy",
                     "format",
+                    "join_code",
                     "name",
                     "participant_count",
                     "pod_size",
@@ -13432,6 +14406,31 @@
                 },
                 "required": [
                     "passkeys"
+                ]
+            },
+            "ListRoundsResponse": {
+                "description": "Every round of a tournament",
+                "type": "object",
+                "properties": {
+                    "rounds": {
+                        "description": "The rounds, oldest first",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/RoundResponse"
+                        }
+                    },
+                    "server_time": {
+                        "description": "The server's own reading of the time, for clock skew",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDateTime"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "rounds",
+                    "server_time"
                 ]
             },
             "ListScannerSessionsResponse": {
@@ -13913,6 +14912,10 @@
                 "description": "The account the current session belongs to",
                 "type": "object",
                 "properties": {
+                    "profile_public": {
+                        "description": "Whether strangers may find this account and read its profile",
+                        "type": "boolean"
+                    },
                     "username": {
                         "description": "The account's login handle and display name",
                         "type": "string"
@@ -13927,6 +14930,7 @@
                     }
                 },
                 "required": [
+                    "profile_public",
                     "username",
                     "uuid"
                 ]
@@ -14313,6 +15317,37 @@
                             "Disqualified"
                         ]
                     }
+                ]
+            },
+            "PlayerSearchResultResponse": {
+                "description": "One account an organizer's player search turned up\n\nUsername only. The search exists to resolve \"which of these is my player\", and a username is what the organizer reads off their screen — anything else would make this a directory.",
+                "type": "object",
+                "properties": {
+                    "on_roster": {
+                        "description": "Whether this account is already on this tournament's roster",
+                        "type": "boolean"
+                    },
+                    "username": {
+                        "description": "Its username",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_32"
+                            }
+                        ]
+                    },
+                    "uuid": {
+                        "description": "The account found",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/AccountUuid"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "on_roster",
+                    "username",
+                    "uuid"
                 ]
             },
             "PriceDayResponse": {
@@ -14706,6 +15741,10 @@
                             "$ref": "#/components/schemas/PublicDeckResponse"
                         }
                     },
+                    "is_public": {
+                        "description": "Whether this account lets strangers read its profile\n\n`false` leaves [`Self::decks`] and [`Self::collections`] empty and [`Self::created_at`] at the unix epoch — there is nothing to show, and the client renders the \"keeps their cards to themselves\" note instead. The username still comes back, because the page was reached by it.",
+                        "type": "boolean"
+                    },
                     "username": {
                         "description": "The account's login handle and display name",
                         "type": "string"
@@ -14715,6 +15754,7 @@
                     "collections",
                     "created_at",
                     "decks",
+                    "is_public",
                     "username"
                 ]
             },
@@ -15143,6 +16183,151 @@
                     "share_token"
                 ]
             },
+            "RoundKind": {
+                "description": "What a round is for\n\nOnly a [`Self::Swiss`] round carries a number, plays matches and moves the standings. The other two are the shape a limited event needs before it can start: a draft round groups people into pods so they open boosters together, and a deckbuilding round is a clock and nothing else. Both are rounds in the sense that they occupy the room and the timer, and in no other sense — see [`round::Round::number`].",
+                "oneOf": [
+                    {
+                        "description": "A scored round of matches",
+                        "type": "string",
+                        "enum": [
+                            "Swiss"
+                        ]
+                    },
+                    {
+                        "description": "Players sit in pods and draft; no results",
+                        "type": "string",
+                        "enum": [
+                            "Draft"
+                        ]
+                    },
+                    {
+                        "description": "Everybody builds alone against one clock; no pairings at all",
+                        "type": "string",
+                        "enum": [
+                            "Deckbuilding"
+                        ]
+                    }
+                ]
+            },
+            "RoundLifecycleErrors": {
+                "description": "Why a round's lifecycle call was refused",
+                "type": "object",
+                "properties": {
+                    "not_editable": {
+                        "description": "The round is not in a state that allows this",
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "not_editable"
+                ]
+            },
+            "RoundResponse": {
+                "description": "One round, as every surface reads it",
+                "type": "object",
+                "properties": {
+                    "completed_at": {
+                        "nullable": true,
+                        "description": "When it was closed",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDateTime"
+                            }
+                        ]
+                    },
+                    "kind": {
+                        "description": "What the round is for",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/RoundKind"
+                            }
+                        ]
+                    },
+                    "number": {
+                        "nullable": true,
+                        "description": "The number on the pairings sheet, `null` for a draft or deckbuilding stage — which is exactly what keeps those out of the round count",
+                        "type": "integer",
+                        "format": "int16"
+                    },
+                    "pod_size": {
+                        "nullable": true,
+                        "description": "How many players share a table",
+                        "type": "integer",
+                        "format": "int16"
+                    },
+                    "sequence": {
+                        "description": "Where it sits among every round of this event",
+                        "type": "integer",
+                        "format": "int16"
+                    },
+                    "started_at": {
+                        "nullable": true,
+                        "description": "When the round was handed to the room",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDateTime"
+                            }
+                        ]
+                    },
+                    "status": {
+                        "description": "Where the round stands",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/RoundStatus"
+                            }
+                        ]
+                    },
+                    "timer": {
+                        "description": "The round's clock",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/TimerResponse"
+                            }
+                        ]
+                    },
+                    "uuid": {
+                        "description": "Primary key",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/TournamentRoundUuid"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "kind",
+                    "sequence",
+                    "status",
+                    "timer",
+                    "uuid"
+                ]
+            },
+            "RoundStatus": {
+                "description": "Where a round stands\n\nThere is no `Cancelled`: re-pairing replaces a round's matches in place and deleting one is a hard delete guarded on \"nothing reported\", so a lingering cancelled round would only be a fourth thing every read has to remember to filter out.",
+                "oneOf": [
+                    {
+                        "description": "Paired, not yet handed to the room",
+                        "type": "string",
+                        "enum": [
+                            "Pairing"
+                        ]
+                    },
+                    {
+                        "description": "Being played",
+                        "type": "string",
+                        "enum": [
+                            "Running"
+                        ]
+                    },
+                    {
+                        "description": "Every table reported, or the organizer closed it anyway",
+                        "type": "string",
+                        "enum": [
+                            "Complete"
+                        ]
+                    }
+                ]
+            },
             "ScannerSessionDetailResponse": {
                 "description": "One session together with its staging area",
                 "type": "object",
@@ -15319,6 +16504,22 @@
                 "example": "1970-01-01T00:00:00.0Z",
                 "type": "string",
                 "format": "date-time"
+            },
+            "SearchPlayersResponse": {
+                "description": "What a player search answers",
+                "type": "object",
+                "properties": {
+                    "accounts": {
+                        "description": "The accounts found, alphabetically, capped by the server",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/PlayerSearchResultResponse"
+                        }
+                    }
+                },
+                "required": [
+                    "accounts"
+                ]
             },
             "SearchPublicDecksResponse": {
                 "description": "One page of the decks their owners put on show",
@@ -15567,6 +16768,42 @@
                     }
                 }
             },
+            "SetProfileVisibilityRequest": {
+                "description": "Request to open or close the logged-in account's public profile",
+                "type": "object",
+                "properties": {
+                    "profile_public": {
+                        "description": "Whether strangers may find this account and read its profile",
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "profile_public"
+                ]
+            },
+            "SetTimerRequest": {
+                "description": "Request to work a round's clock",
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "description": "What the desk did",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/TimerActionRequest"
+                            }
+                        ]
+                    },
+                    "seconds": {
+                        "nullable": true,
+                        "description": "Seconds to add, for `Adjust`; the new length, for `Reset`",
+                        "type": "integer",
+                        "format": "int32"
+                    }
+                },
+                "required": [
+                    "action"
+                ]
+            },
             "SetTournamentStatusRequest": {
                 "description": "Request to move a tournament to a new lifecycle status",
                 "type": "object",
@@ -15582,6 +16819,20 @@
                 },
                 "required": [
                     "status"
+                ]
+            },
+            "SetTournamentStatusResponse": {
+                "description": "What starting (or otherwise moving) a tournament did beyond the status",
+                "type": "object",
+                "properties": {
+                    "dropped_awaiting_check_in": {
+                        "description": "How many players were dropped for never checking in\n\nOnly ever non-zero on the move to [`TournamentStatus::Running`]. The client already listed them in its confirmation, so this is the count that actually happened rather than the one it predicted.",
+                        "type": "integer",
+                        "format": "int64"
+                    }
+                },
+                "required": [
+                    "dropped_awaiting_check_in"
                 ]
             },
             "SetTournamentVisibilityRequest": {
@@ -15750,6 +17001,12 @@
                                 "$ref": "#/components/schemas/MaxStr_32"
                             }
                         ]
+                    },
+                    "max_participants": {
+                        "nullable": true,
+                        "description": "How many players fit, `None` for no limit — a reader who may not see the roster is still told whether there is room",
+                        "type": "integer",
+                        "format": "int16"
                     },
                     "name": {
                         "description": "Name of the tournament",
@@ -16490,6 +17747,126 @@
                     "value_cents"
                 ]
             },
+            "TimerActionRequest": {
+                "description": "What the desk did to a clock",
+                "oneOf": [
+                    {
+                        "description": "Start it from its full length",
+                        "type": "string",
+                        "enum": [
+                            "Start"
+                        ]
+                    },
+                    {
+                        "description": "Stop it where it stands",
+                        "type": "string",
+                        "enum": [
+                            "Pause"
+                        ]
+                    },
+                    {
+                        "description": "Let it run again",
+                        "type": "string",
+                        "enum": [
+                            "Resume"
+                        ]
+                    },
+                    {
+                        "description": "Add to or take from the time left",
+                        "type": "string",
+                        "enum": [
+                            "Adjust"
+                        ]
+                    },
+                    {
+                        "description": "Take a new length and go back to not started",
+                        "type": "string",
+                        "enum": [
+                            "Reset"
+                        ]
+                    }
+                ]
+            },
+            "TimerResponse": {
+                "description": "A round's clock, with the server's own reading of the time beside it\n\nOne struct rather than two sibling fields, so that serialising a deadline without the reference point it is measured against is not expressible. A phone with a wrong clock is the normal case, not the exception.",
+                "type": "object",
+                "properties": {
+                    "ends_at": {
+                        "nullable": true,
+                        "description": "When it runs out",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDateTime"
+                            }
+                        ]
+                    },
+                    "length_seconds": {
+                        "description": "How long the round runs for, in seconds",
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "paused_at": {
+                        "nullable": true,
+                        "description": "When it was paused",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDateTime"
+                            }
+                        ]
+                    },
+                    "remaining_seconds": {
+                        "description": "Seconds left, computed by the server and never below zero",
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "state": {
+                        "description": "Where the clock stands",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/TimerStateResponse"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "length_seconds",
+                    "remaining_seconds",
+                    "state"
+                ]
+            },
+            "TimerStateResponse": {
+                "description": "Where a clock stands",
+                "oneOf": [
+                    {
+                        "description": "Never started",
+                        "type": "string",
+                        "enum": [
+                            "Idle"
+                        ]
+                    },
+                    {
+                        "description": "Counting down",
+                        "type": "string",
+                        "enum": [
+                            "Running"
+                        ]
+                    },
+                    {
+                        "description": "Stopped, with time left",
+                        "type": "string",
+                        "enum": [
+                            "Paused"
+                        ]
+                    },
+                    {
+                        "description": "Started and run out",
+                        "type": "string",
+                        "enum": [
+                            "Expired"
+                        ]
+                    }
+                ]
+            },
             "TopCardResponse": {
                 "description": "A stack worth calling out",
                 "type": "object",
@@ -16862,6 +18239,12 @@
                         "description": "Whether a late entry's missed rounds count as match losses",
                         "type": "boolean"
                     },
+                    "max_participants": {
+                        "nullable": true,
+                        "description": "How many players fit, `None` for no limit",
+                        "type": "integer",
+                        "format": "int16"
+                    },
                     "name": {
                         "description": "Name of the tournament",
                         "allOf": [
@@ -16894,6 +18277,12 @@
                             }
                         ]
                     },
+                    "planned_rounds": {
+                        "nullable": true,
+                        "description": "How many scoring rounds the event means to play, `None` while undecided",
+                        "type": "integer",
+                        "format": "int16"
+                    },
                     "pod_size": {
                         "description": "How many players sit at one table",
                         "type": "integer",
@@ -16918,10 +18307,6 @@
                         "description": "Match points for a win",
                         "type": "integer",
                         "format": "int16"
-                    },
-                    "require_check_in": {
-                        "description": "Whether players must check in before round one is paired",
-                        "type": "boolean"
                     },
                     "round_minutes": {
                         "description": "Default round length in minutes",
@@ -17015,12 +18400,16 @@
                     "points_draw",
                     "points_loss",
                     "points_win",
-                    "require_check_in",
                     "round_minutes",
                     "status",
                     "uuid",
                     "visibility"
                 ]
+            },
+            "TournamentRoundUuid": {
+                "description": "Wrapper for the primary key of the [`round::Round`] model. To have better distinguishable types.",
+                "type": "string",
+                "format": "uuid"
             },
             "TournamentSettingsErrors": {
                 "description": "Why a [`TournamentSettingsRequest`] was refused",
@@ -17032,6 +18421,14 @@
                     },
                     "invalid_games_per_match": {
                         "description": "`games_per_match` is even, outside 1..=5, or not 1 while `pod_size` is above 2",
+                        "type": "boolean"
+                    },
+                    "invalid_max_participants": {
+                        "description": "`max_participants` was given as zero or negative",
+                        "type": "boolean"
+                    },
+                    "invalid_planned_rounds": {
+                        "description": "`planned_rounds` was given as zero or negative",
                         "type": "boolean"
                     },
                     "invalid_pod_size": {
@@ -17054,6 +18451,8 @@
                 "required": [
                     "invalid_format",
                     "invalid_games_per_match",
+                    "invalid_max_participants",
+                    "invalid_planned_rounds",
                     "invalid_pod_size",
                     "invalid_points",
                     "invalid_round_length",
@@ -17106,6 +18505,12 @@
                         "description": "Whether a late entry's missed rounds count as match losses\n\nSent as `false` by the client: that is the organizer's call when they add the player, not a rule fixed up front.",
                         "type": "boolean"
                     },
+                    "max_participants": {
+                        "nullable": true,
+                        "description": "How many players fit, `None` for an event that turns nobody away. Held against self-service registration only.",
+                        "type": "integer",
+                        "format": "int16"
+                    },
                     "name": {
                         "description": "Name of the tournament",
                         "allOf": [
@@ -17129,6 +18534,12 @@
                                 "$ref": "#/components/schemas/ParticipantAudience"
                             }
                         ]
+                    },
+                    "planned_rounds": {
+                        "nullable": true,
+                        "description": "How many scoring rounds the event means to play, `None` while undecided. Always editable, the event's own schedule rather than a locked rule.",
+                        "type": "integer",
+                        "format": "int16"
                     },
                     "pod_size": {
                         "description": "How many players sit at one table, 2..=5\n\nThe client derives it from the format — pods of four for the commander formats, two for everything else — rather than asking for it; the bound stays here because the request still carries it.",
@@ -17154,10 +18565,6 @@
                         "description": "Match points for a win",
                         "type": "integer",
                         "format": "int16"
-                    },
-                    "require_check_in": {
-                        "description": "Whether players must check in before round one is paired",
-                        "type": "boolean"
                     },
                     "round_minutes": {
                         "description": "Default round length in minutes, 10..=600",
@@ -17216,22 +18623,70 @@
                     "points_draw",
                     "points_loss",
                     "points_win",
-                    "require_check_in",
                     "round_minutes"
+                ]
+            },
+            "TournamentStateResponse": {
+                "description": "What a client polls to know whether anything moved\n\nDeliberately cheap: a handful of indexed reads and no standings, because every phone in the room hits it on a timer.",
+                "type": "object",
+                "properties": {
+                    "outstanding_tables": {
+                        "description": "How many of the current round's tables have no confirmed result",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "planned_rounds": {
+                        "nullable": true,
+                        "description": "How many scoring rounds the event means to play",
+                        "type": "integer",
+                        "format": "int16"
+                    },
+                    "revision": {
+                        "description": "Changes exactly when something a client renders changed\n\nA hex string, not an integer: a 64-bit counter crosses JavaScript's safe-integer range and would compare equal for unequal states on the one platform that consumes it.",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_32"
+                            }
+                        ]
+                    },
+                    "round": {
+                        "nullable": true,
+                        "description": "The round the room is on",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/RoundResponse"
+                            }
+                        ]
+                    },
+                    "server_time": {
+                        "description": "The server's own reading of the time, for clock skew",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDateTime"
+                            }
+                        ]
+                    },
+                    "status": {
+                        "description": "Where the event stands",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/TournamentStatus"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "outstanding_tables",
+                    "revision",
+                    "server_time",
+                    "status"
                 ]
             },
             "TournamentStatus": {
                 "description": "Where a tournament stands in its lifecycle",
                 "oneOf": [
                     {
-                        "description": "Being set up by its organizers; nobody outside the staff can join yet",
-                        "type": "string",
-                        "enum": [
-                            "Draft"
-                        ]
-                    },
-                    {
-                        "description": "Open for players to register or join by code",
+                        "description": "Open for players to register or join by code — where every tournament starts",
                         "type": "string",
                         "enum": [
                             "Registration"

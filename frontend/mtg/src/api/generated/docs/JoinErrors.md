@@ -12,6 +12,7 @@ Name | Type
 `empty_name` | boolean
 `invalid_decklist` | boolean
 `registration_closed` | boolean
+`tournament_full` | boolean
 `unknown_code` | boolean
 `unknown_deck` | boolean
 

@@ -14,15 +14,16 @@ Name | Type
 `games_per_match` | number
 `guest_names_public` | boolean
 `late_entry_as_losses` | boolean
+`max_participants` | number
 `name` | string
 `pairing_system` | [PairingSystem](PairingSystem.md)
 `participant_audience` | [ParticipantAudience](ParticipantAudience.md)
+`planned_rounds` | number
 `pod_size` | number
 `points_bye` | number
 `points_draw` | number
 `points_loss` | number
 `points_win` | number
-`require_check_in` | boolean
 `round_minutes` | number
 `starts_at` | string
 `venue` | string
