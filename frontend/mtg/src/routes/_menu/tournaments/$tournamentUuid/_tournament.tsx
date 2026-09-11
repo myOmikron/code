@@ -7,12 +7,22 @@ import { ResponseError } from "src/api/generated";
 import { tournamentStatusColor, tournamentStatusLabelKey } from "src/components/tournament-join-code";
 import { formatDateTime } from "src/utils/format";
 import i18n from "src/i18n";
+import { clockSkew } from "src/utils/round-clock";
 
 export const Route = createFileRoute("/_menu/tournaments/$tournamentUuid/_tournament")({
     loader: async ({ params }) => {
         await i18n.loadNamespaces("tournament");
         try {
-            return await Api.tournaments.get(params.tournamentUuid);
+            // Both in one trip: the tab strip needs the round list to know what to call the first
+            // tab, and the round screen under it needs the same rows.
+            const [details, rounds] = await Promise.all([
+                Api.tournaments.get(params.tournamentUuid),
+                Api.tournaments.rounds.list(params.tournamentUuid),
+            ]);
+            // The whole round trip is charged to skew, which biases the estimate by at most half
+            // the latency — invisible on a face that only shows seconds.
+            const skewMs = clockSkew(rounds.server_time, Date.now());
+            return { ...details, rounds: rounds.rounds, skewMs };
         } catch (error) {
             // A guest whose session died, or a stranger on a private event, gets a plain 400
             // (denied) or 401 (no actor identity at all) — either way there is nothing here for
@@ -25,7 +35,8 @@ export const Route = createFileRoute("/_menu/tournaments/$tournamentUuid/_tourna
 });
 
 /**
- * The chrome around one tournament: its name, its status, and the tabs under it.
+ * The chrome around one tournament: its name, its status, and the two tabs under it — the event
+ * itself, and the settings behind it.
  *
  * No `<RequireAccount>` here — guests are exactly who this section exists for. Identity comes
  * from the `TournamentActor` the backend resolved when answering `get_tournament`; a viewer who
@@ -49,7 +60,17 @@ function RouteComponent() {
         );
     }
 
-    const { tournament, viewer } = data;
+    const { tournament, viewer, rounds } = data;
+    const started = tournament.status === "Running" || tournament.status === "Finished";
+    const round = rounds.at(-1);
+    const currentRoundLabel =
+        round === undefined
+            ? t("heading.rounds")
+            : round.number != null
+              ? t("heading.round-number", { number: round.number })
+              : round.kind === "Draft"
+                ? t("heading.draft")
+                : t("heading.deckbuilding");
 
     return (
         <div className={"flex flex-col gap-2"}>
@@ -81,11 +102,15 @@ function RouteComponent() {
                             params={{ tournamentUuid }}
                             activeOptions={{ exact: true }}
                         >
-                            {t("heading.tournament")}
+                            {/* The same tab, renamed by what the event is doing: before it starts
+                                this is the sign-up sheet, and afterwards it is the round. */}
+                            {started ? currentRoundLabel : t("heading.tournament")}
                         </Tab>
-                        <Tab href={"/tournaments/$tournamentUuid/players"} params={{ tournamentUuid }}>
-                            {t("heading.players")}
-                        </Tab>
+                        {started && (
+                            <Tab href={"/tournaments/$tournamentUuid/players"} params={{ tournamentUuid }}>
+                                {t("heading.players")}
+                            </Tab>
+                        )}
                         {/* Hidden rather than disabled: a scorekeeper or a player has no use for
                             a tab whose page immediately tells them to go away. Direct navigation
                             still reaches it — `settings.tsx` renders its own empty state then. */}

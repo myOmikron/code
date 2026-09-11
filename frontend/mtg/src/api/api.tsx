@@ -6,6 +6,7 @@ import {
     AddScannerSessionEntryRequest,
     AddTournamentOrganizerRequest,
     AddTournamentParticipantRequest,
+    CreateRoundRequest,
     AddWatchListEntryRequest,
     Configuration,
     CreateCollectionRequest,
@@ -15,6 +16,7 @@ import {
     CreateGlobalTagRequest,
     CreateTournamentRequest,
     CreateWatchListRequest,
+    TimerActionRequest,
     UpdateGlobalTagRequest,
     UpdateScannerSessionEntryRequest,
     UpdateScannerSessionRequest,
@@ -318,6 +320,37 @@ export const Api = {
                 }),
             ),
         rotateJoinCode: async (uuid: UUID) => handleError(defaultApi.rotateTournamentJoinCode({ tournament: uuid })),
+        // The rounds a tournament has played, is playing, or is about to. `state` and `list`
+        // bypass `handleError` for the same reason `participants.list` does: a guest's phone polls
+        // them, and a lapsed session must not turn into a login redirect they cannot complete.
+        rounds: {
+            state: (uuid: UUID) => defaultApi.getTournamentState({ tournament: uuid }),
+            list: (uuid: UUID) => defaultApi.listTournamentRounds({ tournament: uuid }),
+            create: async (uuid: UUID, req: CreateRoundRequest) =>
+                handleError(defaultApi.createTournamentRound({ tournament: uuid, CreateRoundRequest: req })),
+            start: async (uuid: UUID, round: UUID) =>
+                handleError(defaultApi.startTournamentRound({ tournament: uuid, round })),
+            complete: async (uuid: UUID, round: UUID, force = false) =>
+                handleError(
+                    defaultApi.completeTournamentRound({
+                        tournament: uuid,
+                        round,
+                        CompleteRoundRequest: { force },
+                    }),
+                ),
+            delete: async (uuid: UUID, round: UUID) =>
+                handleError(defaultApi.deleteTournamentRound({ tournament: uuid, round })),
+            // One call for the whole clock: the server owns the arithmetic, so the client only
+            // ever says which verb the desk pressed.
+            timer: async (uuid: UUID, round: UUID, action: TimerActionRequest, seconds?: number) =>
+                handleError(
+                    defaultApi.setTournamentRoundTimer({
+                        tournament: uuid,
+                        round,
+                        SetTimerRequest: { action, seconds },
+                    }),
+                ),
+        },
         revokeJoinCode: async (uuid: UUID) => handleError(defaultApi.revokeTournamentJoinCode({ tournament: uuid })),
         // The organizer's own book of places, filled implicitly: saving a tournament with a
         // venue writes it here, so there is nothing to create by hand — only to read back and,

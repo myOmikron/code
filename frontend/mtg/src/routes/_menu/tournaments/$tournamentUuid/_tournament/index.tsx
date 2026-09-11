@@ -2,7 +2,9 @@ import { createFileRoute, useLoaderData, useRouter } from "@tanstack/react-route
 import { Api } from "src/api/api";
 import { ResponseError } from "src/api/generated";
 import type { TournamentParticipantResponse } from "src/api/generated";
+import { TournamentRoundPanel } from "src/components/tournament-round-panel";
 import { TournamentSetup } from "src/components/tournament-setup";
+import { PULSE_INTERVALS, useTournamentPulse } from "src/utils/use-tournament-pulse";
 
 export const Route = createFileRoute("/_menu/tournaments/$tournamentUuid/_tournament/")({
     loader: async ({ params }) => {
@@ -19,11 +21,12 @@ export const Route = createFileRoute("/_menu/tournaments/$tournamentUuid/_tourna
 });
 
 /**
- * The screen a tournament is on right now: how to join it, and who has signed up.
+ * The screen a tournament is on right now.
  *
- * The join bar, the slot count and the roster used to be two tabs a desk had to flip between.
- * They are one screen, because an organizer checking somebody in is looking at the code and the
- * roster at the same moment.
+ * Before it starts that is how to join it and who has signed up; once it starts the same tab
+ * becomes the round, because the round is the only thing anybody at the desk is looking at. The
+ * roster does not disappear — it moves to a tab of its own, where it is still reachable for a late
+ * arrival or a drop.
  *
  * @returns the page
  */
@@ -33,18 +36,37 @@ function RouteComponent() {
     // Non-null: the layout only ever renders `<Outlet />` — reaching this tab at all — once its
     // own loader resolved a tournament; a `null` there renders the layout's own empty state
     // instead, and this component never mounts.
-    const { tournament, viewer, participant_count } = useLoaderData({
+    const { tournament, viewer, participant_count, rounds, skewMs } = useLoaderData({
         from: "/_menu/tournaments/$tournamentUuid/_tournament",
     })!;
     const router = useRouter();
 
+    const running = tournament.status === "Running";
+    useTournamentPulse({
+        interval: viewer.is_organizer ? PULSE_INTERVALS.staff : PULSE_INTERVALS.player,
+        enabled: running,
+    });
+
+    if (!running && tournament.status !== "Finished") {
+        return (
+            <TournamentSetup
+                tournamentUuid={tournamentUuid}
+                tournament={tournament}
+                viewer={viewer}
+                participantCount={participant_count}
+                participants={participants}
+                onChanged={() => router.invalidate()}
+            />
+        );
+    }
+
     return (
-        <TournamentSetup
+        <TournamentRoundPanel
             tournamentUuid={tournamentUuid}
             tournament={tournament}
             viewer={viewer}
-            participantCount={participant_count}
-            participants={participants}
+            rounds={rounds}
+            skewMs={skewMs}
             onChanged={() => router.invalidate()}
         />
     );
