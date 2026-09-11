@@ -1,0 +1,15 @@
+# Static traefik configuration for the localhost-only stand-in entrypoint.
+#
+# The real dev entrypoint (../traefik.yml) also serves https://${DOMAIN} over
+# the tailnet and asks the internal step-ca for a certificate. That path needs
+# TS_AUTHKEY in dev/common/env.secret. This one drops it: plain HTTP on
+# http://localhost, which is a secure context, so passkeys still work.
+
+entryPoints:
+  web:
+    address: ":80"
+
+providers:
+  file:
+    filename: /etc/traefik/dynamic.yml
+    watch: true

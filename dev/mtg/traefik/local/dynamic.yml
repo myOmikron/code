@@ -1,0 +1,32 @@
+# Routing for the localhost-only entrypoint — the `web` half of
+# ../dynamic.yml, without the tailnet routers and their cert resolver.
+# Keep the two in sync when routes change.
+
+http:
+  routers:
+    webserver:
+      rule: "PathPrefix(`/api`) || PathPrefix(`/docs`)"
+      entryPoints: [ web ]
+      service: webserver
+    swagger:
+      rule: "PathPrefix(`/swagger-ui`)"
+      entryPoints: [ web ]
+      service: swagger
+    frontend:
+      rule: "PathPrefix(`/`)"
+      entryPoints: [ web ]
+      service: frontend
+
+  services:
+    frontend:
+      loadBalancer:
+        servers:
+          - url: "http://frontend:5173"
+    webserver:
+      loadBalancer:
+        servers:
+          - url: "http://webserver:8080"
+    swagger:
+      loadBalancer:
+        servers:
+          - url: "http://swagger:8080"

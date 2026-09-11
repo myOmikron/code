@@ -1,0 +1,45 @@
+# Local override for dev/mtg.yml — drops the tailnet entrypoint.
+#
+#   docker compose -f dev/mtg.yml -f dev/mtg.local.yml up -d
+#
+# The stack's real entrypoint publishes port 80 from the tailscale container
+# and shares its network namespace with traefik, so http://localhost and
+# https://${DOMAIN} are the same routers. That needs a TS_AUTHKEY in
+# dev/common/env.secret; without one tailscale falls back to interactive login,
+# times out and exits, and traefik never starts.
+#
+# This override parks both behind a profile `up` skips and puts a plain-HTTP
+# traefik on the stack's own network in their place. Delete the file (or drop
+# the -f) once env.secret exists.
+
+name: mtg
+
+services:
+  tailscale:
+    profiles: [ tailnet ]
+  traefik:
+    profiles: [ tailnet ]
+
+  traefik-local:
+    image: traefik:3
+    ports:
+      - "127.0.0.1:80:80"
+    volumes:
+      - ./mtg/traefik/local/traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./mtg/traefik/local/dynamic.yml:/etc/traefik/dynamic.yml:ro
+
+  # rp_id/rp_origin follow PUBLIC_ORIGIN, and WebAuthn requires it to match the
+  # host in the address bar — the tailnet default makes login on localhost fail
+  # with "The RP ID ... is invalid for this domain". Passkeys are bound to the
+  # host, so this swaps which set is usable: the ones registered before the
+  # stack moved to the tailnet (2026-08-29) work again, the ones registered
+  # after it do not. Nothing is deleted; dropping this override swaps them back.
+  webserver:
+    environment:
+      PUBLIC_ORIGIN: http://localhost
+    # The same Dockerfile with two lines swapped — a plain alpine runtime base
+    # instead of the hardened one on dhi.io, and an aarch64 target instead of
+    # x86_64. Its own header says which lines and why; keep it in step with
+    # services/mtg/Dockerfile.
+    build:
+      dockerfile: dev/mtg/Dockerfile.local
