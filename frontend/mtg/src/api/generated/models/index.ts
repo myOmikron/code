@@ -2584,6 +2584,27 @@ export interface FinishRegistrationRequest {
     token: string;
 }
 /**
+ * A pin the layout could not honour
+ * 
+ * Two players who cannot leave their table asked for the same number. The lower-numbered table kept it and the other pin was dropped; nothing about who plays whom changed, so the round is still perfectly valid — an organizer simply has to move somebody by hand.
+ * @export
+ * @interface FixedTableConflict
+ */
+export interface FixedTableConflict {
+    /**
+     * Who did not get it
+     * @type {string}
+     * @memberof FixedTableConflict
+     */
+    participant: string;
+    /**
+     * The number both asked for
+     * @type {number}
+     * @memberof FixedTableConflict
+     */
+    table_number: number;
+}
+/**
  * The response that is sent in a case of an error the caller should present his user
  * @export
  * @interface FormErrorResponseForAddOrganizerErrors
@@ -2830,6 +2851,27 @@ export interface FormErrorResponseForJoinErrors {
      * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
      * @type {ErrorConstant}
      * @memberof FormErrorResponseForJoinErrors
+     */
+    result: ErrorConstant;
+}
+
+
+/**
+ * The response that is sent in a case of an error the caller should present his user
+ * @export
+ * @interface FormErrorResponseForPairRoundErrors
+ */
+export interface FormErrorResponseForPairRoundErrors {
+    /**
+     * The actual error struct
+     * @type {PairRoundErrors}
+     * @memberof FormErrorResponseForPairRoundErrors
+     */
+    error: PairRoundErrors;
+    /**
+     * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
+     * @type {ErrorConstant}
+     * @memberof FormErrorResponseForPairRoundErrors
      */
     result: ErrorConstant;
 }
@@ -3529,6 +3571,19 @@ export interface ListSharedParticipantsResponse {
     participants: Array<SharedParticipantResponse>;
 }
 /**
+ * Every table of one round
+ * @export
+ * @interface ListTablesResponse
+ */
+export interface ListTablesResponse {
+    /**
+     * The tables, byes last
+     * @type {Array<MatchTableResponse>}
+     * @memberof ListTablesResponse
+     */
+    tables: Array<MatchTableResponse>;
+}
+/**
  * A tournament's audit log
  * @export
  * @interface ListTournamentAuditResponse
@@ -3914,6 +3969,127 @@ export interface MarkedCard {
     oracle_id: string;
 }
 /**
+ * One seat at one table
+ * @export
+ * @interface MatchSeatResponse
+ */
+export interface MatchSeatResponse {
+    /**
+     * The name they appear under
+     * @type {string}
+     * @memberof MatchSeatResponse
+     */
+    display_name: string;
+    /**
+     * Whether they have since left the event, so the row can say so rather than leaving an organizer to wonder why nobody is sitting there
+     * @type {boolean}
+     * @memberof MatchSeatResponse
+     */
+    dropped: boolean;
+    /**
+     * The table they cannot leave, if there is one — what the pin on the row is drawn from, and the reason this table carries the number it does
+     * @type {number}
+     * @memberof MatchSeatResponse
+     */
+    fixed_table?: number | null;
+    /**
+     * How many games this seat has won
+     * @type {number}
+     * @memberof MatchSeatResponse
+     */
+    games_won: number;
+    /**
+     * Who sits here
+     * @type {string}
+     * @memberof MatchSeatResponse
+     */
+    participant: string;
+    /**
+     * Turn order at the table, 1-based — seat one goes first
+     * @type {number}
+     * @memberof MatchSeatResponse
+     */
+    seat: number;
+}
+
+/**
+ * How far a table's result has got
+ * 
+ * Derived from the report rows on every write and never read back as truth — which is what lets the desk and the players' phones share one state machine without either of them owning it.
+ * @export
+ */
+export const MatchStatus = {
+    /**
+    * Nobody has said anything
+    */
+    Unreported: 'Unreported',
+    /**
+    * Somebody reported; not enough agreement yet
+    */
+    Pending: 'Pending',
+    /**
+    * Agreed, or ruled on by the desk
+    */
+    Confirmed: 'Confirmed',
+    /**
+    * Two seats disagree; the desk has to rule
+    */
+    Disputed: 'Disputed'
+} as const;
+export type MatchStatus = typeof MatchStatus[keyof typeof MatchStatus];
+
+/**
+ * One table of a paired round
+ * @export
+ * @interface MatchTableResponse
+ */
+export interface MatchTableResponse {
+    /**
+     * Whether it is a bye rather than a table anybody sits at
+     * @type {boolean}
+     * @memberof MatchTableResponse
+     */
+    is_bye: boolean;
+    /**
+     * Whether the table was drawn
+     * @type {boolean}
+     * @memberof MatchTableResponse
+     */
+    is_draw: boolean;
+    /**
+     * Who sits there, in seat order
+     * @type {Array<MatchSeatResponse>}
+     * @memberof MatchTableResponse
+     */
+    seats: Array<MatchSeatResponse>;
+    /**
+     * How far its result has got
+     * @type {MatchStatus}
+     * @memberof MatchTableResponse
+     */
+    status: MatchStatus;
+    /**
+     * The number printed on it, `0` for a bye, which is not a table
+     * @type {number}
+     * @memberof MatchTableResponse
+     */
+    table_number: number;
+    /**
+     * Primary key
+     * @type {string}
+     * @memberof MatchTableResponse
+     */
+    uuid: string;
+    /**
+     * Who won, `null` for a draw or a table nobody has reported
+     * @type {string}
+     * @memberof MatchTableResponse
+     */
+    winner?: string | null;
+}
+
+
+/**
  * The account the current session belongs to
  * @export
  * @interface MeResponse
@@ -4226,6 +4402,62 @@ export const OrganizerRole = {
 } as const;
 export type OrganizerRole = typeof OrganizerRole[keyof typeof OrganizerRole];
 
+/**
+ * Why a round could not be paired
+ * @export
+ * @interface PairRoundErrors
+ */
+export interface PairRoundErrors {
+    /**
+     * The field divides into neither full pods nor pods one smaller — five players at a pod size of four, say. The remedy is a different pod size.
+     * @type {boolean}
+     * @memberof PairRoundErrors
+     */
+    impossible_pods: boolean;
+    /**
+     * Nobody is checked in, so there is nobody to seat
+     * @type {boolean}
+     * @memberof PairRoundErrors
+     */
+    no_entrants: boolean;
+    /**
+     * The round is closed, or is a deckbuilding stage, which has no tables
+     * @type {boolean}
+     * @memberof PairRoundErrors
+     */
+    not_pairable: boolean;
+    /**
+     * Somebody has already reported a table; re-pairing would throw it away
+     * @type {boolean}
+     * @memberof PairRoundErrors
+     */
+    results_reported: boolean;
+}
+/**
+ * What pairing a round produced
+ * @export
+ * @interface PairRoundResponse
+ */
+export interface PairRoundResponse {
+    /**
+     * Pins that could not be honoured
+     * @type {Array<FixedTableConflict>}
+     * @memberof PairRoundResponse
+     */
+    fixed_table_conflicts: Array<FixedTableConflict>;
+    /**
+     * The tables, byes last
+     * @type {Array<MatchTableResponse>}
+     * @memberof PairRoundResponse
+     */
+    tables: Array<MatchTableResponse>;
+}
+/**
+ * @type PairTournamentRound200Response
+ * 
+ * @export
+ */
+export type PairTournamentRound200Response = FormErrorResponseForPairRoundErrors | PairRoundResponse;
 
 /**
  * How the next round's tables are put together

@@ -82,6 +82,7 @@ docs/FinishAddPasskeyRequest.md
 docs/FinishLoginErrors.md
 docs/FinishLoginRequest.md
 docs/FinishRegistrationRequest.md
+docs/FixedTableConflict.md
 docs/FormErrorResponseForAddOrganizerErrors.md
 docs/FormErrorResponseForAddParticipantErrors.md
 docs/FormErrorResponseForAddPasskeyErrors.md
@@ -94,6 +95,7 @@ docs/FormErrorResponseForDeleteAccountErrors.md
 docs/FormErrorResponseForDeletePasskeyErrors.md
 docs/FormErrorResponseForFinishLoginErrors.md
 docs/FormErrorResponseForJoinErrors.md
+docs/FormErrorResponseForPairRoundErrors.md
 docs/FormErrorResponseForRegistrationErrors.md
 docs/FormErrorResponseForRoundLifecycleErrors.md
 docs/FormErrorResponseForSignupErrors.md
@@ -123,6 +125,7 @@ docs/ListPasskeysResponse.md
 docs/ListRoundsResponse.md
 docs/ListScannerSessionsResponse.md
 docs/ListSharedParticipantsResponse.md
+docs/ListTablesResponse.md
 docs/ListTournamentAuditResponse.md
 docs/ListTournamentOrganizersResponse.md
 docs/ListTournamentParticipantsResponse.md
@@ -138,6 +141,9 @@ docs/LookUpClaimToken200Response.md
 docs/LookUpJoinCode200Response.md
 docs/MailLanguage.md
 docs/MarkedCard.md
+docs/MatchSeatResponse.md
+docs/MatchStatus.md
+docs/MatchTableResponse.md
 docs/MeResponse.md
 docs/MergeCollectionEntriesRequest.md
 docs/MpcFillArtResponse.md
@@ -149,6 +155,9 @@ docs/NewCollectionEntry.md
 docs/OldestPrintingResponse.md
 docs/OnLoanResponse.md
 docs/OrganizerRole.md
+docs/PairRoundErrors.md
+docs/PairRoundResponse.md
+docs/PairTournamentRound200Response.md
 docs/PairingSystem.md
 docs/ParticipantAudience.md
 docs/ParticipantStatus.md

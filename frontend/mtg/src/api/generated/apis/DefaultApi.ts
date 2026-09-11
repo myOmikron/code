@@ -90,6 +90,7 @@ import type {
     ListRoundsResponse,
     ListScannerSessionsResponse,
     ListSharedParticipantsResponse,
+    ListTablesResponse,
     ListTournamentAuditResponse,
     ListTournamentOrganizersResponse,
     ListTournamentParticipantsResponse,
@@ -106,6 +107,7 @@ import type {
     MpcFillCardbacksResponse,
     MpcFillSearchRequest,
     MpcFillSearchResponse,
+    PairTournamentRound200Response,
     PriceHistoryResponse,
     PrintingLanguagesResponse,
     PublicCollectionResponse,
@@ -532,6 +534,11 @@ export interface ListPublicDeckCardsRequest {
     deck: string;
 }
 
+export interface ListRoundTablesRequest {
+    tournament: string;
+    round: string;
+}
+
 export interface ListSharedCollectionCardsRequest {
     token: string;
     after?: string | null;
@@ -595,6 +602,11 @@ export interface LookUpJoinCodeRequest {
 export interface MergeCollectionEntriesOperationRequest {
     collection: string;
     MergeCollectionEntriesRequest?: MergeCollectionEntriesRequest;
+}
+
+export interface PairTournamentRoundRequest {
+    tournament: string;
+    round: string;
 }
 
 export interface ReadDeckUrlOperationRequest {
@@ -5121,6 +5133,61 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for listRoundTables without sending the request
+     */
+    async listRoundTablesRequestOpts(requestParameters: ListRoundTablesRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tournament'] == null) {
+            throw new runtime.RequiredError(
+                'tournament',
+                'Required parameter "tournament" was null or undefined when calling listRoundTables().'
+            );
+        }
+
+        if (requestParameters['round'] == null) {
+            throw new runtime.RequiredError(
+                'round',
+                'Required parameter "round" was null or undefined when calling listRoundTables().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/tournaments/{tournament}/rounds/{round}/tables`;
+        urlPath = urlPath.replace('{tournament}', encodeURIComponent(String(requestParameters['tournament'])));
+        urlPath = urlPath.replace('{round}', encodeURIComponent(String(requestParameters['round'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Every table of one round  In the actor block beside the round list: a player\'s own table is the single thing their phone is open for, and an auth layer here would lock out every guest in the room.
+     * Every table of one round
+     */
+    async listRoundTablesRaw(requestParameters: ListRoundTablesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListTablesResponse>> {
+        const requestOptions = await this.listRoundTablesRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Every table of one round  In the actor block beside the round list: a player\'s own table is the single thing their phone is open for, and an auth layer here would lock out every guest in the room.
+     * Every table of one round
+     */
+    async listRoundTables(requestParameters: ListRoundTablesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListTablesResponse> {
+        const response = await this.listRoundTablesRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for listSharedCollectionCards without sending the request
      */
     async listSharedCollectionCardsRequestOpts(requestParameters: ListSharedCollectionCardsRequest): Promise<runtime.RequestOpts> {
@@ -5942,6 +6009,61 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async mergeCollectionEntries(requestParameters: MergeCollectionEntriesOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CollectionEntryResponse> {
         const response = await this.mergeCollectionEntriesRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for pairTournamentRound without sending the request
+     */
+    async pairTournamentRoundRequestOpts(requestParameters: PairTournamentRoundRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tournament'] == null) {
+            throw new runtime.RequiredError(
+                'tournament',
+                'Required parameter "tournament" was null or undefined when calling pairTournamentRound().'
+            );
+        }
+
+        if (requestParameters['round'] == null) {
+            throw new runtime.RequiredError(
+                'round',
+                'Required parameter "round" was null or undefined when calling pairTournamentRound().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/tournaments/{tournament}/rounds/{round}/pairings`;
+        urlPath = urlPath.replace('{tournament}', encodeURIComponent(String(requestParameters['tournament'])));
+        urlPath = urlPath.replace('{round}', encodeURIComponent(String(requestParameters['round'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Pair a round, replacing whatever it already held  One endpoint for both the first pairing and every re-pair after it. There is no preview to commit: the race a staged pairing would guard is better served by pressing this again, and writing straight through survives a crashed tab and a locked phone, which a staged one does not.
+     * Pair a round, replacing whatever it already held
+     */
+    async pairTournamentRoundRaw(requestParameters: PairTournamentRoundRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PairTournamentRound200Response>> {
+        const requestOptions = await this.pairTournamentRoundRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Pair a round, replacing whatever it already held  One endpoint for both the first pairing and every re-pair after it. There is no preview to commit: the race a staged pairing would guard is better served by pressing this again, and writing straight through survives a crashed tab and a locked phone, which a staged one does not.
+     * Pair a round, replacing whatever it already held
+     */
+    async pairTournamentRound(requestParameters: PairTournamentRoundRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PairTournamentRound200Response> {
+        const response = await this.pairTournamentRoundRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
