@@ -12,6 +12,7 @@ pub fn initialize_routes() -> GalvynRouter {
     GalvynRouter::new().merge(
         GalvynRouter::new()
             .handler(handler::me)
+            .handler(handler::set_profile_visibility)
             .handler(handler::list_passkeys)
             .handler(handler::start_add_passkey)
             .handler(handler::finish_add_passkey)

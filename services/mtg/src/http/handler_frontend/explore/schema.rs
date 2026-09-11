@@ -121,6 +121,13 @@ pub struct PublicCollectionResponse {
 pub struct PublicProfileResponse {
     /// The account's login handle and display name
     pub username: String,
+    /// Whether this account lets strangers read its profile
+    ///
+    /// `false` leaves [`Self::decks`] and [`Self::collections`] empty and
+    /// [`Self::created_at`] at the unix epoch — there is nothing to show, and
+    /// the client renders the "keeps their cards to themselves" note instead.
+    /// The username still comes back, because the page was reached by it.
+    pub is_public: bool,
     /// The point in time the account was created
     pub created_at: SchemaDateTime,
     /// The decks it put on show, newest first

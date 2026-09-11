@@ -1,0 +1,25 @@
+[Migration]
+Hash = "3660504949369430306"
+Initial = false
+Dependency = 44
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "account"
+
+[Migration.Operations.Field]
+Name = "profile_public"
+Type = "boolean"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "default_value"
+Value = true
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/account/db.rs"
+Line = 55
+Column = 9

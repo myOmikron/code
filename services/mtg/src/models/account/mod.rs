@@ -27,6 +27,7 @@ use crate::models::account::db::AccountPasskeyModel;
 use crate::models::account::db::RegistrationTokenInsertPatch;
 use crate::models::account::db::RegistrationTokenModel;
 use crate::models::collection::Collection;
+use crate::models::collection::listing::like_literal;
 use crate::models::deck::Deck;
 pub(in crate::models) mod db;
 mod extractor;
@@ -144,6 +145,9 @@ pub struct Account {
 
     /// The point in time when the account logged in recently
     pub last_login_at: Option<OffsetDateTime>,
+
+    /// Whether strangers may find this account and read its profile
+    pub profile_public: bool,
 }
 
 /// Wrapper for the primary key of the [`Account`] model.
@@ -216,6 +220,45 @@ impl Account {
         Ok(account.map(Account::from))
     }
 
+    /// Find accounts whose username contains `needle`
+    ///
+    /// For the one place a person looks somebody else up by hand: an organizer
+    /// adding a player whose phone is dead. Deliberately narrow — it answers
+    /// at most `limit` rows, needs a needle of its own (an empty one answers
+    /// nothing rather than the whole table), and the caller only ever learns
+    /// usernames, which [`crate::http::handler_frontend::explore`] already
+    /// hands out by name.
+    ///
+    /// Only accounts with `profile_public` appear: being findable is the whole
+    /// thing that flag governs, so an account that turned it off is not here to
+    /// be found. The tombstone is excluded for the same reason
+    /// [`Self::get_by_username`] excludes it.
+    #[instrument(name = "Account::search_by_username", skip(tx))]
+    pub async fn search_by_username(
+        tx: &mut Transaction,
+        needle: &str,
+        limit: u64,
+    ) -> Result<Vec<Account>, rorm::Error> {
+        let needle = needle.trim();
+        if needle.is_empty() {
+            return Ok(Vec::new());
+        }
+        let pattern = format!("%{}%", like_literal(&needle.to_lowercase()));
+
+        let accounts = rorm::query(tx, AccountModel)
+            .condition(rorm::and![
+                AccountModel.username_normalized.like(&pattern),
+                AccountModel.profile_public.equals(true),
+                AccountModel.tombstone.equals(false),
+            ])
+            .order_asc(AccountModel.username_normalized)
+            .order_asc(AccountModel.uuid)
+            .limit(limit)
+            .all()
+            .await?;
+        Ok(accounts.into_iter().map(Account::from).collect())
+    }
+
     /// Fetch an account by its email address
     ///
     /// Skips the tombstone for the same reason [`Self::get_by_username`] does.
@@ -261,10 +304,30 @@ impl Account {
                 username_normalized: username.normalized(),
                 username: username.0,
                 email,
+                profile_public: true,
                 tombstone: false,
             })
             .await?;
         Ok(AccountUuid(uuid))
+    }
+
+    /// Turn this account's public profile on or off
+    ///
+    /// The only thing that writes the flag; nothing else about the account
+    /// changes with it, and no content is touched — a deck that was
+    /// [`Visibility::Public`] stays public and findable through the deck
+    /// search either way.
+    #[instrument(name = "Account::set_profile_public", skip(tx))]
+    pub async fn set_profile_public(
+        tx: &mut Transaction,
+        account: AccountUuid,
+        public: bool,
+    ) -> Result<(), rorm::Error> {
+        rorm::update(tx, AccountModel)
+            .set(AccountModel.profile_public, public)
+            .condition(AccountModel.uuid.equals(account.into_inner()))
+            .await?;
+        Ok(())
     }
 
     /// Update an account's username and email
@@ -316,6 +379,9 @@ impl Account {
                 email: MaxStr::new(TOMBSTONE_EMAIL.to_owned()).unwrap_or_else(|_| {
                     unreachable!("the tombstone's address is a few ascii characters")
                 }),
+                // Nobody can reach the tombstone by name anyway; it simply has no
+                // profile to show.
+                profile_public: false,
                 tombstone: true,
             })
             .await?;
@@ -579,6 +645,7 @@ impl From<AccountModel> for Account {
             email: value.email,
             created_at: value.created_at,
             last_login_at: value.last_login_at,
+            profile_public: value.profile_public,
         }
     }
 }

@@ -9,6 +9,7 @@ use galvyn::core::stuff::schema::SchemaDateTime;
 use galvyn::delete;
 use galvyn::get;
 use galvyn::post;
+use galvyn::put;
 use galvyn::rorm::Database;
 use webauthn_rs::prelude::CredentialID;
 use webauthn_rs::prelude::PasskeyRegistration;
@@ -21,6 +22,7 @@ use crate::http::handler_frontend::accounts::schema::DeletePasskeyErrors;
 use crate::http::handler_frontend::accounts::schema::FinishAddPasskeyRequest;
 use crate::http::handler_frontend::accounts::schema::ListPasskeysResponse;
 use crate::http::handler_frontend::accounts::schema::MeResponse;
+use crate::http::handler_frontend::accounts::schema::SetProfileVisibilityRequest;
 use crate::http::handler_frontend::accounts::schema::SimplePasskey;
 use crate::http::handler_frontend::accounts::schema::StartAddPasskeyResponse;
 use crate::models::account::Account;
@@ -43,7 +45,26 @@ pub async fn me(account: Account) -> ApiResult<ApiJson<MeResponse>> {
     Ok(ApiJson(MeResponse {
         uuid: account.uuid,
         username: account.username.as_str().to_string(),
+        profile_public: account.profile_public,
     }))
+}
+
+/// Open or close the logged-in account's public profile
+///
+/// Discovery only: the decks and collections already set to
+/// [`crate::models::visibility::Visibility::Public`] stay exactly as public as
+/// they were, and the deck search keeps finding them. What closes is the
+/// profile page and the organizer's player lookup.
+#[put("/me/profile-visibility")]
+pub async fn set_profile_visibility(
+    account: Account,
+    ApiJson(SetProfileVisibilityRequest { profile_public }): ApiJson<SetProfileVisibilityRequest>,
+) -> ApiResult<ApiJson<()>> {
+    let mut tx = Database::global().start_transaction().await?;
+    Account::set_profile_public(&mut tx, account.uuid, profile_public).await?;
+    tx.commit().await?;
+
+    Ok(ApiJson(()))
 }
 
 /// List the passkeys of the logged-in account

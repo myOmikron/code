@@ -454,6 +454,42 @@ pub struct AddParticipantErrors {
     pub invalid_decklist: bool,
 }
 
+/// One account an organizer's player search turned up
+///
+/// Username only. The search exists to resolve "which of these is my player",
+/// and a username is what the organizer reads off their screen — anything
+/// else would make this a directory.
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct PlayerSearchResultResponse {
+    /// The account found
+    pub uuid: AccountUuid,
+    /// Its username
+    pub username: MaxStr<32>,
+    /// Whether this account is already on this tournament's roster
+    pub on_roster: bool,
+}
+
+/// How many hits one player search answers with
+///
+/// An organizer is looking for one known person, not browsing: a short list
+/// they can read at a glance is the whole point, and a longer needle is the
+/// way to narrow it.
+pub const PLAYER_SEARCH_LIMIT: u64 = 10;
+
+/// The needle an organizer's player search carries
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct SearchPlayersRequest {
+    /// What the organizer typed; blank answers nothing
+    pub q: String,
+}
+
+/// What a player search answers
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct SearchPlayersResponse {
+    /// The accounts found, alphabetically, capped by the server
+    pub accounts: Vec<PlayerSearchResultResponse>,
+}
+
 /// Request to change a participant's display name and/or organizer notes
 ///
 /// `notes: null` clears the notes; an absent `notes` key leaves them alone —

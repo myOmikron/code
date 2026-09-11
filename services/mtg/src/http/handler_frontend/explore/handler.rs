@@ -1,6 +1,7 @@
 use galvyn::core::Module;
 use galvyn::core::re_exports::axum::extract::Path;
 use galvyn::core::re_exports::axum::extract::Query;
+use galvyn::core::re_exports::time::OffsetDateTime;
 use galvyn::core::stuff::api_error::ApiError;
 use galvyn::core::stuff::api_error::ApiResult;
 use galvyn::core::stuff::api_json::ApiJson;
@@ -133,6 +134,12 @@ pub async fn list_public_deck_cards(
 }
 
 /// Fetch an account's public profile: what it put on show
+///
+/// Three answers, not two: the profile, a refusal for a name nobody holds, and
+/// the profile's own `is_public: false` for an account that keeps it closed.
+/// That last one does tell a reader the name is taken — a deliberate trade for
+/// being able to say "they would rather not show their cards" instead of
+/// "no such person".
 #[get("/profiles/{username}")]
 pub async fn get_public_profile(
     Path(username): Path<String>,
@@ -144,6 +151,21 @@ pub async fn get_public_profile(
     let account = Account::get_by_username(&mut tx, &username)
         .await?
         .ok_or_else(unknown_profile)?;
+
+    // An account that closed its profile answers as itself rather than as a
+    // dead link: the reader typed a name that exists, and telling them so —
+    // with nothing else attached — is friendlier than pretending the person is
+    // not there. Nothing readable comes back with it.
+    if !account.profile_public {
+        tx.commit().await?;
+        return Ok(ApiJson(PublicProfileResponse {
+            username: account.username.as_str().to_string(),
+            is_public: false,
+            created_at: SchemaDateTime(OffsetDateTime::UNIX_EPOCH),
+            decks: Vec::new(),
+            collections: Vec::new(),
+        }));
+    }
 
     let decks =
         PublicDeckPage::read_for_account(&mut tx, &username.normalized(), PROFILE_DECKS).await?;
@@ -167,6 +189,7 @@ pub async fn get_public_profile(
     let owner = account.username.as_str().to_string();
     Ok(ApiJson(PublicProfileResponse {
         username: owner.clone(),
+        is_public: true,
         created_at: SchemaDateTime(account.created_at),
         decks: decks.into_iter().map(PublicDeckResponse::from).collect(),
         collections: collections

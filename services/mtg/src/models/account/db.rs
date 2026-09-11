@@ -44,6 +44,16 @@ pub struct AccountModel {
     /// The point in time when the account logged in recently
     pub last_login_at: Option<OffsetDateTime>,
 
+    /// Whether strangers may find this account and read its profile
+    ///
+    /// Governs discovery, not content: a profile only ever shows decks and
+    /// collections their owner already set to [`Visibility::Public`], so
+    /// turning this off hides the shelf rather than the individual things on
+    /// it. Defaults to `true`, which is what every account already was before
+    /// the flag existed — turning it off is an opt-out, not a migration.
+    #[rorm(default = true)]
+    pub profile_public: bool,
+
     /// Whether this row is the tombstone deleted accounts leave behind
     ///
     /// There is exactly one of them, and it owns nothing but the public decks
@@ -66,6 +76,8 @@ pub struct AccountInsertPatch {
     pub username_normalized: MaxStr<32>,
     /// The email address used to reach the account's owner
     pub email: MaxStr<255>,
+    /// Whether strangers may find this account and read its profile
+    pub profile_public: bool,
     /// Whether this row is the tombstone deleted accounts leave behind
     pub tombstone: bool,
 }

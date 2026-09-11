@@ -47,6 +47,10 @@ use crate::http::handler_frontend::tournaments::schema::ListTournamentParticipan
 use crate::http::handler_frontend::tournaments::schema::ListTournamentVenuesResponse;
 use crate::http::handler_frontend::tournaments::schema::ListTournamentsResponse;
 use crate::http::handler_frontend::tournaments::schema::MAX_TOURNAMENT_AUDIT_LIMIT;
+use crate::http::handler_frontend::tournaments::schema::PLAYER_SEARCH_LIMIT;
+use crate::http::handler_frontend::tournaments::schema::PlayerSearchResultResponse;
+use crate::http::handler_frontend::tournaments::schema::SearchPlayersRequest;
+use crate::http::handler_frontend::tournaments::schema::SearchPlayersResponse;
 use crate::http::handler_frontend::tournaments::schema::SetDecklistRequest;
 use crate::http::handler_frontend::tournaments::schema::SetTournamentStatusRequest;
 use crate::http::handler_frontend::tournaments::schema::SetTournamentVisibilityRequest;
@@ -716,6 +720,44 @@ pub async fn add_tournament_participant(
         has_decklist,
         true,
     )))
+}
+
+/// Look accounts up by username, to seat a player whose phone is dead
+///
+/// Organizer-only and tournament-scoped: the guard is the role on this event,
+/// and the answer says which hits are already on this roster so the dialog can
+/// grey them out. A blank needle answers nothing rather than the whole table.
+#[get("/{tournament}/player-search")]
+pub async fn search_tournament_players(
+    account: Account,
+    Path(tournament_uuid): Path<TournamentUuid>,
+    Query(SearchPlayersRequest { q }): Query<SearchPlayersRequest>,
+) -> ApiResult<ApiJson<SearchPlayersResponse>> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    let Some(_) = Tournament::get_as_organizer(&mut tx, account.uuid, tournament_uuid)
+        .await?
+        .granted()
+    else {
+        return Err(denied());
+    };
+
+    let found = Account::search_by_username(&mut tx, &q, PLAYER_SEARCH_LIMIT).await?;
+    let seated = participant::accounts_on_roster(&mut tx, tournament_uuid).await?;
+
+    tx.commit().await?;
+
+    Ok(ApiJson(SearchPlayersResponse {
+        accounts: found
+            .into_iter()
+            .map(|found| PlayerSearchResultResponse {
+                on_roster: seated.contains(&found.uuid),
+                uuid: found.uuid,
+                username: MaxStr::new(found.username.as_str().to_owned())
+                    .unwrap_or_else(|_| unreachable!("a username is at most 32 characters")),
+            })
+            .collect(),
+    }))
 }
 
 /// Change a participant's display name and/or organizer notes

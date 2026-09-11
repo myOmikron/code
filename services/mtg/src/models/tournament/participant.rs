@@ -12,6 +12,8 @@
 //! [`TournamentParticipant::display_name`] only, guest and account alike —
 //! see the module docs on [`super`] for why.
 
+use std::collections::HashSet;
+
 use galvyn::core::re_exports::time::OffsetDateTime;
 use galvyn::rorm;
 use galvyn::rorm::db::transaction::Transaction;
@@ -688,6 +690,31 @@ pub async fn update(
     .await?;
 
     Ok(TournamentAccess::Granted(()))
+}
+
+/// Which accounts already hold a row in this tournament
+///
+/// Read by the organizer's player search so a hit already on the roster can be
+/// shown as such instead of failing on submit. Guest rows have no account and
+/// simply do not appear.
+#[instrument(name = "accounts_on_roster", skip(tx))]
+pub async fn accounts_on_roster(
+    tx: &mut Transaction,
+    tournament: TournamentUuid,
+) -> Result<HashSet<AccountUuid>, rorm::Error> {
+    let rows = rorm::query(&mut *tx, TournamentParticipantModel.account)
+        .condition(
+            TournamentParticipantModel
+                .tournament
+                .equals(tournament.into_inner()),
+        )
+        .all()
+        .await?;
+    Ok(rows
+        .into_iter()
+        .flatten()
+        .map(AccountUuid::new_from_field)
+        .collect())
 }
 
 /// Whether `actor` may act as staff or as the participant themself on

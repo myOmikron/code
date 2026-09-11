@@ -16,6 +16,15 @@ pub struct MeResponse {
     pub uuid: AccountUuid,
     /// The account's login handle and display name
     pub username: String,
+    /// Whether strangers may find this account and read its profile
+    pub profile_public: bool,
+}
+
+/// Request to open or close the logged-in account's public profile
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct SetProfileVisibilityRequest {
+    /// Whether strangers may find this account and read its profile
+    pub profile_public: bool,
 }
 
 /// A passkey registered on the account
