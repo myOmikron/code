@@ -1,11 +1,24 @@
-import { CheckCircleIcon, PlayIcon, PlusIcon, TrashIcon } from "@heroicons/react/20/solid";
+import {
+    ArrowPathIcon,
+    CheckCircleIcon,
+    PlayIcon,
+    PlusIcon,
+    TrashIcon,
+    UserGroupIcon,
+} from "@heroicons/react/20/solid";
 import { Badge, Button, ConfirmDialog, EmptyState, Listbox, ListboxLabel, ListboxOption, notify } from "components";
 import { useState } from "react";
 import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import { RoundKind, TimerActionRequest } from "src/api/generated";
-import type { RoundResponse, TournamentResponse, TournamentViewerResponse } from "src/api/generated";
+import type {
+    MatchTableResponse,
+    RoundResponse,
+    TournamentResponse,
+    TournamentViewerResponse,
+} from "src/api/generated";
+import { TournamentPairingsTable } from "src/components/tournament-pairings-table";
 import { TournamentRoundClock } from "src/components/tournament-round-clock";
 import { isFormError } from "src/utils/error";
 import type { RoundClock } from "src/utils/round-clock";
@@ -52,6 +65,8 @@ export type TournamentRoundPanelProps = {
     viewer: TournamentViewerResponse;
     /** Every round so far, oldest first */
     rounds: Array<RoundResponse>;
+    /** The current round's tables, byes last */
+    tables: Array<MatchTableResponse>;
     /** How far this device's clock is ahead of the server's */
     skewMs: number;
     /** Called after anything changed */
@@ -72,6 +87,7 @@ export function TournamentRoundPanel({
     tournament,
     viewer,
     rounds,
+    tables,
     skewMs,
     onChanged,
 }: TournamentRoundPanelProps) {
@@ -155,6 +171,36 @@ export function TournamentRoundPanel({
         await onChanged();
     }
 
+    /**
+     * Pair the round, replacing whatever it already held
+     *
+     * One call for both the first pairing and every re-pair: the server refuses once a table has
+     * been reported, which is the only state where replacing a layout would lose something.
+     */
+    async function pairRound() {
+        if (round === null) return;
+        const response = await Api.tournaments.rounds.pair(tournamentUuid, round.uuid);
+        if (isFormError(response)) {
+            const refusal = response.error;
+            notify.error(
+                refusal.impossible_pods
+                    ? t("error.impossible-pods")
+                    : refusal.results_reported
+                      ? t("error.results-reported")
+                      : refusal.no_entrants
+                        ? t("error.no-entrants")
+                        : t("error.not-pairable"),
+            );
+            return;
+        }
+        // A pin the layout could not honour is worth saying out loud: the round is perfectly
+        // valid, but somebody who cannot leave their table is not at the one they asked for.
+        for (const conflict of response.fixed_table_conflicts) {
+            notify.warning(t("toast.fixed-table-taken", { number: conflict.table_number }));
+        }
+        await onChanged();
+    }
+
     if (round === null) {
         return (
             <div className={"flex flex-col gap-4"}>
@@ -202,6 +248,45 @@ export function TournamentRoundPanel({
                     />
                 </div>
             </div>
+
+            {/* A deckbuilding stage has no tables at all — it is a clock and a room full of people
+                opening boosters — so it says what is happening rather than "no pairings yet". */}
+            {round.kind === RoundKind.Deckbuilding ? (
+                <EmptyState
+                    icon={<PlayIcon />}
+                    title={t("heading.deckbuilding")}
+                    description={t("description.deckbuilding-running")}
+                />
+            ) : tables.length === 0 ? (
+                <EmptyState
+                    icon={<UserGroupIcon />}
+                    title={t("heading.no-pairings")}
+                    description={staff ? t("description.no-pairings") : t("description.no-pairings-player")}
+                    action={
+                        staff && round.status !== "Complete" ? (
+                            <Button onClick={() => void pairRound()}>
+                                <UserGroupIcon />
+                                {t("button.auto-pair")}
+                            </Button>
+                        ) : undefined
+                    }
+                />
+            ) : (
+                <div className={"flex flex-col gap-3"}>
+                    {staff && round.status !== "Complete" && (
+                        <div className={"flex justify-end"}>
+                            {/* Re-pairing keeps the round and its clock and replaces only the
+                                tables, so an organizer who does not like a layout loses nothing by
+                                asking for another one. */}
+                            <Button plain={true} onClick={() => void pairRound()}>
+                                <ArrowPathIcon />
+                                {t("button.repair")}
+                            </Button>
+                        </div>
+                    )}
+                    <TournamentPairingsTable tables={tables} ownParticipant={viewer.participant} />
+                </div>
+            )}
 
             {staff && (
                 <div className={"flex flex-wrap items-center justify-end gap-2"}>

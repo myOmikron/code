@@ -326,6 +326,13 @@ export const Api = {
         rounds: {
             state: (uuid: UUID) => defaultApi.getTournamentState({ tournament: uuid }),
             list: (uuid: UUID) => defaultApi.listTournamentRounds({ tournament: uuid }),
+            // Bypasses `handleError` for the same reason: a guest's phone polls its own table.
+            tables: (uuid: UUID, round: UUID) => defaultApi.listRoundTables({ tournament: uuid, round }),
+            // One call for the first pairing and every re-pair after it. The server refuses once a
+            // table has been reported, which is the only state where replacing a layout loses
+            // anything, so the client never has to decide which of the two it is asking for.
+            pair: async (uuid: UUID, round: UUID) =>
+                handleError(defaultApi.pairTournamentRound({ tournament: uuid, round })),
             create: async (uuid: UUID, req: CreateRoundRequest) =>
                 handleError(defaultApi.createTournamentRound({ tournament: uuid, CreateRoundRequest: req })),
             start: async (uuid: UUID, round: UUID) =>

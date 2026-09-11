@@ -36,7 +36,7 @@ function RouteComponent() {
     // Non-null: the layout only ever renders `<Outlet />` — reaching this tab at all — once its
     // own loader resolved a tournament; a `null` there renders the layout's own empty state
     // instead, and this component never mounts.
-    const { tournament, viewer, participant_count, rounds, skewMs } = useLoaderData({
+    const { tournament, viewer, participant_count, rounds, tables, skewMs } = useLoaderData({
         from: "/_menu/tournaments/$tournamentUuid/_tournament",
     })!;
     const router = useRouter();
@@ -66,6 +66,7 @@ function RouteComponent() {
             tournament={tournament}
             viewer={viewer}
             rounds={rounds}
+            tables={tables}
             skewMs={skewMs}
             onChanged={() => router.invalidate()}
         />
