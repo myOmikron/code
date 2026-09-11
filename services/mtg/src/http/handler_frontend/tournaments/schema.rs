@@ -8,6 +8,7 @@
 
 use galvyn::core::re_exports::schemars;
 use galvyn::core::re_exports::schemars::JsonSchema;
+use galvyn::core::re_exports::time::OffsetDateTime;
 use galvyn::core::stuff::schema::SchemaDateTime;
 use galvyn::rorm::fields::types::MaxStr;
 use serde::Deserialize;
@@ -23,11 +24,14 @@ use crate::models::tournament::OrganizerRole;
 use crate::models::tournament::PairingSystem;
 use crate::models::tournament::ParticipantAudience;
 use crate::models::tournament::ParticipantStatus;
+use crate::models::tournament::RoundKind;
+use crate::models::tournament::RoundStatus;
 use crate::models::tournament::Tournament;
 use crate::models::tournament::TournamentAuditEntry;
 use crate::models::tournament::TournamentOrganizer;
 use crate::models::tournament::TournamentParticipantUuid;
 use crate::models::tournament::TournamentRole;
+use crate::models::tournament::TournamentRoundUuid;
 use crate::models::tournament::TournamentStatus;
 use crate::models::tournament::TournamentUuid;
 use crate::models::tournament::TournamentVenueUuid;
@@ -35,8 +39,11 @@ use crate::models::tournament::TournamentWithViewer;
 use crate::models::tournament::decklist::Decklist;
 use crate::models::tournament::listing::TournamentListEntry;
 use crate::models::tournament::participant::TournamentParticipant;
+use crate::models::tournament::round::Round;
 use crate::models::tournament::venue::Venue;
 use crate::models::visibility::Visibility;
+use crate::tournament::timer;
+use crate::tournament::timer::TimerState;
 
 /// A tournament, as an actor may see it
 ///
@@ -346,6 +353,205 @@ pub struct TournamentSettingsErrors {
 pub struct SetTournamentStatusRequest {
     /// The status to move to
     pub status: TournamentStatus,
+}
+
+/// A round's clock, with the server's own reading of the time beside it
+///
+/// One struct rather than two sibling fields, so that serialising a deadline
+/// without the reference point it is measured against is not expressible. A
+/// phone with a wrong clock is the normal case, not the exception.
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct TimerResponse {
+    /// Where the clock stands
+    pub state: TimerStateResponse,
+    /// How long the round runs for, in seconds
+    pub length_seconds: i32,
+    /// When it runs out
+    pub ends_at: Option<SchemaDateTime>,
+    /// When it was paused
+    pub paused_at: Option<SchemaDateTime>,
+    /// Seconds left, computed by the server and never below zero
+    pub remaining_seconds: i32,
+}
+
+/// Where a clock stands
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, JsonSchema)]
+pub enum TimerStateResponse {
+    /// Never started
+    Idle,
+    /// Counting down
+    Running,
+    /// Stopped, with time left
+    Paused,
+    /// Started and run out
+    Expired,
+}
+
+impl From<TimerState> for TimerStateResponse {
+    fn from(value: TimerState) -> Self {
+        match value {
+            TimerState::Idle => Self::Idle,
+            TimerState::Running => Self::Running,
+            TimerState::Paused => Self::Paused,
+            TimerState::Expired => Self::Expired,
+        }
+    }
+}
+
+/// One round, as every surface reads it
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct RoundResponse {
+    /// Primary key
+    pub uuid: TournamentRoundUuid,
+    /// What the round is for
+    pub kind: RoundKind,
+    /// Where it sits among every round of this event
+    pub sequence: i16,
+    /// The number on the pairings sheet, `null` for a draft or deckbuilding
+    /// stage — which is exactly what keeps those out of the round count
+    pub number: Option<i16>,
+    /// Where the round stands
+    pub status: RoundStatus,
+    /// How many players share a table
+    pub pod_size: Option<i16>,
+    /// The round's clock
+    pub timer: TimerResponse,
+    /// When the round was handed to the room
+    pub started_at: Option<SchemaDateTime>,
+    /// When it was closed
+    pub completed_at: Option<SchemaDateTime>,
+}
+
+impl RoundResponse {
+    /// Build a response from a round and the moment it was read
+    ///
+    /// @param round the round
+    /// @param now the server's own reading of the time
+    ///
+    /// @returns the response
+    pub fn from_round(round: Round, now: OffsetDateTime) -> Self {
+        let timer = round.timer();
+        Self {
+            uuid: round.uuid,
+            kind: round.kind,
+            sequence: round.sequence,
+            number: round.number,
+            status: round.status,
+            pod_size: round.pod_size,
+            timer: TimerResponse {
+                state: timer::state(&timer, now).into(),
+                length_seconds: timer.length_seconds,
+                ends_at: timer.ends_at.map(SchemaDateTime),
+                paused_at: timer.paused_at.map(SchemaDateTime),
+                remaining_seconds: timer::remaining_seconds(&timer, now),
+            },
+            started_at: round.started_at.map(SchemaDateTime),
+            completed_at: round.completed_at.map(SchemaDateTime),
+        }
+    }
+}
+
+/// Every round of a tournament
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct ListRoundsResponse {
+    /// The rounds, oldest first
+    pub rounds: Vec<RoundResponse>,
+    /// The server's own reading of the time, for clock skew
+    pub server_time: SchemaDateTime,
+}
+
+/// What a client polls to know whether anything moved
+///
+/// Deliberately cheap: a handful of indexed reads and no standings, because
+/// every phone in the room hits it on a timer.
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct TournamentStateResponse {
+    /// The server's own reading of the time, for clock skew
+    pub server_time: SchemaDateTime,
+    /// Changes exactly when something a client renders changed
+    ///
+    /// A hex string, not an integer: a 64-bit counter crosses JavaScript's
+    /// safe-integer range and would compare equal for unequal states on the
+    /// one platform that consumes it.
+    pub revision: MaxStr<32>,
+    /// Where the event stands
+    pub status: TournamentStatus,
+    /// The round the room is on
+    pub round: Option<RoundResponse>,
+    /// How many scoring rounds the event means to play
+    pub planned_rounds: Option<i16>,
+    /// How many of the current round's tables have no confirmed result
+    pub outstanding_tables: i64,
+}
+
+/// Request to add a round
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct CreateRoundRequest {
+    /// What the round is for
+    pub kind: RoundKind,
+    /// How long the clock runs for, in minutes; `null` takes the event's own
+    #[serde(default)]
+    pub minutes: Option<i16>,
+}
+
+/// Why a round could not be added
+#[derive(Default, Serialize, JsonSchema)]
+pub struct CreateRoundErrors {
+    /// The event is not running
+    pub tournament_not_running: bool,
+    /// The round before this one is still open
+    pub previous_round_open: bool,
+    /// The requested length is outside 1..=600 minutes
+    pub invalid_length: bool,
+}
+
+/// Why a round's lifecycle call was refused
+#[derive(Default, Serialize, JsonSchema)]
+pub struct RoundLifecycleErrors {
+    /// The round is not in a state that allows this
+    pub not_editable: bool,
+}
+
+/// Why closing a round was refused
+#[derive(Default, Serialize, JsonSchema)]
+pub struct CompleteRoundErrors {
+    /// The round is not in a state that allows this
+    pub not_editable: bool,
+    /// Tables are still without a result — `force` would go through
+    pub outstanding_tables: bool,
+}
+
+/// Request to close a round
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct CompleteRoundRequest {
+    /// Close it even though tables are missing results
+    #[serde(default)]
+    pub force: bool,
+}
+
+/// Request to work a round's clock
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct SetTimerRequest {
+    /// What the desk did
+    pub action: TimerActionRequest,
+    /// Seconds to add, for `Adjust`; the new length, for `Reset`
+    #[serde(default)]
+    pub seconds: Option<i32>,
+}
+
+/// What the desk did to a clock
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, JsonSchema)]
+pub enum TimerActionRequest {
+    /// Start it from its full length
+    Start,
+    /// Stop it where it stands
+    Pause,
+    /// Let it run again
+    Resume,
+    /// Add to or take from the time left
+    Adjust,
+    /// Take a new length and go back to not started
+    Reset,
 }
 
 /// What starting (or otherwise moving) a tournament did beyond the status

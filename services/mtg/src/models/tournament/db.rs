@@ -11,10 +11,13 @@ use crate::models::account::db::AccountModel;
 use crate::models::deck::db::DeckModel;
 use crate::models::tournament::AuditAction;
 use crate::models::tournament::DecklistPolicy;
+use crate::models::tournament::MatchStatus;
 use crate::models::tournament::OrganizerRole;
 use crate::models::tournament::PairingSystem;
 use crate::models::tournament::ParticipantAudience;
 use crate::models::tournament::ParticipantStatus;
+use crate::models::tournament::RoundKind;
+use crate::models::tournament::RoundStatus;
 use crate::models::tournament::TournamentStatus;
 use crate::models::visibility::Visibility;
 
@@ -380,6 +383,13 @@ pub struct TournamentParticipantModel {
     /// Organizer-only notes on the player
     pub notes: Option<MaxStr<512>>,
 
+    /// The table this player must sit at, `None` for everyone who can move
+    ///
+    /// A pairing input in name only: the engine never sees it and it changes
+    /// nothing about who plays whom. It decides only which number the table
+    /// containing this player is printed with.
+    pub fixed_table: Option<i16>,
+
     /// The point in time the player registered
     #[rorm(auto_create_time)]
     pub registered_at: OffsetDateTime,
@@ -616,4 +626,348 @@ pub struct TournamentVenueInsertPatch {
     pub owner: ForeignModel<AccountModel>,
     /// The point in time the venue was last used
     pub last_used_at: OffsetDateTime,
+}
+
+/// One round of a tournament — scored, or one of the two a limited event needs first
+///
+/// Two numbers, because they answer different questions. [`Self::sequence`] is
+/// "the nth thing that happened in this room" and every round has one.
+/// [`Self::number`] is the number printed on the pairings sheet, and only a
+/// [`RoundKind::Swiss`] round has one — which is precisely what keeps a draft
+/// pod stage and a deckbuilding stage out of the round count without anybody
+/// having to remember to subtract them.
+#[derive(Model)]
+#[rorm(rename = "tournament_round")]
+pub struct TournamentRoundModel {
+    /// Primary key
+    ///
+    /// Paired with `tournament` in a composite index: a v7 uuid sorts by
+    /// creation, so "this event's rounds, in order" needs no second index.
+    #[rorm(primary_key)]
+    #[rorm(index(name = "tournament_round_tournament", priority = 2))]
+    pub uuid: Uuid,
+
+    /// The tournament this round belongs to
+    #[rorm(index(name = "tournament_round_tournament", priority = 1))]
+    #[rorm(on_update = "Cascade", on_delete = "Cascade")]
+    pub tournament: ForeignModel<TournamentModel>,
+
+    /// What this round is for
+    pub kind: RoundKind,
+
+    /// Where the round sits among every round of this event, 1-based
+    pub sequence: i16,
+
+    /// The number on the pairings sheet, `None` for an unscored round
+    pub number: Option<i16>,
+
+    /// Where the round stands
+    pub status: RoundStatus,
+
+    /// How many players shared a table, `None` for a round with no tables
+    ///
+    /// Stored rather than read back off the tournament: a draft pod of eight
+    /// and a Swiss pod of four belong to the same event, and what a round was
+    /// actually built with has to survive a later settings change.
+    pub pod_size: Option<i16>,
+
+    /// The seed the pairing was rolled from
+    ///
+    /// Stored, not derived from the round number: a derived seed would
+    /// reproduce the *same* pairing when an organizer asks for a new one,
+    /// which is the opposite of what the button is for. Keeping it makes a
+    /// pairing reproducible after the fact — "why did round 3 look like that".
+    pub pairing_seed: i64,
+
+    /// How long the round's clock runs for
+    ///
+    /// Seconds, in an `i32`: `round_minutes` allows 600, and 600 minutes is
+    /// 36 000 seconds — past `i16::MAX`.
+    pub length_seconds: i32,
+
+    /// When the clock runs out, `None` while it has never been started
+    pub timer_ends_at: Option<OffsetDateTime>,
+
+    /// When the clock was paused, `None` while it is running or idle
+    pub timer_paused_at: Option<OffsetDateTime>,
+
+    /// When the round was handed to the room
+    pub started_at: Option<OffsetDateTime>,
+
+    /// When the round was closed
+    pub completed_at: Option<OffsetDateTime>,
+
+    /// The point in time the round was created
+    #[rorm(auto_create_time)]
+    pub created_at: OffsetDateTime,
+}
+
+/// Insert patch for [`TournamentRoundModel`]
+#[derive(Patch)]
+#[rorm(model = "TournamentRoundModel")]
+pub struct TournamentRoundInsertPatch {
+    /// Primary key
+    pub uuid: Uuid,
+    /// The tournament this round belongs to
+    pub tournament: ForeignModel<TournamentModel>,
+    /// What this round is for
+    pub kind: RoundKind,
+    /// Where the round sits among every round of this event
+    pub sequence: i16,
+    /// The number on the pairings sheet, `None` for an unscored round
+    pub number: Option<i16>,
+    /// Where the round stands
+    pub status: RoundStatus,
+    /// How many players shared a table
+    pub pod_size: Option<i16>,
+    /// The seed the pairing was rolled from
+    pub pairing_seed: i64,
+    /// How long the round's clock runs for, in seconds
+    pub length_seconds: i32,
+}
+
+/// One table in a round
+///
+/// The winner column is `winner_participant`, not `winner`, on purpose: team
+/// events are a later milestone, and a `winner_team` beside it should read as
+/// a sibling rather than tempt anybody into overloading one column.
+#[derive(Model)]
+#[rorm(rename = "tournament_match")]
+pub struct TournamentMatchModel {
+    /// Primary key
+    #[rorm(primary_key)]
+    #[rorm(index(name = "tournament_match_round", priority = 2))]
+    pub uuid: Uuid,
+
+    /// The round this table belongs to
+    #[rorm(index(name = "tournament_match_round", priority = 1))]
+    #[rorm(on_update = "Cascade", on_delete = "Cascade")]
+    pub round: ForeignModel<TournamentRoundModel>,
+
+    /// The tournament, denormalized
+    ///
+    /// Lets every mutation on a table fold `AND tournament = $t` into its own
+    /// statement — the `owned_by` spirit, for a row two joins from the owner.
+    /// Rows never move between tournaments, so it cannot drift.
+    #[rorm(index)]
+    #[rorm(on_update = "Cascade", on_delete = "Cascade")]
+    pub tournament: ForeignModel<TournamentModel>,
+
+    /// The number on the table
+    pub table_number: i16,
+
+    /// How far the result has got
+    pub status: MatchStatus,
+
+    /// Whether this is a bye rather than a table
+    #[rorm(default = false)]
+    pub is_bye: bool,
+
+    /// Who won, `None` for a draw or an unplayed table
+    #[rorm(on_update = "Cascade", on_delete = "SetNull")]
+    pub winner_participant: Option<ForeignModel<TournamentParticipantModel>>,
+
+    /// Whether the match was drawn
+    ///
+    /// Distinguishes a confirmed draw from an unplayed table without either
+    /// reading [`Self::status`] — the standings engine reads outcomes, not
+    /// statuses.
+    #[rorm(default = false)]
+    pub is_draw: bool,
+
+    /// How many games inside the match were drawn
+    #[rorm(default = 0)]
+    pub games_drawn: i16,
+
+    /// Extra time a judge gave this table, in seconds
+    #[rorm(default = 0)]
+    pub extra_seconds: i32,
+
+    /// Whether the desk wrote this result itself, beating every player report
+    #[rorm(default = false)]
+    pub organizer_override: bool,
+
+    /// When the result was recorded
+    pub result_recorded_at: Option<OffsetDateTime>,
+
+    /// Which account recorded it, `None` when players agreed it between them
+    #[rorm(on_update = "Cascade", on_delete = "SetNull")]
+    pub result_recorded_by: Option<ForeignModel<AccountModel>>,
+
+    /// The point in time the table was paired
+    #[rorm(auto_create_time)]
+    pub created_at: OffsetDateTime,
+}
+
+/// Insert patch for [`TournamentMatchModel`]
+#[derive(Patch)]
+#[rorm(model = "TournamentMatchModel")]
+pub struct TournamentMatchInsertPatch {
+    /// Primary key
+    pub uuid: Uuid,
+    /// The round this table belongs to
+    pub round: ForeignModel<TournamentRoundModel>,
+    /// The tournament, denormalized
+    pub tournament: ForeignModel<TournamentModel>,
+    /// The number on the table
+    pub table_number: i16,
+    /// How far the result has got
+    pub status: MatchStatus,
+    /// Whether this is a bye rather than a table
+    pub is_bye: bool,
+    /// Who won, set at once for a bye
+    pub winner_participant: Option<ForeignModel<TournamentParticipantModel>>,
+    /// When the result was recorded, set at once for a bye
+    pub result_recorded_at: Option<OffsetDateTime>,
+}
+
+/// One player's place at one table
+///
+/// Per person even once teams land: attendance, drops, decklists and check-in
+/// are all facts about a person, and a team's decklist is two decklists. A
+/// team will be a grouping applied before the pairing snapshot is built, not a
+/// different kind of seat.
+#[derive(Model)]
+#[rorm(rename = "tournament_seat")]
+pub struct TournamentSeatModel {
+    /// Primary key
+    #[rorm(primary_key)]
+    pub uuid: Uuid,
+
+    /// The table
+    #[rorm(on_update = "Cascade", on_delete = "Cascade")]
+    pub tournament_match: ForeignModel<TournamentMatchModel>,
+
+    /// The tournament, denormalized — same reasoning as on the table itself
+    #[rorm(index)]
+    #[rorm(on_update = "Cascade", on_delete = "Cascade")]
+    pub tournament: ForeignModel<TournamentModel>,
+
+    /// Who sits here
+    ///
+    /// Indexed on its own: "which table am I at" is read by every phone in the
+    /// room on every poll, and it is the most executed query in the feature.
+    #[rorm(index)]
+    #[rorm(on_update = "Cascade", on_delete = "Cascade")]
+    pub participant: ForeignModel<TournamentParticipantModel>,
+
+    /// Turn order at the table, 1-based — seat one goes first
+    pub seat: i16,
+
+    /// How many games this seat won
+    #[rorm(default = 0)]
+    pub games_won: i16,
+
+    /// The point in time the seat was written
+    #[rorm(auto_create_time)]
+    pub created_at: OffsetDateTime,
+}
+
+/// Insert patch for [`TournamentSeatModel`]
+#[derive(Patch)]
+#[rorm(model = "TournamentSeatModel")]
+pub struct TournamentSeatInsertPatch {
+    /// Primary key
+    pub uuid: Uuid,
+    /// The table
+    pub tournament_match: ForeignModel<TournamentMatchModel>,
+    /// The tournament, denormalized
+    pub tournament: ForeignModel<TournamentModel>,
+    /// Who sits here
+    pub participant: ForeignModel<TournamentParticipantModel>,
+    /// Turn order at the table
+    pub seat: i16,
+}
+
+/// What one player says happened at their table
+///
+/// One row per reporter per table, corrected in place — the history that
+/// matters is which claims disagreed, not how often somebody re-tapped.
+#[derive(Model)]
+#[rorm(rename = "tournament_result_report")]
+pub struct TournamentResultReportModel {
+    /// Primary key
+    #[rorm(primary_key)]
+    pub uuid: Uuid,
+
+    /// The table being reported on
+    #[rorm(index)]
+    #[rorm(on_update = "Cascade", on_delete = "Cascade")]
+    pub tournament_match: ForeignModel<TournamentMatchModel>,
+
+    /// The tournament, denormalized
+    #[rorm(index)]
+    #[rorm(on_update = "Cascade", on_delete = "Cascade")]
+    pub tournament: ForeignModel<TournamentModel>,
+
+    /// Which seat filed this claim
+    #[rorm(on_update = "Cascade", on_delete = "Cascade")]
+    pub reported_by: ForeignModel<TournamentParticipantModel>,
+
+    /// The account behind that seat, `None` for a guest
+    #[rorm(on_update = "Cascade", on_delete = "SetNull")]
+    pub reported_by_account: Option<ForeignModel<AccountModel>>,
+
+    /// Who the reporter says won, `None` when they claim a draw
+    #[rorm(on_update = "Cascade", on_delete = "Cascade")]
+    pub claimed_winner: Option<ForeignModel<TournamentParticipantModel>>,
+
+    /// Whether the reporter claims a draw
+    #[rorm(default = false)]
+    pub claimed_draw: bool,
+
+    /// Games the claimed winner took
+    #[rorm(default = 0)]
+    pub claimed_winner_games: i16,
+
+    /// Games the claimed loser took
+    #[rorm(default = 0)]
+    pub claimed_loser_games: i16,
+
+    /// Games inside the match the reporter says were drawn
+    #[rorm(default = 0)]
+    pub claimed_games_drawn: i16,
+
+    /// The key the client minted for this tap
+    ///
+    /// Idempotency without a second index: an unchanged key on an existing row
+    /// is the same tap arriving twice and writes nothing, a different one is
+    /// somebody changing their mind and overwrites.
+    pub client_key: MaxStr<64>,
+
+    /// The point in time the claim was first filed
+    #[rorm(auto_create_time)]
+    pub created_at: OffsetDateTime,
+
+    /// The point in time the claim was last changed
+    #[rorm(auto_create_time, auto_update_time)]
+    pub updated_at: OffsetDateTime,
+}
+
+/// Insert patch for [`TournamentResultReportModel`]
+#[derive(Patch)]
+#[rorm(model = "TournamentResultReportModel")]
+pub struct TournamentResultReportInsertPatch {
+    /// Primary key
+    pub uuid: Uuid,
+    /// The table being reported on
+    pub tournament_match: ForeignModel<TournamentMatchModel>,
+    /// The tournament, denormalized
+    pub tournament: ForeignModel<TournamentModel>,
+    /// Which seat filed this claim
+    pub reported_by: ForeignModel<TournamentParticipantModel>,
+    /// The account behind that seat
+    pub reported_by_account: Option<ForeignModel<AccountModel>>,
+    /// Who the reporter says won
+    pub claimed_winner: Option<ForeignModel<TournamentParticipantModel>>,
+    /// Whether the reporter claims a draw
+    pub claimed_draw: bool,
+    /// Games the claimed winner took
+    pub claimed_winner_games: i16,
+    /// Games the claimed loser took
+    pub claimed_loser_games: i16,
+    /// Games inside the match the reporter says were drawn
+    pub claimed_games_drawn: i16,
+    /// The key the client minted for this tap
+    pub client_key: MaxStr<64>,
 }

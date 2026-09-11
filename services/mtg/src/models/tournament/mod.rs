@@ -65,6 +65,7 @@ pub mod extractor;
 pub mod listing;
 pub mod participant;
 pub mod public;
+pub mod round;
 pub mod venue;
 
 /// How long a freshly minted join code stays live when the tournament names
@@ -175,6 +176,72 @@ custom_db_enum! {
     enum: PairingSystem,
     variants: [Swiss, Manual],
     decoder: PairingSystemDecoder,
+}
+
+/// What a round is for
+///
+/// Only a [`Self::Swiss`] round carries a number, plays matches and moves the
+/// standings. The other two are the shape a limited event needs before it can
+/// start: a draft round groups people into pods so they open boosters
+/// together, and a deckbuilding round is a clock and nothing else. Both are
+/// rounds in the sense that they occupy the room and the timer, and in no
+/// other sense — see [`round::Round::number`].
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub enum RoundKind {
+    /// A scored round of matches
+    Swiss,
+    /// Players sit in pods and draft; no results
+    Draft,
+    /// Everybody builds alone against one clock; no pairings at all
+    Deckbuilding,
+}
+custom_db_enum! {
+    enum: RoundKind,
+    variants: [Swiss, Draft, Deckbuilding],
+    decoder: RoundKindDecoder,
+}
+
+/// Where a round stands
+///
+/// There is no `Cancelled`: re-pairing replaces a round's matches in place and
+/// deleting one is a hard delete guarded on "nothing reported", so a lingering
+/// cancelled round would only be a fourth thing every read has to remember to
+/// filter out.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub enum RoundStatus {
+    /// Paired, not yet handed to the room
+    Pairing,
+    /// Being played
+    Running,
+    /// Every table reported, or the organizer closed it anyway
+    Complete,
+}
+custom_db_enum! {
+    enum: RoundStatus,
+    variants: [Pairing, Running, Complete],
+    decoder: RoundStatusDecoder,
+}
+
+/// How far a table's result has got
+///
+/// Derived from the report rows on every write and never read back as truth —
+/// which is what lets the desk and the players' phones share one state machine
+/// without either of them owning it.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub enum MatchStatus {
+    /// Nobody has said anything
+    Unreported,
+    /// Somebody reported; not enough agreement yet
+    Pending,
+    /// Agreed, or ruled on by the desk
+    Confirmed,
+    /// Two seats disagree; the desk has to rule
+    Disputed,
+}
+custom_db_enum! {
+    enum: MatchStatus,
+    variants: [Unreported, Pending, Confirmed, Disputed],
+    decoder: MatchStatusDecoder,
 }
 
 /// Where a participant stands in the event
@@ -304,6 +371,28 @@ pub enum AuditAction {
     DecklistsLocked,
     /// Every decklist in the tournament was unlocked
     DecklistsUnlocked,
+    /// A round was paired
+    RoundPaired,
+    /// A round's pairings were thrown away and rebuilt
+    RoundRepaired,
+    /// A round was handed to the room
+    RoundStarted,
+    /// A round was closed
+    RoundCompleted,
+    /// A round was deleted before it was played
+    RoundDeleted,
+    /// A round's clock was started, paused, adjusted or reset
+    RoundTimerChanged,
+    /// The desk wrote a table's result itself
+    MatchResultOverridden,
+    /// The desk took a result back off a table
+    MatchResultCleared,
+    /// A table was renumbered
+    MatchTableChanged,
+    /// Two players changed places
+    SeatsSwapped,
+    /// A player's fixed table was set or cleared
+    ParticipantFixedTableChanged,
 }
 custom_db_enum! {
     enum: AuditAction,
@@ -314,6 +403,9 @@ custom_db_enum! {
         ParticipantDropped, ParticipantDisqualified, ParticipantClaimed,
         ClaimTokenIssued, ParticipantReattached,
         ParticipantRemoved, DecklistChanged, DecklistsLocked, DecklistsUnlocked,
+        RoundPaired, RoundRepaired, RoundStarted, RoundCompleted, RoundDeleted,
+        RoundTimerChanged, MatchResultOverridden, MatchResultCleared,
+        MatchTableChanged, SeatsSwapped, ParticipantFixedTableChanged,
     ],
     decoder: AuditActionDecoder,
 }
@@ -337,6 +429,30 @@ impl TournamentUuid {
     /// Wrap a uuid read back from a hand-written query
     pub(in crate::models) fn from_uuid(uuid: Uuid) -> Self {
         Self(uuid)
+    }
+}
+
+/// Wrapper for the primary key of the [`round::Round`] model.
+/// To have better distinguishable types.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, JsonSchema, Hash, Eq, PartialEq)]
+pub struct TournamentRoundUuid(Uuid);
+
+impl TournamentRoundUuid {
+    /// Get the underlying UUID type
+    pub fn into_inner(self) -> Uuid {
+        self.0
+    }
+}
+
+/// Wrapper for the primary key of the [`round::RoundMatch`] model.
+/// To have better distinguishable types.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, JsonSchema, Hash, Eq, PartialEq)]
+pub struct TournamentMatchUuid(Uuid);
+
+impl TournamentMatchUuid {
+    /// Get the underlying UUID type
+    pub fn into_inner(self) -> Uuid {
+        self.0
     }
 }
 

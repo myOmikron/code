@@ -15,10 +15,16 @@
 //! the same discipline [`Tournament`](crate::models::tournament::Tournament)'s
 //! module docs describe for the rest of this model tree. The **management
 //! block** — settings, status, visibility, the join code, staff, check-in,
-//! and every write to somebody else's roster row — is wrapped, because none
-//! of that makes sense for a guest to reach at all. Check-in sits there
-//! rather than beside drop because being present is the desk's observation,
-//! not a claim a player makes from their phone.
+//! every write that shapes a round, and every write to somebody else's
+//! roster row — is wrapped, because none of that makes sense for a guest to
+//! reach at all. Check-in sits there rather than beside drop because being
+//! present is the desk's observation, not a claim a player makes from their
+//! phone.
+//!
+//! The state poll and the round list sit in the actor block by the same rule
+//! as the roster: a guest's phone is the device that most needs the clock and
+//! its own table, and locking it out would leave half the room unable to see
+//! the round they are playing in.
 
 use galvyn::core::GalvynRouter;
 
@@ -35,6 +41,8 @@ pub fn initialize_routes() -> GalvynRouter {
                 .handler(handler::list_tournaments)
                 .handler(handler::get_tournament)
                 .handler(handler::list_tournament_participants)
+                .handler(handler::get_tournament_state)
+                .handler(handler::list_tournament_rounds)
                 .handler(handler::drop_tournament_participant)
                 .handler(handler::get_participant_decklist)
                 .handler(handler::set_participant_decklist),
@@ -54,6 +62,11 @@ pub fn initialize_routes() -> GalvynRouter {
                 .handler(handler::add_tournament_organizer)
                 .handler(handler::remove_tournament_organizer)
                 .handler(handler::check_in_tournament_participant)
+                .handler(handler::create_tournament_round)
+                .handler(handler::start_tournament_round)
+                .handler(handler::complete_tournament_round)
+                .handler(handler::delete_tournament_round)
+                .handler(handler::set_tournament_round_timer)
                 .handler(handler::search_tournament_players)
                 .handler(handler::add_tournament_participant)
                 .handler(handler::update_tournament_participant)

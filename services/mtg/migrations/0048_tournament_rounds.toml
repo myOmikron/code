@@ -1,0 +1,991 @@
+[Migration]
+Hash = "5345814954832286386"
+Initial = false
+Dependency = 47
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateModel"
+Name = "tournament_match"
+
+[[Migration.Operations.Fields]]
+Name = "uuid"
+Type = "uuid"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "primary_key"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 740
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "table_number"
+Type = "int16"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 757
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "status"
+Type = "text"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 255
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 760
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "is_bye"
+Type = "boolean"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "default_value"
+Value = false
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 764
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "is_draw"
+Type = "boolean"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "default_value"
+Value = false
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 776
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "games_drawn"
+Type = "int16"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "default_value"
+Value = 0
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 780
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "extra_seconds"
+Type = "int32"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "default_value"
+Value = 0
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 784
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "organizer_override"
+Type = "boolean"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "default_value"
+Value = false
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 788
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "result_recorded_at"
+Type = "datetime"
+Annotations = []
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 791
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "created_at"
+Type = "datetime"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "auto_create_time"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 799
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateModel"
+Name = "tournament_round"
+
+[[Migration.Operations.Fields]]
+Name = "uuid"
+Type = "uuid"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "primary_key"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 648
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "kind"
+Type = "text"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 255
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 656
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "sequence"
+Type = "int16"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 659
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "number"
+Type = "int16"
+Annotations = []
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 662
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "status"
+Type = "text"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 255
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 665
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "pod_size"
+Type = "int16"
+Annotations = []
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 672
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "pairing_seed"
+Type = "int64"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 680
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "length_seconds"
+Type = "int32"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 686
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "timer_ends_at"
+Type = "datetime"
+Annotations = []
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 689
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "timer_paused_at"
+Type = "datetime"
+Annotations = []
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 692
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "started_at"
+Type = "datetime"
+Annotations = []
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 695
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "completed_at"
+Type = "datetime"
+Annotations = []
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 698
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "created_at"
+Type = "datetime"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "auto_create_time"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 702
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateModel"
+Name = "tournament_seat"
+
+[[Migration.Operations.Fields]]
+Name = "uuid"
+Type = "uuid"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "primary_key"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 835
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "seat"
+Type = "int16"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 855
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "games_won"
+Type = "int16"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "default_value"
+Value = 0
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 859
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "created_at"
+Type = "datetime"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "auto_create_time"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 863
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateModel"
+Name = "tournament_result_report"
+
+[[Migration.Operations.Fields]]
+Name = "uuid"
+Type = "uuid"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "primary_key"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 891
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "claimed_draw"
+Type = "boolean"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "default_value"
+Value = false
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 917
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "claimed_winner_games"
+Type = "int16"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "default_value"
+Value = 0
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 921
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "claimed_loser_games"
+Type = "int16"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "default_value"
+Value = 0
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 925
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "claimed_games_drawn"
+Type = "int16"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "default_value"
+Value = 0
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 929
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "client_key"
+Type = "text"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 64
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 936
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "created_at"
+Type = "datetime"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "auto_create_time"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 940
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "updated_at"
+Type = "datetime"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "auto_create_time"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "auto_update_time"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 944
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "tournament_result_report"
+
+[Migration.Operations.Field]
+Name = "tournament_match"
+Type = "uuid"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "foreign_key"
+
+[Migration.Operations.Field.Annotations.Value]
+TableName = "tournament_match"
+ColumnName = "uuid"
+OnDelete = "Cascade"
+OnUpdate = "Cascade"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 896
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "tournament_result_report"
+
+[Migration.Operations.Field]
+Name = "tournament"
+Type = "uuid"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "foreign_key"
+
+[Migration.Operations.Field.Annotations.Value]
+TableName = "tournament"
+ColumnName = "uuid"
+OnDelete = "Cascade"
+OnUpdate = "Cascade"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 901
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "tournament_result_report"
+
+[Migration.Operations.Field]
+Name = "reported_by"
+Type = "uuid"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "foreign_key"
+
+[Migration.Operations.Field.Annotations.Value]
+TableName = "tournament_participant"
+ColumnName = "uuid"
+OnDelete = "Cascade"
+OnUpdate = "Cascade"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 905
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "tournament_result_report"
+
+[Migration.Operations.Field]
+Name = "reported_by_account"
+Type = "uuid"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "foreign_key"
+
+[Migration.Operations.Field.Annotations.Value]
+TableName = "account"
+ColumnName = "uuid"
+OnDelete = "SetNull"
+OnUpdate = "Cascade"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 909
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "tournament_result_report"
+
+[Migration.Operations.Field]
+Name = "claimed_winner"
+Type = "uuid"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "foreign_key"
+
+[Migration.Operations.Field.Annotations.Value]
+TableName = "tournament_participant"
+ColumnName = "uuid"
+OnDelete = "Cascade"
+OnUpdate = "Cascade"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 913
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "tournament_match"
+
+[Migration.Operations.Field]
+Name = "round"
+Type = "uuid"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "foreign_key"
+
+[Migration.Operations.Field.Annotations.Value]
+TableName = "tournament_round"
+ColumnName = "uuid"
+OnDelete = "Cascade"
+OnUpdate = "Cascade"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 745
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "tournament_match"
+
+[Migration.Operations.Field]
+Name = "tournament"
+Type = "uuid"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "foreign_key"
+
+[Migration.Operations.Field.Annotations.Value]
+TableName = "tournament"
+ColumnName = "uuid"
+OnDelete = "Cascade"
+OnUpdate = "Cascade"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 754
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "tournament_match"
+
+[Migration.Operations.Field]
+Name = "winner_participant"
+Type = "uuid"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "foreign_key"
+
+[Migration.Operations.Field.Annotations.Value]
+TableName = "tournament_participant"
+ColumnName = "uuid"
+OnDelete = "SetNull"
+OnUpdate = "Cascade"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 768
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "tournament_match"
+
+[Migration.Operations.Field]
+Name = "result_recorded_by"
+Type = "uuid"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "foreign_key"
+
+[Migration.Operations.Field.Annotations.Value]
+TableName = "account"
+ColumnName = "uuid"
+OnDelete = "SetNull"
+OnUpdate = "Cascade"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 795
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "tournament_round"
+
+[Migration.Operations.Field]
+Name = "tournament"
+Type = "uuid"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "foreign_key"
+
+[Migration.Operations.Field.Annotations.Value]
+TableName = "tournament"
+ColumnName = "uuid"
+OnDelete = "Cascade"
+OnUpdate = "Cascade"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 653
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "tournament_seat"
+
+[Migration.Operations.Field]
+Name = "tournament_match"
+Type = "uuid"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "foreign_key"
+
+[Migration.Operations.Field.Annotations.Value]
+TableName = "tournament_match"
+ColumnName = "uuid"
+OnDelete = "Cascade"
+OnUpdate = "Cascade"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 839
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "tournament_seat"
+
+[Migration.Operations.Field]
+Name = "tournament"
+Type = "uuid"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "foreign_key"
+
+[Migration.Operations.Field.Annotations.Value]
+TableName = "tournament"
+ColumnName = "uuid"
+OnDelete = "Cascade"
+OnUpdate = "Cascade"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 844
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "tournament_seat"
+
+[Migration.Operations.Field]
+Name = "participant"
+Type = "uuid"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "foreign_key"
+
+[Migration.Operations.Field.Annotations.Value]
+TableName = "tournament_participant"
+ColumnName = "uuid"
+OnDelete = "Cascade"
+OnUpdate = "Cascade"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 852
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "tournament_participant"
+
+[Migration.Operations.Field]
+Name = "fixed_table"
+Type = "int16"
+Annotations = []
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 391
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateIndex"
+Model = "tournament_match"
+
+[Migration.Operations.Index]
+Name = "tournament_match_round"
+Columns = [
+    "round",
+    "uuid",
+]
+
+[[Migration.Operations]]
+Type = "CreateIndex"
+Model = "tournament_match"
+
+[Migration.Operations.Index]
+Columns = ["tournament"]
+
+[[Migration.Operations]]
+Type = "CreateIndex"
+Model = "tournament_round"
+
+[Migration.Operations.Index]
+Name = "tournament_round_tournament"
+Columns = [
+    "tournament",
+    "uuid",
+]
+
+[[Migration.Operations]]
+Type = "CreateIndex"
+Model = "tournament_seat"
+
+[Migration.Operations.Index]
+Columns = ["tournament"]
+
+[[Migration.Operations]]
+Type = "CreateIndex"
+Model = "tournament_seat"
+
+[Migration.Operations.Index]
+Columns = ["participant"]
+
+[[Migration.Operations]]
+Type = "CreateIndex"
+Model = "tournament_result_report"
+
+[Migration.Operations.Index]
+Columns = ["tournament_match"]
+
+[[Migration.Operations]]
+Type = "CreateIndex"
+Model = "tournament_result_report"
+
+[Migration.Operations.Index]
+Columns = ["tournament"]
+
+# rorm has no composite unique annotation, so every one of these is raw SQL —
+# the same pattern as `tournament_participant_account` in 0038. One statement
+# per step: Postgres refuses several commands in one prepared statement.
+
+# One sequence number per event: `sequence` is "the nth round that happened here".
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+CREATE UNIQUE INDEX tournament_round_sequence ON tournament_round (tournament, sequence);
+"""
+
+# Partial on purpose: a draft or deckbuilding round carries `number = NULL`
+# and an event may hold several. Postgres would allow that under a plain
+# composite unique too, since NULLs never conflict — the `WHERE` states the
+# intent rather than leaving it to be inherited by accident.
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+CREATE UNIQUE INDEX tournament_round_number ON tournament_round (tournament, number) WHERE number IS NOT NULL;
+"""
+
+# Two tables cannot share a number inside one round.
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+CREATE UNIQUE INDEX tournament_match_table ON tournament_match (round, table_number);
+"""
+
+# One player per seat.
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+CREATE UNIQUE INDEX tournament_seat_seat ON tournament_seat (tournament_match, seat);
+"""
+
+# One seat per player at a table — nobody plays themselves.
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+CREATE UNIQUE INDEX tournament_seat_participant ON tournament_seat (tournament_match, participant);
+"""
+
+# One claim per reporter per table, corrected in place.
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+CREATE UNIQUE INDEX tournament_result_report_reporter ON tournament_result_report (tournament_match, reported_by);
+"""
+
+# Two immobile players pinned to the same table becomes a database refusal
+# rather than a runtime surprise at the desk.
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+CREATE UNIQUE INDEX tournament_participant_fixed_table ON tournament_participant (tournament, fixed_table) WHERE fixed_table IS NOT NULL;
+"""

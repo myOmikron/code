@@ -10,13 +10,19 @@
 //! regardless of which block a handler lives in; the layer only decides
 //! whether an [`Account`] must exist at all, never whether it may act.
 
+use std::collections::hash_map::DefaultHasher;
+use std::hash::Hash;
+use std::hash::Hasher;
+
 use galvyn::core::Module;
 use galvyn::core::re_exports::axum::extract::Path;
 use galvyn::core::re_exports::axum::extract::Query;
+use galvyn::core::re_exports::time::OffsetDateTime;
 use galvyn::core::stuff::api_error::ApiError;
 use galvyn::core::stuff::api_error::ApiResult;
 use galvyn::core::stuff::api_error::FormErrors;
 use galvyn::core::stuff::api_json::ApiJson;
+use galvyn::core::stuff::schema::SchemaDateTime;
 use galvyn::delete;
 use galvyn::get;
 use galvyn::post;
@@ -35,11 +41,16 @@ use crate::http::handler_frontend::tournaments::schema::ClaimErrors;
 use crate::http::handler_frontend::tournaments::schema::ClaimParticipantRequest;
 use crate::http::handler_frontend::tournaments::schema::ClaimParticipantResponse;
 use crate::http::handler_frontend::tournaments::schema::ClaimTokenResponse;
+use crate::http::handler_frontend::tournaments::schema::CompleteRoundErrors;
+use crate::http::handler_frontend::tournaments::schema::CompleteRoundRequest;
+use crate::http::handler_frontend::tournaments::schema::CreateRoundErrors;
+use crate::http::handler_frontend::tournaments::schema::CreateRoundRequest;
 use crate::http::handler_frontend::tournaments::schema::CreateTournamentRequest;
 use crate::http::handler_frontend::tournaments::schema::DecklistErrors;
 use crate::http::handler_frontend::tournaments::schema::DecklistResponse;
 use crate::http::handler_frontend::tournaments::schema::GetDecklistResponse;
 use crate::http::handler_frontend::tournaments::schema::GetTournamentResponse;
+use crate::http::handler_frontend::tournaments::schema::ListRoundsResponse;
 use crate::http::handler_frontend::tournaments::schema::ListTournamentAuditQuery;
 use crate::http::handler_frontend::tournaments::schema::ListTournamentAuditResponse;
 use crate::http::handler_frontend::tournaments::schema::ListTournamentOrganizersResponse;
@@ -49,18 +60,23 @@ use crate::http::handler_frontend::tournaments::schema::ListTournamentsResponse;
 use crate::http::handler_frontend::tournaments::schema::MAX_TOURNAMENT_AUDIT_LIMIT;
 use crate::http::handler_frontend::tournaments::schema::PLAYER_SEARCH_LIMIT;
 use crate::http::handler_frontend::tournaments::schema::PlayerSearchResultResponse;
+use crate::http::handler_frontend::tournaments::schema::RoundLifecycleErrors;
+use crate::http::handler_frontend::tournaments::schema::RoundResponse;
 use crate::http::handler_frontend::tournaments::schema::SearchPlayersRequest;
 use crate::http::handler_frontend::tournaments::schema::SearchPlayersResponse;
 use crate::http::handler_frontend::tournaments::schema::SetDecklistRequest;
+use crate::http::handler_frontend::tournaments::schema::SetTimerRequest;
 use crate::http::handler_frontend::tournaments::schema::SetTournamentStatusRequest;
 use crate::http::handler_frontend::tournaments::schema::SetTournamentStatusResponse;
 use crate::http::handler_frontend::tournaments::schema::SetTournamentVisibilityRequest;
+use crate::http::handler_frontend::tournaments::schema::TimerActionRequest;
 use crate::http::handler_frontend::tournaments::schema::TournamentJoinCodeResponse;
 use crate::http::handler_frontend::tournaments::schema::TournamentOrganizerResponse;
 use crate::http::handler_frontend::tournaments::schema::TournamentParticipantResponse;
 use crate::http::handler_frontend::tournaments::schema::TournamentResponse;
 use crate::http::handler_frontend::tournaments::schema::TournamentSettingsErrors;
 use crate::http::handler_frontend::tournaments::schema::TournamentSettingsRequest;
+use crate::http::handler_frontend::tournaments::schema::TournamentStateResponse;
 use crate::http::handler_frontend::tournaments::schema::TournamentVenueResponse;
 use crate::http::handler_frontend::tournaments::schema::UpdateTournamentParticipantRequest;
 use crate::models::account::Account;
@@ -75,6 +91,7 @@ use crate::models::tournament::TournamentActor;
 use crate::models::tournament::TournamentInsert;
 use crate::models::tournament::TournamentParticipantUuid;
 use crate::models::tournament::TournamentRole;
+use crate::models::tournament::TournamentRoundUuid;
 use crate::models::tournament::TournamentUpdate;
 use crate::models::tournament::TournamentUuid;
 use crate::models::tournament::TournamentVenueUuid;
@@ -87,8 +104,14 @@ use crate::models::tournament::participant::CheckInOutcome;
 use crate::models::tournament::participant::ClaimOutcome;
 use crate::models::tournament::participant::RegistrationOutcome;
 use crate::models::tournament::public;
+use crate::models::tournament::round;
+use crate::models::tournament::round::CreateRound;
+use crate::models::tournament::round::Round;
+use crate::models::tournament::round::RoundChange;
+use crate::models::tournament::round::RoundOutcome;
 use crate::models::tournament::venue;
 use crate::models::visibility::Visibility;
+use crate::tournament::timer::TimerAction;
 
 // --- actor block: no `AuthRequiredLayer`, identity via `TournamentActor` ---
 
@@ -726,6 +749,287 @@ pub async fn add_tournament_participant(
         has_decklist,
         true,
     )))
+}
+
+/// What a client polls to know whether anything moved
+///
+/// In the actor block on purpose: a guest's phone is exactly the device that
+/// needs this most, and wrapping it in an auth layer would lock the room out.
+/// Deliberately cheap — a handful of indexed reads and never a standings
+/// computation, because every phone hits it on a timer.
+#[get("/{tournament}/state")]
+pub async fn get_tournament_state(
+    actor: TournamentActor,
+    Path(tournament_uuid): Path<TournamentUuid>,
+) -> ApiResult<ApiJson<TournamentStateResponse>> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    let Some(with_viewer) = Tournament::get_for_viewer(&mut tx, &actor, tournament_uuid).await?
+    else {
+        return Err(denied());
+    };
+
+    let round = round::current(&mut tx, tournament_uuid).await?;
+    let outstanding = match &round {
+        Some(round) => round::outstanding_tables(&mut tx, round.uuid).await?.len() as i64,
+        None => 0,
+    };
+
+    tx.commit().await?;
+
+    let now = OffsetDateTime::now_utc();
+    let revision = state_revision(&with_viewer.tournament, round.as_ref(), outstanding);
+    Ok(ApiJson(TournamentStateResponse {
+        server_time: SchemaDateTime(now),
+        revision,
+        status: with_viewer.tournament.status,
+        round: round.map(|round| RoundResponse::from_round(round, now)),
+        planned_rounds: with_viewer.tournament.planned_rounds,
+        outstanding_tables: outstanding,
+    }))
+}
+
+/// Every round of a tournament
+#[get("/{tournament}/rounds")]
+pub async fn list_tournament_rounds(
+    actor: TournamentActor,
+    Path(tournament_uuid): Path<TournamentUuid>,
+) -> ApiResult<ApiJson<ListRoundsResponse>> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    if Tournament::get_for_viewer(&mut tx, &actor, tournament_uuid)
+        .await?
+        .is_none()
+    {
+        return Err(denied());
+    }
+
+    let rounds = round::list(&mut tx, tournament_uuid).await?;
+
+    tx.commit().await?;
+
+    let now = OffsetDateTime::now_utc();
+    Ok(ApiJson(ListRoundsResponse {
+        rounds: rounds
+            .into_iter()
+            .map(|round| RoundResponse::from_round(round, now))
+            .collect(),
+        server_time: SchemaDateTime(now),
+    }))
+}
+
+/// Add a round to a running tournament
+#[post("/{tournament}/rounds")]
+pub async fn create_tournament_round(
+    account: Account,
+    Path(tournament_uuid): Path<TournamentUuid>,
+    ApiJson(CreateRoundRequest { kind, minutes }): ApiJson<CreateRoundRequest>,
+) -> ApiResult<ApiJson<RoundResponse>, CreateRoundErrors> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    let outcome = match round::create(
+        &mut tx,
+        account.uuid,
+        tournament_uuid,
+        CreateRound { kind, minutes },
+    )
+    .await?
+    {
+        TournamentAccess::Granted(outcome) => outcome,
+        TournamentAccess::Denied => return Err(denied()),
+    };
+
+    let round = match outcome {
+        RoundOutcome::Created(round) => round,
+        RoundOutcome::TournamentNotRunning => {
+            let mut errors = FormErrors::<CreateRoundErrors>::new();
+            errors.tournament_not_running = true;
+            return errors.fail();
+        }
+        RoundOutcome::PreviousRoundOpen => {
+            let mut errors = FormErrors::<CreateRoundErrors>::new();
+            errors.previous_round_open = true;
+            return errors.fail();
+        }
+        RoundOutcome::InvalidLength => {
+            let mut errors = FormErrors::<CreateRoundErrors>::new();
+            errors.invalid_length = true;
+            return errors.fail();
+        }
+    };
+
+    tx.commit().await?;
+
+    Ok(ApiJson(RoundResponse::from_round(
+        round,
+        OffsetDateTime::now_utc(),
+    )))
+}
+
+/// Hand a round to the room and start its clock
+#[post("/{tournament}/rounds/{round}/start")]
+pub async fn start_tournament_round(
+    account: Account,
+    Path((tournament_uuid, round_uuid)): Path<(TournamentUuid, TournamentRoundUuid)>,
+) -> ApiResult<ApiJson<RoundResponse>, RoundLifecycleErrors> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    let change = match round::start(&mut tx, account.uuid, tournament_uuid, round_uuid).await? {
+        TournamentAccess::Granted(change) => change,
+        TournamentAccess::Denied => return Err(denied()),
+    };
+    let round = round_or_refusal(change)?;
+
+    tx.commit().await?;
+
+    Ok(ApiJson(RoundResponse::from_round(
+        round,
+        OffsetDateTime::now_utc(),
+    )))
+}
+
+/// Close a round
+#[post("/{tournament}/rounds/{round}/complete")]
+pub async fn complete_tournament_round(
+    account: Account,
+    Path((tournament_uuid, round_uuid)): Path<(TournamentUuid, TournamentRoundUuid)>,
+    ApiJson(CompleteRoundRequest { force }): ApiJson<CompleteRoundRequest>,
+) -> ApiResult<ApiJson<RoundResponse>, CompleteRoundErrors> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    let change =
+        match round::complete(&mut tx, account.uuid, tournament_uuid, round_uuid, force).await? {
+            TournamentAccess::Granted(change) => change,
+            TournamentAccess::Denied => return Err(denied()),
+        };
+
+    let round = match change {
+        RoundChange::Changed(round) => round,
+        RoundChange::NotEditable => {
+            let mut errors = FormErrors::<CompleteRoundErrors>::new();
+            errors.not_editable = true;
+            return errors.fail();
+        }
+        RoundChange::Outstanding(_) => {
+            let mut errors = FormErrors::<CompleteRoundErrors>::new();
+            errors.outstanding_tables = true;
+            return errors.fail();
+        }
+    };
+
+    tx.commit().await?;
+
+    Ok(ApiJson(RoundResponse::from_round(
+        round,
+        OffsetDateTime::now_utc(),
+    )))
+}
+
+/// Delete a round nobody has played
+#[delete("/{tournament}/rounds/{round}")]
+pub async fn delete_tournament_round(
+    account: Account,
+    Path((tournament_uuid, round_uuid)): Path<(TournamentUuid, TournamentRoundUuid)>,
+) -> ApiResult<ApiJson<()>, RoundLifecycleErrors> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    match round::delete(&mut tx, account.uuid, tournament_uuid, round_uuid).await? {
+        TournamentAccess::Granted(RoundChange::Changed(_) | RoundChange::NotEditable) => {}
+        TournamentAccess::Granted(RoundChange::Outstanding(_)) => {
+            let mut errors = FormErrors::<RoundLifecycleErrors>::new();
+            errors.not_editable = true;
+            return errors.fail();
+        }
+        TournamentAccess::Denied => return Err(denied()),
+    }
+
+    tx.commit().await?;
+
+    Ok(ApiJson(()))
+}
+
+/// Start, pause, adjust or reset a round's clock
+#[put("/{tournament}/rounds/{round}/timer")]
+pub async fn set_tournament_round_timer(
+    account: Account,
+    Path((tournament_uuid, round_uuid)): Path<(TournamentUuid, TournamentRoundUuid)>,
+    ApiJson(SetTimerRequest { action, seconds }): ApiJson<SetTimerRequest>,
+) -> ApiResult<ApiJson<RoundResponse>, RoundLifecycleErrors> {
+    let action = match action {
+        TimerActionRequest::Start => TimerAction::Start,
+        TimerActionRequest::Pause => TimerAction::Pause,
+        TimerActionRequest::Resume => TimerAction::Resume,
+        TimerActionRequest::Adjust => TimerAction::Adjust {
+            delta_seconds: seconds.unwrap_or_default(),
+        },
+        TimerActionRequest::Reset => TimerAction::Reset {
+            length_seconds: seconds.unwrap_or_default(),
+        },
+    };
+
+    let mut tx = Database::global().start_transaction().await?;
+
+    let change =
+        match round::set_timer(&mut tx, account.uuid, tournament_uuid, round_uuid, action).await? {
+            TournamentAccess::Granted(change) => change,
+            TournamentAccess::Denied => return Err(denied()),
+        };
+    let round = round_or_refusal(change)?;
+
+    tx.commit().await?;
+
+    Ok(ApiJson(RoundResponse::from_round(
+        round,
+        OffsetDateTime::now_utc(),
+    )))
+}
+
+/// Unwrap a lifecycle outcome, turning a refusal into its typed error
+///
+/// @param change what the model answered
+///
+/// @returns the round, or the refusal to return
+fn round_or_refusal(change: RoundChange) -> ApiResult<Round, RoundLifecycleErrors> {
+    match change {
+        RoundChange::Changed(round) => Ok(round),
+        RoundChange::NotEditable | RoundChange::Outstanding(_) => {
+            let mut errors = FormErrors::<RoundLifecycleErrors>::new();
+            errors.not_editable = true;
+            errors.fail()
+        }
+    }
+}
+
+/// A short digest of everything a polling client would re-render for
+///
+/// Changes exactly when one of those things changes and never otherwise, so a
+/// client can skip the expensive reads on an unchanged revision. Hex rather
+/// than a number for the reason [`TournamentStateResponse::revision`] gives.
+///
+/// @param tournament the event
+/// @param round the round the room is on
+/// @param outstanding how many tables have no confirmed result
+///
+/// @returns the digest
+fn state_revision(tournament: &Tournament, round: Option<&Round>, outstanding: i64) -> MaxStr<32> {
+    let mut hasher = DefaultHasher::new();
+    format!("{:?}", tournament.status).hash(&mut hasher);
+    tournament.planned_rounds.hash(&mut hasher);
+    if let Some(round) = round {
+        round.uuid.into_inner().hash(&mut hasher);
+        format!("{:?}", round.status).hash(&mut hasher);
+        round
+            .timer_ends_at
+            .map(|at| at.unix_timestamp())
+            .hash(&mut hasher);
+        round
+            .timer_paused_at
+            .map(|at| at.unix_timestamp())
+            .hash(&mut hasher);
+    }
+    outstanding.hash(&mut hasher);
+    MaxStr::new(format!("{:016x}", hasher.finish()))
+        .unwrap_or_else(|_| unreachable!("sixteen hex digits fit in thirty-two characters"))
 }
 
 /// Look accounts up by username, to seat a player whose phone is dead
