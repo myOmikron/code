@@ -81,7 +81,7 @@ function RouteComponent() {
                     // The membership check nobody ran here missed it — a row already exists for
                     // this account. Either way they are in, so go to the tournament they have.
                     void navigate({
-                        to: "/tournaments/$tournamentUuid/overview",
+                        to: "/tournaments/$tournamentUuid",
                         params: { tournamentUuid: seat.tournament },
                     });
                     return;
@@ -93,7 +93,7 @@ function RouteComponent() {
             }
             notify.success(t("toast.seat-claimed"));
             void navigate({
-                to: "/tournaments/$tournamentUuid/overview",
+                to: "/tournaments/$tournamentUuid",
                 params: { tournamentUuid: response.tournament },
             });
         } finally {
@@ -121,7 +121,7 @@ function RouteComponent() {
             });
             notify.success(t("toast.seat-attached"));
             void navigate({
-                to: "/tournaments/$tournamentUuid/overview",
+                to: "/tournaments/$tournamentUuid",
                 params: { tournamentUuid: response.tournament },
             });
         } catch (error) {

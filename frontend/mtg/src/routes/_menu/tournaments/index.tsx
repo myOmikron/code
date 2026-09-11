@@ -155,7 +155,7 @@ function RouteComponent() {
                     {tournaments.map(({ tournament, viewer, participant_count }) => (
                         <StackedListFlexRow key={tournament.uuid}>
                             <Link
-                                to={"/tournaments/$tournamentUuid/overview"}
+                                to={"/tournaments/$tournamentUuid"}
                                 params={{ tournamentUuid: tournament.uuid }}
                                 className={"flex min-w-0 flex-1 items-center justify-between gap-4"}
                             >
@@ -187,7 +187,7 @@ function RouteComponent() {
                     notify.success(t("toast.tournament-created"));
                     if (created !== null) {
                         void navigate({
-                            to: "/tournaments/$tournamentUuid/overview",
+                            to: "/tournaments/$tournamentUuid",
                             params: { tournamentUuid: created.uuid },
                         });
                     }

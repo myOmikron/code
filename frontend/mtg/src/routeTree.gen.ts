@@ -63,7 +63,6 @@ import { Route as MenuSharedCollectionsTokenSharedRouteImport } from './routes/_
 import { Route as MenuSharedDecksTokenSharedRouteImport } from './routes/_menu/shared/decks/$token/_shared'
 import { Route as MenuSharedTournamentsTokenSharedRouteImport } from './routes/_menu/shared/tournaments/$token/_shared'
 import { Route as MenuTournamentsTournamentUuidTournamentIndexRouteImport } from './routes/_menu/tournaments/$tournamentUuid/_tournament/index'
-import { Route as MenuTournamentsTournamentUuidTournamentOverviewRouteImport } from './routes/_menu/tournaments/$tournamentUuid/_tournament/overview'
 import { Route as MenuTournamentsTournamentUuidTournamentPlayersRouteImport } from './routes/_menu/tournaments/$tournamentUuid/_tournament/players'
 import { Route as MenuTournamentsTournamentUuidTournamentSettingsRouteImport } from './routes/_menu/tournaments/$tournamentUuid/_tournament/settings'
 import { Route as MenuGlobalCollectionsCollectionUuidCollectionIndexRouteImport } from './routes/_menu/global/collections/$collectionUuid/_collection/index'
@@ -375,12 +374,6 @@ const MenuTournamentsTournamentUuidTournamentIndexRoute =
     path: '/',
     getParentRoute: () => MenuTournamentsTournamentUuidTournamentRoute,
   } as any)
-const MenuTournamentsTournamentUuidTournamentOverviewRoute =
-  MenuTournamentsTournamentUuidTournamentOverviewRouteImport.update({
-    id: '/overview',
-    path: '/overview',
-    getParentRoute: () => MenuTournamentsTournamentUuidTournamentRoute,
-  } as any)
 const MenuTournamentsTournamentUuidTournamentPlayersRoute =
   MenuTournamentsTournamentUuidTournamentPlayersRouteImport.update({
     id: '/players',
@@ -526,7 +519,6 @@ export interface FileRoutesByFullPath {
   '/shared/collections/$token': typeof MenuSharedCollectionsTokenSharedRouteWithChildren
   '/shared/decks/$token': typeof MenuSharedDecksTokenSharedRouteWithChildren
   '/shared/tournaments/$token': typeof MenuSharedTournamentsTokenSharedRouteWithChildren
-  '/tournaments/$tournamentUuid/overview': typeof MenuTournamentsTournamentUuidTournamentOverviewRoute
   '/tournaments/$tournamentUuid/players': typeof MenuTournamentsTournamentUuidTournamentPlayersRoute
   '/tournaments/$tournamentUuid/settings': typeof MenuTournamentsTournamentUuidTournamentSettingsRoute
   '/scan/live/': typeof CollectScanScanLiveIndexRoute
@@ -586,7 +578,6 @@ export interface FileRoutesByTo {
   '/decks/$deckUuid/goldfish': typeof MenuDecksDeckUuidDeckGoldfishRoute
   '/decks/$deckUuid/sourcing': typeof MenuDecksDeckUuidDeckSourcingRoute
   '/decks/$deckUuid/statistics': typeof MenuDecksDeckUuidDeckStatisticsRoute
-  '/tournaments/$tournamentUuid/overview': typeof MenuTournamentsTournamentUuidTournamentOverviewRoute
   '/tournaments/$tournamentUuid/players': typeof MenuTournamentsTournamentUuidTournamentPlayersRoute
   '/tournaments/$tournamentUuid/settings': typeof MenuTournamentsTournamentUuidTournamentSettingsRoute
   '/scan/live': typeof CollectScanScanLiveIndexRoute
@@ -660,7 +651,6 @@ export interface FileRoutesById {
   '/_menu/shared/collections/$token/_shared': typeof MenuSharedCollectionsTokenSharedRouteWithChildren
   '/_menu/shared/decks/$token/_shared': typeof MenuSharedDecksTokenSharedRouteWithChildren
   '/_menu/shared/tournaments/$token/_shared': typeof MenuSharedTournamentsTokenSharedRouteWithChildren
-  '/_menu/tournaments/$tournamentUuid/_tournament/overview': typeof MenuTournamentsTournamentUuidTournamentOverviewRoute
   '/_menu/tournaments/$tournamentUuid/_tournament/players': typeof MenuTournamentsTournamentUuidTournamentPlayersRoute
   '/_menu/tournaments/$tournamentUuid/_tournament/settings': typeof MenuTournamentsTournamentUuidTournamentSettingsRoute
   '/_collect/_scan/scan/live/': typeof CollectScanScanLiveIndexRoute
@@ -732,7 +722,6 @@ export interface FileRouteTypes {
     | '/shared/collections/$token'
     | '/shared/decks/$token'
     | '/shared/tournaments/$token'
-    | '/tournaments/$tournamentUuid/overview'
     | '/tournaments/$tournamentUuid/players'
     | '/tournaments/$tournamentUuid/settings'
     | '/scan/live/'
@@ -792,7 +781,6 @@ export interface FileRouteTypes {
     | '/decks/$deckUuid/goldfish'
     | '/decks/$deckUuid/sourcing'
     | '/decks/$deckUuid/statistics'
-    | '/tournaments/$tournamentUuid/overview'
     | '/tournaments/$tournamentUuid/players'
     | '/tournaments/$tournamentUuid/settings'
     | '/scan/live'
@@ -865,7 +853,6 @@ export interface FileRouteTypes {
     | '/_menu/shared/collections/$token/_shared'
     | '/_menu/shared/decks/$token/_shared'
     | '/_menu/shared/tournaments/$token/_shared'
-    | '/_menu/tournaments/$tournamentUuid/_tournament/overview'
     | '/_menu/tournaments/$tournamentUuid/_tournament/players'
     | '/_menu/tournaments/$tournamentUuid/_tournament/settings'
     | '/_collect/_scan/scan/live/'
@@ -1273,13 +1260,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MenuTournamentsTournamentUuidTournamentIndexRouteImport
       parentRoute: typeof MenuTournamentsTournamentUuidTournamentRoute
     }
-    '/_menu/tournaments/$tournamentUuid/_tournament/overview': {
-      id: '/_menu/tournaments/$tournamentUuid/_tournament/overview'
-      path: '/overview'
-      fullPath: '/tournaments/$tournamentUuid/overview'
-      preLoaderRoute: typeof MenuTournamentsTournamentUuidTournamentOverviewRouteImport
-      parentRoute: typeof MenuTournamentsTournamentUuidTournamentRoute
-    }
     '/_menu/tournaments/$tournamentUuid/_tournament/players': {
       id: '/_menu/tournaments/$tournamentUuid/_tournament/players'
       path: '/players'
@@ -1517,7 +1497,6 @@ const MenuDecksDeckUuidDeckRouteWithChildren =
   )
 
 interface MenuTournamentsTournamentUuidTournamentRouteChildren {
-  MenuTournamentsTournamentUuidTournamentOverviewRoute: typeof MenuTournamentsTournamentUuidTournamentOverviewRoute
   MenuTournamentsTournamentUuidTournamentPlayersRoute: typeof MenuTournamentsTournamentUuidTournamentPlayersRoute
   MenuTournamentsTournamentUuidTournamentSettingsRoute: typeof MenuTournamentsTournamentUuidTournamentSettingsRoute
   MenuTournamentsTournamentUuidTournamentIndexRoute: typeof MenuTournamentsTournamentUuidTournamentIndexRoute
@@ -1525,8 +1504,6 @@ interface MenuTournamentsTournamentUuidTournamentRouteChildren {
 
 const MenuTournamentsTournamentUuidTournamentRouteChildren: MenuTournamentsTournamentUuidTournamentRouteChildren =
   {
-    MenuTournamentsTournamentUuidTournamentOverviewRoute:
-      MenuTournamentsTournamentUuidTournamentOverviewRoute,
     MenuTournamentsTournamentUuidTournamentPlayersRoute:
       MenuTournamentsTournamentUuidTournamentPlayersRoute,
     MenuTournamentsTournamentUuidTournamentSettingsRoute:

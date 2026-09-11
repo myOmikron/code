@@ -5,6 +5,7 @@ import {
     AddDeckCardRequest,
     AddScannerSessionEntryRequest,
     AddTournamentOrganizerRequest,
+    AddTournamentParticipantRequest,
     AddWatchListEntryRequest,
     Configuration,
     CreateCollectionRequest,
@@ -338,22 +339,25 @@ export const Api = {
         participants: {
             // Bypasses `handleError`, same reasoning as `list`/`get` above.
             list: (uuid: UUID) => defaultApi.listTournamentParticipants({ tournament: uuid }),
-            checkIn: (uuid: UUID, participant: UUID) =>
-                defaultApi.checkInTournamentParticipant({ tournament: uuid, participant }),
+            // Organizer-only since check-in became the desk's job, so it goes through
+            // `handleError` like the rest of the management surface.
+            checkIn: async (uuid: UUID, participant: UUID) =>
+                handleError(defaultApi.checkInTournamentParticipant({ tournament: uuid, participant })),
             drop: (uuid: UUID, participant: UUID) =>
                 defaultApi.dropTournamentParticipant({ tournament: uuid, participant }),
-            // Organizer-only walk-in, by name. The claim token
-            // `register_guest` mints for the new row is not surfaced here —
-            // there is nothing yet to hand a walk-in their own claim code
-            // (an M4 concern). `decklistText` types a list in for them directly — an organizer
-            // never links a Planarium deck on somebody else's behalf.
-            add: async (uuid: UUID, displayName: string, decklistText?: string) =>
+            // Organizer-only, two doors into the same roster: a walk-in by name, or an
+            // account the organizer looked up because that player's phone is dead. The claim
+            // token `register_guest` mints for a guest row is not surfaced here — the roster's
+            // own claim-QR dialog hands it out. `decklistText` types a list in for them
+            // directly — an organizer never links a Planarium deck on somebody else's behalf.
+            add: async (uuid: UUID, req: AddTournamentParticipantRequest) =>
                 handleError(
-                    defaultApi.addTournamentParticipant({
-                        tournament: uuid,
-                        AddTournamentParticipantRequest: { display_name: displayName, decklist_text: decklistText },
-                    }),
+                    defaultApi.addTournamentParticipant({ tournament: uuid, AddTournamentParticipantRequest: req }),
                 ),
+            // Organizer-only lookup for that second door. Answers at most ten accounts and
+            // says which of them are already on this roster.
+            search: async (uuid: UUID, q: string) =>
+                handleError(defaultApi.searchTournamentPlayers({ tournament: uuid, q })),
             // The secret behind a walk-in's claim QR — organizer-only, so it goes through
             // `handleError` like the rest of the management surface. `claim_token: null` means
             // the row already belongs to an account and there is nothing to hand out.

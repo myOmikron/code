@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { FormatRulesResponse } from "src/api/generated";
-import { formatKind, podSizeFor, pointsFor } from "src/utils/tournament-format";
+import { formatKind, podSizeFor, pointsFor, recommendedRounds } from "src/utils/tournament-format";
 
 /**
  * One catalog row, the shape `podSizeFor` reads: a slug and whether it wants a commander
@@ -61,5 +61,36 @@ describe("formatKind", () => {
     it("reads everything else as constructed", () => {
         expect(formatKind("commander")).toBe("constructed");
         expect(formatKind("standard")).toBe("constructed");
+    });
+});
+
+describe("recommendedRounds", () => {
+    it("halves a duel field down to one undefeated player", () => {
+        expect(recommendedRounds(16, 2)).toBe(4);
+        expect(recommendedRounds(32, 2)).toBe(5);
+        expect(recommendedRounds(64, 2)).toBe(6);
+    });
+
+    it("plays a whole evening even for a tiny duel field", () => {
+        expect(recommendedRounds(4, 2)).toBe(3);
+        expect(recommendedRounds(8, 2)).toBe(3);
+    });
+
+    it("runs pods markedly shorter than duels", () => {
+        expect(recommendedRounds(16, 4)).toBe(2);
+        expect(recommendedRounds(16, 2)).toBe(4);
+    });
+
+    it("reads the pod thresholds off the addendum's own table", () => {
+        expect(recommendedRounds(5, 4)).toBe(1);
+        expect(recommendedRounds(17, 4)).toBe(3);
+        expect(recommendedRounds(25, 4)).toBe(4);
+        expect(recommendedRounds(33, 4)).toBe(5);
+        expect(recommendedRounds(65, 4)).toBe(6);
+    });
+
+    it("never recommends fewer than one round", () => {
+        expect(recommendedRounds(0, 4)).toBe(1);
+        expect(recommendedRounds(1, 2)).toBe(1);
     });
 });

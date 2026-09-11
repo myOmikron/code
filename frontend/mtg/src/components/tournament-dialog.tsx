@@ -1,8 +1,6 @@
 import { ChevronRightIcon, GlobeAltIcon, LinkIcon, LockClosedIcon } from "@heroicons/react/20/solid";
 import {
     Button,
-    Checkbox,
-    CheckboxField,
     Combobox,
     ComboboxDescription,
     ComboboxLabel,
@@ -46,7 +44,7 @@ import { InlineError } from "src/components/inline-error";
 import { TournamentFormatPicker } from "src/components/tournament-format-picker";
 import type { ValidationErrors } from "src/utils/error";
 import { handleFormError, isFormError } from "src/utils/error";
-import { DEFAULT_CONSTRUCTED_FORMAT, podSizeFor, pointsFor } from "src/utils/tournament-format";
+import { DEFAULT_CONSTRUCTED_FORMAT, podSizeFor, pointsFor, recommendedRounds } from "src/utils/tournament-format";
 
 /**
  * The format catalog, fetched once and shared by every dialog instance
@@ -88,6 +86,13 @@ export type TournamentDialogProps = {
     open: boolean;
     /** The tournament to edit, or `null` to build a new one */
     tournament: TournamentResponse | null;
+    /**
+     * How many people are on the roster, for the round recommendation
+     *
+     * Absent while building a new tournament — there is nobody to count yet, and the start
+     * confirmation makes the same recommendation later, when there is.
+     */
+    participantCount?: number;
     /** Called when the dialog should close without having saved anything */
     onClose: () => void;
     /**
@@ -127,7 +132,8 @@ const DEFAULTS = {
     pointsLoss: DEFAULT_POINTS.loss,
     pointsBye: DEFAULT_POINTS.bye,
     roundMinutes: 50,
-    requireCheckIn: true,
+    maxParticipants: "",
+    plannedRounds: "",
     allowLateEntry: false,
     lateEntryAsLosses: false,
     venue: "",
@@ -177,7 +183,8 @@ function initialValues(tournament: TournamentResponse | null) {
         pointsLoss: tournament.points_loss,
         pointsBye: tournament.points_bye,
         roundMinutes: tournament.round_minutes,
-        requireCheckIn: tournament.require_check_in,
+        maxParticipants: tournament.max_participants?.toString() ?? "",
+        plannedRounds: tournament.planned_rounds?.toString() ?? "",
         allowLateEntry: tournament.allow_late_entry,
         lateEntryAsLosses: tournament.late_entry_as_losses,
         venue: tournament.venue ?? "",
@@ -231,6 +238,14 @@ function settingsErrorHandlers(
             errors.fields.roundMinutes = t("error.invalid-round-length");
             revealAdvanced();
         },
+        invalid_max_participants: (errors) => {
+            errors.fields.maxParticipants = t("error.invalid-max-participants");
+            revealAdvanced();
+        },
+        invalid_planned_rounds: (errors) => {
+            errors.fields.plannedRounds = t("error.invalid-planned-rounds");
+            revealAdvanced();
+        },
         settings_locked: (errors) => {
             errors.form = t("description.settings-locked");
         },
@@ -246,7 +261,7 @@ function settingsErrorHandlers(
  *
  * @returns the dialog
  */
-export function TournamentDialog({ open, tournament, onClose, onSaved }: TournamentDialogProps) {
+export function TournamentDialog({ open, tournament, participantCount, onClose, onSaved }: TournamentDialogProps) {
     const [t] = useTranslation("tournament");
     const [advancedOpen, setAdvancedOpen] = useState(false);
     const [tg] = useTranslation();
@@ -309,7 +324,10 @@ export function TournamentDialog({ open, tournament, onClose, onSaved }: Tournam
                     points_loss: value.pointsLoss,
                     points_bye: value.pointsBye,
                     round_minutes: value.roundMinutes,
-                    require_check_in: value.requireCheckIn,
+                    // An empty field is "no limit", not zero — the only way to say that.
+                    max_participants: value.maxParticipants.trim() === "" ? null : Number(value.maxParticipants),
+                    // An empty field means "not decided yet", not zero rounds.
+                    planned_rounds: value.plannedRounds.trim() === "" ? null : Number(value.plannedRounds),
                     allow_late_entry: value.allowLateEntry,
                     late_entry_as_losses: value.lateEntryAsLosses,
                     venue: value.venue.trim() === "" ? null : value.venue,
@@ -680,6 +698,25 @@ export function TournamentDialog({ open, tournament, onClose, onSaved }: Tournam
                                         )}
                                     </form.Field>
 
+                                    <form.Field name={"maxParticipants"}>
+                                        {(fieldApi) => (
+                                            <Field>
+                                                <Label>{t("label.max-participants")}</Label>
+                                                <Input
+                                                    type={"number"}
+                                                    min={1}
+                                                    placeholder={t("label.unlimited")}
+                                                    invalid={fieldApi.state.meta.errors.length > 0}
+                                                    value={fieldApi.state.value}
+                                                    onChange={(event) => fieldApi.handleChange(event.target.value)}
+                                                />
+                                                {fieldApi.state.meta.errors.map((error) => (
+                                                    <ErrorMessage key={String(error)}>{String(error)}</ErrorMessage>
+                                                ))}
+                                            </Field>
+                                        )}
+                                    </form.Field>
+
                                     <form.Field name={"roundMinutes"}>
                                         {(fieldApi) => (
                                             <Field>
@@ -702,17 +739,41 @@ export function TournamentDialog({ open, tournament, onClose, onSaved }: Tournam
                                         )}
                                     </form.Field>
 
-                                    <form.Field name={"requireCheckIn"}>
-                                        {(fieldApi) => (
-                                            <CheckboxField>
-                                                <Checkbox
-                                                    checked={fieldApi.state.value}
-                                                    onChange={(checked) => fieldApi.handleChange(checked)}
-                                                />
-                                                <Label>{t("label.require-check-in")}</Label>
-                                            </CheckboxField>
+                                    <form.Subscribe selector={(state) => state.values.podSize}>
+                                        {(podSize) => (
+                                            <form.Field name={"plannedRounds"}>
+                                                {(fieldApi) => (
+                                                    <Field>
+                                                        <Label>{t("label.planned-rounds")}</Label>
+                                                        <Input
+                                                            type={"number"}
+                                                            min={1}
+                                                            placeholder={
+                                                                participantCount === undefined
+                                                                    ? t("label.undecided")
+                                                                    : t("label.rounds-recommended", {
+                                                                          count: recommendedRounds(
+                                                                              participantCount,
+                                                                              podSize,
+                                                                          ),
+                                                                      })
+                                                            }
+                                                            invalid={fieldApi.state.meta.errors.length > 0}
+                                                            value={fieldApi.state.value}
+                                                            onChange={(event) =>
+                                                                fieldApi.handleChange(event.target.value)
+                                                            }
+                                                        />
+                                                        {fieldApi.state.meta.errors.map((error) => (
+                                                            <ErrorMessage key={String(error)}>
+                                                                {String(error)}
+                                                            </ErrorMessage>
+                                                        ))}
+                                                    </Field>
+                                                )}
+                                            </form.Field>
                                         )}
-                                    </form.Field>
+                                    </form.Subscribe>
 
                                     <Fieldset>
                                         <Legend>{t("label.scoring")}</Legend>

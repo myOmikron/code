@@ -61,7 +61,7 @@ function RouteComponent() {
                     code={code}
                     lookup={lookup}
                     onJoined={(tournamentUuid) =>
-                        void navigate({ to: "/tournaments/$tournamentUuid/overview", params: { tournamentUuid } })
+                        void navigate({ to: "/tournaments/$tournamentUuid", params: { tournamentUuid } })
                     }
                 />
             </div>

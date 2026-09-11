@@ -48,6 +48,9 @@ export function joinErrorHandlers(t: (key: string) => string): {
         unknown_code: (errors) => {
             errors.form = t("error.unknown-code");
         },
+        tournament_full: (errors) => {
+            errors.form = t("error.tournament-full");
+        },
         registration_closed: (errors) => {
             errors.form = t("error.registration-closed");
         },
@@ -302,7 +305,7 @@ export function JoinCard({ code, lookup, onJoined }: JoinCardProps) {
                     <Text>{t("description.already-joined")}</Text>
                     <Button
                         color={"blue"}
-                        href={"/tournaments/$tournamentUuid/overview"}
+                        href={"/tournaments/$tournamentUuid"}
                         params={{ tournamentUuid: lookup.tournament }}
                     >
                         {t("button.open-tournament")}

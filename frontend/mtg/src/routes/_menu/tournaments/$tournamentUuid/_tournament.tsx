@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import { ResponseError } from "src/api/generated";
 import { tournamentStatusColor, tournamentStatusLabelKey } from "src/components/tournament-join-code";
+import { formatDateTime } from "src/utils/format";
 import i18n from "src/i18n";
 
 export const Route = createFileRoute("/_menu/tournaments/$tournamentUuid/_tournament")({
@@ -24,7 +25,7 @@ export const Route = createFileRoute("/_menu/tournaments/$tournamentUuid/_tourna
 });
 
 /**
- * The chrome around one tournament: its name, its status, and the tabs holding the roster.
+ * The chrome around one tournament: its name, its status, and the tabs under it.
  *
  * No `<RequireAccount>` here — guests are exactly who this section exists for. Identity comes
  * from the `TournamentActor` the backend resolved when answering `get_tournament`; a viewer who
@@ -55,14 +56,32 @@ function RouteComponent() {
             <TabLayout
                 heading={tournament.name}
                 headingDescription={
-                    <Badge color={tournamentStatusColor(tournament.status)}>
-                        {t(tournamentStatusLabelKey(tournament.status))}
-                    </Badge>
+                    // The facts the overview tab used to hold a `DescriptionList` for, as one
+                    // line of context. The venue is not among them: with an address, directions
+                    // and a maps button it is three lines tall, and a heading is no place for it
+                    // — the page below carries it instead.
+                    <span className={"flex flex-wrap items-center gap-x-2 gap-y-1 text-sm"}>
+                        <Badge color={tournamentStatusColor(tournament.status)}>
+                            {t(tournamentStatusLabelKey(tournament.status))}
+                        </Badge>
+                        {tournament.starts_at != null && (
+                            <>
+                                <span aria-hidden={true}>·</span>
+                                <span>{formatDateTime(tournament.starts_at)}</span>
+                            </>
+                        )}
+                    </span>
                 }
                 tabs={
                     <TabMenu>
-                        <Tab href={"/tournaments/$tournamentUuid/overview"} params={{ tournamentUuid }}>
-                            {t("heading.overview")}
+                        {/* Exact matching, or the settings tab leaves this one lit beside it —
+                            `/tournaments/$id` is a prefix of every route under it. */}
+                        <Tab
+                            href={"/tournaments/$tournamentUuid"}
+                            params={{ tournamentUuid }}
+                            activeOptions={{ exact: true }}
+                        >
+                            {t("heading.tournament")}
                         </Tab>
                         <Tab href={"/tournaments/$tournamentUuid/players"} params={{ tournamentUuid }}>
                             {t("heading.players")}

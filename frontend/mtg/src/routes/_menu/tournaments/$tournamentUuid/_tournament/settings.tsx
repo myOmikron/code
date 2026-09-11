@@ -1,4 +1,4 @@
-import { GlobeAltIcon, LinkIcon, LockClosedIcon, PencilSquareIcon } from "@heroicons/react/20/solid";
+import { GlobeAltIcon, LinkIcon, LockClosedIcon, NoSymbolIcon, PencilSquareIcon } from "@heroicons/react/20/solid";
 import { createFileRoute, useLoaderData, useRouter } from "@tanstack/react-router";
 import {
     Badge,
@@ -22,11 +22,7 @@ import { Visibility } from "src/api/generated";
 import type { PairingSystem, TournamentStatus } from "src/api/generated";
 import { ShareDialog } from "src/components/share-dialog";
 import { TournamentDialog } from "src/components/tournament-dialog";
-import {
-    TournamentJoinCode,
-    tournamentStatusColor,
-    tournamentStatusLabelKey,
-} from "src/components/tournament-join-code";
+import { tournamentStatusColor, tournamentStatusLabelKey } from "src/components/tournament-join-code";
 import { tournamentShareTarget } from "src/utils/share-targets";
 
 export const Route = createFileRoute("/_menu/tournaments/$tournamentUuid/_tournament/settings")({
@@ -50,29 +46,18 @@ function pairingLabelKey(system: PairingSystem): string {
 }
 
 /**
- * Every status legally reachable from the given one, in {@link crate::models::tournament}'s own
- * `may_transition` order: forward one step in the lifecycle, plus `Cancelled` from anywhere that
- * has not already finished or been cancelled.
+ * Whether a tournament can still be called off
  *
- * Duplicated here on purpose rather than asked of the server: the set is small, fixed, and
- * documented as part of the plan, and a Listbox needs its options synchronously to render at all.
+ * `Cancelled` is the one branch off the lifecycle's straight line, and the only status change this
+ * tab still makes — moving an event *forward* is `TournamentNextStep`'s button on the tournament
+ * screen, where an organizer is actually working when they decide to start.
  *
  * @param status the tournament's current status
  *
- * @returns the statuses the status control may offer
+ * @returns whether the cancel button belongs on the page
  */
-function legalNextStatuses(status: TournamentStatus): Array<TournamentStatus> {
-    switch (status) {
-        case "Draft":
-            return ["Registration", "Cancelled"];
-        case "Registration":
-            return ["Running", "Cancelled"];
-        case "Running":
-            return ["Finished", "Cancelled"];
-        case "Finished":
-        case "Cancelled":
-            return [];
-    }
+function mayCancel(status: TournamentStatus): boolean {
+    return status === "Registration" || status === "Running";
 }
 
 /**
@@ -84,7 +69,9 @@ function legalNextStatuses(status: TournamentStatus): Array<TournamentStatus> {
 function RouteComponent() {
     const { tournamentUuid } = Route.useParams();
     // Non-null: see the same assertion in `overview.tsx` — this tab never mounts on a `null`.
-    const { tournament, viewer } = useLoaderData({ from: "/_menu/tournaments/$tournamentUuid/_tournament" })!;
+    const { tournament, viewer, participant_count } = useLoaderData({
+        from: "/_menu/tournaments/$tournamentUuid/_tournament",
+    })!;
     const [t] = useTranslation("tournament");
     const router = useRouter();
 
@@ -117,8 +104,6 @@ function RouteComponent() {
         notify.success(t("toast.tournament-updated"));
         await router.invalidate();
     }
-
-    const nextStatuses = legalNextStatuses(tournament.status);
 
     return (
         <div className={"flex flex-col gap-8"}>
@@ -163,21 +148,11 @@ function RouteComponent() {
                     <Badge color={tournamentStatusColor(tournament.status)}>
                         {t(tournamentStatusLabelKey(tournament.status))}
                     </Badge>
-                    {nextStatuses.length > 0 && (
-                        <Listbox
-                            placeholder={t("label.status")}
-                            className={"max-w-64"}
-                            onChange={(status: TournamentStatus) => {
-                                if (status === "Cancelled") setConfirmingCancel(true);
-                                else void setStatus(status);
-                            }}
-                        >
-                            {nextStatuses.map((status) => (
-                                <ListboxOption key={status} value={status}>
-                                    <ListboxLabel>{t(tournamentStatusLabelKey(status))}</ListboxLabel>
-                                </ListboxOption>
-                            ))}
-                        </Listbox>
+                    {mayCancel(tournament.status) && viewer.may_manage && (
+                        <Button outline={true} onClick={() => setConfirmingCancel(true)}>
+                            <NoSymbolIcon />
+                            {t("button.cancel-tournament")}
+                        </Button>
                     )}
                 </div>
             </div>
@@ -215,13 +190,6 @@ function RouteComponent() {
                 </div>
             </div>
 
-            <TournamentJoinCode
-                tournamentUuid={tournamentUuid}
-                joinCode={tournament.join_code}
-                mayManage={viewer.may_manage}
-                onChanged={() => router.invalidate()}
-            />
-
             <ShareDialog
                 target={sharing ? tournamentShareTarget(tournament) : null}
                 description={t("description.share-link")}
@@ -232,6 +200,7 @@ function RouteComponent() {
             <TournamentDialog
                 open={editing}
                 tournament={tournament}
+                participantCount={participant_count}
                 onClose={() => setEditing(false)}
                 onSaved={() => {
                     setEditing(false);

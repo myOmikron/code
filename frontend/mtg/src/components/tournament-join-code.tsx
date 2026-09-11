@@ -1,12 +1,20 @@
-import { ArrowPathIcon, QrCodeIcon, XCircleIcon } from "@heroicons/react/20/solid";
+import { ArrowPathIcon, EllipsisHorizontalIcon, LinkIcon, XCircleIcon } from "@heroicons/react/20/solid";
 import type { BadgeProps } from "components";
-import { Button, CopyButton, Text, notify } from "components";
+import {
+    Button,
+    CopyButton,
+    Dropdown,
+    DropdownButton,
+    DropdownItem,
+    DropdownLabel,
+    DropdownMenu,
+    notify,
+} from "components";
 import { QRCodeSVG } from "qrcode.react";
-import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import type { ParticipantStatus, TournamentStatus } from "src/api/generated";
-import { JoinQrDialog } from "src/components/join-qr-dialog";
+import { TournamentSlots } from "src/components/tournament-slots";
 
 /** How many characters of a join code sit before the display dash */
 const CODE_SPLIT = 3;
@@ -28,8 +36,6 @@ type BadgeColor = NonNullable<BadgeProps["color"]>;
  */
 export function tournamentStatusColor(status: TournamentStatus): BadgeColor {
     switch (status) {
-        case "Draft":
-            return "zinc";
         case "Registration":
             return "sky";
         case "Running":
@@ -50,8 +56,6 @@ export function tournamentStatusColor(status: TournamentStatus): BadgeColor {
  */
 export function tournamentStatusLabelKey(status: TournamentStatus): string {
     switch (status) {
-        case "Draft":
-            return "label.status-draft";
         case "Registration":
             return "label.status-registration";
         case "Running":
@@ -120,14 +124,35 @@ export function displayJoinCode(code: string): string {
     return `${code.slice(0, CODE_SPLIT)}-${code.slice(CODE_SPLIT)}`;
 }
 
+/** The uppercase label above each of the join bar's two values */
+const JOIN_BAR_LABEL = "text-xs font-semibold tracking-wider text-zinc-500 uppercase dark:text-zinc-400";
+
 /**
- * The properties for {@link TournamentJoinCode}
+ * Puts the join link on the clipboard
+ *
+ * Spelled out rather than reusing `CopyButton`, which is icon-only: two identical clipboard icons
+ * in one bar, one copying the code and one the link, told a reader nothing about which was which.
+ *
+ * @param url the link to copy
+ * @param message what to say once it is on the clipboard
  */
-export type TournamentJoinCodeProps = {
+async function copyJoinLink(url: string, message: string) {
+    await navigator.clipboard.writeText(url);
+    notify.success(message);
+}
+
+/**
+ * The properties for {@link TournamentJoinBar}
+ */
+export type TournamentJoinBarProps = {
     /** The tournament the code belongs to */
     tournamentUuid: string;
-    /** The raw code, `null`/`undefined` while nobody has minted one */
+    /** The raw code, `null`/`undefined` while nobody has one */
     joinCode: string | null | undefined;
+    /** How many people are on the roster */
+    participantCount: number;
+    /** How many fit, `null` for an event that turns nobody away */
+    maxParticipants: number | null | undefined;
     /** Whether the viewer may rotate or revoke it — a scorekeeper may see it, not touch it */
     mayManage: boolean;
     /** Called after a rotate or revoke went through, so the caller can reload the tournament */
@@ -135,14 +160,29 @@ export type TournamentJoinCodeProps = {
 };
 
 /**
- * The organizer-only card showing a tournament's join code, and the actions to mint a fresh one
- * or withdraw it.
+ * The bar across the top of a tournament: the code people join by, the QR beside it, and how
+ * full the room is.
  *
- * @returns the card
+ * Three zones on one line — the join credentials, the count, and the actions — and the first two
+ * are built as the same object: an uppercase label over a value on a shared baseline, so the two
+ * eyebrows line up and the two values line up. The count is deliberately the `inline` variant of
+ * {@link TournamentSlots}: a meter here would add a third row to one zone and only one, which is
+ * what pulls a toolbar out of alignment.
+ *
+ * A code is minted with the tournament (see `Tournament::create`), so the empty state below is
+ * only ever reached by revoking one — it keeps the bar's shape rather than collapsing it.
+ *
+ * @returns the bar
  */
-export function TournamentJoinCode({ tournamentUuid, joinCode, mayManage, onChanged }: TournamentJoinCodeProps) {
+export function TournamentJoinBar({
+    tournamentUuid,
+    joinCode,
+    participantCount,
+    maxParticipants,
+    mayManage,
+    onChanged,
+}: TournamentJoinBarProps) {
     const [t] = useTranslation("tournament");
-    const [qrDialogOpen, setQrDialogOpen] = useState(false);
 
     // Built client-side from the browser's own origin, not a server field or image endpoint:
     // PUBLIC_ORIGIN is the only origin a passkey login can complete on (see the webauthn
@@ -150,7 +190,7 @@ export function TournamentJoinCode({ tournamentUuid, joinCode, mayManage, onChan
     // one to hand out as a deep link.
     const joinUrl = joinCode != null ? `${window.location.origin}/join/${joinCode}` : null;
 
-    /** Mints a fresh join code, replacing any code already in place */
+    /** Mints a fresh join code, replacing the one in place */
     async function rotate() {
         await Api.tournaments.rotateJoinCode(tournamentUuid);
         notify.success(t("toast.code-rotated"));
@@ -166,61 +206,76 @@ export function TournamentJoinCode({ tournamentUuid, joinCode, mayManage, onChan
 
     return (
         <div
-            className={"flex flex-col gap-3 rounded-(--radius-card) border border-zinc-950/10 p-4 dark:border-white/10"}
+            className={
+                "flex flex-wrap items-center gap-x-5 gap-y-4 rounded-(--radius-card) bg-(--surface-card) px-5 py-4 shadow-(--shadow-card-sm) ring-1 ring-zinc-950/5 dark:ring-white/10"
+            }
         >
-            <Text className={"text-sm font-semibold text-zinc-950 dark:text-white"}>{t("heading.join-code")}</Text>
-            {joinCode != null && joinUrl != null ? (
-                <>
-                    {/* Stacks below `sm` (a 390px card has no room for QR + code side by side)
-                        and sits beside the code from `sm` up. */}
-                    <div className={"flex flex-col items-start gap-4 sm:flex-row sm:items-center"}>
-                        <div className={"flex items-center gap-2"}>
+            <div className={"flex items-center gap-4"}>
+                {/* White backing plate: a QR rendered straight onto the dark theme's ground does
+                    not scan, see `invite-dialog.tsx`. The ring keeps it reading as a plate on the
+                    light theme, where white on white would have no edge at all. */}
+                {joinUrl != null && (
+                    <div className={"shrink-0 rounded-lg bg-white p-1.5 ring-1 ring-zinc-950/5"}>
+                        <QRCodeSVG value={joinUrl} size={72} />
+                    </div>
+                )}
+                <div className={"flex flex-col gap-1"}>
+                    <span className={JOIN_BAR_LABEL}>{t("heading.join-code")}</span>
+                    {joinCode != null ? (
+                        <div className={"flex items-center gap-1.5"}>
                             <span
                                 className={
-                                    "rounded-(--radius-control) bg-zinc-950/5 px-3 py-1.5 font-mono text-lg tracking-[0.2em] text-zinc-950 dark:bg-white/10 dark:text-white"
+                                    "font-mono text-2xl/8 font-semibold tracking-[0.16em] text-zinc-950 tabular-nums dark:text-white"
                                 }
                             >
                                 {displayJoinCode(joinCode)}
                             </span>
                             <CopyButton value={displayJoinCode(joinCode)} label={t("accessibility.copy-join-code")} />
                         </div>
-                        {/* White backing plate: a QR rendered straight onto the dark theme's
-                            ground does not scan, see `invite-dialog.tsx`. */}
-                        <div className={"shrink-0 rounded-lg bg-white p-2"}>
-                            <QRCodeSVG value={joinUrl} size={128} />
-                        </div>
-                    </div>
-                    <div className={"flex flex-wrap items-center gap-2"}>
-                        <CopyButton value={joinUrl} label={t("accessibility.copy-join-link")} />
-                        <Button outline={true} onClick={() => setQrDialogOpen(true)}>
-                            <QrCodeIcon />
-                            {t("button.show-qr")}
-                        </Button>
-                    </div>
-                </>
-            ) : (
-                <Text className={"text-sm"}>{t("label.no-join-code")}</Text>
-            )}
-            {mayManage && (
-                <div className={"flex flex-wrap gap-2"}>
-                    <Button outline={true} onClick={() => void rotate()}>
-                        <ArrowPathIcon />
-                        {t("button.rotate-code")}
-                    </Button>
-                    {joinCode != null && (
-                        <Button outline={true} onClick={() => void revoke()}>
-                            <XCircleIcon />
-                            {t("button.revoke-code")}
-                        </Button>
+                    ) : (
+                        <span className={"text-2xl/8 font-medium text-zinc-500 dark:text-zinc-400"}>
+                            {t("label.no-join-code")}
+                        </span>
                     )}
                 </div>
-            )}
-            <JoinQrDialog
-                open={qrDialogOpen}
-                joinCode={joinCode ?? ""}
-                joinUrl={joinUrl ?? ""}
-                onClose={() => setQrDialogOpen(false)}
-            />
+            </div>
+
+            {/* Hairline between the two stats, dropped once they wrap onto separate lines — a
+                vertical rule between stacked blocks separates nothing. */}
+            <div className={"hidden h-12 w-px self-center bg-zinc-950/10 sm:block dark:bg-white/10"} />
+
+            <div className={"flex flex-col gap-1"}>
+                <span className={JOIN_BAR_LABEL}>{t("heading.registered")}</span>
+                <TournamentSlots count={participantCount} max={maxParticipants} variant={"inline"} />
+            </div>
+
+            <div className={"ms-auto flex flex-wrap items-center gap-2"}>
+                {joinUrl != null && (
+                    <Button outline={true} onClick={() => void copyJoinLink(joinUrl, t("toast.link-copied"))}>
+                        <LinkIcon />
+                        {t("button.copy-join-link")}
+                    </Button>
+                )}
+                {mayManage && (
+                    <Dropdown>
+                        <DropdownButton plain={true} aria-label={t("heading.join-code")}>
+                            <EllipsisHorizontalIcon />
+                        </DropdownButton>
+                        <DropdownMenu anchor={"bottom end"}>
+                            <DropdownItem onClick={() => void rotate()}>
+                                <ArrowPathIcon />
+                                <DropdownLabel>{t("button.rotate-code")}</DropdownLabel>
+                            </DropdownItem>
+                            {joinCode != null && (
+                                <DropdownItem onClick={() => void revoke()}>
+                                    <XCircleIcon />
+                                    <DropdownLabel>{t("button.revoke-code")}</DropdownLabel>
+                                </DropdownItem>
+                            )}
+                        </DropdownMenu>
+                    </Dropdown>
+                )}
+            </div>
         </div>
     );
 }

@@ -91,3 +91,41 @@ export function podSizeFor(slug: string, formats: Array<FormatRulesResponse>): n
     const rules = formats.find((format) => format.slug === slug);
     return rules !== undefined && rules.commander.kind !== "none" ? 4 : 2;
 }
+
+/**
+ * How many Swiss rounds a field of this size usually plays
+ *
+ * Two different tables, because the two table sizes answer the question differently. A duel event
+ * follows the Magic Tournament Rules' Appendix E, which is the binary-search shape everybody knows:
+ * enough rounds that one undefeated player is left. Pods follow the judge community's Multiplayer
+ * Addendum instead, which runs markedly shorter — four players knock each other out four times as
+ * fast, so sixteen players need two rounds where a duel event would need four.
+ *
+ * Only ever a suggestion. It fills the field in the create dialog and the start confirmation; an
+ * organizer who wants three rounds on a Friday evening types three, and nothing argues.
+ *
+ * @param players how many people are expected to play
+ * @param podSize how many players share a table
+ *
+ * @returns the recommended number of scoring rounds, at least one
+ */
+export function recommendedRounds(players: number, podSize: number): number {
+    if (players < 2) return 1;
+
+    if (podSize <= 2) {
+        // MTR App. E: ceil(log2(players)), which is exactly "how many halvings
+        // until one player is left", floored at three so a tiny event still
+        // plays an evening rather than a single match.
+        const rounds = Math.ceil(Math.log2(players));
+        return Math.min(Math.max(rounds, 3), 10);
+    }
+
+    // Multiplayer Addendum App. E, read off its own table rather than derived:
+    // the thresholds are not a clean function of the player count.
+    if (players <= 5) return 1;
+    if (players <= 16) return 2;
+    if (players <= 24) return 3;
+    if (players <= 32) return 4;
+    if (players <= 64) return 5;
+    return 6;
+}
