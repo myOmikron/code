@@ -1,4 +1,10 @@
-import { ArrowPathIcon, EllipsisHorizontalIcon, LinkIcon, XCircleIcon } from "@heroicons/react/20/solid";
+import {
+    ArrowPathIcon,
+    EllipsisHorizontalIcon,
+    LinkIcon,
+    PresentationChartBarIcon,
+    XCircleIcon,
+} from "@heroicons/react/20/solid";
 import type { BadgeProps } from "components";
 import {
     Button,
@@ -254,6 +260,12 @@ export function TournamentJoinBar({
                     <Button outline={true} onClick={() => void copyJoinLink(joinUrl, t("toast.link-copied"))}>
                         <LinkIcon />
                         {t("button.copy-join-link")}
+                    </Button>
+                )}
+                {joinCode != null && (
+                    <Button outline={true} href={`/display/${joinCode}`} target={"_blank"}>
+                        <PresentationChartBarIcon />
+                        {t("button.show-display")}
                     </Button>
                 )}
                 {mayManage && (

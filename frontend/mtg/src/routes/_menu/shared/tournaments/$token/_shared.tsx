@@ -1,9 +1,10 @@
 import { Outlet, createFileRoute } from "@tanstack/react-router";
 import { LinkSlashIcon } from "@heroicons/react/20/solid";
-import { Badge, EmptyState, Tab, TabLayout, TabMenu } from "components";
+import { Badge, EmptyState, HeadingLayout } from "components";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import { tournamentStatusColor, tournamentStatusLabelKey } from "src/components/tournament-join-code";
+import { formatDateTime } from "src/utils/format";
 import i18n from "src/i18n";
 import { isDeadShareLink } from "src/utils/share-link";
 
@@ -25,8 +26,10 @@ export const Route = createFileRoute("/_menu/shared/tournaments/$token/_shared")
 });
 
 /**
- * The chrome around a tournament somebody shared: its name, status, format and venue, and the
- * tabs — a players tab only where the event's roster view allows one at all.
+ * The chrome around a tournament somebody shared: its name, status, format, when and where.
+ *
+ * One page rather than two tabs, the same call the authed side made: how full the event is and
+ * who is in it are one glance, not two.
  *
  * Read-only by construction, like the rest of this section: no join code, no decklists, no
  * organizer usernames and no actions anywhere under this layout. See `SharedTournamentResponse`'s
@@ -35,7 +38,6 @@ export const Route = createFileRoute("/_menu/shared/tournaments/$token/_shared")
  * @returns the tabbed frame around the current tab, or the dead-link empty state
  */
 function RouteComponent() {
-    const { token } = Route.useParams();
     const { tournament } = Route.useLoaderData();
     const [t] = useTranslation("tournament");
 
@@ -51,37 +53,26 @@ function RouteComponent() {
 
     return (
         <div className={"flex flex-col gap-2"}>
-            <TabLayout
+            <HeadingLayout
                 heading={tournament.name}
                 headingDescription={
-                    <span className={"flex flex-wrap items-center gap-2"}>
+                    <span className={"flex flex-wrap items-center gap-x-2 gap-y-1"}>
                         <Badge color={tournamentStatusColor(tournament.status)}>
                             {t(tournamentStatusLabelKey(tournament.status))}
                         </Badge>
+                        <span aria-hidden={true}>·</span>
                         <span>{tournament.format}</span>
-                        {tournament.venue != null && tournament.venue !== "" && <span>{tournament.venue}</span>}
-                    </span>
-                }
-                tabs={
-                    <TabMenu>
-                        <Tab href={"/shared/tournaments/$token"} params={{ token }}>
-                            {t("heading.overview")}
-                        </Tab>
-                        {/* Hidden rather than disabled, same call as the authed layout's settings
-                            tab: a stranger the roster is closed to has no use for a tab whose page
-                            immediately tells them nothing is there. Direct navigation still
-                            reaches it — `players.tsx` answers exactly the same either way, dead
-                            token or closed roster, see its own doc comment. */}
-                        {tournament.roster_available && (
-                            <Tab href={"/shared/tournaments/$token/players"} params={{ token }}>
-                                {t("heading.players")}
-                            </Tab>
+                        {tournament.starts_at != null && (
+                            <>
+                                <span aria-hidden={true}>·</span>
+                                <span>{formatDateTime(tournament.starts_at)}</span>
+                            </>
                         )}
-                    </TabMenu>
+                    </span>
                 }
             >
                 <Outlet />
-            </TabLayout>
+            </HeadingLayout>
         </div>
     );
 }

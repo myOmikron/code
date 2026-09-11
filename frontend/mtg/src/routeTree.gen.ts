@@ -18,6 +18,7 @@ import { Route as MenuGameUtilsRouteImport } from './routes/_menu/game-utils'
 import { Route as MenuHomeRouteImport } from './routes/_menu/home'
 import { Route as MenuLegalRouteImport } from './routes/_menu/legal'
 import { Route as MenuPrivacyRouteImport } from './routes/_menu/privacy'
+import { Route as DisplayCodeRouteImport } from './routes/display.$code'
 import { Route as MenuAuthLoginRouteImport } from './routes/_menu/auth/login'
 import { Route as MenuAuthRegisterRouteImport } from './routes/_menu/auth/register'
 import { Route as MenuAuthSignupRouteImport } from './routes/_menu/auth/signup'
@@ -78,7 +79,6 @@ import { Route as MenuSharedDecksTokenSharedIndexRouteImport } from './routes/_m
 import { Route as MenuSharedDecksTokenSharedCardsRouteImport } from './routes/_menu/shared/decks/$token/_shared/cards'
 import { Route as MenuSharedDecksTokenSharedStatisticsRouteImport } from './routes/_menu/shared/decks/$token/_shared/statistics'
 import { Route as MenuSharedTournamentsTokenSharedIndexRouteImport } from './routes/_menu/shared/tournaments/$token/_shared/index'
-import { Route as MenuSharedTournamentsTokenSharedPlayersRouteImport } from './routes/_menu/shared/tournaments/$token/_shared/players'
 
 const CollectRoute = CollectRouteImport.update({
   id: '/_collect',
@@ -121,6 +121,11 @@ const MenuPrivacyRoute = MenuPrivacyRouteImport.update({
   id: '/privacy',
   path: '/privacy',
   getParentRoute: () => MenuRoute,
+} as any)
+const DisplayCodeRoute = DisplayCodeRouteImport.update({
+  id: '/display/$code',
+  path: '/display/$code',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const MenuAuthLoginRoute = MenuAuthLoginRouteImport.update({
   id: '/login',
@@ -464,12 +469,6 @@ const MenuSharedTournamentsTokenSharedIndexRoute =
     path: '/',
     getParentRoute: () => MenuSharedTournamentsTokenSharedRoute,
   } as any)
-const MenuSharedTournamentsTokenSharedPlayersRoute =
-  MenuSharedTournamentsTokenSharedPlayersRouteImport.update({
-    id: '/players',
-    path: '/players',
-    getParentRoute: () => MenuSharedTournamentsTokenSharedRoute,
-  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof MenuIndexRoute
@@ -478,6 +477,7 @@ export interface FileRoutesByFullPath {
   '/home': typeof MenuHomeRoute
   '/legal': typeof MenuLegalRoute
   '/privacy': typeof MenuPrivacyRoute
+  '/display/$code': typeof DisplayCodeRoute
   '/auth/login': typeof MenuAuthLoginRoute
   '/auth/register': typeof MenuAuthRegisterRoute
   '/auth/signup': typeof MenuAuthSignupRoute
@@ -533,7 +533,6 @@ export interface FileRoutesByFullPath {
   '/shared/collections/$token/statistics': typeof MenuSharedCollectionsTokenSharedStatisticsRoute
   '/shared/decks/$token/cards': typeof MenuSharedDecksTokenSharedCardsRoute
   '/shared/decks/$token/statistics': typeof MenuSharedDecksTokenSharedStatisticsRoute
-  '/shared/tournaments/$token/players': typeof MenuSharedTournamentsTokenSharedPlayersRoute
   '/global/collections/$collectionUuid/': typeof MenuGlobalCollectionsCollectionUuidCollectionIndexRoute
   '/global/decks/$deckUuid/': typeof MenuGlobalDecksDeckUuidDeckIndexRoute
   '/shared/collections/$token/': typeof MenuSharedCollectionsTokenSharedIndexRoute
@@ -546,6 +545,7 @@ export interface FileRoutesByTo {
   '/home': typeof MenuHomeRoute
   '/legal': typeof MenuLegalRoute
   '/privacy': typeof MenuPrivacyRoute
+  '/display/$code': typeof DisplayCodeRoute
   '/auth/login': typeof MenuAuthLoginRoute
   '/auth/register': typeof MenuAuthRegisterRoute
   '/auth/signup': typeof MenuAuthSignupRoute
@@ -592,7 +592,6 @@ export interface FileRoutesByTo {
   '/shared/collections/$token/statistics': typeof MenuSharedCollectionsTokenSharedStatisticsRoute
   '/shared/decks/$token/cards': typeof MenuSharedDecksTokenSharedCardsRoute
   '/shared/decks/$token/statistics': typeof MenuSharedDecksTokenSharedStatisticsRoute
-  '/shared/tournaments/$token/players': typeof MenuSharedTournamentsTokenSharedPlayersRoute
   '/global/collections/$collectionUuid': typeof MenuGlobalCollectionsCollectionUuidCollectionIndexRoute
   '/global/decks/$deckUuid': typeof MenuGlobalDecksDeckUuidDeckIndexRoute
   '/shared/collections/$token': typeof MenuSharedCollectionsTokenSharedIndexRoute
@@ -609,6 +608,7 @@ export interface FileRoutesById {
   '/_menu/home': typeof MenuHomeRoute
   '/_menu/legal': typeof MenuLegalRoute
   '/_menu/privacy': typeof MenuPrivacyRoute
+  '/display/$code': typeof DisplayCodeRoute
   '/_menu/': typeof MenuIndexRoute
   '/_menu/auth/login': typeof MenuAuthLoginRoute
   '/_menu/auth/register': typeof MenuAuthRegisterRoute
@@ -665,7 +665,6 @@ export interface FileRoutesById {
   '/_menu/shared/collections/$token/_shared/statistics': typeof MenuSharedCollectionsTokenSharedStatisticsRoute
   '/_menu/shared/decks/$token/_shared/cards': typeof MenuSharedDecksTokenSharedCardsRoute
   '/_menu/shared/decks/$token/_shared/statistics': typeof MenuSharedDecksTokenSharedStatisticsRoute
-  '/_menu/shared/tournaments/$token/_shared/players': typeof MenuSharedTournamentsTokenSharedPlayersRoute
   '/_menu/global/collections/$collectionUuid/_collection/': typeof MenuGlobalCollectionsCollectionUuidCollectionIndexRoute
   '/_menu/global/decks/$deckUuid/_deck/': typeof MenuGlobalDecksDeckUuidDeckIndexRoute
   '/_menu/shared/collections/$token/_shared/': typeof MenuSharedCollectionsTokenSharedIndexRoute
@@ -681,6 +680,7 @@ export interface FileRouteTypes {
     | '/home'
     | '/legal'
     | '/privacy'
+    | '/display/$code'
     | '/auth/login'
     | '/auth/register'
     | '/auth/signup'
@@ -736,7 +736,6 @@ export interface FileRouteTypes {
     | '/shared/collections/$token/statistics'
     | '/shared/decks/$token/cards'
     | '/shared/decks/$token/statistics'
-    | '/shared/tournaments/$token/players'
     | '/global/collections/$collectionUuid/'
     | '/global/decks/$deckUuid/'
     | '/shared/collections/$token/'
@@ -749,6 +748,7 @@ export interface FileRouteTypes {
     | '/home'
     | '/legal'
     | '/privacy'
+    | '/display/$code'
     | '/auth/login'
     | '/auth/register'
     | '/auth/signup'
@@ -795,7 +795,6 @@ export interface FileRouteTypes {
     | '/shared/collections/$token/statistics'
     | '/shared/decks/$token/cards'
     | '/shared/decks/$token/statistics'
-    | '/shared/tournaments/$token/players'
     | '/global/collections/$collectionUuid'
     | '/global/decks/$deckUuid'
     | '/shared/collections/$token'
@@ -811,6 +810,7 @@ export interface FileRouteTypes {
     | '/_menu/home'
     | '/_menu/legal'
     | '/_menu/privacy'
+    | '/display/$code'
     | '/_menu/'
     | '/_menu/auth/login'
     | '/_menu/auth/register'
@@ -867,7 +867,6 @@ export interface FileRouteTypes {
     | '/_menu/shared/collections/$token/_shared/statistics'
     | '/_menu/shared/decks/$token/_shared/cards'
     | '/_menu/shared/decks/$token/_shared/statistics'
-    | '/_menu/shared/tournaments/$token/_shared/players'
     | '/_menu/global/collections/$collectionUuid/_collection/'
     | '/_menu/global/decks/$deckUuid/_deck/'
     | '/_menu/shared/collections/$token/_shared/'
@@ -878,6 +877,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   CollectRoute: typeof CollectRouteWithChildren
   MenuRoute: typeof MenuRouteWithChildren
+  DisplayCodeRoute: typeof DisplayCodeRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -944,6 +944,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/privacy'
       preLoaderRoute: typeof MenuPrivacyRouteImport
       parentRoute: typeof MenuRoute
+    }
+    '/display/$code': {
+      id: '/display/$code'
+      path: '/display/$code'
+      fullPath: '/display/$code'
+      preLoaderRoute: typeof DisplayCodeRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_menu/auth/login': {
       id: '/_menu/auth/login'
@@ -1365,13 +1372,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MenuSharedTournamentsTokenSharedIndexRouteImport
       parentRoute: typeof MenuSharedTournamentsTokenSharedRoute
     }
-    '/_menu/shared/tournaments/$token/_shared/players': {
-      id: '/_menu/shared/tournaments/$token/_shared/players'
-      path: '/players'
-      fullPath: '/shared/tournaments/$token/players'
-      preLoaderRoute: typeof MenuSharedTournamentsTokenSharedPlayersRouteImport
-      parentRoute: typeof MenuSharedTournamentsTokenSharedRoute
-    }
   }
 }
 
@@ -1600,14 +1600,11 @@ const MenuSharedDecksTokenSharedRouteWithChildren =
   )
 
 interface MenuSharedTournamentsTokenSharedRouteChildren {
-  MenuSharedTournamentsTokenSharedPlayersRoute: typeof MenuSharedTournamentsTokenSharedPlayersRoute
   MenuSharedTournamentsTokenSharedIndexRoute: typeof MenuSharedTournamentsTokenSharedIndexRoute
 }
 
 const MenuSharedTournamentsTokenSharedRouteChildren: MenuSharedTournamentsTokenSharedRouteChildren =
   {
-    MenuSharedTournamentsTokenSharedPlayersRoute:
-      MenuSharedTournamentsTokenSharedPlayersRoute,
     MenuSharedTournamentsTokenSharedIndexRoute:
       MenuSharedTournamentsTokenSharedIndexRoute,
   }
@@ -1690,6 +1687,7 @@ const MenuRouteWithChildren = MenuRoute._addFileChildren(MenuRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   CollectRoute: CollectRouteWithChildren,
   MenuRoute: MenuRouteWithChildren,
+  DisplayCodeRoute: DisplayCodeRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

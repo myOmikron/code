@@ -35,6 +35,7 @@
         "rotate-code": "Generate new code",
         "save": "Save",
         "share-link": "Share link",
+        "show-display": "Display view",
         "show-qr": "Show QR code",
         "start-tournament": "Start tournament",
         "unlock-decklists": "Unlock decklists"
@@ -66,6 +67,7 @@
         "participant-audience-organizers": "Players see only their own entry.",
         "participant-audience-participants": "Everyone registered sees the whole field.",
         "round-minutes": "The default for each round's clock.",
+        "scan-to-join": "Scan, or enter the code at {{origin}}/join",
         "scoring": "The default follows the table: 7 / 1 / 0 at a pod of four (2n−1 per the Multiplayer Addendum), 3 / 1 / 0 one on one. Enter 5 / 1 / 0 for a Topdeck-style event, say.",
         "settings-locked": "The tournament is running — structure and scoring are frozen.",
         "share-link": "Anyone holding the link sees the tournament, and the player list if you opened it to anyone.",
