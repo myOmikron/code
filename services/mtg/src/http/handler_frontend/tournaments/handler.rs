@@ -53,6 +53,7 @@ use crate::http::handler_frontend::tournaments::schema::SearchPlayersRequest;
 use crate::http::handler_frontend::tournaments::schema::SearchPlayersResponse;
 use crate::http::handler_frontend::tournaments::schema::SetDecklistRequest;
 use crate::http::handler_frontend::tournaments::schema::SetTournamentStatusRequest;
+use crate::http::handler_frontend::tournaments::schema::SetTournamentStatusResponse;
 use crate::http::handler_frontend::tournaments::schema::SetTournamentVisibilityRequest;
 use crate::http::handler_frontend::tournaments::schema::TournamentJoinCodeResponse;
 use crate::http::handler_frontend::tournaments::schema::TournamentOrganizerResponse;
@@ -416,25 +417,30 @@ pub async fn set_tournament_status(
     account: Account,
     Path(tournament_uuid): Path<TournamentUuid>,
     ApiJson(SetTournamentStatusRequest { status }): ApiJson<SetTournamentStatusRequest>,
-) -> ApiResult<ApiJson<()>> {
+) -> ApiResult<ApiJson<SetTournamentStatusResponse>> {
     let mut tx = Database::global().start_transaction().await?;
 
-    match Tournament::set_status(&mut tx, account.uuid, tournament_uuid, status).await? {
-        TournamentAccess::Granted(StatusChange::Changed) => {}
-        // Not a guard denial — the actor may manage this tournament, the
-        // move itself just is not legal from where it stands. A distinct
-        // message earns its keep here.
-        TournamentAccess::Granted(StatusChange::InvalidTransition) => {
-            return Err(ApiError::bad_request(
-                "That status transition is not allowed",
-            ));
-        }
-        TournamentAccess::Denied => return Err(denied()),
-    }
+    let dropped =
+        match Tournament::set_status(&mut tx, account.uuid, tournament_uuid, status).await? {
+            TournamentAccess::Granted(StatusChange::Changed {
+                dropped_awaiting_check_in,
+            }) => dropped_awaiting_check_in,
+            // Not a guard denial — the actor may manage this tournament, the
+            // move itself just is not legal from where it stands. A distinct
+            // message earns its keep here.
+            TournamentAccess::Granted(StatusChange::InvalidTransition) => {
+                return Err(ApiError::bad_request(
+                    "That status transition is not allowed",
+                ));
+            }
+            TournamentAccess::Denied => return Err(denied()),
+        };
 
     tx.commit().await?;
 
-    Ok(ApiJson(()))
+    Ok(ApiJson(SetTournamentStatusResponse {
+        dropped_awaiting_check_in: dropped as i64,
+    }))
 }
 
 /// Change who may see a tournament
@@ -966,6 +972,10 @@ fn validate_settings(
         errors.invalid_max_participants = true;
     }
 
+    if settings.planned_rounds.is_some_and(|rounds| rounds < 1) {
+        errors.invalid_planned_rounds = true;
+    }
+
     if !format::is_tournament_format(&settings.format) {
         errors.invalid_format = true;
     }
@@ -1063,8 +1073,8 @@ fn insert_from_settings(
         points_loss: settings.points_loss,
         points_bye: settings.points_bye,
         round_minutes: settings.round_minutes,
-        require_check_in: settings.require_check_in,
         max_participants: settings.max_participants,
+        planned_rounds: settings.planned_rounds,
         allow_late_entry: settings.allow_late_entry,
         late_entry_as_losses: settings.late_entry_as_losses,
         decklist_policy: settings.decklist_policy,
@@ -1102,7 +1112,7 @@ fn update_from_settings(settings: TournamentSettingsRequest) -> TournamentUpdate
         points_draw: settings.points_draw,
         points_loss: settings.points_loss,
         points_bye: settings.points_bye,
-        require_check_in: settings.require_check_in,
+        planned_rounds: settings.planned_rounds,
         allow_late_entry: settings.allow_late_entry,
         late_entry_as_losses: settings.late_entry_as_losses,
         decklist_policy: settings.decklist_policy,

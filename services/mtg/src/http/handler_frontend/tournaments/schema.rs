@@ -72,10 +72,10 @@ pub struct TournamentResponse {
     pub points_bye: i16,
     /// Default round length in minutes
     pub round_minutes: i16,
-    /// Whether players must check in before round one is paired
-    pub require_check_in: bool,
     /// How many players fit, `None` for no limit
     pub max_participants: Option<i16>,
+    /// How many scoring rounds the event means to play, `None` while undecided
+    pub planned_rounds: Option<i16>,
     /// Whether players may still register after the event started
     pub allow_late_entry: bool,
     /// Whether a late entry's missed rounds count as match losses
@@ -134,8 +134,8 @@ impl TournamentResponse {
             points_loss: tournament.points_loss,
             points_bye: tournament.points_bye,
             round_minutes: tournament.round_minutes,
-            require_check_in: tournament.require_check_in,
             max_participants: tournament.max_participants,
+            planned_rounds: tournament.planned_rounds,
             allow_late_entry: tournament.allow_late_entry,
             late_entry_as_losses: tournament.late_entry_as_losses,
             decklist_policy: tournament.decklist_policy,
@@ -272,12 +272,14 @@ pub struct TournamentSettingsRequest {
     pub points_bye: i16,
     /// Default round length in minutes, 10..=600
     pub round_minutes: i16,
-    /// Whether players must check in before round one is paired
-    pub require_check_in: bool,
     /// How many players fit, `None` for an event that turns nobody away.
     /// Held against self-service registration only.
     #[serde(default)]
     pub max_participants: Option<i16>,
+    /// How many scoring rounds the event means to play, `None` while undecided.
+    /// Always editable, the event's own schedule rather than a locked rule.
+    #[serde(default)]
+    pub planned_rounds: Option<i16>,
     /// Whether players may still register *themselves* after the event
     /// started — an organizer can always add a late entry at the desk. The
     /// client no longer offers this and sends `false`.
@@ -327,6 +329,8 @@ pub struct TournamentSettingsErrors {
     pub invalid_points: bool,
     /// `round_minutes` is outside 10..=600
     pub invalid_round_length: bool,
+    /// `planned_rounds` was given as zero or negative
+    pub invalid_planned_rounds: bool,
     /// `max_participants` was given as zero or negative
     pub invalid_max_participants: bool,
     /// The format slug is not one
@@ -342,6 +346,17 @@ pub struct TournamentSettingsErrors {
 pub struct SetTournamentStatusRequest {
     /// The status to move to
     pub status: TournamentStatus,
+}
+
+/// What starting (or otherwise moving) a tournament did beyond the status
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct SetTournamentStatusResponse {
+    /// How many players were dropped for never checking in
+    ///
+    /// Only ever non-zero on the move to [`TournamentStatus::Running`]. The
+    /// client already listed them in its confirmation, so this is the count
+    /// that actually happened rather than the one it predicted.
+    pub dropped_awaiting_check_in: i64,
 }
 
 /// Request to change who may see a tournament

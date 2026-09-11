@@ -86,16 +86,19 @@ pub struct TournamentModel {
     /// Default round length in minutes, copied onto each round when it starts
     pub round_minutes: i16,
 
-    /// Whether players must check in before round one is paired
-    #[rorm(default = false)]
-    pub require_check_in: bool,
-
     /// How many players fit, `None` for an event that never turns anyone away
     ///
     /// Only self-service registration is held to it — an organizer at the desk
     /// may seat one more than the room officially holds, the same call late
     /// entry already leaves to them.
     pub max_participants: Option<i16>,
+
+    /// How many scoring rounds the event means to play, `None` while undecided
+    ///
+    /// Always editable, including while the event runs: the MTR lets an
+    /// organizer add a round when more people turn up than the schedule
+    /// assumed, so this must never join the structural lock set.
+    pub planned_rounds: Option<i16>,
 
     /// Whether players may still register after the event started
     #[rorm(default = true)]
@@ -215,10 +218,10 @@ pub struct TournamentInsertPatch {
     pub points_bye: i16,
     /// Default round length in minutes
     pub round_minutes: i16,
-    /// Whether players must check in before round one
-    pub require_check_in: bool,
     /// How many players fit, `None` for no limit
     pub max_participants: Option<i16>,
+    /// How many scoring rounds the event means to play, `None` while undecided
+    pub planned_rounds: Option<i16>,
     /// Whether players may still register after the start
     pub allow_late_entry: bool,
     /// Whether a late entry's missed rounds count as losses
@@ -402,6 +405,8 @@ pub struct TournamentParticipantInsertPatch {
     pub entered_round: i16,
     /// Random tiebreak seed
     pub seed: i32,
+    /// When the player checked in — set at once for a walk-in the desk added
+    pub checked_in_at: Option<OffsetDateTime>,
     /// The secret a guest attaches or claims this row with
     pub claim_token: Option<MaxStr<64>>,
 }

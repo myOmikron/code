@@ -236,6 +236,18 @@ pub async fn register_account(
     // until the statement ends (Rust drops statement temporaries last, not
     // sub-expression-first), which would hold the `!Send` rng across the
     // await and poison every handler's future that ever calls this.
+    // The desk adding somebody is itself the observation that they are in the
+    // room, so a walk-in skips the check-in queue entirely — otherwise every
+    // player an organizer types in would have to be checked in a second time,
+    // and would be dropped on start if they forgot.
+    let (status, checked_in_at) = if added_by.is_some() {
+        (
+            ParticipantStatus::CheckedIn,
+            Some(OffsetDateTime::now_utc()),
+        )
+    } else {
+        (ParticipantStatus::Registered, None)
+    };
     let seed = rand::rng().random();
     let result = rorm::insert(&mut *tx, TournamentParticipantModel)
         .single(&TournamentParticipantInsertPatch {
@@ -244,9 +256,10 @@ pub async fn register_account(
             account: Some(ForeignModelByField(account.into_inner())),
             display_name,
             name_normalized,
-            status: ParticipantStatus::Registered,
+            status,
             entered_round: 1,
             seed,
+            checked_in_at,
             claim_token: None,
         })
         .await;
@@ -309,6 +322,18 @@ pub async fn register_guest(
     let name_normalized = normalize_name(&display_name);
     // See the matching comment in `register_account`: bound to a `let` so
     // the `!Send` `ThreadRng` temporary does not span the trailing `.await`.
+    // The desk adding somebody is itself the observation that they are in the
+    // room, so a walk-in skips the check-in queue entirely — otherwise every
+    // player an organizer types in would have to be checked in a second time,
+    // and would be dropped on start if they forgot.
+    let (status, checked_in_at) = if added_by.is_some() {
+        (
+            ParticipantStatus::CheckedIn,
+            Some(OffsetDateTime::now_utc()),
+        )
+    } else {
+        (ParticipantStatus::Registered, None)
+    };
     let seed = rand::rng().random();
     let model = rorm::insert(&mut *tx, TournamentParticipantModel)
         .single(&TournamentParticipantInsertPatch {
@@ -317,9 +342,10 @@ pub async fn register_guest(
             account: None,
             display_name,
             name_normalized,
-            status: ParticipantStatus::Registered,
+            status,
             entered_round: 1,
             seed,
+            checked_in_at,
             claim_token: Some(claim_token.clone()),
         })
         .await?;
@@ -716,8 +742,9 @@ pub async fn accounts_on_roster(
 /// Whether `actor` may act as staff or as the participant themself on
 /// `participant`, and if so which
 ///
-/// The guard every self-serve mutator on a participant row starts with —
-/// [`check_in`]/[`drop`] through the thin [`may_self_serve`] wrapper, and
+/// The guard every mutator on a participant row starts with — [`drop`]
+/// through the thin [`may_self_serve`] wrapper, [`check_in`] directly
+/// because it accepts [`SelfServe::Staff`] alone, and
 /// [`decklist::get`]/[`decklist::set`] directly, since they have to tell
 /// [`SelfServe::Staff`] apart from [`SelfServe::Own`] to decide whether the
 /// decklist lock applies. `Staff` when the actor holds any role on the
@@ -778,11 +805,11 @@ pub(super) async fn self_serve(
     }
 }
 
-/// Whether `actor` may check in, drop or otherwise self-serve `participant`
+/// Whether `actor` may drop or otherwise self-serve `participant`
 ///
 /// Thin wrapper over [`self_serve`] for callers that only need to know
-/// *whether* access is granted, not which kind — [`check_in`] and [`drop`]
-/// have never had to tell staff and the participant themself apart.
+/// *whether* access is granted, not which kind — [`drop`] treats staff and
+/// the participant themself alike.
 async fn may_self_serve(
     tx: &mut Transaction,
     actor: &TournamentActor,
@@ -813,7 +840,12 @@ pub enum CheckInOutcome {
     DecklistMissing,
 }
 
-/// Check a participant in, self-service or by staff
+/// Check a participant in — staff only
+///
+/// Being present is something the desk observes, not something a player can
+/// assert from their phone, so this is the one participant mutator that
+/// refuses [`SelfServe::Own`]. Dropping stays self-service: a player leaving
+/// is a fact only they have.
 ///
 /// Only takes from [`ParticipantStatus::Registered`] — folded into the
 /// `WHERE` rather than checked separately, so a stale double-click answers
@@ -829,7 +861,7 @@ pub async fn check_in(
     tournament: TournamentUuid,
     participant: TournamentParticipantUuid,
 ) -> Result<TournamentAccess<CheckInOutcome>, rorm::Error> {
-    if !may_self_serve(&mut *tx, actor, tournament, participant).await? {
+    if self_serve(&mut *tx, actor, tournament, participant).await? != Some(SelfServe::Staff) {
         return Ok(TournamentAccess::Denied);
     }
 

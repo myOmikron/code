@@ -1,0 +1,24 @@
+[Migration]
+Hash = "12520616949318091545"
+Initial = false
+Dependency = 46
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "tournament"
+
+[Migration.Operations.Field]
+Name = "planned_rounds"
+Type = "int16"
+Annotations = []
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 101
+Column = 9
+
+[[Migration.Operations]]
+Type = "DeleteField"
+Model = "tournament"
+Name = "require_check_in"

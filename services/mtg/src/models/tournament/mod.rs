@@ -488,11 +488,11 @@ pub struct Tournament {
     pub points_bye: i16,
     /// Default round length in minutes
     pub round_minutes: i16,
-    /// Whether players must check in before round one is paired
-    pub require_check_in: bool,
 
     /// How many players fit, `None` for an event that never turns anyone away
     pub max_participants: Option<i16>,
+    /// How many scoring rounds the event means to play, `None` while undecided
+    pub planned_rounds: Option<i16>,
     /// Whether players may still register after the event started
     pub allow_late_entry: bool,
     /// Whether a late entry's missed rounds count as match losses
@@ -598,11 +598,11 @@ pub struct TournamentInsert {
     pub points_bye: i16,
     /// Default round length in minutes
     pub round_minutes: i16,
-    /// Whether players must check in before round one is paired
-    pub require_check_in: bool,
 
     /// How many players fit, `None` for an event that never turns anyone away
     pub max_participants: Option<i16>,
+    /// How many scoring rounds the event means to play, `None` while undecided
+    pub planned_rounds: Option<i16>,
     /// Whether players may still register after the event started
     pub allow_late_entry: bool,
     /// Whether a late entry's missed rounds count as match losses
@@ -665,8 +665,8 @@ pub struct TournamentUpdate {
     pub points_loss: i16,
     /// Match points for a bye
     pub points_bye: i16,
-    /// Whether players must check in before round one is paired
-    pub require_check_in: bool,
+    /// How many scoring rounds the event means to play, `None` while undecided
+    pub planned_rounds: Option<i16>,
     /// Whether players may still register after the event started
     pub allow_late_entry: bool,
     /// Whether a late entry's missed rounds count as match losses
@@ -695,7 +695,14 @@ pub enum SettingsChange {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StatusChange {
     /// The status was written
-    Changed,
+    Changed {
+        /// How many players were dropped for never checking in
+        ///
+        /// Only ever non-zero on the move to [`TournamentStatus::Running`] —
+        /// see [`Tournament::set_status`] for why starting an event clears the
+        /// queue rather than pairing whoever happens to be in it.
+        dropped_awaiting_check_in: u64,
+    },
     /// [`TournamentStatus::may_transition`] refused the move; nothing changed
     InvalidTransition,
 }
@@ -881,8 +888,8 @@ impl Tournament {
                 points_loss: insert.points_loss,
                 points_bye: insert.points_bye,
                 round_minutes: insert.round_minutes,
-                require_check_in: insert.require_check_in,
                 max_participants: insert.max_participants,
+                planned_rounds: insert.planned_rounds,
                 allow_late_entry: insert.allow_late_entry,
                 late_entry_as_losses: insert.late_entry_as_losses,
                 decklist_policy: insert.decklist_policy,
@@ -916,14 +923,14 @@ impl Tournament {
     /// Update a tournament's settings
     ///
     /// `name`, `description`, `venue`, `venue_address`, `venue_instructions`,
-    /// `starts_at`, `round_minutes`, `decklist_policy`, `participant_audience`
-    /// and `guest_names_public` are always editable — an organizer must be
+    /// `starts_at`, `round_minutes`, `planned_rounds`, `decklist_policy`,
+    /// `participant_audience` and `guest_names_public` are always editable — an organizer must be
     /// able to fix a typo, move the venue, relax/tighten the decklist
     /// requirement, or change who may see the roster and whether guests are
     /// named, while the event is running.
     /// Everything structural (format,
     /// `pod_size`, `games_per_match`, `pairing_system`, the
-    /// point values, `require_check_in`, `allow_late_entry`,
+    /// point values, `allow_late_entry`,
     /// `late_entry_as_losses`) only takes while
     /// [`TournamentStatus::Registration`]: reshaping the bracket or the
     /// scoring table mid-event would invalidate rounds already played.
@@ -967,7 +974,6 @@ impl Tournament {
             || update.points_draw != tournament.points_draw
             || update.points_loss != tournament.points_loss
             || update.points_bye != tournament.points_bye
-            || update.require_check_in != tournament.require_check_in
             || update.allow_late_entry != tournament.allow_late_entry
             || update.late_entry_as_losses != tournament.late_entry_as_losses;
         if !unlocked && changes_structure {
@@ -990,6 +996,7 @@ impl Tournament {
                 moves_start.then(|| Some(join_code_expiry(update.starts_at))),
             )
             .set_if(TournamentModel.round_minutes, Some(update.round_minutes))
+            .set_if(TournamentModel.planned_rounds, Some(update.planned_rounds))
             .set_if(
                 TournamentModel.max_participants,
                 Some(update.max_participants),
@@ -1034,10 +1041,6 @@ impl Tournament {
             .set_if(
                 TournamentModel.points_bye,
                 unlocked.then_some(update.points_bye),
-            )
-            .set_if(
-                TournamentModel.require_check_in,
-                unlocked.then_some(update.require_check_in),
             )
             .set_if(
                 TournamentModel.allow_late_entry,
@@ -1098,6 +1101,17 @@ impl Tournament {
             return Ok(TournamentAccess::Granted(StatusChange::InvalidTransition));
         }
 
+        // Starting the event closes the door: whoever never checked in is not in
+        // the room, and pairing them would hand their opponent a table with an
+        // empty chair. They keep their row and their history — `Dropped`, not
+        // deleted — so a player who turns up late is re-added at the desk as a
+        // late entry rather than conjured back out of nothing.
+        let dropped_awaiting_check_in = if matches!(status, TournamentStatus::Running) {
+            drop_awaiting_check_in(&mut *tx, account, uuid).await?
+        } else {
+            0
+        };
+
         let enters_finished = matches!(status, TournamentStatus::Finished);
         let clears_join_code = matches!(
             status,
@@ -1147,7 +1161,9 @@ impl Tournament {
         )
         .await?;
 
-        Ok(TournamentAccess::Granted(StatusChange::Changed))
+        Ok(TournamentAccess::Granted(StatusChange::Changed {
+            dropped_awaiting_check_in,
+        }))
     }
 
     /// Set a tournament's visibility
@@ -1684,8 +1700,8 @@ impl From<TournamentModel> for Tournament {
             points_loss: value.points_loss,
             points_bye: value.points_bye,
             round_minutes: value.round_minutes,
-            require_check_in: value.require_check_in,
             max_participants: value.max_participants,
+            planned_rounds: value.planned_rounds,
             allow_late_entry: value.allow_late_entry,
             late_entry_as_losses: value.late_entry_as_losses,
             decklist_policy: value.decklist_policy,
@@ -1704,6 +1720,63 @@ impl From<TournamentModel> for Tournament {
             created_at: value.created_at,
         }
     }
+}
+
+/// Drop everybody still waiting to be checked in, and say how many
+///
+/// Called from [`Tournament::set_status`] on the move to
+/// [`TournamentStatus::Running`] and nowhere else. A row per drop lands in the
+/// audit log rather than one summary line: the log answers "what happened to
+/// *this* player", and a count would not.
+///
+/// `dropped_after_round` is `0` — the value the roster already uses for "never
+/// played a round", which is exactly what these players did.
+#[instrument(name = "drop_awaiting_check_in", skip(tx))]
+async fn drop_awaiting_check_in(
+    tx: &mut Transaction,
+    account: AccountUuid,
+    uuid: TournamentUuid,
+) -> Result<u64, rorm::Error> {
+    let waiting: Vec<Uuid> = rorm::query(&mut *tx, TournamentParticipantModel.uuid)
+        .condition(rorm::and![
+            TournamentParticipantModel.tournament.equals(uuid.0),
+            TournamentParticipantModel
+                .status
+                .equals(ParticipantStatus::Registered),
+        ])
+        .all()
+        .await?;
+    if waiting.is_empty() {
+        return Ok(0);
+    }
+
+    rorm::update(&mut *tx, TournamentParticipantModel)
+        .set(
+            TournamentParticipantModel.status,
+            ParticipantStatus::Dropped,
+        )
+        .set(TournamentParticipantModel.dropped_after_round, Some(0))
+        .condition(rorm::and![
+            TournamentParticipantModel.tournament.equals(uuid.0),
+            TournamentParticipantModel
+                .status
+                .equals(ParticipantStatus::Registered),
+        ])
+        .await?;
+
+    for participant in &waiting {
+        Tournament::audit(
+            &mut *tx,
+            uuid,
+            Some(account),
+            AuditAction::ParticipantDropped,
+            Some(*participant),
+            Some("Never checked in".to_owned()),
+        )
+        .await?;
+    }
+
+    Ok(waiting.len() as u64)
 }
 
 /// Turn a statement's affected-row count into a [`TournamentAccess`]
