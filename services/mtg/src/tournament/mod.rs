@@ -10,4 +10,5 @@
 pub mod code;
 pub mod decklist;
 pub mod pairing;
+pub mod reporting;
 pub mod timer;
