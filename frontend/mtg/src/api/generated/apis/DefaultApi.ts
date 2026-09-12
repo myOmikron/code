@@ -117,6 +117,8 @@ import type {
     ReadDeckUrlRequest,
     ReadDeckUrlResponse,
     RecoverAccountRequest,
+    ReportMatchResult200Response,
+    ReportResultRequest,
     ResolvePrintingsRequest,
     ResolvePrintingsResponse,
     ReturnAllDeckCardsRequest,
@@ -137,8 +139,10 @@ import type {
     SetDeckRuleZeroRequest,
     SetDeckVisibilityRequest,
     SetDecklistRequest,
+    SetMatchResult200Response,
     SetParticipantDecklist200Response,
     SetProfileVisibilityRequest,
+    SetResultRequest,
     SetTimerRequest,
     SetTournamentStatusRequest,
     SetTournamentStatusResponse,
@@ -233,6 +237,11 @@ export interface CheckInTournamentParticipantRequest {
 
 export interface ClaimTournamentParticipantRequest {
     ClaimParticipantRequest?: ClaimParticipantRequest;
+}
+
+export interface ClearMatchResultRequest {
+    tournament: string;
+    match: string;
 }
 
 export interface CompleteTournamentRoundRequest {
@@ -626,6 +635,12 @@ export interface RemoveTournamentOrganizerRequest {
     account: string;
 }
 
+export interface ReportMatchResultRequest {
+    tournament: string;
+    match: string;
+    ReportResultRequest?: ReportResultRequest;
+}
+
 export interface ResolvePrintingsOperationRequest {
     ResolvePrintingsRequest?: ResolvePrintingsRequest;
 }
@@ -699,6 +714,12 @@ export interface SetDeckFolderOperationRequest {
 export interface SetDeckRuleZeroOperationRequest {
     deck: string;
     SetDeckRuleZeroRequest?: SetDeckRuleZeroRequest;
+}
+
+export interface SetMatchResultRequest {
+    tournament: string;
+    match: string;
+    SetResultRequest?: SetResultRequest;
 }
 
 export interface SetParticipantDecklistRequest {
@@ -1499,6 +1520,61 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async claimTournamentParticipant(requestParameters: ClaimTournamentParticipantRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ClaimTournamentParticipant200Response> {
         const response = await this.claimTournamentParticipantRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for clearMatchResult without sending the request
+     */
+    async clearMatchResultRequestOpts(requestParameters: ClearMatchResultRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tournament'] == null) {
+            throw new runtime.RequiredError(
+                'tournament',
+                'Required parameter "tournament" was null or undefined when calling clearMatchResult().'
+            );
+        }
+
+        if (requestParameters['match'] == null) {
+            throw new runtime.RequiredError(
+                'match',
+                'Required parameter "match" was null or undefined when calling clearMatchResult().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/tournaments/{tournament}/matches/{match}/result`;
+        urlPath = urlPath.replace('{tournament}', encodeURIComponent(String(requestParameters['tournament'])));
+        urlPath = urlPath.replace('{match}', encodeURIComponent(String(requestParameters['match'])));
+
+        return {
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Take the desk\'s result back off a table  Drops to whatever the players had agreed rather than to nothing, which is the undo for a mistyped result.
+     * Take the desk\'s result back off a table
+     */
+    async clearMatchResultRaw(requestParameters: ClearMatchResultRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SetMatchResult200Response>> {
+        const requestOptions = await this.clearMatchResultRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Take the desk\'s result back off a table  Drops to whatever the players had agreed rather than to nothing, which is the undo for a mistyped result.
+     * Take the desk\'s result back off a table
+     */
+    async clearMatchResult(requestParameters: ClearMatchResultRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SetMatchResult200Response> {
+        const response = await this.clearMatchResultRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -6262,6 +6338,64 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for reportMatchResult without sending the request
+     */
+    async reportMatchResultRequestOpts(requestParameters: ReportMatchResultRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tournament'] == null) {
+            throw new runtime.RequiredError(
+                'tournament',
+                'Required parameter "tournament" was null or undefined when calling reportMatchResult().'
+            );
+        }
+
+        if (requestParameters['match'] == null) {
+            throw new runtime.RequiredError(
+                'match',
+                'Required parameter "match" was null or undefined when calling reportMatchResult().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/tournaments/{tournament}/matches/{match}/report`;
+        urlPath = urlPath.replace('{tournament}', encodeURIComponent(String(requestParameters['tournament'])));
+        urlPath = urlPath.replace('{match}', encodeURIComponent(String(requestParameters['match'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['ReportResultRequest'],
+        };
+    }
+
+    /**
+     * Report what happened at your own table  In the actor block, because the people this exists for are the ones playing — a guest\'s phone included. The guard behind it asks whether the caller is *sitting at this table* before it asks whether they run the event, so an organizer who is also playing reports like everybody else rather than silently confirming their own match.
+     * Report what happened at your own table
+     */
+    async reportMatchResultRaw(requestParameters: ReportMatchResultRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ReportMatchResult200Response>> {
+        const requestOptions = await this.reportMatchResultRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Report what happened at your own table  In the actor block, because the people this exists for are the ones playing — a guest\'s phone included. The guard behind it asks whether the caller is *sitting at this table* before it asks whether they run the event, so an organizer who is also playing reports like everybody else rather than silently confirming their own match.
+     * Report what happened at your own table
+     */
+    async reportMatchResult(requestParameters: ReportMatchResultRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ReportMatchResult200Response> {
+        const response = await this.reportMatchResultRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for resolvePrintings without sending the request
      */
     async resolvePrintingsRequestOpts(requestParameters: ResolvePrintingsOperationRequest): Promise<runtime.RequestOpts> {
@@ -7030,6 +7164,64 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async setDeckRuleZero(requestParameters: SetDeckRuleZeroOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
         const response = await this.setDeckRuleZeroRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for setMatchResult without sending the request
+     */
+    async setMatchResultRequestOpts(requestParameters: SetMatchResultRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tournament'] == null) {
+            throw new runtime.RequiredError(
+                'tournament',
+                'Required parameter "tournament" was null or undefined when calling setMatchResult().'
+            );
+        }
+
+        if (requestParameters['match'] == null) {
+            throw new runtime.RequiredError(
+                'match',
+                'Required parameter "match" was null or undefined when calling setMatchResult().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/tournaments/{tournament}/matches/{match}/result`;
+        urlPath = urlPath.replace('{tournament}', encodeURIComponent(String(requestParameters['tournament'])));
+        urlPath = urlPath.replace('{match}', encodeURIComponent(String(requestParameters['match'])));
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['SetResultRequest'],
+        };
+    }
+
+    /**
+     * Write a table\'s result from the desk  Beats every player report on that table and skips the confirmation dance entirely: the desk is authoritative, and the two-sided flow exists to save an organizer walking to the table, not to constrain them once they have.
+     * Write a table\'s result from the desk
+     */
+    async setMatchResultRaw(requestParameters: SetMatchResultRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SetMatchResult200Response>> {
+        const requestOptions = await this.setMatchResultRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Write a table\'s result from the desk  Beats every player report on that table and skips the confirmation dance entirely: the desk is authoritative, and the two-sided flow exists to save an organizer walking to the table, not to constrain them once they have.
+     * Write a table\'s result from the desk
+     */
+    async setMatchResult(requestParameters: SetMatchResultRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SetMatchResult200Response> {
+        const response = await this.setMatchResultRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

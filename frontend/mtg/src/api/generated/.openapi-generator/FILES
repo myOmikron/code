@@ -97,7 +97,9 @@ docs/FormErrorResponseForFinishLoginErrors.md
 docs/FormErrorResponseForJoinErrors.md
 docs/FormErrorResponseForPairRoundErrors.md
 docs/FormErrorResponseForRegistrationErrors.md
+docs/FormErrorResponseForReportResultErrors.md
 docs/FormErrorResponseForRoundLifecycleErrors.md
+docs/FormErrorResponseForSetResultErrors.md
 docs/FormErrorResponseForSignupErrors.md
 docs/FormErrorResponseForStartLoginErrors.md
 docs/FormErrorResponseForTournamentSettingsErrors.md
@@ -178,6 +180,9 @@ docs/ReadDeckUrlRequest.md
 docs/ReadDeckUrlResponse.md
 docs/RecoverAccountRequest.md
 docs/RegistrationErrors.md
+docs/ReportMatchResult200Response.md
+docs/ReportResultErrors.md
+docs/ReportResultRequest.md
 docs/ResolvePrintingsRequest.md
 docs/ResolvePrintingsResponse.md
 docs/ResolvedPrintingResponse.md
@@ -205,8 +210,11 @@ docs/SetDeckFolderRequest.md
 docs/SetDeckRuleZeroRequest.md
 docs/SetDeckVisibilityRequest.md
 docs/SetDecklistRequest.md
+docs/SetMatchResult200Response.md
 docs/SetParticipantDecklist200Response.md
 docs/SetProfileVisibilityRequest.md
+docs/SetResultErrors.md
+docs/SetResultRequest.md
 docs/SetTimerRequest.md
 docs/SetTournamentStatusRequest.md
 docs/SetTournamentStatusResponse.md

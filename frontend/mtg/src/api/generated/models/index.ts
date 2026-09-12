@@ -2901,6 +2901,27 @@ export interface FormErrorResponseForRegistrationErrors {
 /**
  * The response that is sent in a case of an error the caller should present his user
  * @export
+ * @interface FormErrorResponseForReportResultErrors
+ */
+export interface FormErrorResponseForReportResultErrors {
+    /**
+     * The actual error struct
+     * @type {ReportResultErrors}
+     * @memberof FormErrorResponseForReportResultErrors
+     */
+    error: ReportResultErrors;
+    /**
+     * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
+     * @type {ErrorConstant}
+     * @memberof FormErrorResponseForReportResultErrors
+     */
+    result: ErrorConstant;
+}
+
+
+/**
+ * The response that is sent in a case of an error the caller should present his user
+ * @export
  * @interface FormErrorResponseForRoundLifecycleErrors
  */
 export interface FormErrorResponseForRoundLifecycleErrors {
@@ -2914,6 +2935,27 @@ export interface FormErrorResponseForRoundLifecycleErrors {
      * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
      * @type {ErrorConstant}
      * @memberof FormErrorResponseForRoundLifecycleErrors
+     */
+    result: ErrorConstant;
+}
+
+
+/**
+ * The response that is sent in a case of an error the caller should present his user
+ * @export
+ * @interface FormErrorResponseForSetResultErrors
+ */
+export interface FormErrorResponseForSetResultErrors {
+    /**
+     * The actual error struct
+     * @type {SetResultErrors}
+     * @memberof FormErrorResponseForSetResultErrors
+     */
+    error: SetResultErrors;
+    /**
+     * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
+     * @type {ErrorConstant}
+     * @memberof FormErrorResponseForSetResultErrors
      */
     result: ErrorConstant;
 }
@@ -5125,6 +5167,84 @@ export interface RegistrationErrors {
     token_used: boolean;
 }
 /**
+ * @type ReportMatchResult200Response
+ * 
+ * @export
+ */
+export type ReportMatchResult200Response = FormErrorResponseForReportResultErrors | MatchTableResponse;
+/**
+ * Why a player's report was not filed
+ * @export
+ * @interface ReportResultErrors
+ */
+export interface ReportResultErrors {
+    /**
+     * Neither a winner nor a draw, or a winner who is not at the table
+     * @type {boolean}
+     * @memberof ReportResultErrors
+     */
+    invalid_outcome: boolean;
+    /**
+     * The reporter is not sitting at this table
+     * @type {boolean}
+     * @memberof ReportResultErrors
+     */
+    not_seated: boolean;
+    /**
+     * The round is closed; nothing more goes into it
+     * @type {boolean}
+     * @memberof ReportResultErrors
+     */
+    round_closed: boolean;
+}
+/**
+ * What one seat says happened at their table
+ * 
+ * The game counts are the winner's and the loser's, not one per seat: a pod is always best of one, so the only place a game score carries anything is a duel, where there are exactly two of them.
+ * @export
+ * @interface ReportResultRequest
+ */
+export interface ReportResultRequest {
+    /**
+     * The key this tap was minted with
+     * 
+     * The same key arriving twice is one tap retried and writes nothing; a different one is somebody changing their mind and overwrites. Which is what makes a double-tapped phone on a bad connection harmless.
+     * @type {string}
+     * @memberof ReportResultRequest
+     */
+    client_key: string;
+    /**
+     * Whether they say it was drawn
+     * @type {boolean}
+     * @memberof ReportResultRequest
+     */
+    draw?: boolean;
+    /**
+     * Games inside the match that were themselves drawn
+     * @type {number}
+     * @memberof ReportResultRequest
+     */
+    games_drawn?: number;
+    /**
+     * Games the loser took
+     * @type {number}
+     * @memberof ReportResultRequest
+     */
+    loser_games?: number;
+    /**
+     * Who they say won, `null` for a draw
+     * @type {string}
+     * @memberof ReportResultRequest
+     */
+    winner?: string | null;
+    /**
+     * Games the winner took
+     * @type {number}
+     * @memberof ReportResultRequest
+     */
+    winner_games?: number;
+}
+/**
  * A list of cards to place in the catalog
  * @export
  * @interface ResolvePrintingsRequest
@@ -5820,6 +5940,12 @@ export interface SetDecklistRequest {
     text?: string | null;
 }
 /**
+ * @type SetMatchResult200Response
+ * 
+ * @export
+ */
+export type SetMatchResult200Response = FormErrorResponseForSetResultErrors | MatchTableResponse;
+/**
  * @type SetParticipantDecklist200Response
  * 
  * @export
@@ -5837,6 +5963,62 @@ export interface SetProfileVisibilityRequest {
      * @memberof SetProfileVisibilityRequest
      */
     profile_public: boolean;
+}
+/**
+ * Why the desk's result was not written
+ * @export
+ * @interface SetResultErrors
+ */
+export interface SetResultErrors {
+    /**
+     * Neither a winner nor a draw, or a winner who is not at the table
+     * @type {boolean}
+     * @memberof SetResultErrors
+     */
+    invalid_outcome: boolean;
+    /**
+     * The round is closed, or the table is a bye nobody played
+     * @type {boolean}
+     * @memberof SetResultErrors
+     */
+    not_editable: boolean;
+}
+/**
+ * What the desk says happened at a table
+ * @export
+ * @interface SetResultRequest
+ */
+export interface SetResultRequest {
+    /**
+     * Whether it was drawn
+     * @type {boolean}
+     * @memberof SetResultRequest
+     */
+    draw?: boolean;
+    /**
+     * Games inside the match that were themselves drawn
+     * @type {number}
+     * @memberof SetResultRequest
+     */
+    games_drawn?: number;
+    /**
+     * Games the loser took
+     * @type {number}
+     * @memberof SetResultRequest
+     */
+    loser_games?: number;
+    /**
+     * Who won, `null` for a draw
+     * @type {string}
+     * @memberof SetResultRequest
+     */
+    winner?: string | null;
+    /**
+     * Games the winner took
+     * @type {number}
+     * @memberof SetResultRequest
+     */
+    winner_games?: number;
 }
 /**
  * Request to work a round's clock

@@ -16,6 +16,7 @@ All URIs are relative to *http://localhost*
 | [**attachDeckCollection**](DefaultApi.md#attachdeckcollection) | **POST** /api/frontend/v1/decks/{deck}/collection | Start keeping the cards that are physically in this deck |
 | [**checkInTournamentParticipant**](DefaultApi.md#checkintournamentparticipant) | **POST** /api/frontend/v1/tournaments/{tournament}/participants/{participant}/check-in | Check in, self-service or by staff |
 | [**claimTournamentParticipant**](DefaultApi.md#claimtournamentparticipant) | **POST** /api/frontend/v1/tournaments/participants/claim | Attach the caller\&#39;s account to a guest row using its claim token |
+| [**clearMatchResult**](DefaultApi.md#clearmatchresult) | **DELETE** /api/frontend/v1/tournaments/{tournament}/matches/{match}/result | Take the desk\&#39;s result back off a table |
 | [**completeTournamentRound**](DefaultApi.md#completetournamentround) | **POST** /api/frontend/v1/tournaments/{tournament}/rounds/{round}/complete | Close a round |
 | [**createCollection**](DefaultApi.md#createcollectionoperation) | **POST** /api/frontend/v1/collections |  |
 | [**createDeck**](DefaultApi.md#createdeckoperation) | **POST** /api/frontend/v1/decks | Create a deck |
@@ -114,6 +115,7 @@ All URIs are relative to *http://localhost*
 | [**reattachClaimToken**](DefaultApi.md#reattachclaimtoken) | **POST** /api/frontend/v1/join/claim/{token}/reattach | Re-attach a guest session to its row using a still-live claim token |
 | [**recoverAccount**](DefaultApi.md#recoveraccountoperation) | **POST** /api/frontend/v1/auth/recover | Send a fresh registration link to an account\&#39;s stored address |
 | [**removeTournamentOrganizer**](DefaultApi.md#removetournamentorganizer) | **DELETE** /api/frontend/v1/tournaments/{tournament}/organizers/{account} | Remove an account from staff — owner only |
+| [**reportMatchResult**](DefaultApi.md#reportmatchresult) | **POST** /api/frontend/v1/tournaments/{tournament}/matches/{match}/report | Report what happened at your own table |
 | [**resolvePrintings**](DefaultApi.md#resolveprintingsoperation) | **POST** /api/frontend/v1/printings/resolve | Place cards in the catalog |
 | [**returnAllDeckCards**](DefaultApi.md#returnalldeckcardsoperation) | **POST** /api/frontend/v1/decks/{deck}/sourcing/return-all | Sort everything in the deck back where it came from |
 | [**returnDeckCards**](DefaultApi.md#returndeckcardsoperation) | **POST** /api/frontend/v1/decks/{deck}/sourcing/return | Sort copies out of the deck back into a collection |
@@ -129,6 +131,7 @@ All URIs are relative to *http://localhost*
 | [**setDeckColors**](DefaultApi.md#setdeckcolorsoperation) | **PUT** /api/frontend/v1/decks/{deck}/colors | Overrule which colours the deck may play |
 | [**setDeckFolder**](DefaultApi.md#setdeckfolderoperation) | **POST** /api/frontend/v1/decks/{deck}/folder | File a deck into one of the account\&#39;s folders |
 | [**setDeckRuleZero**](DefaultApi.md#setdeckrulezerooperation) | **PUT** /api/frontend/v1/decks/{deck}/rule-zero | Record the house rules the deck is played under |
+| [**setMatchResult**](DefaultApi.md#setmatchresult) | **PUT** /api/frontend/v1/tournaments/{tournament}/matches/{match}/result | Write a table\&#39;s result from the desk |
 | [**setParticipantDecklist**](DefaultApi.md#setparticipantdecklist) | **PUT** /api/frontend/v1/tournaments/{tournament}/participants/{participant}/decklist | Write, replace or clear a participant\&#39;s decklist — staff, or the |
 | [**setProfileVisibility**](DefaultApi.md#setprofilevisibilityoperation) | **PUT** /api/frontend/v1/accounts/me/profile-visibility | Open or close the logged-in account\&#39;s public profile |
 | [**setTournamentRoundTimer**](DefaultApi.md#settournamentroundtimer) | **PUT** /api/frontend/v1/tournaments/{tournament}/rounds/{round}/timer | Start, pause, adjust or reset a round\&#39;s clock |
@@ -1024,6 +1027,79 @@ No authorization required
 ### HTTP request headers
 
 - **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## clearMatchResult
+
+> SetMatchResult200Response clearMatchResult(tournament, match)
+
+Take the desk\&#39;s result back off a table
+
+Take the desk\&#39;s result back off a table  Drops to whatever the players had agreed rather than to nothing, which is the undo for a mistyped result.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { ClearMatchResultRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    tournament: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string
+    match: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies ClearMatchResultRequest;
+
+  try {
+    const data = await api.clearMatchResult(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **tournament** | `string` |  | [Defaults to `undefined`] |
+| **match** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**SetMatchResult200Response**](SetMatchResult200Response.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
 - **Accept**: `application/json`
 
 
@@ -7943,6 +8019,82 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## reportMatchResult
+
+> ReportMatchResult200Response reportMatchResult(tournament, match, ReportResultRequest)
+
+Report what happened at your own table
+
+Report what happened at your own table  In the actor block, because the people this exists for are the ones playing — a guest\&#39;s phone included. The guard behind it asks whether the caller is *sitting at this table* before it asks whether they run the event, so an organizer who is also playing reports like everybody else rather than silently confirming their own match.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { ReportMatchResultRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    tournament: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string
+    match: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // ReportResultRequest (optional)
+    ReportResultRequest: ...,
+  } satisfies ReportMatchResultRequest;
+
+  try {
+    const data = await api.reportMatchResult(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **tournament** | `string` |  | [Defaults to `undefined`] |
+| **match** | `string` |  | [Defaults to `undefined`] |
+| **ReportResultRequest** | [ReportResultRequest](ReportResultRequest.md) |  | [Optional] |
+
+### Return type
+
+[**ReportMatchResult200Response**](ReportMatchResult200Response.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## resolvePrintings
 
 > ResolvePrintingsResponse resolvePrintings(ResolvePrintingsRequest)
@@ -9016,6 +9168,82 @@ example().catch(console.error);
 ### Return type
 
 **any**
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## setMatchResult
+
+> SetMatchResult200Response setMatchResult(tournament, match, SetResultRequest)
+
+Write a table\&#39;s result from the desk
+
+Write a table\&#39;s result from the desk  Beats every player report on that table and skips the confirmation dance entirely: the desk is authoritative, and the two-sided flow exists to save an organizer walking to the table, not to constrain them once they have.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { SetMatchResultRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    tournament: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string
+    match: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // SetResultRequest (optional)
+    SetResultRequest: ...,
+  } satisfies SetMatchResultRequest;
+
+  try {
+    const data = await api.setMatchResult(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **tournament** | `string` |  | [Defaults to `undefined`] |
+| **match** | `string` |  | [Defaults to `undefined`] |
+| **SetResultRequest** | [SetResultRequest](SetResultRequest.md) |  | [Optional] |
+
+### Return type
+
+[**SetMatchResult200Response**](SetMatchResult200Response.md)
 
 ### Authorization
 

@@ -7931,6 +7931,91 @@
                 }
             }
         },
+        "/api/frontend/v1/tournaments/{tournament}/matches/{match}/report": {
+            "post": {
+                "summary": "Report what happened at your own table",
+                "description": "Report what happened at your own table\n\nIn the actor block, because the people this exists for are the ones playing\n— a guest's phone included. The guard behind it asks whether the caller is\n*sitting at this table* before it asks whether they run the event, so an\norganizer who is also playing reports like everybody else rather than\nsilently confirming their own match.",
+                "operationId": "report_match_result",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tournament",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/TournamentUuid"
+                        },
+                        "style": "simple"
+                    },
+                    {
+                        "in": "path",
+                        "name": "match",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/TournamentMatchUuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ReportResultRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "$ref": "#/components/schemas/MatchTableResponse"
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/FormErrorResponse_for_ReportResultErrors"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/frontend/v1/tournaments/{tournament}/participants/{participant}/drop": {
             "post": {
                 "summary": "Drop, self-service or by staff",
@@ -9182,6 +9267,165 @@
                                         },
                                         {
                                             "$ref": "#/components/schemas/FormErrorResponse_for_PairRoundErrors"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/tournaments/{tournament}/matches/{match}/result": {
+            "put": {
+                "summary": "Write a table's result from the desk",
+                "description": "Write a table's result from the desk\n\nBeats every player report on that table and skips the confirmation dance\nentirely: the desk is authoritative, and the two-sided flow exists to save an\norganizer walking to the table, not to constrain them once they have.",
+                "operationId": "set_match_result",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tournament",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/TournamentUuid"
+                        },
+                        "style": "simple"
+                    },
+                    {
+                        "in": "path",
+                        "name": "match",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/TournamentMatchUuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SetResultRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "$ref": "#/components/schemas/MatchTableResponse"
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/FormErrorResponse_for_SetResultErrors"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "summary": "Take the desk's result back off a table",
+                "description": "Take the desk's result back off a table\n\nDrops to whatever the players had agreed rather than to nothing, which is the\nundo for a mistyped result.",
+                "operationId": "clear_match_result",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tournament",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/TournamentUuid"
+                        },
+                        "style": "simple"
+                    },
+                    {
+                        "in": "path",
+                        "name": "match",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/TournamentMatchUuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "$ref": "#/components/schemas/MatchTableResponse"
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/FormErrorResponse_for_SetResultErrors"
                                         }
                                     ]
                                 }
@@ -13866,6 +14110,32 @@
                     "result"
                 ]
             },
+            "FormErrorResponse_for_ReportResultErrors": {
+                "description": "The response that is sent in a case of an error the caller should present his user",
+                "type": "object",
+                "properties": {
+                    "error": {
+                        "description": "The actual error struct",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ReportResultErrors"
+                            }
+                        ]
+                    },
+                    "result": {
+                        "description": "A constant `\"Err\"` used to differentiate this schema from any other \"Ok\" schema",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ErrorConstant"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "error",
+                    "result"
+                ]
+            },
             "FormErrorResponse_for_RoundLifecycleErrors": {
                 "description": "The response that is sent in a case of an error the caller should present his user",
                 "type": "object",
@@ -13875,6 +14145,32 @@
                         "allOf": [
                             {
                                 "$ref": "#/components/schemas/RoundLifecycleErrors"
+                            }
+                        ]
+                    },
+                    "result": {
+                        "description": "A constant `\"Err\"` used to differentiate this schema from any other \"Ok\" schema",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ErrorConstant"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "error",
+                    "result"
+                ]
+            },
+            "FormErrorResponse_for_SetResultErrors": {
+                "description": "The response that is sent in a case of an error the caller should present his user",
+                "type": "object",
+                "properties": {
+                    "error": {
+                        "description": "The actual error struct",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SetResultErrors"
                             }
                         ]
                     },
@@ -16354,6 +16650,78 @@
                     "token_used"
                 ]
             },
+            "ReportResultErrors": {
+                "description": "Why a player's report was not filed",
+                "type": "object",
+                "properties": {
+                    "invalid_outcome": {
+                        "description": "Neither a winner nor a draw, or a winner who is not at the table",
+                        "type": "boolean"
+                    },
+                    "not_seated": {
+                        "description": "The reporter is not sitting at this table",
+                        "type": "boolean"
+                    },
+                    "round_closed": {
+                        "description": "The round is closed; nothing more goes into it",
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "invalid_outcome",
+                    "not_seated",
+                    "round_closed"
+                ]
+            },
+            "ReportResultRequest": {
+                "description": "What one seat says happened at their table\n\nThe game counts are the winner's and the loser's, not one per seat: a pod is always best of one, so the only place a game score carries anything is a duel, where there are exactly two of them.",
+                "type": "object",
+                "properties": {
+                    "client_key": {
+                        "description": "The key this tap was minted with\n\nThe same key arriving twice is one tap retried and writes nothing; a different one is somebody changing their mind and overwrites. Which is what makes a double-tapped phone on a bad connection harmless.",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_64"
+                            }
+                        ]
+                    },
+                    "draw": {
+                        "description": "Whether they say it was drawn",
+                        "default": false,
+                        "type": "boolean"
+                    },
+                    "games_drawn": {
+                        "description": "Games inside the match that were themselves drawn",
+                        "default": 0,
+                        "type": "integer",
+                        "format": "int16"
+                    },
+                    "loser_games": {
+                        "description": "Games the loser took",
+                        "default": 0,
+                        "type": "integer",
+                        "format": "int16"
+                    },
+                    "winner": {
+                        "nullable": true,
+                        "description": "Who they say won, `null` for a draw",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/TournamentParticipantUuid"
+                            }
+                        ]
+                    },
+                    "winner_games": {
+                        "description": "Games the winner took",
+                        "default": 0,
+                        "type": "integer",
+                        "format": "int16"
+                    }
+                },
+                "required": [
+                    "client_key"
+                ]
+            },
             "ResolvePrintingsRequest": {
                 "description": "A list of cards to place in the catalog",
                 "type": "object",
@@ -17183,6 +17551,62 @@
                 "required": [
                     "profile_public"
                 ]
+            },
+            "SetResultErrors": {
+                "description": "Why the desk's result was not written",
+                "type": "object",
+                "properties": {
+                    "invalid_outcome": {
+                        "description": "Neither a winner nor a draw, or a winner who is not at the table",
+                        "type": "boolean"
+                    },
+                    "not_editable": {
+                        "description": "The round is closed, or the table is a bye nobody played",
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "invalid_outcome",
+                    "not_editable"
+                ]
+            },
+            "SetResultRequest": {
+                "description": "What the desk says happened at a table",
+                "type": "object",
+                "properties": {
+                    "draw": {
+                        "description": "Whether it was drawn",
+                        "default": false,
+                        "type": "boolean"
+                    },
+                    "games_drawn": {
+                        "description": "Games inside the match that were themselves drawn",
+                        "default": 0,
+                        "type": "integer",
+                        "format": "int16"
+                    },
+                    "loser_games": {
+                        "description": "Games the loser took",
+                        "default": 0,
+                        "type": "integer",
+                        "format": "int16"
+                    },
+                    "winner": {
+                        "nullable": true,
+                        "description": "Who won, `null` for a draw",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/TournamentParticipantUuid"
+                            }
+                        ]
+                    },
+                    "winner_games": {
+                        "description": "Games the winner took",
+                        "default": 0,
+                        "type": "integer",
+                        "format": "int16"
+                    }
+                }
             },
             "SetTimerRequest": {
                 "description": "Request to work a round's clock",
