@@ -115,6 +115,11 @@ function RouteComponent() {
                             {started ? currentRoundLabel : t("heading.tournament")}
                         </Tab>
                         {started && (
+                            <Tab href={"/tournaments/$tournamentUuid/standings"} params={{ tournamentUuid }}>
+                                {t("heading.standings")}
+                            </Tab>
+                        )}
+                        {started && (
                             <Tab href={"/tournaments/$tournamentUuid/players"} params={{ tournamentUuid }}>
                                 {t("heading.players")}
                             </Tab>

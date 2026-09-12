@@ -321,6 +321,10 @@ export const Api = {
                     SetTournamentVisibilityRequest: { visibility },
                 }),
             ),
+        // Bypasses `handleError` for the same reason the roster does: this is what a player's
+        // phone refreshes between rounds, and a lapsed session must not become a login redirect
+        // they cannot complete from the table they are sitting at.
+        standings: (uuid: UUID) => defaultApi.getTournamentStandings({ tournament: uuid }),
         rotateJoinCode: async (uuid: UUID) => handleError(defaultApi.rotateTournamentJoinCode({ tournament: uuid })),
         // The rounds a tournament has played, is playing, or is about to. `state` and `list`
         // bypass `handleError` for the same reason `participants.list` does: a guest's phone polls

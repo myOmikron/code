@@ -130,7 +130,9 @@ export function TournamentPairingsTable({
                 ))}
             </ul>
 
-            <div className={"hidden sm:block"}>
+            {/* Wider than the standings, because a pod puts four names in one cell — but still
+                capped, or two duellists sit a screen apart from their own result. */}
+            <div className={"hidden max-w-5xl sm:block"}>
                 <Table dense={true} striped={true} className={"[--gutter:--spacing(3)]"}>
                     <TableHead>
                         <TableRow>
