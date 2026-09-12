@@ -230,6 +230,14 @@ pub async fn register_account(
         return Ok(RegistrationOutcome::Full);
     }
 
+    // A player the desk seats mid-event starts at the round after the last one
+    // the room finished — the ones before it are losses they were not there for,
+    // which is what the MTR asks of a late entry.
+    let entered_round = super::round::scored_progress(&mut *tx, tournament.uuid)
+        .await?
+        .completed
+        + 1;
+
     let name_normalized = normalize_name(&display_name);
     // Bound to a `let` rather than called inline: a `ThreadRng` temporary
     // reaching into the same statement as the trailing `.await` stays alive
@@ -257,7 +265,7 @@ pub async fn register_account(
             display_name,
             name_normalized,
             status,
-            entered_round: 1,
+            entered_round,
             seed,
             checked_in_at,
             claim_token: None,
@@ -319,6 +327,14 @@ pub async fn register_guest(
     }
 
     let claim_token = generate_claim_token();
+    // A player the desk seats mid-event starts at the round after the last one
+    // the room finished — the ones before it are losses they were not there for,
+    // which is what the MTR asks of a late entry.
+    let entered_round = super::round::scored_progress(&mut *tx, tournament.uuid)
+        .await?
+        .completed
+        + 1;
+
     let name_normalized = normalize_name(&display_name);
     // See the matching comment in `register_account`: bound to a `let` so
     // the `!Send` `ThreadRng` temporary does not span the trailing `.await`.
@@ -343,7 +359,7 @@ pub async fn register_guest(
             display_name,
             name_normalized,
             status,
-            entered_round: 1,
+            entered_round,
             seed,
             checked_in_at,
             claim_token: Some(claim_token.clone()),
@@ -933,12 +949,22 @@ pub async fn drop(
         return Ok(TournamentAccess::Denied);
     }
 
+    // The last scoring round they were part of. Zero keeps meaning "never
+    // played a round", which is what the roster already writes for somebody
+    // dropped because they never checked in.
+    let dropped_after = super::round::scored_progress(&mut *tx, tournament)
+        .await?
+        .latest;
+
     let affected = rorm::update(&mut *tx, TournamentParticipantModel)
         .set(
             TournamentParticipantModel.status,
             ParticipantStatus::Dropped,
         )
-        .set(TournamentParticipantModel.dropped_after_round, Some(0))
+        .set(
+            TournamentParticipantModel.dropped_after_round,
+            Some(dropped_after),
+        )
         .condition(rorm::and![
             TournamentParticipantModel
                 .uuid

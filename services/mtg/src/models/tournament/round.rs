@@ -116,6 +116,58 @@ pub enum RoundChange {
     Outstanding(Vec<i16>),
 }
 
+/// How far the room has got through its scoring rounds
+#[derive(Debug, Clone, Copy, Default)]
+pub struct ScoredProgress {
+    /// How many scoring rounds are closed
+    pub completed: i16,
+    /// The highest scoring round number that exists at all, 0 before the first
+    pub latest: i16,
+}
+
+/// How far this event has got through its scoring rounds
+///
+/// Only [`RoundKind::Swiss`] rounds are counted: a draft pod stage and a
+/// deckbuilding stage occupy the room without being rounds anybody played, and
+/// a late entry must not take a loss for missing one.
+///
+/// @param tx the transaction to read in
+/// @param tournament whose rounds
+///
+/// @returns what is behind the room and what it is on
+#[instrument(name = "round::scored_progress", skip(tx))]
+pub async fn scored_progress(
+    tx: &mut Transaction,
+    tournament: TournamentUuid,
+) -> Result<ScoredProgress, rorm::Error> {
+    let rows = rorm::query(
+        &mut *tx,
+        (TournamentRoundModel.number, TournamentRoundModel.status),
+    )
+    .condition(rorm::and![
+        TournamentRoundModel
+            .tournament
+            .equals(tournament.into_inner()),
+        TournamentRoundModel.kind.equals(RoundKind::Swiss),
+    ])
+    .all()
+    .await?;
+
+    Ok(ScoredProgress {
+        completed: rows
+            .iter()
+            .filter(|(_, status)| *status == RoundStatus::Complete)
+            .filter_map(|(number, _)| *number)
+            .max()
+            .unwrap_or(0),
+        latest: rows
+            .iter()
+            .filter_map(|(number, _)| *number)
+            .max()
+            .unwrap_or(0),
+    })
+}
+
 /// Every round of a tournament, oldest first
 ///
 /// No guard: the caller has already proved it may see this tournament.
