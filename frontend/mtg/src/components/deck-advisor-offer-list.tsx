@@ -26,13 +26,24 @@ export type SwapAdd = {
 };
 
 /**
- * How many offers stand without asking.
+ * How many offers stand without asking on a phone.
  *
  * Two plus the reveal is about the height of the card being given up, which
  * keeps a whole exchange — the cut, its argument, and what it buys — inside
  * one thumb's worth of screen. A third would push the next exchange off it.
  */
 const VISIBLE = 2;
+
+/**
+ * How many offers stand without asking from `sm` up.
+ *
+ * The offers sit beside the card being given up rather than under it, so a
+ * desk has room for more of them — but only about as many as that card is
+ * tall. Past four the exchange stops being a choice and becomes a list: a
+ * single cut has been seen to arrive with twenty-six offers, which buries
+ * every other exchange under one card's runners-up.
+ */
+const VISIBLE_WIDE = 4;
 
 /**
  * The properties for {@link DeckAdvisorOfferList}
@@ -55,12 +66,14 @@ export type DeckAdvisorOfferListProps = {
 };
 
 /**
- * What one freed slot buys — the best two on a phone, all of them on a desk.
+ * What one freed slot buys — the best two on a phone, the best four on a desk.
  *
- * The service happily returns five offers against a single cut, which is a
- * gallery on a desktop and a wall on a phone: three exchanges' worth of
- * offers is more scrolling than the deck has cards worth changing. So the
- * tail folds away below `sm`, behind a row that says how much of it there is.
+ * The service happily returns five offers against a single cut, and against
+ * a well-stocked one many more than that: three exchanges' worth of offers is
+ * more scrolling than the deck has cards worth changing. So the tail folds
+ * away at both widths, behind a row that says how much of it there is —
+ * `VISIBLE` deep on a phone, `VISIBLE_WIDE` on a desk, which is why the row's
+ * count is written twice and each copy shown at one width.
  *
  * Folded on arrival every time, not just the first: the reader came to see
  * their deck's exchanges, not one exchange's runners-up. Everything is still
@@ -81,7 +94,9 @@ export function DeckAdvisorOfferList({
     const [t] = useTranslation("advisor");
     const [open, setOpen] = useState(false);
 
+    // Two depths, so the counts on the reveal row are two counts.
     const folded = adds.length - VISIBLE;
+    const foldedWide = adds.length - VISIBLE_WIDE;
 
     return (
         <div>
@@ -90,7 +105,12 @@ export function DeckAdvisorOfferList({
                     // Hidden by width, not by mounting: the parent exchange
                     // animates its own height, so revealing these grows the
                     // card rather than snapping it.
-                    <div key={add.oracle_id} className={clsx(index >= VISIBLE && !open && "hidden sm:block")}>
+                    <div
+                        key={add.oracle_id}
+                        className={clsx(
+                            !open && index >= VISIBLE && (index >= VISIBLE_WIDE ? "hidden" : "hidden sm:block"),
+                        )}
+                    >
                         <DeckAdvisorAddRow
                             name={add.name}
                             replaces={replaces}
@@ -108,18 +128,36 @@ export function DeckAdvisorOfferList({
 
             {/* A row rather than a chevron: it sits between two other buttons
                 on a touch screen, and it is the only one of the three that is
-                about the list rather than about a card. Gone from `sm` up,
-                where nothing was folded in the first place. */}
+                about the list rather than about a card. Gone from `sm` up when
+                the wider fold left nothing folded there. */}
             {folded > 0 && (
                 <button
                     type={"button"}
                     onClick={() => setOpen(!open)}
                     aria-expanded={open}
-                    className={
-                        "mt-1 flex w-full items-center justify-center gap-1.5 rounded-(--radius-control) bg-zinc-950/4 py-2 text-xs font-medium text-zinc-500 transition-colors hover:bg-zinc-950/7 hover:text-zinc-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-accent) sm:hidden dark:bg-white/5 dark:text-zinc-400 dark:hover:bg-white/10 dark:hover:text-zinc-200"
-                    }
+                    className={clsx(
+                        "mt-1 flex w-full items-center justify-center gap-1.5 rounded-(--radius-control) bg-zinc-950/4 py-2 text-xs font-medium text-zinc-500 transition-colors hover:bg-zinc-950/7 hover:text-zinc-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-accent) dark:bg-white/5 dark:text-zinc-400 dark:hover:bg-white/10 dark:hover:text-zinc-200",
+                        foldedWide <= 0 && "sm:hidden",
+                    )}
                 >
-                    {open ? t("button.fewer-offers") : t("button.more-offers", { count: folded })}
+                    {open ? (
+                        t("button.fewer-offers")
+                    ) : (
+                        <>
+                            {/* One count per width: the same row folds two
+                                offers away on a phone and four on a desk, and
+                                a number that is wrong at one of them is worse
+                                than no number at all. */}
+                            <span className={clsx(foldedWide > 0 && "sm:hidden")}>
+                                {t("button.more-offers", { count: folded })}
+                            </span>
+                            {foldedWide > 0 && (
+                                <span className={"hidden sm:inline"}>
+                                    {t("button.more-offers", { count: foldedWide })}
+                                </span>
+                            )}
+                        </>
+                    )}
                     <ChevronDownIcon
                         className={clsx("size-4 transition-transform duration-200", open && "rotate-180")}
                     />

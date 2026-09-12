@@ -46,7 +46,12 @@ function bracket(number: number, rules: Partial<BracketRulesResponse> = {}): Bra
 const BRACKETS = [
     bracket(1, { max_game_changers: 0, mass_land_denial: false, extra_turns: "none", combos: "none" }),
     bracket(2, { max_game_changers: 0, mass_land_denial: false, extra_turns: "no-chaining", combos: "no-two-card" }),
-    bracket(3, { max_game_changers: 3, mass_land_denial: false, extra_turns: "no-chaining" }),
+    bracket(3, {
+        max_game_changers: 3,
+        mass_land_denial: false,
+        extra_turns: "no-chaining",
+        combos: "no-early-two-card",
+    }),
     bracket(4),
     bracket(5),
 ];
@@ -470,7 +475,7 @@ describe("checkBracket", () => {
     it("leaves the combo rule out while its answer is missing", () => {
         const checks = checkBracket(counted({}), BRACKETS[2]);
         expect(checks.map((check) => check.kind)).toStrictEqual(["game-changers", "mass-land-denial", "extra-turns"]);
-        expect(checks.every((check) => check.kept)).toBe(true);
+        expect(checks.every((check) => check.verdict === "kept")).toBe(true);
     });
 
     it("reads the combo rule once the graph has answered, an empty answer included", () => {
@@ -483,13 +488,14 @@ describe("checkBracket", () => {
         ]);
         expect(checks[3]).toStrictEqual({
             kind: "combos",
-            kept: true,
+            verdict: "kept",
             have: 0,
             allowed: 0,
             cards: [],
             names: [],
             step: "none",
             breaking: 0,
+            unjudged: 0,
         });
     });
 
@@ -498,7 +504,7 @@ describe("checkBracket", () => {
         const checks = checkBracket(counted({ combos: [combo] }), EXHIBITION);
         expect(checks[3]).toStrictEqual({
             kind: "combos",
-            kept: false,
+            verdict: "broken",
             have: 1,
             allowed: 0,
             cards: ["Thassa's Oracle + Demonic Consultation"],
@@ -507,6 +513,7 @@ describe("checkBracket", () => {
             names: ["Thassa's Oracle", "Demonic Consultation"],
             step: "none",
             breaking: 1,
+            unjudged: 0,
         });
     });
 
@@ -517,7 +524,7 @@ describe("checkBracket", () => {
         ];
         // Exhibition plays no intentional infinite combo at all, so both count.
         expect(checkBracket(counted({ combos }), EXHIBITION)[3]).toMatchObject({
-            kept: false,
+            verdict: "broken",
             have: 2,
             breaking: 2,
             step: "none",
@@ -526,35 +533,62 @@ describe("checkBracket", () => {
         // Core counts only the pair, and the three-card line on its own is
         // exactly what keeps a deck off Exhibition without moving it off Core.
         expect(checkBracket(counted({ combos }), CORE)[3]).toMatchObject({
-            kept: false,
+            verdict: "broken",
             have: 2,
             breaking: 1,
             step: "limited",
         });
-        expect(checkBracket(counted({ combos: [combos[0]] }), EXHIBITION)[3].kept).toBe(false);
-        expect(checkBracket(counted({ combos: [combos[0]] }), CORE)[3].kept).toBe(true);
+        expect(checkBracket(counted({ combos: [combos[0]] }), EXHIBITION)[3].verdict).toBe("broken");
+        expect(checkBracket(counted({ combos: [combos[0]] }), CORE)[3].verdict).toBe("kept");
     });
 
     it("tolerates combos where the bracket does", () => {
-        const checks = checkBracket(counted({ combos: [["A", "B"]] }), BRACKETS[2]);
-        expect(checks[3]).toMatchObject({ kind: "combos", kept: true, allowed: null, step: "any" });
+        const checks = checkBracket(counted({ combos: [["A", "B"]] }), BRACKETS[3]);
+        expect(checks[3]).toMatchObject({ kind: "combos", verdict: "kept", allowed: null, step: "any" });
+    });
+
+    // The reason this state exists: Upgraded bars the two-card infinites that
+    // go off early, and nothing in a decklist says how early one lands. The
+    // pair was reported as kept before, which is the one answer that is
+    // certainly wrong about a rule written to catch exactly this shape.
+    it("neither seats nor faults a two-card combo where the bracket asks how early it lands", () => {
+        const checks = checkBracket(counted({ combos: [["The Notary Hobbits", "Umbral Mantle"]] }), BRACKETS[2]);
+        expect(checks[3]).toStrictEqual({
+            kind: "combos",
+            verdict: "unjudged",
+            have: 1,
+            // No limit is claimed, because the bracket sets none it can read.
+            allowed: null,
+            cards: ["The Notary Hobbits + Umbral Mantle"],
+            names: ["The Notary Hobbits", "Umbral Mantle"],
+            step: "conditional",
+            // Nothing is forbidden; one thing is asked.
+            breaking: 0,
+            unjudged: 1,
+        });
+    });
+
+    it("seats a longer line at Upgraded without asking anything about it", () => {
+        const checks = checkBracket(counted({ combos: [["A", "B", "C"]] }), BRACKETS[2]);
+        expect(checks[3]).toMatchObject({ verdict: "kept", have: 1, step: "conditional", breaking: 0, unjudged: 0 });
     });
 
     it("counts the Game Changers against the bracket's ceiling", () => {
         const checks = checkBracket(counted({ gameChangers: ["Rhystic Study", "Cyclonic Rift"] }), BRACKETS[2]);
         expect(checks[0]).toStrictEqual({
             kind: "game-changers",
-            kept: true,
+            verdict: "kept",
             have: 2,
             allowed: 3,
             cards: ["Rhystic Study", "Cyclonic Rift"],
             names: ["Rhystic Study", "Cyclonic Rift"],
             step: "limited",
             breaking: 0,
+            unjudged: 0,
         });
         expect(
             checkBracket(counted({ gameChangers: ["Rhystic Study", "Cyclonic Rift"] }), BRACKETS[1])[0],
-        ).toMatchObject({ kept: false, breaking: 2 });
+        ).toMatchObject({ verdict: "broken", breaking: 2 });
     });
 
     it("reads a tolerated rule as no limit at all", () => {
@@ -563,40 +597,43 @@ describe("checkBracket", () => {
             BRACKETS[3],
         );
         expect(checks.map((check) => check.allowed)).toStrictEqual([null, null, null]);
-        expect(checks.every((check) => check.kept)).toBe(true);
+        expect(checks.every((check) => check.verdict === "kept")).toBe(true);
     });
 
     it("breaks on a single card the bracket plays none of", () => {
         const checks = checkBracket(counted({ massLandDenial: ["Armageddon"] }), BRACKETS[2]);
         expect(checks[1]).toStrictEqual({
             kind: "mass-land-denial",
-            kept: false,
+            verdict: "broken",
             have: 1,
             allowed: 0,
             cards: ["Armageddon"],
             names: ["Armageddon"],
             step: "none",
             breaking: 1,
+            unjudged: 0,
         });
     });
 
     it("seats an extra turn that cannot be chained, and faults the chain", () => {
         // Exhibition plays none at all, so one is already too many there.
         expect(checkBracket(counted({ extraTurns: ["Time Warp"] }), BRACKETS[0])[2]).toMatchObject({
-            kept: false,
+            verdict: "broken",
             step: "none",
             breaking: 1,
+            unjudged: 0,
         });
         // Core asks only that they cannot follow one another.
         expect(checkBracket(counted({ extraTurns: ["Time Warp"] }), BRACKETS[1])[2]).toMatchObject({
-            kept: true,
+            verdict: "kept",
             have: 1,
             step: "limited",
             breaking: 0,
+            unjudged: 0,
         });
         expect(
             checkBracket(counted({ extraTurns: ["Time Warp", "Temporal Manipulation"] }), BRACKETS[1])[2],
-        ).toMatchObject({ kept: false, have: 2, step: "limited", breaking: 2 });
+        ).toMatchObject({ verdict: "broken", have: 2, step: "limited", breaking: 2 });
     });
 });
 
@@ -615,6 +652,10 @@ describe("playedBracket", () => {
     });
 
     it("climbs on a complete two-card combo, and only on an answered one", () => {
+        // Stops at Upgraded rather than climbing past it: the pair breaks
+        // brackets 1 and 2 outright, and bracket 3 asks a question instead of
+        // answering one. Reading that as a fault would claim the line was
+        // measured and found too fast, which nothing here did.
         expect(playedBracket(counted({ combos: [["A", "B"]] }), BRACKETS)).toBe(3);
         expect(playedBracket(counted({ combos: null }), BRACKETS)).toBe(1);
     });
@@ -630,8 +671,8 @@ describe("playedBracket", () => {
 
 describe("the ladder a bracket falls back to", () => {
     it("reads the served rule when it is one of the three steps", () => {
-        expect(checkBracket(counted({ extraTurns: ["a", "b"] }), CORE)[2].kept).toBe(false);
-        expect(checkBracket(counted({ extraTurns: ["a", "b"] }), BRACKETS[3])[2].kept).toBe(true);
+        expect(checkBracket(counted({ extraTurns: ["a", "b"] }), CORE)[2].verdict).toBe("broken");
+        expect(checkBracket(counted({ extraTurns: ["a", "b"] }), BRACKETS[3])[2].verdict).toBe("kept");
     });
 
     it("falls back to what that rung is known to ask when the rule is not", () => {
@@ -648,14 +689,14 @@ describe("the ladder a bracket falls back to", () => {
             }) as unknown as BracketRulesResponse;
 
         const core = checkBracket(counted({ extraTurns: ["a", "b"], combos: [["A", "B"]] }), stale(2));
-        expect(core[2]).toMatchObject({ kind: "extra-turns", kept: false, step: "limited" });
-        expect(core[3]).toMatchObject({ kind: "combos", kept: false, step: "limited" });
+        expect(core[2]).toMatchObject({ kind: "extra-turns", verdict: "broken", step: "limited" });
+        expect(core[3]).toMatchObject({ kind: "combos", verdict: "broken", step: "limited" });
 
         // cEDH seats both, which is the case that read as a fault before the
         // ladder was known: nothing on the rung is a restriction.
         const cedh = checkBracket(counted({ extraTurns: ["a", "b"], combos: [["A", "B"]] }), stale(5));
-        expect(cedh[2]).toMatchObject({ kind: "extra-turns", kept: true, step: "any" });
-        expect(cedh[3]).toMatchObject({ kind: "combos", kept: true, step: "any" });
+        expect(cedh[2]).toMatchObject({ kind: "extra-turns", verdict: "kept", step: "any" });
+        expect(cedh[3]).toMatchObject({ kind: "combos", verdict: "kept", step: "any" });
     });
 
     it("never invents a restriction for a rung it does not know", () => {
@@ -666,7 +707,9 @@ describe("the ladder a bracket falls back to", () => {
             mass_land_denial: true,
         } as unknown as BracketRulesResponse;
         expect(
-            checkBracket(counted({ extraTurns: ["a", "b"], combos: [["A", "B"]] }), seven).every((c) => c.kept),
+            checkBracket(counted({ extraTurns: ["a", "b"], combos: [["A", "B"]] }), seven).every(
+                (c) => c.verdict === "kept",
+            ),
         ).toBe(true);
     });
 
@@ -706,13 +749,31 @@ describe("checkDeck against a claimed bracket's combo rule", () => {
     it("faults a combo the claimed bracket plays none of", () => {
         const combos = [["Thassa's Oracle", "Demonic Consultation"]];
         const legality = checkDeck(deckHeader(), [], formatRules(), BRACKETS[1], combos);
-        expect(legality.deck).toContainEqual({ kind: "combos", combos });
+        expect(legality.deck).toContainEqual({ kind: "combos", combos, judged: true });
         expect(legality.combos).toStrictEqual(combos);
     });
 
     it("does not fault what the claimed bracket tolerates", () => {
-        const legality = checkDeck(deckHeader(), [], formatRules(), BRACKETS[2], [["A", "B"]]);
+        const legality = checkDeck(deckHeader(), [], formatRules(), BRACKETS[3], [["A", "B"]]);
         expect(legality.deck.some((violation) => violation.kind === "combos")).toBe(false);
+    });
+
+    // The band's tick means "read, and nothing to say". A deck claiming
+    // Upgraded while holding a two-card infinite had something to say, and
+    // used to come back clean — which is the whole of this change.
+    it("remarks on what the claimed bracket leaves to the builder, without calling it a fault", () => {
+        const pair = ["The Notary Hobbits", "Umbral Mantle"];
+        const legality = checkDeck(deckHeader(), [], formatRules(), BRACKETS[2], [pair]);
+        expect(legality.deck).toContainEqual({ kind: "combos", combos: [pair], judged: false });
+    });
+
+    // A longer line is seated outright at Upgraded, so it is not put to the
+    // reader alongside the pair it has nothing to do with.
+    it("asks only about the pairs, never about a line the bracket already seats", () => {
+        const pair = ["Kinnan, Bonder Prodigy", "Basalt Monolith"];
+        const longer = ["Devoted Druid", "Vizier of Remedies", "Walking Ballista"];
+        const legality = checkDeck(deckHeader(), [], formatRules(), BRACKETS[2], [longer, pair]);
+        expect(legality.deck).toContainEqual({ kind: "combos", combos: [pair], judged: false });
     });
 
     it("never faults an unanswered question", () => {
