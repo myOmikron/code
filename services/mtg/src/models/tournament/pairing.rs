@@ -191,6 +191,37 @@ pub async fn tables(
     Ok(tables)
 }
 
+/// One table, for the surface that just changed it
+///
+/// @param tx the transaction to read in
+/// @param tournament the table belongs to
+/// @param table which table
+///
+/// @returns the table, or `None` when it is not this tournament's
+#[instrument(name = "pairing::one_table", skip(tx))]
+pub async fn one_table(
+    tx: &mut Transaction,
+    tournament: TournamentUuid,
+    table: TournamentMatchUuid,
+) -> Result<Option<MatchTable>, rorm::Error> {
+    let Some(round) = rorm::query(&mut *tx, TournamentMatchModel.round)
+        .condition(rorm::and![
+            TournamentMatchModel.uuid.equals(table.into_inner()),
+            TournamentMatchModel.tournament.equals(tournament.0),
+        ])
+        .all()
+        .await?
+        .into_iter()
+        .next()
+    else {
+        return Ok(None);
+    };
+    Ok(tables(&mut *tx, tournament, TournamentRoundUuid(round.0))
+        .await?
+        .into_iter()
+        .find(|found| found.uuid.into_inner() == table.into_inner()))
+}
+
 /// Pair a round, replacing whatever it already held
 ///
 /// Guarded on holding any role rather than on managing the event, for the

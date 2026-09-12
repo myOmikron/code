@@ -66,6 +66,7 @@ pub mod listing;
 pub mod pairing;
 pub mod participant;
 pub mod public;
+pub mod reporting;
 pub mod round;
 pub mod venue;
 

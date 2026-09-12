@@ -65,11 +65,15 @@ use crate::http::handler_frontend::tournaments::schema::PLAYER_SEARCH_LIMIT;
 use crate::http::handler_frontend::tournaments::schema::PairRoundErrors;
 use crate::http::handler_frontend::tournaments::schema::PairRoundResponse;
 use crate::http::handler_frontend::tournaments::schema::PlayerSearchResultResponse;
+use crate::http::handler_frontend::tournaments::schema::ReportResultErrors;
+use crate::http::handler_frontend::tournaments::schema::ReportResultRequest;
 use crate::http::handler_frontend::tournaments::schema::RoundLifecycleErrors;
 use crate::http::handler_frontend::tournaments::schema::RoundResponse;
 use crate::http::handler_frontend::tournaments::schema::SearchPlayersRequest;
 use crate::http::handler_frontend::tournaments::schema::SearchPlayersResponse;
 use crate::http::handler_frontend::tournaments::schema::SetDecklistRequest;
+use crate::http::handler_frontend::tournaments::schema::SetResultErrors;
+use crate::http::handler_frontend::tournaments::schema::SetResultRequest;
 use crate::http::handler_frontend::tournaments::schema::SetTimerRequest;
 use crate::http::handler_frontend::tournaments::schema::SetTournamentStatusRequest;
 use crate::http::handler_frontend::tournaments::schema::SetTournamentStatusResponse;
@@ -94,6 +98,7 @@ use crate::models::tournament::Tournament;
 use crate::models::tournament::TournamentAccess;
 use crate::models::tournament::TournamentActor;
 use crate::models::tournament::TournamentInsert;
+use crate::models::tournament::TournamentMatchUuid;
 use crate::models::tournament::TournamentParticipantUuid;
 use crate::models::tournament::TournamentRole;
 use crate::models::tournament::TournamentRoundUuid;
@@ -111,6 +116,10 @@ use crate::models::tournament::participant::CheckInOutcome;
 use crate::models::tournament::participant::ClaimOutcome;
 use crate::models::tournament::participant::RegistrationOutcome;
 use crate::models::tournament::public;
+use crate::models::tournament::reporting;
+use crate::models::tournament::reporting::ReportClaim;
+use crate::models::tournament::reporting::ReportOutcome;
+use crate::models::tournament::reporting::ResultChange;
 use crate::models::tournament::round;
 use crate::models::tournament::round::CreateRound;
 use crate::models::tournament::round::Round;
@@ -1120,6 +1129,152 @@ pub async fn pair_tournament_round(
             })
             .collect(),
     }))
+}
+
+/// Report what happened at your own table
+///
+/// In the actor block, because the people this exists for are the ones playing
+/// — a guest's phone included. The guard behind it asks whether the caller is
+/// *sitting at this table* before it asks whether they run the event, so an
+/// organizer who is also playing reports like everybody else rather than
+/// silently confirming their own match.
+#[post("/{tournament}/matches/{match}/report")]
+pub async fn report_match_result(
+    actor: TournamentActor,
+    Path((tournament_uuid, match_uuid)): Path<(TournamentUuid, TournamentMatchUuid)>,
+    ApiJson(request): ApiJson<ReportResultRequest>,
+) -> ApiResult<ApiJson<MatchTableResponse>, ReportResultErrors> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    let claim = ReportClaim {
+        winner: request.winner,
+        draw: request.draw,
+        winner_games: request.winner_games,
+        loser_games: request.loser_games,
+        games_drawn: request.games_drawn,
+        client_key: request.client_key,
+    };
+    let outcome =
+        match reporting::report(&mut tx, &actor, tournament_uuid, match_uuid, claim).await? {
+            TournamentAccess::Granted(outcome) => outcome,
+            TournamentAccess::Denied => return Err(denied()),
+        };
+    match outcome {
+        ReportOutcome::Recorded(_) => {}
+        ReportOutcome::NotSeated => {
+            let mut errors = FormErrors::<ReportResultErrors>::new();
+            errors.not_seated = true;
+            return errors.fail();
+        }
+        ReportOutcome::RoundClosed => {
+            let mut errors = FormErrors::<ReportResultErrors>::new();
+            errors.round_closed = true;
+            return errors.fail();
+        }
+        ReportOutcome::InvalidOutcome => {
+            let mut errors = FormErrors::<ReportResultErrors>::new();
+            errors.invalid_outcome = true;
+            return errors.fail();
+        }
+    }
+
+    let Some(table) = pairing::one_table(&mut tx, tournament_uuid, match_uuid).await? else {
+        return Err(denied());
+    };
+
+    tx.commit().await?;
+
+    Ok(ApiJson(MatchTableResponse::from(table)))
+}
+
+/// Write a table's result from the desk
+///
+/// Beats every player report on that table and skips the confirmation dance
+/// entirely: the desk is authoritative, and the two-sided flow exists to save an
+/// organizer walking to the table, not to constrain them once they have.
+#[put("/{tournament}/matches/{match}/result")]
+pub async fn set_match_result(
+    account: Account,
+    Path((tournament_uuid, match_uuid)): Path<(TournamentUuid, TournamentMatchUuid)>,
+    ApiJson(request): ApiJson<SetResultRequest>,
+) -> ApiResult<ApiJson<MatchTableResponse>, SetResultErrors> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    let claim = ReportClaim {
+        winner: request.winner,
+        draw: request.draw,
+        winner_games: request.winner_games,
+        loser_games: request.loser_games,
+        games_drawn: request.games_drawn,
+        // The desk's own write is not a report and never lands in a report row,
+        // so it has no tap to be idempotent about.
+        client_key: MaxStr::new(String::new())
+            .unwrap_or_else(|_| unreachable!("the empty string fits in sixty-four characters")),
+    };
+    let change =
+        match reporting::set_result(&mut tx, account.uuid, tournament_uuid, match_uuid, claim)
+            .await?
+        {
+            TournamentAccess::Granted(change) => change,
+            TournamentAccess::Denied => return Err(denied()),
+        };
+    result_or_refusal(change)?;
+
+    let Some(table) = pairing::one_table(&mut tx, tournament_uuid, match_uuid).await? else {
+        return Err(denied());
+    };
+
+    tx.commit().await?;
+
+    Ok(ApiJson(MatchTableResponse::from(table)))
+}
+
+/// Take the desk's result back off a table
+///
+/// Drops to whatever the players had agreed rather than to nothing, which is the
+/// undo for a mistyped result.
+#[delete("/{tournament}/matches/{match}/result")]
+pub async fn clear_match_result(
+    account: Account,
+    Path((tournament_uuid, match_uuid)): Path<(TournamentUuid, TournamentMatchUuid)>,
+) -> ApiResult<ApiJson<MatchTableResponse>, SetResultErrors> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    let change =
+        match reporting::clear_result(&mut tx, account.uuid, tournament_uuid, match_uuid).await? {
+            TournamentAccess::Granted(change) => change,
+            TournamentAccess::Denied => return Err(denied()),
+        };
+    result_or_refusal(change)?;
+
+    let Some(table) = pairing::one_table(&mut tx, tournament_uuid, match_uuid).await? else {
+        return Err(denied());
+    };
+
+    tx.commit().await?;
+
+    Ok(ApiJson(MatchTableResponse::from(table)))
+}
+
+/// Turn a refusal from the desk's own result calls into its typed error
+///
+/// @param change what the model layer answered
+///
+/// @returns nothing when the write went through
+fn result_or_refusal(change: ResultChange) -> ApiResult<(), SetResultErrors> {
+    match change {
+        ResultChange::Changed(_) => Ok(()),
+        ResultChange::NotEditable => {
+            let mut errors = FormErrors::<SetResultErrors>::new();
+            errors.not_editable = true;
+            errors.fail()
+        }
+        ResultChange::InvalidOutcome => {
+            let mut errors = FormErrors::<SetResultErrors>::new();
+            errors.invalid_outcome = true;
+            errors.fail()
+        }
+    }
 }
 
 /// Look accounts up by username, to seat a player whose phone is dead

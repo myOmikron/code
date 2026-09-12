@@ -671,6 +671,76 @@ pub struct PairRoundErrors {
     pub impossible_pods: bool,
 }
 
+/// What one seat says happened at their table
+///
+/// The game counts are the winner's and the loser's, not one per seat: a pod is
+/// always best of one, so the only place a game score carries anything is a
+/// duel, where there are exactly two of them.
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct ReportResultRequest {
+    /// Who they say won, `null` for a draw
+    #[serde(default)]
+    pub winner: Option<TournamentParticipantUuid>,
+    /// Whether they say it was drawn
+    #[serde(default)]
+    pub draw: bool,
+    /// Games the winner took
+    #[serde(default)]
+    pub winner_games: i16,
+    /// Games the loser took
+    #[serde(default)]
+    pub loser_games: i16,
+    /// Games inside the match that were themselves drawn
+    #[serde(default)]
+    pub games_drawn: i16,
+    /// The key this tap was minted with
+    ///
+    /// The same key arriving twice is one tap retried and writes nothing; a
+    /// different one is somebody changing their mind and overwrites. Which is
+    /// what makes a double-tapped phone on a bad connection harmless.
+    pub client_key: MaxStr<64>,
+}
+
+/// Why a player's report was not filed
+#[derive(Default, Serialize, JsonSchema)]
+pub struct ReportResultErrors {
+    /// The reporter is not sitting at this table
+    pub not_seated: bool,
+    /// The round is closed; nothing more goes into it
+    pub round_closed: bool,
+    /// Neither a winner nor a draw, or a winner who is not at the table
+    pub invalid_outcome: bool,
+}
+
+/// What the desk says happened at a table
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct SetResultRequest {
+    /// Who won, `null` for a draw
+    #[serde(default)]
+    pub winner: Option<TournamentParticipantUuid>,
+    /// Whether it was drawn
+    #[serde(default)]
+    pub draw: bool,
+    /// Games the winner took
+    #[serde(default)]
+    pub winner_games: i16,
+    /// Games the loser took
+    #[serde(default)]
+    pub loser_games: i16,
+    /// Games inside the match that were themselves drawn
+    #[serde(default)]
+    pub games_drawn: i16,
+}
+
+/// Why the desk's result was not written
+#[derive(Default, Serialize, JsonSchema)]
+pub struct SetResultErrors {
+    /// The round is closed, or the table is a bye nobody played
+    pub not_editable: bool,
+    /// Neither a winner nor a draw, or a winner who is not at the table
+    pub invalid_outcome: bool,
+}
+
 /// What starting (or otherwise moving) a tournament did beyond the status
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct SetTournamentStatusResponse {
