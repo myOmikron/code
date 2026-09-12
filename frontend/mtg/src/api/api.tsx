@@ -7,6 +7,8 @@ import {
     AddTournamentOrganizerRequest,
     AddTournamentParticipantRequest,
     CreateRoundRequest,
+    ReportResultRequest,
+    SetResultRequest,
     AddWatchListEntryRequest,
     Configuration,
     CreateCollectionRequest,
@@ -357,6 +359,17 @@ export const Api = {
                         SetTimerRequest: { action, seconds },
                     }),
                 ),
+        },
+        // What happened at one table. `report` is a player's own claim about their own match and
+        // goes through `handleError` like the rest — it is a deliberate tap, not a poll, so a
+        // lapsed session should say so rather than fail quietly.
+        matches: {
+            report: async (uuid: UUID, match: UUID, req: ReportResultRequest) =>
+                handleError(defaultApi.reportMatchResult({ tournament: uuid, match: match, ReportResultRequest: req })),
+            setResult: async (uuid: UUID, match: UUID, req: SetResultRequest) =>
+                handleError(defaultApi.setMatchResult({ tournament: uuid, match: match, SetResultRequest: req })),
+            clearResult: async (uuid: UUID, match: UUID) =>
+                handleError(defaultApi.clearMatchResult({ tournament: uuid, match: match })),
         },
         revokeJoinCode: async (uuid: UUID) => handleError(defaultApi.revokeTournamentJoinCode({ tournament: uuid })),
         // The organizer's own book of places, filled implicitly: saving a tournament with a

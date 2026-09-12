@@ -284,7 +284,14 @@ export function TournamentRoundPanel({
                             </Button>
                         </div>
                     )}
-                    <TournamentPairingsTable tables={tables} ownParticipant={viewer.participant} />
+                    <TournamentPairingsTable
+                        tables={tables}
+                        ownParticipant={viewer.participant}
+                        tournamentUuid={tournamentUuid}
+                        gamesPerMatch={tournament.games_per_match}
+                        canEdit={staff && round.status !== "Complete"}
+                        onChanged={onChanged}
+                    />
                 </div>
             )}
 

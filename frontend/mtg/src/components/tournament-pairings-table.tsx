@@ -3,6 +3,7 @@ import { Badge, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, T
 import clsx from "clsx";
 import { useTranslation } from "react-i18next";
 import type { MatchSeatResponse, MatchTableResponse } from "src/api/generated";
+import { TournamentResultCell } from "src/components/tournament-result-cell";
 
 /**
  * The properties for {@link TournamentPairingsTable}
@@ -12,6 +13,14 @@ export type TournamentPairingsTableProps = {
     tables: Array<MatchTableResponse>;
     /** Which participant the viewer is, so their own table stands out */
     ownParticipant?: string | null;
+    /** The tournament the tables belong to */
+    tournamentUuid: string;
+    /** Best of how many games a duel at this event is */
+    gamesPerMatch: number;
+    /** Whether the viewer may write results here */
+    canEdit: boolean;
+    /** Called after a table changed */
+    onChanged: () => void | Promise<void>;
 };
 
 /**
@@ -30,7 +39,14 @@ export type TournamentPairingsTableProps = {
  *
  * @returns the table
  */
-export function TournamentPairingsTable({ tables, ownParticipant }: TournamentPairingsTableProps) {
+export function TournamentPairingsTable({
+    tables,
+    ownParticipant,
+    tournamentUuid,
+    gamesPerMatch,
+    canEdit,
+    onChanged,
+}: TournamentPairingsTableProps) {
     const [t] = useTranslation("tournament");
 
     // A bye seats one and a duel seats two; anything wider is a pod.
@@ -64,15 +80,16 @@ export function TournamentPairingsTable({ tables, ownParticipant }: TournamentPa
         );
     };
 
-    /** What the result column says before anybody has reported anything */
-    const result = (table: MatchTableResponse) => {
-        if (table.is_bye) return <Badge color={"emerald"}>{t("label.bye")}</Badge>;
-        if (table.status === "Confirmed") {
-            const winner = table.seats.find((seat) => seat.participant === table.winner);
-            return <Text>{table.is_draw ? t("label.draw") : (winner?.display_name ?? "—")}</Text>;
-        }
-        return <Text>{t("label.table-open")}</Text>;
-    };
+    /** What happened at a table, and the click that books it */
+    const result = (table: MatchTableResponse) => (
+        <TournamentResultCell
+            tournamentUuid={tournamentUuid}
+            table={table}
+            gamesPerMatch={gamesPerMatch}
+            canEdit={canEdit}
+            onChanged={onChanged}
+        />
+    );
 
     /** The number on the table, or that a bye is not one */
     const number = (table: MatchTableResponse) =>
