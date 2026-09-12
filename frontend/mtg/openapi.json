@@ -7931,6 +7931,68 @@
                 }
             }
         },
+        "/api/frontend/v1/tournaments/{tournament}/standings": {
+            "get": {
+                "summary": "Where everybody stands",
+                "description": "Where everybody stands\n\nIn the actor block: the standings are the thing a player refreshes between\nrounds, and a guest's phone is exactly the device doing it. Whose rows come\nback is the same decision the roster goes through, so a guest who appears as\n\"Gast 7\" on one screen is \"Gast 7\" on the other.",
+                "operationId": "get_tournament_standings",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tournament",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Tournament`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/StandingsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/frontend/v1/tournaments/{tournament}/matches/{match}/report": {
             "post": {
                 "summary": "Report what happened at your own table",
@@ -18388,6 +18450,139 @@
                     "source"
                 ]
             },
+            "StandingResponse": {
+                "description": "One row of the standings\n\nEvery percentage is in basis points — 10 000 is 100 % — which is also the precision it is meant to be shown at. Two rows whose numbers render the same really are equal, so a reader checking the table by hand never finds a tie broken by a digit that was not on screen.",
+                "type": "object",
+                "properties": {
+                    "byes": {
+                        "description": "Byes received",
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "display_name": {
+                        "description": "The name they appear under",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_64"
+                            }
+                        ]
+                    },
+                    "draws": {
+                        "description": "Matches drawn",
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "dropped": {
+                        "description": "Whether they have since left the event",
+                        "type": "boolean"
+                    },
+                    "game_win": {
+                        "description": "Share of the game points they could have taken",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "losses": {
+                        "description": "Matches lost",
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "match_points": {
+                        "description": "Accumulated match points",
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "match_win": {
+                        "description": "Share of the match points they could have taken",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "opponent_game_win": {
+                        "description": "Mean of their opponents' game-win percentages",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "opponent_match_win": {
+                        "description": "Mean of their opponents' match-win percentages",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "opponents_average_points": {
+                        "description": "Mean of their opponents' raw match points, in the same fixed point",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "order": {
+                        "description": "Their position in the total order, which is what pairing slices",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "participant": {
+                        "description": "Whose row this is",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/TournamentParticipantUuid"
+                            }
+                        ]
+                    },
+                    "place": {
+                        "description": "The place printed beside them, shared with anybody they tie",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "wins": {
+                        "description": "Matches won",
+                        "type": "integer",
+                        "format": "int32"
+                    }
+                },
+                "required": [
+                    "byes",
+                    "display_name",
+                    "draws",
+                    "dropped",
+                    "game_win",
+                    "losses",
+                    "match_points",
+                    "match_win",
+                    "opponent_game_win",
+                    "opponent_match_win",
+                    "opponents_average_points",
+                    "order",
+                    "participant",
+                    "place",
+                    "wins"
+                ]
+            },
+            "StandingsResponse": {
+                "description": "The standings of a tournament",
+                "type": "object",
+                "properties": {
+                    "outstanding_tables": {
+                        "description": "How many tables of the current round have no settled result\n\nThe reason the page can say \"three tables still out\" rather than letting ranks shuffle under a reader who does not know why.",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "standings": {
+                        "description": "The rows, best first",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/StandingResponse"
+                        }
+                    },
+                    "tiebreakers": {
+                        "description": "Which tiebreakers this event applies, most significant first",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/TiebreakerResponse"
+                        }
+                    }
+                },
+                "required": [
+                    "outstanding_tables",
+                    "standings",
+                    "tiebreakers"
+                ]
+            },
             "StartAddPasskeyResponse": {
                 "description": "Response to a started add-passkey ceremony",
                 "type": "object",
@@ -18548,6 +18743,53 @@
                         }
                     }
                 }
+            },
+            "TiebreakerResponse": {
+                "description": "One tiebreaker, so a client can name the column it is looking at",
+                "oneOf": [
+                    {
+                        "description": "Accumulated match points",
+                        "type": "string",
+                        "enum": [
+                            "MatchPoints"
+                        ]
+                    },
+                    {
+                        "description": "Share of the match points this player could have taken",
+                        "type": "string",
+                        "enum": [
+                            "MatchWinPercent"
+                        ]
+                    },
+                    {
+                        "description": "Mean of the opponents' match-win percentages",
+                        "type": "string",
+                        "enum": [
+                            "OpponentMatchWinPercent"
+                        ]
+                    },
+                    {
+                        "description": "Share of the game points this player could have taken",
+                        "type": "string",
+                        "enum": [
+                            "GameWinPercent"
+                        ]
+                    },
+                    {
+                        "description": "Mean of the opponents' game-win percentages",
+                        "type": "string",
+                        "enum": [
+                            "OpponentGameWinPercent"
+                        ]
+                    },
+                    {
+                        "description": "Mean of the opponents' raw match points",
+                        "type": "string",
+                        "enum": [
+                            "OpponentsAveragePoints"
+                        ]
+                    }
+                ]
             },
             "TimelinePointResponse": {
                 "description": "One point of the acquisition timeline",

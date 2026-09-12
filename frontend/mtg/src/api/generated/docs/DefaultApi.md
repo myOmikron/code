@@ -79,6 +79,7 @@ All URIs are relative to *http://localhost*
 | [**getSharedDeck**](DefaultApi.md#getshareddeck) | **GET** /api/frontend/v1/shared/decks/{token} | Fetch the deck a share link points at |
 | [**getSharedTournament**](DefaultApi.md#getsharedtournament) | **GET** /api/frontend/v1/shared/tournaments/{token} | Fetch the tournament a share link points at |
 | [**getTournament**](DefaultApi.md#gettournament) | **GET** /api/frontend/v1/tournaments/{tournament} | One tournament, with what the viewer may do with it |
+| [**getTournamentStandings**](DefaultApi.md#gettournamentstandings) | **GET** /api/frontend/v1/tournaments/{tournament}/standings | Where everybody stands |
 | [**getTournamentState**](DefaultApi.md#gettournamentstate) | **GET** /api/frontend/v1/tournaments/{tournament}/state | What a client polls to know whether anything moved |
 | [**getWatchList**](DefaultApi.md#getwatchlist) | **GET** /api/frontend/v1/watch-lists/{list} | One watch list, without what is on it |
 | [**getWatchListAlarms**](DefaultApi.md#getwatchlistalarms) | **GET** /api/frontend/v1/watch-lists/alarms | Every alarm standing across the account\&#39;s watch lists |
@@ -5408,6 +5409,76 @@ example().catch(console.error);
 ### Return type
 
 [**GetTournamentResponse**](GetTournamentResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## getTournamentStandings
+
+> StandingsResponse getTournamentStandings(tournament)
+
+Where everybody stands
+
+Where everybody stands  In the actor block: the standings are the thing a player refreshes between rounds, and a guest\&#39;s phone is exactly the device doing it. Whose rows come back is the same decision the roster goes through, so a guest who appears as \&quot;Gast 7\&quot; on one screen is \&quot;Gast 7\&quot; on the other.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { GetTournamentStandingsRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    tournament: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies GetTournamentStandingsRequest;
+
+  try {
+    const data = await api.getTournamentStandings(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **tournament** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**StandingsResponse**](StandingsResponse.md)
 
 ### Authorization
 

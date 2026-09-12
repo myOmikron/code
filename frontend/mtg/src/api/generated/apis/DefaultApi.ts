@@ -154,6 +154,7 @@ import type {
     SignupRequest,
     SplitCollectionEntryRequest,
     SplitCollectionEntryResponse,
+    StandingsResponse,
     StartAddPasskeyResponse,
     StartLogin200Response,
     StartLoginRequest,
@@ -473,6 +474,10 @@ export interface GetSharedTournamentRequest {
 }
 
 export interface GetTournamentRequest {
+    tournament: string;
+}
+
+export interface GetTournamentStandingsRequest {
     tournament: string;
 }
 
@@ -4521,6 +4526,53 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async getTournament(requestParameters: GetTournamentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GetTournamentResponse> {
         const response = await this.getTournamentRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for getTournamentStandings without sending the request
+     */
+    async getTournamentStandingsRequestOpts(requestParameters: GetTournamentStandingsRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tournament'] == null) {
+            throw new runtime.RequiredError(
+                'tournament',
+                'Required parameter "tournament" was null or undefined when calling getTournamentStandings().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/tournaments/{tournament}/standings`;
+        urlPath = urlPath.replace('{tournament}', encodeURIComponent(String(requestParameters['tournament'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Where everybody stands  In the actor block: the standings are the thing a player refreshes between rounds, and a guest\'s phone is exactly the device doing it. Whose rows come back is the same decision the roster goes through, so a guest who appears as \"Gast 7\" on one screen is \"Gast 7\" on the other.
+     * Where everybody stands
+     */
+    async getTournamentStandingsRaw(requestParameters: GetTournamentStandingsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<StandingsResponse>> {
+        const requestOptions = await this.getTournamentStandingsRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Where everybody stands  In the actor block: the standings are the thing a player refreshes between rounds, and a guest\'s phone is exactly the device doing it. Whose rows come back is the same decision the roster goes through, so a guest who appears as \"Gast 7\" on one screen is \"Gast 7\" on the other.
+     * Where everybody stands
+     */
+    async getTournamentStandings(requestParameters: GetTournamentStandingsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<StandingsResponse> {
+        const response = await this.getTournamentStandingsRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

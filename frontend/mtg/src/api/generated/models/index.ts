@@ -6707,6 +6707,132 @@ export interface SplitCollectionEntryResponse {
     source: CollectionEntryResponse;
 }
 /**
+ * One row of the standings
+ * 
+ * Every percentage is in basis points — 10 000 is 100 % — which is also the precision it is meant to be shown at. Two rows whose numbers render the same really are equal, so a reader checking the table by hand never finds a tie broken by a digit that was not on screen.
+ * @export
+ * @interface StandingResponse
+ */
+export interface StandingResponse {
+    /**
+     * Byes received
+     * @type {number}
+     * @memberof StandingResponse
+     */
+    byes: number;
+    /**
+     * The name they appear under
+     * @type {string}
+     * @memberof StandingResponse
+     */
+    display_name: string;
+    /**
+     * Matches drawn
+     * @type {number}
+     * @memberof StandingResponse
+     */
+    draws: number;
+    /**
+     * Whether they have since left the event
+     * @type {boolean}
+     * @memberof StandingResponse
+     */
+    dropped: boolean;
+    /**
+     * Share of the game points they could have taken
+     * @type {number}
+     * @memberof StandingResponse
+     */
+    game_win: number;
+    /**
+     * Matches lost
+     * @type {number}
+     * @memberof StandingResponse
+     */
+    losses: number;
+    /**
+     * Accumulated match points
+     * @type {number}
+     * @memberof StandingResponse
+     */
+    match_points: number;
+    /**
+     * Share of the match points they could have taken
+     * @type {number}
+     * @memberof StandingResponse
+     */
+    match_win: number;
+    /**
+     * Mean of their opponents' game-win percentages
+     * @type {number}
+     * @memberof StandingResponse
+     */
+    opponent_game_win: number;
+    /**
+     * Mean of their opponents' match-win percentages
+     * @type {number}
+     * @memberof StandingResponse
+     */
+    opponent_match_win: number;
+    /**
+     * Mean of their opponents' raw match points, in the same fixed point
+     * @type {number}
+     * @memberof StandingResponse
+     */
+    opponents_average_points: number;
+    /**
+     * Their position in the total order, which is what pairing slices
+     * @type {number}
+     * @memberof StandingResponse
+     */
+    order: number;
+    /**
+     * Whose row this is
+     * @type {string}
+     * @memberof StandingResponse
+     */
+    participant: string;
+    /**
+     * The place printed beside them, shared with anybody they tie
+     * @type {number}
+     * @memberof StandingResponse
+     */
+    place: number;
+    /**
+     * Matches won
+     * @type {number}
+     * @memberof StandingResponse
+     */
+    wins: number;
+}
+/**
+ * The standings of a tournament
+ * @export
+ * @interface StandingsResponse
+ */
+export interface StandingsResponse {
+    /**
+     * How many tables of the current round have no settled result
+     * 
+     * The reason the page can say "three tables still out" rather than letting ranks shuffle under a reader who does not know why.
+     * @type {number}
+     * @memberof StandingsResponse
+     */
+    outstanding_tables: number;
+    /**
+     * The rows, best first
+     * @type {Array<StandingResponse>}
+     * @memberof StandingsResponse
+     */
+    standings: Array<StandingResponse>;
+    /**
+     * Which tiebreakers this event applies, most significant first
+     * @type {Array<TiebreakerResponse>}
+     * @memberof StandingsResponse
+     */
+    tiebreakers: Array<TiebreakerResponse>;
+}
+/**
  * Response to a started add-passkey ceremony
  * @export
  * @interface StartAddPasskeyResponse
@@ -6873,6 +6999,39 @@ export interface ThemePrefs {
      */
     pinned?: Array<string>;
 }
+
+/**
+ * One tiebreaker, so a client can name the column it is looking at
+ * @export
+ */
+export const TiebreakerResponse = {
+    /**
+    * Accumulated match points
+    */
+    MatchPoints: 'MatchPoints',
+    /**
+    * Share of the match points this player could have taken
+    */
+    MatchWinPercent: 'MatchWinPercent',
+    /**
+    * Mean of the opponents&#39; match-win percentages
+    */
+    OpponentMatchWinPercent: 'OpponentMatchWinPercent',
+    /**
+    * Share of the game points this player could have taken
+    */
+    GameWinPercent: 'GameWinPercent',
+    /**
+    * Mean of the opponents&#39; game-win percentages
+    */
+    OpponentGameWinPercent: 'OpponentGameWinPercent',
+    /**
+    * Mean of the opponents&#39; raw match points
+    */
+    OpponentsAveragePoints: 'OpponentsAveragePoints'
+} as const;
+export type TiebreakerResponse = typeof TiebreakerResponse[keyof typeof TiebreakerResponse];
+
 /**
  * One point of the acquisition timeline
  * @export

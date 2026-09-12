@@ -234,6 +234,8 @@ docs/SourcingCandidateResponse.md
 docs/SourcingSlotResponse.md
 docs/SplitCollectionEntryRequest.md
 docs/SplitCollectionEntryResponse.md
+docs/StandingResponse.md
+docs/StandingsResponse.md
 docs/StartAddPasskeyResponse.md
 docs/StartLogin200Response.md
 docs/StartLoginErrors.md
@@ -246,6 +248,7 @@ docs/StartTournamentRound200Response.md
 docs/StatBucketResponse.md
 docs/TakeDeckCardsRequest.md
 docs/ThemePrefs.md
+docs/TiebreakerResponse.md
 docs/TimelinePointResponse.md
 docs/TimerActionRequest.md
 docs/TimerResponse.md
