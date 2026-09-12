@@ -10,6 +10,7 @@
 //! regardless of which block a handler lives in; the layer only decides
 //! whether an [`Account`] must exist at all, never whether it may act.
 
+use std::collections::HashMap;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::Hash;
 use std::hash::Hasher;
@@ -78,6 +79,9 @@ use crate::http::handler_frontend::tournaments::schema::SetTimerRequest;
 use crate::http::handler_frontend::tournaments::schema::SetTournamentStatusRequest;
 use crate::http::handler_frontend::tournaments::schema::SetTournamentStatusResponse;
 use crate::http::handler_frontend::tournaments::schema::SetTournamentVisibilityRequest;
+use crate::http::handler_frontend::tournaments::schema::StandingResponse;
+use crate::http::handler_frontend::tournaments::schema::StandingsResponse;
+use crate::http::handler_frontend::tournaments::schema::TiebreakerResponse;
 use crate::http::handler_frontend::tournaments::schema::TimerActionRequest;
 use crate::http::handler_frontend::tournaments::schema::TournamentJoinCodeResponse;
 use crate::http::handler_frontend::tournaments::schema::TournamentOrganizerResponse;
@@ -125,6 +129,7 @@ use crate::models::tournament::round::CreateRound;
 use crate::models::tournament::round::Round;
 use crate::models::tournament::round::RoundChange;
 use crate::models::tournament::round::RoundOutcome;
+use crate::models::tournament::standings;
 use crate::models::tournament::venue;
 use crate::models::visibility::Visibility;
 use crate::tournament::timer::TimerAction;
@@ -1275,6 +1280,82 @@ fn result_or_refusal(change: ResultChange) -> ApiResult<(), SetResultErrors> {
             errors.fail()
         }
     }
+}
+
+/// Where everybody stands
+///
+/// In the actor block: the standings are the thing a player refreshes between
+/// rounds, and a guest's phone is exactly the device doing it. Whose rows come
+/// back is the same decision the roster goes through, so a guest who appears as
+/// "Gast 7" on one screen is "Gast 7" on the other.
+#[get("/{tournament}/standings")]
+pub async fn get_tournament_standings(
+    actor: TournamentActor,
+    Path(tournament_uuid): Path<TournamentUuid>,
+) -> ApiResult<ApiJson<StandingsResponse>> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    let Some(with_viewer) = Tournament::get_for_viewer(&mut tx, &actor, tournament_uuid).await?
+    else {
+        return Err(denied());
+    };
+
+    let roster = participant::list(&mut tx, tournament_uuid).await?;
+    let view = public::roster_view(
+        &with_viewer.tournament,
+        with_viewer.role.is_some(),
+        with_viewer.participant.is_some(),
+    );
+    // The names the viewer may see, pseudonymised by the one decision that owns
+    // it. Rows the view drops are dropped here too, but every row was *computed*
+    // over the whole field — an opponent percentage built from a redacted roster
+    // would simply be wrong.
+    let visible: HashMap<_, _> = public::apply_roster_view(view, with_viewer.participant, roster)
+        .into_iter()
+        .map(|participant| (participant.uuid, participant.display_name))
+        .collect();
+
+    let rows = standings::table(&mut tx, &with_viewer.tournament).await?;
+    let round = round::current(&mut tx, tournament_uuid).await?;
+    let outstanding = match &round {
+        Some(round) => round::outstanding_tables(&mut tx, round.uuid).await?.len() as i64,
+        None => 0,
+    };
+
+    tx.commit().await?;
+
+    Ok(ApiJson(StandingsResponse {
+        standings: rows
+            .into_iter()
+            .filter_map(|row| {
+                let display_name = visible.get(&row.participant)?.clone();
+                Some(StandingResponse {
+                    participant: row.participant,
+                    display_name,
+                    place: row.standing.place as i64,
+                    order: row.standing.order as i64,
+                    dropped: row.dropped,
+                    match_points: row.standing.match_points,
+                    wins: row.standing.wins,
+                    losses: row.standing.losses,
+                    draws: row.standing.draws,
+                    byes: row.standing.byes,
+                    match_win: row.standing.match_win,
+                    opponent_match_win: row.standing.opponent_match_win,
+                    game_win: row.standing.game_win,
+                    opponent_game_win: row.standing.opponent_game_win,
+                    opponents_average_points: row.standing.opponents_average_points,
+                })
+            })
+            .collect(),
+        tiebreakers: crate::tournament::standings::tiebreakers(
+            usize::try_from(with_viewer.tournament.pod_size).unwrap_or(2),
+        )
+        .into_iter()
+        .map(TiebreakerResponse::from)
+        .collect(),
+        outstanding_tables: outstanding,
+    }))
 }
 
 /// Look accounts up by username, to seat a player whose phone is dead

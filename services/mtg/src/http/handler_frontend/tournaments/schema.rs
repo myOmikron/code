@@ -46,6 +46,7 @@ use crate::models::tournament::participant::TournamentParticipant;
 use crate::models::tournament::round::Round;
 use crate::models::tournament::venue::Venue;
 use crate::models::visibility::Visibility;
+use crate::tournament::standings::Tiebreaker;
 use crate::tournament::timer;
 use crate::tournament::timer::TimerState;
 
@@ -739,6 +740,90 @@ pub struct SetResultErrors {
     pub not_editable: bool,
     /// Neither a winner nor a draw, or a winner who is not at the table
     pub invalid_outcome: bool,
+}
+
+/// One tiebreaker, so a client can name the column it is looking at
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, JsonSchema)]
+pub enum TiebreakerResponse {
+    /// Accumulated match points
+    MatchPoints,
+    /// Share of the match points this player could have taken
+    MatchWinPercent,
+    /// Mean of the opponents' match-win percentages
+    OpponentMatchWinPercent,
+    /// Share of the game points this player could have taken
+    GameWinPercent,
+    /// Mean of the opponents' game-win percentages
+    OpponentGameWinPercent,
+    /// Mean of the opponents' raw match points
+    OpponentsAveragePoints,
+}
+
+impl From<Tiebreaker> for TiebreakerResponse {
+    fn from(value: Tiebreaker) -> Self {
+        match value {
+            Tiebreaker::MatchPoints => Self::MatchPoints,
+            Tiebreaker::MatchWinPercent => Self::MatchWinPercent,
+            Tiebreaker::OpponentMatchWinPercent => Self::OpponentMatchWinPercent,
+            Tiebreaker::GameWinPercent => Self::GameWinPercent,
+            Tiebreaker::OpponentGameWinPercent => Self::OpponentGameWinPercent,
+            Tiebreaker::OpponentsAveragePoints => Self::OpponentsAveragePoints,
+        }
+    }
+}
+
+/// One row of the standings
+///
+/// Every percentage is in basis points — 10 000 is 100 % — which is also the
+/// precision it is meant to be shown at. Two rows whose numbers render the same
+/// really are equal, so a reader checking the table by hand never finds a tie
+/// broken by a digit that was not on screen.
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct StandingResponse {
+    /// Whose row this is
+    pub participant: TournamentParticipantUuid,
+    /// The name they appear under
+    pub display_name: MaxStr<64>,
+    /// The place printed beside them, shared with anybody they tie
+    pub place: i64,
+    /// Their position in the total order, which is what pairing slices
+    pub order: i64,
+    /// Whether they have since left the event
+    pub dropped: bool,
+    /// Accumulated match points
+    pub match_points: i32,
+    /// Matches won
+    pub wins: i32,
+    /// Matches lost
+    pub losses: i32,
+    /// Matches drawn
+    pub draws: i32,
+    /// Byes received
+    pub byes: i32,
+    /// Share of the match points they could have taken
+    pub match_win: i64,
+    /// Mean of their opponents' match-win percentages
+    pub opponent_match_win: i64,
+    /// Share of the game points they could have taken
+    pub game_win: i64,
+    /// Mean of their opponents' game-win percentages
+    pub opponent_game_win: i64,
+    /// Mean of their opponents' raw match points, in the same fixed point
+    pub opponents_average_points: i64,
+}
+
+/// The standings of a tournament
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct StandingsResponse {
+    /// The rows, best first
+    pub standings: Vec<StandingResponse>,
+    /// Which tiebreakers this event applies, most significant first
+    pub tiebreakers: Vec<TiebreakerResponse>,
+    /// How many tables of the current round have no settled result
+    ///
+    /// The reason the page can say "three tables still out" rather than letting
+    /// ranks shuffle under a reader who does not know why.
+    pub outstanding_tables: i64,
 }
 
 /// What starting (or otherwise moving) a tournament did beyond the status

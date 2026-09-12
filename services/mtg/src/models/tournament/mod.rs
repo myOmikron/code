@@ -68,6 +68,7 @@ pub mod participant;
 pub mod public;
 pub mod reporting;
 pub mod round;
+pub mod standings;
 pub mod venue;
 
 /// How long a freshly minted join code stays live when the tournament names
