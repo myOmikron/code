@@ -34,7 +34,7 @@ import { useTranslation } from "react-i18next";
 import { LifeTile } from "src/components/life-tile";
 import type { LifeTrackerSettings, Table } from "src/utils/life-tracker";
 import { hapticConfirm } from "src/utils/haptics";
-import { useFullscreen } from "src/utils/use-fullscreen";
+import { useImmersive } from "src/utils/use-immersive";
 import { useOrientationLock } from "src/utils/use-orientation-lock";
 import { useTableOrientation } from "src/utils/use-table-orientation";
 import { useWakeLock } from "src/utils/use-wake-lock";
@@ -91,7 +91,10 @@ function RouteComponent() {
     // reloads itself, and a tablet drops a backgrounded tab whenever it wants
     // the memory. Neither asks, and no table can reconstruct four totals.
     useEffect(() => saveLifeTrackerGame(table), [table]);
-    const fullscreen = useFullscreen(true);
+    // The whole window for the game: real fullscreen where the browser grants
+    // it, and the menu's chrome dropped where it does not (an iphone, or the
+    // app installed on ios), which is as far as any page gets there.
+    const immersive = useImmersive(true);
     // Both unconditional: a counter lying on the table is watched rather than
     // touched, and it has no up. A setting for either was only ever a way to
     // switch off the thing that makes the page usable at all.
@@ -261,7 +264,7 @@ function RouteComponent() {
      */
     function start() {
         setConfiguring(false);
-        fullscreen.enter();
+        immersive.enter();
     }
 
     /**
@@ -288,7 +291,13 @@ function RouteComponent() {
         <div
             className={clsx(
                 "flex min-h-0 flex-col gap-2 overflow-hidden",
-                fullscreen.active ? "h-svh p-2" : "h-[calc(100svh-8.5rem)] sm:h-[calc(100svh-9.5rem)]",
+                // With the window, the page runs to the edges of a screen that
+                // has a notch and a home indicator: `viewport-fit=cover` lets
+                // it, so the padding grows into whatever the system reserves
+                // on each side and stays the same thin frame everywhere else.
+                immersive.active
+                    ? "h-svh pt-[max(0.5rem,env(safe-area-inset-top))] pr-[max(0.5rem,env(safe-area-inset-right))] pb-[max(0.5rem,env(safe-area-inset-bottom))] pl-[max(0.5rem,env(safe-area-inset-left))]"
+                    : "h-[calc(100svh-8.5rem)] sm:h-[calc(100svh-9.5rem)]",
             )}
         >
             <header className={"flex shrink-0 items-center justify-between gap-2"}>
@@ -299,15 +308,13 @@ function RouteComponent() {
                     <Heading className={"truncate"}>{t("heading.life-counter")}</Heading>
                 </div>
                 <div className={"flex shrink-0 items-center gap-2"}>
-                    {fullscreen.supported && (
-                        <Button
-                            outline={true}
-                            onClick={fullscreen.toggle}
-                            aria-label={fullscreen.active ? t("button.exit-fullscreen") : t("button.fullscreen")}
-                        >
-                            {fullscreen.active ? <ArrowsPointingInIcon /> : <ArrowsPointingOutIcon />}
-                        </Button>
-                    )}
+                    <Button
+                        outline={true}
+                        onClick={immersive.toggle}
+                        aria-label={immersive.active ? t("button.exit-fullscreen") : t("button.fullscreen")}
+                    >
+                        {immersive.active ? <ArrowsPointingInIcon /> : <ArrowsPointingOutIcon />}
+                    </Button>
                     <Button outline={true} onClick={() => setConfiguring(true)} aria-label={t("button.settings")}>
                         <AdjustmentsHorizontalIcon />
                         <span className={"max-sm:hidden"}>{t("button.settings")}</span>
