@@ -1,5 +1,5 @@
 import { ArrowPathIcon, CheckCircleIcon, ChevronDownIcon, ExclamationTriangleIcon } from "@heroicons/react/20/solid";
-import { LinkIcon, MapIcon, TrophyIcon } from "@heroicons/react/20/solid";
+import { LinkIcon, MapIcon, QuestionMarkCircleIcon, TrophyIcon } from "@heroicons/react/20/solid";
 import clsx from "clsx";
 import {
     Dropdown,
@@ -29,6 +29,21 @@ const RULE_ICONS: Record<BracketRuleCheck["kind"], ComponentType<SVGProps<SVGSVG
     "extra-turns": ArrowPathIcon,
     // A chain link: pieces that only do something together.
     combos: LinkIcon,
+};
+
+/**
+ * What each verdict paints, so the button's marks and the menu's rows can
+ * never drift apart.
+ *
+ * Amber covers both "over the line" and "your call", because amber is the
+ * colour of something to look at and both are — the icon is what tells them
+ * apart, and the row's own words say which. Green is reserved for the one
+ * answer a reader can act on without reading further.
+ */
+const VERDICT_COLOR: Record<BracketRuleCheck["verdict"], string> = {
+    kept: "text-emerald-600! dark:text-emerald-400!",
+    broken: "text-amber-600! dark:text-amber-400!",
+    unjudged: "text-amber-600! dark:text-amber-400!",
 };
 
 /**
@@ -87,6 +102,12 @@ export function DeckBracketMenu({ brackets, bracket, counts, onChange, onFocus, 
     // `plays` is null only for a format with no brackets at all, which never
     // reaches here — the ladder is known, so its top rung always fits.
     const fits = plays === null || claimed === undefined || plays <= claimed.number;
+    // A claim can hold and still leave something open: Upgraded seats a two
+    // card infinite only when it does not go off early, and nothing here
+    // reads that. `fits` stays true — no rule is broken — so the open
+    // question is carried separately rather than folded into it, and the
+    // headline below says which of the two a reader is looking at.
+    const open = claimed !== undefined && checks.some((check) => check.verdict === "unjudged");
     const marks = checks.filter((check) => check.have > 0);
 
     return (
@@ -105,7 +126,7 @@ export function DeckBracketMenu({ brackets, bracket, counts, onChange, onFocus, 
                     // specificity as anything passed in here and wins on
                     // stylesheet order — the button would keep its amber
                     // ground and lose its amber lettering.
-                    fits
+                    fits && !open
                         ? "text-zinc-700! ring-zinc-950/10 dark:text-zinc-300! dark:ring-white/15"
                         : "bg-amber-500/10 text-amber-700! ring-amber-600/20 dark:text-amber-300! dark:ring-amber-400/25",
                     className,
@@ -122,18 +143,12 @@ export function DeckBracketMenu({ brackets, bracket, counts, onChange, onFocus, 
                 {marks.length > 0 && (
                     <span className={"flex items-center gap-1 border-l border-current/25 pl-1.5"}>
                         {marks.map((check) => {
-                            const Icon = RULE_ICONS[check.kind];
-                            return (
-                                <Icon
-                                    key={check.kind}
-                                    className={clsx(
-                                        "size-3.5",
-                                        check.kept
-                                            ? "text-emerald-600! dark:text-emerald-400!"
-                                            : "text-amber-600! dark:text-amber-400!",
-                                    )}
-                                />
-                            );
+                            // A rule left open trades its own mark for a
+                            // question mark: at this size the colour alone
+                            // cannot tell "over the line" from "your call",
+                            // and the shape can.
+                            const Icon = check.verdict === "unjudged" ? QuestionMarkCircleIcon : RULE_ICONS[check.kind];
+                            return <Icon key={check.kind} className={clsx("size-3.5", VERDICT_COLOR[check.verdict])} />;
                         })}
                     </span>
                 )}
@@ -144,23 +159,32 @@ export function DeckBracketMenu({ brackets, bracket, counts, onChange, onFocus, 
                 <DropdownSection>
                     <DropdownHeading>{t("label.bracket")}</DropdownHeading>
                     <DropdownItem>
-                        {fits ? (
-                            <CheckCircleIcon className={"text-emerald-600! dark:text-emerald-400!"} />
-                        ) : (
+                        {!fits ? (
                             <ExclamationTriangleIcon className={"text-amber-600! dark:text-amber-400!"} />
+                        ) : open ? (
+                            <QuestionMarkCircleIcon className={"text-amber-600! dark:text-amber-400!"} />
+                        ) : (
+                            <CheckCircleIcon className={"text-emerald-600! dark:text-emerald-400!"} />
                         )}
                         <DropdownLabel>
                             {plays === null ? t("label.bracket-none") : t("label.plays-as-bracket", { number: plays })}
                         </DropdownLabel>
+                        {/* The claim reads three ways, not two. "Inside the
+                            bracket" is a verdict, and it is the one thing this
+                            must not say while a rule of that bracket has gone
+                            unread — a deck playing a two card infinite at
+                            Upgraded used to collect exactly that tick. */}
                         <DropdownDescription>
                             {claimed === undefined
                                 ? t("description.bracket-unclaimed", {
                                       number: against?.number ?? "",
                                       name: against === undefined ? "" : labels.bracket(against.slug),
                                   })
-                                : fits
-                                  ? t("description.bracket-fits", { number: claimed.number })
-                                  : t("description.bracket-broken", { number: claimed.number })}
+                                : !fits
+                                  ? t("description.bracket-broken", { number: claimed.number })
+                                  : open
+                                    ? t("description.bracket-unjudged", { number: claimed.number })
+                                    : t("description.bracket-fits", { number: claimed.number })}
                         </DropdownDescription>
                     </DropdownItem>
                     {/* Said out loud rather than left implied: while the graph
@@ -194,26 +218,30 @@ export function DeckBracketMenu({ brackets, bracket, counts, onChange, onFocus, 
                                     onFocus({ label: t(`label.rule-${kind}`), names: check.names, uuids: [] })
                                 }
                             >
-                                {/* Three states, not two. A rule the deck
-                                    plays into and keeps is affirmed with a
-                                    green tick; one it is over the line on
-                                    keeps its own mark, in amber. A rule the
-                                    deck holds nothing for is neither — there
-                                    is nothing to affirm about a card that is
-                                    not in the deck — so it keeps its mark and
+                                {/* Four states, not two. A rule the deck plays
+                                    into and keeps is affirmed with a green
+                                    tick; one it is over the line on keeps its
+                                    own mark, in amber; one the bracket leaves
+                                    to the builder asks, in the same amber with
+                                    a question mark. A rule the deck holds
+                                    nothing for is none of those — there is
+                                    nothing to affirm about a card that is not
+                                    in the deck — so it keeps its mark and
                                     stays quiet. The colours are forced: the
                                     item paints its own icons zinc-500 through
                                     a parent selector no plain class beats. */}
                                 {check.have === 0 ? (
                                     <Icon />
-                                ) : check.kept ? (
-                                    <CheckCircleIcon className={"text-emerald-600! dark:text-emerald-400!"} />
+                                ) : check.verdict === "kept" ? (
+                                    <CheckCircleIcon className={VERDICT_COLOR.kept} />
+                                ) : check.verdict === "unjudged" ? (
+                                    <QuestionMarkCircleIcon className={VERDICT_COLOR.unjudged} />
                                 ) : (
-                                    <Icon className={"text-amber-600! dark:text-amber-400!"} />
+                                    <Icon className={VERDICT_COLOR.broken} />
                                 )}
                                 <DropdownLabel
                                     className={clsx(
-                                        !check.kept && "text-amber-700 dark:text-amber-300",
+                                        check.verdict !== "kept" && "text-amber-700 dark:text-amber-300",
                                         "flex items-center gap-1.5",
                                     )}
                                 >
@@ -222,7 +250,7 @@ export function DeckBracketMenu({ brackets, bracket, counts, onChange, onFocus, 
                                         <span
                                             className={clsx(
                                                 "rounded-sm px-1 text-[10px]/4 font-semibold tracking-wide uppercase",
-                                                check.kept
+                                                check.verdict === "kept"
                                                     ? "bg-zinc-950/[0.06] text-zinc-500 dark:bg-white/10 dark:text-zinc-400"
                                                     : "bg-amber-500/15 text-amber-700 dark:text-amber-300",
                                             )}
@@ -294,9 +322,18 @@ function ruleLabel(
             ? t("description.rule-combos-two-card", { count: check.breaking })
             : t("description.rule-combos-longer", { count: check.have });
     }
+    // Upgraded. The pairs are named as what the rule is about *and* as what
+    // it does not settle, in one line, because either half alone misleads:
+    // "2 of two cards" reads as a fault, and "not checked" reads as a gap in
+    // the app rather than a call the bracket hands over on purpose.
+    if (check.kind === "combos" && check.step === "conditional") {
+        return check.unjudged > 0
+            ? t("description.rule-combos-early", { count: check.unjudged })
+            : t("description.rule-combos-longer", { count: check.have });
+    }
 
     if (check.allowed === 0) {
-        return check.kept
+        return check.verdict === "kept"
             ? t("description.rule-none")
             : t("description.rule-none-broken", { count: check.have, cards: check.cards.join(", ") });
     }

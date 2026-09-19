@@ -29,7 +29,7 @@ const BRACKETS: Array<BracketRulesResponse> = [
         max_game_changers: 3,
         mass_land_denial: false,
         extra_turns: "no-chaining",
-        combos: "any",
+        combos: "no-early-two-card",
     },
     { number: 4, slug: "optimized", max_game_changers: null, mass_land_denial: true, extra_turns: "any", combos: "any" },
     { number: 5, slug: "cedh", max_game_changers: null, mass_land_denial: true, extra_turns: "any", combos: "any" },
@@ -84,6 +84,21 @@ const CASES: Array<Case> = [
                 ["Kinnan, Bonder Prodigy", "Basalt Monolith"],
                 ["Thassa's Oracle", "Demonic Consultation"],
             ],
+        },
+    },
+    {
+        // The case this state was built for: Upgraded bars the two-card
+        // infinites that go off early, and eight mana between the pieces says
+        // nothing about how early this one lands in a deck full of dorks. It
+        // read as inside the bracket before, tick and all.
+        name: "The Notary Hobbits — a two-card infinite, claimed at bracket 3",
+        bracket: 3,
+        counts: {
+            gameChangers: ["Gaea's Cradle"],
+            massLandDenial: [],
+            extraTurns: [],
+            chainsExtraTurns: false,
+            combos: [["The Notary Hobbits", "Umbral Mantle"]],
         },
     },
     {

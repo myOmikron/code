@@ -242,8 +242,16 @@ export type DeckViolation =
     | { kind: "mass-land-denial"; cards: Array<string> }
     /** Extra-turn spells the claimed bracket does not seat */
     | { kind: "extra-turns"; cards: Array<string>; chains: boolean }
-    /** Complete combos the claimed bracket does not seat */
-    | { kind: "combos"; combos: Array<Array<string>> }
+    /**
+     * Complete combos the claimed bracket does not seat, or cannot read.
+     *
+     * `judged` is false for Upgraded's rule, which bars two card combos only
+     * when they go off early — the deck holds the pair, and whether that is
+     * a fault is the builder's call. The remark is raised either way, because
+     * a question the reader has to answer is exactly as worth surfacing as a
+     * limit they have gone over; only the wording differs.
+     */
+    | { kind: "combos"; combos: Array<Array<string>>; judged: boolean }
     /** Two commanders the format does not let sit together */
     | { kind: "banned-pairing"; cards: Array<string> }
     /** Too few or too many cards */
@@ -626,8 +634,17 @@ export const BRACKET_RULE_KINDS = ["game-changers", "mass-land-denial", "extra-t
 export type BracketRuleCheck = {
     /** Which rule this is */
     kind: (typeof BRACKET_RULE_KINDS)[number];
-    /** Whether the deck keeps to it */
-    kept: boolean;
+    /**
+     * Where the deck stands on it.
+     *
+     * Three values rather than a boolean, because one of the four rules has a
+     * third answer. `"unjudged"` is Upgraded's combo rule against a deck that
+     * plays a two card infinite: the bracket bars the ones that go off early,
+     * and nothing the deck carries says how early this one lands. Reading
+     * that as `"kept"` — which a boolean forces — is the one answer that is
+     * certainly wrong, since the rule was written to catch this shape.
+     */
+    verdict: "kept" | "broken" | "unjudged";
     /** How many of the things the rule counts are in the deck */
     have: number;
     /** How many it may play, `null` when the bracket sets no limit */
@@ -642,17 +659,26 @@ export type BracketRuleCheck = {
      */
     names: Array<string>;
     /**
-     * Which of the three steps the bracket set for this rule.
+     * Which step the bracket set for this rule.
      *
      * `"none"` plays none of the thing at all, `"limited"` tolerates it up to
-     * a point the other fields spell out, `"any"` sets no limit. Only the step
-     * tells "one extra turn, which Core seats" apart from "no extra turns,
-     * which is why it is seated" — both are kept, and they do not read the
-     * same.
+     * a point the other fields spell out, `"any"` sets no limit, and
+     * `"conditional"` bars some of it by a condition no column holds. Only
+     * the step tells "one extra turn, which Core seats" apart from "no extra
+     * turns, which is why it is seated" — both are kept, and they do not read
+     * the same.
      */
-    step: "none" | "limited" | "any";
-    /** How many of `have` the rule actually forbids — `0` whenever it is kept */
+    step: "none" | "limited" | "any" | "conditional";
+    /** How many of `have` the rule actually forbids — `0` unless it is broken */
     breaking: number;
+    /**
+     * How many of `have` the rule neither seats nor forbids.
+     *
+     * Nonzero only on a `"conditional"` step, and it is what the reader is
+     * being asked about — never added to `breaking`, which counts what the
+     * rules text settles on its own.
+     */
+    unjudged: number;
 };
 
 /**
@@ -692,7 +718,7 @@ const EXTRA_TURN_LADDER: Readonly<Record<number, ExtraTurnRule>> = {
 const COMBO_LADDER: Readonly<Record<number, ComboRule>> = {
     1: "none",
     2: "no-two-card",
-    3: "any",
+    3: "no-early-two-card",
     4: "any",
     5: "any",
 };
@@ -721,7 +747,9 @@ function extraTurnRule(rules: BracketRulesResponse): ExtraTurnRule {
  */
 function comboRule(rules: BracketRulesResponse): ComboRule {
     const served: unknown = rules.combos;
-    if (served === "none" || served === "no-two-card" || served === "any") return served;
+    if (served === "none" || served === "no-two-card" || served === "no-early-two-card" || served === "any") {
+        return served;
+    }
     return COMBO_LADDER[rules.number] ?? "any";
 }
 
@@ -755,6 +783,7 @@ export function checkBracket(counts: BracketCounts, rules: BracketRulesResponse)
      * @param breaking how many of `cards` the rule forbids
      * @param allowed how many are tolerated, `null` for no limit
      * @param names the card names a click filters to, when not `cards` itself
+     * @param unjudged how many of `cards` the rule can neither seat nor forbid
      *
      * @returns the check
      */
@@ -765,15 +794,19 @@ export function checkBracket(counts: BracketCounts, rules: BracketRulesResponse)
         breaking: number,
         allowed: number | null,
         names: Array<string> = cards,
+        unjudged = 0,
     ): BracketRuleCheck => ({
         kind,
-        kept: breaking === 0,
+        // Broken wins over unjudged: a rule the deck is already over the line
+        // on has been answered, whatever else it leaves open.
+        verdict: breaking > 0 ? "broken" : unjudged > 0 ? "unjudged" : "kept",
         have: cards.length,
         allowed,
         cards,
         names,
         step,
         breaking,
+        unjudged,
     });
 
     const maxGameChangers = rules.max_game_changers ?? null;
@@ -819,38 +852,60 @@ export function checkBracket(counts: BracketCounts, rules: BracketRulesResponse)
         // combos, not cards, and which pieces belong together is the answer.
         // The filterable names are the pieces themselves, deduped — a card
         // can sit in two combos and the deck view holds it once.
+        //
+        // Upgraded is the one step that neither seats the pairs nor forbids
+        // them: it bars the two card lines that go off early, and how early
+        // one lands is a fact about the deck's ramp rather than about either
+        // piece. So they are counted as `unjudged`, `breaking` stays zero,
+        // and no limit is claimed — the row asks, and the builder answers.
         ...(counts.combos === null
             ? []
             : [
                   read(
                       "combos",
                       counts.combos.map((combo) => combo.join(" + ")),
-                      combos === "any" ? "any" : combos === "none" ? "none" : "limited",
-                      combos === "any" ? 0 : combos === "none" ? counts.combos.length : twoCard.length,
-                      combos === "any" ? null : 0,
+                      combos === "any"
+                          ? "any"
+                          : combos === "none"
+                            ? "none"
+                            : combos === "no-early-two-card"
+                              ? "conditional"
+                              : "limited",
+                      combos === "any" || combos === "no-early-two-card"
+                          ? 0
+                          : combos === "none"
+                            ? counts.combos.length
+                            : twoCard.length,
+                      combos === "any" || combos === "no-early-two-card" ? null : 0,
                       [...new Set(counts.combos.flat())],
+                      combos === "no-early-two-card" ? twoCard.length : 0,
                   ),
               ]),
     ];
 }
 
 /**
- * The remarks a claimed bracket's broken rules make.
+ * The remarks a claimed bracket's unkept rules make.
  *
  * The legality band counts remarks and the bracket menu reads out rules; both
  * come from {@link checkBracket}, so the two can never disagree about what the
  * deck plays.
  *
+ * A rule the bracket cannot settle raises a remark too. It is not a fault and
+ * does not read as one, but it is the reason a deck claiming Upgraded with a
+ * two card infinite in it stopped coming back clean: the band's tick means
+ * "read, and nothing to say", and there was something to say.
+ *
  * @param counts what {@link checkDeck} counted
  * @param bracket what the claimed bracket asks, `undefined` when none is claimed
  *
- * @returns one remark per broken rule
+ * @returns one remark per rule that is not kept
  */
 function bracketViolations(counts: BracketCounts, bracket: BracketRulesResponse | undefined): Array<DeckViolation> {
     if (bracket === undefined) return [];
 
     return checkBracket(counts, bracket).flatMap<DeckViolation>((check) => {
-        if (check.kept) return [];
+        if (check.verdict === "kept") return [];
         switch (check.kind) {
             case "game-changers":
                 return [{ kind: "game-changers", have: check.have, allowed: check.allowed ?? 0 }];
@@ -858,8 +913,20 @@ function bracketViolations(counts: BracketCounts, bracket: BracketRulesResponse 
                 return [{ kind: "mass-land-denial", cards: check.cards }];
             case "extra-turns":
                 return [{ kind: "extra-turns", cards: check.cards, chains: counts.chainsExtraTurns }];
+            // The unjudged remark names only the pairs, not every complete
+            // line: a three card combo is seated outright at this rung, and
+            // listing it under a question about two card infinites would be
+            // asking the reader about something the bracket already answered.
             case "combos":
-                return [{ kind: "combos", combos: counts.combos ?? [] }];
+                return [
+                    check.verdict === "unjudged"
+                        ? {
+                              kind: "combos",
+                              combos: (counts.combos ?? []).filter((combo) => combo.length === 2),
+                              judged: false,
+                          }
+                        : { kind: "combos", combos: counts.combos ?? [], judged: true },
+                ];
         }
     });
 }
@@ -879,7 +946,13 @@ function bracketViolations(counts: BracketCounts, bracket: BracketRulesResponse 
  */
 export function playedBracket(counts: BracketCounts, brackets: Array<BracketRulesResponse>): number | null {
     const climbing = [...brackets].sort((left, right) => left.number - right.number);
-    const fits = climbing.find((rules) => checkBracket(counts, rules).every((check) => check.kept));
+    // An unjudged rule stops the deck here rather than pushing it up a rung.
+    // Both readings overclaim, and this is the smaller one: "plays as bracket
+    // 3, with a question open" is what is actually known, where climbing to 4
+    // would say the pair was read and found too fast — which is precisely the
+    // judgement nothing here made. It under-warns, the direction
+    // `chainsExtraTurns` already errs in, and the menu says so out loud.
+    const fits = climbing.find((rules) => checkBracket(counts, rules).every((check) => check.verdict !== "broken"));
     return fits?.number ?? null;
 }
 
