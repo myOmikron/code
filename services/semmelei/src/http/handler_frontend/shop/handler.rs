@@ -236,6 +236,7 @@ pub async fn create_order(
             email: email.clone(),
             pickup_day: pickup_day.uuid,
             note: request.note,
+            early_pickup: request.early_pickup,
             language: request.language,
         },
         request
@@ -298,6 +299,7 @@ pub async fn create_order(
         locked: false,
         customer_name,
         note,
+        early_pickup: request.early_pickup,
         positions,
         total_cents,
     };
@@ -349,6 +351,7 @@ pub async fn get_order(Path(pickup_code): Path<String>) -> ApiResult<ApiJson<Pub
         locked: pickup_day.is_locked(schedule::now()),
         customer_name: order.customer_name.to_string(),
         note: order.note.map(|n| n.to_string()),
+        early_pickup: order.early_pickup,
         positions,
         total_cents,
     }))
@@ -412,6 +415,7 @@ pub async fn cancel_order(Path(pickup_code): Path<String>) -> ApiResult<ApiJson<
         locked: false,
         customer_name: order.customer_name.to_string(),
         note: order.note.map(|n| n.to_string()),
+        early_pickup: order.early_pickup,
         positions,
         total_cents,
     }))

@@ -18,6 +18,7 @@ import {
 } from "components";
 import { Api, IsoDate } from "src/api/api";
 import { FullOrder, OrderStatus } from "src/api/generated";
+import { EarlyPickupBadge } from "src/components/early-pickup-badge";
 import { OrderStatusBadge, STATUS_LABELS } from "src/components/order-status-badge";
 import { formatDate } from "src/utils/dates";
 import { formatPrice } from "src/utils/price";
@@ -80,9 +81,13 @@ function OrderList() {
     }
     groups.reverse();
 
-    // At the counter the customer says their name, so each day is listed alphabetically
+    // Early pickups first, since they are the ones that have to be ready before the
+    // shop fills up. Within that the customer says their name, so alphabetically.
     for (const group of groups) {
-        group.orders.sort((a, b) => a.customer_name.localeCompare(b.customer_name, "de"));
+        group.orders.sort(
+            (a, b) =>
+                Number(b.early_pickup) - Number(a.early_pickup) || a.customer_name.localeCompare(b.customer_name, "de"),
+        );
     }
 
     return (
@@ -172,6 +177,7 @@ function OrderList() {
                                         </div>
                                     </div>
                                     <div className={"flex shrink-0 items-center gap-2"}>
+                                        {order.early_pickup && <EarlyPickupBadge />}
                                         <OrderStatusBadge status={order.status} />
                                         <ChevronRightIcon className={"size-5 text-zinc-400"} />
                                     </div>

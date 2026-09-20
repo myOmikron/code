@@ -1,0 +1,245 @@
+[Migration]
+Hash = "15127331641847560217"
+Initial = false
+Dependency = 5
+Replaces = []
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "shopsettings"
+Name = "pickup_weekday"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "shopsettings"
+Name = "pickup_weekday"
+MaxLength = 255
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "shopsettings"
+Name = "imprint_url"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "shopsettings"
+Name = "imprint_url"
+MaxLength = 512
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "shopsettings"
+Name = "privacy_url"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "shopsettings"
+Name = "privacy_url"
+MaxLength = 512
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "registrationtoken"
+Name = "token"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "registrationtoken"
+Name = "token"
+MaxLength = 64
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "item"
+Name = "name"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "item"
+Name = "name"
+MaxLength = 255
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "item"
+Name = "additional_info"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "item"
+Name = "additional_info"
+MaxLength = 2048
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "accountpasskey"
+Name = "label"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "accountpasskey"
+Name = "label"
+MaxLength = 255
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "accountpasskey"
+Name = "credential_id"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "accountpasskey"
+Name = "credential_id"
+MaxLength = 1024
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "account"
+Name = "username"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "account"
+Name = "username"
+MaxLength = 255
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "account"
+Name = "role"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "account"
+Name = "role"
+MaxLength = 255
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "orderitem"
+Name = "name"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "orderitem"
+Name = "name"
+MaxLength = 255
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "category"
+Name = "name"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "category"
+Name = "name"
+MaxLength = 255
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "galvynsession"
+Name = "id"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "galvynsession"
+Name = "id"
+MaxLength = 255
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "order"
+Name = "pickup_code"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "order"
+Name = "pickup_code"
+MaxLength = 16
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "order"
+Name = "customer_name"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "order"
+Name = "customer_name"
+MaxLength = 255
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "order"
+Name = "phone"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "order"
+Name = "phone"
+MaxLength = 64
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "order"
+Name = "email"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "order"
+Name = "email"
+MaxLength = 255
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "order"
+Name = "note"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "order"
+Name = "note"
+MaxLength = 1024
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "order"
+Name = "status"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "order"
+Name = "status"
+MaxLength = 255
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "order"
+Name = "language"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "order"
+Name = "language"
+MaxLength = 255

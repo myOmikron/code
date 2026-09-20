@@ -1,7 +1,10 @@
 # Dev stack for semmelei: just dev semmelei up -d --build
-# Single entrypoint is traefik on http://localhost — it routes /api and
-# /docs to the webserver, /swagger-ui to the OpenAPI explorer and
-# everything else to the vite dev server.
+# Single entrypoint is traefik — it routes /api and /docs to the webserver,
+# /swagger-ui to the OpenAPI explorer and everything else to the vite dev
+# server. Reachable two ways:
+#   http://localhost      — as before
+#   https://${DOMAIN}     — over the tailnet, for testing on a real phone
+# The tailnet side needs TS_AUTHKEY in dev/common/env.secret (see the example).
 # Shared infra (NATS, the mail gateway and its mailbox on http://localhost:8025)
 # lives in dev/infra.yml and must be started separately.
 name: semmelei
@@ -9,9 +12,21 @@ name: semmelei
 services:
   traefik:
     image: traefik:3
-    ports:
-      - "80:80"
+    # Shares the tailscale container's network namespace, so it answers on the
+    # tailnet address and can reach the internal CA. Ports are published by
+    # that container — a namespace has one owner.
+    network_mode: service:tailscale
+    depends_on:
+      tailscale:
+        condition: service_healthy
+    env_file: [ common/env.common ]
+    # lego (traefik's ACME client) does not use the system trust store, so the
+    # internal root has to be handed to it explicitly.
+    environment:
+      - LEGO_CA_CERTIFICATES=/root_ca.crt
     volumes:
+      - vol-acme:/acme
+      - ./common/root_ca.crt:/root_ca.crt:ro
       - ./semmelei/traefik/traefik.yml:/etc/traefik/traefik.yml:ro
       - ./semmelei/traefik/dynamic.yml:/etc/traefik/dynamic.yml:ro
 
@@ -41,6 +56,37 @@ services:
       - BASE_URL=/swagger-ui
       - 'URLS=[{ url: "/docs/frontend.json", name: "Frontend" }, { url: "/docs/openapi.json", name: "All routes" }]'
 
+  # Joins the tailnet and owns the network namespace traefik runs in.
+  tailscale:
+    # renovate: datasource=docker depName=tailscale/tailscale
+    image: tailscale/tailscale:v1.102.2
+    cap_add:
+      - NET_ADMIN
+    environment:
+      # Kernel networking rather than userspace: traefik shares this namespace
+      # and has to see the tailnet as an ordinary interface.
+      - TS_USERSPACE=false
+    volumes:
+      - /dev/net/tun:/dev/net/tun
+      - vol-tailscale:/var/lib/tailscale
+    ports:
+      - "80:80"
+      - "443:443"
+    healthcheck:
+      test: [ "CMD", "tailscale", "status", "--peers=false" ]
+      interval: 3s
+      timeout: 5s
+      retries: 20
+    env_file:
+      - common/env.common
+      - path: common/env.secret
+        required: false
+    # Tailnet DNS is off (see TS_ACCEPT_DNS), so the CA would be looked up
+    # publicly, where the name lands on an unrelated web host. Pinned to its
+    # tailnet address instead.
+    extra_hosts:
+      - "ca.int.omikron.dev:100.64.0.3"
+
   webserver:
     env_file: [ common/env.common ]
     environment:
@@ -53,9 +99,10 @@ services:
     build:
       context: ..
       dockerfile: services/semmelei/Dockerfile
-    # Exposed for host-side smoke tests without going through traefik
+    # Exposed for host-side smoke tests without going through traefik.
+    # Loopback only: the host sits on a tailnet.
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
 
   postgres:
     image: postgres:18
@@ -72,6 +119,8 @@ services:
 
 volumes:
   vol-db:
+  vol-tailscale:
+  vol-acme:
 
 networks:
   net-dev:

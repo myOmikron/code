@@ -29,6 +29,7 @@
         "status-ready": "Ready for pickup",
         "status-picked-up": "Picked up",
         "status-cancelled": "Cancelled",
+        "early-pickup": "Early pickup",
         "weekday-monday": "Monday",
         "weekday-tuesday": "Tuesday",
         "weekday-wednesday": "Wednesday",

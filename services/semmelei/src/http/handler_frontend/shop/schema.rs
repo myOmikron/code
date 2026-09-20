@@ -73,6 +73,9 @@ pub struct CreateOrderRequest {
     pub email: Option<MaxStr<255>>,
     /// Optional free-text note
     pub note: Option<MaxStr<1024>>,
+    /// Whether the customer wants to pick the order up early in the day
+    #[serde(default)]
+    pub early_pickup: bool,
     /// The positions to order
     pub items: Vec<OrderPositionRequest>,
     /// The language the shop was shown in — every mail about this order uses it
@@ -119,6 +122,8 @@ pub struct PublicOrder {
     pub customer_name: String,
     /// Optional note
     pub note: Option<String>,
+    /// Whether the customer wants to pick the order up early in the day
+    pub early_pickup: bool,
     /// The order's positions
     pub positions: Vec<PublicOrderPosition>,
     /// Total over all positions in euro cents

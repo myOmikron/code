@@ -18,6 +18,7 @@ import {
 } from "components";
 import { Api } from "src/api/api";
 import { FullOrder } from "src/api/generated";
+import { EarlyPickupBadge } from "src/components/early-pickup-badge";
 import { OrderStatusBadge } from "src/components/order-status-badge";
 import { PackingRow } from "src/components/packing-row";
 import { formatDate } from "src/utils/dates";
@@ -76,7 +77,10 @@ function OrderDetail() {
         <div className={"flex flex-col gap-6"}>
             <div className={"flex items-center justify-between"}>
                 <BackButton onClick={() => void navigate({ to: "/verkauf" })}>{t("heading.orders")}</BackButton>
-                <OrderStatusBadge status={order.status} />
+                <div className={"flex items-center gap-2"}>
+                    {order.early_pickup && <EarlyPickupBadge />}
+                    <OrderStatusBadge status={order.status} />
+                </div>
             </div>
 
             <div>

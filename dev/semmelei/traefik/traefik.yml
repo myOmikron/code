@@ -1,14 +1,37 @@
 # Static traefik configuration (read once at startup).
 # Routing itself lives in dynamic.yml (watched live).
 #
-# Dev only: plain HTTP on localhost — a secure context for WebAuthn,
-# no ACME/TLS needed.
+# Two ways in, both served by the same routers:
+#   http://localhost      — plain HTTP, a secure context, so passkeys work
+#   https://${DOMAIN}     — over the tailnet, for testing on a real phone
+#
+# No global HTTP->HTTPS redirect: it would take localhost with it, and the
+# HTTP-01 challenge needs the web entrypoint to stay answerable.
 
 entryPoints:
   web:
     address: ":80"
+  websecure:
+    address: ":443"
 
 providers:
   file:
     filename: /etc/traefik/dynamic.yml
     watch: true
+
+# Certificates from the internal step-ca, HTTP-01 over the web entrypoint.
+# The CA is only reachable inside the tailnet, which is why traefik shares the
+# tailscale container's network namespace.
+certificatesResolvers:
+  stepca:
+    acme:
+      caServer: "https://ca.int.omikron.dev/acme/acme/directory"
+      email: "git@omikron.dev"
+      # On a volume, not in the container: recreating traefik would otherwise
+      # throw the certificate away and re-run the challenge every time.
+      storage: /acme/acme.json
+      # step-ca issues short-lived certificates; without this traefik assumes
+      # the 90 day lifetime of a public CA and renews far too late.
+      certificatesDuration: 24
+      httpChallenge:
+        entryPoint: web

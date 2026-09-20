@@ -63,6 +63,7 @@ async fn full_order(
         phone: order.phone.map(|p| p.to_string()),
         email: order.email.map(|e| e.to_string()),
         note: order.note.map(|n| n.to_string()),
+        early_pickup: order.early_pickup,
         positions,
         total_cents,
         created_at: SchemaDateTime(order.created_at),

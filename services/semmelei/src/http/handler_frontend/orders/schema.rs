@@ -56,6 +56,8 @@ pub struct FullOrder {
     pub email: Option<String>,
     /// Optional note
     pub note: Option<String>,
+    /// Whether the customer wants to pick the order up early in the day
+    pub early_pickup: bool,
     /// The order's positions
     pub positions: Vec<FullOrderPosition>,
     /// Total over all positions in euro cents

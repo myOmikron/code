@@ -29,6 +29,7 @@
         "status-ready": "Abholbereit",
         "status-picked-up": "Abgeholt",
         "status-cancelled": "Storniert",
+        "early-pickup": "Frühabholer",
         "weekday-monday": "Montag",
         "weekday-tuesday": "Dienstag",
         "weekday-wednesday": "Mittwoch",

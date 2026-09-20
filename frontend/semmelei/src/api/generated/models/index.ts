@@ -209,6 +209,12 @@ export interface CreateOrderRequest {
      */
     customer_name: string;
     /**
+     * Whether the customer wants to pick the order up early in the day
+     * @type {boolean}
+     * @memberof CreateOrderRequest
+     */
+    early_pickup?: boolean;
+    /**
      * The customer's email address (this or `phone` must be set)
      * @type {string}
      * @memberof CreateOrderRequest
@@ -323,6 +329,12 @@ export interface FullOrder {
      * @memberof FullOrder
      */
     customer_name: string;
+    /**
+     * Whether the customer wants to pick the order up early in the day
+     * @type {boolean}
+     * @memberof FullOrder
+     */
+    early_pickup: boolean;
     /**
      * The customer's email address
      * @type {string}
@@ -922,6 +934,12 @@ export interface PublicOrder {
      * @memberof PublicOrder
      */
     deadline: string;
+    /**
+     * Whether the customer wants to pick the order up early in the day
+     * @type {boolean}
+     * @memberof PublicOrder
+     */
+    early_pickup: boolean;
     /**
      * Whether the order is frozen: no cancelling anymore
      * @type {boolean}

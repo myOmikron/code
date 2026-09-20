@@ -112,6 +112,9 @@ pub struct Order {
     /// Optional free-text note from the customer
     pub note: Option<MaxStr<1024>>,
 
+    /// Whether the customer wants to pick the order up early in the day
+    pub early_pickup: bool,
+
     /// Current status of the order
     pub status: OrderStatus,
 
@@ -154,6 +157,8 @@ pub struct OrderInsert {
     pub pickup_day: PickupDayUuid,
     /// Optional customer note
     pub note: Option<MaxStr<1024>>,
+    /// Whether the customer wants to pick the order up early in the day
+    pub early_pickup: bool,
     /// The language every mail about this order is written in
     pub language: OrderLanguage,
 }
@@ -267,6 +272,7 @@ impl Order {
                 email: insert.email,
                 pickup_day: ForeignModelByField(insert.pickup_day.into_inner()),
                 note: insert.note,
+                early_pickup: insert.early_pickup,
                 status: OrderStatus::Open,
                 language: insert.language,
             })
@@ -399,6 +405,7 @@ impl From<OrderModel> for Order {
             email: value.email,
             pickup_day: PickupDayUuid::new_from_field(value.pickup_day),
             note: value.note,
+            early_pickup: value.early_pickup,
             status: value.status,
             language: value.language,
             created_at: value.created_at,

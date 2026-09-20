@@ -44,6 +44,7 @@ const PHONE_RE = /^[+0-9][0-9 /()-]{4,}$/;
  */
 function Checkout() {
     const [t] = useTranslation("shop");
+    const [tg] = useTranslation();
     const navigate = useNavigate();
     const { cart, dispatch, totalCents } = React.useContext(CART_CONTEXT);
     const [pickup, setPickup] = React.useState<PickupWindowResponse>();
@@ -59,6 +60,7 @@ function Checkout() {
             phone: stored.phone,
             email: stored.email,
             note: "",
+            earlyPickup: false,
             remember: stored.remember,
         },
         validators: {
@@ -80,6 +82,7 @@ function Checkout() {
                 phone: value.phone.trim() || null,
                 email: value.email.trim() || null,
                 note: value.note.trim() || null,
+                early_pickup: value.earlyPickup,
                 items: cart.entries.map((e) => ({ item: e.itemId, quantity: e.quantity })),
                 language: orderLanguage(),
             });
@@ -203,6 +206,19 @@ function Checkout() {
                                         onChange={(e) => fieldApi.handleChange(e.target.value)}
                                     />
                                 </Field>
+                            )}
+                        </form.Field>
+
+                        <form.Field name={"earlyPickup"}>
+                            {(fieldApi) => (
+                                <SwitchField>
+                                    <Label>{tg("label.early-pickup")}</Label>
+                                    <Description>{t("description.early-pickup")}</Description>
+                                    <Switch
+                                        checked={fieldApi.state.value}
+                                        onChange={(checked) => fieldApi.handleChange(checked)}
+                                    />
+                                </SwitchField>
                             )}
                         </form.Field>
 

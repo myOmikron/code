@@ -1,0 +1,25 @@
+[Migration]
+Hash = "11898462295995928182"
+Initial = false
+Dependency = 6
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "order"
+
+[Migration.Operations.Field]
+Name = "early_pickup"
+Type = "boolean"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "default_value"
+Value = false
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/semmelei/src/models/order/db.rs"
+Line = 52
+Column = 9

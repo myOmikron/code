@@ -9,6 +9,7 @@ Name | Type
 ------------ | -------------
 `customer_name` | string
 `deadline` | string
+`early_pickup` | boolean
 `locked` | boolean
 `note` | string
 `pickup_code` | string

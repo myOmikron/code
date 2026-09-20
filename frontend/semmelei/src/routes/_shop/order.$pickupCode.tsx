@@ -24,6 +24,7 @@ import {
 } from "components";
 import { Api } from "src/api/api";
 import { PublicOrder } from "src/api/generated";
+import { EarlyPickupBadge } from "src/components/early-pickup-badge";
 import { OrderStatusBadge, STATUS_LABELS } from "src/components/order-status-badge";
 import { formatDate, formatDateTime } from "src/utils/dates";
 import { forgetOrder } from "src/utils/orders-storage";
@@ -100,7 +101,10 @@ function OrderStatus() {
         <div className={"mx-auto flex w-full max-w-xl flex-col gap-6"}>
             <div className={"flex items-center justify-between"}>
                 <Heading>{t("heading.order")}</Heading>
-                <OrderStatusBadge status={order.status} />
+                <div className={"flex items-center gap-2"}>
+                    {order.early_pickup && <EarlyPickupBadge />}
+                    <OrderStatusBadge status={order.status} />
+                </div>
             </div>
 
             <div className={"flex flex-col gap-2"}>

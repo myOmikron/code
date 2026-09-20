@@ -2749,6 +2749,11 @@
                             }
                         ]
                     },
+                    "early_pickup": {
+                        "description": "Whether the customer wants to pick the order up early in the day",
+                        "default": false,
+                        "type": "boolean"
+                    },
                     "email": {
                         "nullable": true,
                         "description": "The customer's email address (this or `phone` must be set)",
@@ -2881,6 +2886,10 @@
                         "description": "The customer's name",
                         "type": "string"
                     },
+                    "early_pickup": {
+                        "description": "Whether the customer wants to pick the order up early in the day",
+                        "type": "boolean"
+                    },
                     "email": {
                         "nullable": true,
                         "description": "The customer's email address",
@@ -2944,6 +2953,7 @@
                 "required": [
                     "created_at",
                     "customer_name",
+                    "early_pickup",
                     "locked",
                     "pickup_code",
                     "pickup_date",
@@ -3613,6 +3623,10 @@
                             }
                         ]
                     },
+                    "early_pickup": {
+                        "description": "Whether the customer wants to pick the order up early in the day",
+                        "type": "boolean"
+                    },
                     "locked": {
                         "description": "Whether the order is frozen: no cancelling anymore",
                         "type": "boolean"
@@ -3658,6 +3672,7 @@
                 "required": [
                     "customer_name",
                     "deadline",
+                    "early_pickup",
                     "locked",
                     "pickup_code",
                     "pickup_date",

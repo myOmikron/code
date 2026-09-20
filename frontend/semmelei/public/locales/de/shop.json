@@ -58,6 +58,7 @@
         "orders-closed": "Der Bestellschluss für den nächsten Abholtag ist vorbei. Sobald der übernächste Termin offen ist, kannst du wieder bestellen.",
         "confirm-cancel": "Die Bestellung wird storniert und nicht für dich vorbereitet. Rückgängig machen kannst du das nicht — du müsstest neu bestellen.",
         "remember-details": "Name und Kontaktdaten bleiben nur auf diesem Gerät gespeichert.",
+        "early-pickup": "Ich möchte meine Ware schon sehr früh abholen.",
         "install-ios-share": "Tippe unten in der Leiste auf „Teilen“.",
         "install-ios-add": "Wähle „Zum Home-Bildschirm“.",
         "install-app": "Direkt vom Homescreen bestellen — ohne Umweg über den Browser."

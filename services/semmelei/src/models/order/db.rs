@@ -47,6 +47,10 @@ pub struct OrderModel {
     /// Optional free-text note from the customer
     pub note: Option<MaxStr<1024>>,
 
+    /// Whether the customer wants to pick the order up early in the day
+    #[rorm(default = false)]
+    pub early_pickup: bool,
+
     /// Current status of the order
     pub status: OrderStatus,
 
@@ -82,6 +86,8 @@ pub struct OrderInsertPatch {
     pub pickup_day: ForeignModel<PickupDayModel>,
     /// Optional customer note
     pub note: Option<MaxStr<1024>>,
+    /// Whether the customer wants to pick the order up early in the day
+    pub early_pickup: bool,
     /// Current status
     pub status: OrderStatus,
     /// The language every mail about this order is written in

@@ -9,6 +9,7 @@ Name | Type
 ------------ | -------------
 `created_at` | string
 `customer_name` | string
+`early_pickup` | boolean
 `email` | string
 `locked` | boolean
 `note` | string

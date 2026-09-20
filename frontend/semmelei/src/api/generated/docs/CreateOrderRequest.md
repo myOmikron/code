@@ -8,6 +8,7 @@ Request to place a pre-order
 Name | Type
 ------------ | -------------
 `customer_name` | string
+`early_pickup` | boolean
 `email` | string
 `items` | [Array&lt;OrderPositionRequest&gt;](OrderPositionRequest.md)
 `language` | [OrderLanguage](OrderLanguage.md)
