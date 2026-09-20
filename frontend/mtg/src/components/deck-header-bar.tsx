@@ -451,8 +451,13 @@ function deckViolationLabel(
                 count: violation.cards.length,
                 cards: violation.cards.join(", "),
             });
+        // Two wordings for one remark: a bracket that seats no such combo has
+        // read the deck and found a fault, and Upgraded has not — it bars the
+        // two card lines that go off early, and how early this one lands is
+        // the builder's to say. Saying so is the difference between a remark
+        // that can be dismissed and one that cannot be answered at all.
         case "combos":
-            return t("label.violation-combos", {
+            return t(violation.judged ? "label.violation-combos" : "label.violation-combos-early", {
                 count: violation.combos.length,
                 cards: violation.combos.map((combo) => combo.join(" + ")).join(", "),
             });
