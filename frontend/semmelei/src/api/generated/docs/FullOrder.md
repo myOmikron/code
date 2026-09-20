@@ -8,9 +8,10 @@ An order as shown to staff (includes contact data)
 Name | Type
 ------------ | -------------
 `created_at` | string
-`customer_name` | string
 `early_pickup` | boolean
 `email` | string
+`first_name` | string
+`last_name` | string
 `locked` | boolean
 `note` | string
 `phone` | string

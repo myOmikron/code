@@ -22,7 +22,8 @@
         "pickup-date": "Abholtag",
         "cart-empty": "Dein Warenkorb ist leer.",
         "total": "Summe",
-        "name": "Name",
+        "first-name": "Vorname",
+        "last-name": "Nachname",
         "phone": "Telefonnummer",
         "email": "E-Mail",
         "note": "Anmerkung (optional)",
@@ -64,7 +65,7 @@
         "install-app": "Direkt vom Homescreen bestellen — ohne Umweg über den Browser."
     },
     "error": {
-        "name-required": "Bitte gib deinen Namen an",
+        "name-required": "Bitte gib deinen Nachnamen an",
         "contact-required": "Telefonnummer oder E-Mail wird benötigt",
         "email-invalid": "Ungültige E-Mail-Adresse",
         "phone-invalid": "Ungültige Telefonnummer"

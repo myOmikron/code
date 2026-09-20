@@ -28,8 +28,14 @@ pub struct OrderModel {
     #[rorm(unique)]
     pub pickup_code: MaxStr<16>,
 
-    /// The customer's name
-    pub customer_name: MaxStr<255>,
+    /// The customer's first name, if given
+    ///
+    /// Orders placed before the name was split carry the whole name in
+    /// `last_name` and none here.
+    pub first_name: Option<MaxStr<255>>,
+
+    /// The customer's last name, what the counter sorts and searches by
+    pub last_name: MaxStr<255>,
 
     /// The customer's phone number (this or `email` must be set)
     pub phone: Option<MaxStr<64>>,
@@ -76,8 +82,10 @@ pub struct OrderInsertPatch {
     pub uuid: Uuid,
     /// Unique customer-facing code
     pub pickup_code: MaxStr<16>,
-    /// The customer's name
-    pub customer_name: MaxStr<255>,
+    /// The customer's first name, if given
+    pub first_name: Option<MaxStr<255>>,
+    /// The customer's last name
+    pub last_name: MaxStr<255>,
     /// The customer's phone number
     pub phone: Option<MaxStr<64>>,
     /// The customer's email address

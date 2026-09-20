@@ -56,7 +56,8 @@ function Checkout() {
 
     const form = useForm({
         defaultValues: {
-            name: stored.name,
+            firstName: stored.firstName,
+            lastName: stored.lastName,
             phone: stored.phone,
             email: stored.email,
             note: "",
@@ -66,7 +67,7 @@ function Checkout() {
         validators: {
             onSubmit: ({ value }) => {
                 const fields: Record<string, string> = {};
-                if (!value.name.trim()) fields.name = t("error.name-required");
+                if (!value.lastName.trim()) fields.lastName = t("error.name-required");
                 if (!value.phone.trim() && !value.email.trim()) {
                     fields.phone = t("error.contact-required");
                     fields.email = t("error.contact-required");
@@ -78,7 +79,8 @@ function Checkout() {
         },
         onSubmit: async ({ value }) => {
             const response = await Api.shop.createOrder({
-                customer_name: value.name.trim(),
+                first_name: value.firstName.trim() || null,
+                last_name: value.lastName.trim(),
                 phone: value.phone.trim() || null,
                 email: value.email.trim() || null,
                 note: value.note.trim() || null,
@@ -88,7 +90,8 @@ function Checkout() {
             });
             if (value.remember) {
                 rememberCustomer({
-                    name: value.name.trim(),
+                    firstName: value.firstName.trim(),
+                    lastName: value.lastName.trim(),
                     phone: value.phone.trim(),
                     email: value.email.trim(),
                 });
@@ -143,14 +146,28 @@ function Checkout() {
             <Form onSubmit={form.handleSubmit}>
                 <Fieldset>
                     <FieldGroup>
-                        <form.Field name={"name"}>
+                        <form.Field name={"firstName"}>
                             {(fieldApi) => (
                                 <Field>
-                                    <RequiredLabel>{t("label.name")}</RequiredLabel>
+                                    <Label>{t("label.first-name")}</Label>
+                                    <Input
+                                        maxLength={255}
+                                        autoComplete={"given-name"}
+                                        value={fieldApi.state.value}
+                                        onChange={(e) => fieldApi.handleChange(e.target.value)}
+                                    />
+                                </Field>
+                            )}
+                        </form.Field>
+
+                        <form.Field name={"lastName"}>
+                            {(fieldApi) => (
+                                <Field>
+                                    <RequiredLabel>{t("label.last-name")}</RequiredLabel>
                                     <Input
                                         required
                                         maxLength={255}
-                                        autoComplete={"name"}
+                                        autoComplete={"family-name"}
                                         value={fieldApi.state.value}
                                         onChange={(e) => fieldApi.handleChange(e.target.value)}
                                         invalid={fieldApi.state.meta.errors.length > 0}

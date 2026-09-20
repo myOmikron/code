@@ -7,9 +7,10 @@ An order as shown to the customer (no contact data echoed)
 
 Name | Type
 ------------ | -------------
-`customer_name` | string
 `deadline` | string
 `early_pickup` | boolean
+`first_name` | string
+`last_name` | string
 `locked` | boolean
 `note` | string
 `pickup_code` | string

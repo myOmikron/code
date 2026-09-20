@@ -22,7 +22,8 @@
         "pickup-date": "Pickup day",
         "cart-empty": "Your cart is empty.",
         "total": "Total",
-        "name": "Name",
+        "first-name": "First name",
+        "last-name": "Last name",
         "phone": "Phone number",
         "email": "Email",
         "note": "Note (optional)",
@@ -64,7 +65,7 @@
         "install-app": "Order straight from your home screen — no browser detour."
     },
     "error": {
-        "name-required": "Please enter your name",
+        "name-required": "Please enter your last name",
         "contact-required": "Phone number or email is required",
         "email-invalid": "Invalid email address",
         "phone-invalid": "Invalid phone number"

@@ -65,7 +65,7 @@ pub async fn lock_pickup_day(
             .collect();
         let mail = OrderMail {
             pickup_code: &order.pickup_code,
-            customer_name: &order.customer_name,
+            customer_name: &order.display_name(),
             email: order.email.as_deref(),
             language: order.language,
             pickup_date: day.pickup_date,
@@ -120,7 +120,7 @@ pub async fn cancel_pickup_day(
             .collect();
         let mail = OrderMail {
             pickup_code: &order.pickup_code,
-            customer_name: &order.customer_name,
+            customer_name: &order.display_name(),
             email: order.email.as_deref(),
             language: order.language,
             pickup_date: day.pickup_date,

@@ -21,6 +21,7 @@ import { FullOrder } from "src/api/generated";
 import { EarlyPickupBadge } from "src/components/early-pickup-badge";
 import { OrderStatusBadge } from "src/components/order-status-badge";
 import { PackingRow } from "src/components/packing-row";
+import { formatCounterName } from "src/utils/customer-name";
 import { formatDate } from "src/utils/dates";
 import { formatPrice } from "src/utils/price";
 
@@ -85,7 +86,7 @@ function OrderDetail() {
 
             <div>
                 <Heading>
-                    <span className={"font-mono"}>{order.pickup_code}</span> — {order.customer_name}
+                    <span className={"font-mono"}>{order.pickup_code}</span> — {formatCounterName(order)}
                 </Heading>
                 <Text>{formatDate(order.pickup_date)}</Text>
             </div>
@@ -170,7 +171,7 @@ function OrderDetail() {
                 title={t("heading.confirm-cancel")}
                 description={t("description.confirm-cancel", {
                     code: order.pickup_code,
-                    name: order.customer_name,
+                    name: formatCounterName(order),
                 })}
             />
             <ConfirmDialog

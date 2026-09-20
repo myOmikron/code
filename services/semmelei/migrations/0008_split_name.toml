@@ -1,0 +1,28 @@
+[Migration]
+Hash = "403259632901025809"
+Initial = false
+Dependency = 7
+Replaces = []
+
+[[Migration.Operations]]
+Type = "RenameField"
+TableName = "order"
+Old = "customer_name"
+New = "last_name"
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "order"
+
+[Migration.Operations.Field]
+Name = "first_name"
+Type = "text"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "max_length"
+Value = 255
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/semmelei/src/models/order/db.rs"
+Line = 35
+Column = 9

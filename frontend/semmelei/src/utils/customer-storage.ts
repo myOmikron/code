@@ -4,15 +4,17 @@ const STORAGE_KEY = "semmelei:customer";
 export type StoredCustomer = {
     /** Whether the customer wants their details kept on this device */
     remember: boolean;
-    /** The customer's name, empty if nothing is kept */
-    name: string;
+    /** The customer's first name, empty if not given or nothing is kept */
+    firstName: string;
+    /** The customer's last name, empty if nothing is kept */
+    lastName: string;
     /** The phone number, empty if not given or nothing is kept */
     phone: string;
     /** The email address, empty if not given or nothing is kept */
     email: string;
 };
 
-const DEFAULT: StoredCustomer = { remember: true, name: "", phone: "", email: "" };
+const DEFAULT: StoredCustomer = { remember: true, firstName: "", lastName: "", phone: "", email: "" };
 
 /**
  * Load what this device remembers about the customer
@@ -27,7 +29,10 @@ export function loadCustomer(): StoredCustomer {
         if (typeof parsed?.remember !== "boolean") return DEFAULT;
         return {
             remember: parsed.remember,
-            name: typeof parsed.name === "string" ? parsed.name : "",
+            firstName: typeof parsed.firstName === "string" ? parsed.firstName : "",
+            // Devices from before the split stored one undivided name; it is
+            // not guessed apart, the customer types both fields once more.
+            lastName: typeof parsed.lastName === "string" ? parsed.lastName : "",
             phone: typeof parsed.phone === "string" ? parsed.phone : "",
             email: typeof parsed.email === "string" ? parsed.email : "",
         };

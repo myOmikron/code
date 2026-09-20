@@ -203,12 +203,6 @@ export interface CreateAccountRequest {
  */
 export interface CreateOrderRequest {
     /**
-     * The customer's name
-     * @type {string}
-     * @memberof CreateOrderRequest
-     */
-    customer_name: string;
-    /**
      * Whether the customer wants to pick the order up early in the day
      * @type {boolean}
      * @memberof CreateOrderRequest
@@ -221,6 +215,12 @@ export interface CreateOrderRequest {
      */
     email?: string | null;
     /**
+     * The customer's first name
+     * @type {string}
+     * @memberof CreateOrderRequest
+     */
+    first_name?: string | null;
+    /**
      * The positions to order
      * @type {Array<OrderPositionRequest>}
      * @memberof CreateOrderRequest
@@ -232,6 +232,12 @@ export interface CreateOrderRequest {
      * @memberof CreateOrderRequest
      */
     language?: OrderLanguage;
+    /**
+     * The customer's last name
+     * @type {string}
+     * @memberof CreateOrderRequest
+     */
+    last_name: string;
     /**
      * Optional free-text note
      * @type {string}
@@ -324,12 +330,6 @@ export interface FullOrder {
      */
     created_at: string;
     /**
-     * The customer's name
-     * @type {string}
-     * @memberof FullOrder
-     */
-    customer_name: string;
-    /**
      * Whether the customer wants to pick the order up early in the day
      * @type {boolean}
      * @memberof FullOrder
@@ -341,6 +341,18 @@ export interface FullOrder {
      * @memberof FullOrder
      */
     email?: string | null;
+    /**
+     * The customer's first name, if given
+     * @type {string}
+     * @memberof FullOrder
+     */
+    first_name?: string | null;
+    /**
+     * The customer's last name
+     * @type {string}
+     * @memberof FullOrder
+     */
+    last_name: string;
     /**
      * Whether the order is frozen: the bakery has it, the customer cannot cancel
      * @type {boolean}
@@ -923,12 +935,6 @@ export interface PublicItem {
  */
 export interface PublicOrder {
     /**
-     * The customer's name
-     * @type {string}
-     * @memberof PublicOrder
-     */
-    customer_name: string;
-    /**
      * The point in time the order became binding (or will)
      * @type {string}
      * @memberof PublicOrder
@@ -940,6 +946,18 @@ export interface PublicOrder {
      * @memberof PublicOrder
      */
     early_pickup: boolean;
+    /**
+     * The customer's first name, if given
+     * @type {string}
+     * @memberof PublicOrder
+     */
+    first_name?: string | null;
+    /**
+     * The customer's last name
+     * @type {string}
+     * @memberof PublicOrder
+     */
+    last_name: string;
     /**
      * Whether the order is frozen: no cancelling anymore
      * @type {boolean}

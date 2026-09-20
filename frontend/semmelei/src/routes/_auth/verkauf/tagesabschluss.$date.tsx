@@ -19,6 +19,7 @@ import {
 import { Api } from "src/api/api";
 import { FullOrder } from "src/api/generated";
 import { OrderStatusBadge } from "src/components/order-status-badge";
+import { formatCounterName } from "src/utils/customer-name";
 import { formatDate } from "src/utils/dates";
 import { formatPrice } from "src/utils/price";
 
@@ -72,7 +73,7 @@ function Closing() {
                                         >
                                             {order.pickup_code}
                                         </Link>{" "}
-                                        {order.customer_name}
+                                        {formatCounterName(order)}
                                     </StackedListTitle>
                                     <StackedListDescription>
                                         {[order.phone, order.email].filter(Boolean).join(" · ")}

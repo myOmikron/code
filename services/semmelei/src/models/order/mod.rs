@@ -97,8 +97,14 @@ pub struct Order {
     /// Human-friendly unique code the customer uses to reference the order
     pub pickup_code: MaxStr<16>,
 
-    /// The customer's name
-    pub customer_name: MaxStr<255>,
+    /// The customer's first name, if given
+    ///
+    /// Orders placed before the name was split carry the whole name in
+    /// `last_name` and none here.
+    pub first_name: Option<MaxStr<255>>,
+
+    /// The customer's last name, what the counter sorts and searches by
+    pub last_name: MaxStr<255>,
 
     /// The customer's phone number (this or `email` must be set)
     pub phone: Option<MaxStr<64>>,
@@ -125,6 +131,21 @@ pub struct Order {
     pub created_at: OffsetDateTime,
 }
 
+impl Order {
+    /// The name as a mail addresses the customer: first name, then last name
+    pub fn display_name(&self) -> String {
+        display_name(self.first_name.as_deref(), &self.last_name)
+    }
+}
+
+/// Join a customer's first and last name the way a mail addresses them
+pub fn display_name(first_name: Option<&str>, last_name: &str) -> String {
+    match first_name {
+        Some(first) => format!("{first} {last_name}"),
+        None => last_name.to_string(),
+    }
+}
+
 /// Wrapper for the primary key of the [`Order`] model.
 /// To have better distinguishable types.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, JsonSchema, Hash, Eq, PartialEq)]
@@ -147,8 +168,10 @@ impl OrderUuid {
 /// New orders always start in [`OrderStatus::Open`].
 #[derive(Debug)]
 pub struct OrderInsert {
-    /// The customer's name
-    pub customer_name: MaxStr<255>,
+    /// The customer's first name, if given
+    pub first_name: Option<MaxStr<255>>,
+    /// The customer's last name
+    pub last_name: MaxStr<255>,
     /// The customer's phone number
     pub phone: Option<MaxStr<64>>,
     /// The customer's email address
@@ -267,7 +290,8 @@ impl Order {
             .single(&OrderInsertPatch {
                 uuid: Uuid::new_v4(),
                 pickup_code: pickup_code.clone(),
-                customer_name: insert.customer_name,
+                first_name: insert.first_name,
+                last_name: insert.last_name,
                 phone: insert.phone,
                 email: insert.email,
                 pickup_day: ForeignModelByField(insert.pickup_day.into_inner()),
@@ -400,7 +424,8 @@ impl From<OrderModel> for Order {
         Self {
             uuid: OrderUuid(value.uuid),
             pickup_code: value.pickup_code,
-            customer_name: value.customer_name,
+            first_name: value.first_name,
+            last_name: value.last_name,
             phone: value.phone,
             email: value.email,
             pickup_day: PickupDayUuid::new_from_field(value.pickup_day),

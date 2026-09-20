@@ -65,8 +65,10 @@ pub struct OrderPositionRequest {
 /// Request to place a pre-order
 #[derive(Deserialize, JsonSchema)]
 pub struct CreateOrderRequest {
-    /// The customer's name
-    pub customer_name: MaxStr<255>,
+    /// The customer's first name
+    pub first_name: Option<MaxStr<255>>,
+    /// The customer's last name
+    pub last_name: MaxStr<255>,
     /// The customer's phone number (this or `email` must be set)
     pub phone: Option<MaxStr<64>>,
     /// The customer's email address (this or `phone` must be set)
@@ -118,8 +120,10 @@ pub struct PublicOrder {
     pub deadline: SchemaDateTime,
     /// Whether the order is frozen: no cancelling anymore
     pub locked: bool,
-    /// The customer's name
-    pub customer_name: String,
+    /// The customer's first name, if given
+    pub first_name: Option<String>,
+    /// The customer's last name
+    pub last_name: String,
     /// Optional note
     pub note: Option<String>,
     /// Whether the customer wants to pick the order up early in the day

@@ -2741,14 +2741,6 @@
                 "description": "Request to place a pre-order",
                 "type": "object",
                 "properties": {
-                    "customer_name": {
-                        "description": "The customer's name",
-                        "allOf": [
-                            {
-                                "$ref": "#/components/schemas/MaxStr_255"
-                            }
-                        ]
-                    },
                     "early_pickup": {
                         "description": "Whether the customer wants to pick the order up early in the day",
                         "default": false,
@@ -2757,6 +2749,15 @@
                     "email": {
                         "nullable": true,
                         "description": "The customer's email address (this or `phone` must be set)",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_255"
+                            }
+                        ]
+                    },
+                    "first_name": {
+                        "nullable": true,
+                        "description": "The customer's first name",
                         "allOf": [
                             {
                                 "$ref": "#/components/schemas/MaxStr_255"
@@ -2776,6 +2777,14 @@
                         "allOf": [
                             {
                                 "$ref": "#/components/schemas/OrderLanguage"
+                            }
+                        ]
+                    },
+                    "last_name": {
+                        "description": "The customer's last name",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_255"
                             }
                         ]
                     },
@@ -2799,8 +2808,8 @@
                     }
                 },
                 "required": [
-                    "customer_name",
-                    "items"
+                    "items",
+                    "last_name"
                 ]
             },
             "CreateOrderResponse": {
@@ -2882,10 +2891,6 @@
                             }
                         ]
                     },
-                    "customer_name": {
-                        "description": "The customer's name",
-                        "type": "string"
-                    },
                     "early_pickup": {
                         "description": "Whether the customer wants to pick the order up early in the day",
                         "type": "boolean"
@@ -2893,6 +2898,15 @@
                     "email": {
                         "nullable": true,
                         "description": "The customer's email address",
+                        "type": "string"
+                    },
+                    "first_name": {
+                        "nullable": true,
+                        "description": "The customer's first name, if given",
+                        "type": "string"
+                    },
+                    "last_name": {
+                        "description": "The customer's last name",
                         "type": "string"
                     },
                     "locked": {
@@ -2952,8 +2966,8 @@
                 },
                 "required": [
                     "created_at",
-                    "customer_name",
                     "early_pickup",
+                    "last_name",
                     "locked",
                     "pickup_code",
                     "pickup_date",
@@ -3611,10 +3625,6 @@
                 "description": "An order as shown to the customer (no contact data echoed)",
                 "type": "object",
                 "properties": {
-                    "customer_name": {
-                        "description": "The customer's name",
-                        "type": "string"
-                    },
                     "deadline": {
                         "description": "The point in time the order became binding (or will)",
                         "allOf": [
@@ -3626,6 +3636,15 @@
                     "early_pickup": {
                         "description": "Whether the customer wants to pick the order up early in the day",
                         "type": "boolean"
+                    },
+                    "first_name": {
+                        "nullable": true,
+                        "description": "The customer's first name, if given",
+                        "type": "string"
+                    },
+                    "last_name": {
+                        "description": "The customer's last name",
+                        "type": "string"
                     },
                     "locked": {
                         "description": "Whether the order is frozen: no cancelling anymore",
@@ -3670,9 +3689,9 @@
                     }
                 },
                 "required": [
-                    "customer_name",
                     "deadline",
                     "early_pickup",
+                    "last_name",
                     "locked",
                     "pickup_code",
                     "pickup_date",

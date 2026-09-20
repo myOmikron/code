@@ -7,11 +7,12 @@ Request to place a pre-order
 
 Name | Type
 ------------ | -------------
-`customer_name` | string
 `early_pickup` | boolean
 `email` | string
+`first_name` | string
 `items` | [Array&lt;OrderPositionRequest&gt;](OrderPositionRequest.md)
 `language` | [OrderLanguage](OrderLanguage.md)
+`last_name` | string
 `note` | string
 `phone` | string
 

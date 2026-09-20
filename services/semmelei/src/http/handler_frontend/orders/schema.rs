@@ -48,8 +48,10 @@ pub struct FullOrder {
     pub pickup_date: SchemaDate,
     /// Whether the order is frozen: the bakery has it, the customer cannot cancel
     pub locked: bool,
-    /// The customer's name
-    pub customer_name: String,
+    /// The customer's first name, if given
+    pub first_name: Option<String>,
+    /// The customer's last name
+    pub last_name: String,
     /// The customer's phone number
     pub phone: Option<String>,
     /// The customer's email address

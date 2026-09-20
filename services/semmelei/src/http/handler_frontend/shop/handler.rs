@@ -39,6 +39,7 @@ use crate::models::OrderPositionInsert;
 use crate::models::OrderStatus;
 use crate::models::PickupDay;
 use crate::models::ShopSettings;
+use crate::models::order::display_name;
 use crate::utils::mail;
 use crate::utils::mail::MailPosition;
 use crate::utils::mail::OrderMail;
@@ -151,15 +152,21 @@ pub async fn get_item_image(
 pub async fn create_order(
     ApiJson(request): ApiJson<CreateOrderRequest>,
 ) -> ApiResult<ApiJson<CreateOrderResponse>> {
-    if request.customer_name.trim().is_empty() {
-        return Err(ApiError::bad_request("Name must not be empty"));
+    if request.last_name.trim().is_empty() {
+        return Err(ApiError::bad_request("Last name must not be empty"));
     }
     // The name is rendered into the confirmation mail, which this anonymous
     // request also chooses the recipient of — a name that can start a new
     // paragraph would let a stranger put their own text into a mail sent from
     // the shop's domain.
-    if !validate::is_single_line(&request.customer_name) {
-        return Err(ApiError::bad_request("Name must be a single line"));
+    if !validate::is_single_line(&request.last_name) {
+        return Err(ApiError::bad_request("Last name must be a single line"));
+    }
+    let first_name = request.first_name.filter(|n| !n.trim().is_empty());
+    if let Some(first_name) = &first_name
+        && !validate::is_single_line(first_name)
+    {
+        return Err(ApiError::bad_request("First name must be a single line"));
     }
     let phone = request.phone.filter(|p| !p.trim().is_empty());
     let email = request.email.filter(|e| !e.trim().is_empty());
@@ -226,12 +233,15 @@ pub async fn create_order(
         catalog.insert(item.uuid, item);
     }
 
-    let customer_name = request.customer_name.to_string();
+    let customer_name = display_name(first_name.as_deref(), &request.last_name);
+    let first_name_echo = first_name.as_ref().map(|n| n.to_string());
+    let last_name = request.last_name.to_string();
     let note = request.note.as_ref().map(|n| n.to_string());
     let pickup_code = Order::create(
         &mut tx,
         OrderInsert {
-            customer_name: request.customer_name,
+            first_name,
+            last_name: request.last_name,
             phone: phone.clone(),
             email: email.clone(),
             pickup_day: pickup_day.uuid,
@@ -297,7 +307,8 @@ pub async fn create_order(
         pickup_date: SchemaDate(pickup_day.pickup_date),
         deadline: SchemaDateTime(pickup_day.deadline_at),
         locked: false,
-        customer_name,
+        first_name: first_name_echo,
+        last_name,
         note,
         early_pickup: request.early_pickup,
         positions,
@@ -349,7 +360,8 @@ pub async fn get_order(Path(pickup_code): Path<String>) -> ApiResult<ApiJson<Pub
         pickup_date: SchemaDate(pickup_day.pickup_date),
         deadline: SchemaDateTime(pickup_day.deadline_at),
         locked: pickup_day.is_locked(schedule::now()),
-        customer_name: order.customer_name.to_string(),
+        first_name: order.first_name.map(|n| n.to_string()),
+        last_name: order.last_name.to_string(),
         note: order.note.map(|n| n.to_string()),
         early_pickup: order.early_pickup,
         positions,
@@ -413,7 +425,8 @@ pub async fn cancel_order(Path(pickup_code): Path<String>) -> ApiResult<ApiJson<
         pickup_date: SchemaDate(pickup_day.pickup_date),
         deadline: SchemaDateTime(pickup_day.deadline_at),
         locked: false,
-        customer_name: order.customer_name.to_string(),
+        first_name: order.first_name.map(|n| n.to_string()),
+        last_name: order.last_name.to_string(),
         note: order.note.map(|n| n.to_string()),
         early_pickup: order.early_pickup,
         positions,
