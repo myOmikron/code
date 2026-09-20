@@ -78,6 +78,12 @@ function OrderList() {
         if (last && last.date === order.pickup_date) last.orders.push(order);
         else groups.push({ date: order.pickup_date, orders: [order] });
     }
+    groups.reverse();
+
+    // At the counter the customer says their name, so each day is listed alphabetically
+    for (const group of groups) {
+        group.orders.sort((a, b) => a.customer_name.localeCompare(b.customer_name, "de"));
+    }
 
     return (
         <div className={"flex flex-col gap-6"}>
