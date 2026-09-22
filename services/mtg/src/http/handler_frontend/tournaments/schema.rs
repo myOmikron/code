@@ -593,6 +593,8 @@ pub struct MatchTableResponse {
     pub winner: Option<TournamentParticipantUuid>,
     /// Whether the table was drawn
     pub is_draw: bool,
+    /// Games inside the match that were themselves drawn
+    pub games_drawn: i16,
     /// Who sits there, in seat order
     pub seats: Vec<MatchSeatResponse>,
 }
@@ -606,6 +608,7 @@ impl From<MatchTable> for MatchTableResponse {
             is_bye: value.is_bye,
             winner: value.winner,
             is_draw: value.is_draw,
+            games_drawn: value.games_drawn,
             seats: value
                 .seats
                 .into_iter()

@@ -78,6 +78,11 @@ pub struct MatchTable {
     pub winner: Option<TournamentParticipantUuid>,
     /// Whether the table was drawn
     pub is_draw: bool,
+    /// Games inside the match that were themselves drawn
+    ///
+    /// Carried out so the desk's edit dialog can open on the result that is
+    /// already there rather than on zero.
+    pub games_drawn: i16,
     /// Who sits there, in seat order
     pub seats: Vec<MatchSeat>,
 }
@@ -141,6 +146,7 @@ pub async fn tables(
             TournamentMatchModel.is_bye,
             TournamentMatchModel.winner_participant,
             TournamentMatchModel.is_draw,
+            TournamentMatchModel.games_drawn,
         ),
     )
     .condition(rorm::and![
@@ -163,29 +169,32 @@ pub async fn tables(
 
     let mut tables: Vec<MatchTable> = rows
         .into_iter()
-        .map(|(uuid, table_number, status, is_bye, winner, is_draw)| {
-            let mut seated = seats.remove(&uuid).unwrap_or_default();
-            seated.sort_by_key(|seat| seat.seat);
-            MatchTable {
-                uuid: TournamentMatchUuid(uuid),
-                table_number,
-                status,
-                is_bye,
-                winner: winner.map(|winner| TournamentParticipantUuid(winner.0)),
-                is_draw,
-                seats: seated
-                    .into_iter()
-                    .map(|mut seat| {
-                        if let Some(entry) = names.get(&seat.participant.0) {
-                            seat.display_name = entry.display_name.clone();
-                            seat.dropped = entry.dropped;
-                            seat.fixed_table = entry.fixed_table;
-                        }
-                        seat
-                    })
-                    .collect(),
-            }
-        })
+        .map(
+            |(uuid, table_number, status, is_bye, winner, is_draw, games_drawn)| {
+                let mut seated = seats.remove(&uuid).unwrap_or_default();
+                seated.sort_by_key(|seat| seat.seat);
+                MatchTable {
+                    uuid: TournamentMatchUuid(uuid),
+                    table_number,
+                    status,
+                    is_bye,
+                    winner: winner.map(|winner| TournamentParticipantUuid(winner.0)),
+                    is_draw,
+                    games_drawn,
+                    seats: seated
+                        .into_iter()
+                        .map(|mut seat| {
+                            if let Some(entry) = names.get(&seat.participant.0) {
+                                seat.display_name = entry.display_name.clone();
+                                seat.dropped = entry.dropped;
+                                seat.fixed_table = entry.fixed_table;
+                            }
+                            seat
+                        })
+                        .collect(),
+                }
+            },
+        )
         .collect();
     tables.sort_by_key(|table| (table.is_bye, table.table_number));
     Ok(tables)
