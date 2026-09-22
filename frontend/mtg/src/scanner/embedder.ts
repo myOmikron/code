@@ -7,7 +7,8 @@
 //! run several times per scan and the difference is the difference between a scanner that feels
 //! instant and one that does not. Which one was chosen is reported, since it is the first thing
 //! worth knowing when a device turns out to be slow.
-import * as ort from "onnxruntime-web/webgpu";
+import type * as Ort from "onnxruntime-web/webgpu";
+import { conservativeScanner } from "./runtime-policy";
 import { EMBEDDING_DIM, IMAGE_SIZE, poolHidden, prepareForModel } from "./embedding";
 import type { RgbaImage } from "./card-detect";
 import { probeWebGpu } from "./webgpu-probe";
@@ -55,10 +56,16 @@ export async function loadEmbedder(
     strategy: WebgpuStrategy = "full",
 ): Promise<Embedder> {
     pending ??= (async () => {
+        const conservative = conservativeScanner();
+        // Selecting the WASM provider from the WebGPU bundle still compiles JSEP.
+        // Import the plain runtime instead so WebKit never initialises that module.
+        const ort = conservative ? await import("onnxruntime-web/wasm") : await import("onnxruntime-web/webgpu");
+        if (conservative) strategy = "off";
         // Threads need SharedArrayBuffer, which needs the page to be cross-origin isolated. The
         // deployment and dev server send those headers. Older cached pages and browsers without
         // isolation still use one thread.
-        ort.env.wasm.numThreads = self.crossOriginIsolated ? Math.min(4, navigator.hardwareConcurrency || 1) : 1;
+        ort.env.wasm.numThreads =
+            !conservative && self.crossOriginIsolated ? Math.min(4, navigator.hardwareConcurrency || 1) : 1;
 
         /**
          * Reads a result tensor, wherever it ended up.
@@ -73,7 +80,7 @@ export async function loadEmbedder(
          * @param tensor
          * @returns the values
          */
-        const readTensor = async (tensor: ort.Tensor): Promise<Float32Array> => {
+        const readTensor = async (tensor: Ort.Tensor): Promise<Float32Array> => {
             if (typeof tensor.getData === "function") {
                 return (await tensor.getData(true)) as Float32Array;
             }
@@ -87,7 +94,7 @@ export async function loadEmbedder(
          * @param input
          * @returns the pooled vector
          */
-        const runOnce = async (target: ort.InferenceSession, input: Float32Array): Promise<Float32Array> => {
+        const runOnce = async (target: Ort.InferenceSession, input: Float32Array): Promise<Float32Array> => {
             const output = await target.run({
                 [target.inputNames[0]]: new ort.Tensor("float32", input, [1, 3, IMAGE_SIZE, IMAGE_SIZE]),
             });
@@ -205,7 +212,7 @@ export async function loadEmbedder(
             }) as never;
         };
 
-        let session: ort.InferenceSession | null = null;
+        let session: Ort.InferenceSession | null = null;
         let backend: Embedder["backend"] = "wasm";
         // Every attempt's reason is kept and reported. Swallowing them and raising one generic
         // sentence turns a five-minute diagnosis into a guessing game, and the backends fail
@@ -214,7 +221,8 @@ export async function loadEmbedder(
         reasons.push(`wasm: ${ort.env.wasm.numThreads} threads · isolated: ${self.crossOriginIsolated === true}`);
         // A backend that threw while loading is not worth a second look this run.
         const dead = new Set<Embedder["backend"]>();
-        if (strategy === "off") reasons.push("webgpu: hier schon gescheitert, übersprungen");
+        if (conservative) reasons.push("webgpu: WebKit-Schutzmodus, reine WASM-Runtime ohne JSEP");
+        else if (strategy === "off") reasons.push("webgpu: hier schon gescheitert, übersprungen");
         if (strategy !== "off" && strategy !== "full") {
             try {
                 await narrowAdapter(strategy === "no-subgroups" ? ["subgroups"] : ["subgroups", "shader-f16"]);
@@ -226,7 +234,7 @@ export async function loadEmbedder(
         for (const attempt of attempts) {
             if (dead.has(attempt.provider)) continue;
             const label = attempt.provider === "webgpu" ? `webgpu/${strategy}` : attempt.provider;
-            let candidate: ort.InferenceSession | null = null;
+            let candidate: Ort.InferenceSession | null = null;
             try {
                 onProgress?.(label);
                 candidate = await ort.InferenceSession.create(MODEL_PATH, {
@@ -262,7 +270,7 @@ export async function loadEmbedder(
         }
         // Only when the fast path was refused, and only then: it costs a device and two shaders,
         // and there is nothing to explain when WebGPU worked.
-        if (backend !== "webgpu") {
+        if (backend !== "webgpu" && !conservative) {
             const gpu = await probeWebGpu();
             if (!gpu) reasons.push("webgpu: navigator.gpu fehlt");
             else {

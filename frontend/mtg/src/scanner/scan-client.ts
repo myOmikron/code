@@ -6,6 +6,7 @@
 //! one.
 import type { ScanReport } from "./pipeline";
 import { nextStrategy } from "./webgpu-strategy";
+import { conservativeScanner } from "./runtime-policy";
 import type { WebgpuStrategy } from "./webgpu-strategy";
 import type { ScanOutcome } from "./scan-decision";
 import type { CardQuad } from "./card-detect";
@@ -177,6 +178,7 @@ export function retryWebGpu(): void {
  * @returns the arrangement to try
  */
 function plannedStrategy(): WebgpuStrategy {
+    if (conservativeScanner()) return "off";
     try {
         const [runtime, stored] = (localStorage.getItem(STRATEGY_KEY) ?? "").split(" ");
         if (runtime !== __SCANNER_RUNTIME_VERSION__) return "full";

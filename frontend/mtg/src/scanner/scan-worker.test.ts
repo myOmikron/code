@@ -6,14 +6,18 @@ const mocks = vi.hoisted(() => ({
     confirm: vi.fn(),
     preview: vi.fn(),
     seen: vi.fn(() => false),
+    loadIndex: vi.fn(),
+    loadModel: vi.fn(),
+    loadCv: vi.fn(),
+    loadOcr: vi.fn(),
 }));
-vi.mock("./embedder", () => ({ loadEmbedder: async () => ({ backend: mocks.backend, runtime: "test", notes: [] }) }));
+vi.mock("./embedder", () => ({ loadEmbedder: mocks.loadModel }));
 vi.mock("./pipeline", () => ({
-    loadScanIndex: async () => ({ manifest: { count: 1 }, warm: vi.fn() }),
+    loadScanIndex: mocks.loadIndex,
     scanFrame: vi.fn(),
 }));
-vi.mock("./opencv", () => ({ loadOpenCv: async () => ({}) }));
-vi.mock("./ocr", () => ({ loadReader: async () => ({}) }));
+vi.mock("./opencv", () => ({ loadOpenCv: mocks.loadCv }));
+vi.mock("./ocr", () => ({ loadReader: mocks.loadOcr }));
 vi.mock("./live-pipeline", () => ({
     previewFrame: mocks.preview,
     confirmPreview: mocks.confirm,
@@ -26,6 +30,10 @@ beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
     mocks.backend = "wasm";
+    mocks.loadIndex.mockResolvedValue({ manifest: { count: 1 }, warm: vi.fn() });
+    mocks.loadModel.mockImplementation(async () => ({ backend: mocks.backend, runtime: "test", notes: [] }));
+    mocks.loadCv.mockResolvedValue({});
+    mocks.loadOcr.mockResolvedValue({});
     mocks.variant = 0;
     mocks.seen.mockReturnValue(false);
     mocks.preview.mockResolvedValue({
@@ -76,6 +84,23 @@ async function scan() {
 }
 
 describe("live worker scheduling", () => {
+    it("loads iOS components sequentially without starting an OCR worker", async () => {
+        vi.stubGlobal("navigator", { userAgent: "iPhone AppleWebKit/605.1.15" });
+        mocks.loadIndex.mockImplementationOnce(async () => {
+            expect(mocks.loadModel).not.toHaveBeenCalled();
+            expect(mocks.loadCv).not.toHaveBeenCalled();
+            return { manifest: { count: 1 }, warm: vi.fn() };
+        });
+        mocks.loadModel.mockImplementationOnce(async () => {
+            expect(mocks.loadCv).not.toHaveBeenCalled();
+            return { backend: "wasm", runtime: "test", notes: [] };
+        });
+        await scan();
+        expect(mocks.loadModel).toHaveBeenCalledWith(expect.any(Function), "off");
+        expect(mocks.loadCv).toHaveBeenCalledOnce();
+        expect(mocks.loadOcr).not.toHaveBeenCalled();
+    });
+
     it("discards an in-flight frame after tracking is reset", async () => {
         const preview = await mocks.preview();
         mocks.preview.mockImplementationOnce(async () => {

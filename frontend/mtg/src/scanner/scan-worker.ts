@@ -6,6 +6,7 @@
 //! which is the one part of the interface that has to stay smooth for the scanner to be usable
 //! at all.
 import { loadEmbedder } from "./embedder";
+import { conservativeScanner } from "./runtime-policy";
 import type { WebgpuStrategy } from "./webgpu-strategy";
 import type { Embedder } from "./embedder";
 import {
@@ -135,6 +136,15 @@ async function runLoad(strategy: WebgpuStrategy, language: ScanLanguageChoice): 
     const post = (progress: ScanLoadProgress) => {
         for (const waiting of loaders) worker.postMessage({ type: "progress", id: waiting, progress });
     };
+
+    if (conservativeScanner()) {
+        // Avoid overlapping catalogue JSON decoding, model compilation and two more WASM
+        // runtimes. OCR remains lazy until the first frame actually needs it.
+        index ??= await loadScanIndex(post);
+        embedder ??= await loadEmbedder((detail) => post({ stage: "model", loaded: 0, total: 0, detail }), "off");
+        await loadOpenCv();
+        return;
+    }
 
     // Started with the download and never waited on. Neither of these is needed to answer this
     // request, and both used to be paid for by whoever asked for the first frame: OpenCV compiles

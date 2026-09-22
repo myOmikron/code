@@ -17,6 +17,7 @@ import { useShortcutHelpOpen } from "src/context/shortcut-help-context";
 import { inspectScanDownload, loadScanner } from "src/scanner/scan-client";
 import type { ScanDownload } from "src/scanner/scan-client";
 import { loadScanLanguage } from "src/utils/scan-language";
+import { conservativeScanner } from "src/scanner/runtime-policy";
 import { useShortcuts } from "src/utils/use-shortcuts";
 
 export const Route = createFileRoute("/_menu/scan/")({ component: ScanStartRoute });
@@ -168,7 +169,7 @@ function ScanStartRoute() {
             .then((found) => {
                 if (cancelled) return;
                 setDownload(found);
-                if (!found.cached) return;
+                if (!found.cached || conservativeScanner()) return;
                 // Errors belong to the scanner's own load, which reports them where they can be
                 // read. Here there is nothing to say and nobody waiting on an answer.
                 void loadScanner(undefined, loadScanLanguage()).catch(() => undefined);

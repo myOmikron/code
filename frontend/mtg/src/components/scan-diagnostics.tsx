@@ -15,6 +15,7 @@ import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { LiveFrameResult, ScannerStatus } from "src/scanner/scan-client";
 import { retryWebGpu } from "src/scanner/scan-client";
+import { conservativeScanner } from "src/scanner/runtime-policy";
 
 /**
  * The properties for {@link ScanDiagnostics}
@@ -159,7 +160,7 @@ export function ScanDiagnostics({ open, onClose, status, frame, cropRef }: ScanD
                 </div>
             </DialogBody>
             <DialogActions>
-                {status?.backend === "wasm" ? (
+                {status?.backend === "wasm" && !conservativeScanner() ? (
                     <Button outline onClick={retryWebGpu}>
                         {t("button.retry-webgpu")}
                     </Button>
