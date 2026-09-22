@@ -4087,6 +4087,12 @@ export type MatchStatus = typeof MatchStatus[keyof typeof MatchStatus];
  */
 export interface MatchTableResponse {
     /**
+     * Games inside the match that were themselves drawn
+     * @type {number}
+     * @memberof MatchTableResponse
+     */
+    games_drawn: number;
+    /**
      * Whether it is a bye rather than a table anybody sits at
      * @type {boolean}
      * @memberof MatchTableResponse

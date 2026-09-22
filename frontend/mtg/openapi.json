@@ -15526,6 +15526,11 @@
                 "description": "One table of a paired round",
                 "type": "object",
                 "properties": {
+                    "games_drawn": {
+                        "description": "Games inside the match that were themselves drawn",
+                        "type": "integer",
+                        "format": "int16"
+                    },
                     "is_bye": {
                         "description": "Whether it is a bye rather than a table anybody sits at",
                         "type": "boolean"
@@ -15573,6 +15578,7 @@
                     }
                 },
                 "required": [
+                    "games_drawn",
                     "is_bye",
                     "is_draw",
                     "seats",

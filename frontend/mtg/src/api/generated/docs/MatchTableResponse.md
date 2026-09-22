@@ -7,6 +7,7 @@ One table of a paired round
 
 Name | Type
 ------------ | -------------
+`games_drawn` | number
 `is_bye` | boolean
 `is_draw` | boolean
 `seats` | [Array&lt;MatchSeatResponse&gt;](MatchSeatResponse.md)
