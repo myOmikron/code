@@ -2,10 +2,13 @@
 //!
 //! A plain function over a snapshot, like everything else in
 //! [`super`]: no database, no clock, and a seeded generator rather than
-//! thread-local randomness. Re-pairing a round is therefore reproducible after
-//! the fact — "why did round three look like that" has an answer — while still
-//! giving a genuinely different layout when an organizer asks for one, because
-//! the seed lives on the round rather than being derived from its number.
+//! thread-local randomness. The layout is therefore reproducible — "why did
+//! round three look like that" has an answer — and **deterministic given the
+//! standings**: a duel field is folded the way every other tournament folds it,
+//! and re-pairing the same round returns the same tables rather than a fresh
+//! roll of an equally legal alternative. Correct beats varied; the randomness
+//! that remains is seat order inside a pod, where turn order is worth real
+//! match points and the standings should not hand it out.
 //!
 //! The engine is defined over an opaque [`EntrantId`]. It is a participant
 //! today and a team later; nothing in here interprets it, which is what keeps
@@ -37,7 +40,8 @@ pub enum PairingKind {
 pub struct Entrant {
     /// Who this is
     pub id: EntrantId,
-    /// Their match points, only ever read to keep a pod's spread tight
+    /// Their match points, which form the score brackets a duel field folds
+    /// inside, and keep a pod's spread tight
     pub match_points: i32,
     /// Whether they have already had a bye — the MTR gives nobody two
     pub had_bye: bool,
@@ -154,6 +158,17 @@ const REMATCH_COST: i64 = 1000;
 /// What sitting in a short pod again costs
 const REPEAT_SMALL_POD_COST: i64 = 100;
 
+/// What one match point of score spread costs, before squaring
+///
+/// Chosen against [`REMATCH_COST`] rather than picked for feel. A duel event
+/// scoring 3/1/0 has brackets three points apart, so pairing one bracket down
+/// costs `50 · 3² = 450` and undercuts a rematch at 1000 — the engine takes the
+/// pair-down. Two brackets costs `50 · 6² = 1800` and does not, so it takes the
+/// rematch instead. That is the order the convention puts them in: drop a
+/// bracket to avoid sitting two people down together twice, but do not drag
+/// somebody across the standings to do it.
+const SPREAD_COST: i64 = 50;
+
 /// Split a field into pods of `pod_size` and `pod_size - 1`
 ///
 /// Solves `full * k + short * (k - 1) = entrants` for the largest `full`, so a
@@ -209,8 +224,17 @@ pub fn pair(snapshot: &PairingSnapshot) -> Result<Pairing, PairingError> {
     let mut pods = if field.is_empty() {
         Vec::new()
     } else {
-        let plan = plan_pods(field.len(), snapshot.pod_size).ok_or(PairingError::ImpossiblePods)?;
-        let mut pods = slice(&field, snapshot.pod_size, plan);
+        // Duels fold their score brackets; pods slice the ranked field, which is
+        // what "pod by standing" means and all the addendum asks for. The fold
+        // has no counterpart at a table of four — there is no top and bottom
+        // half of a pod, only an order everybody sits in.
+        let mut pods = if snapshot.pod_size == 2 && snapshot.kind == PairingKind::Swiss {
+            fold_brackets(&field)
+        } else {
+            let plan =
+                plan_pods(field.len(), snapshot.pod_size).ok_or(PairingError::ImpossiblePods)?;
+            slice(&field, snapshot.pod_size, plan)
+        };
         if snapshot.kind == PairingKind::Swiss {
             pods = improve(
                 pods,
@@ -314,6 +338,58 @@ fn take_bye<'a>(field: &mut Vec<&'a Entrant>) -> &'a Entrant {
     field.remove(index)
 }
 
+/// Cut a duel field into score brackets and fold each one
+///
+/// The classic top-down Swiss shape, and the one players coming from any other
+/// tournament expect. Everybody on the same match points forms a bracket, and a
+/// bracket is paired top half against bottom half — in a bracket of eight the
+/// first plays the fifth, the second the sixth. Not first against second: that
+/// knocks the two leaders out of contention against each other at the first
+/// opportunity, round after round, which is precisely what the fold avoids.
+///
+/// An odd bracket sends its lowest-ranked player down to join the next one,
+/// which is the one pair-down the convention allows. The field is even by the
+/// time it gets here — the bye is taken first — so the carry always clears.
+///
+/// Rematches are not this function's problem: it lays out the shape and
+/// [`improve`] repairs it, which is what keeps "who plays whom" answerable as
+/// "the fold, unless a repeat forced a swap".
+///
+/// @param field the field, in standings order
+///
+/// @returns the tables, in standings order
+fn fold_brackets<'a>(field: &[&'a Entrant]) -> Vec<Vec<&'a Entrant>> {
+    let mut tables = Vec::with_capacity(field.len() / 2);
+    let mut carry: Vec<&'a Entrant> = Vec::new();
+    let mut index = 0;
+
+    while index < field.len() {
+        let points = field[index].match_points;
+        let mut bracket = std::mem::take(&mut carry);
+        while index < field.len() && field[index].match_points == points {
+            bracket.push(field[index]);
+            index += 1;
+        }
+        if bracket.len() % 2 == 1 {
+            // The bottom of the bracket plays down rather than the top: being
+            // paired down is a disadvantage, and it belongs to whoever is
+            // already last on this score.
+            carry.push(bracket.remove(bracket.len() - 1));
+        }
+        let half = bracket.len() / 2;
+        for seat in 0..half {
+            tables.push(vec![bracket[seat], bracket[seat + half]]);
+        }
+    }
+
+    // An even field cannot leave anybody carried, but a caller that ever hands
+    // this an odd one gets them seated alone rather than dropped.
+    for left in carry {
+        tables.push(vec![left]);
+    }
+    tables
+}
+
 /// Cut a ranked field into pods, full ones first
 ///
 /// Top-down, so the short pods are at the bottom of the standings where being a
@@ -397,7 +473,7 @@ fn cost(
         let spread = i64::from(
             points.iter().copied().max().unwrap_or(0) - points.iter().copied().min().unwrap_or(0),
         );
-        total += spread * spread;
+        total += SPREAD_COST * spread * spread;
     }
     total
 }
@@ -429,11 +505,10 @@ fn improve<'a>(
     let mut best = pods.clone();
     let mut best_cost = cost(&best, met, pod_size);
 
-    // Restart zero is the ranked slice itself. The others start from a shuffle,
-    // and an equal-cost result from one of those *replaces* the slice — which is
-    // what makes "pair again" actually rearrange a first round, where every
-    // layout costs nothing and the slice would otherwise be the only answer the
-    // engine ever gives.
+    // Restart zero is the layout the caller built — the folded brackets for a
+    // duel field, the ranked slice for pods. The others start from a shuffle and
+    // are kept only if they are strictly better, so a good starting layout is
+    // never traded for a different one of equal cost.
     for restart in 0..RESTARTS {
         let mut current = if restart == 0 {
             pods.clone()
@@ -471,7 +546,11 @@ fn improve<'a>(
             current[b][j] = moved;
 
             let swapped_cost = cost(&current, met, pod_size);
-            if swapped_cost <= current_cost {
+            // Strictly better only. Accepting equal-cost swaps let the climb
+            // wander freely inside a score bracket, where every arrangement
+            // costs the same — which quietly threw the fold away and made the
+            // pairing random among people on the same record.
+            if swapped_cost < current_cost {
                 current_cost = swapped_cost;
             } else {
                 let back = current[a][i];
@@ -480,7 +559,7 @@ fn improve<'a>(
             }
         }
 
-        if current_cost < best_cost || (restart > 0 && current_cost == best_cost) {
+        if current_cost < best_cost {
             best = current;
             best_cost = current_cost;
         }
@@ -608,6 +687,15 @@ impl SplitMix64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// One of the players, by rank
+    ///
+    /// @param n which one
+    ///
+    /// @returns their id
+    fn p(n: u128) -> EntrantId {
+        Uuid::from_u128(n)
+    }
 
     /// An entrant with nothing remarkable about them
     ///
@@ -830,30 +918,189 @@ mod tests {
     }
 
     #[test]
-    fn rearranges_a_first_round_rather_than_only_reshuffling_its_seats() {
-        // Nobody has played and nobody has points, so every layout costs the
-        // same. Asking again has to move people between pods, not just around
-        // inside the ones the ranked slice happened to cut.
-        let memberships: HashSet<Vec<Vec<EntrantId>>> = (1..=10u64)
-            .map(|seed| {
-                let snap = PairingSnapshot {
-                    seed,
-                    ..snapshot(PairingKind::Swiss, 4, field(12))
-                };
-                let mut pods: Vec<Vec<EntrantId>> = pair(&snap)
-                    .expect("pairs")
-                    .tables
-                    .into_iter()
-                    .map(|mut table| {
-                        table.seats.sort();
-                        table.seats
-                    })
-                    .collect();
-                pods.sort();
-                pods
-            })
+    fn folds_a_score_bracket_top_half_against_bottom_half() {
+        // Everybody level, so the whole field is one bracket: the first plays
+        // the fifth, not the second.
+        let pairing = pair(&snapshot(PairingKind::Swiss, 2, field(8))).expect("pairs");
+        let tables: Vec<Vec<EntrantId>> = pairing
+            .tables
+            .iter()
+            .map(|table| table.seats.clone())
             .collect();
-        assert!(memberships.len() > 1, "every seed produced the same pods");
+
+        assert_eq!(
+            tables,
+            vec![
+                vec![p(1), p(5)],
+                vec![p(2), p(6)],
+                vec![p(3), p(7)],
+                vec![p(4), p(8)],
+            ]
+        );
+    }
+
+    #[test]
+    fn sends_the_bottom_of_an_odd_bracket_down_to_the_next_one() {
+        let mut people = field(6);
+        for person in people.iter_mut().take(3) {
+            person.match_points = 3;
+        }
+        let pairing = pair(&snapshot(PairingKind::Swiss, 2, people)).expect("pairs");
+
+        let paired_down = pairing
+            .tables
+            .iter()
+            .find(|table| table.seats.contains(&p(3)))
+            .expect("their table");
+        assert!(
+            paired_down.seats.iter().any(|seat| *seat == p(5)),
+            "the lowest of the three-point bracket plays the top of the one below"
+        );
+        assert!(
+            pairing
+                .tables
+                .iter()
+                .any(|table| table.seats == vec![p(1), p(2)]),
+            "the two left on three points play each other"
+        );
+    }
+
+    #[test]
+    fn pairs_one_bracket_down_to_avoid_a_rematch() {
+        // Two on three points who have already met, two on nothing.
+        let mut people = field(4);
+        people[0].match_points = 3;
+        people[1].match_points = 3;
+        let pairing = pair(&PairingSnapshot {
+            history: vec![(p(1), p(2))],
+            ..snapshot(PairingKind::Swiss, 2, people)
+        })
+        .expect("pairs");
+
+        assert!(
+            !pairing
+                .tables
+                .iter()
+                .any(|table| table.seats.contains(&p(1)) && table.seats.contains(&p(2))),
+            "one bracket down costs less than sitting them down together again"
+        );
+    }
+
+    #[test]
+    fn keeps_a_rematch_rather_than_pairing_across_two_brackets() {
+        // The same pair, but now six points apart from the field below them.
+        // Dragging somebody that far is worse than the repeat, and the
+        // convention agrees.
+        let mut people = field(4);
+        people[0].match_points = 6;
+        people[1].match_points = 6;
+        let pairing = pair(&PairingSnapshot {
+            history: vec![(p(1), p(2))],
+            ..snapshot(PairingKind::Swiss, 2, people)
+        })
+        .expect("pairs");
+
+        assert!(
+            pairing
+                .tables
+                .iter()
+                .any(|table| table.seats.contains(&p(1)) && table.seats.contains(&p(2))),
+            "the rematch stands rather than a six-point pair-down"
+        );
+    }
+
+    #[test]
+    fn pairs_the_same_field_the_same_way_however_often_it_is_asked() {
+        // Re-pairing is deterministic on purpose: an organizer who presses it
+        // twice is not owed two different answers, and the fold is the answer.
+        let snap = snapshot(PairingKind::Swiss, 2, field(8));
+        let once = pair(&snap).expect("pairs");
+        let twice = pair(&snap).expect("pairs");
+        assert_eq!(once, twice);
+    }
+
+    #[test]
+    fn a_thirty_two_player_event_runs_five_rounds_without_a_single_repeat() {
+        // The measurement the weights were chosen against, rather than an
+        // opinion about them: play a whole event out, feeding each round's
+        // results back in, and count what the pairings actually did.
+        let field: Vec<EntrantId> = (1..=32u128).map(p).collect();
+        let mut points: HashMap<EntrantId, i32> = field.iter().map(|id| (*id, 0)).collect();
+        let seeds: HashMap<EntrantId, i32> = field
+            .iter()
+            .enumerate()
+            .map(|(rank, id)| (*id, rank as i32))
+            .collect();
+        let mut history: Vec<(EntrantId, EntrantId)> = Vec::new();
+        let (mut repeats, mut crossed, mut tables) = (0, 0, 0);
+
+        for round in 1..=5u64 {
+            let mut order = field.clone();
+            order.sort_by(|left, right| {
+                points[right]
+                    .cmp(&points[left])
+                    .then(seeds[left].cmp(&seeds[right]))
+            });
+            let entrants: Vec<Entrant> = order
+                .iter()
+                .map(|id| Entrant {
+                    id: *id,
+                    match_points: points[id],
+                    had_bye: false,
+                    small_pod_rounds: 0,
+                    fixed_table: None,
+                })
+                .collect();
+
+            let pairing = pair(&PairingSnapshot {
+                kind: PairingKind::Swiss,
+                pod_size: 2,
+                entrants,
+                history: history.clone(),
+                seed: round,
+            })
+            .expect("pairs");
+
+            for table in &pairing.tables {
+                if table.is_bye || table.seats.len() < 2 {
+                    continue;
+                }
+                let (one, other) = (table.seats[0], table.seats[1]);
+                tables += 1;
+                if history
+                    .iter()
+                    .any(|met| *met == (one, other) || *met == (other, one))
+                {
+                    repeats += 1;
+                }
+                if points[&one] != points[&other] {
+                    crossed += 1;
+                }
+                history.push((one, other));
+
+                // Whoever stands higher wins, which is the cleanest event a
+                // pairing engine ever has to survive: brackets stay sharp and
+                // the rematch pressure is at its worst.
+                let winner = if order.iter().position(|id| *id == one)
+                    < order.iter().position(|id| *id == other)
+                {
+                    one
+                } else {
+                    other
+                };
+                *points.get_mut(&winner).expect("a known player") += 3;
+            }
+        }
+
+        assert_eq!(
+            repeats, 0,
+            "{repeats} repeat(s) across {tables} tables in five rounds"
+        );
+        assert!(
+            crossed * 5 <= tables,
+            "{crossed} of {tables} tables crossed a score bracket, which is more \
+             pairing down than a clean field should ever need"
+        );
     }
 
     #[test]
