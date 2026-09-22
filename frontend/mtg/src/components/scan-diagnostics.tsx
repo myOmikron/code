@@ -31,6 +31,8 @@ export type ScanDiagnosticsProps = {
 const STAGES = [
     { key: "detect", className: "bg-sky-500" },
     { key: "ocr", className: "bg-emerald-500" },
+    { key: "references", className: "bg-orange-500" },
+    { key: "verify", className: "bg-pink-500" },
     { key: "embed", className: "bg-violet-500" },
     { key: "search", className: "bg-amber-500" },
 ] as const;
@@ -143,6 +145,7 @@ export function ScanDiagnostics({ open, onClose, status, frame, cropRef }: ScanD
                                     " · ",
                                 )}
                                 {` · ${frame.milliseconds.toFixed(0)} ms`}
+                                {` · #${frame.attempts}`}
                             </Text>
                         </div>
                     ) : null}

@@ -54,11 +54,11 @@ export const MIN_ACCEPT_INLIERS = 22;
  * @param candidates every candidate that was verified, in any order
  * @returns the answer, or why there is none
  */
-export function decideScan(candidates: VerifiedCandidate[]): ScanOutcome {
+export function decideScan(candidates: VerifiedCandidate[], preferred?: IndexMatch): ScanOutcome {
     if (candidates.length === 0) return { status: "unrecognised", reason: "no-card", bestInliers: 0 };
 
     const ranked = [...candidates].sort((first, second) => second.inliers - first.inliers);
-    const best = ranked[0];
+    const best = ranked.find((entry) => entry.match === preferred && entry.inliers >= MIN_ACCEPT_INLIERS) ?? ranked[0];
     if (best.inliers < MIN_ACCEPT_INLIERS) {
         return { status: "unrecognised", reason: "weak-match", bestInliers: best.inliers };
     }
@@ -66,6 +66,6 @@ export function decideScan(candidates: VerifiedCandidate[]): ScanOutcome {
         status: "recognised",
         printing: best.match.printing,
         inliers: best.inliers,
-        runnerUp: ranked[1]?.inliers ?? 0,
+        runnerUp: ranked.find((entry) => entry !== best)?.inliers ?? 0,
     };
 }

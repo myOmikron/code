@@ -6,19 +6,18 @@
 //! search are local and quick. Verification loads reference images over the network and compares
 //! descriptors, and it is the only part that can say for certain which printing this is.
 //!
-//! So verification does not run per frame. It runs when the cheap half has said the same thing
-//! twice, which is both a good sign that the card is being held still and the point at which the
-//! answer is worth confirming. Everything it loads is cached, so the second look at a candidate
-//! costs nothing.
+//! On WebGPU verification waits for a recurring candidate. On WASM, rerunning the model is
+//! expensive enough to verify the first upright shortlist directly. References are fetched
+//! concurrently within a time budget and retained in a bounded cache.
 import { detectCardsIn, rectifyCardIn, shrinkQuad } from "./card-detect";
 import type { CardQuad, DetectedCard, Point, RgbaImage } from "./card-detect";
 import type { EmbeddingIndex, IndexMatch } from "./embedding-index";
 import type { Embedder } from "./embedder";
 import { describeCard, discriminatePrintings, verifyAgainst } from "./feature-verify";
-import type { CardFeatures } from "./feature-verify";
 import { loadReader } from "./ocr";
 import type { ScanLanguage, ScanLanguageChoice } from "./ocr";
-import { loadReferenceImage } from "./reference-images";
+import { loadReferences, type CachedReference } from "./reference-cache";
+import { createLiveBudget } from "./live-budget";
 import { decideScan } from "./scan-decision";
 import type { ScanOutcome } from "./scan-decision";
 
@@ -288,7 +287,14 @@ function offsetQuad(quad: CardQuad, region: Region): CardQuad {
 /**
  * Where one frame's milliseconds went
  */
-export type FrameTimings = { detect: number; embed: number; search: number; ocr: number };
+export type FrameTimings = {
+    detect: number;
+    embed: number;
+    search: number;
+    ocr: number;
+    references: number;
+    verify: number;
+};
 
 /**
  * What the cheap half of the chain found in one frame
@@ -320,29 +326,9 @@ export type FramePreview = {
     sightScore: number;
 };
 
-/**
- * Reference material for one printing, kept between frames
- */
-type CachedReference = { image: RgbaImage; features: CardFeatures };
-
-const references = new Map<string, CachedReference | null>();
-
-/**
- * Loads a printing's reference and its descriptors, once.
- *
- * @param printing
- * @returns the cached reference, or null when it cannot be fetched
- */
-async function reference(printing: IndexMatch["printing"]): Promise<CachedReference | null> {
-    const key = `${printing.id}/${printing.face}`;
-    const known = references.get(key);
-    if (known !== undefined) return known;
-
-    const image = await loadReferenceImage(printing.id, printing.face);
-    const entry = image ? { image, features: await describeCard(image) } : null;
-    references.set(key, entry);
-    return entry;
-}
+/** A timed-out OCR job may finish, but must not queue work for later frames. */
+const readWithinBudget = createLiveBudget();
+const OCR_BUDGET = 350;
 
 /**
  * Runs the local half of the chain on one frame.
@@ -366,7 +352,7 @@ export async function previewFrame(
     viewAspect = 0,
 ): Promise<FramePreview> {
     const started = performance.now();
-    const timings: FrameTimings = { detect: 0, embed: 0, search: 0, ocr: 0 };
+    const timings: FrameTimings = { detect: 0, embed: 0, search: 0, ocr: 0, references: 0, verify: 0 };
 
     const region = guideRegion(pixels.width, pixels.height, viewAspect);
     const searched = cutRegion(pixels, region);
@@ -402,12 +388,25 @@ export async function previewFrame(
     const ocrStarted = performance.now();
     let title = "";
     let resolved = "";
+    // A read that exceeds the wait budget may still finish while the model runs.
+    // Keep it only for this frame, never as a name for a later camera image.
+    let lateTitle = "";
     const readingLanguage = language === "auto" ? guessed : language;
+    let readCompleted = false;
     for (const inset of OCR_INSETS) {
-        const reading = await readName(
-            readingLanguage,
-            await rectifyCardIn(searched, inset === 0 ? card.quad : shrinkQuad(card.quad, inset), 0),
+        const reading = await readWithinBudget(
+            async () => {
+                const reading = await readName(
+                    readingLanguage,
+                    await rectifyCardIn(searched, inset === 0 ? card.quad : shrinkQuad(card.quad, inset), 0),
+                );
+                lateTitle = reading;
+                return reading;
+            },
+            OCR_BUDGET - (performance.now() - ocrStarted),
         );
+        if (reading === undefined) break;
+        readCompleted = true;
         if (!title) title = reading;
         resolved = reading ? index.resolveName(reading) : "";
         if (resolved) {
@@ -419,7 +418,7 @@ export async function previewFrame(
     // a single frame would mean six model loads and two seconds before anything appeared on
     // screen; walking them costs one extra guess per second and settles on the right one for the
     // rest of the stack.
-    if (language === "auto") {
+    if (language === "auto" && readCompleted) {
         if (resolved) {
             misses = 0;
             tried = 0;
@@ -468,7 +467,18 @@ export async function previewFrame(
         byName = index.searchNamed(await embedded(), resolved, NAMED_CANDIDATES);
         timings.search = performance.now() - searchStarted - timings.embed;
     } else {
-        bySight = index.search(await embedded(), LIVE_SHORTLIST);
+        const vector = await embedded();
+        const lateName = lateTitle ? index.resolveName(lateTitle) : "";
+        if (lateName) {
+            title = lateTitle;
+            byName = index.searchNamed(
+                vector,
+                lateName,
+                index.countNamed(lateName) <= NAMED_WITHOUT_MODEL ? NAMED_WITHOUT_MODEL : NAMED_CANDIDATES,
+            );
+        } else {
+            bySight = index.search(vector, LIVE_SHORTLIST);
+        }
         timings.search = performance.now() - searchStarted - timings.embed;
     }
 
@@ -560,16 +570,21 @@ export async function confirmPreview(preview: FramePreview): Promise<ScanOutcome
         return { status: "unrecognised", reason: "no-card", bestInliers: 0 };
     }
 
+    const referencesStarted = performance.now();
+    const entries = await loadReferences(preview.candidates.map((match) => match.printing));
+    preview.timings.references = performance.now() - referencesStarted;
+    const verifyStarted = performance.now();
     const query = await describeCard(preview.crops[0]);
     const verified: { match: IndexMatch; inliers: number; homography: number[] | null }[] = [];
-    for (const match of preview.candidates) {
-        const entry = await reference(match.printing);
+    for (const [index, match] of preview.candidates.entries()) {
+        const entry = entries[index];
         if (!entry) continue;
         const result = await verifyAgainst(query, entry.features);
         verified.push({ match, inliers: result.inliers, homography: result.homography });
     }
     verified.sort((first, second) => second.inliers - first.inliers);
 
+    let preferred: IndexMatch | undefined;
     const leader = verified[0];
     if (leader) {
         const tied = verified.filter(
@@ -582,7 +597,7 @@ export async function confirmPreview(preview: FramePreview): Promise<ScanOutcome
             const usable = tied
                 .map((candidate) => ({
                     candidate,
-                    entry: references.get(`${candidate.match.printing.id}/${candidate.match.printing.face}`),
+                    entry: entries[preview.candidates.indexOf(candidate.match)],
                 }))
                 .filter((pair): pair is { candidate: (typeof tied)[0]; entry: CachedReference } => Boolean(pair.entry));
             if (usable.length > 1) {
@@ -592,14 +607,17 @@ export async function confirmPreview(preview: FramePreview): Promise<ScanOutcome
                 );
                 if (decision) {
                     const winner = usable[decision.index].candidate;
-                    verified.splice(verified.indexOf(winner), 1);
-                    verified.unshift(winner);
+                    preferred = winner.match;
                 }
             }
         }
     }
 
-    return decideScan(verified.map((entry) => ({ match: entry.match, inliers: entry.inliers })));
+    preview.timings.verify = performance.now() - verifyStarted;
+    return decideScan(
+        verified.map((entry) => ({ match: entry.match, inliers: entry.inliers })),
+        preferred,
+    );
 }
 
 /**

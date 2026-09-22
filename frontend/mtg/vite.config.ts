@@ -28,6 +28,7 @@ const https = useHttps ? { key: readFileSync(".cert/key.pem"), cert: readFileSyn
 // which is why that one stays on a 0.x number.
 const { version } = JSON.parse(readFileSync("package.json", "utf-8")) as { version: string };
 const appVersion = process.env.APP_VERSION?.replace(/^v/, "") || version;
+const scannerRuntimeVersion = JSON.parse(readFileSync("node_modules/onnxruntime-web/package.json", "utf-8")).version;
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -209,6 +210,7 @@ export default defineConfig({
     },
     define: {
         __APP_VERSION__: JSON.stringify(appVersion),
+        __SCANNER_RUNTIME_VERSION__: JSON.stringify(scannerRuntimeVersion),
     },
     // Both are reachable only from inside the scan worker: opencv through an `await import()` in
     // src/scanner/opencv.ts, onnxruntime-web through the embedder. Vite scans for dependencies
@@ -222,15 +224,11 @@ export default defineConfig({
     },
 
     server: {
-        allowedHosts: true,
-        watch: {
-            // Merged with vite's own list, so .git and node_modules stay covered. .cache holds the
-            // scanner's working data: 450000 reference scans plus the OCR training corpus, over a
-            // million files against an inotify limit of 524288, which crashes the dev server on
-            // startup with ENOSPC. The other two fill up in bulk when a harness runs and would
-            // each turn into a reload storm.
-            ignored: ["**/.cache/**", "**/test/fehlschlaege/**", "**/test/detect-output/**"],
+        headers: {
+            "Cross-Origin-Opener-Policy": "same-origin",
+            "Cross-Origin-Embedder-Policy": "credentialless",
         },
+        allowedHosts: true,
         host: useHttps ? true : "127.0.0.1",
         https,
         watch: {
@@ -239,7 +237,15 @@ export default defineConfig({
             // Left alone, the dev server hands every single file to inotify and dies with
             // `ENOSPC: System limit for number of file watchers reached` — inside the compose
             // stack the whole cache lives under the project root, so it is watched by default.
-            ignored: ["**/.cache/**", "**/public/data/**", "**/public/tesseract/**", "**/dev-dist/**", "**/tmp/**"],
+            ignored: [
+                "**/.cache/**",
+                "**/public/data/**",
+                "**/public/tesseract/**",
+                "**/dev-dist/**",
+                "**/tmp/**",
+                "**/test/fehlschlaege/**",
+                "**/test/detect-output/**",
+            ],
         },
         proxy: {
             // /api/graph rides along: the webserver proxies the graph advisor

@@ -23,6 +23,7 @@ import { loadReader } from "./ocr";
 import type { ScanLanguageChoice } from "./ocr";
 import type { ScanOutcome } from "./scan-decision";
 import type { RgbaImage } from "./card-detect";
+import type { FrameTimings } from "./live-pipeline";
 
 /**
  * Anything the main thread may send
@@ -81,7 +82,8 @@ type OutgoingMessage =
           region: { x: number; y: number; width: number; height: number };
           fromGuide: boolean;
           /** Where the milliseconds went, for the debug view */
-          timings: { detect: number; embed: number; search: number };
+          timings: FrameTimings;
+          attempts: number;
           /** The leading candidate by embedding alone, shown while the answer is still forming */
           preview: { name: string; set: string; collectorNumber: string; score: number } | null;
           /** Set once the frame was confirmed; absent while the cheap half is still running */
@@ -107,6 +109,7 @@ const agreement = createAgreementTracker();
 const variants = createVariantSelector();
 /** Whether the last frame read a name, which makes exploring pointless. */
 let named = false;
+let attempts = 0;
 // Counted so the crop variants can be spread over frames rather than all tried in each one.
 
 /**
@@ -273,6 +276,8 @@ worker.onmessage = async (event) => {
         if (message.type === "reset") {
             agreement.reset();
             variants.reset();
+            named = false;
+            attempts = 0;
             return;
         }
 
@@ -294,6 +299,8 @@ worker.onmessage = async (event) => {
 
         if (message.type === "live") {
             try {
+                const started = performance.now();
+                attempts += 1;
                 const pixels = readPixels(message.frame);
                 const variant = variants.next(named);
                 const preview = await previewFrame(
@@ -303,6 +310,7 @@ worker.onmessage = async (event) => {
                     variant,
                     message.language ?? "auto",
                     message.sets ?? [],
+                    message.viewAspect ?? 0,
                 );
                 // The variant is judged on what the picture alone did with it. Judging it on the
                 // merged leader would reward the variants where the name could *not* be read, since
@@ -313,17 +321,13 @@ worker.onmessage = async (event) => {
 
                 named = preview.named;
 
-                // Confirmation only once the same printing has led twice running. That is both a
-                // sign the card is being held still and the moment the answer is worth the
-                // reference downloads it costs.
-                //
-                // Only upright frames get a vote. The rotated variants are sampled to help the
-                // model and are never settled on, yet their answers were going into the same
-                // window: with one frame in three exploring, a window of four held more than one
-                // crop that was not even the right way up, and a stray high score from one of
-                // those both blocked the real answer and, on the third try, replaced it.
+                // On WASM a second embedding can cost seconds. Verify the first upright
+                // shortlist directly instead; recognition still requires the same geometric
+                // evidence as a single-shot scan. Faster backends retain the voting window.
                 const outcome =
-                    uprightVariant(variant) && agreement.seen(key, preview.candidates[0]?.score ?? 0, preview.named)
+                    uprightVariant(variant) &&
+                    (embedder.backend === "wasm" ||
+                        agreement.seen(key, preview.candidates[0]?.score ?? 0, preview.named))
                         ? await confirmPreview(preview)
                         : null;
                 if (outcome?.status === "recognised") {
@@ -360,11 +364,13 @@ worker.onmessage = async (event) => {
                               }
                             : null,
                         outcome,
-                        milliseconds: preview.milliseconds,
+                        milliseconds: performance.now() - started,
+                        attempts,
                         timings: preview.timings,
                     },
                     crop ? [crop] : [],
                 );
+                if (outcome?.status === "recognised") attempts = 0;
             } finally {
                 message.frame.close();
             }

@@ -37,9 +37,9 @@ export function referenceImageUrl(id: string, face: number): string {
  * @param face which side
  * @returns the decoded reference, or null when it cannot be fetched
  */
-export async function loadReferenceImage(id: string, face: number): Promise<RgbaImage | null> {
+export async function loadReferenceImage(id: string, face: number, signal?: AbortSignal): Promise<RgbaImage | null> {
     try {
-        const response = await fetch(referenceImageUrl(id, face), { mode: "cors" });
+        const response = await fetch(referenceImageUrl(id, face), { mode: "cors", signal });
         if (!response.ok) return null;
         const bitmap = await createImageBitmap(await response.blob());
         try {

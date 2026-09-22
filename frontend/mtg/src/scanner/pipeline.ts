@@ -275,6 +275,7 @@ export async function scanFrame(pixels: RgbaImage, index: LoadedIndex, embedder:
 
     // Printings that are the same picture land within a few percent of each other, so the order
     // between them is noise. Comparing where their references differ is what actually decides.
+    let preferred: IndexMatch | undefined;
     const leader = verified[0];
     if (leader) {
         const tied = verified.filter(
@@ -299,8 +300,7 @@ export async function scanFrame(pixels: RgbaImage, index: LoadedIndex, embedder:
                 );
                 if (decision) {
                     const winner = usable[decision.index].candidate;
-                    verified.splice(verified.indexOf(winner), 1);
-                    verified.unshift(winner);
+                    preferred = winner.match;
                 }
             }
         }
@@ -309,7 +309,10 @@ export async function scanFrame(pixels: RgbaImage, index: LoadedIndex, embedder:
     timings.total = performance.now() - started;
 
     return {
-        outcome: decideScan(verified.map((entry) => ({ match: entry.match, inliers: entry.inliers }))),
+        outcome: decideScan(
+            verified.map((entry) => ({ match: entry.match, inliers: entry.inliers })),
+            preferred,
+        ),
         quad: crops[0]?.quad ?? null,
         timings,
         verified: verified.length,

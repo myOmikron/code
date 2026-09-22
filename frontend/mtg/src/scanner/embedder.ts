@@ -56,8 +56,8 @@ export async function loadEmbedder(
 ): Promise<Embedder> {
     pending ??= (async () => {
         // Threads need SharedArrayBuffer, which needs the page to be cross-origin isolated. The
-        // dev server does not send those headers, so asking for threads there fails rather than
-        // degrades. One thread always works, and WebGPU makes the question moot where it runs.
+        // deployment and dev server send those headers. Older cached pages and browsers without
+        // isolation still use one thread.
         ort.env.wasm.numThreads = self.crossOriginIsolated ? Math.min(4, navigator.hardwareConcurrency || 1) : 1;
 
         /**
@@ -211,6 +211,7 @@ export async function loadEmbedder(
         // sentence turns a five-minute diagnosis into a guessing game, and the backends fail
         // for entirely different reasons.
         const reasons: string[] = [];
+        reasons.push(`wasm: ${ort.env.wasm.numThreads} threads · isolated: ${self.crossOriginIsolated === true}`);
         // A backend that threw while loading is not worth a second look this run.
         const dead = new Set<Embedder["backend"]>();
         if (strategy === "off") reasons.push("webgpu: hier schon gescheitert, übersprungen");

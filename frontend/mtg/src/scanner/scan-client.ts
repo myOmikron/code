@@ -11,6 +11,7 @@ import type { ScanOutcome } from "./scan-decision";
 import type { CardQuad } from "./card-detect";
 import type { IndexedPrinting } from "./embedding-index";
 import type { ScanLanguageChoice } from "./ocr";
+import type { FrameTimings } from "./live-pipeline";
 
 export type { ScanLanguage, ScanLanguageChoice } from "./ocr";
 import type { ScanLoadProgress } from "./pipeline";
@@ -85,6 +86,7 @@ function ensureWorker(): Worker {
                 preview: message.preview,
                 outcome: message.outcome,
                 milliseconds: message.milliseconds,
+                attempts: message.attempts,
             } as never);
         else if (message.type === "printings") resolver.resolve(message.printings as never);
         else if (message.type === "sets") resolver.resolve(message.sets as never);
@@ -135,7 +137,7 @@ export function loadScanner(
 }
 
 /** Where the WebGPU verdict for this device is kept between loads. */
-const STRATEGY_KEY = "scanner.webgpu-strategy";
+const STRATEGY_KEY = "scanner.webgpu-strategy.v2";
 
 /**
  * Which WebGPU arrangement this load should try.
@@ -154,7 +156,8 @@ const STRATEGY_KEY = "scanner.webgpu-strategy";
  */
 function plannedStrategy(): WebgpuStrategy {
     try {
-        const [, stored] = (localStorage.getItem(STRATEGY_KEY) ?? "").split(" ");
+        const [runtime, stored] = (localStorage.getItem(STRATEGY_KEY) ?? "").split(" ");
+        if (runtime !== __SCANNER_RUNTIME_VERSION__) return "full";
         return stored === "no-subgroups" || stored === "no-subgroups-f16" || stored === "off" ? stored : "full";
     } catch {
         return "full";
@@ -206,7 +209,9 @@ export type LiveFrameResult = {
     /** Whether the crop came from the guide because detection found nothing */
     fromGuide: boolean;
     /** Where the milliseconds went, for the debug view */
-    timings: { detect: number; embed: number; search: number; ocr: number };
+    timings: FrameTimings;
+    /** Frames processed since the previous recognition or reset. */
+    attempts: number;
     /** What the title bar read, empty when nothing legible was found */
     title: string;
     /** Why reading failed, empty when it did not */
@@ -220,7 +225,7 @@ export type LiveFrameResult = {
 };
 
 /**
- * Runs one live frame: always the cheap half, the expensive half only when frames agree.
+ * Runs one live frame, verifying directly on WASM or after agreement on WebGPU.
  *
  * @param frame transferred to the worker, which closes it
  * @param debug also return the rectified crop, so a wrong answer can be looked at

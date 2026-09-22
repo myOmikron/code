@@ -15,8 +15,18 @@ http:
       rule: 'Host(`{{ env "DOMAIN" }}`)'
       entryPoints: [ websecure ]
       service: frontend
+      middlewares: [ scanner-isolation ]
       tls:
         certResolver: letsencrypt
+
+  middlewares:
+    scanner-isolation:
+      headers:
+        customResponseHeaders:
+          # SharedArrayBuffer lets ONNX use multiple WASM threads. credentialless
+          # keeps public cross-origin artwork usable without requiring CORP.
+          Cross-Origin-Opener-Policy: "same-origin"
+          Cross-Origin-Embedder-Policy: "credentialless"
 
   services:
     frontend:
