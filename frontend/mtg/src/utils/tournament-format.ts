@@ -7,8 +7,6 @@
  * format seats.
  */
 
-import type { FormatRulesResponse } from "src/api/generated";
-
 /** Whether the decks are brought along or built at the table */
 export type FormatKind = "constructed" | "limited";
 
@@ -74,22 +72,35 @@ export function pointsFor(podSize: number): PointsDefaults {
 }
 
 /**
+ * The formats seated in pods rather than one on one
+ *
+ * Stated outright rather than derived from whether the format wants a commander, which is what
+ * this used to ask. Those are two different questions and the answers come apart: Duel Commander,
+ * Archon and the three Brawls all need a commander and are all played one on one. Reading
+ * "has a commander" as "is multiplayer" gave every one of them a pod of four, and with it a
+ * best-of-one and the 7/1/0 scoring a pod uses — three wrong defaults from one wrong premise.
+ *
+ * Commander with a different card pool is still Commander, so Pre-EDH and Pauper Commander are
+ * here; Oathbreaker is its own format but is likewise normally played in pods.
+ */
+export const POD_FORMATS = ["commander", "predh", "paupercommander", "oathbreaker"] as const;
+
+/**
  * How many players sit at one table of this format
  *
- * Pods of four for the commander formats, two for everything else: the sixty card formats, the
- * limited formats (drafted in pods, but played one on one), and Duel Commander, which is one on
- * one by definition however much it looks like Commander otherwise. A slug the catalog does not
- * know reads as a table of two as well — that is the shape most formats have.
+ * Four for the formats played in pods, two for everything else — the sixty card formats, the
+ * limited ones (drafted in pods but played one on one), the one-on-one commander formats, and any
+ * slug this does not recognise, since a table of two is the shape most formats have.
+ *
+ * Only ever a default. It fills the field in the create dialog, and an organizer running
+ * three-player pods of something changes it.
  *
  * @param slug the format
- * @param formats the catalog, for whether the format wants a commander
  *
  * @returns four or two
  */
-export function podSizeFor(slug: string, formats: Array<FormatRulesResponse>): number {
-    if (slug === "duel") return 2;
-    const rules = formats.find((format) => format.slug === slug);
-    return rules !== undefined && rules.commander.kind !== "none" ? 4 : 2;
+export function podSizeFor(slug: string): number {
+    return (POD_FORMATS as ReadonlyArray<string>).includes(slug) ? 4 : 2;
 }
 
 /**
@@ -129,3 +140,4 @@ export function recommendedRounds(players: number, podSize: number): number {
     if (players <= 64) return 5;
     return 6;
 }
+

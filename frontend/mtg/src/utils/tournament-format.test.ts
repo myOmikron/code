@@ -1,23 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { FormatRulesResponse } from "src/api/generated";
 import { formatKind, podSizeFor, pointsFor, recommendedRounds } from "src/utils/tournament-format";
-
-/**
- * One catalog row, the shape `podSizeFor` reads: a slug and whether it wants a commander
- *
- * @param slug the format's slug
- * @param commander whether the format wants a commander
- *
- * @returns a minimal catalog row
- */
-function rules(slug: string, commander: boolean): FormatRulesResponse {
-    return {
-        slug,
-        commander: commander ? { kind: "required", min: 1, max: 2 } : { kind: "none" },
-    } as unknown as FormatRulesResponse;
-}
-
-const FORMATS: Array<FormatRulesResponse> = [rules("commander", true), rules("standard", false)];
 
 describe("pointsFor", () => {
     it("scores a table of two by the Magic Tournament Rules", () => {
@@ -39,16 +21,30 @@ describe("pointsFor", () => {
 });
 
 describe("podSizeFor", () => {
-    it("seats a pod of four for a commander format", () => {
-        expect(podSizeFor("commander", FORMATS)).toBe(4);
+    it("seats a pod of four for the formats played in pods", () => {
+        expect(podSizeFor("commander")).toBe(4);
+        expect(podSizeFor("predh")).toBe(4);
+        expect(podSizeFor("paupercommander")).toBe(4);
+        expect(podSizeFor("oathbreaker")).toBe(4);
     });
 
-    it("seats a table of two for duel, regardless of the catalog", () => {
-        expect(podSizeFor("duel", FORMATS)).toBe(2);
+    it("seats a table of two for the commander formats played one on one", () => {
+        // Each of these wants a commander and is still a duel, which is exactly
+        // what reading "has a commander" as "is multiplayer" used to get wrong.
+        expect(podSizeFor("duel")).toBe(2);
+        expect(podSizeFor("archon")).toBe(2);
+        expect(podSizeFor("brawl")).toBe(2);
+        expect(podSizeFor("competitivebrawl")).toBe(2);
+        expect(podSizeFor("standardbrawl")).toBe(2);
     });
 
-    it("seats a table of two for a slug the catalog does not know", () => {
-        expect(podSizeFor("unknown-format", FORMATS)).toBe(2);
+    it("seats a table of two for the sixty card and limited formats", () => {
+        expect(podSizeFor("modern")).toBe(2);
+        expect(podSizeFor("draft")).toBe(2);
+    });
+
+    it("seats a table of two for a slug it does not recognise", () => {
+        expect(podSizeFor("unknown-format")).toBe(2);
     });
 });
 
@@ -94,3 +90,4 @@ describe("recommendedRounds", () => {
         expect(recommendedRounds(1, 2)).toBe(1);
     });
 });
+

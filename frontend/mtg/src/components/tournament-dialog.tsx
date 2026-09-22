@@ -432,7 +432,7 @@ export function TournamentDialog({ open, tournament, participantCount, onClose, 
                                                 // a new event: an existing one keeps whatever
                                                 // scoring its organizer already set, even across a
                                                 // format change.
-                                                const podSize = podSizeFor(slug, formats);
+                                                const podSize = podSizeFor(slug);
                                                 form.setFieldValue("podSize", podSize);
                                                 if (podSize > 2) form.setFieldValue("gamesPerMatch", 1);
                                                 else if (tournament === null) form.setFieldValue("gamesPerMatch", 3);
