@@ -139,7 +139,7 @@ async function runLoad(strategy: WebgpuStrategy, language: ScanLanguageChoice): 
 
     if (conservativeScanner()) {
         // Avoid overlapping catalogue JSON decoding, model compilation and two more WASM
-        // runtimes. OCR remains lazy until the first frame actually needs it.
+        // runtimes. Live recognition also skips OCR to avoid adding its heap on the first frame.
         index ??= await loadScanIndex(post);
         embedder ??= await loadEmbedder((detail) => post({ stage: "model", loaded: 0, total: 0, detail }), "off");
         await loadOpenCv();
@@ -227,7 +227,8 @@ async function load(id: number, strategy: WebgpuStrategy, language: ScanLanguage
     // the camera button, and whoever is reading it has not tapped it yet. The alternative is not
     // "later", it is "in the first frame", where the same seconds are spent with someone holding a
     // card up to a viewfinder that cannot draw anything until they are over.
-    index.warm();
+    // The low-memory path does not read names; keep the optional name index lazy.
+    if (!conservativeScanner()) index.warm();
 }
 
 /**

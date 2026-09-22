@@ -17,6 +17,7 @@ import { loadReader } from "./ocr";
 import type { ScanLanguage, ScanLanguageChoice } from "./ocr";
 import { loadReferences, type CachedReference } from "./reference-cache";
 import { createLiveBudget } from "./live-budget";
+import { conservativeScanner } from "./runtime-policy";
 import { decideScan } from "./scan-decision";
 import type { ScanOutcome } from "./scan-decision";
 
@@ -410,7 +411,10 @@ export async function previewFrame(
     let lateTitle = "";
     const readingLanguage = language === "auto" ? guessed : language;
     let readCompleted = false;
-    for (const inset of OCR_INSETS) {
+    // A timed-out read keeps running. On WebKit that would boot a third WASM heap
+    // alongside the first inference, defeating the low-memory startup policy.
+    const useOcr = !conservativeScanner();
+    for (const inset of useOcr ? OCR_INSETS : []) {
         const reading = await readWithinBudget(
             async () => {
                 const reading = await readName(
@@ -515,8 +519,8 @@ export async function previewFrame(
     return {
         candidates,
         title,
-        ocrError,
-        ocrModel,
+        ocrError: useOcr ? ocrError : "OCR im WebKit-Schutzmodus deaktiviert (Speicherbedarf)",
+        ocrModel: useOcr ? ocrModel : "disabled",
         named: byName.length > 0,
         sightScore: bySight[0]?.score ?? 0,
         crops: [crop],

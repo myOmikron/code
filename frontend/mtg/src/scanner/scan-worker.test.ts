@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
     loadModel: vi.fn(),
     loadCv: vi.fn(),
     loadOcr: vi.fn(),
+    warm: vi.fn(),
 }));
 vi.mock("./embedder", () => ({ loadEmbedder: mocks.loadModel }));
 vi.mock("./pipeline", () => ({
@@ -30,7 +31,7 @@ beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
     mocks.backend = "wasm";
-    mocks.loadIndex.mockResolvedValue({ manifest: { count: 1 }, warm: vi.fn() });
+    mocks.loadIndex.mockResolvedValue({ manifest: { count: 1 }, warm: mocks.warm });
     mocks.loadModel.mockImplementation(async () => ({ backend: mocks.backend, runtime: "test", notes: [] }));
     mocks.loadCv.mockResolvedValue({});
     mocks.loadOcr.mockResolvedValue({});
@@ -89,7 +90,7 @@ describe("live worker scheduling", () => {
         mocks.loadIndex.mockImplementationOnce(async () => {
             expect(mocks.loadModel).not.toHaveBeenCalled();
             expect(mocks.loadCv).not.toHaveBeenCalled();
-            return { manifest: { count: 1 }, warm: vi.fn() };
+            return { manifest: { count: 1 }, warm: mocks.warm };
         });
         mocks.loadModel.mockImplementationOnce(async () => {
             expect(mocks.loadCv).not.toHaveBeenCalled();
@@ -99,6 +100,7 @@ describe("live worker scheduling", () => {
         expect(mocks.loadModel).toHaveBeenCalledWith(expect.any(Function), "off");
         expect(mocks.loadCv).toHaveBeenCalledOnce();
         expect(mocks.loadOcr).not.toHaveBeenCalled();
+        expect(mocks.warm).not.toHaveBeenCalled();
     });
 
     it("discards an in-flight frame after tracking is reset", async () => {

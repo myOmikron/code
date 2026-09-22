@@ -21,6 +21,7 @@ import type { ScanPhase } from "src/components/scan-viewfinder";
 import { ScanViewfinder } from "src/components/scan-viewfinder";
 import type { CardQuad } from "src/scanner/card-detect";
 import { createCaptureGate } from "src/scanner/capture-gate";
+import { conservativeScanner } from "src/scanner/runtime-policy";
 import { createScanRest } from "src/scanner/scan-rest";
 import {
     inspectScanDownload,
@@ -261,7 +262,8 @@ export function LiveScanner({ session }: LiveScannerProps) {
         const started = performance.now();
         busy.current = true;
         try {
-            const shrink = Math.min(1, FRAME_LONG_SIDE / Math.max(video.videoWidth, video.videoHeight));
+            const longSide = conservativeScanner() ? 960 : FRAME_LONG_SIDE;
+            const shrink = Math.min(1, longSide / Math.max(video.videoWidth, video.videoHeight));
             const bitmap = await createImageBitmap(video, {
                 resizeWidth: Math.round(video.videoWidth * shrink),
                 resizeHeight: Math.round(video.videoHeight * shrink),

@@ -5,6 +5,7 @@
 //! has to say which one happened. Mixing them into one "scanning failed" is what makes a scanner
 //! feel broken when it is merely pointed at a table.
 import { useCallback, useEffect, useRef, useState } from "react";
+import { conservativeScanner } from "src/scanner/runtime-policy";
 
 /**
  * The state of the camera, and how to start and stop it
@@ -89,8 +90,8 @@ export function useCamera(): Camera {
                     // cannot be framed larger than 76% of them however close it is held. Matching
                     // the viewport keeps the whole width.
                     aspectRatio: { ideal: window.innerWidth / window.innerHeight },
-                    width: { ideal: 1920 },
-                    height: { ideal: 1920 },
+                    width: conservativeScanner() ? { ideal: 1280, max: 1280 } : { ideal: 1920 },
+                    height: conservativeScanner() ? { ideal: 1280, max: 1280 } : { ideal: 1920 },
                     // Keep the preview smooth; recognition is throttled independently.
                     frameRate: { ideal: 30, max: 30 },
                 },
