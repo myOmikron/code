@@ -468,7 +468,7 @@ export function DeckAdvisorSetup({
                     </div>
                     <div className={"flex items-center gap-2"}>
                         {step === 1 && (
-                            <Button color={"blue"} onClick={useDefaults}>
+                            <Button color={"lime"} onClick={useDefaults}>
                                 {t("button.setup-defaults")}
                             </Button>
                         )}
@@ -478,7 +478,7 @@ export function DeckAdvisorSetup({
                             </Button>
                         )}
                         {step === 4 ? (
-                            <Button color={"blue"} onClick={next}>
+                            <Button color={"lime"} onClick={next}>
                                 {t("button.setup-start")}
                             </Button>
                         ) : (
@@ -523,7 +523,7 @@ function OptionRow({ chosen, onClick, name, note, lead }: OptionRowProps) {
                 "flex w-full items-center gap-3.5 rounded-(--radius-control) px-3.5 py-3 text-left transition",
                 chosen
                     ? "bg-(--color-accent)/10 text-(--color-brand-700) ring-1 ring-(--color-accent)/30 dark:text-(--color-brand-300)"
-                    : "text-zinc-950 ring-1 ring-zinc-950/10 hover:bg-zinc-950/5 dark:text-white dark:ring-white/15 dark:hover:bg-white/5",
+                    : "text-zinc-950 ring-1 ring-zinc-950/10 hover:bg-lime-400/15 dark:text-white dark:ring-white/15 dark:hover:bg-lime-400/15",
             )}
         >
             {lead}

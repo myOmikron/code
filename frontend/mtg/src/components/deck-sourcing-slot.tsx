@@ -123,7 +123,7 @@ export function DeckSourcingSlot({
                         <Badge color={"zinc"}>{t("label.needed", { count: count.needed })}</Badge>
                     )}
                     {!done && count.available > 0 && (
-                        <Badge color={"blue"}>{t("label.available", { count: count.available })}</Badge>
+                        <Badge color={"lime"}>{t("label.available", { count: count.available })}</Badge>
                     )}
                     {count.missing > 0 && (
                         <Badge color={"amber"}>

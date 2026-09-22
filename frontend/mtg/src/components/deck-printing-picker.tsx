@@ -110,7 +110,7 @@ export function DeckPrintingPicker({ name, current, onPick, startOpen = false, o
                 {owned !== undefined && (
                     <SwitchField className={"flex items-center gap-3"}>
                         <Label className={"text-xs!"}>{t("label.owned-printings-only")}</Label>
-                        <Switch color={"blue"} checked={ownedOnly} onChange={setOwnedOnly} />
+                        <Switch color={"lime"} checked={ownedOnly} onChange={setOwnedOnly} />
                     </SwitchField>
                 )}
             </div>
@@ -165,7 +165,7 @@ export function DeckPrintingPicker({ name, current, onPick, startOpen = false, o
                                                     "aspect-5/7 w-full rounded-lg bg-zinc-200 object-cover ring-1 transition dark:bg-zinc-700",
                                                     held
                                                         ? "ring-2 ring-(--color-success)"
-                                                        : "ring-transparent hover:ring-zinc-950/20 dark:hover:ring-white/25",
+                                                        : "ring-transparent hover:ring-lime-500/60 dark:hover:ring-lime-500/60",
                                                 )}
                                             />
                                         ) : (

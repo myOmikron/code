@@ -69,7 +69,7 @@ export function DeckAdvisorShapeSummary(props: DeckAdvisorShapeSummaryProps) {
                 aria-expanded={open}
                 onClick={() => setOpen((held) => !held)}
                 className={
-                    "mt-2 flex items-center justify-between gap-2 rounded-(--radius-control) py-1 text-left text-sm text-zinc-600 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white"
+                    "mt-2 flex items-center justify-between gap-2 rounded-(--radius-control) py-1 text-left text-sm text-zinc-600 hover:text-lime-700 dark:text-zinc-400 dark:hover:text-lime-300"
                 }
             >
                 <span>{summary}</span>

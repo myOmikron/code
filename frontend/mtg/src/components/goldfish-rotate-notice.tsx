@@ -59,7 +59,7 @@ export function GoldfishRotateNotice({ onBack }: GoldfishRotateNoticeProps) {
                 type={"button"}
                 onClick={onBack}
                 className={
-                    "flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium text-white ring-1 ring-white/25 transition hover:bg-white/10"
+                    "flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium text-white ring-1 ring-white/25 transition hover:bg-lime-400/15"
                 }
             >
                 <ArrowLeftIcon className={"size-4"} />

@@ -84,7 +84,7 @@ export function GoldfishZoneOverlay({
                     {zone === "library" && (
                         <QuietButton
                             onClick={onShuffle}
-                            className={"text-white/70 ring-white/15 hover:bg-white/10 hover:text-white"}
+                            className={"text-white/70 ring-white/15 hover:bg-lime-400/15 hover:text-lime-300"}
                         >
                             {t("button.shuffle")}
                         </QuietButton>
@@ -95,7 +95,7 @@ export function GoldfishZoneOverlay({
                         aria-label={tg("button.close")}
                         title={`${tg("button.close")} · Esc`}
                         className={
-                            "rounded-full p-1 text-white/70 ring-1 ring-white/15 transition hover:bg-white/10 hover:text-white"
+                            "rounded-full p-1 text-white/70 ring-1 ring-white/15 transition hover:bg-lime-400/15 hover:text-lime-300"
                         }
                     >
                         <XMarkIcon className={"size-4"} />

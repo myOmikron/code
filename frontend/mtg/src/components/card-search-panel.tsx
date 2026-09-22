@@ -450,7 +450,7 @@ export function CardSearchPanel({
                         type={"button"}
                         onClick={() => setFiltering(true)}
                         className={
-                            "flex items-center gap-1 rounded-(--radius-pill) px-2.5 py-1 text-xs font-medium text-zinc-700 ring-1 ring-zinc-950/10 transition ring-inset hover:bg-zinc-950/5 hover:text-zinc-950 dark:text-zinc-300 dark:ring-white/15 dark:hover:bg-white/10 dark:hover:text-white"
+                            "flex items-center gap-1 rounded-(--radius-pill) px-2.5 py-1 text-xs font-medium text-zinc-700 ring-1 ring-zinc-950/10 transition ring-inset hover:bg-lime-400/15 hover:text-lime-700 dark:text-zinc-300 dark:ring-white/15 dark:hover:bg-lime-400/15 dark:hover:text-lime-300"
                         }
                     >
                         <FunnelIcon className={"size-3.5"} />
@@ -579,7 +579,7 @@ export function CardSearchPanel({
                                                 ? "ring-2 ring-(--color-brand-500)"
                                                 : count > 0
                                                   ? "ring-2 ring-(--color-success)"
-                                                  : "ring-transparent hover:ring-zinc-950/15 dark:hover:ring-white/20",
+                                                  : "ring-transparent hover:ring-lime-500/60 dark:hover:ring-lime-500/60",
                                         )}
                                     >
                                         {(printing.largeImageUrl ?? printing.imageUrl) !== null ? (
@@ -629,7 +629,7 @@ export function CardSearchPanel({
                                             aria-label={t("accessibility.remove-printing", { name: printing.name })}
                                             onClick={() => onRemove?.(printing)}
                                             className={
-                                                "rounded p-1 text-zinc-600 transition hover:bg-zinc-950/10 disabled:opacity-30 dark:text-zinc-300 dark:hover:bg-white/10"
+                                                "rounded p-1 text-zinc-600 transition hover:bg-lime-400/15 disabled:opacity-30 dark:text-zinc-300 dark:hover:bg-lime-400/15"
                                             }
                                         >
                                             <MinusIcon className={"size-4"} />
@@ -651,7 +651,7 @@ export function CardSearchPanel({
                                             })}
                                             onClick={() => onAdd(printing)}
                                             className={
-                                                "rounded p-1 text-zinc-600 transition hover:bg-zinc-950/10 dark:text-zinc-300 dark:hover:bg-white/10"
+                                                "rounded p-1 text-zinc-600 transition hover:bg-lime-400/15 dark:text-zinc-300 dark:hover:bg-lime-400/15"
                                             }
                                         >
                                             <PlusIcon className={"size-4"} />

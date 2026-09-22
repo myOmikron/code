@@ -68,7 +68,7 @@ export function DeckWantsDialog({ open, rows, onClose }: DeckWantsDialogProps) {
                     <SwitchField>
                         <Label>{t("label.wants-with-available")}</Label>
                         <Description>{t("description.wants-with-available")}</Description>
-                        <Switch color={"blue"} checked={withAvailable} onChange={setWithAvailable} />
+                        <Switch color={"lime"} checked={withAvailable} onChange={setWithAvailable} />
                     </SwitchField>
 
                     <Textarea readOnly={true} value={text} rows={12} className={"font-mono"} />

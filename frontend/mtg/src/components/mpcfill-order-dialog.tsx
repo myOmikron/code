@@ -98,7 +98,7 @@ export function MpcFillOrderDialog({
                             {mpcFoilable(stock) ? t("description.foil") : t("description.foil-impossible")}
                         </Description>
                         <Switch
-                            color={"blue"}
+                            color={"lime"}
                             checked={foil && mpcFoilable(stock)}
                             onChange={onFoil}
                             disabled={!mpcFoilable(stock)}

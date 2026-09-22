@@ -74,7 +74,7 @@ export function InstallProvider({ children }: { children: ReactNode }) {
                     </ol>
                 </DialogBody>
                 <DialogActions>
-                    <Button color={"blue"} onClick={() => setIosHint(false)}>
+                    <Button color={"lime"} onClick={() => setIosHint(false)}>
                         {tg("button.close")}
                     </Button>
                 </DialogActions>

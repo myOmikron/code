@@ -42,12 +42,12 @@ export function ExternalLinkRow({ href, label, children, className }: ExternalLi
             // fill the width of whatever holds them, and a dialog body that
             // scrolls clips on both axes — an outset ring is then a frame with
             // its left and right sides shaved off.
-            className={`group flex items-center justify-between gap-3 rounded-(--radius-control) px-3 py-2.5 inset-ring-1 inset-ring-zinc-950/10 transition hover:bg-zinc-950/5 dark:inset-ring-white/15 dark:hover:bg-white/5 ${className ?? ""}`}
+            className={`group flex items-center justify-between gap-3 rounded-(--radius-control) px-3 py-2.5 inset-ring-1 inset-ring-zinc-950/10 transition hover:bg-lime-400/15 dark:inset-ring-white/15 dark:hover:bg-lime-400/15 ${className ?? ""}`}
         >
             {children}
             <ArrowTopRightOnSquareIcon
                 className={
-                    "size-4 shrink-0 text-zinc-400 transition group-hover:text-zinc-950 dark:text-zinc-500 dark:group-hover:text-white"
+                    "size-4 shrink-0 text-zinc-400 transition group-hover:text-lime-700 dark:text-zinc-500 dark:group-hover:text-lime-300"
                 }
                 aria-hidden={true}
             />

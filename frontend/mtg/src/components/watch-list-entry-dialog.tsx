@@ -13,10 +13,10 @@ import {
     FieldGroup,
     Input,
     Label,
-    PrimaryButton,
     Text,
     Textarea,
 } from "components";
+import { PrimaryButton } from "src/components/primary-button";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -227,7 +227,7 @@ function Stepper({ label, onClick, disabled = false }: StepperProps) {
             aria-label={label}
             onClick={onClick}
             className={
-                "flex size-10 shrink-0 items-center justify-center rounded-(--radius-control) bg-zinc-950/5 text-lg font-semibold text-zinc-700 transition hover:bg-zinc-950/10 disabled:opacity-40 dark:bg-white/10 dark:text-zinc-200 dark:hover:bg-white/15"
+                "flex size-10 shrink-0 items-center justify-center rounded-(--radius-control) bg-zinc-950/5 text-lg font-semibold text-zinc-700 transition hover:bg-lime-400/15 disabled:opacity-40 dark:bg-white/10 dark:text-zinc-200 dark:hover:bg-lime-400/15"
             }
         >
             {label}
@@ -263,7 +263,7 @@ function SheetAction({ icon, label, onClick, tone }: SheetActionProps) {
                 "flex min-h-11 w-full items-center gap-2.5 rounded-(--radius-control) px-3 text-left text-sm font-medium transition *:data-[slot=icon]:size-4",
                 tone === "danger"
                     ? "text-red-600 hover:bg-red-500/10 dark:text-red-400"
-                    : "text-zinc-700 hover:bg-zinc-950/5 dark:text-zinc-200 dark:hover:bg-white/10",
+                    : "text-zinc-700 hover:bg-lime-400/15 dark:text-zinc-200 dark:hover:bg-lime-400/15",
             )}
         >
             <span className={"shrink-0 *:size-4"}>{icon}</span>

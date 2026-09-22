@@ -14,9 +14,9 @@ import {
     Listbox,
     ListboxLabel,
     ListboxOption,
-    PrimaryButton,
     Text,
 } from "components";
+import { PrimaryButton } from "src/components/primary-button";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";

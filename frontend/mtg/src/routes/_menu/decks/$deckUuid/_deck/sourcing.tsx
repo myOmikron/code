@@ -11,7 +11,6 @@ import {
     Divider,
     EmptyState,
     Label,
-    PrimaryButton,
     StackedList,
     Subheading,
     Switch,
@@ -19,6 +18,7 @@ import {
     Text,
     notify,
 } from "components";
+import { PrimaryButton } from "src/components/primary-button";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
@@ -251,7 +251,7 @@ function RouteComponent() {
                         <SwitchField>
                             <Label>{t("label.exact-printing-only")}</Label>
                             <Switch
-                                color={"blue"}
+                                color={"lime"}
                                 checked={match.exactPrinting}
                                 onChange={(exactPrinting) => setMatch({ ...match, exactPrinting })}
                             />
@@ -259,7 +259,7 @@ function RouteComponent() {
                         <SwitchField>
                             <Label>{t("label.match-finish")}</Label>
                             <Switch
-                                color={"blue"}
+                                color={"lime"}
                                 checked={match.matchFinish}
                                 onChange={(matchFinish) => setMatch({ ...match, matchFinish })}
                             />

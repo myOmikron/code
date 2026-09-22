@@ -1,6 +1,7 @@
 import { ArrowDownTrayIcon, CameraIcon, ChevronLeftIcon, PencilSquareIcon, TrashIcon } from "@heroicons/react/20/solid";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { BadgeButton, EmptyState, HeadingLayout, PrimaryButton, Text } from "components";
+import { BadgeButton, EmptyState, HeadingLayout, Text } from "components";
+import { PrimaryButton } from "src/components/primary-button";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { ScannerSessionResponse } from "src/api/generated";
@@ -75,7 +76,9 @@ export function StagedSession({ session }: StagedSessionProps) {
             <div className={"flex flex-col gap-2"}>
                 <Link
                     to={"/scan"}
-                    className={"flex items-center gap-1 text-sm text-zinc-500 hover:underline dark:text-zinc-400"}
+                    className={
+                        "flex items-center gap-1 text-sm text-zinc-500 hover:text-(--color-accent) hover:underline dark:text-zinc-400"
+                    }
                 >
                     <ChevronLeftIcon className={"size-4"} /> {t("button.back-to-sessions")}
                 </Link>

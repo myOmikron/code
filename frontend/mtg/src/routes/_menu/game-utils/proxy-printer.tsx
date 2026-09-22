@@ -10,11 +10,11 @@ import {
     Field,
     Heading,
     Label,
-    PrimaryButton,
     Switch,
     SwitchField,
     Text,
 } from "components";
+import { PrimaryButton } from "src/components/primary-button";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
@@ -171,22 +171,22 @@ function RouteComponent() {
                         <SwitchField>
                             <Label>{t("label.print-backs")}</Label>
                             <Description>{t("description.print-backs")}</Description>
-                            <Switch color={"blue"} checked={backs} onChange={setBacks} />
+                            <Switch color={"lime"} checked={backs} onChange={setBacks} />
                         </SwitchField>
                         <SwitchField>
                             <Label>{t("label.cut-lines")}</Label>
                             <Description>{t("description.cut-lines")}</Description>
-                            <Switch color={"blue"} checked={cutLines} onChange={setCutLines} />
+                            <Switch color={"lime"} checked={cutLines} onChange={setCutLines} />
                         </SwitchField>
                         <SwitchField>
                             <Label>{t("label.skip-basics")}</Label>
                             <Description>{t("description.skip-basics")}</Description>
-                            <Switch color={"blue"} checked={skipBasics} onChange={setSkipBasics} />
+                            <Switch color={"lime"} checked={skipBasics} onChange={setSkipBasics} />
                         </SwitchField>
                         <SwitchField>
                             <Label>{t("label.only-proxies")}</Label>
                             <Description>{t("description.only-proxies")}</Description>
-                            <Switch color={"blue"} checked={picks.onlyProxies} onChange={picks.setOnlyProxies} />
+                            <Switch color={"lime"} checked={picks.onlyProxies} onChange={picks.setOnlyProxies} />
                         </SwitchField>
 
                         <ProxyPickList

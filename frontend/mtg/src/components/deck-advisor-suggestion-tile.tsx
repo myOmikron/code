@@ -278,7 +278,7 @@ export const DeckAdvisorSuggestionTile = memo(function DeckAdvisorSuggestionTile
                             title={t("accessibility.ignore-card", { name: suggestion.name })}
                             aria-label={t("accessibility.ignore-card", { name: suggestion.name })}
                             className={
-                                "rounded-(--radius-control) p-1.5 text-zinc-400 transition hover:bg-zinc-950/5 hover:text-zinc-950 dark:text-zinc-500 dark:hover:bg-white/10 dark:hover:text-white pointer-coarse:p-2.5"
+                                "rounded-(--radius-control) p-1.5 text-zinc-400 transition hover:bg-lime-400/15 hover:text-lime-700 dark:text-zinc-500 dark:hover:bg-lime-400/15 dark:hover:text-lime-300 pointer-coarse:p-2.5"
                             }
                         >
                             <EyeSlashIcon className={"size-4"} />
@@ -294,7 +294,7 @@ export const DeckAdvisorSuggestionTile = memo(function DeckAdvisorSuggestionTile
                                 inMaybe ? t("label.in-maybe") : t("accessibility.maybe-card", { name: suggestion.name })
                             }
                             className={
-                                "rounded-(--radius-control) p-1.5 text-zinc-400 transition hover:bg-zinc-950/5 hover:text-zinc-950 disabled:opacity-40 disabled:hover:bg-transparent dark:text-zinc-500 dark:hover:bg-white/10 dark:hover:text-white pointer-coarse:p-2.5"
+                                "rounded-(--radius-control) p-1.5 text-zinc-400 transition hover:bg-lime-400/15 hover:text-lime-700 disabled:opacity-40 disabled:hover:bg-transparent dark:text-zinc-500 dark:hover:bg-lime-400/15 dark:hover:text-lime-300 pointer-coarse:p-2.5"
                             }
                         >
                             <BookmarkIcon className={"size-4"} />

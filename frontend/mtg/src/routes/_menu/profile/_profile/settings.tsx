@@ -112,7 +112,7 @@ function RouteComponent() {
                     <Label>{t("label.foil-tilt")}</Label>
                     <Description>{t("description.foil-tilt")}</Description>
                     <HorizontalFieldDivider />
-                    <Switch color={"blue"} checked={tilt} onChange={(wanted) => void changeTilt(wanted)} />
+                    <Switch color={"lime"} checked={tilt} onChange={(wanted) => void changeTilt(wanted)} />
                 </HorizontalField>
             )}
 
@@ -120,7 +120,7 @@ function RouteComponent() {
                 <Label>{t("label.proxy-fade")}</Label>
                 <Description>{t("description.proxy-fade")}</Description>
                 <HorizontalFieldDivider />
-                <Switch color={"blue"} checked={proxyFade} onChange={setProxyFade} />
+                <Switch color={"lime"} checked={proxyFade} onChange={setProxyFade} />
             </HorizontalField>
 
             <HorizontalField>

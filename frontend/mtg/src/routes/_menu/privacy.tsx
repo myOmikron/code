@@ -53,7 +53,7 @@ function RouteComponent() {
                         target={"_blank"}
                         rel={"noreferrer"}
                         className={
-                            "text-zinc-950 underline decoration-zinc-950/50 hover:decoration-zinc-950 dark:text-white dark:decoration-white/50 dark:hover:decoration-white"
+                            "text-zinc-950 underline decoration-zinc-950/50 hover:decoration-lime-700 dark:text-white dark:decoration-white/50 dark:hover:decoration-lime-300"
                         }
                     >
                         {t("button.scryfall-privacy")}

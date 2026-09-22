@@ -101,7 +101,7 @@ export function DeckDeleteDialog({ deck, onClose, onDeleted }: DeckDeleteDialogP
                     <SwitchField>
                         <Label>{t("label.return-cards")}</Label>
                         <Description>{t("description.delete-deck-cards", { count: copies })}</Description>
-                        <Switch color={"blue"} checked={giveBack} onChange={setGiveBack} />
+                        <Switch color={"lime"} checked={giveBack} onChange={setGiveBack} />
                     </SwitchField>
                     {giveBack && homeless && collections.length > 0 && (
                         <Field>

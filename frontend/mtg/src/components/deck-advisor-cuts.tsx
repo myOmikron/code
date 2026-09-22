@@ -205,7 +205,7 @@ export function DeckAdvisorCuts({
                                             card fair game — `score_cuts` would never have
                                             offered it as a bare cut on its own. */}
                                             {upgrade && (
-                                                <Badge color={"blue"} className={"shrink-0"}>
+                                                <Badge color={"lime"} className={"shrink-0"}>
                                                     {t("label.swap-upgrade")}
                                                 </Badge>
                                             )}

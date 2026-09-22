@@ -60,7 +60,7 @@ export function SessionTile({ session, destination, selected = false, onActivate
                 "relative flex flex-col overflow-hidden rounded-(--radius-card) bg-(--surface-card) transition",
                 selected
                     ? "ring-2 ring-(--color-brand-500)"
-                    : "ring-1 ring-zinc-950/5 hover:ring-zinc-950/15 dark:ring-white/10 dark:hover:ring-white/25",
+                    : "ring-1 ring-zinc-950/5 hover:ring-lime-500/60 dark:ring-white/10 dark:hover:ring-lime-500/60",
                 CONTEXT_MENU_TARGET,
             )}
         >

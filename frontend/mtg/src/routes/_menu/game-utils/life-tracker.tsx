@@ -13,7 +13,6 @@ import {
     AlertDescription,
     AlertTitle,
     Button,
-    Description,
     Dialog,
     DialogActions,
     DialogBody,
@@ -25,12 +24,11 @@ import {
     Listbox,
     ListboxLabel,
     ListboxOption,
-    PrimaryButton,
-    Switch,
-    SwitchField,
 } from "components";
+import { PrimaryButton } from "src/components/primary-button";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import type { TileBooking } from "src/components/life-tile";
 import { LifeTile } from "src/components/life-tile";
 import type { LifeTrackerSettings, Table } from "src/utils/life-tracker";
 import { hapticConfirm } from "src/utils/haptics";
@@ -39,9 +37,10 @@ import { useOrientationLock } from "src/utils/use-orientation-lock";
 import { useTableOrientation } from "src/utils/use-table-orientation";
 import { useWakeLock } from "src/utils/use-wake-lock";
 import {
+    BOOKING_LINGER,
     CROSS_PLAYER_COUNT,
     PLAYER_COUNTS,
-    SOLO_PLAYER_COUNT,
+    REBOOK_LINGER,
     STARTING_LIFE_RANGE,
     STARTING_LIFE_TOTALS,
     emptyCommanderDamage,
@@ -50,6 +49,7 @@ import {
     loadLifeTrackerGame,
     loadLifeTrackerSettings,
     opponentOrder,
+    rebookableHit,
     resizeCommanderDamage,
     saveLifeTrackerGame,
     saveLifeTrackerSettings,
@@ -60,6 +60,20 @@ import {
 
 /** How long a run of taps stays readable after the last one */
 const DELTA_LINGER = 3000;
+
+/** Commander damage being booked at the table */
+type Booking = {
+    /** Which player took it, counted from zero */
+    player: number;
+    /**
+     * What they lost to a hit no commander has been charged for, when the
+     * booking was opened right after one. Snapshotted then rather than read as
+     * it renders: the offer is a statement about the moment the shield was
+     * tapped, and it has to stand still while it is being read, even though
+     * the hit behind it goes stale a heartbeat later.
+     */
+    offer: number | undefined;
+};
 
 export const Route = createFileRoute("/_menu/game-utils/life-tracker")({
     component: RouteComponent,
@@ -82,9 +96,20 @@ function RouteComponent() {
     const [typedLife, setTypedLife] = useState(() => String(settings.startingLife));
     const [configuring, setConfiguring] = useState(true);
     const [resetting, setResetting] = useState(false);
+    // One player at a time: booking turns every other tile into a target, and
+    // two players doing that at once would leave no tile to tap.
+    const [booking, setBooking] = useState<Booking | undefined>(undefined);
     const timers = useRef(new Map<number, number>());
+    const bookingTimers = useRef<{ offer?: number; idle?: number }>({});
 
-    useEffect(() => () => timers.current.forEach((timer) => window.clearTimeout(timer)), []);
+    useEffect(
+        () => () => {
+            timers.current.forEach((timer) => window.clearTimeout(timer));
+            window.clearTimeout(bookingTimers.current.offer);
+            window.clearTimeout(bookingTimers.current.idle);
+        },
+        [],
+    );
 
     // Every change goes to storage as it happens: what ends a game here is
     // rarely a decision — a deploy activates the new service worker and the app
@@ -126,6 +151,7 @@ function RouteComponent() {
      * @param playerCount how many are playing now
      */
     function changePlayerCount(playerCount: number) {
+        closeBooking();
         setTable((current) => ({
             life: Array.from({ length: playerCount }, (_, index) => current.life[index] ?? settings.startingLife),
             damage: resizeCommanderDamage(current.damage, playerCount),
@@ -199,7 +225,7 @@ function RouteComponent() {
             ...current,
             life: current.life.map((total, player) => (player === index ? total + amount : total)),
             deltas: { ...current.deltas, [index]: (current.deltas[index] ?? 0) + amount },
-            // Only taps on the tile itself leave a hit for the drawer to offer:
+            // Only taps on the tile itself leave a hit for a booking to offer:
             // this is the exact mistake the offer exists to undo.
             hits: withHit(current.hits, index, trackHit(current.hits[index], amount, now)),
         }));
@@ -229,8 +255,8 @@ function RouteComponent() {
                     player === index ? row.map((value, other) => (other === opponent ? next : value)) : row,
                 ),
                 deltas: { ...current.deltas, [index]: (current.deltas[index] ?? 0) + dealt },
-                // Damage counted in the drawer already has a commander against
-                // it, so it is not a hit anyone can be asked about.
+                // Damage booked on an opponent's tile already has a commander
+                // against it, so it is not a hit anyone can be asked about.
                 hits: withHit(current.hits, index, undefined),
             };
         });
@@ -242,7 +268,7 @@ function RouteComponent() {
      *
      * The life went the moment they tapped their tile; all that is missing is
      * whose commander it came off. So this only writes the tally, and writing
-     * it a second time is what booking it in the drawer normally does.
+     * it a second time is what booking it on the opponent's tile normally does.
      *
      * @param index which player took it
      * @param opponent whose commander dealt it
@@ -257,6 +283,121 @@ function RouteComponent() {
             ),
             hits: withHit(current.hits, index, undefined),
         }));
+    }
+
+    /**
+     * Hands every tile back to its own player
+     */
+    function closeBooking() {
+        window.clearTimeout(bookingTimers.current.offer);
+        window.clearTimeout(bookingTimers.current.idle);
+        bookingTimers.current = {};
+        setBooking(undefined);
+    }
+
+    /**
+     * Keeps the booking open for another while.
+     *
+     * Every tap while booking starts the clock over, so the table only takes
+     * the tiles back from a player who has stopped using them.
+     */
+    function keepBooking() {
+        window.clearTimeout(bookingTimers.current.idle);
+        bookingTimers.current.idle = window.setTimeout(closeBooking, BOOKING_LINGER);
+    }
+
+    /**
+     * Takes the offer off the booking, however it ended
+     */
+    function dropOffer() {
+        window.clearTimeout(bookingTimers.current.offer);
+        bookingTimers.current.offer = undefined;
+        setBooking((current) =>
+            current === undefined || current.offer === undefined ? current : { ...current, offer: undefined },
+        );
+    }
+
+    /**
+     * Opens booking commander damage for one player, arming the offer on the
+     * way in.
+     *
+     * Only the way in arms it: a booking that is already open was not opened
+     * on the back of anything.
+     *
+     * @param index which player took the hit
+     */
+    function openBooking(index: number) {
+        closeBooking();
+        const offer = rebookableHit(table.hits[index], Date.now());
+        setBooking({ player: index, offer });
+        if (offer !== undefined) bookingTimers.current.offer = window.setTimeout(dropOffer, REBOOK_LINGER);
+        keepBooking();
+    }
+
+    /**
+     * Opens booking for a player, or closes the one they have open
+     *
+     * @param index which player tapped their strip
+     */
+    function toggleBooking(index: number) {
+        if (booking?.player === index) closeBooking();
+        else openBooking(index);
+    }
+
+    /**
+     * Books commander damage from an opponent's tile against the player booking
+     *
+     * @param opponent whose commander dealt it
+     * @param amount how much to add to that commander's tally
+     */
+    function bookDamage(opponent: number, amount: number) {
+        if (booking === undefined) return;
+        // Counting by hand answers the offer: whatever the player is booking
+        // now, they are booking it themselves.
+        dropOffer();
+        changeDamage(booking.player, opponent, amount);
+        keepBooking();
+    }
+
+    /**
+     * Charges the offered hit to an opponent's commander
+     *
+     * @param opponent whose commander dealt it
+     */
+    function rebook(opponent: number) {
+        if (booking?.offer === undefined) return;
+        dropOffer();
+        rebookDamage(booking.player, opponent, booking.offer);
+        keepBooking();
+    }
+
+    /**
+     * What part one tile plays in the booking that is open
+     *
+     * @param index whose tile
+     *
+     * @returns the part, or `undefined` when nobody is booking
+     */
+    function bookingFor(index: number): TileBooking | undefined {
+        if (booking === undefined) return undefined;
+        if (booking.player === index)
+            return {
+                role: "booking",
+                taken: table.damage[index][index],
+                offer: booking.offer,
+                onDismiss: dropOffer,
+                onChange: (amount) => bookDamage(index, amount),
+                onRebook: () => rebook(index),
+            };
+        return {
+            role: "target",
+            player: booking.player + 1,
+            reader: seating.seats[booking.player].seat,
+            taken: table.damage[booking.player][index],
+            offer: booking.offer,
+            onChange: (amount) => bookDamage(index, amount),
+            onRebook: () => rebook(index),
+        };
     }
 
     /**
@@ -277,6 +418,7 @@ function RouteComponent() {
     function reset() {
         hapticConfirm();
         setResetting(false);
+        closeBooking();
         timers.current.forEach((timer) => window.clearTimeout(timer));
         timers.current.clear();
         setTable((current) => ({
@@ -347,13 +489,13 @@ function RouteComponent() {
                         life={total}
                         delta={table.deltas[index]}
                         damage={table.damage[index]}
+                        dealt={table.damage.map((row) => row[index])}
                         opponents={opponentOrder(seating.seats, index)}
                         placement={seating.seats[index]}
                         flush={seating.flush}
                         onChange={(amount) => changeLife(index, amount)}
-                        onDamage={(opponent, amount) => changeDamage(index, opponent, amount)}
-                        hit={settings.rebook ? table.hits[index] : undefined}
-                        onRebook={(opponent, amount) => rebookDamage(index, opponent, amount)}
+                        booking={bookingFor(index)}
+                        onToggleBooking={() => toggleBooking(index)}
                     />
                 ))}
             </section>
@@ -412,17 +554,6 @@ function RouteComponent() {
                                     </ListboxOption>
                                 </Listbox>
                             </Field>
-                        )}
-                        {settings.playerCount > SOLO_PLAYER_COUNT && (
-                            <SwitchField>
-                                <Label>{t("label.rebook")}</Label>
-                                <Description>{t("description.rebook")}</Description>
-                                <Switch
-                                    color={"blue"}
-                                    checked={settings.rebook}
-                                    onChange={(rebook) => change({ rebook })}
-                                />
-                            </SwitchField>
                         )}
                     </div>
                 </DialogBody>

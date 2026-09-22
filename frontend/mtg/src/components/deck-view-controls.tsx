@@ -91,7 +91,7 @@ export function DeckViewControls({
                             "rounded-[calc(var(--radius-control)-0.125rem)] p-1.5 transition",
                             view === option
                                 ? "bg-(--surface-card) text-zinc-950 shadow-(--shadow-card-sm) dark:text-white"
-                                : "text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white",
+                                : "text-zinc-500 hover:text-lime-700 dark:text-zinc-400 dark:hover:text-lime-300",
                         )}
                     >
                         {option === "grid" && <Squares2X2Icon className={"size-4"} />}
@@ -122,7 +122,7 @@ export function DeckViewControls({
                                 "rounded-[calc(var(--radius-control)-0.125rem)] p-1.5 transition",
                                 size === option
                                     ? "bg-(--surface-card) text-zinc-950 shadow-(--shadow-card-sm) dark:text-white"
-                                    : "text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white",
+                                    : "text-zinc-500 hover:text-lime-700 dark:text-zinc-400 dark:hover:text-lime-300",
                             )}
                         >
                             {option === TWO_COLUMNS ? (

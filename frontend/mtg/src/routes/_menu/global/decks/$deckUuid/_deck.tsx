@@ -77,7 +77,7 @@ function RouteComponent() {
                     <span className={"flex flex-col gap-2"}>
                         {deck.description != null && deck.description !== "" && <span>{deck.description}</span>}
                         <span className={"flex flex-wrap items-center gap-2"}>
-                            <Badge color={"blue"}>{labels.format(deck.format)}</Badge>
+                            <Badge color={"lime"}>{labels.format(deck.format)}</Badge>
                             {claimed !== undefined && (
                                 <Badge color={"zinc"} title={t("label.bracket")}>
                                     {`B${claimed.number} · ${labels.bracket(claimed.slug)}`}
@@ -89,7 +89,7 @@ function RouteComponent() {
                                     <Link
                                         to={"/global/profiles/$username"}
                                         params={{ username: deck.owner }}
-                                        className={"font-medium hover:underline"}
+                                        className={"font-medium hover:text-(--color-accent) hover:underline"}
                                     >
                                         {deck.owner}
                                     </Link>

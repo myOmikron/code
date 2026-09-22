@@ -88,7 +88,7 @@ export function DeckThemePicker({ picked, onToggle, detected }: DeckThemePickerP
                                 "flex items-center gap-2 rounded-(--radius-control) px-2.5 py-2 text-left text-sm/6 transition",
                                 chosen
                                     ? "bg-(--color-accent)/10 text-(--color-brand-700) ring-1 ring-(--color-accent)/30 dark:text-(--color-brand-300)"
-                                    : "text-zinc-700 hover:bg-zinc-950/5 dark:text-zinc-300 dark:hover:bg-white/5",
+                                    : "text-zinc-700 hover:bg-lime-400/15 dark:text-zinc-300 dark:hover:bg-lime-400/15",
                             )}
                         >
                             <CheckIcon className={clsx("size-4 shrink-0", chosen ? "opacity-100" : "opacity-0")} />

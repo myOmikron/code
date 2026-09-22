@@ -60,32 +60,44 @@ export const SOLO_PLAYER_COUNT = 1;
 export const COMMANDER_DAMAGE_LETHAL = 21;
 
 /**
- * How long after a hit the drawer still opens on it.
+ * How long after a hit the booking still opens on it.
  *
  * The window is a reaction time, not a grace period: it is how long it takes a
  * player to hit their tile, register that the swing came in over a commander,
  * and reach for the shield. Two and a half seconds covers the realisation and
- * the second tap without stretching to cover a player who opened the drawer for
+ * the second tap without stretching to cover a player who opened the booking for
  * an unrelated reason a beat later.
  */
 export const REBOOK_REACTION = 2500;
 
 /**
- * How long the offer stands once the drawer is showing it.
+ * How long the offer stands once the booking is showing it.
  *
  * Longer than the window that armed it, because this is the part that is read
- * and acted on: the player still has to find the column of the commander that
+ * and acted on: the player still has to reach the tile of the commander that
  * hit them. The spindown around the amount counts this down, so the offer never
  * disappears out from under a thumb without warning.
  */
 export const REBOOK_LINGER = 5000;
 
 /**
+ * How long an open booking survives without a tap.
+ *
+ * Booking commander damage turns every other tile at the table into a target
+ * for it. A player who opens it and is drawn back into the game leaves the pod
+ * unable to count, and the next tap on any tile would charge damage to them
+ * instead. So the table takes the tiles back on its own; every tap while
+ * booking starts the clock over, and this is long enough to reach across a
+ * table and think about which commander it was.
+ */
+export const BOOKING_LINGER = 10000;
+
+/**
  * Life a player has lost that no commander has been charged for yet.
  *
- * Only taps on their own tile leave one. Damage booked in the drawer already
- * has a commander against it, and life gained is nobody's hit, so both clear
- * whatever was standing.
+ * Only taps on their own tile leave one. Damage booked on an opponent's tile
+ * already has a commander against it, and life gained is nobody's hit, so both
+ * clear whatever was standing.
  */
 export type LooseHit = {
     /** What the run of taps cost them, as a positive number */
@@ -138,12 +150,12 @@ export function withHit(
 }
 
 /**
- * What a drawer opening now would offer to rebook.
+ * What a booking opened now would offer to rebook.
  *
  * @param hit what the player is carrying, if anything
- * @param now when the drawer was opened
+ * @param now when the booking was opened
  *
- * @returns the amount to offer, or `undefined` when the drawer was not opened
+ * @returns the amount to offer, or `undefined` when the booking was not opened
  *   on the back of a hit
  */
 export function rebookableHit(hit: LooseHit | undefined, now: number): number | undefined {
@@ -159,6 +171,19 @@ export const SEAT_COLORS = [
     "from-amber-500 to-amber-900",
     "from-violet-600 to-violet-950",
     "from-cyan-600 to-cyan-950",
+] as const;
+
+/**
+ * The same seats as a ring, for a marker that is outlined in a seat's colour
+ * rather than filled with it
+ */
+export const SEAT_RINGS = [
+    "ring-blue-500",
+    "ring-rose-500",
+    "ring-emerald-500",
+    "ring-amber-400",
+    "ring-violet-500",
+    "ring-cyan-500",
 ] as const;
 
 /**
@@ -455,11 +480,6 @@ export type LifeTrackerSettings = {
     playerCount: number;
     /** How they sit around the device */
     arrangement: LifeArrangement;
-    /**
-     * Whether the drawer offers the hit a player has just taken as commander
-     * damage
-     */
-    rebook: boolean;
 };
 
 /** What a device without stored settings opens on: a commander pod */
@@ -467,7 +487,6 @@ export const DEFAULT_LIFE_TRACKER_SETTINGS: LifeTrackerSettings = {
     startingLife: 40,
     playerCount: 4,
     arrangement: "sides",
-    rebook: true,
 };
 
 const STORAGE_KEY = "cardlens.life-tracker.v1";
@@ -490,10 +509,6 @@ export function loadLifeTrackerSettings(): LifeTrackerSettings {
                 PLAYER_COUNTS.find((count) => count === stored.playerCount) ??
                 DEFAULT_LIFE_TRACKER_SETTINGS.playerCount,
             arrangement: stored.arrangement === "cross" ? "cross" : DEFAULT_LIFE_TRACKER_SETTINGS.arrangement,
-            // On unless it was turned off: anything that is not a stored `false`
-            // — a missing field on a setup from before the offer existed
-            // included — is a table that has never said no to it.
-            rebook: stored.rebook !== false,
         };
     } catch {
         return DEFAULT_LIFE_TRACKER_SETTINGS;

@@ -126,7 +126,7 @@ function ComboMeta({ combo }: { combo: ComboEntry }) {
                 href={`https://commanderspellbook.com/combo/${combo.id}/`}
                 target={"_blank"}
                 rel={"noreferrer noopener"}
-                className={"inline-flex items-center gap-1 hover:underline"}
+                className={"inline-flex items-center gap-1 hover:text-(--color-accent) hover:underline"}
             >
                 {t("button.combo-spellbook")}
                 <ArrowTopRightOnSquareIcon className={"size-3.5"} aria-hidden={"true"} />

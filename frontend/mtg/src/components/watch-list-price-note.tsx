@@ -38,7 +38,7 @@ export function WatchListPriceNote({ updatedAt }: WatchListPriceNoteProps) {
                 type={"button"}
                 onClick={() => setOpen(true)}
                 className={
-                    "inline-flex min-h-8 items-center gap-1.5 self-start rounded-(--radius-pill) px-2 py-1 text-xs text-zinc-500 transition hover:bg-zinc-950/5 hover:text-zinc-700 dark:text-zinc-400 dark:hover:bg-white/10 dark:hover:text-zinc-200"
+                    "inline-flex min-h-8 items-center gap-1.5 self-start rounded-(--radius-pill) px-2 py-1 text-xs text-zinc-500 transition hover:bg-lime-400/15 hover:text-lime-700 dark:text-zinc-400 dark:hover:bg-lime-400/15 dark:hover:text-lime-300"
                 }
             >
                 <InformationCircleIcon className={"size-4 shrink-0"} />

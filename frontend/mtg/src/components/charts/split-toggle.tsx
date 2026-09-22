@@ -36,7 +36,7 @@ export function SplitToggle<Option extends string>({ options, value, onChange, n
                         "rounded-[calc(var(--radius-control)-0.125rem)] px-2 py-1 text-xs transition",
                         value === option
                             ? "bg-(--surface-card) text-zinc-950 shadow-(--shadow-card-sm) dark:text-white"
-                            : "text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white",
+                            : "text-zinc-500 hover:text-lime-700 dark:text-zinc-400 dark:hover:text-lime-300",
                     )}
                 >
                     {nameOf(option)}

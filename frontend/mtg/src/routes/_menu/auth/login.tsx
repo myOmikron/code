@@ -10,13 +10,13 @@ import {
     Input,
     Label,
     Legend,
-    PrimaryButton,
     RequiredLabel,
     Switch,
     SwitchField,
     Text,
     notify,
 } from "components";
+import { PrimaryButton } from "src/components/primary-button";
 import { useForm } from "@tanstack/react-form";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -212,7 +212,7 @@ function RouteComponent() {
                                     <SwitchField>
                                         <Label>{t("label.remember-me")}</Label>
                                         <Switch
-                                            color={"blue"}
+                                            color={"lime"}
                                             checked={fieldApi.state.value}
                                             onChange={(checked) => fieldApi.handleChange(checked)}
                                         />

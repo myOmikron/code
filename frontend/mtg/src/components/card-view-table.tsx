@@ -127,7 +127,7 @@ export function CardViewTable({
                                         type={"button"}
                                         onClick={() => onInspect(entry)}
                                         className={
-                                            "block max-w-36 truncate text-left font-medium hover:underline sm:max-w-56 lg:max-w-72"
+                                            "block max-w-36 truncate text-left font-medium hover:text-(--color-accent) hover:underline sm:max-w-56 lg:max-w-72"
                                         }
                                     >
                                         {card?.name ?? t("label.unknown-printing")}

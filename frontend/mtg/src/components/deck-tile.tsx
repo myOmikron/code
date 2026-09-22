@@ -98,7 +98,7 @@ export function DeckTile({ overview, rules, onMenu, selected = false, onActivate
             className={clsx(
                 selected
                     ? "group/deck relative flex flex-col overflow-hidden rounded-(--radius-card) bg-(--surface-card) shadow-(--shadow-card-md) ring-2 ring-(--color-brand-500) transition"
-                    : "group/deck relative flex flex-col overflow-hidden rounded-(--radius-card) bg-(--surface-card) shadow-(--shadow-card-sm) ring-1 ring-zinc-950/5 transition hover:shadow-(--shadow-card-md) hover:ring-zinc-950/10 dark:ring-white/10 dark:hover:ring-white/20",
+                    : "group/deck relative flex flex-col overflow-hidden rounded-(--radius-card) bg-(--surface-card) shadow-(--shadow-card-sm) ring-1 ring-zinc-950/5 transition hover:shadow-(--shadow-card-md) hover:ring-lime-500/60 dark:ring-white/10 dark:hover:ring-lime-500/60",
                 CONTEXT_MENU_TARGET,
             )}
         >
@@ -251,7 +251,7 @@ export function DeckTile({ overview, rules, onMenu, selected = false, onActivate
                     onMenu(overview, { x: box.left, y: box.bottom + 4 });
                 }}
                 className={
-                    "absolute top-2 right-2 rounded-full bg-zinc-950/55 p-1 text-white opacity-100 transition hover:bg-zinc-950/75 focus:opacity-100 sm:opacity-0 sm:group-focus-within/deck:opacity-100 sm:group-hover/deck:opacity-100"
+                    "absolute top-2 right-2 rounded-full bg-zinc-950/55 p-1 text-white opacity-100 transition hover:bg-lime-400/25 focus:opacity-100 sm:opacity-0 sm:group-focus-within/deck:opacity-100 sm:group-hover/deck:opacity-100"
                 }
             >
                 <EllipsisHorizontalIcon className={"size-5"} />

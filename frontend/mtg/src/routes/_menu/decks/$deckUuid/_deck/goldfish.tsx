@@ -16,7 +16,8 @@ import {
 } from "@heroicons/react/20/solid";
 import { createFileRoute, useLoaderData, useNavigate } from "@tanstack/react-router";
 import clsx from "clsx";
-import { Button, ConfirmDialog, EmptyState, Field, Heading, Input, Label, PrimaryButton, Text } from "components";
+import { Button, ConfirmDialog, EmptyState, Field, Heading, Input, Label, Text } from "components";
+import { PrimaryButton } from "src/components/primary-button";
 import { AnimatePresence, LayoutGroup, MotionConfig, motion } from "motion/react";
 import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
@@ -932,7 +933,7 @@ function RouteComponent() {
                                                 type={"button"}
                                                 onClick={() => setAttaching(null)}
                                                 className={
-                                                    "rounded-full px-2 py-0.5 ring-1 ring-white/40 hover:bg-white/15"
+                                                    "rounded-full px-2 py-0.5 ring-1 ring-white/40 hover:bg-lime-400/15"
                                                 }
                                             >
                                                 {tg("button.cancel")} · Esc
@@ -952,7 +953,7 @@ function RouteComponent() {
                                                 aria-label={t("button.restart")}
                                                 title={t("button.restart")}
                                                 className={
-                                                    "flex size-8 items-center justify-center rounded-lg bg-zinc-950/5 text-zinc-600 ring-1 ring-zinc-950/10 transition hover:bg-zinc-950/10 dark:bg-white/5 dark:text-zinc-300 dark:ring-white/15 dark:hover:bg-white/10"
+                                                    "flex size-8 items-center justify-center rounded-lg bg-zinc-950/5 text-zinc-600 ring-1 ring-zinc-950/10 transition hover:bg-lime-400/15 dark:bg-white/5 dark:text-zinc-300 dark:ring-white/15 dark:hover:bg-lime-400/15"
                                                 }
                                             >
                                                 <ArrowPathIcon className={"size-4"} />
@@ -963,7 +964,7 @@ function RouteComponent() {
                                                 aria-label={t("button.end")}
                                                 title={t("button.end")}
                                                 className={
-                                                    "flex size-8 items-center justify-center rounded-lg bg-zinc-950/5 text-zinc-600 ring-1 ring-zinc-950/10 transition hover:bg-zinc-950/10 dark:bg-white/5 dark:text-zinc-300 dark:ring-white/15 dark:hover:bg-white/10"
+                                                    "flex size-8 items-center justify-center rounded-lg bg-zinc-950/5 text-zinc-600 ring-1 ring-zinc-950/10 transition hover:bg-lime-400/15 dark:bg-white/5 dark:text-zinc-300 dark:ring-white/15 dark:hover:bg-lime-400/15"
                                                 }
                                             >
                                                 <XMarkIcon className={"size-4"} />
@@ -987,7 +988,7 @@ function RouteComponent() {
                                                 "flex w-10 flex-col items-center justify-center gap-0.5 rounded-xl ring-1 ring-zinc-950/10 transition dark:ring-white/15",
                                                 zoneOpen === "hand"
                                                     ? "bg-blue-500/15 text-blue-600 dark:text-blue-300"
-                                                    : "bg-zinc-950/5 text-zinc-600 hover:bg-zinc-950/10 dark:bg-white/5 dark:text-zinc-300 dark:hover:bg-white/10",
+                                                    : "bg-zinc-950/5 text-zinc-600 hover:bg-lime-400/15 dark:bg-white/5 dark:text-zinc-300 dark:hover:bg-lime-400/15",
                                             )}
                                         >
                                             <HandRaisedIcon className={"size-5"} />

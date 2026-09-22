@@ -177,7 +177,9 @@ export function MpcFillCardTile({
                         <button
                             type={"button"}
                             onClick={() => onBrowse(face, label)}
-                            className={"min-w-0 truncate px-1 text-[11px] tabular-nums hover:underline"}
+                            className={
+                                "min-w-0 truncate px-1 text-[11px] tabular-nums hover:text-(--color-accent) hover:underline"
+                            }
                             title={face.chosen?.name}
                         >
                             {`${at + 1}/${face.images.length}`}
@@ -235,7 +237,7 @@ function TileButton({ onClick, label, framed = false, children }: TileButtonProp
             title={label}
             aria-label={label}
             className={clsx(
-                "flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-full text-white transition hover:bg-white/25 focus:outline-2 focus:outline-offset-1 focus:outline-white",
+                "flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-full text-white transition hover:bg-lime-400/25 focus:outline-2 focus:outline-offset-1 focus:outline-white",
                 framed && "bg-zinc-950/70 backdrop-blur-sm",
             )}
         >

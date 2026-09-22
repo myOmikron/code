@@ -24,7 +24,7 @@ const TILE: Record<WatchState, string> = {
     alarm: "ring-2 ring-amber-500 dark:ring-amber-400",
     cheap: "ring-1 ring-amber-500/40 dark:ring-amber-400/30",
     complete: "ring-1 ring-emerald-500/40 dark:ring-emerald-400/30",
-    hunting: "ring-1 ring-zinc-950/5 hover:ring-zinc-950/15 dark:ring-white/10 dark:hover:ring-white/20",
+    hunting: "ring-1 ring-zinc-950/5 hover:ring-lime-500/60 dark:ring-white/10 dark:hover:ring-lime-500/60",
 };
 
 /**

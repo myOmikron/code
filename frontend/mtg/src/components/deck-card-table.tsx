@@ -164,7 +164,7 @@ export function DeckCardTable({
                                                             type={"button"}
                                                             onClick={() => onInspect(card)}
                                                             className={
-                                                                "max-w-56 truncate text-left font-medium hover:underline"
+                                                                "max-w-56 truncate text-left font-medium hover:text-(--color-accent) hover:underline"
                                                             }
                                                         >
                                                             {printing?.name ?? t("label.unknown-printing")}

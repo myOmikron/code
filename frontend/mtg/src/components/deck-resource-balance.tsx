@@ -110,7 +110,7 @@ export function DeckResourceBalance({ cards, deck, formatSize }: DeckResourceBal
                                             type={"button"}
                                             aria-label={t("accessibility.balance-info")}
                                             className={
-                                                "text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300"
+                                                "text-zinc-400 hover:text-lime-700 dark:text-zinc-500 dark:hover:text-lime-300"
                                             }
                                         >
                                             <InformationCircleIcon className={"size-4"} />
@@ -148,7 +148,7 @@ export function DeckResourceBalance({ cards, deck, formatSize }: DeckResourceBal
                                             and a number the reader cannot derive has to
                                             say where it came from. */}
                                         {row.from_commander === true && (
-                                            <Badge color={"blue"}>{t("label.from-commander")}</Badge>
+                                            <Badge color={"lime"}>{t("label.from-commander")}</Badge>
                                         )}
                                     </span>
                                 </TableCell>
@@ -213,7 +213,7 @@ function BalanceCardCount({ count, cards, label }: BalanceCardCountProps) {
                 type={"button"}
                 aria-label={`${label} (${count})`}
                 className={
-                    "underline decoration-zinc-400 decoration-dotted underline-offset-2 hover:decoration-zinc-600 dark:decoration-zinc-600 dark:hover:decoration-zinc-300"
+                    "underline decoration-zinc-400 decoration-dotted underline-offset-2 hover:decoration-lime-700 dark:decoration-zinc-600 dark:hover:decoration-lime-300"
                 }
             >
                 {count}

@@ -19,10 +19,10 @@ import {
     DropdownSection,
     Input,
     InputGroup,
-    PrimaryButton,
     Strong,
     Text,
 } from "components";
+import { PrimaryButton } from "src/components/primary-button";
 import type { Ref } from "react";
 import { useTranslation } from "react-i18next";
 import type { BracketRulesResponse } from "src/api/generated";
@@ -287,7 +287,7 @@ export function DeckHeaderBar({
                         aria-label={t("button.clear-card-filter")}
                         title={t("button.clear-card-filter")}
                         className={
-                            "shrink-0 rounded-(--radius-control) p-1 text-zinc-500 transition hover:bg-zinc-950/5 hover:text-zinc-950 dark:text-zinc-400 dark:hover:bg-white/10 dark:hover:text-white pointer-coarse:p-3"
+                            "shrink-0 rounded-(--radius-control) p-1 text-zinc-500 transition hover:bg-lime-400/15 hover:text-lime-700 dark:text-zinc-400 dark:hover:bg-lime-400/15 dark:hover:text-lime-300 pointer-coarse:p-3"
                         }
                     >
                         <XMarkIcon className={"size-4"} />
@@ -309,7 +309,7 @@ export function DeckHeaderBar({
                     aria-label={t("label.colors")}
                     title={t("label.colors")}
                     className={
-                        "shrink-0 rounded-(--radius-control) px-1 py-1 hover:bg-zinc-950/5 dark:hover:bg-white/10 pointer-coarse:px-2 pointer-coarse:py-2"
+                        "shrink-0 rounded-(--radius-control) px-1 py-1 hover:bg-lime-400/15 dark:hover:bg-lime-400/15 pointer-coarse:px-2 pointer-coarse:py-2"
                     }
                 >
                     <ManaCost
@@ -343,7 +343,7 @@ export function DeckHeaderBar({
                         aria-label={t("label.search-cards")}
                         title={t("label.search-cards")}
                         className={clsx(
-                            "shrink-0 rounded-(--radius-control) p-1.5 transition hover:bg-zinc-950/5 hover:text-zinc-950 dark:hover:bg-white/10 dark:hover:text-white pointer-coarse:p-2.5",
+                            "shrink-0 rounded-(--radius-control) p-1.5 transition hover:bg-lime-400/15 hover:text-lime-700 dark:hover:bg-lime-400/15 dark:hover:text-lime-300 pointer-coarse:p-2.5",
                             searchOpen
                                 ? "text-(--color-brand-600) dark:text-(--color-brand-300)"
                                 : "text-zinc-500 dark:text-zinc-400",
@@ -357,7 +357,7 @@ export function DeckHeaderBar({
                         aria-label={t("button.manage-tags")}
                         title={t("button.manage-tags")}
                         className={
-                            "shrink-0 rounded-(--radius-control) p-1.5 text-zinc-500 transition hover:bg-zinc-950/5 hover:text-zinc-950 dark:text-zinc-400 dark:hover:bg-white/10 dark:hover:text-white pointer-coarse:p-2.5"
+                            "shrink-0 rounded-(--radius-control) p-1.5 text-zinc-500 transition hover:bg-lime-400/15 hover:text-lime-700 dark:text-zinc-400 dark:hover:bg-lime-400/15 dark:hover:text-lime-300 pointer-coarse:p-2.5"
                         }
                     >
                         <TagIcon className={"size-5"} />
@@ -404,7 +404,7 @@ export function DeckHeaderBar({
                         aria-label={t("button.close-search")}
                         title={t("button.close-search")}
                         className={
-                            "shrink-0 rounded-(--radius-control) p-1.5 text-zinc-500 transition hover:bg-zinc-950/5 hover:text-zinc-950 dark:text-zinc-400 dark:hover:bg-white/10 dark:hover:text-white pointer-coarse:p-2.5"
+                            "shrink-0 rounded-(--radius-control) p-1.5 text-zinc-500 transition hover:bg-lime-400/15 hover:text-lime-700 dark:text-zinc-400 dark:hover:bg-lime-400/15 dark:hover:text-lime-300 pointer-coarse:p-2.5"
                         }
                     >
                         <XMarkIcon className={"size-5"} />

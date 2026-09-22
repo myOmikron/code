@@ -267,7 +267,7 @@ export function ImportCollectionDialog({ open, collectionUuid, onClose, onImport
                 </Button>
                 {result === null && (
                     <Button
-                        color={"blue"}
+                        color={"lime"}
                         disabled={busy || parsed === null || parsed.rows.length === 0}
                         onClick={() => void run()}
                     >

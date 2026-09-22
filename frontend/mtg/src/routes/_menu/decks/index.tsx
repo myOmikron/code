@@ -13,7 +13,8 @@ import {
     TrashIcon,
 } from "@heroicons/react/20/solid";
 import clsx from "clsx";
-import { Button, EmptyState, Heading, Input, InputGroup, PrimaryButton, Text, notify } from "components";
+import { Button, EmptyState, Heading, Input, InputGroup, Text, notify } from "components";
+import { PrimaryButton } from "src/components/primary-button";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
@@ -372,7 +373,7 @@ function RouteComponent() {
                                         aria-expanded={open}
                                         onClick={() => folds.toggle(section.key)}
                                         className={
-                                            "-mx-1 flex min-w-0 items-center gap-2 rounded px-1 py-0.5 hover:bg-zinc-950/5 dark:hover:bg-white/10"
+                                            "-mx-1 flex min-w-0 items-center gap-2 rounded px-1 py-0.5 hover:bg-lime-400/15 dark:hover:bg-lime-400/15"
                                         }
                                     >
                                         <ChevronRightIcon

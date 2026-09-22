@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { HeadingLayout, PrimaryButton, Text } from "components";
+import { HeadingLayout, Text } from "components";
+import { PrimaryButton } from "src/components/primary-button";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { loadScanner, scanFrame } from "src/scanner/scan-client";

@@ -133,7 +133,9 @@ function RouteComponent() {
             <div className={"flex flex-col gap-2"}>
                 <Link
                     to={"/collections"}
-                    className={"flex items-center gap-1 text-sm text-zinc-500 hover:underline dark:text-zinc-400"}
+                    className={
+                        "flex items-center gap-1 text-sm text-zinc-500 hover:text-(--color-accent) hover:underline dark:text-zinc-400"
+                    }
                 >
                     <ChevronLeftIcon className={"size-4"} /> {t("button.back-to-collections")}
                 </Link>

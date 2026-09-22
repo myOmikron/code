@@ -56,7 +56,7 @@ export function WatchListCopies({ copies }: WatchListCopiesProps) {
                                     href={"/collections/$collectionUuid/cards"}
                                     params={{ collectionUuid: copy.collection }}
                                     className={
-                                        "truncate text-xs font-medium text-zinc-950 hover:underline dark:text-white"
+                                        "truncate text-xs font-medium text-zinc-950 hover:text-(--color-accent) hover:underline dark:text-white"
                                     }
                                 >
                                     {copy.collection_name}
@@ -66,7 +66,7 @@ export function WatchListCopies({ copies }: WatchListCopiesProps) {
                                     href={"/decks/$deckUuid/cards"}
                                     params={{ deckUuid: copy.deck }}
                                     className={
-                                        "flex min-w-0 items-center gap-1 text-xs font-medium text-zinc-950 hover:underline dark:text-white"
+                                        "flex min-w-0 items-center gap-1 text-xs font-medium text-zinc-950 hover:text-(--color-accent) hover:underline dark:text-white"
                                     }
                                 >
                                     <RectangleStackIcon className={"size-3.5 shrink-0"} />

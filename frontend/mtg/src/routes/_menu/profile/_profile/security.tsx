@@ -8,7 +8,6 @@ import {
     Badge,
     Button,
     Divider,
-    PrimaryButton,
     StackedList,
     StackedListFlexRow,
     Strong,
@@ -16,6 +15,7 @@ import {
     Text,
     notify,
 } from "components";
+import { PrimaryButton } from "src/components/primary-button";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
@@ -166,7 +166,7 @@ function RouteComponent() {
                                             {t("label.last-used", { date: formatDateTime(passkey.last_used_at) })}
                                         </Badge>
                                     )}
-                                    {isLast && <Badge color={"blue"}>{t("label.only-passkey")}</Badge>}
+                                    {isLast && <Badge color={"lime"}>{t("label.only-passkey")}</Badge>}
                                 </div>
                                 <Text className={"text-xs"}>
                                     {t("label.added-on", { date: formatDateTime(passkey.created_at) })}

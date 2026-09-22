@@ -6,7 +6,8 @@ import {
     SparklesIcon,
 } from "@heroicons/react/20/solid";
 import { useNavigate } from "@tanstack/react-router";
-import { Alert, AlertActions, AlertDescription, AlertTitle, Button, PrimaryButton, Text } from "components";
+import { Alert, AlertActions, AlertDescription, AlertTitle, Button, Text } from "components";
+import { PrimaryButton } from "src/components/primary-button";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -394,7 +395,7 @@ export function LiveScanner({ session }: LiveScannerProps) {
                             type="button"
                             aria-label={t("button.back")}
                             onClick={() => void navigate({ to: "/scan" })}
-                            className="pointer-events-auto shrink-0 rounded-full bg-black/55 p-2 text-white/70 ring-1 ring-white/10 backdrop-blur hover:text-white"
+                            className="pointer-events-auto shrink-0 rounded-full bg-black/55 p-2 text-white/70 ring-1 ring-white/10 backdrop-blur hover:text-lime-300"
                         >
                             <ArrowLeftIcon className="size-5" />
                         </button>
@@ -436,7 +437,7 @@ export function LiveScanner({ session }: LiveScannerProps) {
                                     className={`rounded-full p-2 ring-1 backdrop-blur ${
                                         forceFoil
                                             ? "bg-blue-500/25 text-blue-200 ring-blue-400/40"
-                                            : "bg-black/55 text-white/70 ring-white/10 hover:text-white"
+                                            : "bg-black/55 text-white/70 ring-white/10 hover:text-lime-300"
                                     }`}
                                 >
                                     <SparklesIcon className="size-5" />
@@ -446,7 +447,7 @@ export function LiveScanner({ session }: LiveScannerProps) {
                                     type="button"
                                     aria-label={t("heading.scan-settings")}
                                     onClick={() => setSettings(true)}
-                                    className="rounded-full bg-black/55 p-2 text-white/70 ring-1 ring-white/10 backdrop-blur hover:text-white"
+                                    className="rounded-full bg-black/55 p-2 text-white/70 ring-1 ring-white/10 backdrop-blur hover:text-lime-300"
                                 >
                                     <Cog6ToothIcon className="size-5" />
                                 </button>
@@ -455,7 +456,7 @@ export function LiveScanner({ session }: LiveScannerProps) {
                                     type="button"
                                     aria-label={t("button.open-diagnostics")}
                                     onClick={() => setDiagnostics((previous) => !previous)}
-                                    className="rounded-full bg-black/55 p-2 text-white/70 ring-1 ring-white/10 backdrop-blur hover:text-white"
+                                    className="rounded-full bg-black/55 p-2 text-white/70 ring-1 ring-white/10 backdrop-blur hover:text-lime-300"
                                 >
                                     <AdjustmentsHorizontalIcon className="size-5" />
                                 </button>
@@ -482,7 +483,7 @@ export function LiveScanner({ session }: LiveScannerProps) {
                                     <button
                                         type="button"
                                         onClick={() => setStaging(true)}
-                                        className="flex items-center gap-2 rounded-full bg-black/60 px-4 py-3 text-white ring-1 ring-white/15 backdrop-blur hover:bg-black/70"
+                                        className="flex items-center gap-2 rounded-full bg-black/60 px-4 py-3 text-white ring-1 ring-white/15 backdrop-blur hover:bg-lime-400/25"
                                     >
                                         <RectangleStackIcon className="size-5" />
                                         <span className="text-base tabular-nums">{stagedCount}</span>

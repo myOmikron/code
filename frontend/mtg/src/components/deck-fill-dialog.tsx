@@ -303,7 +303,7 @@ export function DeckFillDialog({
                                                 aria-label={t("accessibility.reject-fill", { name: card.name })}
                                                 onClick={() => setRejected((held) => [...held, card.oracle_id])}
                                                 className={
-                                                    "rounded p-1 text-zinc-500 transition hover:bg-zinc-950/10 dark:text-zinc-400 dark:hover:bg-white/10"
+                                                    "rounded p-1 text-zinc-500 transition hover:bg-lime-400/15 dark:text-zinc-400 dark:hover:bg-lime-400/15"
                                                 }
                                             >
                                                 <XMarkIcon className={"size-4"} />

@@ -128,7 +128,7 @@ export function DeckRuleZeroDialog({ open, deck, colors, formatSize, onClose, on
                         <SwitchField>
                             <Label>{t("label.colors-follow-commander")}</Label>
                             <Description>{t("description.rule-zero-colors")}</Description>
-                            <Switch color={"blue"} checked={follow} onChange={setFollow} />
+                            <Switch color={"lime"} checked={follow} onChange={setFollow} />
                         </SwitchField>
                         <div
                             role={"group"}
@@ -159,7 +159,7 @@ export function DeckRuleZeroDialog({ open, deck, colors, formatSize, onClose, on
                                             "relative rounded-(--radius-control) p-1.5 transition",
                                             follow
                                                 ? "cursor-not-allowed"
-                                                : "hover:bg-zinc-950/5 dark:hover:bg-white/10",
+                                                : "hover:bg-lime-400/15 dark:hover:bg-lime-400/15",
                                         )}
                                     >
                                         <ManaCost
@@ -194,13 +194,13 @@ export function DeckRuleZeroDialog({ open, deck, colors, formatSize, onClose, on
                     <SwitchField>
                         <Label>{t("label.rule-zero-extra-commanders")}</Label>
                         <Description>{t("description.rule-zero-commanders")}</Description>
-                        <Switch color={"blue"} checked={extraCommanders} onChange={setExtraCommanders} />
+                        <Switch color={"lime"} checked={extraCommanders} onChange={setExtraCommanders} />
                     </SwitchField>
 
                     <SwitchField>
                         <Label>{t("label.rule-zero-duplicates")}</Label>
                         <Description>{t("description.rule-zero-duplicates")}</Description>
-                        <Switch color={"blue"} checked={duplicates} onChange={setDuplicates} />
+                        <Switch color={"lime"} checked={duplicates} onChange={setDuplicates} />
                     </SwitchField>
 
                     <Field>
@@ -218,7 +218,7 @@ export function DeckRuleZeroDialog({ open, deck, colors, formatSize, onClose, on
                     <SwitchField>
                         <Label>{t("label.rule-zero-banned")}</Label>
                         <Description>{t("description.rule-zero-banned")}</Description>
-                        <Switch color={"blue"} checked={banned} onChange={setBanned} />
+                        <Switch color={"lime"} checked={banned} onChange={setBanned} />
                     </SwitchField>
                 </FieldGroup>
             </DialogBody>

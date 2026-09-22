@@ -139,7 +139,9 @@ export function PublicDeckTile({ deck }: PublicDeckTileProps) {
                     <Link
                         to={"/global/profiles/$username"}
                         params={{ username: deck.owner }}
-                        className={"min-w-0 truncate font-medium text-zinc-950 hover:underline dark:text-white"}
+                        className={
+                            "min-w-0 truncate font-medium text-zinc-950 hover:text-(--color-accent) hover:underline dark:text-white"
+                        }
                     >
                         {deck.owner}
                     </Link>

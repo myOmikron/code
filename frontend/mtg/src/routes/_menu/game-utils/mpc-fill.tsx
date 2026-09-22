@@ -1,6 +1,7 @@
 import { ArrowLeftIcon, PlusIcon } from "@heroicons/react/20/solid";
 import { createFileRoute } from "@tanstack/react-router";
-import { Button, EmptyState, Heading, PrimaryButton, Text, notify } from "components";
+import { Button, EmptyState, Heading, Text, notify } from "components";
+import { PrimaryButton } from "src/components/primary-button";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";

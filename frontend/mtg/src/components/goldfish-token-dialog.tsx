@@ -119,7 +119,7 @@ export function GoldfishTokenDialog({ open, deckTokens, onCreate, onClose }: Gol
                         title={printing.name}
                         onClick={() => create(printing)}
                         className={
-                            "group flex flex-col gap-1 rounded-lg p-1 text-left outline-none hover:bg-zinc-950/5 focus-visible:ring-2 focus-visible:ring-blue-500 dark:hover:bg-white/10"
+                            "group flex flex-col gap-1 rounded-lg p-1 text-left outline-none hover:bg-lime-400/15 focus-visible:ring-2 focus-visible:ring-lime-500 dark:hover:bg-lime-400/15"
                         }
                     >
                         <div className={"aspect-5/7 w-full overflow-hidden rounded-[4.5%/3.2%] bg-zinc-800"}>

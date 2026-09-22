@@ -116,7 +116,7 @@ export function DeckAdvisorOfferList({
                     onClick={() => setOpen(!open)}
                     aria-expanded={open}
                     className={
-                        "mt-1 flex w-full items-center justify-center gap-1.5 rounded-(--radius-control) bg-zinc-950/4 py-2 text-xs font-medium text-zinc-500 transition-colors hover:bg-zinc-950/7 hover:text-zinc-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-accent) sm:hidden dark:bg-white/5 dark:text-zinc-400 dark:hover:bg-white/10 dark:hover:text-zinc-200"
+                        "mt-1 flex w-full items-center justify-center gap-1.5 rounded-(--radius-control) bg-zinc-950/4 py-2 text-xs font-medium text-zinc-500 transition-colors hover:bg-lime-400/15 hover:text-lime-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-accent) sm:hidden dark:bg-white/5 dark:text-zinc-400 dark:hover:bg-lime-400/15 dark:hover:text-lime-300"
                     }
                 >
                     {open ? t("button.fewer-offers") : t("button.more-offers", { count: folded })}

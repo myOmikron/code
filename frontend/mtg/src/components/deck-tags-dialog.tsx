@@ -206,7 +206,7 @@ export function DeckTagsDialog({
                                         title={t("button.edit-tag")}
                                         onClick={() => setEditing(tag.uuid)}
                                         className={
-                                            "rounded p-1 text-zinc-500 hover:bg-zinc-950/5 hover:text-zinc-950 dark:text-zinc-400 dark:hover:bg-white/10 dark:hover:text-white"
+                                            "rounded p-1 text-zinc-500 hover:bg-lime-400/15 hover:text-lime-700 dark:text-zinc-400 dark:hover:bg-lime-400/15 dark:hover:text-lime-300"
                                         }
                                     >
                                         <PencilSquareIcon className={"size-4"} />
@@ -384,7 +384,7 @@ function TagForm({ tag, onSave, onCancel, globalOnly = false }: TagFormProps) {
                     disabled={name.trim() === "" || saving}
                     onClick={() => void save()}
                     className={
-                        "rounded p-1.5 text-(--color-success) hover:bg-zinc-950/5 disabled:opacity-40 dark:hover:bg-white/10"
+                        "rounded p-1.5 text-(--color-success) hover:bg-lime-400/15 disabled:opacity-40 dark:hover:bg-lime-400/15"
                     }
                 >
                     <CheckIcon className={"size-5"} />
@@ -396,7 +396,7 @@ function TagForm({ tag, onSave, onCancel, globalOnly = false }: TagFormProps) {
                     disabled={saving}
                     onClick={onCancel}
                     className={
-                        "rounded p-1.5 text-zinc-500 hover:bg-zinc-950/5 dark:text-zinc-400 dark:hover:bg-white/10"
+                        "rounded p-1.5 text-zinc-500 hover:bg-lime-400/15 dark:text-zinc-400 dark:hover:bg-lime-400/15"
                     }
                 >
                     <XMarkIcon className={"size-5"} />

@@ -14,11 +14,11 @@ import {
     ListboxDescription,
     ListboxLabel,
     ListboxOption,
-    PrimaryButton,
     RequiredLabel,
     Text,
     Textarea,
 } from "components";
+import { PrimaryButton } from "src/components/primary-button";
 import { Input } from "components";
 import { GlobeAltIcon, LinkIcon, LockClosedIcon } from "@heroicons/react/20/solid";
 import { useEffect } from "react";

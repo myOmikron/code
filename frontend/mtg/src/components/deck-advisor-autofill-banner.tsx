@@ -33,7 +33,7 @@ export function DeckAdvisorAutofillBanner({ remaining, onFill }: DeckAdvisorAuto
                 <p className="text-xs text-zinc-600 dark:text-zinc-400">
                     {t("label.autofill-remaining", { count: remaining })}
                 </p>
-                <Button onClick={onFill} size="sm" color="blue">
+                <Button onClick={onFill} size="sm" color={"lime"}>
                     <RectangleStackIcon />
                     {t("button.fill")}
                 </Button>

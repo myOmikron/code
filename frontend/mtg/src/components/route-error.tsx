@@ -1,5 +1,6 @@
 import type { ErrorComponentProps } from "@tanstack/react-router";
-import { Button, Heading, PrimaryButton, Text } from "components";
+import { Button, Heading, Text } from "components";
+import { PrimaryButton } from "src/components/primary-button";
 import { useTranslation } from "react-i18next";
 
 /**

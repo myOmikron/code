@@ -56,7 +56,7 @@ export function PrintingDialog({ card, onPick, onClose, owned, proxy, onTogglePr
                     <SwitchField>
                         <Label>{t("label.proxy")}</Label>
                         <Description>{t("description.proxy-slot")}</Description>
-                        <Switch color={"blue"} checked={proxy === true} onChange={onToggleProxy} />
+                        <Switch color={"lime"} checked={proxy === true} onChange={onToggleProxy} />
                     </SwitchField>
                 )}
                 {card !== null && (

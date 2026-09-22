@@ -21,10 +21,10 @@ import {
     ListboxDescription,
     ListboxLabel,
     ListboxOption,
-    PrimaryButton,
     RequiredLabel,
     Textarea,
 } from "components";
+import { PrimaryButton } from "src/components/primary-button";
 import { FolderIcon, FolderMinusIcon, GlobeAltIcon, LinkIcon, LockClosedIcon } from "@heroicons/react/20/solid";
 import { useForm } from "@tanstack/react-form";
 import { useEffect } from "react";

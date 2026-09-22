@@ -64,7 +64,7 @@ export function MpcFillArtDialog({ open, title, images, chosen, onChoose, onClos
                                         "group flex w-full flex-col gap-2 rounded-(--radius-card) p-2 text-left transition",
                                         image.id === chosen
                                             ? "bg-(--color-brand-500)/10 ring-2 ring-(--color-brand-500)"
-                                            : "ring-1 ring-zinc-950/5 hover:bg-zinc-950/5 dark:ring-white/10 dark:hover:bg-white/5",
+                                            : "ring-1 ring-zinc-950/5 hover:bg-lime-400/15 dark:ring-white/10 dark:hover:bg-lime-400/15",
                                     )}
                                 >
                                     <span className={"relative block overflow-hidden rounded-(--radius-control)"}>

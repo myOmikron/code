@@ -114,7 +114,7 @@ export function MpcFillAddDialog({
                             <SwitchField>
                                 <Label>{t("label.only-proxies")}</Label>
                                 <Description>{t("description.only-proxies")}</Description>
-                                <Switch color={"blue"} checked={onlyProxies} onChange={onOnlyProxies} />
+                                <Switch color={"lime"} checked={onlyProxies} onChange={onOnlyProxies} />
                             </SwitchField>
                         </div>
                     )}

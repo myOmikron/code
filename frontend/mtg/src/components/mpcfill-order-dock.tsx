@@ -84,7 +84,7 @@ export function MpcFillOrderDock({
                     onClick={onCardback}
                     title={t("button.pick-cardback")}
                     className={
-                        "flex shrink-0 cursor-pointer items-center gap-1.5 rounded-xl px-2 py-1.5 text-xs font-medium text-zinc-600 transition hover:bg-white/60 hover:text-zinc-950 dark:text-zinc-300 dark:hover:bg-zinc-950/40 dark:hover:text-white"
+                        "flex shrink-0 cursor-pointer items-center gap-1.5 rounded-xl px-2 py-1.5 text-xs font-medium text-zinc-600 transition hover:bg-lime-400/25 hover:text-lime-700 dark:text-zinc-300 dark:hover:bg-lime-400/25 dark:hover:text-lime-300"
                     }
                 >
                     {cardback === null ? (
@@ -105,7 +105,7 @@ export function MpcFillOrderDock({
                     onClick={onSettings}
                     title={t("heading.order-file")}
                     className={
-                        "flex shrink-0 cursor-pointer items-center gap-1.5 rounded-xl px-2 py-1.5 text-xs font-medium text-zinc-600 transition hover:bg-white/60 hover:text-zinc-950 dark:text-zinc-300 dark:hover:bg-zinc-950/40 dark:hover:text-white"
+                        "flex shrink-0 cursor-pointer items-center gap-1.5 rounded-xl px-2 py-1.5 text-xs font-medium text-zinc-600 transition hover:bg-lime-400/25 hover:text-lime-700 dark:text-zinc-300 dark:hover:bg-lime-400/25 dark:hover:text-lime-300"
                     }
                 >
                     <Cog6ToothIcon className={"size-4"} />
@@ -117,7 +117,7 @@ export function MpcFillOrderDock({
                     onClick={onDownload}
                     disabled={!ready}
                     className={
-                        "flex shrink-0 cursor-pointer items-center gap-1.5 rounded-xl bg-(--color-brand-500) px-3 py-1.5 text-xs font-medium text-white transition hover:bg-(--color-brand-600) disabled:cursor-default disabled:opacity-50"
+                        "flex shrink-0 cursor-pointer items-center gap-1.5 rounded-xl bg-lime-300 px-3 py-1.5 text-xs font-medium text-lime-950 transition hover:bg-lime-200 disabled:cursor-default disabled:opacity-50"
                     }
                 >
                     <ArrowDownTrayIcon className={"size-4"} />

@@ -103,7 +103,7 @@ export function ExportDeckDialog({ open, source, onClose }: ExportDeckDialogProp
                     <SwitchField>
                         <Label>{t("label.export-with-printing")}</Label>
                         <Description>{t("description.export-with-printing")}</Description>
-                        <Switch color={"blue"} checked={withPrinting} onChange={setWithPrinting} />
+                        <Switch color={"lime"} checked={withPrinting} onChange={setWithPrinting} />
                     </SwitchField>
 
                     {loading ? (

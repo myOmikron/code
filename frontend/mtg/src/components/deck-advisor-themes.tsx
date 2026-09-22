@@ -165,7 +165,7 @@ export function DeckAdvisorThemes({ report, prefs, onCycle, onDefine, labels }: 
                                             state === "excluded" &&
                                                 "text-zinc-500 line-through ring-zinc-950/10 dark:text-zinc-400 dark:ring-white/15",
                                             state === "neutral" &&
-                                                "text-zinc-600 ring-zinc-950/10 hover:bg-zinc-950/5 dark:text-zinc-300 dark:ring-white/15 dark:hover:bg-white/10",
+                                                "text-zinc-600 ring-zinc-950/10 hover:bg-lime-400/15 dark:text-zinc-300 dark:ring-white/15 dark:hover:bg-lime-400/15",
                                         )}
                                     >
                                         <span className={"flex min-w-0 items-center gap-1"}>

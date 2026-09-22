@@ -1,16 +1,7 @@
 import { CameraIcon, PencilSquareIcon, RectangleStackIcon, TrashIcon } from "@heroicons/react/20/solid";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import {
-    Alert,
-    AlertActions,
-    AlertDescription,
-    AlertTitle,
-    Button,
-    EmptyState,
-    Heading,
-    PrimaryButton,
-    Text,
-} from "components";
+import { Alert, AlertActions, AlertDescription, AlertTitle, Button, EmptyState, Heading, Text } from "components";
+import { PrimaryButton } from "src/components/primary-button";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";

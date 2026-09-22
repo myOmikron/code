@@ -53,7 +53,7 @@ export function DeckAdvisorPhaseSwitch({
             "rounded-(--radius-pill) px-5 py-2 text-base font-medium transition-colors",
             pressed
                 ? "bg-white text-zinc-900 shadow-(--shadow-card-sm) dark:bg-zinc-800 dark:text-white"
-                : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100",
+                : "text-zinc-600 hover:text-lime-700 dark:text-zinc-400 dark:hover:text-lime-300",
         );
 
     return (

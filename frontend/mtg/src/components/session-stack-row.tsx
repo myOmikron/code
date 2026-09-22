@@ -128,7 +128,7 @@ export function SessionStackRow({ entry, card, onZoom, onChange, onRemove }: Ses
                         >
                             <SparklesIcon className="size-5" />
                             {entry.finish !== "Nonfoil" ? (
-                                <Badge color="blue">{tg("label.foil")}</Badge>
+                                <Badge color={"lime"}>{tg("label.foil")}</Badge>
                             ) : (
                                 tg("label.foil")
                             )}
@@ -136,7 +136,7 @@ export function SessionStackRow({ entry, card, onZoom, onChange, onRemove }: Ses
 
                         <Button plain aria-pressed={entry.signed} onClick={() => onChange({ signed: !entry.signed })}>
                             {entry.signed ? (
-                                <Badge color="blue">{t("label.signed")}</Badge>
+                                <Badge color={"lime"}>{t("label.signed")}</Badge>
                             ) : (
                                 <span className="opacity-70">{t("label.signed")}</span>
                             )}

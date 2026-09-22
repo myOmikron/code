@@ -1,5 +1,6 @@
 import { ArrowDownTrayIcon } from "@heroicons/react/20/solid";
-import { Dialog, DialogActions, DialogBody, DialogTitle, PrimaryButton, Text } from "components";
+import { Dialog, DialogActions, DialogBody, DialogTitle, Text } from "components";
+import { PrimaryButton } from "src/components/primary-button";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { DialogCloseButton } from "src/components/dialog-close-button";

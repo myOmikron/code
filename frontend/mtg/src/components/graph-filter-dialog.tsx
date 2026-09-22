@@ -156,7 +156,7 @@ export function GraphFilterDialog({ open, onClose, filters, onChange }: GraphFil
                                                     type={"button"}
                                                     aria-label={t("accessibility.graph-filter-info")}
                                                     className={
-                                                        "text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300"
+                                                        "text-zinc-400 hover:text-lime-700 dark:text-zinc-500 dark:hover:text-lime-300"
                                                     }
                                                 >
                                                     <InformationCircleIcon className={"size-4"} />
@@ -219,7 +219,7 @@ export function GraphFilterDialog({ open, onClose, filters, onChange }: GraphFil
                                                         })}
                                                         onClick={() => drop(key, value)}
                                                     >
-                                                        <Badge color={"blue"} className={"capitalize"}>
+                                                        <Badge color={"lime"} className={"capitalize"}>
                                                             {labelOf(value)} ×
                                                         </Badge>
                                                     </button>

@@ -67,7 +67,7 @@ export function VersionWarning() {
                 title={tg("button.close")}
                 aria-label={tg("button.close")}
                 className={
-                    "absolute right-2 rounded p-0.5 transition hover:bg-amber-950/10 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-current dark:hover:bg-white/10"
+                    "absolute right-2 rounded p-0.5 transition hover:bg-amber-950/10 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-current dark:hover:bg-lime-400/15"
                 }
             >
                 <XMarkIcon className={"size-4"} />

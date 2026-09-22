@@ -27,10 +27,7 @@ export type HomeStatProps = {
  */
 export function HomeStat({ to, icon, label, value, alarming = false }: HomeStatProps) {
     return (
-        <Link
-            to={to}
-            className={"flex flex-col gap-1 bg-(--surface-card) p-4 transition hover:bg-(--surface-muted) sm:p-5"}
-        >
+        <Link to={to} className={"flex flex-col gap-1 bg-(--surface-card) p-4 transition hover:bg-lime-400/15 sm:p-5"}>
             <span className={"flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400"}>
                 <span className={"[&>svg]:size-4"}>{icon}</span>
                 <span className={"truncate"}>{label}</span>

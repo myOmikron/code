@@ -366,7 +366,7 @@ function Line({ item, onClose }: LineProps) {
                 "flex shrink-0 items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-sm/6 transition disabled:opacity-40 disabled:hover:bg-transparent",
                 item.tone === "danger"
                     ? "text-red-600 hover:bg-red-500/10 dark:text-red-400 dark:hover:bg-red-500/15"
-                    : "text-zinc-950 hover:bg-zinc-950/5 dark:text-white dark:hover:bg-white/10",
+                    : "text-zinc-950 hover:bg-lime-400/15 dark:text-white dark:hover:bg-lime-400/15",
             )}
         >
             <span className={"flex size-4 shrink-0 items-center justify-center *:size-4"}>{item.icon}</span>

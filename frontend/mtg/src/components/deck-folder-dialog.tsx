@@ -187,7 +187,7 @@ export function DeckFolderDialog({
                                                         setEditing(folder.uuid);
                                                     }}
                                                     className={
-                                                        "rounded p-1 text-zinc-500 hover:bg-zinc-950/5 hover:text-zinc-950 dark:text-zinc-400 dark:hover:bg-white/10 dark:hover:text-white"
+                                                        "rounded p-1 text-zinc-500 hover:bg-lime-400/15 hover:text-lime-700 dark:text-zinc-400 dark:hover:bg-lime-400/15 dark:hover:text-lime-300"
                                                     }
                                                 >
                                                     <PencilSquareIcon className={"size-4"} />

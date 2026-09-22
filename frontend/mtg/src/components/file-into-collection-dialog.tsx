@@ -1,15 +1,6 @@
 import { ArrowDownTrayIcon } from "@heroicons/react/20/solid";
-import {
-    Button,
-    Dialog,
-    DialogActions,
-    DialogBody,
-    DialogTitle,
-    PrimaryButton,
-    Strong,
-    Text,
-    notify,
-} from "components";
+import { Button, Dialog, DialogActions, DialogBody, DialogTitle, Strong, Text, notify } from "components";
+import { PrimaryButton } from "src/components/primary-button";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
@@ -112,7 +103,7 @@ export function FileIntoCollectionDialog({ open, onClose }: FileIntoCollectionDi
                                     className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left ring-1 ${
                                         chosen === overview.collection.uuid
                                             ? "bg-zinc-950/5 ring-zinc-950/20 dark:bg-white/10 dark:ring-white/25"
-                                            : "ring-transparent hover:bg-zinc-950/5 dark:hover:bg-white/5"
+                                            : "ring-transparent hover:bg-lime-400/15 dark:hover:bg-lime-400/15"
                                     }`}
                                 >
                                     <CollectionMarker

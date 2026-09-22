@@ -119,7 +119,7 @@ export function DeckCardRow({
             <div className={"flex min-w-0 flex-1 flex-col gap-1.5"}>
                 <button type={"button"} onClick={() => onInspect(card)} className={"min-w-0 text-left"}>
                     <Strong className={"flex min-w-0 items-center gap-2 text-base"}>
-                        <span className={"truncate hover:underline"}>
+                        <span className={"truncate hover:text-(--color-accent) hover:underline"}>
                             {printing?.name ?? t("label.unknown-printing")}
                         </span>
                         {printing != null && printing.mana_cost !== "" && <ManaCost value={printing.mana_cost} />}

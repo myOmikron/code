@@ -248,21 +248,19 @@ describe("life tracker settings", () => {
             startingLife: 20,
             playerCount: 2,
             arrangement: "cross",
-            rebook: false,
         });
 
         expect(loadLifeTrackerSettings()).toEqual({
             startingLife: 20,
             playerCount: 2,
             arrangement: "cross",
-            rebook: false,
         });
     });
 
     it("keeps a setup for a player counting alone", () => {
         vi.stubGlobal("localStorage", storage(new Map()));
 
-        saveLifeTrackerSettings({ startingLife: 20, playerCount: 1, arrangement: "sides", rebook: true });
+        saveLifeTrackerSettings({ startingLife: 20, playerCount: 1, arrangement: "sides" });
 
         expect(loadLifeTrackerSettings().playerCount).toBe(1);
     });
@@ -275,7 +273,6 @@ describe("life tracker settings", () => {
             startingLife: 13,
             playerCount: 4,
             arrangement: "sides",
-            rebook: true,
         });
 
         expect(loadLifeTrackerSettings().startingLife).toBe(13);
@@ -298,7 +295,7 @@ describe("life tracker settings", () => {
 });
 
 describe("resuming a game", () => {
-    const POD: LifeTrackerSettings = { startingLife: 40, playerCount: 4, arrangement: "sides", rebook: true };
+    const POD: LifeTrackerSettings = { startingLife: 40, playerCount: 4, arrangement: "sides" };
 
     /**
      * Puts a table into storage as if it had been left there
@@ -532,18 +529,16 @@ describe("ups, that was commander damage", () => {
         expect(hits[1]).toEqual({ amount: 7, at: NOW });
     });
 
-    it("is on for a table that has never turned it off", () => {
-        vi.stubGlobal("localStorage", storage(new Map()));
-
-        expect(loadLifeTrackerSettings().rebook).toBe(true);
-    });
-
-    it("stays on for a setup stored before it existed", () => {
+    it("ignores the removed opt-out in an older stored setup", () => {
         const values = new Map([
-            ["cardlens.life-tracker.v1", JSON.stringify({ startingLife: 40, playerCount: 4, arrangement: "sides" })],
+            [
+                "cardlens.life-tracker.v1",
+                JSON.stringify({ startingLife: 40, playerCount: 4, arrangement: "sides", rebook: false }),
+            ],
         ]);
         vi.stubGlobal("localStorage", storage(values));
 
-        expect(loadLifeTrackerSettings().rebook).toBe(true);
+        expect(loadLifeTrackerSettings()).toEqual(DEFAULT_LIFE_TRACKER_SETTINGS);
+        expect(loadLifeTrackerSettings()).not.toHaveProperty("rebook");
     });
 });

@@ -1,17 +1,12 @@
-import { HeartIcon, ShieldExclamationIcon } from "@heroicons/react/20/solid";
+import { BoltIcon, HeartIcon, ShieldExclamationIcon } from "@heroicons/react/20/solid";
 import clsx from "clsx";
-import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { CommanderDamagePanel } from "src/components/commander-damage-panel";
+import { CommanderDamageTarget } from "src/components/commander-damage-target";
 import { CounterButton } from "src/components/counter-button";
-import type { LooseHit, Seat, SeatPlacement } from "src/utils/life-tracker";
-import {
-    COMMANDER_DAMAGE_LETHAL,
-    REBOOK_LINGER,
-    SEAT_COLORS,
-    isEliminated,
-    rebookableHit,
-} from "src/utils/life-tracker";
+import { LifeTotal } from "src/components/life-total";
+import type { Seat, SeatPlacement } from "src/utils/life-tracker";
+import { COMMANDER_DAMAGE_LETHAL, SEAT_COLORS, SEAT_RINGS, isEliminated } from "src/utils/life-tracker";
 
 /** What a held life button is worth per step */
 const HOLD_STEP = 10;
@@ -55,6 +50,49 @@ const FRAME: Record<Seat, string> = {
 };
 
 /**
+ * How a tile takes part in the commander damage one player is booking.
+ *
+ * Booking is a state of the whole table rather than of one tile: the player
+ * who took the hit opens it on their own tile, and every opponent's tile turns
+ * into the target for that opponent's commander.
+ */
+export type TileBooking =
+    | {
+          /** The tile of the player doing the booking */
+          role: "booking";
+          /** Damage from this player's own commander, including when stolen */
+          taken: number;
+          onChange: (amount: number) => void;
+          onRebook: () => void;
+          /**
+           * The hit they can charge to a commander with one tap, if the booking
+           * was opened right after one
+           */
+          offer: number | undefined;
+          /** Leaves that hit as plain life lost */
+          onDismiss: () => void;
+      }
+    | {
+          /** The tile of an opponent, standing for their commander */
+          role: "target";
+          /** Which player is booking, counted from one */
+          player: number;
+          /** Where that player reads from, so the tile is turned towards them */
+          reader: Seat;
+          /** What this commander has put on them */
+          taken: number;
+          /**
+           * The hit a tap charges to this commander instead of counting one, if
+           * one stands
+           */
+          offer: number | undefined;
+          /** Books a change against this commander */
+          onChange: (amount: number) => void;
+          /** Charges the offered hit to this commander */
+          onRebook: () => void;
+      };
+
+/**
  * The properties for {@link LifeTile}
  */
 export type LifeTileProps = {
@@ -66,6 +104,8 @@ export type LifeTileProps = {
     delta: number | undefined;
     /** What every seat's commander has put on them, in seat order */
     damage: Array<number>;
+    /** What their own commander has put on every seat, in seat order */
+    dealt: Array<number>;
     /** The other seats, in turn order after this one */
     opponents: Array<number>;
     /** Where they sit and where their tile goes */
@@ -74,28 +114,34 @@ export type LifeTileProps = {
     flush: boolean;
     /** Adds to the total; repeats while a button is held */
     onChange: (amount: number) => void;
-    /** Books commander damage from one opponent, which costs the same life */
-    onDamage: (opponent: number, amount: number) => void;
-    /**
-     * The hit they took that no commander has been charged for, where the mode
-     * that offers to rebook it is on
-     */
-    hit: LooseHit | undefined;
-    /** Charges that hit to one opponent's commander; the life is already gone */
-    onRebook: (opponent: number, amount: number) => void;
+    /** What part the tile plays in a booking, while one is open at the table */
+    booking: TileBooking | undefined;
+    /** Opens booking commander damage for this player, or closes it again */
+    onToggleBooking: () => void;
 };
 
 /**
  * One player's life total, turned towards their seat.
  *
  * The strip along the near edge carries what the other commanders have put on
- * them and opens the same tile onto those counters, so a player never reaches
- * across the table to record a hit.
+ * them and opens the booking: from then on a hit is recorded by tapping the
+ * tile of the opponent whose commander dealt it, which is the seat the whole
+ * pod is already pointing at.
  *
  * A marker on that strip is a chip in the dealing commander's own colour rather
  * than a number with a dot beside it: the strip is read at arm's length across
  * a table, and a marker that has to be leaned in for is one nobody keeps up to
  * date.
+ *
+ * The strip also carries the other direction: what this player's own commander
+ * has put on everyone else, so they can see how far each opponent is from the
+ * lethal helping without asking round the table. Those are outlined in the
+ * opponent's colour rather than filled with it — filled means taken, outlined
+ * means dealt, and the bolt in front of them says so too.
+ *
+ * While an opponent is booking, the tile is theirs to tap: it is turned towards
+ * them and stands for this player's commander, and its own counter is out of
+ * reach until they are done or the table takes it back.
  *
  * A player counting on their own is left with the counter alone: no strip and no
  * name, since neither has anything to point at.
@@ -107,58 +153,28 @@ export function LifeTile({
     life,
     delta,
     damage,
+    dealt,
     opponents,
     placement,
     flush,
     onChange,
-    onDamage,
-    hit,
-    onRebook,
+    booking,
+    onToggleBooking,
 }: LifeTileProps) {
     const [t] = useTranslation("game-utils");
-    const [tracking, setTracking] = useState(false);
-    // Snapshotted when the drawer opens rather than read as it renders: the
-    // offer is a statement about the moment the shield was tapped, and it has
-    // to stand still while it is being read, even though the hit behind it goes
-    // stale a heartbeat later.
-    const [offer, setOffer] = useState<number | undefined>(undefined);
-    const expiry = useRef<number | undefined>(undefined);
-
-    useEffect(() => () => window.clearTimeout(expiry.current), []);
     const player = t("label.player", { number });
     const hint = t("label.hold-step", { amount: HOLD_STEP });
     const out = isEliminated(life, damage);
     // A player counting on their own has nobody to book commander damage
-    // against, so the strip along the near edge would open on an empty panel.
-    // The name goes with it: there is no other tile to tell this one from, and
+    // against, so the strip along the near edge would open on nothing. The
+    // name goes with it: there is no other tile to tell this one from, and
     // what is left is the total on the whole screen.
     const alone = opponents.length === 0;
-
-    /**
-     * Takes the offer off the drawer, however it ended
-     */
-    function dropOffer() {
-        window.clearTimeout(expiry.current);
-        expiry.current = undefined;
-        setOffer(undefined);
-    }
-
-    /**
-     * Opens or closes the drawer, arming the offer on the way in.
-     *
-     * Only the way in arms it: a drawer that is already open was not opened on
-     * the back of anything.
-     */
-    function toggleTracking() {
-        dropOffer();
-        setTracking(!tracking);
-        if (tracking) return;
-
-        const offered = rebookableHit(hit, Date.now());
-        if (offered === undefined) return;
-        setOffer(offered);
-        expiry.current = window.setTimeout(dropOffer, REBOOK_LINGER);
-    }
+    const booked = booking?.role === "booking";
+    const commanders = [...opponents, number - 1];
+    const dealing = commanders.filter((opponent) => dealt[opponent] > 0);
+    // A target is read by the player booking, not by the one it belongs to.
+    const seat = booking?.role === "target" ? booking.reader : placement.seat;
 
     return (
         <article
@@ -170,157 +186,156 @@ export function LifeTile({
                 placement.area,
             )}
         >
-            <div className={clsx("[container-type:size] absolute flex flex-col", FRAME[placement.seat])}>
-                <div className={"flex min-h-0 flex-1 items-stretch"}>
-                    {tracking ? (
-                        <CommanderDamagePanel
-                            number={number}
-                            damage={damage}
-                            opponents={opponents}
-                            offer={offer}
-                            onChange={(opponent, amount) => {
-                                // Counting a column by hand answers the offer:
-                                // whatever the player is booking now, they are
-                                // booking it themselves.
-                                dropOffer();
-                                onDamage(opponent, amount);
-                            }}
-                            onRebook={(opponent) => {
-                                if (offer === undefined) return;
-                                dropOffer();
-                                onRebook(opponent, offer);
-                            }}
-                            onDismiss={dropOffer}
-                        />
-                    ) : (
-                        <>
-                            <CounterButton
-                                amount={-1}
-                                hold={-HOLD_STEP}
-                                label={t("button.change-life", { player, amount: "-1" })}
-                                title={hint}
-                                className={
-                                    "shrink-0 grow-0 basis-[27%] gap-[1cqh] text-white/90 @min-[22rem]:basis-[23%]"
-                                }
-                                onChange={onChange}
-                            >
-                                <span
-                                    aria-hidden={true}
-                                    className={
-                                        "text-[min(45cqh,13cqw,3.5rem)] leading-none @min-[22rem]:text-[min(45cqh,13cqw,7rem)]"
-                                    }
-                                >
-                                    {"−"}
-                                </span>
-                                <span
-                                    aria-hidden={true}
-                                    className={
-                                        "hidden text-[min(10cqh,3cqw,0.7rem)] font-semibold tracking-wide text-white/55 @min-[22rem]:block"
-                                    }
-                                >
-                                    {hint}
-                                </span>
-                            </CounterButton>
-                            <div
-                                className={
-                                    "flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center gap-[1cqh] overflow-hidden"
-                                }
-                            >
-                                {!alone && (
-                                    <h2
+            <div className={clsx("[container-type:size] absolute flex flex-col", FRAME[seat])}>
+                {booking?.role === "target" ? (
+                    <CommanderDamageTarget
+                        player={booking.player}
+                        number={number}
+                        taken={booking.taken}
+                        offer={booking.offer}
+                        onChange={booking.onChange}
+                        onRebook={booking.onRebook}
+                    />
+                ) : (
+                    <>
+                        <div className={"flex min-h-0 flex-1 items-stretch"}>
+                            {booking?.role === "booking" ? (
+                                <CommanderDamagePanel
+                                    number={number}
+                                    life={life}
+                                    delta={delta}
+                                    offer={booking.offer}
+                                    onDismiss={booking.onDismiss}
+                                    taken={booking.taken}
+                                    onChange={booking.onChange}
+                                    onRebook={booking.onRebook}
+                                />
+                            ) : (
+                                <>
+                                    <CounterButton
+                                        amount={-1}
+                                        hold={-HOLD_STEP}
+                                        label={t("button.change-life", { player, amount: "-1" })}
+                                        title={hint}
                                         className={
-                                            "max-w-full truncate text-[min(11cqh,4cqw,0.95rem)] font-semibold tracking-wide text-white/80 @min-[22rem]:text-[min(11cqh,4cqw,1.9rem)]"
+                                            "shrink-0 grow-0 basis-[27%] gap-[1cqh] text-white/90 @min-[22rem]:basis-[23%]"
                                         }
+                                        onChange={onChange}
                                     >
-                                        {player}
-                                    </h2>
-                                )}
-                                <strong
-                                    aria-label={t("label.life", { count: life })}
-                                    className={
-                                        "text-[min(46cqh,24cqw,6rem)] leading-none font-black tracking-tight tabular-nums @min-[22rem]:text-[min(46cqh,28cqw,12rem)]"
-                                    }
-                                >
-                                    {life}
-                                </strong>
-                                <span
-                                    aria-hidden={true}
-                                    className={clsx(
-                                        "rounded-(--radius-pill) bg-black/25 px-[2cqw] text-[min(14cqh,5cqw,0.85rem)] leading-tight font-bold text-white/90 tabular-nums transition-opacity @min-[22rem]:text-[min(14cqh,5cqw,1.7rem)]",
-                                        delta === undefined && "opacity-0",
-                                    )}
-                                >
-                                    {delta !== undefined && delta > 0 ? "+" : ""}
-                                    {delta ?? 0}
-                                </span>
-                            </div>
-                            <CounterButton
-                                amount={1}
-                                hold={HOLD_STEP}
-                                label={t("button.change-life", { player, amount: "+1" })}
-                                title={hint}
-                                className={
-                                    "shrink-0 grow-0 basis-[27%] gap-[1cqh] text-white/90 @min-[22rem]:basis-[23%]"
-                                }
-                                onChange={onChange}
-                            >
-                                <span
-                                    aria-hidden={true}
-                                    className={
-                                        "text-[min(45cqh,13cqw,3.5rem)] leading-none @min-[22rem]:text-[min(45cqh,13cqw,7rem)]"
-                                    }
-                                >
-                                    {"+"}
-                                </span>
-                                <span
-                                    aria-hidden={true}
-                                    className={
-                                        "hidden text-[min(10cqh,3cqw,0.7rem)] font-semibold tracking-wide text-white/55 @min-[22rem]:block"
-                                    }
-                                >
-                                    {hint}
-                                </span>
-                            </CounterButton>
-                        </>
-                    )}
-                </div>
-                {!alone && (
-                    <button
-                        type={"button"}
-                        aria-label={tracking ? t("button.back-to-life") : t("button.commander-damage", { player })}
-                        aria-pressed={tracking}
-                        onClick={toggleTracking}
-                        className={
-                            "flex shrink-0 items-center justify-center gap-[2cqw] bg-black/25 py-[2.5cqh] transition hover:bg-black/40 active:bg-black/50"
-                        }
-                    >
-                        {tracking ? (
-                            <HeartIcon
-                                className={"size-[min(20cqh,5cqw,1.4rem)] @min-[22rem]:size-[min(20cqh,5cqw,2.8rem)]"}
-                            />
-                        ) : (
-                            <ShieldExclamationIcon
-                                className={"size-[min(20cqh,5cqw,1.4rem)] @min-[22rem]:size-[min(20cqh,5cqw,2.8rem)]"}
-                            />
-                        )}
-                        {!tracking &&
-                            opponents.map((opponent) =>
-                                damage[opponent] === 0 ? null : (
-                                    <span
-                                        key={opponent}
-                                        className={clsx(
-                                            "flex items-center rounded-(--radius-pill) bg-linear-to-br px-[2.5cqw] py-[0.5cqh] text-[min(20cqh,6cqw,1.25rem)] leading-tight font-black text-white tabular-nums @min-[22rem]:text-[min(20cqh,6cqw,2.5rem)]",
-                                            SEAT_COLORS[opponent],
-                                            damage[opponent] >= COMMANDER_DAMAGE_LETHAL
-                                                ? "ring-2 ring-rose-300"
-                                                : "ring-1 ring-white/30",
-                                        )}
+                                        <span
+                                            aria-hidden={true}
+                                            className={
+                                                "text-[min(45cqh,13cqw,3.5rem)] leading-none @min-[22rem]:text-[min(45cqh,13cqw,7rem)]"
+                                            }
+                                        >
+                                            {"−"}
+                                        </span>
+                                        <span
+                                            aria-hidden={true}
+                                            className={
+                                                "hidden text-[min(10cqh,3cqw,0.7rem)] font-semibold tracking-wide text-white/55 @min-[22rem]:block"
+                                            }
+                                        >
+                                            {hint}
+                                        </span>
+                                    </CounterButton>
+                                    <LifeTotal name={alone ? undefined : player} life={life} delta={delta} />
+                                    <CounterButton
+                                        amount={1}
+                                        hold={HOLD_STEP}
+                                        label={t("button.change-life", { player, amount: "+1" })}
+                                        title={hint}
+                                        className={
+                                            "shrink-0 grow-0 basis-[27%] gap-[1cqh] text-white/90 @min-[22rem]:basis-[23%]"
+                                        }
+                                        onChange={onChange}
                                     >
-                                        {damage[opponent]}
-                                    </span>
-                                ),
+                                        <span
+                                            aria-hidden={true}
+                                            className={
+                                                "text-[min(45cqh,13cqw,3.5rem)] leading-none @min-[22rem]:text-[min(45cqh,13cqw,7rem)]"
+                                            }
+                                        >
+                                            {"+"}
+                                        </span>
+                                        <span
+                                            aria-hidden={true}
+                                            className={
+                                                "hidden text-[min(10cqh,3cqw,0.7rem)] font-semibold tracking-wide text-white/55 @min-[22rem]:block"
+                                            }
+                                        >
+                                            {hint}
+                                        </span>
+                                    </CounterButton>
+                                </>
                             )}
-                    </button>
+                        </div>
+                        {!alone && (
+                            <button
+                                type={"button"}
+                                aria-label={
+                                    booked ? t("button.back-to-life") : t("button.commander-damage", { player })
+                                }
+                                aria-pressed={booked}
+                                onClick={onToggleBooking}
+                                className={
+                                    "flex shrink-0 items-center justify-center gap-[2cqw] bg-black/25 py-[2.5cqh] transition hover:bg-lime-400/25 active:bg-black/50"
+                                }
+                            >
+                                {booked ? (
+                                    <HeartIcon
+                                        className={
+                                            "size-[min(20cqh,5cqw,1.4rem)] @min-[22rem]:size-[min(20cqh,5cqw,2.8rem)]"
+                                        }
+                                    />
+                                ) : (
+                                    <ShieldExclamationIcon
+                                        className={
+                                            "size-[min(20cqh,5cqw,1.4rem)] @min-[22rem]:size-[min(20cqh,5cqw,2.8rem)]"
+                                        }
+                                    />
+                                )}
+                                {commanders.map((opponent) =>
+                                    damage[opponent] === 0 ? null : (
+                                        <span
+                                            key={opponent}
+                                            className={clsx(
+                                                "flex items-center rounded-(--radius-pill) bg-linear-to-br px-[2.5cqw] py-[0.5cqh] text-[min(20cqh,6cqw,1.25rem)] leading-tight font-black text-white tabular-nums @min-[22rem]:text-[min(20cqh,6cqw,2.5rem)]",
+                                                SEAT_COLORS[opponent],
+                                                damage[opponent] >= COMMANDER_DAMAGE_LETHAL
+                                                    ? "ring-2 ring-rose-300"
+                                                    : "ring-1 ring-white/30",
+                                            )}
+                                        >
+                                            {damage[opponent]}
+                                        </span>
+                                    ),
+                                )}
+                                {dealing.length > 0 && (
+                                    <>
+                                        <BoltIcon
+                                            className={
+                                                "ml-[2cqw] size-[min(16cqh,4cqw,1.1rem)] text-white/70 @min-[22rem]:size-[min(16cqh,4cqw,2.2rem)]"
+                                            }
+                                        />
+                                        {dealing.map((opponent) => (
+                                            <span
+                                                key={opponent}
+                                                className={clsx(
+                                                    "flex items-center rounded-(--radius-pill) px-[2.5cqw] py-[0.5cqh] text-[min(20cqh,6cqw,1.25rem)] leading-tight font-black text-white tabular-nums ring-2 ring-inset @min-[22rem]:text-[min(20cqh,6cqw,2.5rem)]",
+                                                    dealt[opponent] >= COMMANDER_DAMAGE_LETHAL
+                                                        ? "bg-rose-600/60 ring-rose-300"
+                                                        : clsx("bg-black/30", SEAT_RINGS[opponent]),
+                                                )}
+                                            >
+                                                {dealt[opponent]}
+                                            </span>
+                                        ))}
+                                    </>
+                                )}
+                            </button>
+                        )}
+                    </>
                 )}
             </div>
         </article>

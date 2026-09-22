@@ -9,9 +9,9 @@ import {
     Field,
     Form,
     Input,
-    PrimaryButton,
     RequiredLabel,
 } from "components";
+import { PrimaryButton } from "src/components/primary-button";
 import { useForm } from "@tanstack/react-form";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";

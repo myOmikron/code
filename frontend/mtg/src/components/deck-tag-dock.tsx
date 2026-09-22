@@ -52,7 +52,7 @@ export function DeckTagDock({ tags, onManage }: DeckTagDockProps) {
                     onClick={onManage}
                     title={t("button.manage-tags")}
                     className={
-                        "flex shrink-0 items-center gap-2 rounded-xl px-2 py-1.5 text-xs font-medium text-zinc-600 transition hover:bg-white/60 hover:text-zinc-950 dark:text-zinc-300 dark:hover:bg-zinc-950/40 dark:hover:text-white"
+                        "flex shrink-0 items-center gap-2 rounded-xl px-2 py-1.5 text-xs font-medium text-zinc-600 transition hover:bg-lime-400/25 hover:text-lime-700 dark:text-zinc-300 dark:hover:bg-lime-400/25 dark:hover:text-lime-300"
                     }
                 >
                     <Cog6ToothIcon className={"size-4"} />

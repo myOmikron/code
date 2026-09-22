@@ -22,10 +22,10 @@ import {
     Listbox,
     ListboxLabel,
     ListboxOption,
-    PrimaryButton,
     Text,
     notify,
 } from "components";
+import { PrimaryButton } from "src/components/primary-button";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
@@ -488,7 +488,7 @@ function RouteComponent() {
                     <Link
                         href={"/watch-lists"}
                         className={
-                            "flex items-center gap-1 self-start text-sm text-zinc-500 hover:underline dark:text-zinc-400"
+                            "flex items-center gap-1 self-start text-sm text-zinc-500 hover:text-(--color-accent) hover:underline dark:text-zinc-400"
                         }
                     >
                         <ChevronLeftIcon className={"size-4"} /> {t("button.back-to-lists")}

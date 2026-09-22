@@ -322,7 +322,7 @@ export function GroupHeading({
                     onClick={onToggle}
                     aria-expanded={!collapsed}
                     className={
-                        "-ml-1 flex items-center gap-1.5 rounded px-1 py-0.5 transition hover:bg-zinc-950/5 dark:hover:bg-white/10"
+                        "-ml-1 flex items-center gap-1.5 rounded px-1 py-0.5 transition hover:bg-lime-400/15 dark:hover:bg-lime-400/15"
                     }
                 >
                     <ChevronDownIcon
@@ -524,7 +524,7 @@ export function Tile({
                             type={"button"}
                             aria-label={t("accessibility.decrease-quantity")}
                             onClick={() => onChangeQuantity(card, card.quantity - 1)}
-                            className={"rounded p-1 text-white hover:bg-white/15"}
+                            className={"rounded p-1 text-white hover:bg-lime-400/15"}
                         >
                             <MinusIcon className={"size-4"} />
                         </button>
@@ -533,7 +533,7 @@ export function Tile({
                             type={"button"}
                             aria-label={t("accessibility.increase-quantity")}
                             onClick={() => onChangeQuantity(card, card.quantity + 1)}
-                            className={"rounded p-1 text-white hover:bg-white/15"}
+                            className={"rounded p-1 text-white hover:bg-lime-400/15"}
                         >
                             <PlusIcon className={"size-4"} />
                         </button>

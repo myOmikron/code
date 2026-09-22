@@ -73,7 +73,7 @@ export function CardViewList({
                         </button>
                         <div className={"flex min-w-0 flex-1 flex-col gap-1.5"}>
                             <button type={"button"} onClick={() => onInspect(entry)} className={"min-w-0 text-left"}>
-                                <Strong className={"block truncate hover:underline"}>
+                                <Strong className={"block truncate hover:text-(--color-accent) hover:underline"}>
                                     {card?.name ?? t("label.unknown-printing")}
                                 </Strong>
                             </button>

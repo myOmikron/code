@@ -53,7 +53,7 @@ export function GoldfishLife({ life, turn, mulligans, onChange, compact = false 
 
     const hint = t("description.hold-life", { step: HOLD_STEP });
     const button = clsx(
-        "flex items-center justify-center rounded-full text-zinc-600 ring-1 ring-zinc-950/10 hover:bg-zinc-950/5 dark:text-zinc-300 dark:ring-white/15 dark:hover:bg-white/10",
+        "flex items-center justify-center rounded-full text-zinc-600 ring-1 ring-zinc-950/10 hover:bg-lime-400/15 dark:text-zinc-300 dark:ring-white/15 dark:hover:bg-lime-400/15",
         compact ? "size-7 *:size-4" : "size-9 *:size-5",
     );
 

@@ -145,7 +145,7 @@ export function GoldfishCard({
                 CONTEXT_MENU_TARGET,
                 "group relative shrink-0 rounded-[4.5%/3.2%] outline-none",
                 onDrop !== undefined && "touch-none",
-                "focus-visible:ring-2 focus-visible:ring-blue-500",
+                "focus-visible:ring-2 focus-visible:ring-lime-500",
                 dragging ? "cursor-grabbing drop-shadow-2xl" : "cursor-grab",
                 className,
             )}
@@ -196,7 +196,7 @@ export function GoldfishCard({
                             className={clsx(
                                 "rounded-full px-1.5 text-[10px]/4 font-semibold shadow-sm ring-1 ring-black/40",
                                 kind === "-1/-1" ? "bg-red-500 text-white" : "bg-white text-zinc-950",
-                                onCounter !== undefined && "cursor-pointer hover:ring-blue-400",
+                                onCounter !== undefined && "cursor-pointer hover:ring-lime-500/60",
                             )}
                         >
                             <motion.span

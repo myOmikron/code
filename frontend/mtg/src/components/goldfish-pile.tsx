@@ -68,7 +68,7 @@ export function GoldfishPile({
                 onOpenMenu !== undefined && CONTEXT_MENU_TARGET,
                 className,
                 "flex shrink-0 flex-col items-center gap-1 rounded-lg p-1 transition outline-none",
-                "hover:bg-zinc-950/5 focus-visible:ring-2 focus-visible:ring-blue-500 dark:hover:bg-white/10",
+                "hover:bg-lime-400/15 focus-visible:ring-2 focus-visible:ring-lime-500 dark:hover:bg-lime-400/15",
                 over && "scale-105 bg-blue-500/10 ring-2 ring-blue-400",
             )}
         >

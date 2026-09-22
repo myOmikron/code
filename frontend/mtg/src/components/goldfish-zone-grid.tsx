@@ -101,7 +101,7 @@ export function GoldfishZoneGrid({
                                         className={clsx(
                                             CONTEXT_MENU_TARGET,
                                             "group flex w-full flex-col gap-1 rounded-lg p-1 text-left transition outline-none",
-                                            "hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-blue-400",
+                                            "hover:bg-lime-400/15 focus-visible:ring-2 focus-visible:ring-lime-500",
                                             menued === card.id && "bg-blue-500/20 ring-2 ring-blue-400",
                                         )}
                                     >

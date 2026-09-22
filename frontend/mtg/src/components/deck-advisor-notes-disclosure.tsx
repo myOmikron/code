@@ -35,7 +35,9 @@ export function DeckAdvisorNotesDisclosure({ notes }: DeckAdvisorNotesDisclosure
                 type={"button"}
                 aria-expanded={open}
                 onClick={() => setOpen((held) => !held)}
-                className={"flex items-center gap-1 text-xs text-zinc-500 hover:underline dark:text-zinc-400"}
+                className={
+                    "flex items-center gap-1 text-xs text-zinc-500 hover:text-(--color-accent) hover:underline dark:text-zinc-400"
+                }
             >
                 <InformationCircleIcon className={"size-3.5"} />
                 {t("button.fill-notes", { count: notes.length })}

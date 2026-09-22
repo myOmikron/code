@@ -39,7 +39,7 @@ export function DeckAdvisorDoneDialog({ open, count, onClose, onRefine, onAddMor
                     </div>
                     <p className="text-sm text-zinc-600 dark:text-zinc-300">{t("description.done", { count })}</p>
                     <div className="flex w-full flex-col gap-2">
-                        <Button onClick={onRefine} color="blue" className="w-full">
+                        <Button onClick={onRefine} color={"lime"} className="w-full">
                             {t("button.done-refine")}
                         </Button>
                         <Button onClick={onAddMore} outline className="w-full">

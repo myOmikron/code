@@ -154,7 +154,7 @@ export function DeckAdvisorQuotas({ buckets, custom, onSet, onReset, art }: Deck
                                         onClick={() => onReset(bucket.bucket)}
                                         aria-label={t("accessibility.quota-reset", { name: label })}
                                         className={
-                                            "flex shrink-0 items-center gap-1 rounded-(--radius-pill) px-1.5 py-0.5 text-xs/5 text-zinc-400 opacity-0 transition group-hover:opacity-100 hover:bg-zinc-950/5 hover:text-zinc-950 focus-visible:opacity-100 dark:text-zinc-500 dark:hover:bg-white/10 dark:hover:text-white"
+                                            "flex shrink-0 items-center gap-1 rounded-(--radius-pill) px-1.5 py-0.5 text-xs/5 text-zinc-400 opacity-0 transition group-hover:opacity-100 hover:bg-lime-400/15 hover:text-lime-700 focus-visible:opacity-100 dark:text-zinc-500 dark:hover:bg-lime-400/15 dark:hover:text-lime-300"
                                         }
                                     >
                                         <ArrowUturnLeftIcon className={"size-3"} />

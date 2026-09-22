@@ -1128,7 +1128,7 @@ function RouteComponent() {
                         >
                             {DECK_VIEWS.map((option) => (
                                 <RadioField key={option}>
-                                    <Radio value={option} color={"blue"} />
+                                    <Radio value={option} color={"lime"} />
                                     <Label>{t(`label.view-${option}`)}</Label>
                                 </RadioField>
                             ))}
@@ -1146,7 +1146,7 @@ function RouteComponent() {
                         >
                             {DECK_GROUPINGS.map((option) => (
                                 <RadioField key={option}>
-                                    <Radio value={option} color={"blue"} />
+                                    <Radio value={option} color={"lime"} />
                                     <Label>{labels.grouping(option)}</Label>
                                 </RadioField>
                             ))}

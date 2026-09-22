@@ -67,7 +67,7 @@ export function CardViewGrid({ entries, onInspect, prices = true, onMenu, tags, 
                             type={"button"}
                             onClick={() => onInspect(entry)}
                             className={
-                                "group/tile block w-full rounded-xl bg-(--surface-card) p-1.5 text-left ring-1 ring-zinc-950/5 transition hover:ring-zinc-950/20 sm:p-2 dark:ring-white/10 dark:hover:ring-white/25"
+                                "group/tile block w-full rounded-xl bg-(--surface-card) p-1.5 text-left ring-1 ring-zinc-950/5 transition hover:ring-lime-500/60 sm:p-2 dark:ring-white/10 dark:hover:ring-lime-500/60"
                             }
                             aria-label={t("accessibility.inspect-card", {
                                 name: card?.name ?? t("label.unknown-printing"),

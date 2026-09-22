@@ -10,7 +10,8 @@ import {
     RectangleStackIcon,
     SparklesIcon,
 } from "@heroicons/react/20/solid";
-import { Button, Heading, PrimaryButton, Subheading, Text } from "components";
+import { Button, Heading, Subheading, Text } from "components";
+import { PrimaryButton } from "src/components/primary-button";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import type {
@@ -322,7 +323,7 @@ function RouteComponent() {
                         <Link
                             to={"/watch-lists"}
                             className={
-                                "inline-flex items-center gap-1 text-sm font-medium text-(--color-accent) hover:underline"
+                                "inline-flex items-center gap-1 text-sm font-medium text-(--color-accent) hover:text-(--color-accent) hover:underline"
                             }
                         >
                             {t("button.all-alarms")}
@@ -335,7 +336,9 @@ function RouteComponent() {
                                 <Link
                                     to={"/watch-lists/$watchListUuid"}
                                     params={{ watchListUuid: alarm.watch_list }}
-                                    className={"flex items-center gap-3 py-1 text-sm hover:underline"}
+                                    className={
+                                        "flex items-center gap-3 py-1 text-sm hover:text-(--color-accent) hover:underline"
+                                    }
                                 >
                                     <span className={"min-w-0 flex-1 truncate text-zinc-950 dark:text-white"}>
                                         {alarm.name}
@@ -362,7 +365,7 @@ function RouteComponent() {
                         <Link
                             to={"/decks"}
                             className={
-                                "inline-flex items-center gap-1 text-sm font-medium text-(--color-accent) hover:underline"
+                                "inline-flex items-center gap-1 text-sm font-medium text-(--color-accent) hover:text-(--color-accent) hover:underline"
                             }
                         >
                             {t("button.all-decks")}
@@ -507,7 +510,7 @@ function RouteComponent() {
                         <Link
                             to={"/global/decks"}
                             className={
-                                "inline-flex items-center gap-1 text-sm font-medium text-(--color-accent) hover:underline"
+                                "inline-flex items-center gap-1 text-sm font-medium text-(--color-accent) hover:text-(--color-accent) hover:underline"
                             }
                         >
                             {t("button.browse-decks")}

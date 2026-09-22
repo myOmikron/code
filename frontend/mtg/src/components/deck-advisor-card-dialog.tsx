@@ -86,7 +86,7 @@ export function DeckAdvisorCardDialog({
                             {t("button.add-maybe")}
                         </Button>
                         <Button
-                            color={"blue"}
+                            color={"lime"}
                             disabled={busy || printing === null}
                             onClick={() => {
                                 onAdd(suggestion);

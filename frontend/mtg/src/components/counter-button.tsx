@@ -96,7 +96,7 @@ export function CounterButton({ amount, hold, label, title, className, children,
             onPointerCancel={() => release(true)}
             onContextMenu={(event) => event.preventDefault()}
             className={clsx(
-                "flex touch-none flex-col items-center justify-center font-light transition hover:bg-white/10 active:bg-white/25",
+                "flex touch-none flex-col items-center justify-center font-light transition hover:bg-lime-400/15 active:bg-white/25",
                 className,
             )}
         >

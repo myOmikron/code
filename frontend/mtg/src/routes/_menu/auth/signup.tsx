@@ -10,10 +10,10 @@ import {
     Heading,
     Input,
     Legend,
-    PrimaryButton,
     RequiredLabel,
     Text,
 } from "components";
+import { PrimaryButton } from "src/components/primary-button";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useForm } from "@tanstack/react-form";

@@ -69,8 +69,8 @@ export function WatchLanguageDialog({ languages, onClose, onSave }: WatchLanguag
                     className={clsx(
                         "flex min-h-10 items-center gap-2 rounded-(--radius-control) px-3 text-sm font-medium transition",
                         picked.length === 0
-                            ? "bg-(--color-brand-600) text-white"
-                            : "bg-zinc-950/5 text-zinc-700 hover:bg-zinc-950/10 dark:bg-white/10 dark:text-zinc-200 dark:hover:bg-white/15",
+                            ? "bg-lime-300 text-lime-950"
+                            : "bg-zinc-950/5 text-zinc-700 hover:bg-lime-400/15 dark:bg-white/10 dark:text-zinc-200 dark:hover:bg-lime-400/15",
                     )}
                 >
                     {picked.length === 0 && <CheckIcon className={"size-4 shrink-0"} />}
@@ -89,8 +89,8 @@ export function WatchLanguageDialog({ languages, onClose, onSave }: WatchLanguag
                                 className={clsx(
                                     "flex min-h-9 items-center gap-1.5 rounded-(--radius-pill) px-3 text-sm font-medium transition",
                                     on
-                                        ? "bg-(--color-brand-600) text-white"
-                                        : "bg-zinc-950/5 text-zinc-700 hover:bg-zinc-950/10 dark:bg-white/10 dark:text-zinc-200 dark:hover:bg-white/15",
+                                        ? "bg-lime-300 text-lime-950"
+                                        : "bg-zinc-950/5 text-zinc-700 hover:bg-lime-400/15 dark:bg-white/10 dark:text-zinc-200 dark:hover:bg-lime-400/15",
                                 )}
                             >
                                 {on && <CheckIcon className={"size-4 shrink-0"} />}
@@ -104,7 +104,7 @@ export function WatchLanguageDialog({ languages, onClose, onSave }: WatchLanguag
                 <Button plain onClick={onClose}>
                     {tg("button.cancel")}
                 </Button>
-                <Button color={"blue"} onClick={() => onSave(picked)}>
+                <Button color={"lime"} onClick={() => onSave(picked)}>
                     {t("button.save-entry")}
                 </Button>
             </DialogActions>

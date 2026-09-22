@@ -305,7 +305,7 @@ export function CollectionEntryDialog({
                         <Description>{t("description.signed")}</Description>
                         <Switch
                             name={"signed"}
-                            color={"blue"}
+                            color={"lime"}
                             checked={entry.signed}
                             onChange={(signed) => onEdit({ signed })}
                         />

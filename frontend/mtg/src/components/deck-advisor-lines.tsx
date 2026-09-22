@@ -357,7 +357,7 @@ function FamilyBlock({
                 <div
                     key={line.id}
                     className={
-                        "flex flex-wrap items-center gap-2 rounded-(--radius-control) px-1.5 py-1 hover:bg-zinc-950/5 dark:hover:bg-white/5"
+                        "flex flex-wrap items-center gap-2 rounded-(--radius-control) px-1.5 py-1 hover:bg-lime-400/15 dark:hover:bg-lime-400/15"
                     }
                 >
                     <PieceRow
@@ -409,7 +409,7 @@ function NearMissBlock({
                     <div
                         key={group.key}
                         className={
-                            "flex flex-wrap items-center gap-2 rounded-(--radius-control) px-1.5 py-1 opacity-70 hover:bg-zinc-950/5 hover:opacity-100 dark:hover:bg-white/5"
+                            "flex flex-wrap items-center gap-2 rounded-(--radius-control) px-1.5 py-1 opacity-70 hover:bg-lime-400/15 hover:opacity-100 dark:hover:bg-lime-400/15"
                         }
                     >
                         <PieceRow pieces={[...group.missing, ...group.partners]} cards={cards} onOpen={onOpen} />
@@ -421,7 +421,9 @@ function NearMissBlock({
                 <button
                     type={"button"}
                     onClick={() => setExpanded(true)}
-                    className={"self-start px-1.5 py-1 text-xs text-(--color-accent) hover:underline"}
+                    className={
+                        "self-start px-1.5 py-1 text-xs text-(--color-accent) hover:text-(--color-accent) hover:underline"
+                    }
                 >
                     {t("label.near-miss-more", { count: groups.length - NEAR_MISS_SHOWN })}
                 </button>

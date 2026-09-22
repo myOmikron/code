@@ -87,7 +87,7 @@ export function CardmarketSettings() {
                 <Description>{t("description.cardmarket-language")}</Description>
                 <HorizontalFieldDivider />
                 <Switch
-                    color={"blue"}
+                    color={"lime"}
                     checked={settings.matchLanguage}
                     onChange={(matchLanguage) => change({ matchLanguage })}
                 />
@@ -98,7 +98,7 @@ export function CardmarketSettings() {
                 <Description>{t("description.cardmarket-finish")}</Description>
                 <HorizontalFieldDivider />
                 <Switch
-                    color={"blue"}
+                    color={"lime"}
                     checked={settings.matchFinish}
                     onChange={(matchFinish) => change({ matchFinish })}
                 />

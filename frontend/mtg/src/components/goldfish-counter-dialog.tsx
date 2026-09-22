@@ -1,6 +1,7 @@
 import { MinusIcon, PlusIcon } from "@heroicons/react/20/solid";
 import clsx from "clsx";
-import { Button, Dialog, DialogActions, DialogBody, DialogTitle, Field, Input, Label, PrimaryButton } from "components";
+import { Button, Dialog, DialogActions, DialogBody, DialogTitle, Field, Input, Label } from "components";
+import { PrimaryButton } from "src/components/primary-button";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { GoldfishCard } from "src/utils/goldfish";
@@ -35,7 +36,7 @@ export function GoldfishCounterDialog({ card, onChange, onClose }: GoldfishCount
         (kind, index, all) => all.indexOf(kind) === index,
     );
     const step =
-        "flex size-8 items-center justify-center rounded-full text-zinc-700 ring-1 ring-zinc-950/10 transition hover:bg-zinc-950/5 disabled:opacity-40 disabled:hover:bg-transparent dark:text-zinc-200 dark:ring-white/20 dark:hover:bg-white/10 *:size-4";
+        "flex size-8 items-center justify-center rounded-full text-zinc-700 ring-1 ring-zinc-950/10 transition hover:bg-lime-400/15 disabled:opacity-40 disabled:hover:bg-transparent dark:text-zinc-200 dark:ring-white/20 dark:hover:bg-lime-400/15 *:size-4";
 
     /**
      * Adds the typed counter

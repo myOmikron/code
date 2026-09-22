@@ -72,7 +72,7 @@ export function WatchListTile({ overview, onMenu, selected = false, onActivate }
             className={clsx(
                 selected
                     ? "group/watch-list relative flex flex-col overflow-hidden rounded-(--radius-card) bg-(--surface-card) ring-2 ring-(--color-brand-500) transition"
-                    : "group/watch-list relative flex flex-col overflow-hidden rounded-(--radius-card) bg-(--surface-card) ring-1 ring-zinc-950/5 transition hover:ring-zinc-950/15 dark:ring-white/10 dark:hover:ring-white/25",
+                    : "group/watch-list relative flex flex-col overflow-hidden rounded-(--radius-card) bg-(--surface-card) ring-1 ring-zinc-950/5 transition hover:ring-lime-500/60 dark:ring-white/10 dark:hover:ring-lime-500/60",
                 CONTEXT_MENU_TARGET,
             )}
         >
@@ -215,7 +215,7 @@ export function WatchListTile({ overview, onMenu, selected = false, onActivate }
                     onMenu(overview, { x: box.left, y: box.bottom + 4 });
                 }}
                 className={
-                    "absolute top-2 right-2 rounded-full bg-zinc-950/55 p-1 text-white opacity-100 transition hover:bg-zinc-950/75 focus:opacity-100 sm:opacity-0 sm:group-focus-within/watch-list:opacity-100 sm:group-hover/watch-list:opacity-100"
+                    "absolute top-2 right-2 rounded-full bg-zinc-950/55 p-1 text-white opacity-100 transition hover:bg-lime-400/25 focus:opacity-100 sm:opacity-0 sm:group-focus-within/watch-list:opacity-100 sm:group-hover/watch-list:opacity-100"
                 }
             >
                 <EllipsisHorizontalIcon className={"size-5"} />

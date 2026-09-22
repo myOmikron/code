@@ -14,7 +14,6 @@ import {
     NavbarLabel,
     NavbarSection,
     NavbarSpacer,
-    PrimaryButton,
     Sidebar,
     SidebarBody,
     SidebarDivider,
@@ -24,6 +23,7 @@ import {
     SidebarSpacer,
     StackedLayout,
 } from "components";
+import { PrimaryButton } from "src/components/primary-button";
 import { useTranslation } from "react-i18next";
 import { useAccount } from "src/context/account.tsx";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";

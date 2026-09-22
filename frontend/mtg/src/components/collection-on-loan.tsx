@@ -57,7 +57,7 @@ export function CollectionOnLoan({ loans }: CollectionOnLoanProps) {
                             to={"/decks/$deckUuid/sourcing"}
                             params={{ deckUuid: deck.deck }}
                             className={
-                                "flex items-center gap-2 text-sm/6 font-semibold text-zinc-950 hover:underline dark:text-white"
+                                "flex items-center gap-2 text-sm/6 font-semibold text-zinc-950 hover:text-(--color-accent) hover:underline dark:text-white"
                             }
                         >
                             <RectangleStackIcon className={"size-4 text-zinc-400 dark:text-zinc-500"} />

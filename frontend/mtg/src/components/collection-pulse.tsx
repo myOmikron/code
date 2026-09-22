@@ -111,7 +111,7 @@ export function CollectionPulse({ collections }: CollectionPulseProps) {
                         <Link
                             to={"/collections/$collectionUuid/cards"}
                             params={{ collectionUuid: overview.collection.uuid }}
-                            className={"flex items-center gap-3 text-sm hover:underline"}
+                            className={"flex items-center gap-3 text-sm hover:text-(--color-accent) hover:underline"}
                         >
                             <CollectionMarker
                                 color={overview.collection.color}

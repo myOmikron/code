@@ -68,7 +68,7 @@ export function DeckAdvisorCountCards({ count, cards, label, art }: DeckAdvisorC
                 onClick={() => setOpen(true)}
                 aria-label={`${label} (${count})`}
                 className={
-                    "cursor-pointer underline decoration-zinc-400 decoration-dotted underline-offset-2 hover:decoration-zinc-600 dark:decoration-zinc-600 dark:hover:decoration-zinc-300"
+                    "cursor-pointer underline decoration-zinc-400 decoration-dotted underline-offset-2 hover:decoration-lime-700 dark:decoration-zinc-600 dark:hover:decoration-lime-300"
                 }
             >
                 {count}

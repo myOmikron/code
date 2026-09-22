@@ -309,7 +309,7 @@ export function AddCollectionCardsDialog({ open, collectionUuid, onClose, onChan
                                                 className={
                                                     twoColumns === option
                                                         ? "rounded-[calc(var(--radius-control)-0.125rem)] bg-(--surface-card) p-1.5 text-zinc-950 shadow-(--shadow-card-sm) dark:text-white"
-                                                        : "rounded-[calc(var(--radius-control)-0.125rem)] p-1.5 text-zinc-500 transition hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white"
+                                                        : "rounded-[calc(var(--radius-control)-0.125rem)] p-1.5 text-zinc-500 transition hover:text-lime-700 dark:text-zinc-400 dark:hover:text-lime-300"
                                                 }
                                             >
                                                 {option ? (

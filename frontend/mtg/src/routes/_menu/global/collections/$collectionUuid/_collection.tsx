@@ -55,7 +55,7 @@ function RouteComponent() {
                             <Link
                                 to={"/global/profiles/$username"}
                                 params={{ username: collection.owner }}
-                                className={"font-medium hover:underline"}
+                                className={"font-medium hover:text-(--color-accent) hover:underline"}
                             >
                                 {collection.owner}
                             </Link>

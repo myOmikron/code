@@ -19,7 +19,7 @@ export type CardmarketLinkVariant = "icon" | "overlay" | "row";
 const VARIANTS: Record<"icon" | "overlay", string> = {
     icon: "inline-flex items-center justify-center rounded-(--radius-control) p-1 opacity-80 transition hover:opacity-100",
     overlay:
-        "z-10 inline-flex items-center justify-center rounded-full bg-zinc-950/75 p-1.5 text-white shadow-lg ring-2 ring-white/75 backdrop-blur-sm transition hover:bg-zinc-950",
+        "z-10 inline-flex items-center justify-center rounded-full bg-zinc-950/75 p-1.5 text-white shadow-lg ring-2 ring-white/75 backdrop-blur-sm transition hover:bg-lime-400/25",
 };
 
 /**

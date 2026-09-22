@@ -1,4 +1,5 @@
-import { Button, Dialog, DialogActions, DialogBody, DialogTitle, Field, Input, Label, PrimaryButton } from "components";
+import { Button, Dialog, DialogActions, DialogBody, DialogTitle, Field, Input, Label } from "components";
+import { PrimaryButton } from "src/components/primary-button";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 

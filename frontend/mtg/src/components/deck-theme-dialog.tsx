@@ -64,7 +64,7 @@ export function DeckThemeDialog({ open, onClose, pinned, detected, onSave }: Dec
                     {t("button.cancel")}
                 </Button>
                 <Button
-                    color={"blue"}
+                    color={"lime"}
                     onClick={() => {
                         onSave(picked);
                         onClose();

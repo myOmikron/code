@@ -143,13 +143,13 @@ export function CardOverlayAction({
                 "inline-flex items-center justify-center rounded-full text-white transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-accent) disabled:opacity-50",
                 chip.chip,
                 position !== "inline" && PLACEMENTS[position][slot],
-                active === true ? "bg-(--color-brand-600) hover:bg-(--color-brand-500)" : "bg-zinc-950/75",
+                active === true ? "bg-lime-700 hover:bg-lime-800" : "bg-zinc-950/75",
                 // The white ring is what holds the chip off artwork it happens
                 // to match, and the blur lets the picture's own colours through
                 // rather than stamping a flat disc on it.
                 flat === false &&
                     "z-10 shadow-lg ring-2 ring-white/75 backdrop-blur-sm hover:scale-105 active:scale-95 disabled:hover:scale-100",
-                active !== true && "hover:bg-zinc-950/90",
+                active !== true && "hover:bg-lime-400/25",
                 className,
             )}
         >

@@ -80,7 +80,7 @@ export function CardZoomDialog({ card, onClose }: CardZoomDialogProps) {
                 onClick={onClose}
                 aria-label={tg("button.close")}
                 className={
-                    "fixed top-4 right-4 rounded-full bg-black/55 p-2 text-white/70 ring-1 ring-white/15 backdrop-blur hover:text-white"
+                    "fixed top-4 right-4 rounded-full bg-black/55 p-2 text-white/70 ring-1 ring-white/15 backdrop-blur hover:text-lime-300"
                 }
             >
                 <XMarkIcon className={"size-5"} />

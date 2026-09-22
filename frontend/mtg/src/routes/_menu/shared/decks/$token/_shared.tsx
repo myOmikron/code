@@ -64,7 +64,7 @@ function RouteComponent() {
                     <span className={"flex flex-col gap-2"}>
                         {deck.description != null && deck.description !== "" && <span>{deck.description}</span>}
                         <span className={"flex flex-wrap items-center gap-2"}>
-                            <Badge color={"blue"}>{labels.format(deck.format)}</Badge>
+                            <Badge color={"lime"}>{labels.format(deck.format)}</Badge>
                             <span>{t("label.shared-by", { owner: deck.owner })}</span>
                         </span>
                         <span className={"flex flex-wrap items-center gap-2"}>

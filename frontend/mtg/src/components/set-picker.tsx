@@ -10,12 +10,12 @@ import {
     Divider,
     Input,
     Label,
-    PrimaryButton,
     StackedList,
     StackedListFlexRow,
     Strong,
     Text,
 } from "components";
+import { PrimaryButton } from "src/components/primary-button";
 import { useDeferredValue, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { filterFamilies, groupSetsIntoFamilies } from "src/utils/set-families";
@@ -169,7 +169,7 @@ export function SetPicker({ open, sets, initialSelection, onCancel, onConfirm }:
                                     <div className="flex items-center gap-2">
                                         <CheckboxField className="min-w-0 flex-1">
                                             <Checkbox
-                                                color="blue"
+                                                color={"lime"}
                                                 checked={chosen === codes.length}
                                                 indeterminate={chosen > 0 && chosen < codes.length}
                                                 onChange={() => toggleFamily(family)}
@@ -210,7 +210,7 @@ export function SetPicker({ open, sets, initialSelection, onCancel, onConfirm }:
                                             {family.sets.map((set) => (
                                                 <CheckboxField key={set.code}>
                                                     <Checkbox
-                                                        color="blue"
+                                                        color={"lime"}
                                                         checked={selected.has(set.code.toUpperCase())}
                                                         onChange={() => toggleSet(set.code)}
                                                         aria-label={set.name}

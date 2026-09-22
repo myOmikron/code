@@ -192,7 +192,9 @@ function RouteComponent() {
             <div className={"-mx-4 flex flex-col gap-2 sm:-mx-5 lg:-mx-6"}>
                 <Link
                     to={"/decks"}
-                    className={"flex items-center gap-1 text-sm text-zinc-500 hover:underline dark:text-zinc-400"}
+                    className={
+                        "flex items-center gap-1 text-sm text-zinc-500 hover:text-(--color-accent) hover:underline dark:text-zinc-400"
+                    }
                 >
                     <ChevronLeftIcon className={"size-4"} /> {t("button.back-to-decks")}
                 </Link>
@@ -202,7 +204,7 @@ function RouteComponent() {
                         <span className={"flex flex-col gap-3"}>
                             {deck.description != null && deck.description !== "" && <span>{deck.description}</span>}
                             <span className={"flex flex-wrap items-center gap-2"}>
-                                <Badge color={"blue"}>{labels.format(deck.format)}</Badge>
+                                <Badge color={"lime"}>{labels.format(deck.format)}</Badge>
                                 {/* Beside the format, because it is the same
                                     kind of statement about the deck — and the
                                     advisor, two tabs over, holds the deck to

@@ -44,7 +44,7 @@ export function SessionBufferList() {
                                 {`${group.card.setCode.toUpperCase()} ${group.card.collectorNumber}`}
                             </Text>
                         </div>
-                        {group.foil && <Badge color="blue">{tg("label.foil")}</Badge>}
+                        {group.foil && <Badge color={"lime"}>{tg("label.foil")}</Badge>}
                         <Badge>{group.ids.length}</Badge>
                         <Button
                             plain

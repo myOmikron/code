@@ -118,7 +118,7 @@ export function WatchListEntryCard({
                 "shadow-card-sm relative flex flex-col gap-3 overflow-hidden rounded-(--radius-card) bg-(--surface-card) py-3 pr-3 pl-4 ring-1 transition sm:py-4 sm:pr-4 sm:pl-5",
                 state === "alarm"
                     ? "ring-amber-500/40 dark:ring-amber-400/30"
-                    : "ring-zinc-950/5 hover:ring-zinc-950/15 dark:ring-white/10 dark:hover:ring-white/20",
+                    : "ring-zinc-950/5 hover:ring-lime-500/60 dark:ring-white/10 dark:hover:ring-lime-500/60",
             )}
         >
             <span aria-hidden={true} className={clsx("absolute inset-y-0 left-0 w-1", RAIL[state])} />
@@ -218,7 +218,7 @@ export function WatchListEntryCard({
                     aria-expanded={open}
                     onClick={() => onToggleCopies(entry)}
                     className={
-                        "-mx-1 rounded-(--radius-control) px-1 py-0.5 text-left transition hover:bg-zinc-950/5 dark:hover:bg-white/5"
+                        "-mx-1 rounded-(--radius-control) px-1 py-0.5 text-left transition hover:bg-lime-400/15 dark:hover:bg-lime-400/15"
                     }
                 >
                     <WatchStockMeter

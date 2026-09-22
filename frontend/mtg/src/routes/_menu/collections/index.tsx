@@ -15,10 +15,10 @@ import {
     Button,
     EmptyState,
     Heading,
-    PrimaryButton,
     Text,
     notify,
 } from "components";
+import { PrimaryButton } from "src/components/primary-button";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";

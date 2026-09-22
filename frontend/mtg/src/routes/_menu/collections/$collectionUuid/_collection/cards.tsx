@@ -28,10 +28,10 @@ import {
     PaginationNext,
     PaginationPage,
     PaginationPrevious,
-    PrimaryButton,
     Text,
     notify,
 } from "components";
+import { PrimaryButton } from "src/components/primary-button";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
