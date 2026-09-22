@@ -11,7 +11,7 @@ import type { ScanOutcome } from "./scan-decision";
 import type { CardQuad } from "./card-detect";
 import type { IndexedPrinting } from "./embedding-index";
 import type { ScanLanguageChoice } from "./ocr";
-import type { FrameTimings } from "./live-pipeline";
+import type { FrameDetection, FrameTimings } from "./live-pipeline";
 
 export type { ScanLanguage, ScanLanguageChoice } from "./ocr";
 import type { ScanLoadProgress } from "./pipeline";
@@ -42,6 +42,7 @@ let worker: Worker | null = null;
 let nextId = 0;
 const pending = new Map<number, Resolver>();
 const listeners = new Map<number, (progress: ScanLoadProgress) => void>();
+const detectionListeners = new Map<number, (detection: FrameDetection) => void>();
 
 /**
  * Starts the worker on first use
@@ -53,6 +54,10 @@ function ensureWorker(): Worker {
     const created = new Worker(new URL("./scan-worker.ts", import.meta.url), { type: "module" });
     created.onmessage = (event) => {
         const message = event.data;
+        if (message.type === "detected") {
+            detectionListeners.get(message.id)?.(message.detection);
+            return;
+        }
         if (message.type === "progress") {
             listeners.get(message.id)?.(message.progress);
             return;
@@ -61,6 +66,7 @@ function ensureWorker(): Worker {
         if (!resolver) return;
         pending.delete(message.id);
         listeners.delete(message.id);
+        detectionListeners.delete(message.id);
         if (message.type === "error") resolver.reject(new Error(message.message));
         else if (message.type === "ready")
             resolver.resolve({
@@ -102,18 +108,21 @@ function ensureWorker(): Worker {
  * @param build produces the message for a given id
  * @param transfer objects handed over rather than copied
  * @param onProgress receives load progress for this request
+ * @param onDetection receives geometry while recognition is still running
  * @returns the worker's answer
  */
 function request<T>(
     build: (id: number) => object,
     transfer: Transferable[] = [],
     onProgress?: (progress: ScanLoadProgress) => void,
+    onDetection?: (detection: FrameDetection) => void,
 ): Promise<T> {
     const id = (nextId += 1);
     const target = ensureWorker();
     return new Promise<T>((resolve, reject) => {
         pending.set(id, { resolve: resolve as never, reject });
         if (onProgress) listeners.set(id, onProgress);
+        if (onDetection) detectionListeners.set(id, onDetection);
         target.postMessage(build(id), transfer);
     });
 }
@@ -138,6 +147,19 @@ export function loadScanner(
 
 /** Where the WebGPU verdict for this device is kept between loads. */
 const STRATEGY_KEY = "scanner.webgpu-strategy.v2";
+
+/**
+ * Retry WebGPU in a fresh page, since the runtime caches its first adapter.
+ * The saved scan list is unaffected; only the backend verdict is cleared.
+ */
+export function retryWebGpu(): void {
+    try {
+        localStorage.removeItem(STRATEGY_KEY);
+    } catch {
+        // If storage is blocked, plannedStrategy already starts with a full attempt.
+    }
+    window.location.reload();
+}
 
 /**
  * Which WebGPU arrangement this load should try.
@@ -225,13 +247,14 @@ export type LiveFrameResult = {
 };
 
 /**
- * Runs one live frame, verifying directly on WASM or after agreement on WebGPU.
+ * Runs one live frame, reporting geometry early and verifying after agreement.
  *
  * @param frame transferred to the worker, which closes it
  * @param debug also return the rectified crop, so a wrong answer can be looked at
  * @param language which language of card is being held up, which picks the OCR model
  * @param sets set codes the scan is narrowed to, empty for all
  * @param viewAspect width over height of the element showing the picture
+ * @param onDetection receives the outline before OCR and matching finish
  * @returns what this frame produced
  */
 export function scanLiveFrame(
@@ -240,8 +263,14 @@ export function scanLiveFrame(
     language: ScanLanguageChoice = "auto",
     sets: string[] = [],
     viewAspect = 0,
+    onDetection?: (detection: FrameDetection) => void,
 ): Promise<LiveFrameResult> {
-    return request<LiveFrameResult>((id) => ({ type: "live", id, frame, debug, language, sets, viewAspect }), [frame]);
+    return request<LiveFrameResult>(
+        (id) => ({ type: "live", id, frame, debug, language, sets, viewAspect }),
+        [frame],
+        undefined,
+        onDetection,
+    );
 }
 
 /**

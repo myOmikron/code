@@ -15,6 +15,7 @@
         "close-diagnostics": "Schließen",
         "continue-with-selection": "Weiter mit deiner Auswahl",
         "copy-diagnostics": "Kopieren",
+        "retry-webgpu": "WebGPU erneut testen (Neuladen)",
         "debug": "Debug: {{state}}",
         "load-card-data": "Herunterladen",
         "mark-foil": "Als Foil markieren",

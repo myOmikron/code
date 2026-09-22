@@ -7,7 +7,12 @@ vi.mock("./feature-verify", () => ({
     describeCard: vi.fn(async () => ({ count: 0, descriptors: new Uint8Array(), points: new Float32Array() })),
 }));
 const image = { width: 1, height: 1, data: new Uint8ClampedArray(4) };
-/** A cache key for a printing; the cache does not inspect catalogue fields. */
+/**
+ * A cache key for a printing; the cache does not inspect catalogue fields.
+ *
+ * @param id
+ * @returns a minimal printing fixture
+ */
 const printing = (id: string) => ({ id, face: 0 }) as IndexedPrinting;
 
 beforeEach(() => {

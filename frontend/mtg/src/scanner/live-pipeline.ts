@@ -6,8 +6,7 @@
 //! search are local and quick. Verification loads reference images over the network and compares
 //! descriptors, and it is the only part that can say for certain which printing this is.
 //!
-//! On WebGPU verification waits for a recurring candidate. On WASM, rerunning the model is
-//! expensive enough to verify the first upright shortlist directly. References are fetched
+//! Verification waits for a recurring candidate on every backend. References are fetched
 //! concurrently within a time budget and retained in a bounded cache.
 import { detectCardsIn, rectifyCardIn, shrinkQuad } from "./card-detect";
 import type { CardQuad, DetectedCard, Point, RgbaImage } from "./card-detect";
@@ -326,6 +325,13 @@ export type FramePreview = {
     sightScore: number;
 };
 
+/** Geometry available before OCR, embedding or reference downloads. */
+export type FrameDetection = Pick<FramePreview, "quad" | "region" | "areaFraction" | "fromGuide"> & {
+    frameWidth: number;
+    frameHeight: number;
+    milliseconds: number;
+};
+
 /** A timed-out OCR job may finish, but must not queue work for later frames. */
 const readWithinBudget = createLiveBudget();
 const OCR_BUDGET = 350;
@@ -340,6 +346,7 @@ const OCR_BUDGET = 350;
  * @param language which language of card is being held up
  * @param sets set codes the scan is narrowed to, empty for all
  * @param viewAspect width over height of the element showing the picture
+ * @param onDetection receives geometry as soon as detection finishes
  * @returns the best candidates and the crops they came from
  */
 export async function previewFrame(
@@ -350,6 +357,7 @@ export async function previewFrame(
     language: ScanLanguageChoice = "auto",
     sets: string[] = [],
     viewAspect = 0,
+    onDetection?: (detection: FrameDetection) => void,
 ): Promise<FramePreview> {
     const started = performance.now();
     const timings: FrameTimings = { detect: 0, embed: 0, search: 0, ocr: 0, references: 0, verify: 0 };
@@ -365,6 +373,15 @@ export async function previewFrame(
     // Marked as such, because a guessed crop is worth knowing about when the answer is wrong.
     const fromGuide = detected.length === 0;
     const card = fromGuide ? guideCard(searched.width, searched.height) : detected[0];
+    onDetection?.({
+        quad: fromGuide ? null : offsetQuad(card.quad, region),
+        areaFraction: card.areaFraction,
+        region,
+        fromGuide,
+        frameWidth: pixels.width,
+        frameHeight: pixels.height,
+        milliseconds: timings.detect,
+    });
     const variant = VARIANTS[variantIndex % VARIANTS.length];
     const quad = variant.inset === 0 ? card.quad : shrinkQuad(card.quad, variant.inset);
     const crop = await rectifyCardIn(searched, quad, variant.rotation);

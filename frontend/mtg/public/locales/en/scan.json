@@ -15,6 +15,7 @@
         "close-diagnostics": "Close",
         "continue-with-selection": "Continue with your selection",
         "copy-diagnostics": "Copy",
+        "retry-webgpu": "Retry WebGPU (reload)",
         "debug": "Debug: {{state}}",
         "load-card-data": "Download",
         "mark-foil": "Mark as foil",

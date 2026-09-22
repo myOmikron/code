@@ -20,6 +20,7 @@ import { ScanStagingSheet } from "src/components/scan-staging-sheet";
 import type { ScanPhase } from "src/components/scan-viewfinder";
 import { ScanViewfinder } from "src/components/scan-viewfinder";
 import type { CardQuad } from "src/scanner/card-detect";
+import { createCaptureGate } from "src/scanner/capture-gate";
 import {
     inspectScanDownload,
     keepScanDataStored,
@@ -178,7 +179,8 @@ export function LiveScanner({ session }: LiveScannerProps) {
     const busy = useRef(false);
     const running = useRef(false);
     const diagnosticsRef = useRef(false);
-    const staged = useRef("");
+    const captureGate = useRef(createCaptureGate());
+    const scanGeneration = useRef(0);
     const cropCanvas = useRef<HTMLCanvasElement | null>(null);
     diagnosticsRef.current = diagnostics;
 
@@ -242,6 +244,7 @@ export function LiveScanner({ session }: LiveScannerProps) {
     const step = useCallback(async () => {
         const video = camera.videoRef.current;
         if (!video || busy.current || video.readyState < 2) return;
+        const generation = scanGeneration.current;
         busy.current = true;
         try {
             const shrink = Math.min(1, FRAME_LONG_SIDE / Math.max(video.videoWidth, video.videoHeight));
@@ -250,6 +253,10 @@ export function LiveScanner({ session }: LiveScannerProps) {
                 resizeHeight: Math.round(video.videoHeight * shrink),
                 resizeQuality: "medium",
             });
+            if (!running.current || generation !== scanGeneration.current) {
+                bitmap.close();
+                return;
+            }
             // What the element shows, not what the camera sends. `object-cover` crops a landscape
             // frame to a portrait phone, and a guide sized against the full frame lands outside it.
             const viewAspect = video.clientHeight > 0 ? video.clientWidth / video.clientHeight : 0;
@@ -259,7 +266,33 @@ export function LiveScanner({ session }: LiveScannerProps) {
                 languageRef.current,
                 scopeRef.current,
                 viewAspect,
+                (detection) => {
+                    if (!running.current || generation !== scanGeneration.current) return;
+                    setWarm(true);
+                    setFrame({
+                        ...detection,
+                        crop: null,
+                        preview: null,
+                        outcome: null,
+                        title: "",
+                        ocrError: "",
+                        ocrModel: "",
+                        attempts: 0,
+                        timings: {
+                            detect: detection.milliseconds,
+                            ocr: 0,
+                            embed: 0,
+                            search: 0,
+                            references: 0,
+                            verify: 0,
+                        },
+                    });
+                },
             );
+            if (!running.current || generation !== scanGeneration.current) {
+                result.crop?.close();
+                return;
+            }
             setFrame(result);
 
             if (result.crop) {
@@ -272,45 +305,43 @@ export function LiveScanner({ session }: LiveScannerProps) {
                 result.crop.close();
             }
 
-            if (result.outcome?.status !== "recognised" && !result.quad) staged.current = "";
+            captureGate.current.observe(result.outcome?.status === "recognised" || result.quad !== null);
             if (result.outcome?.status === "recognised") {
                 const { printing } = result.outcome;
                 const id = printing.id;
                 const thumbnail = result.quad ? still(video, result.quad, result.frameWidth) : "";
-                // Once per card held up, not once per frame that agrees. A card stays in view for
-                // as long as it takes to put it down, and every one of those frames confirms it
-                // again: eleven copies of one Lightning Bolt after a couple of seconds. Cleared
-                // below when the card leaves, so holding the same printing up twice does stage two.
-                if (staged.current !== id) {
-                    staged.current = id;
+                // A transient missing outline or a fluctuating edition is not another copy.
+                if (captureGate.current.accept(printing)) {
                     // Foil without being asked where there is nothing else to be: 19757 of the
                     // catalogue's printings were never sold unfoiled, and making someone tick a
                     // box whose answer the catalogue already knows is a step for nothing.
                     stage(toCardRecord(printing), printing.foilOnly || foilRef.current);
+                    setCaptures((previous) =>
+                        previous.some((entry) => entry.id === id)
+                            ? previous
+                            : [
+                                  {
+                                      id,
+                                      name: printing.name,
+                                      set: printing.set.toUpperCase(),
+                                      number: printing.collectorNumber,
+                                      thumbnail,
+                                      foil: printing.foilOnly,
+                                  },
+                                  ...previous,
+                              ].slice(0, STILL_LIMIT),
+                    );
                 }
-                setCaptures((previous) =>
-                    previous.some((entry) => entry.id === id)
-                        ? previous
-                        : [
-                              {
-                                  id,
-                                  name: printing.name,
-                                  set: printing.set.toUpperCase(),
-                                  number: printing.collectorNumber,
-                                  thumbnail,
-                                  foil: printing.foilOnly,
-                              },
-                              ...previous,
-                          ].slice(0, STILL_LIMIT),
-                );
             }
         } catch (reason) {
-            setError(reason instanceof Error ? reason.message : String(reason));
+            if (running.current && generation === scanGeneration.current) {
+                setError(reason instanceof Error ? reason.message : String(reason));
+            }
         } finally {
             busy.current = false;
             // On the attempt finishing rather than on it succeeding: a chain that throws is going
             // to keep throwing, and leaving the scrim up would hide the error it is throwing.
-            setWarm(true);
+            if (running.current && generation === scanGeneration.current) setWarm(true);
         }
     }, [camera.videoRef, stage]);
 
@@ -328,7 +359,7 @@ export function LiveScanner({ session }: LiveScannerProps) {
     useEffect(
         () => () => {
             resetLiveTracking();
-            staged.current = "";
+            captureGate.current.reset();
         },
         [],
     );
@@ -340,9 +371,11 @@ export function LiveScanner({ session }: LiveScannerProps) {
             if (!running.current) return;
             void step();
         };
-        const timer = window.setInterval(tick, 200);
+        tick();
+        const timer = window.setInterval(tick, 50);
         return () => {
             running.current = false;
+            scanGeneration.current += 1;
             window.clearInterval(timer);
         };
     }, [camera.active, status, step]);

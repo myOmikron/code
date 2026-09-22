@@ -35,6 +35,7 @@ export function referenceImageUrl(id: string, face: number): string {
  *
  * @param id the Scryfall id
  * @param face which side
+ * @param signal
  * @returns the decoded reference, or null when it cannot be fetched
  */
 export async function loadReferenceImage(id: string, face: number, signal?: AbortSignal): Promise<RgbaImage | null> {

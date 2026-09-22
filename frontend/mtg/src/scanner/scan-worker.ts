@@ -23,7 +23,7 @@ import { loadReader } from "./ocr";
 import type { ScanLanguageChoice } from "./ocr";
 import type { ScanOutcome } from "./scan-decision";
 import type { RgbaImage } from "./card-detect";
-import type { FrameTimings } from "./live-pipeline";
+import type { FrameDetection, FrameTimings } from "./live-pipeline";
 
 /**
  * Anything the main thread may send
@@ -48,6 +48,7 @@ type IncomingMessage =
  * Anything the worker may send back
  */
 type OutgoingMessage =
+    | { type: "detected"; id: number; detection: FrameDetection }
     | { type: "progress"; id: number; progress: ScanLoadProgress }
     | {
           type: "ready";
@@ -110,6 +111,7 @@ const variants = createVariantSelector();
 /** Whether the last frame read a name, which makes exploring pointless. */
 let named = false;
 let attempts = 0;
+let trackingGeneration = 0;
 // Counted so the crop variants can be spread over frames rather than all tried in each one.
 
 /**
@@ -274,6 +276,7 @@ worker.onmessage = async (event) => {
         }
 
         if (message.type === "reset") {
+            trackingGeneration += 1;
             agreement.reset();
             variants.reset();
             named = false;
@@ -299,6 +302,7 @@ worker.onmessage = async (event) => {
 
         if (message.type === "live") {
             try {
+                const generation = trackingGeneration;
                 const started = performance.now();
                 attempts += 1;
                 const pixels = readPixels(message.frame);
@@ -311,7 +315,12 @@ worker.onmessage = async (event) => {
                     message.language ?? "auto",
                     message.sets ?? [],
                     message.viewAspect ?? 0,
+                    (detection) => {
+                        if (generation === trackingGeneration)
+                            worker.postMessage({ type: "detected", id: message.id, detection });
+                    },
                 );
+                if (generation !== trackingGeneration) throw new Error("Scan verworfen: Sitzung beendet.");
                 // The variant is judged on what the picture alone did with it. Judging it on the
                 // merged leader would reward the variants where the name could *not* be read, since
                 // a search across the whole index returns bigger numbers than one within a name.
@@ -321,15 +330,13 @@ worker.onmessage = async (event) => {
 
                 named = preview.named;
 
-                // On WASM a second embedding can cost seconds. Verify the first upright
-                // shortlist directly instead; recognition still requires the same geometric
-                // evidence as a single-shot scan. Faster backends retain the voting window.
+                // An isolated match must not become a collection entry. All backends require
+                // agreement across frames before geometric verification, including WASM.
                 const outcome =
-                    uprightVariant(variant) &&
-                    (embedder.backend === "wasm" ||
-                        agreement.seen(key, preview.candidates[0]?.score ?? 0, preview.named))
+                    uprightVariant(variant) && agreement.seen(key, preview.candidates[0]?.score ?? 0, preview.named)
                         ? await confirmPreview(preview)
                         : null;
+                if (generation !== trackingGeneration) throw new Error("Scan verworfen: Sitzung beendet.");
                 if (outcome?.status === "recognised") {
                     agreement.reset();
                     variants.reset();

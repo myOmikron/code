@@ -52,6 +52,7 @@ export const MIN_ACCEPT_INLIERS = 22;
  * Decides what a scan should report.
  *
  * @param candidates every candidate that was verified, in any order
+ * @param preferred
  * @returns the answer, or why there is none
  */
 export function decideScan(candidates: VerifiedCandidate[], preferred?: IndexMatch): ScanOutcome {

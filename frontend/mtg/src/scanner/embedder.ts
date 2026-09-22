@@ -7,7 +7,7 @@
 //! run several times per scan and the difference is the difference between a scanner that feels
 //! instant and one that does not. Which one was chosen is reported, since it is the first thing
 //! worth knowing when a device turns out to be slow.
-import * as ort from "onnxruntime-web";
+import * as ort from "onnxruntime-web/webgpu";
 import { EMBEDDING_DIM, IMAGE_SIZE, poolHidden, prepareForModel } from "./embedding";
 import type { RgbaImage } from "./card-detect";
 import { probeWebGpu } from "./webgpu-probe";
@@ -226,9 +226,10 @@ export async function loadEmbedder(
         for (const attempt of attempts) {
             if (dead.has(attempt.provider)) continue;
             const label = attempt.provider === "webgpu" ? `webgpu/${strategy}` : attempt.provider;
+            let candidate: ort.InferenceSession | null = null;
             try {
                 onProgress?.(label);
-                const candidate = await ort.InferenceSession.create(MODEL_PATH, {
+                candidate = await ort.InferenceSession.create(MODEL_PATH, {
                     executionProviders: [attempt.provider],
                     // Say where the results belong rather than relying on the default. Left to
                     // itself the WebGPU backend may keep them on the device.
@@ -244,7 +245,6 @@ export async function loadEmbedder(
                 const wrong = usable(probe);
                 if (wrong) {
                     reasons.push(`${label}: Ausgabe unbrauchbar (${wrong})`);
-                    await candidate.release();
                     continue;
                 }
 
@@ -256,6 +256,8 @@ export async function loadEmbedder(
                 reasons.push(`${label}: ${error instanceof Error ? error.message : String(error)}`);
                 dead.add(attempt.provider);
                 session = null;
+            } finally {
+                if (candidate && candidate !== session) await candidate.release().catch(() => undefined);
             }
         }
         // Only when the fast path was refused, and only then: it costs a device and two shaders,
@@ -286,9 +288,15 @@ export async function loadEmbedder(
              */
             async embed(image: RgbaImage): Promise<Float32Array> {
                 const input = await prepareForModel(image);
-                const vector = await runOnce(current, input);
-                const wrong = usable(vector);
-                if (!wrong) return vector;
+                let wrong: string;
+                try {
+                    const vector = await runOnce(current, input);
+                    wrong = usable(vector);
+                    if (!wrong) return vector;
+                } catch (error) {
+                    if (backend === "wasm") throw error;
+                    wrong = error instanceof Error ? error.message : String(error);
+                }
 
                 // A backend that passed the probe can still fail on a real card, and this one
                 // does: the same phone accepted WebGPU at load and returned infinities on the
@@ -303,7 +311,7 @@ export async function loadEmbedder(
                     executionProviders: ["wasm"],
                     preferredOutputLocation: "cpu",
                 });
-                await current.release();
+                await current.release().catch(() => undefined);
                 current = replacement;
                 backend = "wasm";
                 embedder.backend = "wasm";

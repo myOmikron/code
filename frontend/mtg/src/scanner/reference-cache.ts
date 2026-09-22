@@ -12,7 +12,12 @@ const DOWNLOAD_BUDGET = 2500;
 const CONCURRENCY = 3;
 const cache = new Map<string, CachedReference>();
 
-/** Load a shortlist with bounded parallel downloads; failures are retried on later frames. */
+/**
+ * Load a shortlist with bounded parallel downloads; failures are retried on later frames.
+ *
+ * @param printings
+ * @returns references in shortlist order, or null for unavailable images
+ */
 export async function loadReferences(printings: IndexedPrinting[]): Promise<(CachedReference | null)[]> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), DOWNLOAD_BUDGET);

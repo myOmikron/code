@@ -1,4 +1,8 @@
-/** One optional operation at a time, with a bounded wait and no queue of stale frames. */
+/**
+ * One optional operation at a time, with a bounded wait and no queue of stale frames.
+ *
+ * @returns the bounded runner
+ */
 export function createLiveBudget() {
     let running = false;
     return async function run<T>(task: () => Promise<T>, milliseconds: number): Promise<T | undefined> {

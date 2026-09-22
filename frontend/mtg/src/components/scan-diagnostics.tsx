@@ -14,6 +14,7 @@ import type { RefObject } from "react";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { LiveFrameResult, ScannerStatus } from "src/scanner/scan-client";
+import { retryWebGpu } from "src/scanner/scan-client";
 
 /**
  * The properties for {@link ScanDiagnostics}
@@ -105,7 +106,7 @@ export function ScanDiagnostics({ open, onClose, status, frame, cropRef }: ScanD
                         {status ? (
                             <>
                                 <DescriptionTerm>{t("label.diagnostics-backend")}</DescriptionTerm>
-                                <DescriptionDetails>{`${status.backend} · ${status.strategy}`}</DescriptionDetails>
+                                <DescriptionDetails>{`${status.backend} · ${status.strategy} · ORT ${status.runtime}`}</DescriptionDetails>
                             </>
                         ) : null}
 
@@ -158,6 +159,11 @@ export function ScanDiagnostics({ open, onClose, status, frame, cropRef }: ScanD
                 </div>
             </DialogBody>
             <DialogActions>
+                {status?.backend === "wasm" ? (
+                    <Button outline onClick={retryWebGpu}>
+                        {t("button.retry-webgpu")}
+                    </Button>
+                ) : null}
                 <Button outline onClick={copy}>
                     <ClipboardDocumentIcon className="size-5" />
                     {copied ? t("label.copied") : t("button.copy-diagnostics")}

@@ -2,7 +2,12 @@ import { describe, expect, it } from "vitest";
 import { decideScan, MIN_ACCEPT_INLIERS } from "./scan-decision";
 import type { IndexMatch } from "./embedding-index";
 
-/** A candidate with enough metadata to distinguish editions. */
+/**
+ * A candidate with enough metadata to distinguish editions.
+ *
+ * @param id
+ * @returns a candidate fixture
+ */
 function match(id: string): IndexMatch {
     return {
         score: 0.8,
