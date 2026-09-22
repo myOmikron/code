@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { formatKind, podSizeFor, pointsFor, recommendedRounds } from "src/utils/tournament-format";
+import { RoundKind } from "src/api/generated";
+import { formatKind, nextRoundKind, podSizeFor, pointsFor, recommendedRounds } from "src/utils/tournament-format";
 
 describe("pointsFor", () => {
     it("scores a table of two by the Magic Tournament Rules", () => {
@@ -91,3 +92,25 @@ describe("recommendedRounds", () => {
     });
 });
 
+describe("nextRoundKind", () => {
+    const swiss = { kind: RoundKind.Swiss };
+    const draft = { kind: RoundKind.Draft };
+    const build = { kind: RoundKind.Deckbuilding };
+
+    it("walks a draft through draft, deckbuilding, then scored rounds", () => {
+        expect(nextRoundKind("draft", [])).toBe(RoundKind.Draft);
+        expect(nextRoundKind("draft", [draft])).toBe(RoundKind.Deckbuilding);
+        expect(nextRoundKind("draft", [draft, build])).toBe(RoundKind.Swiss);
+        expect(nextRoundKind("draft", [draft, build, swiss])).toBe(RoundKind.Swiss);
+    });
+
+    it("walks a sealed event through deckbuilding, then scored rounds", () => {
+        expect(nextRoundKind("sealed", [])).toBe(RoundKind.Deckbuilding);
+        expect(nextRoundKind("sealed", [build])).toBe(RoundKind.Swiss);
+    });
+
+    it("gives a constructed event scored rounds from the start", () => {
+        expect(nextRoundKind("modern", [])).toBe(RoundKind.Swiss);
+        expect(nextRoundKind("commander", [swiss, swiss])).toBe(RoundKind.Swiss);
+    });
+});

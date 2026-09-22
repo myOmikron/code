@@ -7,6 +7,8 @@
  * format seats.
  */
 
+import { RoundKind } from "src/api/generated";
+
 /** Whether the decks are brought along or built at the table */
 export type FormatKind = "constructed" | "limited";
 
@@ -141,3 +143,22 @@ export function recommendedRounds(players: number, podSize: number): number {
     return 6;
 }
 
+/**
+ * Which round an event adds next
+ *
+ * The format decides this, not the organizer: a draft opens with the draft, then deckbuilding,
+ * then scored rounds; a sealed event skips the draft; everything else is scored rounds from the
+ * start. Asking was a question with exactly one right answer, and a picker that defaults to the
+ * wrong one adds a second draft by accident.
+ *
+ * @param format the event's format
+ * @param rounds every round so far, any order
+ *
+ * @returns the kind of round to add
+ */
+export function nextRoundKind(format: string, rounds: ReadonlyArray<{ kind: RoundKind }>): RoundKind {
+    const has = (kind: RoundKind) => rounds.some((round) => round.kind === kind);
+    if (format === "draft" && !has(RoundKind.Draft)) return RoundKind.Draft;
+    if (isLimitedFormat(format) && !has(RoundKind.Deckbuilding)) return RoundKind.Deckbuilding;
+    return RoundKind.Swiss;
+}

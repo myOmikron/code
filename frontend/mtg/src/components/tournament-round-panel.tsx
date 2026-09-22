@@ -6,7 +6,7 @@ import {
     TrashIcon,
     UserGroupIcon,
 } from "@heroicons/react/20/solid";
-import { Badge, Button, ConfirmDialog, EmptyState, Listbox, ListboxLabel, ListboxOption, notify } from "components";
+import { Badge, Button, ConfirmDialog, EmptyState, notify } from "components";
 import { useState } from "react";
 import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
@@ -21,6 +21,7 @@ import type {
 import { TournamentPairingsTable } from "src/components/tournament-pairings-table";
 import { TournamentRoundClock } from "src/components/tournament-round-clock";
 import { isFormError } from "src/utils/error";
+import { nextRoundKind } from "src/utils/tournament-format";
 import type { RoundClock } from "src/utils/round-clock";
 
 /**
@@ -92,12 +93,15 @@ export function TournamentRoundPanel({
     onChanged,
 }: TournamentRoundPanelProps) {
     const [t] = useTranslation("tournament");
-    const [kind, setKind] = useState<RoundKind>(RoundKind.Swiss);
     const [confirmingComplete, setConfirmingComplete] = useState(false);
 
     const round = rounds.at(-1) ?? null;
     const staff = viewer.is_organizer;
     const playedRounds = rounds.filter((entry) => entry.number !== null && entry.number !== undefined).length;
+    // What comes next is the format's decision, not a question for the desk: a
+    // draft opens with the draft, sealed with deckbuilding, everything else
+    // with round one.
+    const kind = nextRoundKind(tournament.format, rounds);
 
     const clock: RoundClock | null =
         round === null
@@ -120,10 +124,6 @@ export function TournamentRoundPanel({
             notify.error(t("error.round-refused"));
             return;
         }
-        // Back to a scored round: a draft or deckbuilding stage happens once, and leaving the
-        // picker on it would make the next round — the common case — take two clicks and invite
-        // adding a second pre-round by accident.
-        setKind(RoundKind.Swiss);
         await onChanged();
     }
 
@@ -208,7 +208,7 @@ export function TournamentRoundPanel({
                     icon={<PlayIcon />}
                     title={t("heading.no-rounds")}
                     description={staff ? t("description.no-rounds") : t("description.no-rounds-player")}
-                    action={staff ? <AddRound kind={kind} onKind={setKind} onAdd={addRound} /> : undefined}
+                    action={staff ? <AddRound kind={kind} nextNumber={playedRounds + 1} onAdd={addRound} /> : undefined}
                 />
             </div>
         );
@@ -316,7 +316,7 @@ export function TournamentRoundPanel({
                         </Button>
                     )}
                     {round.status === "Complete" && (
-                        <AddRound kind={kind} onKind={setKind} onAdd={addRound} nextNumber={playedRounds + 1} />
+                        <AddRound kind={kind} nextNumber={playedRounds + 1} onAdd={addRound} />
                     )}
                 </div>
             )}
@@ -338,49 +338,37 @@ export function TournamentRoundPanel({
  * The properties for {@link AddRound}
  */
 type AddRoundProps = {
-    /** The kind of round the picker is on */
+    /** The kind of round the format calls for next */
     kind: RoundKind;
-    /** Called when the picker moves */
-    onKind: (kind: RoundKind) => void;
+    /** Which number a scored round would take */
+    nextNumber: number;
     /** Adds the round */
     onAdd: () => void | Promise<void>;
-    /** Which number a scored round would take, when that is worth saying */
-    nextNumber?: number;
 };
 
 /**
- * The kind picker and the button that adds a round.
+ * The one button that adds whatever comes next.
  *
- * A picker rather than three buttons: a draft or deckbuilding stage is added once per event and a
- * scored round is added every time, so the common case should be one click on a control that is
- * already on the right answer.
+ * Named for what it adds — *Draft anlegen*, *Deckbau anlegen*, *Runde 3 anlegen* — so the desk
+ * reads what is about to happen rather than trusting that the right thing will. There is no
+ * picker: where an event is in its own sequence is not a choice.
  *
- * @returns the control
+ * @returns the button
  */
-function AddRound({ kind, onKind, onAdd, nextNumber }: AddRoundProps) {
+function AddRound({ kind, nextNumber, onAdd }: AddRoundProps) {
     const [t] = useTranslation("tournament");
 
+    const label =
+        kind === RoundKind.Draft
+            ? t("button.add-draft")
+            : kind === RoundKind.Deckbuilding
+              ? t("button.add-deckbuilding")
+              : t("button.add-round-number", { number: nextNumber });
+
     return (
-        <div className={"flex flex-wrap items-center gap-2"}>
-            <Listbox value={kind} onChange={onKind} className={"max-w-56"}>
-                <ListboxOption value={RoundKind.Swiss}>
-                    <ListboxLabel>
-                        {nextNumber === undefined
-                            ? t("label.round-kind-swiss")
-                            : t("heading.round-number", { number: nextNumber })}
-                    </ListboxLabel>
-                </ListboxOption>
-                <ListboxOption value={RoundKind.Draft}>
-                    <ListboxLabel>{t("heading.draft")}</ListboxLabel>
-                </ListboxOption>
-                <ListboxOption value={RoundKind.Deckbuilding}>
-                    <ListboxLabel>{t("heading.deckbuilding")}</ListboxLabel>
-                </ListboxOption>
-            </Listbox>
-            <Button onClick={() => void onAdd()}>
-                <PlusIcon />
-                {t("button.add-round")}
-            </Button>
-        </div>
+        <Button onClick={() => void onAdd()}>
+            <PlusIcon />
+            {label}
+        </Button>
     );
 }

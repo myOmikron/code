@@ -12,9 +12,11 @@
         "wins": "{{name}} gewinnt {{score}}"
     },
     "button": {
+        "add-deckbuilding": "Deckbau anlegen",
+        "add-draft": "Draft anlegen",
         "add-minute": "Eine Minute mehr",
         "add-player": "Spieler hinzufügen",
-        "add-round": "Runde anlegen",
+        "add-round-number": "Runde {{number}} anlegen",
         "advanced-settings": "Erweiterte Einstellungen",
         "auto-pair": "Paarungen erstellen",
         "cancel-tournament": "Turnier absagen",
@@ -262,7 +264,6 @@
         "points-loss": "Punkte pro Niederlage",
         "points-summary": "{{win}} / {{draw}} / {{loss}} · Freilos {{bye}}",
         "points-win": "Punkte pro Sieg",
-        "round-kind-swiss": "Nächste Runde",
         "round-minutes": "Rundenlänge (Minuten)",
         "round-of": "Runde {{number}} von {{total}}",
         "round-status-complete": "Abgeschlossen",
