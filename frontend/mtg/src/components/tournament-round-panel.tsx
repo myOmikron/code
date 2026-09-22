@@ -262,14 +262,6 @@ export function TournamentRoundPanel({
                     icon={<UserGroupIcon />}
                     title={t("heading.no-pairings")}
                     description={staff ? t("description.no-pairings") : t("description.no-pairings-player")}
-                    action={
-                        staff && round.status !== "Complete" ? (
-                            <Button onClick={() => void pairRound()}>
-                                <UserGroupIcon />
-                                {t("button.auto-pair")}
-                            </Button>
-                        ) : undefined
-                    }
                 />
             ) : (
                 <div className={"flex flex-col gap-3"}>
@@ -303,10 +295,21 @@ export function TournamentRoundPanel({
                                 <TrashIcon />
                                 {t("button.discard-round")}
                             </Button>
-                            <Button onClick={() => void startRound()}>
-                                <PlayIcon />
-                                {t("button.start-round")}
-                            </Button>
+                            {/* One primary button, and it is whatever comes next: pair first,
+                                then start. Two clicks in the same spot set a round up, and a
+                                round can no longer be started over an empty room by mistake.
+                                A deckbuilding stage has nothing to pair, so it starts at once. */}
+                            {round.kind !== RoundKind.Deckbuilding && tables.length === 0 ? (
+                                <Button onClick={() => void pairRound()}>
+                                    <UserGroupIcon />
+                                    {t("button.auto-pair")}
+                                </Button>
+                            ) : (
+                                <Button onClick={() => void startRound()}>
+                                    <PlayIcon />
+                                    {t("button.start-round")}
+                                </Button>
+                            )}
                         </>
                     )}
                     {round.status === "Running" && (
