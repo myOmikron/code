@@ -1,9 +1,11 @@
 import { MapPinIcon } from "@heroicons/react/20/solid";
 import { Badge, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Text } from "components";
 import clsx from "clsx";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { MatchSeatResponse, MatchTableResponse } from "src/api/generated";
 import { TournamentResultCell } from "src/components/tournament-result-cell";
+import { TournamentResultDialog } from "src/components/tournament-result-dialog";
 
 /**
  * The properties for {@link TournamentPairingsTable}
@@ -48,6 +50,9 @@ export function TournamentPairingsTable({
     onChanged,
 }: TournamentPairingsTableProps) {
     const [t] = useTranslation("tournament");
+    // One dialog for the whole table rather than one per row: forty rows would otherwise mount
+    // forty dialogs to show at most one.
+    const [editing, setEditing] = useState<MatchTableResponse | null>(null);
 
     // A bye seats one and a duel seats two; anything wider is a pod.
     const duels = tables.every((table) => table.is_bye || table.seats.length <= 2);
@@ -80,15 +85,22 @@ export function TournamentPairingsTable({
         );
     };
 
-    /** What happened at a table, and the click that books it */
+    /**
+     * Whether a click anywhere on a table's line opens its result dialog.
+     *
+     * The cell's own button stays the keyboard and screen-reader way in; the
+     * line is the mouse's, because aiming at a small cell on the right of a
+     * wide row is a chore on every one of forty tables.
+     *
+     * @param table the table
+     *
+     * @returns whether the line is a target
+     */
+    const openable = (table: MatchTableResponse) => canEdit && !table.is_bye;
+
+    /** What happened at a table, and the way in to saying so */
     const result = (table: MatchTableResponse) => (
-        <TournamentResultCell
-            tournamentUuid={tournamentUuid}
-            table={table}
-            gamesPerMatch={gamesPerMatch}
-            canEdit={canEdit}
-            onChanged={onChanged}
-        />
+        <TournamentResultCell table={table} canEdit={canEdit} onEdit={() => setEditing(table)} />
     );
 
     /** The number on the table, or that a bye is not one */
@@ -106,9 +118,11 @@ export function TournamentPairingsTable({
                 {tables.map((table) => (
                     <li
                         key={table.uuid}
+                        onClick={openable(table) ? () => setEditing(table) : undefined}
                         className={clsx(
                             "flex flex-col gap-2 rounded-(--radius-card) bg-(--surface-card) px-4 py-3 ring-1",
                             own(table) ? "ring-2 ring-blue-500/50" : "ring-zinc-950/5 dark:ring-white/10",
+                            openable(table) && "cursor-pointer hover:bg-zinc-950/[2.5%] dark:hover:bg-white/[2.5%]",
                         )}
                     >
                         <div className={"flex items-center justify-between gap-3"}>
@@ -152,7 +166,11 @@ export function TournamentPairingsTable({
                         {tables.map((table) => (
                             <TableRow
                                 key={table.uuid}
-                                className={clsx(own(table) && "ring-2 ring-blue-500/40 ring-inset")}
+                                onClick={openable(table) ? () => setEditing(table) : undefined}
+                                className={clsx(
+                                    own(table) && "ring-2 ring-blue-500/40 ring-inset",
+                                    openable(table) && "cursor-pointer hover:bg-zinc-950/5 dark:hover:bg-white/5",
+                                )}
                             >
                                 <TableCell>{number(table)}</TableCell>
                                 {duels ? (
@@ -175,6 +193,14 @@ export function TournamentPairingsTable({
                     </TableBody>
                 </Table>
             </div>
+
+            <TournamentResultDialog
+                tournamentUuid={tournamentUuid}
+                table={editing}
+                gamesPerMatch={gamesPerMatch}
+                onClose={() => setEditing(null)}
+                onSaved={onChanged}
+            />
         </>
     );
 }
