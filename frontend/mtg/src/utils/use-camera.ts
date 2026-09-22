@@ -91,6 +91,8 @@ export function useCamera(): Camera {
                     aspectRatio: { ideal: window.innerWidth / window.innerHeight },
                     width: { ideal: 1920 },
                     height: { ideal: 1920 },
+                    // Keep the preview smooth; recognition is throttled independently.
+                    frameRate: { ideal: 30, max: 30 },
                 },
                 audio: false,
             });

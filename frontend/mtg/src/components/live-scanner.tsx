@@ -21,6 +21,7 @@ import type { ScanPhase } from "src/components/scan-viewfinder";
 import { ScanViewfinder } from "src/components/scan-viewfinder";
 import type { CardQuad } from "src/scanner/card-detect";
 import { createCaptureGate } from "src/scanner/capture-gate";
+import { createScanRest } from "src/scanner/scan-rest";
 import {
     inspectScanDownload,
     keepScanDataStored,
@@ -181,6 +182,9 @@ export function LiveScanner({ session }: LiveScannerProps) {
     const diagnosticsRef = useRef(false);
     const captureGate = useRef(createCaptureGate());
     const scanGeneration = useRef(0);
+    const scanRest = useRef(createScanRest());
+    const sampleCanvas = useRef<HTMLCanvasElement | null>(null);
+    const nextScanDelay = useRef(250);
     const cropCanvas = useRef<HTMLCanvasElement | null>(null);
     diagnosticsRef.current = diagnostics;
 
@@ -245,6 +249,16 @@ export function LiveScanner({ session }: LiveScannerProps) {
         const video = camera.videoRef.current;
         if (!video || busy.current || video.readyState < 2) return;
         const generation = scanGeneration.current;
+        const canvas = (sampleCanvas.current ??= document.createElement("canvas"));
+        if (canvas.width !== 32) canvas.width = canvas.height = 32;
+        const context = canvas.getContext("2d", { willReadFrequently: true });
+        context?.drawImage(video, 0, 0, 32, 32);
+        const sample = context?.getImageData(0, 0, 32, 32).data;
+        if (sample && !scanRest.current.needsScan(sample, performance.now())) {
+            nextScanDelay.current = 200;
+            return;
+        }
+        const started = performance.now();
         busy.current = true;
         try {
             const shrink = Math.min(1, FRAME_LONG_SIDE / Math.max(video.videoWidth, video.videoHeight));
@@ -307,6 +321,7 @@ export function LiveScanner({ session }: LiveScannerProps) {
 
             captureGate.current.observe(result.outcome?.status === "recognised" || result.quad !== null);
             if (result.outcome?.status === "recognised") {
+                if (sample) scanRest.current.hold(sample, performance.now());
                 const { printing } = result.outcome;
                 const id = printing.id;
                 const thumbnail = result.quad ? still(video, result.quad, result.frameWidth) : "";
@@ -338,6 +353,7 @@ export function LiveScanner({ session }: LiveScannerProps) {
                 setError(reason instanceof Error ? reason.message : String(reason));
             }
         } finally {
+            nextScanDelay.current = Math.max(250, Math.min(2000, (performance.now() - started) / 2));
             busy.current = false;
             // On the attempt finishing rather than on it succeeding: a chain that throws is going
             // to keep throwing, and leaving the scrim up would hide the error it is throwing.
@@ -366,19 +382,41 @@ export function LiveScanner({ session }: LiveScannerProps) {
 
     useEffect(() => {
         if (!camera.active || !status) return;
-        running.current = true;
-        const tick = () => {
-            if (!running.current) return;
-            void step();
+        scanRest.current.reset();
+        let timer: number | undefined;
+        let disposed = false;
+        let scheduleGeneration = 0;
+        const tick = async () => {
+            if (disposed || !running.current) return;
+            const generation = scheduleGeneration;
+            await step();
+            if (!disposed && running.current && generation === scheduleGeneration)
+                timer = window.setTimeout(tick, nextScanDelay.current);
         };
-        tick();
-        const timer = window.setInterval(tick, 50);
+        const visibility = () => {
+            scheduleGeneration += 1;
+            window.clearTimeout(timer);
+            running.current = !document.hidden && !settings && !staging && !diagnostics;
+            if (!running.current) {
+                scanGeneration.current += 1;
+                resetLiveTracking();
+            } else if (!busy.current) {
+                void tick();
+            } else {
+                // The previous inference cannot be interrupted; tick will recheck after it ends.
+                timer = window.setTimeout(tick, 250);
+            }
+        };
+        document.addEventListener("visibilitychange", visibility);
+        visibility();
         return () => {
+            disposed = true;
             running.current = false;
             scanGeneration.current += 1;
-            window.clearInterval(timer);
+            window.clearTimeout(timer);
+            document.removeEventListener("visibilitychange", visibility);
         };
-    }, [camera.active, status, step]);
+    }, [camera.active, status, step, settings, staging, diagnostics]);
 
     const confirmed = frame?.outcome?.status === "recognised" ? frame.outcome : null;
     const preview = frame?.preview ?? null;

@@ -25,6 +25,30 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("live frame progress", () => {
+    it("clears the cached backend verdict and reloads for an explicit WebGPU retry", async () => {
+        const removeItem = vi.fn();
+        const reload = vi.fn();
+        vi.stubGlobal("localStorage", { removeItem });
+        vi.stubGlobal("window", { location: { reload } });
+        const { retryWebGpu } = await import("./scan-client");
+        retryWebGpu();
+        expect(removeItem).toHaveBeenCalledWith("scanner.webgpu-strategy.v2");
+        expect(reload).toHaveBeenCalledOnce();
+    });
+
+    it("can retry when browser storage is blocked", async () => {
+        const reload = vi.fn();
+        vi.stubGlobal("localStorage", {
+            removeItem: () => {
+                throw new Error("blocked");
+            },
+        });
+        vi.stubGlobal("window", { location: { reload } });
+        const { retryWebGpu } = await import("./scan-client");
+        retryWebGpu();
+        expect(reload).toHaveBeenCalledOnce();
+    });
+
     it("delivers geometry early without completing the scan or keeping the listener after completion", async () => {
         const { scanLiveFrame } = await import("./scan-client");
         const detected = vi.fn();
