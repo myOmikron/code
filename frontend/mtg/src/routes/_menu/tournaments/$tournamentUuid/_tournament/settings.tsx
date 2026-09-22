@@ -17,6 +17,7 @@ import {
 } from "components";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { formatName } from "src/utils/format-label";
 import { Api } from "src/api/api";
 import { Visibility } from "src/api/generated";
 import type { PairingSystem, TournamentStatus } from "src/api/generated";
@@ -73,6 +74,7 @@ function RouteComponent() {
         from: "/_menu/tournaments/$tournamentUuid/_tournament",
     })!;
     const [t] = useTranslation("tournament");
+    const [tg] = useTranslation();
     const router = useRouter();
 
     const [editing, setEditing] = useState(false);
@@ -110,7 +112,7 @@ function RouteComponent() {
             <div className={"flex items-start justify-between gap-4"}>
                 <DescriptionList className={"flex-1"}>
                     <DescriptionTerm>{t("label.format")}</DescriptionTerm>
-                    <DescriptionDetails>{tournament.format}</DescriptionDetails>
+                    <DescriptionDetails>{formatName(tg, tournament.format)}</DescriptionDetails>
 
                     <DescriptionTerm>{t("label.pod-size")}</DescriptionTerm>
                     <DescriptionDetails>{tournament.pod_size}</DescriptionDetails>

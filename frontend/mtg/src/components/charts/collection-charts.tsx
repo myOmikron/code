@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { formatName } from "src/utils/format-label";
 import type { CollectionStats } from "src/utils/collection-stats";
 import { MANA_CURVE_CAP } from "src/utils/collection-stats";
 import { formatCurrencyCompact, formatMonth } from "src/utils/format";
@@ -197,69 +198,6 @@ function valueLabel(t: Translate, key: string): string {
 }
 
 /**
- * What a format is called, see {@link typeLabel}
- *
- * @param t the collection namespace's translate function
- * @param key the slug the statistics bucketed under
- *
- * @returns the label
- */
-function formatLabel(t: Translate, key: string): string {
-    switch (key) {
-        case "standard":
-            return t("label.format-standard");
-        case "future":
-            return t("label.format-future");
-        case "pioneer":
-            return t("label.format-pioneer");
-        case "modern":
-            return t("label.format-modern");
-        case "legacy":
-            return t("label.format-legacy");
-        case "vintage":
-            return t("label.format-vintage");
-        case "commander":
-            return t("label.format-commander");
-        case "duel":
-            return t("label.format-duel");
-        case "archon":
-            return t("label.format-archon");
-        case "predh":
-            return t("label.format-predh");
-        case "pauper":
-            return t("label.format-pauper");
-        case "paupercommander":
-            return t("label.format-paupercommander");
-        case "oathbreaker":
-            return t("label.format-oathbreaker");
-        case "brawl":
-            return t("label.format-brawl");
-        case "competitivebrawl":
-            return t("label.format-competitivebrawl");
-        case "standardbrawl":
-            return t("label.format-standardbrawl");
-        case "gladiator":
-            return t("label.format-gladiator");
-        case "penny":
-            return t("label.format-penny");
-        case "premodern":
-            return t("label.format-premodern");
-        case "oldschool":
-            return t("label.format-oldschool");
-        case "historic":
-            return t("label.format-historic");
-        case "timeless":
-            return t("label.format-timeless");
-        case "alchemy":
-            return t("label.format-alchemy");
-        case "tlr":
-            return t("label.format-tlr");
-        default:
-            return key;
-    }
-}
-
-/**
  * The properties for {@link CollectionCharts}
  */
 export type CollectionChartsProps = {
@@ -451,7 +389,7 @@ export function CollectionCharts({ stats, prices = true }: CollectionChartsProps
                         data={stats.formats
                             .filter((bucket) => bucket.cards > 0)
                             .map((bucket) => ({
-                                label: formatLabel(t, bucket.key),
+                                label: formatName(tg, bucket.key),
                                 value: bucket.cards,
                             }))}
                         layout={"rows"}

@@ -17,6 +17,7 @@ import {
 } from "components";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { formatName } from "src/utils/format-label";
 import { Api } from "src/api/api";
 import { DecklistPolicy } from "src/api/generated";
 import type { DeckOverviewResponse, JoinErrors, JoinLookupResponse } from "src/api/generated";
@@ -118,6 +119,7 @@ export type JoinCardProps = {
  */
 export function JoinCard({ code, lookup, onJoined }: JoinCardProps) {
     const [t] = useTranslation("tournament");
+    const [tg] = useTranslation();
     const me = useAccount();
 
     const [displayName, setDisplayName] = useState("");
@@ -281,7 +283,7 @@ export function JoinCard({ code, lookup, onJoined }: JoinCardProps) {
             <Text className={"text-base font-semibold text-zinc-950 dark:text-white"}>{lookup.name}</Text>
             <div className={"flex flex-wrap items-center gap-2"}>
                 <Badge color={tournamentStatusColor(lookup.status)}>{t(tournamentStatusLabelKey(lookup.status))}</Badge>
-                <Badge color={"zinc"}>{lookup.format}</Badge>
+                <Badge color={"zinc"}>{formatName(tg, lookup.format)}</Badge>
                 <Badge color={"zinc"}>{t("label.players", { count: lookup.participant_count })}</Badge>
             </div>
             {lookup.venue != null && lookup.venue !== "" && (

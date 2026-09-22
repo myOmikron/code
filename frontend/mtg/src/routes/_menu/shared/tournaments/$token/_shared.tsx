@@ -2,6 +2,7 @@ import { Outlet, createFileRoute } from "@tanstack/react-router";
 import { LinkSlashIcon } from "@heroicons/react/20/solid";
 import { Badge, EmptyState, HeadingLayout } from "components";
 import { useTranslation } from "react-i18next";
+import { formatName } from "src/utils/format-label";
 import { Api } from "src/api/api";
 import { tournamentStatusColor, tournamentStatusLabelKey } from "src/components/tournament-join-code";
 import { formatDateTime } from "src/utils/format";
@@ -40,6 +41,7 @@ export const Route = createFileRoute("/_menu/shared/tournaments/$token/_shared")
 function RouteComponent() {
     const { tournament } = Route.useLoaderData();
     const [t] = useTranslation("tournament");
+    const [tg] = useTranslation();
 
     if (tournament === null) {
         return (
@@ -61,7 +63,7 @@ function RouteComponent() {
                             {t(tournamentStatusLabelKey(tournament.status))}
                         </Badge>
                         <span aria-hidden={true}>·</span>
-                        <span>{tournament.format}</span>
+                        <span>{formatName(tg, tournament.format)}</span>
                         {tournament.starts_at != null && (
                             <>
                                 <span aria-hidden={true}>·</span>

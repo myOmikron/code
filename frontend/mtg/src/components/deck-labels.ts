@@ -13,6 +13,7 @@ import type { DeckZone, FormatRulesResponse } from "src/api/generated";
 import type { DeckGrouping, DeckSort } from "src/utils/deck-grouping";
 import type { HouseRule } from "src/utils/deck-rules";
 import type { Translate } from "src/utils/translate";
+import { formatName } from "src/utils/format-label";
 
 /** The zones in the order a decklist reads */
 export const ZONE_ORDER: Array<DeckZone> = ["Commander", "Main", "Side", "Companion", "Maybe"];
@@ -24,6 +25,9 @@ export const ZONE_ORDER: Array<DeckZone> = ["Commander", "Main", "Side", "Compan
  */
 export function useDeckLabels() {
     const [t] = useTranslation("deck");
+    // Format names live in the general namespace: three unrelated parts of the
+    // app need them, so they are not the deck page's to own.
+    const [tg] = useTranslation();
 
     return {
         /**
@@ -33,7 +37,7 @@ export function useDeckLabels() {
          *
          * @returns its name
          */
-        format: (slug: string): string => formatName(t, slug),
+        format: (slug: string): string => formatName(tg, slug),
 
         /**
          * The one line under a format saying what it asks for
@@ -117,69 +121,6 @@ export function useDeckLabels() {
          */
         houseRule: (rule: HouseRule): string => houseRuleName(t, rule),
     };
-}
-
-/**
- * What a format is called, see {@link useDeckLabels}
- *
- * @param t the deck namespace's translate function
- * @param slug the format
- *
- * @returns its name
- */
-function formatName(t: Translate, slug: string): string {
-    switch (slug) {
-        case "commander":
-            return t("label.format-commander");
-        case "duel":
-            return t("label.format-duel");
-        case "archon":
-            return t("label.format-archon");
-        case "predh":
-            return t("label.format-predh");
-        case "paupercommander":
-            return t("label.format-paupercommander");
-        case "oathbreaker":
-            return t("label.format-oathbreaker");
-        case "brawl":
-            return t("label.format-brawl");
-        case "competitivebrawl":
-            return t("label.format-competitivebrawl");
-        case "standardbrawl":
-            return t("label.format-standardbrawl");
-        case "gladiator":
-            return t("label.format-gladiator");
-        case "standard":
-            return t("label.format-standard");
-        case "future":
-            return t("label.format-future");
-        case "pioneer":
-            return t("label.format-pioneer");
-        case "modern":
-            return t("label.format-modern");
-        case "legacy":
-            return t("label.format-legacy");
-        case "vintage":
-            return t("label.format-vintage");
-        case "pauper":
-            return t("label.format-pauper");
-        case "penny":
-            return t("label.format-penny");
-        case "premodern":
-            return t("label.format-premodern");
-        case "oldschool":
-            return t("label.format-oldschool");
-        case "historic":
-            return t("label.format-historic");
-        case "timeless":
-            return t("label.format-timeless");
-        case "alchemy":
-            return t("label.format-alchemy");
-        case "tlr":
-            return t("label.format-tlr");
-        default:
-            return slug;
-    }
 }
 
 /**

@@ -2,6 +2,7 @@ import { createFileRoute, notFound } from "@tanstack/react-router";
 import { EmptyState } from "components";
 import { QRCodeSVG } from "qrcode.react";
 import { useTranslation } from "react-i18next";
+import { formatName } from "src/utils/format-label";
 import { Api } from "src/api/api";
 import { displayJoinCode } from "src/components/tournament-join-code";
 import { TournamentSlots } from "src/components/tournament-slots";
@@ -39,6 +40,7 @@ export const Route = createFileRoute("/display/$code")({
 function RouteComponent() {
     const tournament = Route.useLoaderData();
     const [t] = useTranslation("tournament");
+    const [tg] = useTranslation();
 
     const joinUrl = `${window.location.origin}/join/${tournament.join_code}`;
 
@@ -85,7 +87,7 @@ function RouteComponent() {
                                 {t("label.format")}
                             </dt>
                             <dd className={"text-[clamp(1rem,1.8vw,1.5rem)] font-medium text-zinc-950 dark:text-white"}>
-                                {tournament.format}
+                                {formatName(tg, tournament.format)}
                             </dd>
                         </div>
                     </dl>
