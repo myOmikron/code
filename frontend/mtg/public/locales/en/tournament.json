@@ -9,6 +9,7 @@
         "games-won": "{{name}}: {{count}} games won",
         "player-actions": "Actions for {{name}}",
         "round-clock": "Round clock, {{time}} left",
+        "round-rail": "Rounds",
         "wins": "{{name}} wins {{score}}"
     },
     "button": {

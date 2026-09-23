@@ -7,6 +7,8 @@ import {
     UserGroupIcon,
 } from "@heroicons/react/20/solid";
 import { Badge, Button, ConfirmDialog, EmptyState, notify } from "components";
+import { Link } from "@tanstack/react-router";
+import clsx from "clsx";
 import { useState } from "react";
 import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
@@ -66,7 +68,9 @@ export type TournamentRoundPanelProps = {
     viewer: TournamentViewerResponse;
     /** Every round so far, oldest first */
     rounds: Array<RoundResponse>;
-    /** The current round's tables, byes last */
+    /** The round being shown, `null` before the first exists */
+    round: RoundResponse | null;
+    /** The shown round's tables, byes last */
     tables: Array<MatchTableResponse>;
     /** How far this device's clock is ahead of the server's */
     skewMs: number;
@@ -88,6 +92,7 @@ export function TournamentRoundPanel({
     tournament,
     viewer,
     rounds,
+    round,
     tables,
     skewMs,
     onChanged,
@@ -95,8 +100,10 @@ export function TournamentRoundPanel({
     const [t] = useTranslation("tournament");
     const [confirmingComplete, setConfirmingComplete] = useState(false);
 
-    const round = rounds.at(-1) ?? null;
     const staff = viewer.is_organizer;
+    // Only the newest round moves: an earlier one is history, opened to correct a result. Its
+    // clock, its pairing and its lifecycle buttons stay put.
+    const latest = round !== null && round.uuid === rounds.at(-1)?.uuid;
     const playedRounds = rounds.filter((entry) => entry.number !== null && entry.number !== undefined).length;
     // What comes next is the format's decision, not a question for the desk: a
     // draft opens with the draft, sealed with deckbuilding, everything else
@@ -216,6 +223,38 @@ export function TournamentRoundPanel({
 
     return (
         <div className={"flex flex-col gap-4"}>
+            {/* Every round as a chip, the shown one pressed. This is "go back a round": one
+                tap, always visible, and the address it sets is a plain search param so the
+                current round keeps the address an organizer bookmarked. */}
+            {rounds.length > 1 && (
+                <nav aria-label={t("accessibility.round-rail")} className={"flex flex-wrap gap-1.5"}>
+                    {rounds.map((entry) => {
+                        const current = entry.uuid === round.uuid;
+                        return (
+                            <Link
+                                key={entry.uuid}
+                                to={"/tournaments/$tournamentUuid"}
+                                params={{ tournamentUuid }}
+                                search={entry.uuid === rounds.at(-1)?.uuid ? {} : { round: entry.sequence }}
+                                // Every chip shares one path and differs only in its search, so
+                                // "active" has to compare the search exactly — otherwise the
+                                // newest round's chip, whose search is empty, counts as active
+                                // everywhere.
+                                activeOptions={{ exact: true, includeSearch: true }}
+                                className={clsx(
+                                    "rounded-(--radius-pill) px-3 py-1 text-sm font-medium transition-colors",
+                                    current
+                                        ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950"
+                                        : "text-zinc-600 ring-1 ring-zinc-950/10 hover:bg-zinc-950/5 dark:text-zinc-300 dark:ring-white/15 dark:hover:bg-white/10",
+                                )}
+                            >
+                                {roundTitle(entry, t)}
+                            </Link>
+                        );
+                    })}
+                </nav>
+            )}
+
             <div
                 className={
                     "flex flex-wrap items-center gap-x-6 gap-y-4 rounded-(--radius-card) bg-(--surface-card) px-5 py-4 shadow-(--shadow-card-sm) ring-1 ring-zinc-950/5 dark:ring-white/10"
@@ -240,7 +279,7 @@ export function TournamentRoundPanel({
                     <TournamentRoundClock
                         clock={clock}
                         skewMs={skewMs}
-                        canControl={staff && round.status === "Running"}
+                        canControl={staff && latest && round.status === "Running"}
                         onStart={() => void timer(TimerActionRequest.Start)}
                         onPause={() => void timer(TimerActionRequest.Pause)}
                         onResume={() => void timer(TimerActionRequest.Resume)}
@@ -265,7 +304,7 @@ export function TournamentRoundPanel({
                 />
             ) : (
                 <div className={"flex flex-col gap-3"}>
-                    {staff && round.status !== "Complete" && (
+                    {staff && latest && round.status !== "Complete" && (
                         <div className={"flex justify-end"}>
                             {/* Re-pairing keeps the round and its clock and replaces only the
                                 tables, so an organizer who does not like a layout loses nothing by
@@ -281,13 +320,13 @@ export function TournamentRoundPanel({
                         ownParticipant={viewer.participant}
                         tournamentUuid={tournamentUuid}
                         gamesPerMatch={tournament.games_per_match}
-                        canEdit={staff && round.status !== "Complete"}
+                        canEdit={staff}
                         onChanged={onChanged}
                     />
                 </div>
             )}
 
-            {staff && (
+            {staff && latest && (
                 <div className={"flex flex-wrap items-center justify-end gap-2"}>
                     {round.status === "Pairing" && (
                         <>

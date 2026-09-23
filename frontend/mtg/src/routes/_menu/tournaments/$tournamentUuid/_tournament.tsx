@@ -22,15 +22,9 @@ export const Route = createFileRoute("/_menu/tournaments/$tournamentUuid/_tourna
             // The whole round trip is charged to skew, which biases the estimate by at most half
             // the latency — invisible on a face that only shows seconds.
             const skewMs = clockSkew(rounds.server_time, Date.now());
-            // The current round's tables, in a trip of their own because it needs the round list
-            // to know which round to ask about. A round that has not been paired yet answers an
-            // empty list rather than failing, so there is nothing to branch on here.
-            const current = rounds.rounds.at(-1);
-            const tables =
-                current === undefined
-                    ? []
-                    : (await Api.tournaments.rounds.tables(params.tournamentUuid, current.uuid)).tables;
-            return { ...details, rounds: rounds.rounds, tables, skewMs };
+            // Tables are the round screen's own to load: which round is shown is a search
+            // param on that route, and the layout only needs the list for the tab label.
+            return { ...details, rounds: rounds.rounds, skewMs };
         } catch (error) {
             // A guest whose session died, or a stranger on a private event, gets a plain 400
             // (denied) or 401 (no actor identity at all) — either way there is nothing here for
