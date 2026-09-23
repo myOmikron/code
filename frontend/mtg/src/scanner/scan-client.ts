@@ -13,7 +13,9 @@ import type { CardQuad } from "./card-detect";
 import type { IndexedPrinting } from "./embedding-index";
 import type { ScanLanguageChoice } from "./ocr";
 import type { FrameDetection, FrameTimings } from "./live-pipeline";
+import type { Shortcoming } from "./frame-gate";
 
+export type { Shortcoming } from "./frame-gate";
 export type { ScanLanguage, ScanLanguageChoice } from "./ocr";
 import type { ScanLoadProgress } from "./pipeline";
 
@@ -94,6 +96,7 @@ function ensureWorker(): Worker {
                 outcome: message.outcome,
                 milliseconds: message.milliseconds,
                 attempts: message.attempts,
+                shortcomings: message.shortcomings ?? [],
             } as never);
         else if (message.type === "printings") resolver.resolve(message.printings as never);
         else if (message.type === "sets") resolver.resolve(message.sets as never);
@@ -230,12 +233,14 @@ export type LiveFrameResult = {
     areaFraction: number;
     /** The part of the frame that was searched */
     region: { x: number; y: number; width: number; height: number };
-    /** Whether the crop came from the guide because detection found nothing */
+    /** Whether detection found no card */
     fromGuide: boolean;
     /** Where the milliseconds went, for the debug view */
     timings: FrameTimings;
     /** Frames processed since the previous recognition or reset. */
     attempts: number;
+    /** Why the gate refused the card, worst first; such a frame has no preview or outcome */
+    shortcomings: Shortcoming[];
     /** What the title bar read, empty when nothing legible was found */
     title: string;
     /** Why reading failed, empty when it did not */

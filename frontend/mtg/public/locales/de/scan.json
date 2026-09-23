@@ -65,7 +65,7 @@
         "card-language": "Kartensprache",
         "copied": "Kopiert",
         "crop-detected": "erkannt",
-        "crop-guide": "Rahmen (nichts erkannt)",
+        "crop-guide": "keiner (nichts erkannt)",
         "data-missing": "Beim ersten Scan lädt der Scanner einmalig {{size}} MB Kartendaten.",
         "data-ready": "Die Kartendaten liegen auf diesem Gerät — der Scanner läuft auch ohne Verbindung.",
         "debug-area": "Fläche {{percent}}% des Bildes",
@@ -80,6 +80,12 @@
         "diagnostics-reader": "Leser",
         "diagnostics-title": "Titel",
         "found-this-session": "{{count}} erkannt",
+        "hint-blurred": "Noch nicht scharf — kurz warten",
+        "hint-closer": "Karte näher an die Kamera halten",
+        "hint-dark": "Mehr Licht auf die Karte",
+        "hint-glare": "Karte aus der Spiegelung drehen",
+        "hint-moving": "Karte ruhig halten",
+        "hint-tilted": "Karte gerade von oben zeigen",
         "hold-still": "Sieht aus wie {{name}}, bitte kurz stillhalten",
         "inliers": "{{count}} Inliers",
         "language-auto": "Sprache automatisch",
@@ -102,6 +108,8 @@
         "stage-model": "Modell wird geladen",
         "stage-projection": "Projektion wird geladen",
         "stage-vectors": "Kartenmerkmale werden geladen",
+        "tip-lighter-surface": "Keine Karte gefunden? Auf eine hellere, ruhige Unterlage legen",
+        "tip-more-light": "Keine Karte gefunden? Mehr Licht hilft",
         "weak-match": "Nicht sicher erkannt, bester Treffer nur {{count}} Inliers"
     }
 }
