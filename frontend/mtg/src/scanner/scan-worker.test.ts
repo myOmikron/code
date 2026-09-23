@@ -22,6 +22,7 @@ vi.mock("./ocr", () => ({ loadReader: mocks.loadOcr }));
 vi.mock("./live-pipeline", () => ({
     previewFrame: mocks.preview,
     confirmPreview: mocks.confirm,
+    resetFrameGate: vi.fn(),
     uprightVariant: (variant: number) => variant === 0,
     createAgreementTracker: () => ({ seen: mocks.seen, reset: vi.fn() }),
     createVariantSelector: () => ({ next: () => mocks.variant, record: vi.fn(), reset: vi.fn() }),
@@ -42,7 +43,9 @@ beforeEach(() => {
         named: false,
         sightScore: 0.8,
         crops: [],
-        timings: { detect: 1, embed: 1000, search: 1, ocr: 1, references: 0, verify: 0 },
+        attempted: true,
+        shortcomings: [],
+        timings: { detect: 1, gate: 1, embed: 1000, search: 1, ocr: 1, references: 0, verify: 0 },
     });
     mocks.confirm.mockResolvedValue({ status: "unrecognised", reason: "weak-match", bestInliers: 5 });
     vi.stubGlobal(
@@ -159,5 +162,20 @@ describe("live worker scheduling", () => {
         mocks.variant = 2;
         expect((await scan()).outcome).toBeNull();
         expect(mocks.confirm).not.toHaveBeenCalled();
+    });
+
+    it.each([
+        ["the gate refused the card", ["moving"], false],
+        ["there was no card", [], true],
+    ])("reports a frame where %s without letting it vote", async (_case, shortcomings, fromGuide) => {
+        const preview = await mocks.preview();
+        mocks.preview.mockResolvedValue({ ...preview, candidates: [], attempted: false, shortcomings, fromGuide });
+        mocks.seen.mockReturnValue(true);
+        const result = await scan();
+        expect(result.shortcomings).toEqual(shortcomings);
+        expect(result.outcome).toBeNull();
+        expect(result.preview).toBeNull();
+        expect(mocks.confirm).not.toHaveBeenCalled();
+        expect(mocks.seen).not.toHaveBeenCalled();
     });
 });

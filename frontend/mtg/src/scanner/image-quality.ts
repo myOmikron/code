@@ -6,7 +6,8 @@
 //! that was never captured. The live scanner needs the second case as its own answer, so it can
 //! ask for a steadier shot instead of guessing.
 import { loadOpenCv, withMats } from "./opencv";
-import type { RgbaImage } from "./card-detect";
+import { aspectScore, symmetryScore } from "./card-detect";
+import type { CardQuad, RgbaImage } from "./card-detect";
 
 /**
  * Variance of the Laplacian, the standard focus measure.
@@ -32,6 +33,104 @@ export async function sharpness(image: RgbaImage): Promise<number> {
         const value = deviation.data64F[0];
         return value * value;
     });
+}
+
+/** Luminance statistics of a rectified card. */
+export type Exposure = {
+    /** Mean luminance, 0–255 */
+    mean: number;
+    /** Share of pixels at full white, 0–1 */
+    clipped: number;
+};
+
+const CLIP_LEVEL = 250;
+
+/**
+ * Measures how a rectified card is lit.
+ *
+ * @param image
+ * @param step sampling stride in pixels
+ * @returns
+ */
+export function exposureOf(image: RgbaImage, step = 2): Exposure {
+    let sum = 0;
+    let clipped = 0;
+    let count = 0;
+    const { data, width, height } = image;
+    for (let y = 0; y < height; y += step) {
+        for (let x = 0; x < width; x += step) {
+            const at = (y * width + x) * 4;
+            const luminance = (data[at] * 299 + data[at + 1] * 587 + data[at + 2] * 114) / 1000;
+            sum += luminance;
+            if (luminance >= CLIP_LEVEL) clipped += 1;
+            count += 1;
+        }
+    }
+    if (count === 0) return { mean: 0, clipped: 0 };
+    return { mean: sum / count, clipped: clipped / count };
+}
+
+/**
+ * Mean corner movement between two frames, as a share of the card's height.
+ *
+ * @param previous
+ * @param current
+ * @returns
+ */
+export function motionBetween(previous: CardQuad, current: CardQuad): number {
+    const corners: (keyof CardQuad)[] = ["topLeft", "topRight", "bottomRight", "bottomLeft"];
+    const height =
+        (Math.hypot(current.bottomLeft.x - current.topLeft.x, current.bottomLeft.y - current.topLeft.y) +
+            Math.hypot(current.bottomRight.x - current.topRight.x, current.bottomRight.y - current.topRight.y)) /
+        2;
+    if (height < 1) return Number.POSITIVE_INFINITY;
+    const moved =
+        corners.reduce(
+            (sum, corner) =>
+                sum + Math.hypot(current[corner].x - previous[corner].x, current[corner].y - previous[corner].y),
+            0,
+        ) / corners.length;
+    return moved / height;
+}
+
+/** What the frame gate measures about one detected card. */
+export type FrameQuality = {
+    /** Share of the searched region the card covers, 0–1 */
+    areaFraction: number;
+    /** How equal opposite sides are, 0–1 */
+    symmetry: number;
+    /** How close the proportions are to a card's, 0–1 */
+    aspect: number;
+    /** Movement since the last frame, as a share of card height; infinite on first sight */
+    motion: number;
+    /** Laplacian variance; higher is sharper */
+    sharpness: number;
+    exposure: Exposure;
+};
+
+/**
+ * Measures a detected card for the frame gate.
+ *
+ * @param crop the rectified card
+ * @param quad
+ * @param areaFraction
+ * @param previous where the card was last frame, null on first sight
+ * @returns
+ */
+export async function measureFrame(
+    crop: RgbaImage,
+    quad: CardQuad,
+    areaFraction: number,
+    previous: CardQuad | null,
+): Promise<FrameQuality> {
+    return {
+        areaFraction,
+        symmetry: symmetryScore(quad),
+        aspect: aspectScore(quad),
+        motion: previous ? motionBetween(previous, quad) : Number.POSITIVE_INFINITY,
+        sharpness: await sharpness(crop),
+        exposure: exposureOf(crop),
+    };
 }
 
 /**

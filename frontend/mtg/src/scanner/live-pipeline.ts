@@ -9,7 +9,7 @@
 //! Verification waits for a recurring candidate on every backend. References are fetched
 //! concurrently within a time budget and retained in a bounded cache.
 import { detectCardsIn, rectifyCardIn, shrinkQuad } from "./card-detect";
-import type { CardQuad, DetectedCard, Point, RgbaImage } from "./card-detect";
+import type { CardQuad, Point, RgbaImage } from "./card-detect";
 import type { EmbeddingIndex, IndexMatch } from "./embedding-index";
 import type { Embedder } from "./embedder";
 import { describeCard, discriminatePrintings, verifyAgainst } from "./feature-verify";
@@ -18,6 +18,9 @@ import type { ScanLanguage, ScanLanguageChoice } from "./ocr";
 import { loadReferences, type CachedReference } from "./reference-cache";
 import { createLiveBudget } from "./live-budget";
 import { conservativeScanner } from "./runtime-policy";
+import { createFrameGate } from "./frame-gate";
+import type { Shortcoming } from "./frame-gate";
+import { measureFrame } from "./image-quality";
 import { decideScan } from "./scan-decision";
 import type { ScanOutcome } from "./scan-decision";
 
@@ -101,6 +104,7 @@ const SCRIPTS: ScanLanguage[] = ["en", "ja", "zhs", "zht", "ko", "ru"];
  * Japanese model, short enough that a genuine Japanese card is reached within a few seconds.
  */
 const SCRIPT_PATIENCE = 6;
+const OCR_DISABLED = "OCR im WebKit-Schutzmodus deaktiviert (Speicherbedarf)";
 
 /** What auto-detection currently believes it is reading, and how long that has been failing. */
 let guessed: ScanLanguage = "en";
@@ -223,35 +227,6 @@ function centred(width: number, height: number, margin: number, viewAspect: numb
 }
 
 /**
- * The guide rectangle as a card, for frames where detection found nothing.
- *
- * Card-shaped and centred in the searched area, which is exactly where the drawn frame sits: the
- * searched area is that frame grown by {@link GUIDE_MARGIN} so the detector has background to find
- * an edge against, and undoing that growth lands back on what the user was aiming at.
- *
- * @param width of the searched area
- * @param height of the searched area
- * @returns a card covering the guide
- */
-function guideCard(width: number, height: number): DetectedCard {
-    const inset = (1 - 1 / GUIDE_MARGIN) / 2;
-    const left = width * inset;
-    const right = width - left;
-    const top = height * inset;
-    const bottom = height - top;
-    return {
-        quad: {
-            topLeft: { x: left, y: top },
-            topRight: { x: right, y: top },
-            bottomRight: { x: right, y: bottom },
-            bottomLeft: { x: left, y: bottom },
-        },
-        areaFraction: 1 / (GUIDE_MARGIN * GUIDE_MARGIN),
-        score: 0,
-    };
-}
-
-/**
  * Cuts a region out of a frame
  *
  * @param pixels the frame
@@ -289,6 +264,7 @@ function offsetQuad(quad: CardQuad, region: Region): CardQuad {
  */
 export type FrameTimings = {
     detect: number;
+    gate: number;
     embed: number;
     search: number;
     ocr: number;
@@ -310,7 +286,7 @@ export type FramePreview = {
     areaFraction: number;
     /** The frame that is both drawn and searched */
     region: Region;
-    /** Whether the crop came from the guide because detection found nothing */
+    /** Whether detection found no card (the name predates the removal of the guide fallback) */
     fromGuide: boolean;
     milliseconds: number;
     timings: FrameTimings;
@@ -324,6 +300,10 @@ export type FramePreview = {
     named: boolean;
     /** How well the picture alone matched, which is what the variant selector is judged on */
     sightScore: number;
+    /** False when there was no card or the gate refused it; such a frame is no evidence */
+    attempted: boolean;
+    /** Why the gate refused the card, worst first */
+    shortcomings: Shortcoming[];
 };
 
 /** Geometry available before OCR, embedding or reference downloads. */
@@ -336,6 +316,13 @@ export type FrameDetection = Pick<FramePreview, "quad" | "region" | "areaFractio
 /** A timed-out OCR job may finish, but must not queue work for later frames. */
 const readWithinBudget = createLiveBudget();
 const OCR_BUDGET = 350;
+
+const frameGate = createFrameGate();
+
+/** Forgets what the frame gate has seen. */
+export function resetFrameGate(): void {
+    frameGate.reset();
+}
 
 /**
  * Runs the local half of the chain on one frame.
@@ -361,28 +348,60 @@ export async function previewFrame(
     onDetection?: (detection: FrameDetection) => void,
 ): Promise<FramePreview> {
     const started = performance.now();
-    const timings: FrameTimings = { detect: 0, embed: 0, search: 0, ocr: 0, references: 0, verify: 0 };
+    const timings: FrameTimings = { detect: 0, gate: 0, embed: 0, search: 0, ocr: 0, references: 0, verify: 0 };
 
     const region = guideRegion(pixels.width, pixels.height, viewAspect);
     const searched = cutRegion(pixels, region);
     const detected = await detectCardsIn(searched, { maxCards: 1, workingSize: LIVE_WORKING_SIZE });
     timings.detect = performance.now() - started;
-    // A card the detector could not find is not the same as a card that is not there: a black
-    // border on a dark table, a sleeve catching the light, a thumb over one corner. The frame has
-    // already cost its detection, and the guide is the one place the user was asked to put the
-    // card, so cropping that rectangle turns a discarded frame into one more chance at an answer.
-    // Marked as such, because a guessed crop is worth knowing about when the answer is wrong.
-    const fromGuide = detected.length === 0;
-    const card = fromGuide ? guideCard(searched.width, searched.height) : detected[0];
+    // No card, no recognition: an empty guide costs a detection and nothing else.
+    const card = detected[0] ?? null;
+    const fromGuide = card === null;
     onDetection?.({
-        quad: fromGuide ? null : offsetQuad(card.quad, region),
-        areaFraction: card.areaFraction,
+        quad: card ? offsetQuad(card.quad, region) : null,
+        areaFraction: card?.areaFraction ?? 0,
         region,
         fromGuide,
         frameWidth: pixels.width,
         frameHeight: pixels.height,
         milliseconds: timings.detect,
     });
+    // A timed-out read keeps running. On WebKit that would boot a third WASM heap
+    // alongside the first inference, defeating the low-memory startup policy.
+    const useOcr = !conservativeScanner();
+
+    const unattempted = (shortcomings: Shortcoming[]): FramePreview => ({
+        candidates: [],
+        crops: [],
+        quad: card ? offsetQuad(card.quad, region) : null,
+        areaFraction: card?.areaFraction ?? 0,
+        region,
+        fromGuide,
+        title: "",
+        ocrError: useOcr ? ocrError : OCR_DISABLED,
+        ocrModel: useOcr ? ocrModel : "disabled",
+        named: false,
+        sightScore: 0,
+        attempted: false,
+        shortcomings,
+        milliseconds: performance.now() - started,
+        timings,
+    });
+
+    if (!card) {
+        frameGate.missed();
+        return unattempted([]);
+    }
+
+    // Refuse a card that cannot be read before paying for OCR, the model and verification.
+    const gateStarted = performance.now();
+    // Measured on an upright, untrimmed crop; the variant crop may be rotated or trimmed.
+    const upright = await rectifyCardIn(searched, card.quad, 0);
+    const quality = await measureFrame(upright, card.quad, card.areaFraction, frameGate.previousQuad);
+    const shortcomings = frameGate.observe(quality, card.quad);
+    timings.gate = performance.now() - gateStarted;
+    if (shortcomings.length > 0) return unattempted(shortcomings);
+
     const variant = VARIANTS[variantIndex % VARIANTS.length];
     const quad = variant.inset === 0 ? card.quad : shrinkQuad(card.quad, variant.inset);
     const crop = await rectifyCardIn(searched, quad, variant.rotation);
@@ -411,9 +430,6 @@ export async function previewFrame(
     let lateTitle = "";
     const readingLanguage = language === "auto" ? guessed : language;
     let readCompleted = false;
-    // A timed-out read keeps running. On WebKit that would boot a third WASM heap
-    // alongside the first inference, defeating the low-memory startup policy.
-    const useOcr = !conservativeScanner();
     for (const inset of useOcr ? OCR_INSETS : []) {
         const reading = await readWithinBudget(
             async () => {
@@ -519,14 +535,14 @@ export async function previewFrame(
     return {
         candidates,
         title,
-        ocrError: useOcr ? ocrError : "OCR im WebKit-Schutzmodus deaktiviert (Speicherbedarf)",
+        ocrError: useOcr ? ocrError : OCR_DISABLED,
         ocrModel: useOcr ? ocrModel : "disabled",
         named: byName.length > 0,
         sightScore: bySight[0]?.score ?? 0,
+        attempted: true,
+        shortcomings: [],
         crops: [crop],
-        // Not reported when it came from the guide. The overlay draws whatever quad it is given,
-        // and an outline around the guide would claim a card was found there when none was.
-        quad: fromGuide ? null : offsetQuad(card.quad, region),
+        quad: offsetQuad(card.quad, region),
         areaFraction: card.areaFraction,
         region,
         fromGuide,

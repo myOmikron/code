@@ -32,6 +32,7 @@ export type ScanDiagnosticsProps = {
 /** The four stages of a frame, in the order they run, with the colour each gets in the bar. */
 const STAGES = [
     { key: "detect", className: "bg-sky-500" },
+    { key: "gate", className: "bg-teal-500" },
     { key: "ocr", className: "bg-emerald-500" },
     { key: "references", className: "bg-orange-500" },
     { key: "verify", className: "bg-pink-500" },
