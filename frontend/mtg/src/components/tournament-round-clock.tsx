@@ -60,8 +60,9 @@ export type TournamentRoundClockProps = {
  * states identical at a glance.
  *
  * Colour never fills a background: a clock that flashes for the last five minutes of every round
- * is unbearable in a room somebody has to sit in all evening. Overtime keeps counting rather than
- * stopping at zero, because "four minutes over" is the number a judge actually needs.
+ * is unbearable in a room somebody has to sit in all evening. At zero the face stops counting and
+ * calls time — "Time!" is what the room is listening for, and a negative number only invites the
+ * question of what it means.
  *
  * The face is hidden from assistive technology and a sibling `role="timer"` carries the reading
  * instead, updated only as the round crosses its thresholds — a live region that announces every
@@ -101,7 +102,7 @@ export function TournamentRoundClock({
                 size === "display" ? "text-[clamp(4rem,18vmin,12rem)]" : "text-[clamp(1.75rem,4vw,2.5rem)]",
             )}
         >
-            {formatDuration(reading.seconds)}
+            {reading.over ? t("label.time-called") : formatDuration(reading.seconds)}
         </span>
     );
 

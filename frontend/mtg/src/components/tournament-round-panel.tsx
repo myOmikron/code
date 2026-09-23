@@ -110,8 +110,10 @@ export function TournamentRoundPanel({
     // with round one.
     const kind = nextRoundKind(tournament.format, rounds);
 
+    // A closed round has no clock. Its timer columns still hold a deadline, and read as a live
+    // clock they would count on into overtime for ever — on every round the rail can open.
     const clock: RoundClock | null =
-        round === null
+        round === null || round.status === "Complete"
             ? null
             : {
                   endsAt: round.timer.ends_at ?? null,
