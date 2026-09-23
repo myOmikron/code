@@ -88,7 +88,8 @@ pub enum ReportOutcome {
 pub enum ResultChange {
     /// The table was written and re-resolved
     Changed(MatchStatus),
-    /// The round is closed, or the table is a bye nobody played
+    /// The table is a bye nobody played — a closed round is *not* a refusal
+    /// for the desk, which is how a wrong result in an earlier round gets fixed
     NotEditable,
     /// Neither a winner nor a draw, or a winner who is not at the table
     InvalidOutcome,
@@ -270,7 +271,12 @@ pub async fn set_result(
     let Some(is_bye) = table_is_bye(&mut *tx, tournament, table).await? else {
         return Ok(TournamentAccess::Denied);
     };
-    if is_bye || !round_open(&mut *tx, table).await? {
+    // Deliberately no `round_open` check here, unlike [`report`]: a closed
+    // round is exactly where the desk corrects a result that was entered
+    // wrong, and the standings are recomputed from confirmed tables on every
+    // read, so the correction flows through on its own. The audit row below
+    // is what makes editing history acceptable.
+    if is_bye {
         return Ok(TournamentAccess::Granted(ResultChange::NotEditable));
     }
 
@@ -346,7 +352,8 @@ pub async fn clear_result(
     let Some(is_bye) = table_is_bye(&mut *tx, tournament, table).await? else {
         return Ok(TournamentAccess::Denied);
     };
-    if is_bye || !round_open(&mut *tx, table).await? {
+    // Same as `set_result`: the desk may take a result back off a closed round.
+    if is_bye {
         return Ok(TournamentAccess::Granted(ResultChange::NotEditable));
     }
 
