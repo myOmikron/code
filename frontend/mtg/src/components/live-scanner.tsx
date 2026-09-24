@@ -23,6 +23,9 @@ import type { CardQuad } from "src/scanner/card-detect";
 import { createCaptureGate } from "src/scanner/capture-gate";
 import { conservativeScanner } from "src/scanner/runtime-policy";
 import { createScanRest } from "src/scanner/scan-rest";
+import { createScanHint } from "src/scanner/scan-hint";
+import { searchTip } from "src/scanner/scan-tip";
+import type { SearchTip } from "src/scanner/scan-tip";
 import {
     inspectScanDownload,
     keepScanDataStored,
@@ -36,6 +39,7 @@ import type {
     ScanLanguageChoice,
     ScanLoadProgress,
     ScannerStatus,
+    Shortcoming,
 } from "src/scanner/scan-client";
 import { usePendingScans } from "src/context/pending-scans-context";
 import { useScannerSessions } from "src/context/scanner-session-context";
@@ -91,6 +95,28 @@ const DOT: Record<ScanPhase, string> = {
     preview: "bg-amber-300",
     confirmed: "bg-blue-400",
 };
+
+/** Advice per shortcoming; literal keys so the translation scanner can find them. */
+const HINTS: Record<Shortcoming, string> = {
+    closer: "label.hint-closer",
+    tilted: "label.hint-tilted",
+    glare: "label.hint-glare",
+    dark: "label.hint-dark",
+    moving: "label.hint-moving",
+    blurred: "label.hint-blurred",
+};
+
+/** Tip per search tip kind; literal keys for the same reason. */
+const TIPS: Record<SearchTip, string> = {
+    "more-light": "label.tip-more-light",
+    "lighter-surface": "label.tip-lighter-surface",
+};
+
+/**
+ * Empty frames before resting on an empty guide. Must be at least capture-gate's two misses, or a
+ * second copy of the same card is never booked.
+ */
+const EMPTY_FRAMES_BEFORE_REST = 2;
 
 /** The one canvas every still is drawn through, rather than one per recognised card. */
 let stillCanvas: HTMLCanvasElement | null = null;
@@ -184,6 +210,12 @@ export function LiveScanner({ session }: LiveScannerProps) {
     const captureGate = useRef(createCaptureGate());
     const scanGeneration = useRef(0);
     const scanRest = useRef(createScanRest());
+    const scanHint = useRef(createScanHint());
+    const emptyFrames = useRef(0);
+    const [tip, setTip] = useState<SearchTip | null>(null);
+    const lastCardAt = useRef(0);
+    const lastSample = useRef<Uint8ClampedArray | null>(null);
+    const [hint, setHint] = useState<Shortcoming | null>(null);
     const sampleCanvas = useRef<HTMLCanvasElement | null>(null);
     const nextScanDelay = useRef(250);
     const cropCanvas = useRef<HTMLCanvasElement | null>(null);
@@ -255,6 +287,8 @@ export function LiveScanner({ session }: LiveScannerProps) {
         const context = canvas.getContext("2d", { willReadFrequently: true });
         context?.drawImage(video, 0, 0, 32, 32);
         const sample = context?.getImageData(0, 0, 32, 32).data;
+        // Before the rest check, so the tip sees the current light while resting.
+        lastSample.current = sample ?? null;
         if (sample && !scanRest.current.needsScan(sample, performance.now())) {
             nextScanDelay.current = 200;
             return;
@@ -294,8 +328,10 @@ export function LiveScanner({ session }: LiveScannerProps) {
                         ocrError: "",
                         ocrModel: "",
                         attempts: 0,
+                        shortcomings: [],
                         timings: {
                             detect: detection.milliseconds,
+                            gate: 0,
                             ocr: 0,
                             embed: 0,
                             search: 0,
@@ -310,6 +346,7 @@ export function LiveScanner({ session }: LiveScannerProps) {
                 return;
             }
             setFrame(result);
+            setHint(scanHint.current.observe(result.shortcomings[0] ?? null, performance.now()));
 
             if (result.crop) {
                 const canvas = cropCanvas.current;
@@ -322,7 +359,20 @@ export function LiveScanner({ session }: LiveScannerProps) {
             }
 
             captureGate.current.observe(result.outcome?.status === "recognised" || result.quad !== null);
+            // Rest on an empty guide until the picture changes.
+            if (result.fromGuide) {
+                emptyFrames.current += 1;
+                if (sample && emptyFrames.current >= EMPTY_FRAMES_BEFORE_REST)
+                    scanRest.current.hold(sample, performance.now());
+            } else {
+                emptyFrames.current = 0;
+                // Any detected card counts, including one the gate refused.
+                lastCardAt.current = performance.now();
+                setTip(null);
+            }
             if (result.outcome?.status === "recognised") {
+                scanHint.current.clear();
+                setHint(null);
                 if (sample) scanRest.current.hold(sample, performance.now());
                 const { printing } = result.outcome;
                 const id = printing.id;
@@ -385,6 +435,7 @@ export function LiveScanner({ session }: LiveScannerProps) {
     useEffect(() => {
         if (!camera.active || !status) return;
         scanRest.current.reset();
+        emptyFrames.current = 0;
         let timer: number | undefined;
         let disposed = false;
         let scheduleGeneration = 0;
@@ -402,7 +453,14 @@ export function LiveScanner({ session }: LiveScannerProps) {
             if (!running.current) {
                 scanGeneration.current += 1;
                 resetLiveTracking();
-            } else if (!busy.current) {
+                scanHint.current.clear();
+                setHint(null);
+                setTip(null);
+                return;
+            }
+            // Time spent paused does not count towards the tip.
+            lastCardAt.current = performance.now();
+            if (!busy.current) {
                 void tick();
             } else {
                 // The previous inference cannot be interrupted; tick will recheck after it ends.
@@ -411,11 +469,16 @@ export function LiveScanner({ session }: LiveScannerProps) {
         };
         document.addEventListener("visibilitychange", visibility);
         visibility();
+        // Own clock, because no frames arrive while resting on an empty guide.
+        const tipClock = window.setInterval(() => {
+            if (running.current) setTip(searchTip(lastSample.current, lastCardAt.current, performance.now()));
+        }, 1000);
         return () => {
             disposed = true;
             running.current = false;
             scanGeneration.current += 1;
             window.clearTimeout(timer);
+            window.clearInterval(tipClock);
             document.removeEventListener("visibilitychange", visibility);
         };
     }, [camera.active, status, step, settings, staging, diagnostics]);
@@ -445,9 +508,13 @@ export function LiveScanner({ session }: LiveScannerProps) {
             ? t("label.scanner-warming")
             : confirmed
               ? t("label.card-confirmed")
-              : preview
-                ? t("label.hold-still", { name: preview.name })
-                : t("label.point-at-card");
+              : hint
+                ? t(HINTS[hint])
+                : preview
+                  ? t("label.hold-still", { name: preview.name })
+                  : tip
+                    ? t(TIPS[tip])
+                    : t("label.point-at-card");
 
     return (
         <main

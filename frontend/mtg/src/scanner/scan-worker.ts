@@ -14,8 +14,10 @@ import {
     createAgreementTracker,
     createVariantSelector,
     previewFrame,
+    resetFrameGate,
     uprightVariant,
 } from "./live-pipeline";
+import type { Shortcoming } from "./frame-gate";
 import { loadScanIndex, scanFrame } from "./pipeline";
 import type { LoadedIndex, ScanLoadProgress, ScanReport } from "./pipeline";
 import type { IndexedPrinting } from "./embedding-index";
@@ -86,6 +88,8 @@ type OutgoingMessage =
           /** Where the milliseconds went, for the debug view */
           timings: FrameTimings;
           attempts: number;
+          /** Why the gate refused the card, worst first */
+          shortcomings: Shortcoming[];
           /** The leading candidate by embedding alone, shown while the answer is still forming */
           preview: { name: string; set: string; collectorNumber: string; score: number } | null;
           /** Set once the frame was confirmed; absent while the cheap half is still running */
@@ -290,6 +294,7 @@ worker.onmessage = async (event) => {
             trackingGeneration += 1;
             agreement.reset();
             variants.reset();
+            resetFrameGate();
             named = false;
             attempts = 0;
             return;
@@ -332,19 +337,23 @@ worker.onmessage = async (event) => {
                     },
                 );
                 if (generation !== trackingGeneration) throw new Error("Scan verworfen: Sitzung beendet.");
+                // Never reached the model: must not count for the variant or the agreement window.
+                const skipped = !preview.attempted;
                 // The variant is judged on what the picture alone did with it. Judging it on the
                 // merged leader would reward the variants where the name could *not* be read, since
                 // a search across the whole index returns bigger numbers than one within a name.
-                variants.record(variant, preview.sightScore);
+                if (!skipped) variants.record(variant, preview.sightScore);
                 const leader = preview.candidates[0] ?? null;
                 const key = leader ? `${leader.printing.id}/${leader.printing.face}` : null;
 
-                named = preview.named;
+                if (!skipped) named = preview.named;
 
                 // An isolated match must not become a collection entry. All backends require
                 // agreement across frames before geometric verification, including WASM.
                 const outcome =
-                    uprightVariant(variant) && agreement.seen(key, preview.candidates[0]?.score ?? 0, preview.named)
+                    !skipped &&
+                    uprightVariant(variant) &&
+                    agreement.seen(key, preview.candidates[0]?.score ?? 0, preview.named)
                         ? await confirmPreview(preview)
                         : null;
                 if (generation !== trackingGeneration) throw new Error("Scan verworfen: Sitzung beendet.");
@@ -384,6 +393,7 @@ worker.onmessage = async (event) => {
                         outcome,
                         milliseconds: performance.now() - started,
                         attempts,
+                        shortcomings: preview.shortcomings,
                         timings: preview.timings,
                     },
                     crop ? [crop] : [],

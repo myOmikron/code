@@ -65,7 +65,7 @@
         "card-language": "Card language",
         "copied": "Copied",
         "crop-detected": "detected",
-        "crop-guide": "guide (nothing detected)",
+        "crop-guide": "none (nothing detected)",
         "data-missing": "The scanner downloads {{size}} MB of card data once, on the first scan.",
         "data-ready": "The card data is on this device — the scanner works without a connection.",
         "debug-area": "Area {{percent}}% of the frame",
@@ -80,6 +80,12 @@
         "diagnostics-reader": "Reader",
         "diagnostics-title": "Title",
         "found-this-session": "{{count}} recognised",
+        "hint-blurred": "Not sharp yet — hold on a moment",
+        "hint-closer": "Hold the card closer to the camera",
+        "hint-dark": "More light on the card",
+        "hint-glare": "Turn the card out of the reflection",
+        "hint-moving": "Hold the card still",
+        "hint-tilted": "Show the card square to the camera",
         "hold-still": "Looks like {{name}}, hold still for a moment",
         "inliers": "{{count}} inliers",
         "language-auto": "Detect language",
@@ -102,6 +108,8 @@
         "stage-model": "Loading the model",
         "stage-projection": "Loading the projection",
         "stage-vectors": "Loading card features",
+        "tip-lighter-surface": "No card found? Try a lighter, plain surface",
+        "tip-more-light": "No card found? More light helps",
         "weak-match": "Not confidently recognised, best match only {{count}} inliers"
     }
 }

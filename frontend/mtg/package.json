@@ -42,6 +42,7 @@
         "scan:ab": "esbuild test/ab-harness.ts --bundle --platform=node --format=esm --target=node22 --external:sharp --external:@techstark/opencv-js --external:onnxruntime-node --outfile=test/ab-harness.mjs && node test/ab-harness.mjs",
         "scan:verify": "esbuild test/verify-harness.ts --bundle --platform=node --format=esm --target=node22 --external:sharp --external:@techstark/opencv-js --external:onnxruntime-node --outfile=test/verify-harness.mjs && node test/verify-harness.mjs",
         "scan:render": "esbuild test/render-extracted.ts --bundle --platform=node --format=esm --target=node22 --external:sharp --external:@techstark/opencv-js --outfile=test/render-extracted.mjs && node test/render-extracted.mjs",
+        "scan:quality": "esbuild test/quality-probe.ts --bundle --platform=node --format=esm --target=node22 --external:sharp --external:@techstark/opencv-js --outfile=test/quality-probe.mjs && node test/quality-probe.mjs test/dataset/labels.json test/dataset/images",
         "scan:label": "node scripts/label-server.mjs",
         "scan:assets": "node scripts/setup-scanner-assets.mjs"
     },

@@ -1,5 +1,6 @@
 /**
- * Avoids repeating inference on an already recognised, unchanged camera image.
+ * Avoids repeating inference on an unchanged camera image that has already had its answer: a card
+ * that was recognised, or a guide with nothing in it.
  *
  * @returns a small-image comparison gate with a periodic recheck
  */
@@ -8,7 +9,7 @@ export function createScanRest() {
     let until = 0;
     return {
         /**
-         * Remember the image that was successfully recognised.
+         * Remember an image that needs no second look: a recognised card, or an empty guide.
          *
          * @param pixels tiny RGBA camera sample
          * @param now monotonic time in milliseconds
