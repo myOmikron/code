@@ -48,6 +48,7 @@ export function ManaCost({ value, className, symbolClassName = "size-4" }: ManaC
                         // braces and the separating slash are dropped.
                         src={`https://svgs.scryfall.io/card-symbols/${encodeURIComponent(symbol.replace(/\//g, "").toUpperCase())}.svg`}
                         alt={symbol}
+                        crossOrigin={"anonymous"}
                         loading={"lazy"}
                         className={`shrink-0 ${symbolClassName}`}
                     />

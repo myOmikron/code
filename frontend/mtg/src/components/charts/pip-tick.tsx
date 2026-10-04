@@ -100,6 +100,7 @@ export function PipTick({ x = 0, y = 0, payload, pipOf, anchor = "bottom" }: Pip
     return (
         <image
             href={`https://svgs.scryfall.io/card-symbols/${encodeURIComponent(pip)}.svg`}
+            crossOrigin={"anonymous"}
             x={x - PIP_SIZE / 2}
             y={top}
             width={PIP_SIZE}

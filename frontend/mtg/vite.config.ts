@@ -31,6 +31,26 @@ const appVersion = process.env.APP_VERSION?.replace(/^v/, "") || version;
 const scannerRuntimeVersion = JSON.parse(readFileSync("node_modules/onnxruntime-web/package.json", "utf-8")).version;
 
 // https://vitejs.dev/config/
+/** Evicts opaque responses an earlier version of the app cached, see the artwork cache below. */
+const dropOpaqueResponses = {
+    cachedResponseWillBeUsed: async ({
+        cacheName,
+        request,
+        cachedResponse,
+    }: {
+        cacheName: string;
+        request: Request;
+        cachedResponse?: Response;
+    }) => {
+        if (cachedResponse === undefined || cachedResponse.type !== "opaque") {
+            return cachedResponse;
+        }
+        const cache = await caches.open(cacheName);
+        await cache.delete(request);
+        return undefined;
+    },
+};
+
 export default defineConfig({
     // tanstackRouter must come before react(): it generates routeTree.gen.ts from src/routes/.
     plugins: [
@@ -170,30 +190,21 @@ export default defineConfig({
                             cacheName: "scryfall-card-images",
                             cacheableResponse: { statuses: [200] },
                             expiration: { maxEntries: 3000, purgeOnQuotaError: true },
-                            plugins: [
-                                {
-                                    cachedResponseWillBeUsed: async ({ cacheName, request, cachedResponse }) => {
-                                        if (cachedResponse === undefined || cachedResponse.type !== "opaque") {
-                                            return cachedResponse;
-                                        }
-                                        const cache = await caches.open(cacheName);
-                                        await cache.delete(request);
-                                        return undefined;
-                                    },
-                                },
-                            ],
+                            plugins: [dropOpaqueResponses],
                         },
                     },
                     {
                         // Mana symbols. Unlike the artwork these come back with no
                         // `cache-control` at all, so without this the browser is left to
-                        // guess — and there are only a few dozen of them.
+                        // guess, and there are only a few dozen of them. Requested with
+                        // `crossOrigin` for the same reason as the artwork.
                         urlPattern: /^https:\/\/svgs\.scryfall\.io\/.*/,
                         handler: "CacheFirst",
                         options: {
                             cacheName: "scryfall-symbols",
-                            cacheableResponse: { statuses: [0, 200] },
+                            cacheableResponse: { statuses: [200] },
                             expiration: { maxEntries: 200, purgeOnQuotaError: true },
+                            plugins: [dropOpaqueResponses],
                         },
                     },
                 ],
