@@ -1,4 +1,4 @@
-import { InformationCircleIcon, XMarkIcon } from "@heroicons/react/20/solid";
+import { InformationCircleIcon } from "@heroicons/react/20/solid";
 import { Button, Dialog, DialogActions, DialogBody, DialogTitle } from "components";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -45,17 +45,7 @@ export function DeckAdvisorNotesDialog({ notes }: DeckAdvisorNotesDialogProps) {
             </button>
 
             <Dialog open={open} onClose={() => setOpen(false)}>
-                <DialogTitle className={"flex items-center gap-3"}>
-                    <span className={"min-w-0 flex-1"}>{t("heading.shaping-notes")}</span>
-                    <Button
-                        plain
-                        onClick={() => setOpen(false)}
-                        aria-label={t("button.assumptions-done")}
-                        className={"-mr-2 shrink-0"}
-                    >
-                        <XMarkIcon className={"size-5"} />
-                    </Button>
-                </DialogTitle>
+                <DialogTitle>{t("heading.shaping-notes")}</DialogTitle>
                 <DialogBody>
                     <p className={"text-sm/6 text-zinc-500 dark:text-zinc-400"}>{t("description.shaping-intro")}</p>
 

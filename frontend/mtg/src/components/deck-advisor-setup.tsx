@@ -9,7 +9,6 @@ import { BracketRulesResponse, DeckResponse } from "src/api/generated";
 import { DeckAdvisorPool } from "src/components/deck-advisor-pool";
 import { useDeckLabels } from "src/components/deck-labels";
 import { DeckThemePicker } from "src/components/deck-theme-picker";
-import { DialogCloseButton } from "src/components/dialog-close-button";
 import { AdvisorSettings } from "src/utils/advisor-settings";
 import { DEFAULT_TARGETS, withCurve } from "src/utils/deck-targets";
 
@@ -332,10 +331,7 @@ export function DeckAdvisorSetup({
         // `DialogTitle` changes with the question being asked) — `aria-label`
         // wins over the `aria-labelledby` `DialogTitle` sets up, on purpose.
         <Dialog open={open} onClose={dismiss} size={"2xl"} aria-label={t("heading.setup")}>
-            <DialogTitle className={"flex items-center gap-3"}>
-                <span className={"min-w-0 flex-1"}>{stepTitle}</span>
-                <DialogCloseButton onClose={dismiss} />
-            </DialogTitle>
+            <DialogTitle>{stepTitle}</DialogTitle>
             <DialogBody>
                 {step === 1 && (
                     <>

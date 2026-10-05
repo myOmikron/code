@@ -3,7 +3,6 @@ import { Dialog, DialogActions, DialogBody, DialogTitle, Text } from "components
 import { PrimaryButton } from "src/components/primary-button";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { DialogCloseButton } from "src/components/dialog-close-button";
 import { FileIntoCollectionDialog } from "src/components/file-into-collection-dialog";
 import { SessionBufferList } from "src/components/session-buffer-list";
 import { SessionStackList } from "src/components/session-stack-list";
@@ -40,10 +39,7 @@ export function ScanStagingSheet({ open, onClose }: ScanStagingSheetProps) {
                 sheet on a phone cut the list to one and a half rows and put the rest behind a
                 scroll inside a scroll. */}
             <Dialog open={open} onClose={onClose} size={"2xl"} tall>
-                <DialogTitle className={"flex items-center gap-3"}>
-                    <span className={"min-w-0 flex-1 truncate"}>{t("heading.staged", { count: copies })}</span>
-                    <DialogCloseButton onClose={onClose} />
-                </DialogTitle>
+                <DialogTitle>{t("heading.staged", { count: copies })}</DialogTitle>
                 <DialogBody>
                     {active !== null && <Text className={"mb-3 truncate"}>{active.name}</Text>}
                     <SessionStackList entries={entries} />
