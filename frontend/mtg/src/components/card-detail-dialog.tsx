@@ -11,7 +11,6 @@ import type { CardFinish } from "src/api/generated";
 import { FoilFrame } from "src/components/foil-frame";
 import { CardmarketLink } from "src/components/cardmarket-link";
 import { usePreloadImage } from "src/utils/use-preload-image";
-import { DialogCloseButton } from "src/components/dialog-close-button";
 import { ExternalLinkRow } from "src/components/external-link-row";
 import type { CardmarketCard } from "src/utils/cardmarket";
 import type { Printing } from "src/utils/scryfall";
@@ -128,7 +127,6 @@ export function CardDetailDialog({
                     <DialogTitle className={"flex items-center gap-3"}>
                         <span className={"min-w-0 flex-1 truncate"}>{printing.name}</span>
                         {printing.manaCost !== "" && <ManaCost value={printing.manaCost} />}
-                        <DialogCloseButton onClose={onClose} />
                     </DialogTitle>
                     <DialogBody>
                         <ScrollFade className={"max-h-[70svh]"}>

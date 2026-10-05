@@ -1,6 +1,8 @@
 import * as Headless from "@headlessui/react";
+import { XMarkIcon } from "@heroicons/react/20/solid";
 import clsx from "clsx";
 import type React from "react";
+import { useTranslation } from "react-i18next";
 import { Text } from "./text";
 
 const sizes = {
@@ -133,11 +135,40 @@ export function Dialog(props: RawDialogProps) {
                             "transition duration-100 will-change-transform data-closed:translate-y-12 data-closed:opacity-0 data-enter:ease-out data-leave:ease-in sm:data-closed:translate-y-0 sm:data-closed:data-enter:scale-95",
                         )}
                     >
+                        <DialogCloseButton onClose={rest.onClose} />
                         {children}
                     </Headless.DialogPanel>
                 </div>
             </div>
         </Headless.Dialog>
+    );
+}
+
+/**
+ * The properties for {@link DialogCloseButton}
+ */
+export type DialogCloseButtonProps = {
+    /** Callback when the button is pressed */
+    onClose: () => void;
+};
+
+/**
+ * The X in the top right corner of a {@link Dialog} or an `Alert`, next to
+ * whatever close button the dialog keeps at the bottom. Sticky, so it stays
+ * in reach while a long dialog scrolls; the panel needs a `--gutter`.
+ */
+export function DialogCloseButton(props: DialogCloseButtonProps) {
+    const [tg] = useTranslation();
+    return (
+        <div className="sticky top-0 z-10 h-0">
+            <Headless.Button
+                onClick={props.onClose}
+                aria-label={tg("button.close", { defaultValue: "Close" })}
+                className="absolute -top-[calc(var(--gutter)-0.75rem)] -right-[calc(var(--gutter)-0.75rem)] rounded-full bg-white p-1.5 text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-950 focus:outline-hidden data-focus:outline-2 data-focus:outline-offset-2 data-focus:outline-blue-500 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white pointer-coarse:p-2"
+            >
+                <XMarkIcon className="size-5" />
+            </Headless.Button>
+        </div>
     );
 }
 
@@ -159,7 +190,8 @@ export function DialogTitle(props: DialogTitleProps) {
             {...rest}
             className={clsx(
                 className,
-                "text-lg/6 font-semibold text-balance text-zinc-950 sm:text-base/6 dark:text-white",
+                // Clear of the close button in the corner
+                "pr-6 text-lg/6 font-semibold text-balance text-zinc-950 sm:text-base/6 dark:text-white",
             )}
         />
     );

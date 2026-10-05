@@ -19,7 +19,6 @@ import {
 } from "components";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { DialogCloseButton } from "src/components/dialog-close-button";
 import { GraphFacet, GraphFacets, GraphFilters, graphFacets } from "src/utils/graph-search";
 
 /**
@@ -131,10 +130,7 @@ export function GraphFilterDialog({ open, onClose, filters, onChange }: GraphFil
 
     return (
         <Dialog open={open} onClose={onClose} className={"flex flex-col"}>
-            <DialogTitle className={"flex items-center gap-3"}>
-                <span className={"min-w-0 flex-1 truncate"}>{t("heading.graph-filter")}</span>
-                <DialogCloseButton onClose={onClose} />
-            </DialogTitle>
+            <DialogTitle>{t("heading.graph-filter")}</DialogTitle>
             <Description>{t("description.graph-filter")}</Description>
             <DialogBody className={"flex min-h-0 flex-1 flex-col"}>
                 <ScrollFade className={"min-h-0 flex-1"}>

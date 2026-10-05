@@ -2,7 +2,6 @@ import { CheckIcon, Squares2X2Icon, ViewColumnsIcon } from "@heroicons/react/20/
 import { Badge, Dialog, DialogBody, DialogTitle, ScrollFade, Strong, Text } from "components";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { DialogCloseButton } from "src/components/dialog-close-button";
 import { Api } from "src/api/api";
 import type { UUID } from "src/api/api";
 import type { CardCondition, CardFinish } from "src/api/generated";
@@ -274,10 +273,7 @@ export function AddCollectionCardsDialog({ open, collectionUuid, onClose, onChan
             tall={true}
             className={"flex max-h-[calc(100dvh-5rem)] flex-col"}
         >
-            <DialogTitle className={"flex items-center gap-3"}>
-                <span className={"min-w-0 flex-1 truncate"}>{t("heading.add-cards")}</span>
-                <DialogCloseButton onClose={() => void close()} />
-            </DialogTitle>
+            <DialogTitle>{t("heading.add-cards")}</DialogTitle>
             <DialogBody className={"!mt-3 flex min-h-0 flex-1 flex-col"}>
                 <ScrollFade className={"min-h-0 flex-1"}>
                     <div className={"flex flex-col gap-4"}>

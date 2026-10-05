@@ -1,6 +1,7 @@
 import * as Headless from "@headlessui/react";
 import clsx from "clsx";
 import type React from "react";
+import { DialogCloseButton } from "./dialog";
 import { Text } from "./text";
 
 const sizes = {
@@ -73,13 +74,14 @@ export function Alert(props: AlertProps) {
                         className={clsx(
                             className,
                             sizes[size],
-                            "row-start-2 w-full rounded-2xl bg-white p-8 shadow-lg ring-1 ring-zinc-950/10 sm:rounded-2xl sm:p-6 dark:bg-zinc-900 dark:ring-white/10 forced-colors:outline",
+                            "row-start-2 w-full rounded-2xl bg-white p-(--gutter) shadow-lg ring-1 ring-zinc-950/10 [--gutter:--spacing(8)] sm:rounded-2xl sm:[--gutter:--spacing(6)] dark:bg-zinc-900 dark:ring-white/10 forced-colors:outline",
                             // Capped like {@link Dialog}, and for the same
                             // reason: the backdrop has to stay reachable.
                             "max-sm:max-h-[66vh] max-sm:overflow-y-auto max-sm:overscroll-contain",
                             "transition duration-100 will-change-transform data-closed:opacity-0 data-enter:ease-out data-closed:data-enter:scale-95 data-leave:ease-in",
                         )}
                     >
+                        <DialogCloseButton onClose={() => rest.onClose(false)} />
                         {children}
                     </Headless.DialogPanel>
                 </div>
@@ -106,7 +108,8 @@ export function AlertTitle(props: AlertTitleProps) {
             {...rest}
             className={clsx(
                 className,
-                "text-center text-base/6 font-semibold text-balance text-zinc-950 sm:text-left sm:text-sm/6 sm:text-wrap dark:text-white",
+                // Clear of the close button in the corner
+                "px-6 text-center text-base/6 font-semibold text-balance text-zinc-950 sm:pl-0 sm:text-left sm:text-sm/6 sm:text-wrap dark:text-white",
             )}
         />
     );

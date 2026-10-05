@@ -1,5 +1,6 @@
 {
     "button": {
+        "close": "Schließen",
         "logout": "Abmelden",
         "save": "Sichern"
     }
