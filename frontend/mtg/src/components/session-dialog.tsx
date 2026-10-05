@@ -22,7 +22,6 @@ import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import type { CollectionOverviewResponse, ScannerSessionResponse } from "src/api/generated";
 import { CollectionMarker } from "src/components/collection-marker";
-import { DialogCloseButton } from "src/components/dialog-close-button";
 import { COLLECTION_COLORS, COLLECTION_ICONS, collectionColor, collectionIcon } from "src/utils/collection-style";
 
 /**
@@ -94,12 +93,7 @@ export function SessionDialog({ session, onClose, onSave, onDelete }: SessionDia
 
     return (
         <Dialog open={open} onClose={onClose} size={"lg"} tall>
-            <DialogTitle className={"flex items-center gap-3"}>
-                <span className={"min-w-0 flex-1 truncate"}>
-                    {session ? t("heading.edit-session") : t("heading.new-session")}
-                </span>
-                <DialogCloseButton onClose={onClose} />
-            </DialogTitle>
+            <DialogTitle>{session ? t("heading.edit-session") : t("heading.new-session")}</DialogTitle>
             <DialogBody className={"flex flex-col gap-5"}>
                 <Field>
                     <Label>{t("label.name")}</Label>

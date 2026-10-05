@@ -17,7 +17,6 @@ import type { DeckZone } from "src/api/generated";
 import { CardSearchPanel } from "src/components/card-search-panel";
 import type { SearchConstraint } from "src/components/card-search-panel";
 import { useDeckLabels, ZONE_ORDER } from "src/components/deck-labels";
-import { DialogCloseButton } from "src/components/dialog-close-button";
 import type { Printing } from "src/utils/scryfall";
 
 /** How many of the cards just added are named back */
@@ -162,10 +161,7 @@ export function AddCardsDialog({
             tall={true}
             className={"flex max-h-[calc(100dvh-5rem)] flex-col"}
         >
-            <DialogTitle className={"flex items-center gap-3"}>
-                <span className={"min-w-0 flex-1 truncate"}>{t("heading.add-cards")}</span>
-                <DialogCloseButton onClose={close} />
-            </DialogTitle>
+            <DialogTitle>{t("heading.add-cards")}</DialogTitle>
             <DialogBody className={"!mt-3 flex min-h-0 flex-1 flex-col"}>
                 <ScrollFade className={"min-h-0 flex-1"}>
                     <div className={"flex flex-col gap-4"}>

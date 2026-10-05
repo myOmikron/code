@@ -6,7 +6,6 @@ import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import type { CollectionOverviewResponse } from "src/api/generated";
 import { CollectionMarker } from "src/components/collection-marker";
-import { DialogCloseButton } from "src/components/dialog-close-button";
 import { useScannerSessions } from "src/context/scanner-session-context";
 
 /**
@@ -81,10 +80,7 @@ export function FileIntoCollectionDialog({ open, onClose }: FileIntoCollectionDi
 
     return (
         <Dialog open={open} onClose={onClose} size={"xl"} tall>
-            <DialogTitle className={"flex items-center gap-3"}>
-                <span className={"min-w-0 flex-1 truncate"}>{t("heading.file-into")}</span>
-                <DialogCloseButton onClose={onClose} />
-            </DialogTitle>
+            <DialogTitle>{t("heading.file-into")}</DialogTitle>
             <DialogBody>
                 <Text>{t("description.file-into", { count: copies, amount: copies })}</Text>
 

@@ -161,17 +161,7 @@ export function DeckAdvisorAssumptions({
     return (
         <>
             <Dialog open={open} onClose={onClose} size={"2xl"}>
-                <DialogTitle className={"flex items-center gap-3"}>
-                    <span className={"min-w-0 flex-1"}>{t("heading.assumptions")}</span>
-                    <Button
-                        plain
-                        onClick={onClose}
-                        aria-label={t("button.assumptions-done")}
-                        className={"-mr-2 shrink-0"}
-                    >
-                        <XMarkIcon className={"size-5"} />
-                    </Button>
-                </DialogTitle>
+                <DialogTitle>{t("heading.assumptions")}</DialogTitle>
                 {/* No inner scroll: the dialog's own backdrop scrolls, and a
                 second scrollbar inside it meant two things to drag and a
                 horizontal bar wherever a child reached past the edge. */}
