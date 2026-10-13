@@ -74,7 +74,7 @@ export function DeckThemePicker({ picked, onToggle, detected }: DeckThemePickerP
                 placeholder={t("label.theme-search")}
                 onChange={(event) => setSearch(event.target.value)}
             />
-            <div className={"mt-3 grid max-h-96 gap-1 overflow-y-auto sm:grid-cols-2"}>
+            <div className={"mt-3 grid gap-1 sm:grid-cols-2"}>
                 {listed.map((theme) => {
                     const chosen = picked.includes(theme.value);
                     const cards = detected[theme.value] ?? 0;

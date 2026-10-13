@@ -1,16 +1,5 @@
 import { CheckIcon, Squares2X2Icon, ViewColumnsIcon } from "@heroicons/react/20/solid";
-import {
-    Badge,
-    Dialog,
-    DialogBody,
-    DialogTitle,
-    Listbox,
-    ListboxLabel,
-    ListboxOption,
-    ScrollFade,
-    Strong,
-    Text,
-} from "components";
+import { Badge, Dialog, DialogBody, DialogTitle, Listbox, ListboxLabel, ListboxOption, Strong, Text } from "components";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { DeckZone } from "src/api/generated";
@@ -154,95 +143,85 @@ export function AddCardsDialog({
     }
 
     return (
-        <Dialog
-            open={open}
-            onClose={close}
-            size={"6xl"}
-            tall={true}
-            className={"flex max-h-[calc(100dvh-5rem)] flex-col"}
-        >
+        <Dialog open={open} onClose={close} size={"6xl"} tall={true}>
             <DialogTitle>{t("heading.add-cards")}</DialogTitle>
-            <DialogBody className={"!mt-3 flex min-h-0 flex-1 flex-col"}>
-                <ScrollFade className={"min-h-0 flex-1"}>
-                    <div className={"flex flex-col gap-4"}>
-                        <CardSearchPanel
-                            unique={"cards"}
-                            twoColumns={twoColumns}
-                            stickySearch={true}
-                            hideInfoOnMobile={true}
-                            toolbar={
-                                <div className={"flex flex-wrap items-center gap-3"}>
-                                    <Listbox
-                                        value={zone}
-                                        aria-label={t("label.add-to-zone")}
-                                        onChange={onChangeZone}
-                                        className={"w-56"}
-                                    >
-                                        {zones.map((option) => (
-                                            <ListboxOption key={option} value={option}>
-                                                <ListboxLabel>
-                                                    {t("label.add-to", { zone: labels.zone(option) })}
-                                                </ListboxLabel>
-                                            </ListboxOption>
-                                        ))}
-                                    </Listbox>
-                                    {added.length > 0 && (
-                                        <Badge color={"green"}>
-                                            <CheckIcon className={"size-3"} />
-                                            {t("label.added-count", { count: added.length })}
-                                        </Badge>
-                                    )}
-                                    <span
-                                        className={
-                                            "ml-auto flex items-center rounded-(--radius-control) bg-zinc-950/5 p-0.5 ring-1 ring-zinc-950/5 dark:bg-white/10 dark:ring-white/10"
-                                        }
-                                    >
-                                        {[false, true].map((option) => (
-                                            <button
-                                                key={String(option)}
-                                                type={"button"}
-                                                aria-pressed={twoColumns === option}
-                                                aria-label={t(option ? "label.columns-two" : "label.columns-one")}
-                                                title={t(option ? "label.columns-two" : "label.columns-one")}
-                                                onClick={() => setTwoColumns(option)}
-                                                className={
-                                                    twoColumns === option
-                                                        ? "rounded-[calc(var(--radius-control)-0.125rem)] bg-(--surface-card) p-1.5 text-zinc-950 shadow-(--shadow-card-sm) dark:text-white"
-                                                        : "rounded-[calc(var(--radius-control)-0.125rem)] p-1.5 text-zinc-500 transition hover:text-lime-700 dark:text-zinc-400 dark:hover:text-lime-300"
-                                                }
-                                            >
-                                                {option ? (
-                                                    <ViewColumnsIcon className={"size-4"} />
-                                                ) : (
-                                                    <Squares2X2Icon className={"size-4"} />
-                                                )}
-                                            </button>
-                                        ))}
-                                    </span>
-                                </div>
-                            }
-                            constraints={held}
-                            countOf={countOf}
-                            onAdd={(printing) => void add(printing)}
-                            onRemove={(printing) => void remove(printing)}
-                            graph={graph}
-                            graphIdentity={graphIdentity}
-                            clearNameSearches={clearNameSearches}
-                        />
-
-                        {added.length > 0 && (
-                            <div
-                                className={"flex flex-col gap-1 border-t border-zinc-950/10 pt-3 dark:border-white/10"}
-                            >
-                                <Strong className={"text-xs"}>{t("label.added-just-now")}</Strong>
-                                <Text className={"text-xs"}>
-                                    {added.slice(0, RECENT_LIMIT).join(", ")}
-                                    {added.length > RECENT_LIMIT && " …"}
-                                </Text>
+            <DialogBody className={"!mt-3"}>
+                <div className={"flex flex-col gap-4"}>
+                    <CardSearchPanel
+                        unique={"cards"}
+                        twoColumns={twoColumns}
+                        stickySearch={true}
+                        hideInfoOnMobile={true}
+                        toolbar={
+                            <div className={"flex flex-wrap items-center gap-3"}>
+                                <Listbox
+                                    value={zone}
+                                    aria-label={t("label.add-to-zone")}
+                                    onChange={onChangeZone}
+                                    className={"w-56"}
+                                >
+                                    {zones.map((option) => (
+                                        <ListboxOption key={option} value={option}>
+                                            <ListboxLabel>
+                                                {t("label.add-to", { zone: labels.zone(option) })}
+                                            </ListboxLabel>
+                                        </ListboxOption>
+                                    ))}
+                                </Listbox>
+                                {added.length > 0 && (
+                                    <Badge color={"green"}>
+                                        <CheckIcon className={"size-3"} />
+                                        {t("label.added-count", { count: added.length })}
+                                    </Badge>
+                                )}
+                                <span
+                                    className={
+                                        "ml-auto flex items-center rounded-(--radius-control) bg-zinc-950/5 p-0.5 ring-1 ring-zinc-950/5 dark:bg-white/10 dark:ring-white/10"
+                                    }
+                                >
+                                    {[false, true].map((option) => (
+                                        <button
+                                            key={String(option)}
+                                            type={"button"}
+                                            aria-pressed={twoColumns === option}
+                                            aria-label={t(option ? "label.columns-two" : "label.columns-one")}
+                                            title={t(option ? "label.columns-two" : "label.columns-one")}
+                                            onClick={() => setTwoColumns(option)}
+                                            className={
+                                                twoColumns === option
+                                                    ? "rounded-[calc(var(--radius-control)-0.125rem)] bg-(--surface-card) p-1.5 text-zinc-950 shadow-(--shadow-card-sm) dark:text-white"
+                                                    : "rounded-[calc(var(--radius-control)-0.125rem)] p-1.5 text-zinc-500 transition hover:text-lime-700 dark:text-zinc-400 dark:hover:text-lime-300"
+                                            }
+                                        >
+                                            {option ? (
+                                                <ViewColumnsIcon className={"size-4"} />
+                                            ) : (
+                                                <Squares2X2Icon className={"size-4"} />
+                                            )}
+                                        </button>
+                                    ))}
+                                </span>
                             </div>
-                        )}
-                    </div>
-                </ScrollFade>
+                        }
+                        constraints={held}
+                        countOf={countOf}
+                        onAdd={(printing) => void add(printing)}
+                        onRemove={(printing) => void remove(printing)}
+                        graph={graph}
+                        graphIdentity={graphIdentity}
+                        clearNameSearches={clearNameSearches}
+                    />
+
+                    {added.length > 0 && (
+                        <div className={"flex flex-col gap-1 border-t border-zinc-950/10 pt-3 dark:border-white/10"}>
+                            <Strong className={"text-xs"}>{t("label.added-just-now")}</Strong>
+                            <Text className={"text-xs"}>
+                                {added.slice(0, RECENT_LIMIT).join(", ")}
+                                {added.length > RECENT_LIMIT && " …"}
+                            </Text>
+                        </div>
+                    )}
+                </div>
             </DialogBody>
         </Dialog>
     );

@@ -152,12 +152,7 @@ export function SetPicker({ open, sets, initialSelection, onCancel, onConfirm }:
 
                 <Divider className="my-4" />
 
-                {/* `scrollbar-gutter: stable` reserves the track whether or not it is showing, so filtering
-                    the list down does not shift the rows sideways; the padding keeps the right-aligned
-                    counts off the scrollbar. */}
-                <div
-                    className={`max-h-[50svh] [scrollbar-gutter:stable] overflow-y-auto pr-3 ${filtering ? "opacity-60" : ""}`}
-                >
+                <div className={filtering ? "opacity-60" : undefined}>
                     {matching.length === 0 && <Text className="py-6 text-center">{t("label.no-set-found")}</Text>}
                     <StackedList>
                         {visible.map((family) => {

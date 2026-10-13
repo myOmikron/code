@@ -14,7 +14,6 @@ import {
     DropdownMenu,
     Field,
     Label,
-    ScrollFade,
     Text,
 } from "components";
 import { useEffect, useState } from "react";
@@ -129,104 +128,100 @@ export function GraphFilterDialog({ open, onClose, filters, onChange }: GraphFil
     }
 
     return (
-        <Dialog open={open} onClose={onClose} className={"flex flex-col"}>
+        <Dialog open={open} onClose={onClose}>
             <DialogTitle>{t("heading.graph-filter")}</DialogTitle>
             <Description>{t("description.graph-filter")}</Description>
-            <DialogBody className={"flex min-h-0 flex-1 flex-col"}>
-                <ScrollFade className={"min-h-0 flex-1"}>
-                    <div className={"flex flex-col gap-4"}>
-                        {failed && <Text>{t("description.graph-filter-unavailable")}</Text>}
-                        {facets !== null &&
-                            CATEGORIES.map(({ key, facet }) => {
-                                const held = filters[key];
-                                const options = facets[facet].filter((entry) => !held.includes(entry.value));
-                                const labelOf = (value: string) =>
-                                    facets[facet].find((entry) => entry.value === value)?.label ?? value;
-                                return (
-                                    <Field key={key}>
-                                        <span className={"flex items-center gap-1"}>
-                                            <Label>{t(`label.graph-${CATEGORY_SLUGS[key]}`)}</Label>
-                                            <Dropdown>
-                                                <DropdownButton
-                                                    as={"button"}
-                                                    type={"button"}
-                                                    aria-label={t("accessibility.graph-filter-info")}
-                                                    className={
-                                                        "text-zinc-400 hover:text-lime-700 dark:text-zinc-500 dark:hover:text-lime-300"
-                                                    }
-                                                >
-                                                    <InformationCircleIcon className={"size-4"} />
-                                                </DropdownButton>
-                                                <DropdownMenu anchor={"bottom start"} className={"max-w-72"}>
-                                                    <DropdownHeader>
-                                                        <p
+            <DialogBody>
+                <div className={"flex flex-col gap-4"}>
+                    {failed && <Text>{t("description.graph-filter-unavailable")}</Text>}
+                    {facets !== null &&
+                        CATEGORIES.map(({ key, facet }) => {
+                            const held = filters[key];
+                            const options = facets[facet].filter((entry) => !held.includes(entry.value));
+                            const labelOf = (value: string) =>
+                                facets[facet].find((entry) => entry.value === value)?.label ?? value;
+                            return (
+                                <Field key={key}>
+                                    <span className={"flex items-center gap-1"}>
+                                        <Label>{t(`label.graph-${CATEGORY_SLUGS[key]}`)}</Label>
+                                        <Dropdown>
+                                            <DropdownButton
+                                                as={"button"}
+                                                type={"button"}
+                                                aria-label={t("accessibility.graph-filter-info")}
+                                                className={
+                                                    "text-zinc-400 hover:text-lime-700 dark:text-zinc-500 dark:hover:text-lime-300"
+                                                }
+                                            >
+                                                <InformationCircleIcon className={"size-4"} />
+                                            </DropdownButton>
+                                            <DropdownMenu anchor={"bottom start"} className={"max-w-72"}>
+                                                <DropdownHeader>
+                                                    <p
+                                                        className={
+                                                            "text-xs/5 font-normal text-zinc-500 dark:text-zinc-400"
+                                                        }
+                                                    >
+                                                        {t(`description.graph-${CATEGORY_SLUGS[key]}`)}
+                                                    </p>
+                                                </DropdownHeader>
+                                            </DropdownMenu>
+                                        </Dropdown>
+                                    </span>
+                                    <Combobox<GraphFacet | null>
+                                        // Remounting on a pick clears the input for the next one.
+                                        key={held.length}
+                                        options={options}
+                                        value={null}
+                                        displayValue={(entry) => entry?.label}
+                                        filter={matches}
+                                        placeholder={t("label.graph-filter-placeholder")}
+                                        onChange={(entry) => {
+                                            if (entry != null) add(key, entry.value);
+                                        }}
+                                    >
+                                        {(entry) => (
+                                            <ComboboxOption value={entry}>
+                                                <ComboboxLabel>
+                                                    {entry.label}
+                                                    {entry.aliases.length > 0 && (
+                                                        <span
                                                             className={
-                                                                "text-xs/5 font-normal text-zinc-500 dark:text-zinc-400"
+                                                                "ml-1.5 text-xs text-zinc-500 dark:text-zinc-400"
                                                             }
                                                         >
-                                                            {t(`description.graph-${CATEGORY_SLUGS[key]}`)}
-                                                        </p>
-                                                    </DropdownHeader>
-                                                </DropdownMenu>
-                                            </Dropdown>
-                                        </span>
-                                        <Combobox<GraphFacet | null>
-                                            // Remounting on a pick clears the input for the next one.
-                                            key={held.length}
-                                            options={options}
-                                            value={null}
-                                            displayValue={(entry) => entry?.label}
-                                            filter={matches}
-                                            placeholder={t("label.graph-filter-placeholder")}
-                                            onChange={(entry) => {
-                                                if (entry != null) add(key, entry.value);
-                                            }}
-                                        >
-                                            {(entry) => (
-                                                <ComboboxOption value={entry}>
-                                                    <ComboboxLabel>
-                                                        {entry.label}
-                                                        {entry.aliases.length > 0 && (
-                                                            <span
-                                                                className={
-                                                                    "ml-1.5 text-xs text-zinc-500 dark:text-zinc-400"
-                                                                }
-                                                            >
-                                                                ({entry.aliases.join(", ")})
-                                                            </span>
-                                                        )}
-                                                        <span
-                                                            className={"ml-2 text-xs text-zinc-500 dark:text-zinc-400"}
-                                                        >
-                                                            {entry.count}
+                                                            ({entry.aliases.join(", ")})
                                                         </span>
-                                                    </ComboboxLabel>
-                                                </ComboboxOption>
-                                            )}
-                                        </Combobox>
-                                        {held.length > 0 && (
-                                            <div className={"mt-2 flex flex-wrap gap-1"}>
-                                                {held.map((value) => (
-                                                    <button
-                                                        key={value}
-                                                        type={"button"}
-                                                        aria-label={t("accessibility.remove-graph-filter", {
-                                                            name: labelOf(value),
-                                                        })}
-                                                        onClick={() => drop(key, value)}
-                                                    >
-                                                        <Badge color={"lime"} className={"capitalize"}>
-                                                            {labelOf(value)} ×
-                                                        </Badge>
-                                                    </button>
-                                                ))}
-                                            </div>
+                                                    )}
+                                                    <span className={"ml-2 text-xs text-zinc-500 dark:text-zinc-400"}>
+                                                        {entry.count}
+                                                    </span>
+                                                </ComboboxLabel>
+                                            </ComboboxOption>
                                         )}
-                                    </Field>
-                                );
-                            })}
-                    </div>
-                </ScrollFade>
+                                    </Combobox>
+                                    {held.length > 0 && (
+                                        <div className={"mt-2 flex flex-wrap gap-1"}>
+                                            {held.map((value) => (
+                                                <button
+                                                    key={value}
+                                                    type={"button"}
+                                                    aria-label={t("accessibility.remove-graph-filter", {
+                                                        name: labelOf(value),
+                                                    })}
+                                                    onClick={() => drop(key, value)}
+                                                >
+                                                    <Badge color={"lime"} className={"capitalize"}>
+                                                        {labelOf(value)} ×
+                                                    </Badge>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </Field>
+                            );
+                        })}
+                </div>
             </DialogBody>
         </Dialog>
     );

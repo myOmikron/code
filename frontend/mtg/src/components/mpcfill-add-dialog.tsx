@@ -119,10 +119,7 @@ export function MpcFillAddDialog({
                         </div>
                     )}
 
-                    {/* Scrolls inside the dialog: the results are a page of
-                        Scryfall, and a dialog that grows with them buries its
-                        own search field. */}
-                    <div className={"max-h-[55vh] min-h-0 overflow-y-auto overscroll-contain"}>
+                    <div>
                         <CardSearchPanel
                             unique={"cards"}
                             autoFocus={true}

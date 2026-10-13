@@ -134,11 +134,7 @@ function RouteComponent() {
                         </div>
                     )}
 
-                    {/* The results are a page of Scryfall and go on well past
-                        the fold, which on a phone buries the list underneath
-                        them. They scroll in their own box instead, with the
-                        search field pinned to its top. */}
-                    <div className={"max-h-[70vh] min-h-0 overflow-y-auto overscroll-contain"}>
+                    <div>
                         <CardSearchPanel
                             unique={"cards"}
                             autoFocus={false}

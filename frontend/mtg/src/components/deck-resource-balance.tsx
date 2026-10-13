@@ -97,7 +97,7 @@ export function DeckResourceBalance({ cards, deck, formatSize }: DeckResourceBal
             aria-busy={analysis.stale}
         >
             <h3 className={"text-sm/6 font-medium text-zinc-950 dark:text-white"}>{t("heading.balance")}</h3>
-            <div className={"mt-4 max-h-96 overflow-y-auto"}>
+            <div className={"mt-4"}>
                 <Table dense={true} className={"[--gutter:--spacing(2)] sm:[--gutter:--spacing(4)]"}>
                     <TableHead>
                         <TableRow>

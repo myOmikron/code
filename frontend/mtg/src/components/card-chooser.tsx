@@ -41,7 +41,7 @@ export function CardChooser({ cards, selectedId, onSelect, label, layout = "swip
         <div
             className={
                 grid
-                    ? "grid max-h-[58vh] grid-cols-1 gap-3 overflow-y-auto sm:grid-cols-2"
+                    ? "grid grid-cols-1 gap-3 sm:grid-cols-2"
                     : "-mx-1 flex snap-x snap-mandatory [scrollbar-width:none] gap-3 overflow-x-auto px-1 pb-2 [&::-webkit-scrollbar]:hidden"
             }
             role="radiogroup"

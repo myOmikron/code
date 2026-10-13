@@ -48,10 +48,7 @@ export function PrintingDialog({ card, onPick, onClose, owned, proxy, onTogglePr
     return (
         <Dialog open={card !== null} onClose={onClose} size={"5xl"}>
             <DialogTitle>{card?.name ?? t("heading.printing")}</DialogTitle>
-            {/* A card with thirty prints would otherwise grow a dialog taller
-                than the phone it is read on, and the close button ends up below
-                the fold. The prints scroll, the frame stays put. */}
-            <DialogBody className={"max-h-[65svh] overflow-y-auto"}>
+            <DialogBody>
                 {onToggleProxy !== undefined && card !== null && (
                     <SwitchField>
                         <Label>{t("label.proxy")}</Label>

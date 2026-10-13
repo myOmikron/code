@@ -198,9 +198,7 @@ export function DeckReplaceDialog({ card, onClose, deckUuid, deck, speed, onRepl
                                 </Button>
                             </div>
                         )}
-                        <div
-                            className={"mt-2 max-h-96 divide-y divide-zinc-950/5 overflow-y-auto dark:divide-white/10"}
-                        >
+                        <div className={"mt-2 divide-y divide-zinc-950/5 dark:divide-white/10"}>
                             {shown.map((row) => (
                                 <DeckAdvisorAddRow
                                     key={row.oracle_id}

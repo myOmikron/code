@@ -263,11 +263,7 @@ export function DeckFillDialog({
                                     </Button>
                                 </div>
                             )}
-                            <div
-                                className={
-                                    "mt-2 max-h-96 divide-y divide-zinc-950/5 overflow-y-auto dark:divide-white/10"
-                                }
-                            >
+                            <div className={"mt-2 divide-y divide-zinc-950/5 dark:divide-white/10"}>
                                 {chosen.map((card) => {
                                     const printing = cards.get(card.name);
                                     return (
