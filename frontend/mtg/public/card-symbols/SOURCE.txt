@@ -1,0 +1,6 @@
+Scryfall card symbol SVGs, downloaded from https://api.scryfall.com/symbology.
+Original images: https://svgs.scryfall.io/card-symbols/
+Magic: The Gathering symbols are owned by Wizards of the Coast.
+
+Refresh from frontend/mtg with: node scripts/update-card-symbols.mjs
+Keep the SVGs checked in. Builds and browser requests use these local copies.

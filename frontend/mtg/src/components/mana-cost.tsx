@@ -1,3 +1,5 @@
+import { cardSymbolUrl } from "src/utils/card-symbols";
+
 /**
  * The properties for {@link ManaCost}
  */
@@ -13,8 +15,7 @@ export type ManaCostProps = {
 /**
  * Renders a mana cost string like "{1}{U}" as Scryfall's official symbols.
  *
- * The symbols come from Scryfall's svg host, which is the same origin the card
- * artwork already comes from and is explicitly exempt from their rate limits.
+ * The symbols are bundled locally so loading them needs no cross-origin request.
  * Drawing them by hand meant approximating a handful of colours and giving up
  * on everything else — hybrid, phyrexian, tap, energy — which then rendered as
  * bare text in a circle.
@@ -46,9 +47,8 @@ export function ManaCost({ value, className, symbolClassName = "size-4" }: ManaC
                         key={`${symbol}-${index}`}
                         // `{W/U}` is served as `WU.svg`, `{2/W}` as `2W.svg` —
                         // braces and the separating slash are dropped.
-                        src={`https://svgs.scryfall.io/card-symbols/${encodeURIComponent(symbol.replace(/\//g, "").toUpperCase())}.svg`}
+                        src={cardSymbolUrl(symbol)}
                         alt={symbol}
-                        crossOrigin={"anonymous"}
                         loading={"lazy"}
                         className={`shrink-0 ${symbolClassName}`}
                     />

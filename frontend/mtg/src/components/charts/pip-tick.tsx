@@ -1,10 +1,11 @@
+import { cardSymbolUrl } from "src/utils/card-symbols";
+
 /**
  * Drawing pips where a chart would otherwise print a colour's name.
  *
  * Recharts paints into an svg, so an axis tick cannot be an `<img>` — it has to
  * be an svg `<image>` placed at the coordinates recharts hands over. The pips
- * come from Scryfall's svg host, the same origin the artwork does, which they
- * exempt from their rate limits.
+ * use the same locally bundled symbols as mana costs.
  */
 
 /** The gold a multicoloured heap is drawn in, as the charts colour it */
@@ -99,8 +100,7 @@ export function PipTick({ x = 0, y = 0, payload, pipOf, anchor = "bottom" }: Pip
 
     return (
         <image
-            href={`https://svgs.scryfall.io/card-symbols/${encodeURIComponent(pip)}.svg`}
-            crossOrigin={"anonymous"}
+            href={cardSymbolUrl(pip)}
             x={x - PIP_SIZE / 2}
             y={top}
             width={PIP_SIZE}

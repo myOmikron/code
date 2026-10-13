@@ -60,6 +60,7 @@ export default defineConfig({
                 // Precache the app shell only. The card index (public/data, ~430 MB) and the
                 // self-hosted OCR runtime (public/tesseract) are far too large to precache —
                 // they are cached on demand by the runtime rules below.
+                // Includes the bundled card-symbols/*.svg for offline mana costs/charts.
                 globPatterns: ["**/*.{js,css,html,svg,woff2}"],
                 // The scanner's worker carries OpenCV and weighs 16 MB, and the model and index
                 // are far larger still. None of it belongs in a precache that has to finish
@@ -171,20 +172,6 @@ export default defineConfig({
                             cacheName: "scryfall-card-images",
                             cacheableResponse: { statuses: [200] },
                             expiration: { maxEntries: 3000, purgeOnQuotaError: true },
-                            plugins: [resilientImageCache],
-                        },
-                    },
-                    {
-                        // Mana symbols. Unlike the artwork these come back with no
-                        // `cache-control` at all, so without this the browser is left to
-                        // guess, and there are only a few dozen of them. Requested with
-                        // `crossOrigin` for the same reason as the artwork.
-                        urlPattern: /^https:\/\/svgs\.scryfall\.io\/.*/,
-                        handler: "CacheFirst",
-                        options: {
-                            cacheName: "scryfall-symbols",
-                            cacheableResponse: { statuses: [200] },
-                            expiration: { maxEntries: 200, purgeOnQuotaError: true },
                             plugins: [resilientImageCache],
                         },
                     },
