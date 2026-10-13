@@ -5,6 +5,7 @@ import svgr from "vite-plugin-svgr";
 import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import tailwindcss from "@tailwindcss/vite";
 import { VitePWA } from "vite-plugin-pwa";
+import { resilientImageCache } from "./pwa/image-cache";
 
 // Where the vite dev server proxies API requests to.
 // The compose dev stack sets this to the webserver service.
@@ -31,26 +32,6 @@ const appVersion = process.env.APP_VERSION?.replace(/^v/, "") || version;
 const scannerRuntimeVersion = JSON.parse(readFileSync("node_modules/onnxruntime-web/package.json", "utf-8")).version;
 
 // https://vitejs.dev/config/
-/** Evicts opaque responses an earlier version of the app cached, see the artwork cache below. */
-const dropOpaqueResponses = {
-    cachedResponseWillBeUsed: async ({
-        cacheName,
-        request,
-        cachedResponse,
-    }: {
-        cacheName: string;
-        request: Request;
-        cachedResponse?: Response;
-    }) => {
-        if (cachedResponse === undefined || cachedResponse.type !== "opaque") {
-            return cachedResponse;
-        }
-        const cache = await caches.open(cacheName);
-        await cache.delete(request);
-        return undefined;
-    },
-};
-
 export default defineConfig({
     // tanstackRouter must come before react(): it generates routeTree.gen.ts from src/routes/.
     plugins: [
@@ -190,7 +171,7 @@ export default defineConfig({
                             cacheName: "scryfall-card-images",
                             cacheableResponse: { statuses: [200] },
                             expiration: { maxEntries: 3000, purgeOnQuotaError: true },
-                            plugins: [dropOpaqueResponses],
+                            plugins: [resilientImageCache],
                         },
                     },
                     {
@@ -204,7 +185,7 @@ export default defineConfig({
                             cacheName: "scryfall-symbols",
                             cacheableResponse: { statuses: [200] },
                             expiration: { maxEntries: 200, purgeOnQuotaError: true },
-                            plugins: [dropOpaqueResponses],
+                            plugins: [resilientImageCache],
                         },
                     },
                 ],
