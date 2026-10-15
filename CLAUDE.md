@@ -226,3 +226,17 @@ Frontend (per app): `pnpm run dev` / `build` / `ci` / `format` / `gen-api`.
 2. Set `[lints] workspace = true`
 3. The workspace glob `libs/*` picks it up automatically
 4. Add to `[workspace.dependencies]` if other crates should depend on it
+
+## Agent skills
+
+### Issue tracker
+
+Issues are tracked as GitHub Issues on myOmikron/code via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five canonical labels are used verbatim (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Multi-context: a root `CONTEXT-MAP.md` points at per-service `services/<name>/CONTEXT.md`; system-wide ADRs in `docs/adr/`, service-scoped ones in `services/<name>/docs/adr/`. See `docs/agents/domain.md`.
