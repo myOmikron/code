@@ -1,0 +1,17 @@
+# A statement (or tail expression) of a block that resolves the transaction on every
+# path through that block: it contains a commit/rollback, and that commit is not
+# hidden behind a branch. `tx.commit().await?;`, `tx.commit().await.map_err(..)?;`,
+# `let x = tx.commit().await?;` and a bare tail `tx.commit().await` all match, while
+# `if bad { tx.commit().await?; }` does not.
+id: transaction-resolving-statement
+language: rust
+rule:
+  all:
+    - has:
+        stopBy: end
+        matches: transaction-resolves
+    - not:
+        matches: transaction-conditional
+    - not:
+        has:
+          matches: transaction-conditional

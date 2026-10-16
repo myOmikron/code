@@ -1,0 +1,32 @@
+# A `match` in which *every* arm resolves the transaction, or an `if .. else` in which
+# both branches do, e.g. a tail
+# `match x { 0 => { .. tx.commit().await } _ => tx.commit().await }`.
+# Only the arms/branches one level deep are inspected, so a nested branch that forgets
+# its commit is still reported.
+id: transaction-exhaustive-conditional
+language: rust
+rule:
+  any:
+    - all:
+        - kind: match_expression
+        - not:
+            has:
+              field: body
+              has:
+                kind: match_arm
+                not:
+                  has:
+                    stopBy: end
+                    matches: transaction-resolves
+    - all:
+        - kind: if_expression
+        - has:
+            field: consequence
+            has:
+              stopBy: end
+              matches: transaction-resolves
+        - has:
+            field: alternative
+            has:
+              stopBy: end
+              matches: transaction-resolves

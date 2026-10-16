@@ -1,0 +1,40 @@
+# A statement of a block that leaves a transaction open for the rest of that block:
+# it opens one, and not behind a branch. Used to tell an early exit that happens
+# *before* `start_transaction()` (perfectly fine) from one that happens after it.
+# A transaction opened inside a branch is not counted: it is already dropped again by
+# the time the enclosing block continues.
+#
+# Only a direct child of a `block` qualifies, a statement. Without that, the
+# scrutinee of `let mut tx = match db.start_transaction().await { .. }` (or the value
+# of a `let .. else`) counts as an "opening sibling" of the arms next to it, and a
+# `return Ok(..)` in the failure arm is reported although no transaction exists yet.
+#
+# The second alternative is that very `let .. = match db.start_transaction().await { .. }`
+# seen from the outside: its initializer *is* a branch, but the thing being branched
+# on is the freshly opened transaction, so the statement still leaves one open.
+id: transaction-opening-sibling
+language: rust
+rule:
+  all:
+    - inside:
+        kind: block
+    - not:
+        matches: transaction-conditional
+    - any:
+        - all:
+            - has:
+                stopBy: end
+                matches: transaction-opens
+            - not:
+                has:
+                  matches: transaction-conditional
+        - all:
+            - kind: let_declaration
+            - has:
+                field: value
+                kind: match_expression
+                has:
+                  field: value
+                  has:
+                    stopBy: end
+                    matches: transaction-opens

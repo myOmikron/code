@@ -1,7 +1,7 @@
 set dotenv-load
 
 # Run all checks (CI)
-ci: fmt-check lint test deny
+ci: fmt-check lint lint-ast test-ast doc test deny
 
 # Type-check the workspace
 check:
@@ -15,8 +15,20 @@ test:
 lint:
     cargo clippy --workspace --all-targets -- -D warnings
 
-# Format code (Rust + TypeScript)
-fmt: fmt-rust fmt-ts
+# Run the ast-grep lints (.ast-grep/rules)
+lint-ast:
+    ast-grep scan
+
+# Check the ast-grep lints against their test cases (.ast-grep/rule-tests)
+test-ast:
+    ast-grep test
+
+# Build the docs, failing on broken intra-doc links
+doc:
+    RUSTDOCFLAGS="-D warnings" cargo doc --locked --workspace --no-deps
+
+# Format code (Rust + TypeScript + TOML)
+fmt: fmt-rust fmt-ts fmt-toml
 
 # Format Rust code
 fmt-rust:
@@ -26,8 +38,12 @@ fmt-rust:
 fmt-ts:
     pnpm -r run format
 
-# Check formatting (Rust + TypeScript)
-fmt-check: fmt-check-rust fmt-check-ts
+# Format TOML files
+fmt-toml:
+    taplo fmt
+
+# Check formatting (Rust + TypeScript + TOML)
+fmt-check: fmt-check-rust fmt-check-ts fmt-check-toml
 
 # Check Rust formatting
 fmt-check-rust:
@@ -36,6 +52,10 @@ fmt-check-rust:
 # Check TypeScript formatting
 fmt-check-ts:
     pnpm -r run format-check
+
+# Check TOML formatting
+fmt-check-toml:
+    taplo fmt --check
 
 # Run cargo-deny checks
 deny:

@@ -1,0 +1,14 @@
+# Everything that counts as "this block resolves its transaction", seen from a sibling
+# statement of the block. The last alternative is an exhaustive `match`/`if` used as a
+# statement (`match .. { .. };`), which `transaction-resolving-statement` deliberately
+# rejects because it cannot look into the arms.
+id: transaction-resolving-sibling
+language: rust
+rule:
+  any:
+    - matches: transaction-resolving-statement
+    - matches: transaction-exhaustive-conditional
+    - all:
+        - kind: expression_statement
+        - has:
+            matches: transaction-exhaustive-conditional

@@ -1,0 +1,7 @@
+exclude = ["**/migrations/**", "**/node_modules/**", "target/**", ".claude/**", ".pnpm-store/**"]
+
+[formatting]
+indent_string = "    "
+align_comments = false
+array_auto_expand = false
+array_auto_collapse = false

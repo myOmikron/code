@@ -1,0 +1,179 @@
+# A rorm transaction (`db.start_transaction()`) and a transaction guard
+# (`exe.ensure_transaction()`) both roll back when they are dropped. Dropping one
+# on a *successful* path is almost always a bug: the handler answers `Ok(..)`, the
+# caller sees a success, and every write inside the transaction is silently gone.
+#
+# These three rules cover the three shapes that mistake takes. They are separate
+# rule ids so a false positive can be silenced narrowly, and so at most one of them
+# fires per transaction:
+#
+#   uncommitted-transaction: no commit/rollback anywhere in the function
+#   uncommitted-transaction-early-return: a `return Ok(..)` that jumps over the commit
+#   uncommitted-transaction-conditional-commit: the only commit sits inside a branch
+#
+# All of them are syntactic and deliberately conservative: a transaction that is
+# passed on by value, returned, or resolved inside a helper is not tracked, and an
+# early exit is only reported when it is a literal `Ok(..)`, a `return Err(..)`, a
+# `return some_helper();` or a diverging call keeps the lint quiet. See
+# `.ast-grep/utils/transaction-*.yml` for the shared building blocks.
+id: uncommitted-transaction
+language: rust
+severity: error
+message: This transaction is never committed, every write in it is rolled back on drop
+note: |-
+  Add `tx.commit().await?` (or `guard.commit_if_owned().await?`) on the success path, also on
+  read-only paths. If the rollback is intended, say so with `tx.rollback().await?`.
+rule:
+  all:
+    # The binding that owns the transaction; `$TX` is reused below to tell a moved
+    # transaction from one that stays in this function. `let mut ..` and `let ..`
+    # need separate patterns because `mut` is part of the pattern node.
+    - any:
+        - pattern: let mut $TX = $INIT;
+        - pattern: let $TX = $INIT;
+    - has:
+        stopBy: end
+        matches: transaction-opens
+    - inside:
+        stopBy: end
+        kind: function_item
+        all:
+          # Nothing in the function even mentions a commit or a rollback.
+          - not:
+              has:
+                stopBy: end
+                matches: transaction-resolves
+          # `consume_tx(tx)`, `Ok(tx)`, `return tx;`, …, the callee/caller owns it now.
+          - not:
+              has:
+                stopBy: end
+                any:
+                  - pattern: $CALLEE($TX)
+                  - pattern: $CALLEE($TX, $$$TAIL)
+                  - pattern: $CALLEE($$$HEAD, $TX)
+                  - pattern: $CALLEE($$$HEAD, $TX, $$$TAIL)
+                  - pattern: return $TX;
+---
+# A `return Ok(..)` (or a `return` of a branch that can be `Ok(..)`) that is reached
+# with the transaction still open, while the function does commit somewhere else.
+# The classic guard clause:
+#
+#   let mut tx = db.start_transaction().await?;
+#   if nothing_to_do {
+#       return Ok(());       // <- the writes made above are lost
+#   }
+#   tx.commit().await?;
+#
+# Only reported when no commit/rollback runs before the return, neither as an
+# earlier statement of the return's own block nor of any enclosing block inside the
+# function.
+id: uncommitted-transaction-early-return
+language: rust
+severity: error
+message: This early `Ok` return leaves the transaction open, it is rolled back on drop
+note: |-
+  Move the check above `start_transaction()` so no transaction is open yet. Otherwise resolve
+  it before returning: `tx.commit().await?;`, or `tx.rollback().await?;` if the writes are
+  meant to be discarded.
+rule:
+  all:
+    - matches: transaction-returns-ok
+    # A `return` inside a closure or an `async` block leaves that closure/block, not
+    # the function, the transaction is still committed by the code after it.
+    - not:
+        inside:
+          stopBy:
+            kind: function_item
+          any:
+            - kind: closure_expression
+            - kind: async_block
+    - inside:
+        stopBy: end
+        kind: function_item
+        all:
+          # A function without any commit is `uncommitted-transaction`'s business.
+          - has:
+              stopBy: end
+              matches: transaction-resolves
+    # A transaction is open at this point: it was opened by an earlier statement of
+    # the return's own block, or of a block enclosing it. Both walks stop at the
+    # `function_item`, and `not: {kind: function_item}` keeps them from looking at the
+    # *previous item* in the file.
+    - any:
+        - follows:
+            stopBy: end
+            matches: transaction-opening-sibling
+        - inside:
+            stopBy:
+              kind: function_item
+            all:
+              - not:
+                  kind: function_item
+              - follows:
+                  stopBy: end
+                  matches: transaction-opening-sibling
+    # …and nothing resolved it before the return, on any of those levels.
+    - not:
+        any:
+          - follows:
+              stopBy: end
+              matches: transaction-resolving-sibling
+          - inside:
+              stopBy:
+                kind: function_item
+              all:
+                - not:
+                    kind: function_item
+                - follows:
+                    stopBy: end
+                    matches: transaction-resolving-sibling
+---
+# The transaction is opened in one block but the only commit sits inside a branch of
+# that block, so the paths that skip the branch drop it:
+#
+#   let mut tx = db.start_transaction().await?;
+#   if work {
+#       tx.commit().await?;  // <- only committed when `work`
+#   }
+#   Ok(())
+#
+# A commit in a `match` where *every* arm commits is fine, and so is a transaction
+# opened *inside* the branch that commits it, both are resolved on every path
+# through their own block.
+id: uncommitted-transaction-conditional-commit
+language: rust
+severity: error
+message: This transaction is only committed on some paths, the others roll it back on drop
+note: |-
+  Commit in the same block the transaction is opened in, make every branch commit or roll
+  back explicitly, or open the transaction inside the branch that commits it.
+rule:
+  all:
+    - any:
+        - pattern: let mut $TX = $INIT;
+        - pattern: let $TX = $INIT;
+    - has:
+        stopBy: end
+        matches: transaction-opens
+    # No later statement of this same block resolves the transaction.
+    - not:
+        precedes:
+          stopBy: end
+          matches: transaction-resolving-sibling
+    - inside:
+        stopBy: end
+        kind: function_item
+        all:
+          # There *is* a commit somewhere, otherwise `uncommitted-transaction` reports.
+          - has:
+              stopBy: end
+              matches: transaction-resolves
+          - not:
+              has:
+                stopBy: end
+                any:
+                  - pattern: $CALLEE($TX)
+                  - pattern: $CALLEE($TX, $$$TAIL)
+                  - pattern: $CALLEE($$$HEAD, $TX)
+                  - pattern: $CALLEE($$$HEAD, $TX, $$$TAIL)
+                  - pattern: return $TX;

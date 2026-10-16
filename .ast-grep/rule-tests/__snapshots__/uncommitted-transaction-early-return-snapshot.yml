@@ -1,0 +1,333 @@
+id: uncommitted-transaction-early-return
+snapshots:
+  ? |
+    async fn conditional_return(db: &Database, absent: bool) -> Result<u8, TransactionError> {
+        let mut tx = db.start_transaction().await?;
+        if absent {
+            return if absent {
+                Err(TransactionError::Hook("absent".into()))
+            } else {
+                Ok(1)
+            };
+        }
+        tx.commit().await?;
+        Ok(0)
+    }
+  : labels:
+    - source: |-
+        return if absent {
+                    Err(TransactionError::Hook("absent".into()))
+                } else {
+                    Ok(1)
+                }
+      style: primary
+      start: 163
+      end: 283
+    - source: commit
+      style: secondary
+      start: 298
+      end: 304
+    - source: |-
+        async fn conditional_return(db: &Database, absent: bool) -> Result<u8, TransactionError> {
+            let mut tx = db.start_transaction().await?;
+            if absent {
+                return if absent {
+                    Err(TransactionError::Hook("absent".into()))
+                } else {
+                    Ok(1)
+                };
+            }
+            tx.commit().await?;
+            Ok(0)
+        }
+      style: secondary
+      start: 0
+      end: 326
+    - source: let mut tx = db.start_transaction().await?;
+      style: secondary
+      start: 95
+      end: 138
+    - source: |-
+        if absent {
+                return if absent {
+                    Err(TransactionError::Hook("absent".into()))
+                } else {
+                    Ok(1)
+                };
+            }
+      style: secondary
+      start: 143
+      end: 290
+  ? |
+    async fn early_ok(db: &Database, skip: bool) -> Result<(), TransactionError> {
+        let mut tx = db.start_transaction().await?;
+        if skip {
+            return Ok(());
+        }
+        borrow_tx(&mut tx).await?;
+        tx.commit().await?;
+        Ok(())
+    }
+  : labels:
+    - source: return Ok(())
+      style: primary
+      start: 149
+      end: 162
+    - source: commit
+      style: secondary
+      start: 208
+      end: 214
+    - source: |-
+        async fn early_ok(db: &Database, skip: bool) -> Result<(), TransactionError> {
+            let mut tx = db.start_transaction().await?;
+            if skip {
+                return Ok(());
+            }
+            borrow_tx(&mut tx).await?;
+            tx.commit().await?;
+            Ok(())
+        }
+      style: secondary
+      start: 0
+      end: 237
+    - source: let mut tx = db.start_transaction().await?;
+      style: secondary
+      start: 83
+      end: 126
+    - source: |-
+        if skip {
+                return Ok(());
+            }
+      style: secondary
+      start: 131
+      end: 169
+  ? |
+    async fn early_ok_after_match_open(db: &Database, skip: bool) -> Result<(), TransactionError> {
+        let mut tx = match db.start_transaction().await {
+            Ok(tx) => tx,
+            Err(_) => return Err(TransactionError::Hook("start".into())),
+        };
+        if skip {
+            return Ok(());
+        }
+        tx.commit().await?;
+        Ok(())
+    }
+  : labels:
+    - source: return Ok(())
+      style: primary
+      start: 271
+      end: 284
+    - source: commit
+      style: secondary
+      start: 299
+      end: 305
+    - source: |-
+        async fn early_ok_after_match_open(db: &Database, skip: bool) -> Result<(), TransactionError> {
+            let mut tx = match db.start_transaction().await {
+                Ok(tx) => tx,
+                Err(_) => return Err(TransactionError::Hook("start".into())),
+            };
+            if skip {
+                return Ok(());
+            }
+            tx.commit().await?;
+            Ok(())
+        }
+      style: secondary
+      start: 0
+      end: 328
+    - source: |-
+        let mut tx = match db.start_transaction().await {
+                Ok(tx) => tx,
+                Err(_) => return Err(TransactionError::Hook("start".into())),
+            };
+      style: secondary
+      start: 100
+      end: 248
+    - source: |-
+        if skip {
+                return Ok(());
+            }
+      style: secondary
+      start: 253
+      end: 291
+  ? |
+    async fn early_ok_in_loop(db: &Database, items: &[u8]) -> Result<(), TransactionError> {
+        let mut tx = db.start_transaction().await?;
+        for item in items {
+            if *item == 0 {
+                return Ok(());
+            }
+        }
+        tx.commit().await?;
+        Ok(())
+    }
+  : labels:
+    - source: return Ok(())
+      style: primary
+      start: 197
+      end: 210
+    - source: commit
+      style: secondary
+      start: 235
+      end: 241
+    - source: |-
+        async fn early_ok_in_loop(db: &Database, items: &[u8]) -> Result<(), TransactionError> {
+            let mut tx = db.start_transaction().await?;
+            for item in items {
+                if *item == 0 {
+                    return Ok(());
+                }
+            }
+            tx.commit().await?;
+            Ok(())
+        }
+      style: secondary
+      start: 0
+      end: 264
+    - source: let mut tx = db.start_transaction().await?;
+      style: secondary
+      start: 93
+      end: 136
+    - source: |-
+        for item in items {
+                if *item == 0 {
+                    return Ok(());
+                }
+            }
+      style: secondary
+      start: 141
+      end: 227
+  ? |
+    async fn guard_early_ok(exe: impl Executor<'_>, skip: bool) -> Result<(), TransactionError> {
+        let mut guard = exe.ensure_transaction().await?;
+        if skip {
+            return Ok(());
+        }
+        guard.commit().await?;
+        Ok(())
+    }
+  : labels:
+    - source: return Ok(())
+      style: primary
+      start: 169
+      end: 182
+    - source: commit
+      style: secondary
+      start: 200
+      end: 206
+    - source: |-
+        async fn guard_early_ok(exe: impl Executor<'_>, skip: bool) -> Result<(), TransactionError> {
+            let mut guard = exe.ensure_transaction().await?;
+            if skip {
+                return Ok(());
+            }
+            guard.commit().await?;
+            Ok(())
+        }
+      style: secondary
+      start: 0
+      end: 229
+    - source: let mut guard = exe.ensure_transaction().await?;
+      style: secondary
+      start: 98
+      end: 146
+    - source: |-
+        if skip {
+                return Ok(());
+            }
+      style: secondary
+      start: 151
+      end: 189
+  ? |
+    async fn let_else_ok(db: &Database, items: &[u8]) -> Result<Option<u8>, TransactionError> {
+        let mut tx = db.start_transaction().await?;
+        let Some(first) = items.first() else {
+            return Ok(None);
+        };
+        tx.commit().await?;
+        Ok(Some(*first))
+    }
+  : labels:
+    - source: return Ok(None)
+      style: primary
+      start: 191
+      end: 206
+    - source: commit
+      style: secondary
+      start: 222
+      end: 228
+    - source: |-
+        async fn let_else_ok(db: &Database, items: &[u8]) -> Result<Option<u8>, TransactionError> {
+            let mut tx = db.start_transaction().await?;
+            let Some(first) = items.first() else {
+                return Ok(None);
+            };
+            tx.commit().await?;
+            Ok(Some(*first))
+        }
+      style: secondary
+      start: 0
+      end: 261
+    - source: let mut tx = db.start_transaction().await?;
+      style: secondary
+      start: 96
+      end: 139
+    - source: |-
+        let Some(first) = items.first() else {
+                return Ok(None);
+            };
+      style: secondary
+      start: 144
+      end: 214
+  ? |
+    async fn nested_early_ok(db: &Database, outer: bool, which: u8) -> Result<bool, TransactionError> {
+        let mut tx = db.start_transaction().await?;
+        if outer {
+            match which {
+                0 => return Ok(false),
+                _ => borrow_tx(&mut tx).await?,
+            }
+        }
+        tx.commit().await?;
+        Ok(true)
+    }
+  : labels:
+    - source: return Ok(false)
+      style: primary
+      start: 202
+      end: 218
+    - source: commit
+      style: secondary
+      start: 287
+      end: 293
+    - source: |-
+        async fn nested_early_ok(db: &Database, outer: bool, which: u8) -> Result<bool, TransactionError> {
+            let mut tx = db.start_transaction().await?;
+            if outer {
+                match which {
+                    0 => return Ok(false),
+                    _ => borrow_tx(&mut tx).await?,
+                }
+            }
+            tx.commit().await?;
+            Ok(true)
+        }
+      style: secondary
+      start: 0
+      end: 318
+    - source: let mut tx = db.start_transaction().await?;
+      style: secondary
+      start: 104
+      end: 147
+    - source: |-
+        if outer {
+                match which {
+                    0 => return Ok(false),
+                    _ => borrow_tx(&mut tx).await?,
+                }
+            }
+      style: secondary
+      start: 152
+      end: 279

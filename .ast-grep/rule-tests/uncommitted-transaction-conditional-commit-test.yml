@@ -1,0 +1,163 @@
+id: uncommitted-transaction-conditional-commit
+valid:
+  # the commit is a statement of the same block
+  - |
+    async fn flat(db: &Database) -> Result<(), TransactionError> {
+        let mut tx = db.start_transaction().await?;
+        borrow_tx(&mut tx).await?;
+        tx.commit().await?;
+        Ok(())
+    }
+  # `map_err` instead of `?`
+  - |
+    async fn mapped(db: &Database) -> Result<(), String> {
+        let mut tx = db
+            .start_transaction()
+            .await
+            .map_err(|err| err.to_string())?;
+        tx.commit().await.map_err(|err| err.to_string())?;
+        Ok(())
+    }
+  # the commit is the tail expression of the block
+  - |
+    async fn commit_is_tail(db: &Database) -> Result<(), TransactionError> {
+        let mut tx = db.start_transaction().await?;
+        borrow_tx(&mut tx).await?;
+        tx.commit().await
+    }
+  # the commit's result is bound
+  - |
+    async fn commit_bound(db: &Database) -> Result<(), TransactionError> {
+        let mut tx = db.start_transaction().await?;
+        let () = tx.commit().await?;
+        Ok(())
+    }
+  # start and commit nested inside the same `if`, resolved on every path through
+  # *that* block
+  - |
+    async fn nested_in_if(db: &Database, work: bool) -> Result<(), TransactionError> {
+        if work {
+            let mut tx = db.start_transaction().await?;
+            borrow_tx(&mut tx).await?;
+            tx.commit().await?;
+        }
+        Ok(())
+    }
+  # one transaction per loop iteration, committed in the same block
+  - |
+    async fn two_transactions(db: &Database, items: &[u8]) -> Result<(), TransactionError> {
+        let mut tx = db.start_transaction().await?;
+        tx.commit().await?;
+
+        for _item in items {
+            let mut tx = db.start_transaction().await?;
+            tx.commit().await?;
+        }
+        Ok(())
+    }
+  # every arm of the tail `match` commits
+  - |
+    async fn all_arms_commit(db: &Database, which: u8) -> Result<(), TransactionError> {
+        let mut tx = db.start_transaction().await?;
+        match which {
+            0 => {
+                borrow_tx(&mut tx).await?;
+                tx.commit().await
+            }
+            _ => tx.commit().await,
+        }
+    }
+  # both branches of the tail `if .. else` commit
+  - |
+    async fn both_branches_commit(db: &Database, work: bool) -> Result<(), TransactionError> {
+        let mut tx = db.start_transaction().await?;
+        if work {
+            borrow_tx(&mut tx).await?;
+            tx.commit().await
+        } else {
+            tx.commit().await
+        }
+    }
+  # rollback in the branch, commit in the block, resolved either way
+  - |
+    async fn rollback(db: &Database, bad: bool) -> Result<(), TransactionError> {
+        let mut tx = db.start_transaction().await?;
+        if bad {
+            tx.rollback().await?;
+            return Err(TransactionError::Hook("bad".into()));
+        }
+        tx.commit().await?;
+        Ok(())
+    }
+  # a guard committed in its own block
+  - |
+    async fn guard(exe: impl Executor<'_>) -> Result<(), TransactionError> {
+        let mut guard = exe.ensure_transaction().await?;
+        borrow_tx(guard.get_transaction()).await?;
+        guard.commit().await?;
+        Ok(())
+    }
+  # never committed anywhere, reported by `uncommitted-transaction`, not by this rule
+  - |
+    async fn never_committed(db: &Database) -> Result<(), TransactionError> {
+        let mut tx = db.start_transaction().await?;
+        borrow_tx(&mut tx).await?;
+        Ok(())
+    }
+invalid:
+  # only one branch commits, and the function still returns `Ok`
+  - |
+    async fn one_branch_commits(db: &Database, work: bool) -> Result<(), TransactionError> {
+        let mut tx = db.start_transaction().await?;
+        if work {
+            tx.commit().await?;
+        }
+        Ok(())
+    }
+  # one `match` arm forgets the commit
+  - |
+    async fn one_arm_commits(db: &Database, which: u8) -> Result<(), TransactionError> {
+        let mut tx = db.start_transaction().await?;
+        match which {
+            0 => tx.commit().await?,
+            _ => borrow_tx(&mut tx).await?,
+        }
+        Ok(())
+    }
+  # the commit only runs when the loop body runs
+  - |
+    async fn commit_in_loop(db: &Database, items: &[u8]) -> Result<(), TransactionError> {
+        let mut tx = db.start_transaction().await?;
+        for item in items {
+            borrow_tx(&mut tx).await?;
+            tx.commit().await?;
+        }
+        Ok(())
+    }
+  # the commit is in the `else` branch only
+  - |
+    async fn else_only(db: &Database, work: bool) -> Result<(), TransactionError> {
+        let mut tx = db.start_transaction().await?;
+        if work {
+            borrow_tx(&mut tx).await?;
+        } else {
+            tx.commit().await?;
+        }
+        Ok(())
+    }
+  # the commit is inside a closure, nothing says it ever runs
+  - |
+    async fn commit_in_closure(db: &Database) -> Result<(), TransactionError> {
+        let mut tx = db.start_transaction().await?;
+        let commit = || async { tx.commit().await };
+        Ok(())
+    }
+  # a guard whose only commit sits in a branch
+  - |
+    async fn guard_one_branch(exe: impl Executor<'_>, work: bool) -> Result<(), TransactionError> {
+        let mut guard = exe.ensure_transaction().await?;
+        if work {
+            guard.commit().await?;
+        }
+        Ok(())
+    }

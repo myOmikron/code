@@ -1,0 +1,125 @@
+id: uncommitted-transaction
+snapshots:
+  ? |
+    #[cfg_attr(dylint_lib = "uncommitted_transaction", allow(uncommitted_transaction))]
+    async fn deliberately_dropped(db: &Database) -> Result<(), TransactionError> {
+        let mut tx = db.start_transaction().await?;
+        Ok(())
+    }
+    async fn forgotten(db: &Database) -> Result<(), TransactionError> {
+        let mut tx = db.start_transaction().await?;
+        Ok(())
+    }
+  : labels:
+    - source: let mut tx = db.start_transaction().await?;
+      style: primary
+      start: 296
+      end: 339
+    - source: start_transaction
+      style: secondary
+      start: 312
+      end: 329
+    - source: |-
+        async fn forgotten(db: &Database) -> Result<(), TransactionError> {
+            let mut tx = db.start_transaction().await?;
+            Ok(())
+        }
+      style: secondary
+      start: 224
+      end: 352
+  ? |
+    async fn field_named_commit(db: &Database, repo: &Repo) -> Result<String, TransactionError> {
+        let mut tx = db.start_transaction().await?;
+        borrow_tx(&mut tx).await?;
+        let sha = repo.commit.clone();
+        Ok(sha)
+    }
+  : labels:
+    - source: let mut tx = db.start_transaction().await?;
+      style: primary
+      start: 98
+      end: 141
+    - source: start_transaction
+      style: secondary
+      start: 114
+      end: 131
+    - source: |-
+        async fn field_named_commit(db: &Database, repo: &Repo) -> Result<String, TransactionError> {
+            let mut tx = db.start_transaction().await?;
+            borrow_tx(&mut tx).await?;
+            let sha = repo.commit.clone();
+            Ok(sha)
+        }
+      style: secondary
+      start: 0
+      end: 221
+  ? |
+    async fn guard_never_committed(exe: impl Executor<'_>) -> Result<(), TransactionError> {
+        let mut guard = exe.ensure_transaction().await?;
+        borrow_tx(guard.get_transaction()).await?;
+        Ok(())
+    }
+  : labels:
+    - source: let mut guard = exe.ensure_transaction().await?;
+      style: primary
+      start: 93
+      end: 141
+    - source: ensure_transaction
+      style: secondary
+      start: 113
+      end: 131
+    - source: |-
+        async fn guard_never_committed(exe: impl Executor<'_>) -> Result<(), TransactionError> {
+            let mut guard = exe.ensure_transaction().await?;
+            borrow_tx(guard.get_transaction()).await?;
+            Ok(())
+        }
+      style: secondary
+      start: 0
+      end: 201
+  ? |
+    async fn never_committed(db: &Database) -> Result<(), TransactionError> {
+        let mut tx = db.start_transaction().await?;
+        borrow_tx(&mut tx).await?;
+        Ok(())
+    }
+  : labels:
+    - source: let mut tx = db.start_transaction().await?;
+      style: primary
+      start: 78
+      end: 121
+    - source: start_transaction
+      style: secondary
+      start: 94
+      end: 111
+    - source: |-
+        async fn never_committed(db: &Database) -> Result<(), TransactionError> {
+            let mut tx = db.start_transaction().await?;
+            borrow_tx(&mut tx).await?;
+            Ok(())
+        }
+      style: secondary
+      start: 0
+      end: 165
+  ? |
+    async fn not_mut(db: &Database) -> Result<(), TransactionError> {
+        let tx = db.start_transaction().await?;
+        Ok(())
+    }
+  : labels:
+    - source: let tx = db.start_transaction().await?;
+      style: primary
+      start: 70
+      end: 109
+    - source: start_transaction
+      style: secondary
+      start: 82
+      end: 99
+    - source: |-
+        async fn not_mut(db: &Database) -> Result<(), TransactionError> {
+            let tx = db.start_transaction().await?;
+            Ok(())
+        }
+      style: secondary
+      start: 0
+      end: 122

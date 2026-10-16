@@ -34,9 +34,11 @@ tools/          # Developer tooling (changed-crates.py, ci-image/)
 All common tasks are available via [just](https://github.com/casey/just):
 
 ```sh
-just ci                      # Run all Rust checks (fmt, lint, test, deny)
+just ci                      # Run all Rust checks (fmt, lint, lint-ast, test-ast, doc, test, deny)
 just check / test / lint     # Individual Rust checks
-just fmt / fmt-check         # Format code (rustfmt nightly)
+just lint-ast / test-ast     # ast-grep lints (.ast-grep/rules) / their self-tests
+just doc                     # rustdoc with -D warnings (broken intra-doc links fail)
+just fmt / fmt-check         # Format code (rustfmt nightly, prettier, taplo)
 just deny                    # cargo-deny license/advisory checks
 just make-migrations <name>  # Generate rorm migrations for a service
 just build-service <name>    # Release build a specific service
@@ -55,8 +57,11 @@ Frontend (per app): `pnpm run dev` / `build` / `ci` / `format` / `gen-api`.
 
 ### Code Style
 
-- **Formatting**: `rustfmt` via nightly (see `.rustfmt.toml`); prettier for TypeScript
-- **Lints**: Workspace-level clippy lints in root `Cargo.toml`; CI runs clippy with `-D warnings`
+- **Formatting**: `rustfmt` via nightly (see `.rustfmt.toml`); prettier for TypeScript;
+  `taplo` for TOML (see `.taplo.toml`, generated migrations are excluded)
+- **Lints**: Workspace-level clippy lints in root `Cargo.toml` plus `clippy.toml`;
+  CI runs clippy with `-D warnings`. Project-specific lints are ast-grep rules
+  in `.ast-grep/rules/`, each with test cases in `.ast-grep/rule-tests/`
 - **`unsafe` code is forbidden** (`unsafe_code = "forbid"`)
 - Every module gets a `//!` doc comment, every public item a `///` doc comment
   (services set `#![warn(missing_docs)]`). Keep them short.
@@ -80,7 +85,12 @@ Frontend (per app): `pnpm run dev` / `build` / `ci` / `format` / `gen-api`.
   clap subcommands: `start`, `make-migrations`, plus service-specific ones
 - Config via env vars, loaded upfront with `EnvLoader` — report all errors at once
 - rorm migrations live in `services/<name>/migrations/` and are applied automatically
-  at startup (the Dockerfile copies them to `/migrations`)
+  at startup (the Dockerfile copies them to `/migrations`). PRs get a warning for
+  `RawSQL`/`RenameField`/`DeleteField`/`DeleteModel`/`SetFieldType`/`DeleteIndex`
+  (`check-migrations.yaml`)
+- Every rorm transaction is resolved explicitly on every path: `commit` on success
+  and on read-only paths, `rollback` before an early `Ok(..)` that discards the
+  writes (enforced by the `uncommitted-transaction*` ast-grep rules). No `ast-grep-ignore`
 - Browser-facing services add the session layer themselves
   (`.layer(galvyn::core::session::layer())`) — `service_bootstrap::run` disables galvyn's
 - Use `tracing` (not `println`/`eprintln`) — exception: config errors before tracing init
@@ -190,7 +200,8 @@ Frontend (per app): `pnpm run dev` / `build` / `ci` / `format` / `gen-api`.
 
 - GitHub Actions in `.github/workflows/`; the Rust pipeline lives in the composite
   action `.github/actions/rust-ci` and scopes clippy/build/test on PRs to crates
-  affected by the diff (`tools/changed-crates.py`)
+  affected by the diff (`tools/changed-crates.py`); it also runs taplo, `ast-grep scan`
+  and `cargo doc`. `tools/ci-image` mirrors it for local runs (`just run-ci-image`)
 - Dockerfile changes are build-checked by `docker-build.yaml`
 - Version pins in workflows/Dockerfiles carry `# renovate:` comments — keep them
   directly above the assignment they pin

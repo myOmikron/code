@@ -11,9 +11,11 @@ on:
       - "**/*.proto"
       - "**/Cargo.toml"
       - "**/Cargo.lock"
+      - "*.toml"
+      - ".*.toml"
       - "proto/**"
-      - "deny.toml"
-      - ".rustfmt.toml"
+      - "sgconfig.yml"
+      - ".ast-grep/**"
       - "tools/ci-image/**"
       - "tools/changed-crates.py"
 
