@@ -250,4 +250,4 @@ The five canonical labels are used verbatim (`needs-triage`, `needs-info`, `read
 
 ### Domain docs
 
-Multi-context: a root `CONTEXT-MAP.md` points at per-service `services/<name>/CONTEXT.md`; system-wide ADRs in `docs/adr/`, service-scoped ones in `services/<name>/docs/adr/`. See `docs/agents/domain.md`.
+Multi-context: a root `GLOSSARY-MAP.md` points at per-service `services/<name>/GLOSSARY.md`; system-wide ADRs in `docs/adr/`, service-scoped ones in `services/<name>/docs/adr/`. See `docs/agents/domain.md`.
