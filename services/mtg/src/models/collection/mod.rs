@@ -568,7 +568,7 @@ impl CollectionEntry {
     /// Fetch a single entry of a collection
     ///
     /// Scoped by collection for the same reason as
-    /// [`CollectionEntry::set_quantity`]: the caller has only proven it may
+    /// [`CollectionEntry::update`]: the caller has only proven it may
     /// administer *that* collection.
     #[instrument(name = "CollectionEntry::get", skip(tx))]
     pub async fn get(
@@ -1066,7 +1066,7 @@ impl CollectionEntry {
 
     /// Delete an entry
     ///
-    /// Scoped by collection for the same reason as [`CollectionEntry::set_quantity`].
+    /// Scoped by collection for the same reason as [`CollectionEntry::update`].
     ///
     /// Returns `false` if the entry does not exist.
     #[instrument(name = "CollectionEntry::delete", skip(tx))]

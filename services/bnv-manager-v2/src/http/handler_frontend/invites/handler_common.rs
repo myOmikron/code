@@ -99,6 +99,7 @@ pub async fn accept_invite(
         }
         Ok(_) => {}
         Err(err) => {
+            tx.rollback().await?;
             return match err {
                 crate::models::invite::AcceptInviteError::Expired => {
                     Ok(ApiJson(FormResult::err(AcceptInviteError {

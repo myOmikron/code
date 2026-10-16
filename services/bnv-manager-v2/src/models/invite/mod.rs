@@ -198,6 +198,7 @@ impl Invite {
             .optional()
             .await?;
         if existing.is_some() {
+            guard.rollback_if_owned().await?;
             return Ok(Err(CreateInviteError::UsernameTaken));
         }
 

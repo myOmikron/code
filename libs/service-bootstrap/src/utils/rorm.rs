@@ -47,6 +47,9 @@ pub fn truncate_string<const MAX_LEN: usize>(
 ///
 /// The database will store the enum's variants as plain text.
 ///
+/// [`FieldType`]: galvyn::rorm::fields::traits::FieldType
+/// [`FieldEq`]: galvyn::rorm::fields::traits::FieldEq
+///
 /// The decoder argument needs to be a unique identifier.
 /// It is recommended to use `<Enum>Decoder`.
 ///

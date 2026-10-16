@@ -98,6 +98,8 @@ impl Club {
             .populate_bulk(guard.as_mut(), &mut cm)
             .await?;
 
+        guard.commit_if_owned().await?;
+
         #[allow(clippy::expect_used)]
         Ok(cm
             .into_iter()

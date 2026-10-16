@@ -123,6 +123,8 @@ const MISSING: &str = "GREATEST(w.wanted - a.free, 0)";
 /// `numeric`, which the reader does not take.
 ///
 /// Returns the scalar subquery, ready to be interpolated.
+///
+/// [`STACK_LANGUAGE`]: super::STACK_LANGUAGE
 fn owned_free() -> String {
     format!(
         "COALESCE(( \

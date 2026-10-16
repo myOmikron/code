@@ -109,6 +109,7 @@ pub async fn recover_account(
     let Some(account) = Account::get_by_username(&mut tx, &request.username).await? else {
         // Same answer as the happy path, just without mail.
         info!("Recovery for an unknown username");
+        tx.commit().await?;
         return Ok(ApiJson(()));
     };
 

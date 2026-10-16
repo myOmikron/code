@@ -179,6 +179,7 @@ pub async fn finish_auth(session: Session) -> ApiResult<Redirect> {
         .ok_or(ApiError::server_error("Invalid state"))?;
 
     if !matches!(account, Account::ClubMember(_)) {
+        tx.rollback().await?;
         return Ok(Redirect::temporary(
             Link::oidc_failed("Only members of a club are allowed to use OIDC").as_str(),
         ));
