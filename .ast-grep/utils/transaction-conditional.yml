@@ -1,0 +1,13 @@
+# Expressions whose body only runs on *some* paths. A commit inside one of these does
+# not resolve the transaction for the enclosing block. `closure_expression` is in here
+# for the same reason: nothing in the syntax says whether the closure ever runs.
+id: transaction-conditional
+language: rust
+rule:
+  any:
+    - kind: if_expression
+    - kind: match_expression
+    - kind: for_expression
+    - kind: while_expression
+    - kind: loop_expression
+    - kind: closure_expression

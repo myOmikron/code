@@ -29,6 +29,18 @@ echo "::group::cargo fmt"
 RUSTC_WRAPPER="" cargo +nightly fmt --all -- --check
 echo "::endgroup::"
 
+echo "::group::taplo fmt"
+taplo fmt --check
+echo "::endgroup::"
+
+echo "::group::ast-grep test"
+ast-grep test
+echo "::endgroup::"
+
+echo "::group::ast-grep scan"
+ast-grep scan
+echo "::endgroup::"
+
 if (( SKIP_BUILD_STEPS )); then
     echo "No affected crates — skipping clippy, build, and test."
 else
@@ -42,6 +54,10 @@ else
 
     echo "::group::cargo test"
     cargo test --locked "${CRATE_ARGS[@]}"
+    echo "::endgroup::"
+
+    echo "::group::cargo doc"
+    RUSTDOCFLAGS="-D warnings" cargo doc --locked --no-deps "${CRATE_ARGS[@]}"
     echo "::endgroup::"
 fi
 

@@ -1,0 +1,3 @@
+enforced-import-renames = [
+    { path = "anyhow::Error", rename = "AnyhowError" },
+]

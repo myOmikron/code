@@ -1,0 +1,19 @@
+# `tx.commit()` / `tx.rollback()`, either one resolves the transaction. A rollback
+# is an explicit decision to discard the writes, which is exactly what the lints want
+# to see instead of a silent drop. `commit_if_owned()` / `rollback_if_owned()` are the
+# equivalents on the `MaybeOwnedTransaction` handed out by `ensure_transaction()`.
+#
+# Only a *method call* counts: a plain field access like `repo.commit` must not
+# silence the lint. A `.commit()` on some unrelated receiver still does, the lints
+# do not track receivers.
+id: transaction-resolves
+language: rust
+rule:
+  kind: field_identifier
+  regex: ^(commit|rollback|commit_if_owned|rollback_if_owned)$
+  inside:
+    kind: field_expression
+    field: field
+    inside:
+      kind: call_expression
+      field: function

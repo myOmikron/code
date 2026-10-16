@@ -14,7 +14,8 @@ apt-get install -y --no-install-recommends \
     apt \
     mold \
     python3 \
-    sccache
+    sccache \
+    unzip
 rm -rf /var/lib/apt/lists/*
 EOF
 
@@ -29,6 +30,26 @@ set -e
 curl -fsSL "https://github.com/EmbarkStudios/cargo-deny/releases/download/${CARGO_DENY_VERSION}/cargo-deny-${CARGO_DENY_VERSION}-x86_64-unknown-linux-musl.tar.gz" \
     | tar xz --strip-components=1 -C /usr/local/bin/ "cargo-deny-${CARGO_DENY_VERSION}-x86_64-unknown-linux-musl/cargo-deny"
 cargo-deny --version
+EOF
+
+# renovate: datasource=github-releases depName=ast-grep/ast-grep versioning=semver
+ARG AST_GREP_VERSION=0.51.0
+RUN <<EOF
+set -e
+curl -fsSL -o /tmp/ast-grep.zip "https://github.com/ast-grep/ast-grep/releases/download/${AST_GREP_VERSION}/app-x86_64-unknown-linux-gnu.zip"
+unzip -q /tmp/ast-grep.zip ast-grep -d /tmp/ast-grep
+install -m755 /tmp/ast-grep/ast-grep /usr/local/bin/ast-grep
+rm -rf /tmp/ast-grep.zip /tmp/ast-grep
+ast-grep --version
+EOF
+
+# renovate: datasource=github-releases depName=tamasfe/taplo versioning=semver
+ARG TAPLO_VERSION=0.10.0
+RUN <<EOF
+set -e
+curl -fsSL "https://github.com/tamasfe/taplo/releases/download/${TAPLO_VERSION}/taplo-linux-x86_64.gz" | gunzip > /usr/local/bin/taplo
+chmod 755 /usr/local/bin/taplo
+taplo --version
 EOF
 
 COPY --chmod=0755 run-ci.sh /usr/local/bin/run-ci

@@ -1,0 +1,9 @@
+# `db.start_transaction()` / `exe.ensure_transaction()`, the two rorm calls that
+# hand out something which has to be committed. Matching the method name (a
+# `field_identifier`) rather than a whole call pattern keeps this independent of the
+# receiver, of `?` vs `map_err(..)?`, and of line breaks.
+id: transaction-opens
+language: rust
+rule:
+  kind: field_identifier
+  regex: ^(start_transaction|ensure_transaction)$

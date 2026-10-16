@@ -1,0 +1,274 @@
+id: uncommitted-transaction-early-return
+valid:
+  # no early exit at all
+  - |
+    async fn flat(db: &Database) -> Result<(), TransactionError> {
+        let mut tx = db.start_transaction().await?;
+        borrow_tx(&mut tx).await?;
+        tx.commit().await?;
+        Ok(())
+    }
+  # early *error* returns need no commit, the drop rolls back, which is correct
+  - |
+    async fn early_error(db: &Database, bad: bool) -> Result<(), TransactionError> {
+        let mut tx = db.start_transaction().await?;
+        if bad {
+            return Err(TransactionError::Hook("bad".into()));
+        }
+        let Some(_first) = [1u8].first() else {
+            return Err(TransactionError::Hook("empty".into()));
+        };
+        tx.commit().await?;
+        Ok(())
+    }
+  # an error built by a helper (`FormErrors::fail()`), the lint cannot tell it apart
+  # from a success and errs towards staying quiet
+  - |
+    async fn helper_error(db: &Database, bad: bool) -> Result<(), TransactionError> {
+        let mut tx = db.start_transaction().await?;
+        if bad {
+            return fail();
+        }
+        tx.commit().await?;
+        Ok(())
+    }
+  # rollback before the early return resolves the transaction
+  - |
+    async fn rollback(db: &Database, bad: bool) -> Result<(), TransactionError> {
+        let mut tx = db.start_transaction().await?;
+        if bad {
+            tx.rollback().await?;
+            return Ok(());
+        }
+        tx.commit().await?;
+        Ok(())
+    }
+  # commit before the early return, in the return's own block
+  - |
+    async fn commit_then_return(db: &Database, skip: bool) -> Result<(), TransactionError> {
+        let mut tx = db.start_transaction().await?;
+        if skip {
+            tx.commit().await?;
+            return Ok(());
+        }
+        tx.commit().await?;
+        Ok(())
+    }
+  # commit before the early return, one block further out
+  - |
+    async fn commit_then_nested_return(db: &Database, skip: bool) -> Result<(), TransactionError> {
+        let mut tx = db.start_transaction().await?;
+        tx.commit().await?;
+        if skip {
+            return Ok(());
+        }
+        Ok(())
+    }
+  # commit before an early return out of a loop
+  - |
+    async fn commit_then_loop_return(db: &Database, items: &[u8]) -> Result<(), TransactionError> {
+        let mut tx = db.start_transaction().await?;
+        tx.commit().await?;
+        for item in items {
+            if *item == 0 {
+                return Ok(());
+            }
+        }
+        Ok(())
+    }
+  # a diverging call is not a successful exit
+  - |
+    async fn diverging(db: &Database, bad: bool) -> Result<(), TransactionError> {
+        let mut tx = db.start_transaction().await?;
+        if bad {
+            std::process::exit(1);
+        }
+        tx.commit().await?;
+        Ok(())
+    }
+  # tail `match` where every arm commits, no `return` involved
+  - |
+    async fn all_arms_commit(db: &Database, which: u8) -> Result<(), TransactionError> {
+        let mut tx = db.start_transaction().await?;
+        match which {
+            0 => {
+                borrow_tx(&mut tx).await?;
+                tx.commit().await
+            }
+            _ => tx.commit().await,
+        }
+    }
+  # no transaction open, so an early `Ok` is nobody's business
+  - |
+    async fn no_transaction(skip: bool) -> Result<(), TransactionError> {
+        if skip {
+            return Ok(());
+        }
+        Ok(())
+    }
+  # the early `Ok` happens before the transaction is even opened (`get_cached_record`)
+  - |
+    async fn ok_before_start(db: &Database, cached: Option<u8>) -> Result<u8, TransactionError> {
+        if let Some(entry) = cached {
+            return Ok(entry);
+        }
+        let mut tx = db.start_transaction().await?;
+        tx.commit().await?;
+        Ok(0)
+    }
+  # the early `Ok` sits inside the initializer of `tx` itself, `start_transaction()`
+  # failed, so there is no transaction to commit
+  - |
+    async fn ok_in_start_failure(db: &Database) -> Result<(), TransactionError> {
+        let mut tx = match db.start_transaction().await {
+            Ok(tx) => tx,
+            Err(_) => return Ok(()),
+        };
+        tx.commit().await?;
+        Ok(())
+    }
+  # same with `let .. else`
+  - |
+    async fn ok_in_let_else_start_failure(db: &Database) -> Result<(), TransactionError> {
+        let Ok(mut tx) = db.start_transaction().await else {
+            return Ok(());
+        };
+        tx.commit().await?;
+        Ok(())
+    }
+  # the transaction of an earlier block is long dropped again
+  - |
+    async fn ok_after_inner_block(db: &Database, work: bool, skip: bool) -> Result<(), TransactionError> {
+        if work {
+            let mut tx = db.start_transaction().await?;
+            tx.commit().await?;
+        }
+        if skip {
+            return Ok(());
+        }
+        Ok(())
+    }
+  # never committed anywhere, reported by `uncommitted-transaction`, not by this rule
+  - |
+    async fn never_committed(db: &Database, skip: bool) -> Result<(), TransactionError> {
+        let mut tx = db.start_transaction().await?;
+        if skip {
+            return Ok(());
+        }
+        Ok(())
+    }
+  # a `return` inside a closure leaves the closure, not the function
+  - |
+    async fn return_in_closure(db: &Database, items: &[u8]) -> Result<(), TransactionError> {
+        let mut tx = db.start_transaction().await?;
+        let mapped: Result<Vec<u8>, TransactionError> = items
+            .iter()
+            .map(|item| {
+                if *item == 0 {
+                    return Ok(0);
+                }
+                Ok(*item)
+            })
+            .collect();
+        mapped?;
+        tx.commit().await?;
+        Ok(())
+    }
+  # a `return` inside an `async` block leaves the block, not the function
+  - |
+    async fn return_in_async_block(db: &Database, skip: bool) -> Result<(), TransactionError> {
+        let mut tx = db.start_transaction().await?;
+        let fut = async move {
+            if skip {
+                return Ok(1);
+            }
+            Ok(2)
+        };
+        let _: Result<u8, TransactionError> = fut.await;
+        tx.commit().await?;
+        Ok(())
+    }
+invalid:
+  # a guard clause returns `Ok` with the transaction already open
+  - |
+    async fn early_ok(db: &Database, skip: bool) -> Result<(), TransactionError> {
+        let mut tx = db.start_transaction().await?;
+        if skip {
+            return Ok(());
+        }
+        borrow_tx(&mut tx).await?;
+        tx.commit().await?;
+        Ok(())
+    }
+  # the transaction was opened by matching on `start_transaction()`, still open
+  - |
+    async fn early_ok_after_match_open(db: &Database, skip: bool) -> Result<(), TransactionError> {
+        let mut tx = match db.start_transaction().await {
+            Ok(tx) => tx,
+            Err(_) => return Err(TransactionError::Hook("start".into())),
+        };
+        if skip {
+            return Ok(());
+        }
+        tx.commit().await?;
+        Ok(())
+    }
+  # `let .. else` returning a successful `Ok(None)`
+  - |
+    async fn let_else_ok(db: &Database, items: &[u8]) -> Result<Option<u8>, TransactionError> {
+        let mut tx = db.start_transaction().await?;
+        let Some(first) = items.first() else {
+            return Ok(None);
+        };
+        tx.commit().await?;
+        Ok(Some(*first))
+    }
+  # a successful return from a `match` arm nested inside an `if`
+  - |
+    async fn nested_early_ok(db: &Database, outer: bool, which: u8) -> Result<bool, TransactionError> {
+        let mut tx = db.start_transaction().await?;
+        if outer {
+            match which {
+                0 => return Ok(false),
+                _ => borrow_tx(&mut tx).await?,
+            }
+        }
+        tx.commit().await?;
+        Ok(true)
+    }
+  # `return` of an `if` where one branch succeeds
+  - |
+    async fn conditional_return(db: &Database, absent: bool) -> Result<u8, TransactionError> {
+        let mut tx = db.start_transaction().await?;
+        if absent {
+            return if absent {
+                Err(TransactionError::Hook("absent".into()))
+            } else {
+                Ok(1)
+            };
+        }
+        tx.commit().await?;
+        Ok(0)
+    }
+  # the guard is open, the early return skips its commit
+  - |
+    async fn guard_early_ok(exe: impl Executor<'_>, skip: bool) -> Result<(), TransactionError> {
+        let mut guard = exe.ensure_transaction().await?;
+        if skip {
+            return Ok(());
+        }
+        guard.commit().await?;
+        Ok(())
+    }
+  # a commit *after* the return does not help it
+  - |
+    async fn early_ok_in_loop(db: &Database, items: &[u8]) -> Result<(), TransactionError> {
+        let mut tx = db.start_transaction().await?;
+        for item in items {
+            if *item == 0 {
+                return Ok(());
+            }
+        }
+        tx.commit().await?;
+        Ok(())
+    }

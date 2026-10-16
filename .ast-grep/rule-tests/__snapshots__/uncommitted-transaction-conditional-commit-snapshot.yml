@@ -1,0 +1,198 @@
+id: uncommitted-transaction-conditional-commit
+snapshots:
+  ? |
+    async fn commit_in_closure(db: &Database) -> Result<(), TransactionError> {
+        let mut tx = db.start_transaction().await?;
+        let commit = || async { tx.commit().await };
+        Ok(())
+    }
+  : labels:
+    - source: let mut tx = db.start_transaction().await?;
+      style: primary
+      start: 80
+      end: 123
+    - source: start_transaction
+      style: secondary
+      start: 96
+      end: 113
+    - source: commit
+      style: secondary
+      start: 155
+      end: 161
+    - source: |-
+        async fn commit_in_closure(db: &Database) -> Result<(), TransactionError> {
+            let mut tx = db.start_transaction().await?;
+            let commit = || async { tx.commit().await };
+            Ok(())
+        }
+      style: secondary
+      start: 0
+      end: 185
+  ? |
+    async fn commit_in_loop(db: &Database, items: &[u8]) -> Result<(), TransactionError> {
+        let mut tx = db.start_transaction().await?;
+        for item in items {
+            borrow_tx(&mut tx).await?;
+            tx.commit().await?;
+        }
+        Ok(())
+    }
+  : labels:
+    - source: let mut tx = db.start_transaction().await?;
+      style: primary
+      start: 91
+      end: 134
+    - source: start_transaction
+      style: secondary
+      start: 107
+      end: 124
+    - source: commit
+      style: secondary
+      start: 205
+      end: 211
+    - source: |-
+        async fn commit_in_loop(db: &Database, items: &[u8]) -> Result<(), TransactionError> {
+            let mut tx = db.start_transaction().await?;
+            for item in items {
+                borrow_tx(&mut tx).await?;
+                tx.commit().await?;
+            }
+            Ok(())
+        }
+      style: secondary
+      start: 0
+      end: 240
+  ? |
+    async fn else_only(db: &Database, work: bool) -> Result<(), TransactionError> {
+        let mut tx = db.start_transaction().await?;
+        if work {
+            borrow_tx(&mut tx).await?;
+        } else {
+            tx.commit().await?;
+        }
+        Ok(())
+    }
+  : labels:
+    - source: let mut tx = db.start_transaction().await?;
+      style: primary
+      start: 84
+      end: 127
+    - source: start_transaction
+      style: secondary
+      start: 100
+      end: 117
+    - source: commit
+      style: secondary
+      start: 201
+      end: 207
+    - source: |-
+        async fn else_only(db: &Database, work: bool) -> Result<(), TransactionError> {
+            let mut tx = db.start_transaction().await?;
+            if work {
+                borrow_tx(&mut tx).await?;
+            } else {
+                tx.commit().await?;
+            }
+            Ok(())
+        }
+      style: secondary
+      start: 0
+      end: 236
+  ? |
+    async fn guard_one_branch(exe: impl Executor<'_>, work: bool) -> Result<(), TransactionError> {
+        let mut guard = exe.ensure_transaction().await?;
+        if work {
+            guard.commit().await?;
+        }
+        Ok(())
+    }
+  : labels:
+    - source: let mut guard = exe.ensure_transaction().await?;
+      style: primary
+      start: 100
+      end: 148
+    - source: ensure_transaction
+      style: secondary
+      start: 120
+      end: 138
+    - source: commit
+      style: secondary
+      start: 177
+      end: 183
+    - source: |-
+        async fn guard_one_branch(exe: impl Executor<'_>, work: bool) -> Result<(), TransactionError> {
+            let mut guard = exe.ensure_transaction().await?;
+            if work {
+                guard.commit().await?;
+            }
+            Ok(())
+        }
+      style: secondary
+      start: 0
+      end: 212
+  ? |
+    async fn one_arm_commits(db: &Database, which: u8) -> Result<(), TransactionError> {
+        let mut tx = db.start_transaction().await?;
+        match which {
+            0 => tx.commit().await?,
+            _ => borrow_tx(&mut tx).await?,
+        }
+        Ok(())
+    }
+  : labels:
+    - source: let mut tx = db.start_transaction().await?;
+      style: primary
+      start: 89
+      end: 132
+    - source: start_transaction
+      style: secondary
+      start: 105
+      end: 122
+    - source: commit
+      style: secondary
+      start: 167
+      end: 173
+    - source: |-
+        async fn one_arm_commits(db: &Database, which: u8) -> Result<(), TransactionError> {
+            let mut tx = db.start_transaction().await?;
+            match which {
+                0 => tx.commit().await?,
+                _ => borrow_tx(&mut tx).await?,
+            }
+            Ok(())
+        }
+      style: secondary
+      start: 0
+      end: 242
+  ? |
+    async fn one_branch_commits(db: &Database, work: bool) -> Result<(), TransactionError> {
+        let mut tx = db.start_transaction().await?;
+        if work {
+            tx.commit().await?;
+        }
+        Ok(())
+    }
+  : labels:
+    - source: let mut tx = db.start_transaction().await?;
+      style: primary
+      start: 93
+      end: 136
+    - source: start_transaction
+      style: secondary
+      start: 109
+      end: 126
+    - source: commit
+      style: secondary
+      start: 162
+      end: 168
+    - source: |-
+        async fn one_branch_commits(db: &Database, work: bool) -> Result<(), TransactionError> {
+            let mut tx = db.start_transaction().await?;
+            if work {
+                tx.commit().await?;
+            }
+            Ok(())
+        }
+      style: secondary
+      start: 0
+      end: 197

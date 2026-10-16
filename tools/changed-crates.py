@@ -27,6 +27,7 @@ GLOBAL_FILES = {
     "deny.toml",
     "rust-toolchain.toml",
     ".rustfmt.toml",
+    "clippy.toml",
 }
 
 # Anything under these prefixes triggers a full rebuild — they feed into many
@@ -41,6 +42,11 @@ NOOP_GLOBS = (
     ".gitea/**",
     ".github/**",
     ".idea/**",
+    ".ast-grep/**",
+    "sgconfig.yml",
+    ".taplo.toml",
+    ".editorconfig",
+    "services/mtg-graph/**",
     ".dockerignore",
     ".gitignore",
     "charts/**",

@@ -1,0 +1,14 @@
+# A `return` that can hand back a success: `return Ok(..);`, or a `return` of a branch
+# with an `Ok(..)` in it. `return Err(..)`, a `return some_helper();` whose value the
+# lint cannot judge, and diverging calls are all left alone, an early exit is only
+# reported when it is visibly a success.
+id: transaction-returns-ok
+language: rust
+rule:
+  kind: return_expression
+  has:
+    stopBy: end
+    kind: call_expression
+    has:
+      field: function
+      regex: ^Ok$

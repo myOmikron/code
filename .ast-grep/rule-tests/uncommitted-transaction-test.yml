@@ -1,0 +1,220 @@
+id: uncommitted-transaction
+valid:
+  # the canonical flat case
+  - |
+    async fn flat(db: &Database) -> Result<(), TransactionError> {
+        let mut tx = db.start_transaction().await?;
+        borrow_tx(&mut tx).await?;
+        tx.commit().await?;
+        Ok(())
+    }
+  # `map_err` instead of `?` on both the start and the commit
+  - |
+    async fn mapped(db: &Database) -> Result<(), String> {
+        let mut tx = db
+            .start_transaction()
+            .await
+            .map_err(|err| err.to_string())?;
+        tx.commit().await.map_err(|err| err.to_string())?;
+        Ok(())
+    }
+  # the commit is the tail expression, without `?`
+  - |
+    async fn commit_is_tail(db: &Database) -> Result<(), TransactionError> {
+        let mut tx = db.start_transaction().await?;
+        tx.commit().await
+    }
+  # a guard from an arbitrary executor
+  - |
+    async fn guard(exe: impl Executor<'_>) -> Result<(), TransactionError> {
+        let mut guard = exe.ensure_transaction().await?;
+        borrow_tx(guard.get_transaction()).await?;
+        guard.commit().await?;
+        Ok(())
+    }
+  # handing the guard's transaction to a helper is a borrow, not a move
+  - |
+    async fn guard_reborrowed(exe: impl Executor<'_>) -> Result<(), TransactionError> {
+        let mut guard = exe.ensure_transaction().await?;
+        with_executor(guard.get_transaction()).await?;
+        guard.commit().await?;
+        Ok(())
+    }
+  # `commit_if_owned()` is the guard's commit for an `impl Executor` that may already
+  # be a transaction
+  - |
+    async fn guard_commit_if_owned(exe: impl Executor<'_>) -> Result<(), TransactionError> {
+        let mut tx = exe.ensure_transaction().await?;
+        borrow_tx(&mut *tx).await?;
+        tx.commit_if_owned().await?;
+        Ok(())
+    }
+  # …and `rollback_if_owned()` is its explicit rollback
+  - |
+    async fn guard_rollback_if_owned(exe: impl Executor<'_>) -> Result<(), TransactionError> {
+        let mut tx = exe.ensure_transaction().await?;
+        tx.rollback_if_owned().await?;
+        Err(TransactionError::Hook("bad".into()))
+    }
+  # an explicit rollback resolves the transaction just like a commit
+  - |
+    async fn rollback(db: &Database, bad: bool) -> Result<(), TransactionError> {
+        let mut tx = db.start_transaction().await?;
+        if bad {
+            tx.rollback().await?;
+            return Err(TransactionError::Hook("bad".into()));
+        }
+        tx.commit().await?;
+        Ok(())
+    }
+  # start and commit nested inside the same `if`
+  - |
+    async fn nested_in_if(db: &Database, work: bool) -> Result<(), TransactionError> {
+        if work {
+            let mut tx = db.start_transaction().await?;
+            tx.commit().await?;
+        }
+        Ok(())
+    }
+  # two independent transactions, the second one per loop iteration
+  - |
+    async fn two_transactions(db: &Database, items: &[u8]) -> Result<(), TransactionError> {
+        let mut tx = db.start_transaction().await?;
+        tx.commit().await?;
+
+        for _item in items {
+            let mut tx = db.start_transaction().await?;
+            tx.commit().await?;
+        }
+        Ok(())
+    }
+  # moved into a callee, which is responsible for it now
+  - |
+    async fn moved_away(db: &Database) -> Result<(), TransactionError> {
+        let tx = db.start_transaction().await?;
+        consume_tx(tx).await?;
+        Ok(())
+    }
+  # moved into a callee that takes more arguments
+  - |
+    async fn moved_away_second_arg(db: &Database) -> Result<(), TransactionError> {
+        let tx = db.start_transaction().await?;
+        consume_tx(&config, tx).await?;
+        Ok(())
+    }
+  # returned to the caller
+  - |
+    async fn returned(db: &Database) -> Result<Transaction, TransactionError> {
+        let tx = db.start_transaction().await?;
+        Ok(tx)
+    }
+  # early error returns need no commit, the drop rolls back, which is correct
+  - |
+    async fn early_error(db: &Database, bad: bool) -> Result<(), TransactionError> {
+        let mut tx = db.start_transaction().await?;
+        if bad {
+            return Err(TransactionError::Hook("bad".into()));
+        }
+        let Some(_first) = [1u8].first() else {
+            return Err(TransactionError::Hook("empty".into()));
+        };
+        tx.commit().await?;
+        Ok(())
+    }
+  # an error built by a helper (`FormErrors::fail()`), indistinguishable from a
+  # success to the lint, which stays quiet
+  - |
+    async fn helper_error(db: &Database, bad: bool) -> Result<(), TransactionError> {
+        let mut tx = db.start_transaction().await?;
+        if bad {
+            return fail();
+        }
+        tx.commit().await?;
+        Ok(())
+    }
+  # every arm of the tail `match` commits
+  - |
+    async fn all_arms_commit(db: &Database, which: u8) -> Result<(), TransactionError> {
+        let mut tx = db.start_transaction().await?;
+        match which {
+            0 => {
+                borrow_tx(&mut tx).await?;
+                tx.commit().await
+            }
+            _ => tx.commit().await,
+        }
+    }
+  # a diverging call is not a successful exit
+  - |
+    async fn diverging(db: &Database, bad: bool) -> Result<(), TransactionError> {
+        let mut tx = db.start_transaction().await?;
+        if bad {
+            std::process::exit(1);
+        }
+        tx.commit().await?;
+        Ok(())
+    }
+  # an unrelated domain type that happens to be called `Transaction`
+  - |
+    async fn unrelated_type() -> Result<(), TransactionError> {
+        let mut tx = models::Transaction { id: 1 };
+        tx.id += 1;
+        Ok(())
+    }
+  # a channel sender called `tx`
+  - |
+    fn unrelated_channel() {
+        let (tx, rx) = std::sync::mpsc::channel::<u8>();
+        drop(tx);
+        drop(rx);
+    }
+  # committed on some paths only, reported by
+  # `uncommitted-transaction-conditional-commit`, not by this rule
+  - |
+    async fn one_branch_commits(db: &Database, work: bool) -> Result<(), TransactionError> {
+        let mut tx = db.start_transaction().await?;
+        if work {
+            tx.commit().await?;
+        }
+        Ok(())
+    }
+  # jumped over by an early `Ok`, reported by
+  # `uncommitted-transaction-early-return`, not by this rule
+  - |
+    async fn early_ok(db: &Database, skip: bool) -> Result<(), TransactionError> {
+        let mut tx = db.start_transaction().await?;
+        if skip {
+            return Ok(());
+        }
+        tx.commit().await?;
+        Ok(())
+    }
+invalid:
+  # never committed at all, the writes are lost
+  - |
+    async fn never_committed(db: &Database) -> Result<(), TransactionError> {
+        let mut tx = db.start_transaction().await?;
+        borrow_tx(&mut tx).await?;
+        Ok(())
+    }
+  # a guard that is never committed, like `Account::adjust_balance`
+  - |
+    async fn guard_never_committed(exe: impl Executor<'_>) -> Result<(), TransactionError> {
+        let mut guard = exe.ensure_transaction().await?;
+        borrow_tx(guard.get_transaction()).await?;
+        Ok(())
+    }
+  # an immutable binding is just as uncommitted as a `mut` one
+  - |
+    async fn not_mut(db: &Database) -> Result<(), TransactionError> {
+        let tx = db.start_transaction().await?;
+        Ok(())
+    }
+  # a field that happens to be called `commit` is not a commit
+  - |
+    async fn field_named_commit(db: &Database, repo: &Repo) -> Result<String, TransactionError> {
+        let mut tx = db.start_transaction().await?;
+        borrow_tx(&mut tx).await?;
+        let sha = repo.commit.clone();
+        Ok(sha)
+    }

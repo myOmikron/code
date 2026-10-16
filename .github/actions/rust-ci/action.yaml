@@ -18,7 +18,7 @@
 #   with `fetch-depth: 0` so the changed-crates script can resolve the PR base.
 
 name: Rust CI
-description: Run fmt, clippy, build, test, and cargo-deny on a GitHub-hosted runner.
+description: Run fmt, ast-grep, clippy, build, test, doc, and cargo-deny on a GitHub-hosted runner.
 
 runs:
   using: composite
@@ -103,9 +103,38 @@ runs:
           echo "args=--workspace" >> "$GITHUB_OUTPUT"
         fi
 
+    - name: Install ast-grep and taplo
+      shell: bash
+      run: |
+        set -euo pipefail
+        # renovate: datasource=github-releases depName=ast-grep/ast-grep versioning=semver
+        AST_GREP_VERSION=0.51.0
+        # renovate: datasource=github-releases depName=tamasfe/taplo versioning=semver
+        TAPLO_VERSION=0.10.0
+        curl -fsSL -o /tmp/ast-grep.zip "https://github.com/ast-grep/ast-grep/releases/download/${AST_GREP_VERSION}/app-x86_64-unknown-linux-gnu.zip"
+        unzip -q /tmp/ast-grep.zip ast-grep -d /tmp/ast-grep
+        sudo install -m755 /tmp/ast-grep/ast-grep /usr/local/bin/ast-grep
+        curl -fsSL "https://github.com/tamasfe/taplo/releases/download/${TAPLO_VERSION}/taplo-linux-x86_64.gz" \
+          | gunzip > /tmp/taplo
+        sudo install -m755 /tmp/taplo /usr/local/bin/taplo
+        ast-grep --version
+        taplo --version
+
     - name: cargo fmt
       shell: bash
       run: cargo +nightly fmt --all -- --check
+
+    - name: taplo fmt
+      shell: bash
+      run: taplo fmt --check
+
+    - name: ast-grep test
+      shell: bash
+      run: ast-grep test
+
+    - name: ast-grep scan
+      shell: bash
+      run: ast-grep scan
 
     - name: cargo clippy
       if: steps.scope.outputs.skip != 'true'
@@ -121,6 +150,13 @@ runs:
       if: steps.scope.outputs.skip != 'true'
       shell: bash
       run: cargo test --locked ${{ steps.scope.outputs.args }}
+
+    - name: cargo doc
+      if: steps.scope.outputs.skip != 'true'
+      shell: bash
+      env:
+        RUSTDOCFLAGS: -D warnings
+      run: cargo doc --locked --no-deps ${{ steps.scope.outputs.args }}
 
     - name: Install cargo-deny
       shell: bash
