@@ -50,6 +50,7 @@ pub async fn create_invite(
     let invite = match invite {
         Ok(invite) => invite,
         Err(err) => {
+            tx.rollback().await?;
             return match err {
                 crate::models::invite::CreateInviteError::UsernameTaken => {
                     Ok(ApiJson(FormResult::err(CreateInviteError {
@@ -104,6 +105,7 @@ pub async fn extend_invite_expiry(
         .extend_expiry(&mut tx, ExtendInviteParams { expires_at })
         .await?
     {
+        tx.rollback().await?;
         return Ok(ApiJson(FormResult::err(match e {
             ExtendInviteError::ExpiryTimeTooShort => ExtendInviteExpiryError {
                 expiry_time_in_past: false,

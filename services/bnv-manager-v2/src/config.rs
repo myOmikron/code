@@ -51,7 +51,7 @@ pub static LISTEN_PORT: EnvVar<u16> = EnvVar::optional("LISTEN_PORT", || 8080);
 ///
 /// # Used for
 /// - generating links which should point back to bnv-manager
-/// - defaulting [`WEBAUTHN_ID`] and [`WEBAUTHN_ORIGIN`]
+/// - the OIDC issuer and token audience
 pub static ORIGIN: EnvVar<Url> = EnvVar::required("ORIGIN");
 
 /// A directory bnv-manager puts files it creates.

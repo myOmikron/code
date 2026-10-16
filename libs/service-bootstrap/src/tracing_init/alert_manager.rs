@@ -46,7 +46,7 @@ where
     }
 }
 
-/// Config for the Alert Manager [`layer`]
+/// Config for the Alert Manager tracing layer
 pub struct AlertManagerConfig {
     /// URL of the Alert Manager.
     pub alertmanager_url: Url,

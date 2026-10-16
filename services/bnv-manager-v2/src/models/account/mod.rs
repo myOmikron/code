@@ -101,7 +101,7 @@ pub struct ClubAccount {
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, JsonSchema)]
 pub struct AccountUuid(pub Uuid);
 
-/// Helper to create new club members, used for [`ClubAccountModelInsert`].
+/// Helper to create new club members, used for [`db::ClubAccountModelInsert`].
 /// It should only be necessary to use this in maintenance features like data imports.
 #[derive(Debug, Clone)]
 pub struct CreateManualClubMember {

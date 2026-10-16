@@ -92,7 +92,7 @@ pub(in crate::models::watch_list) const SAME_CARD: &str = same_card!("ep");
 /// [`SAME_CARD`] read off the stock rollup, which carries its own card data
 pub(in crate::models::watch_list) const STOCK_CARD: &str = same_card!("e");
 
-/// [`ANY_PRINTING`] read off the stock rollup
+/// [`any_printing!`] read off the stock rollup
 pub(in crate::models::watch_list) const STOCK_ANY_PRINTING: &str = any_printing!("e");
 
 /// Whether a printing is in one of the languages the entry asks for

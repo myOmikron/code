@@ -5,6 +5,8 @@
 //! owner is a name rather than an id, so the answer says as little about the
 //! account behind it as the deck already does.
 //!
+//! [`Visibility::Public`]: crate::models::visibility::Visibility::Public
+//!
 //! Raw sql for the same reason as [`crate::models::collection::listing`]:
 //! `printing` is not a foreign key of `deckcard`, so there is no relation for
 //! the query builder to walk. Every piece spliced in as text is chosen from a

@@ -37,6 +37,7 @@ pub async fn get_me(SessionUser { uuid }: SessionUser) -> ApiResult<ApiJson<MeSc
         ))?;
 
     if let Account::Superadmin(superadmin) = account {
+        tx.commit().await?;
         return Ok(ApiJson(MeSchema {
             uuid: superadmin.uuid(),
             username: superadmin.username,
@@ -112,17 +113,18 @@ pub async fn set_password(
         password,
     }): ApiJson<SetPasswordRequest>,
 ) -> ApiResult<ApiJson<FormResult<(), SetPasswordErrors>>> {
-    let mut tx = Database::global().start_transaction().await?;
-
     if password.is_empty() {
         return Err(ApiError::bad_request("Empty password"));
     }
+
+    let mut tx = Database::global().start_transaction().await?;
 
     let mut account = Account::get_by_uuid(&mut tx, uuid)
         .await?
         .ok_or(ApiError::server_error("Account from session not found"))?;
 
     if !account.check_password(&old_password)? {
+        tx.rollback().await?;
         return Ok(ApiJson(FormResult::err(SetPasswordErrors {
             low_entropy: false,
             invalid_old_password: true,
@@ -146,6 +148,7 @@ pub async fn set_password(
 
     let entropy = zxcvbn(&password, &[display_name, username]);
     if entropy.score() < Score::Three {
+        tx.rollback().await?;
         return Ok(ApiJson(FormResult::err(SetPasswordErrors {
             low_entropy: true,
             invalid_old_password: false,

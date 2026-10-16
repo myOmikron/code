@@ -25,6 +25,9 @@
 //! Furthermore, the name "consumer" is already used in NATS for a specific construct.
 //! Most often, a listener will correspond one-to-one to a consumer, but their two distinct things
 //! which should have two distinct names.
+//!
+//! [`Nats`]: crate::nats::publisher::Nats
+//! [`NatsListener`]: crate::nats::listener::NatsListener
 #![warn(clippy::missing_docs_in_private_items)]
 
 pub use crate::nats::typed_payload::NatsPayload;

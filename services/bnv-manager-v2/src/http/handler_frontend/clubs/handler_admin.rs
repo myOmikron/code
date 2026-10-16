@@ -64,6 +64,7 @@ pub async fn create_club(
     let existing_club = Club::find_by_name(&mut tx, &name).await?;
 
     if existing_club.is_some() {
+        tx.rollback().await?;
         return Ok(ApiJson(FormResult::err(CreateClubError {
             name_already_exists: true,
             ..Default::default()
@@ -75,6 +76,7 @@ pub async fn create_club(
         .ok_or(ApiError::bad_request("Domain not found"))?;
 
     if existing_domain.associated_club.is_some() {
+        tx.rollback().await?;
         return Ok(ApiJson(FormResult::err(CreateClubError {
             domain_already_associated: true,
             ..Default::default()

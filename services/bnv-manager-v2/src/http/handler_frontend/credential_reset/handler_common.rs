@@ -88,20 +88,22 @@ pub async fn reset_password(
     Path(code): Path<MaxStr<6>>,
     ApiJson(ResetPasswordRequest { password }): ApiJson<ResetPasswordRequest>,
 ) -> ApiResult<ApiJson<FormResult<(), ResetPasswordError>>> {
+    if password.is_empty() {
+        return Err(ApiError::bad_request("Empty password"));
+    }
+
     let mut tx = Database::global().start_transaction().await?;
 
     let Some((reset, mut account)) = CredentialReset::find_by_code(&mut tx, &code).await? else {
+        tx.rollback().await?;
         return Ok(ApiJson(FormResult::err(ResetPasswordError {
             invalid_code: true,
             ..Default::default()
         })));
     };
 
-    if password.is_empty() {
-        return Err(ApiError::bad_request("Empty password"));
-    }
-
     if let Err(err) = do_reset(&mut account, &password) {
+        tx.rollback().await?;
         return Ok(err);
     }
 
@@ -154,22 +156,24 @@ pub async fn reset_password_by_uuid(
     Path(SingleUuid { uuid }): Path<SingleUuid>,
     ApiJson(ResetPasswordRequest { password }): ApiJson<ResetPasswordRequest>,
 ) -> ApiResult<ApiJson<FormResult<(), ResetPasswordError>>> {
+    if password.is_empty() {
+        return Err(ApiError::bad_request("Empty password"));
+    }
+
     let mut tx = Database::global().start_transaction().await?;
 
     let Some((reset, mut account)) =
         CredentialReset::find_by_uuid(&mut tx, CredentialResetUuid(uuid)).await?
     else {
+        tx.rollback().await?;
         return Ok(ApiJson(FormResult::err(ResetPasswordError {
             invalid_code: true,
             ..Default::default()
         })));
     };
 
-    if password.is_empty() {
-        return Err(ApiError::bad_request("Empty password"));
-    }
-
     if let Err(err) = do_reset(&mut account, &password) {
+        tx.rollback().await?;
         return Ok(err);
     }
 
