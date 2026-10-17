@@ -53,6 +53,9 @@ base64 = { workspace = true }
 # musl release binary works in the hardened (libless) runtime image.
 openssl = { version = "~0.10", features = ["vendored"] }
 
+[dev-dependencies]
+tower-sessions = { workspace = true }
+
 [build-dependencies]
 service-bootstrap-build = { workspace = true }
 

@@ -43,8 +43,42 @@ use crate::modules::webauthn::WebauthnModule;
 
 /// Session key holding the state of a running login ceremony
 const LOGIN_STATE: &str = "webauthn_login";
-/// Session key holding the state of a running registration ceremony
-const REGISTRATION_STATE: &str = "webauthn_registration";
+
+/// The two ways of running an Enrollment, each keeping its ceremony state apart
+#[derive(Debug, Clone, Copy)]
+enum EnrollmentFlow {
+    /// Enrollment through a Registration link
+    Link,
+    /// Adding a device to the logged-in account
+    Device,
+}
+
+impl EnrollmentFlow {
+    /// Session key holding the state of this flow's running ceremony
+    const fn session_key(self) -> &'static str {
+        match self {
+            Self::Link => "webauthn_enrollment_link",
+            Self::Device => "webauthn_enrollment_device",
+        }
+    }
+
+    /// Remember the state of a started ceremony
+    async fn store(self, session: &Session, state: PasskeyRegistration) -> ApiResult<()> {
+        session
+            .insert(self.session_key(), state)
+            .await
+            .map_err(ApiError::map_server_error("Failed to write to session"))
+    }
+
+    /// Take the state of the ceremony this flow started
+    async fn take(self, session: &Session) -> ApiResult<PasskeyRegistration> {
+        session
+            .remove(self.session_key())
+            .await
+            .map_err(ApiError::map_server_error("Failed to read session"))?
+            .ok_or(ApiError::bad_request("No enrollment ceremony in progress"))
+    }
+}
 
 /// Extract the base64url credential id of a passkey
 fn credential_id_string(cred_id: &CredentialID) -> ApiResult<MaxStr<1024>> {
@@ -254,10 +288,7 @@ pub async fn start_registration(
 
     let (options, state) = start_passkey_ceremony(&account, &existing)?;
 
-    session
-        .insert(REGISTRATION_STATE, state)
-        .await
-        .map_err(ApiError::map_server_error("Failed to write to session"))?;
+    EnrollmentFlow::Link.store(&session, state).await?;
 
     Ok(ApiJson(StartRegistrationResponse {
         username: account.username.to_string(),
@@ -271,13 +302,7 @@ pub async fn finish_registration(
     session: Session,
     ApiJson(request): ApiJson<FinishRegistrationRequest>,
 ) -> ApiResult<()> {
-    let state: PasskeyRegistration = session
-        .remove(REGISTRATION_STATE)
-        .await
-        .map_err(ApiError::map_server_error("Failed to read session"))?
-        .ok_or(ApiError::bad_request(
-            "No registration ceremony in progress",
-        ))?;
+    let state = EnrollmentFlow::Link.take(&session).await?;
 
     let credential: RegisterPublicKeyCredential = serde_json::from_value(request.credential)
         .map_err(|_| ApiError::bad_request("Malformed credential"))?;
@@ -317,10 +342,7 @@ pub async fn start_add_passkey(
     let existing = AccountPasskey::get_by_account(Database::global(), account.uuid).await?;
     let (options, state) = start_passkey_ceremony(&account, &existing)?;
 
-    session
-        .insert(REGISTRATION_STATE, state)
-        .await
-        .map_err(ApiError::map_server_error("Failed to write to session"))?;
+    EnrollmentFlow::Device.store(&session, state).await?;
 
     Ok(ApiJson(StartAddPasskeyResponse { options }))
 }
@@ -332,13 +354,7 @@ pub async fn finish_add_passkey(
     account: Account,
     ApiJson(request): ApiJson<FinishAddPasskeyRequest>,
 ) -> ApiResult<()> {
-    let state: PasskeyRegistration = session
-        .remove(REGISTRATION_STATE)
-        .await
-        .map_err(ApiError::map_server_error("Failed to read session"))?
-        .ok_or(ApiError::bad_request(
-            "No registration ceremony in progress",
-        ))?;
+    let state = EnrollmentFlow::Device.take(&session).await?;
 
     let credential: RegisterPublicKeyCredential = serde_json::from_value(request.credential)
         .map_err(|_| ApiError::bad_request("Malformed credential"))?;
@@ -348,16 +364,20 @@ pub async fn finish_add_passkey(
         .finish_passkey_registration(&credential, &state)
         .map_err(|_| ApiError::bad_request("Registration failed"))?;
 
-    let existing = AccountPasskey::get_by_account(Database::global(), account.uuid)
+    let mut tx = Database::global().start_transaction().await?;
+
+    let existing = AccountPasskey::get_by_account(&mut tx, account.uuid)
         .await?
         .len();
     insert_passkey(
-        Database::global(),
+        &mut tx,
         account.uuid,
         default_passkey_label(existing),
         passkey,
     )
     .await?;
+
+    tx.commit().await?;
     Ok(())
 }
 
@@ -428,4 +448,84 @@ pub async fn me(account: Account) -> ApiResult<ApiJson<MeResponse>> {
         username: account.username.to_string(),
         role: account.role,
     }))
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+    use galvyn::core::session::Session;
+    use tower_sessions::MemoryStore;
+    use url::Url;
+    use uuid::Uuid;
+    use webauthn_rs::WebauthnBuilder;
+    use webauthn_rs::prelude::PasskeyRegistration;
+
+    use super::EnrollmentFlow;
+
+    fn session() -> Session {
+        Session::new(None, Arc::new(MemoryStore::default()), None)
+    }
+
+    fn enrollment_state() -> PasskeyRegistration {
+        let origin = Url::parse("https://semmelei.example").unwrap();
+        let webauthn = WebauthnBuilder::new("semmelei.example", &origin)
+            .unwrap()
+            .build()
+            .unwrap();
+        let (_challenge, state) = webauthn
+            .start_passkey_registration(Uuid::new_v4(), "alice", "alice", None)
+            .unwrap();
+        state
+    }
+
+    #[tokio::test]
+    async fn device_enrollment_cannot_be_finished_as_link_enrollment() {
+        let session = session();
+        EnrollmentFlow::Device
+            .store(&session, enrollment_state())
+            .await
+            .unwrap();
+
+        assert!(EnrollmentFlow::Link.take(&session).await.is_err());
+    }
+
+    #[tokio::test]
+    async fn link_enrollment_cannot_be_finished_as_device_enrollment() {
+        let session = session();
+        EnrollmentFlow::Link
+            .store(&session, enrollment_state())
+            .await
+            .unwrap();
+
+        assert!(EnrollmentFlow::Device.take(&session).await.is_err());
+    }
+
+    #[tokio::test]
+    async fn each_flow_finishes_the_enrollment_it_started() {
+        let session = session();
+        EnrollmentFlow::Link
+            .store(&session, enrollment_state())
+            .await
+            .unwrap();
+        EnrollmentFlow::Device
+            .store(&session, enrollment_state())
+            .await
+            .unwrap();
+
+        assert!(EnrollmentFlow::Link.take(&session).await.is_ok());
+        assert!(EnrollmentFlow::Device.take(&session).await.is_ok());
+    }
+
+    #[tokio::test]
+    async fn an_enrollment_can_only_be_finished_once() {
+        let session = session();
+        EnrollmentFlow::Device
+            .store(&session, enrollment_state())
+            .await
+            .unwrap();
+
+        assert!(EnrollmentFlow::Device.take(&session).await.is_ok());
+        assert!(EnrollmentFlow::Device.take(&session).await.is_err());
+    }
 }
