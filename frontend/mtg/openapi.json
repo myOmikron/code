@@ -605,7 +605,7 @@
         "/api/frontend/v1/auth/login/start": {
             "post": {
                 "summary": "Start a passkey login for a given username",
-                "description": "Start a passkey login for a given username\n\nThe account's passkeys are sent as the credential allow-list. Registration asks for\n`residentKey: discouraged`, so the credentials are not necessarily discoverable by the\nauthenticator on its own — it has to be told which ones to look for.",
+                "description": "Start a passkey login for a given username\n\nThe account's passkeys are sent as the credential allow-list.",
                 "operationId": "start_login",
                 "requestBody": {
                     "content": {
