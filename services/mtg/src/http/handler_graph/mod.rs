@@ -9,7 +9,7 @@
 
 use galvyn::core::GalvynRouter;
 
-use crate::http::middleware::auth_required::AuthRequiredLayer;
+use crate::modules::passkeys::AuthRequiredLayer;
 
 pub mod proxy;
 

@@ -10,9 +10,6 @@ use galvyn::delete;
 use galvyn::get;
 use galvyn::post;
 use galvyn::rorm::Database;
-use webauthn_rs::prelude::CredentialID;
-use webauthn_rs::prelude::PasskeyRegistration;
-use webauthn_rs::prelude::RegisterPublicKeyCredential;
 
 use crate::http::handler_frontend::accounts::schema::AddPasskeyErrors;
 use crate::http::handler_frontend::accounts::schema::DeleteAccountErrors;
@@ -25,18 +22,10 @@ use crate::http::handler_frontend::accounts::schema::SimplePasskey;
 use crate::http::handler_frontend::accounts::schema::StartAddPasskeyResponse;
 use crate::models::account::Account;
 use crate::models::account::AccountPasskeyUuid;
-use crate::models::identity::Passkey;
-use crate::models::identity::PasskeyInsert;
-use crate::models::identity::PasskeyUuid;
-use crate::modules::webauthn::WebauthnModule;
-use crate::modules::webauthn::credential_id_string;
-use crate::modules::webauthn::passkey_label;
-use crate::modules::webauthn::registration_aaguid;
-use crate::modules::webauthn::request_attestation;
-use crate::modules::webauthn::require_discoverable_credential;
-
-/// Session key holding the state of a running add-passkey ceremony
-const ADD_PASSKEY_STATE: &str = "webauthn_add_passkey";
+use crate::modules::passkeys::FinishEnrollmentError;
+use crate::modules::passkeys::Passkeys;
+use crate::modules::passkeys::RemovalRefused;
+use crate::modules::passkeys::RemovePasskeyError;
 
 /// The account the current session belongs to
 #[get("/me")]
@@ -50,9 +39,9 @@ pub async fn me(account: Account) -> ApiResult<ApiJson<MeResponse>> {
 /// List the passkeys of the logged-in account
 #[get("/passkeys")]
 pub async fn list_passkeys(account: Account) -> ApiResult<ApiJson<ListPasskeysResponse>> {
-    let mut tx = Database::global().start_transaction().await?;
-    let passkeys = Passkey::get_by_identity(&mut tx, account.identity).await?;
-    tx.commit().await?;
+    let passkeys = Passkeys::global()
+        .list_passkeys(Database::global(), account.identity)
+        .await?;
 
     Ok(ApiJson(ListPasskeysResponse {
         passkeys: passkeys
@@ -76,38 +65,11 @@ pub async fn start_add_passkey(
     session: Session,
     account: Account,
 ) -> ApiResult<ApiJson<StartAddPasskeyResponse>> {
-    let mut tx = Database::global().start_transaction().await?;
-    let existing = Passkey::get_by_identity(&mut tx, account.identity).await?;
-    tx.commit().await?;
+    let options = Passkeys::global()
+        .begin_device_enrollment(&session, account.identity, account.username.as_str())
+        .await?;
 
-    // Registering the same authenticator twice would leave the user with two entries for one
-    // device and no way to tell them apart.
-    let exclude: Vec<CredentialID> = existing
-        .iter()
-        .map(|passkey| passkey.credential.cred_id().clone())
-        .collect();
-
-    let (mut challenge, state) = WebauthnModule::global()
-        .webauthn
-        .start_passkey_registration(
-            account.identity.into_inner(),
-            account.username.as_str(),
-            account.username.as_str(),
-            (!exclude.is_empty()).then_some(exclude),
-        )
-        .map_err(ApiError::map_server_error("Failed to start registration"))?;
-    require_discoverable_credential(&mut challenge);
-    request_attestation(&mut challenge);
-
-    session
-        .insert(ADD_PASSKEY_STATE, state)
-        .await
-        .map_err(ApiError::map_server_error("Failed to write to session"))?;
-
-    Ok(ApiJson(StartAddPasskeyResponse {
-        options: serde_json::to_value(challenge)
-            .map_err(ApiError::map_server_error("Failed to serialize challenge"))?,
-    }))
+    Ok(ApiJson(StartAddPasskeyResponse { options }))
 }
 
 /// Finish registering another passkey for the logged-in account
@@ -118,54 +80,26 @@ pub async fn finish_add_passkey(
     ApiJson(request): ApiJson<FinishAddPasskeyRequest>,
 ) -> ApiResult<ApiJson<()>, AddPasskeyErrors> {
     let mut errors = FormErrors::<AddPasskeyErrors>::new();
-
-    let state: Option<PasskeyRegistration> = session
-        .remove(ADD_PASSKEY_STATE)
-        .await
-        .map_err(ApiError::map_server_error("Failed to read session"))?;
-    let Some(state) = state else {
-        errors.no_ceremony = true;
-        return errors.fail();
-    };
-
-    let Ok(credential) = serde_json::from_value::<RegisterPublicKeyCredential>(request.credential)
-    else {
-        errors.malformed_credential = true;
-        return errors.fail();
-    };
-
-    let Ok(passkey) = WebauthnModule::global()
-        .webauthn
-        .finish_passkey_registration(&credential, &state)
-    else {
-        errors.registration_failed = true;
-        return errors.fail();
-    };
-
-    let mut tx = Database::global().start_transaction().await?;
-    let existing = Passkey::get_by_identity(&mut tx, account.identity)
-        .await?
-        .len();
-
-    let inserted = Passkey::insert(
-        &mut tx,
-        PasskeyInsert {
-            identity: account.identity,
-            label: request
-                .label
-                .unwrap_or_else(|| passkey_label(registration_aaguid(&credential), existing)),
-            credential_id: credential_id_string(passkey.cred_id())?,
-            credential: passkey,
-        },
-    )
-    .await;
-    if inserted.is_err() {
-        errors.already_registered = true;
-        return errors.fail();
+    let finished = Passkeys::global()
+        .finish_device_enrollment(
+            &session,
+            account.identity,
+            request.credential,
+            request.label,
+        )
+        .await;
+    match finished {
+        Ok(()) => return Ok(ApiJson(())),
+        Err(FinishEnrollmentError::NoEnrollmentInProgress) => errors.no_ceremony = true,
+        Err(FinishEnrollmentError::MalformedCredential) => errors.malformed_credential = true,
+        Err(FinishEnrollmentError::VerificationFailed) => errors.registration_failed = true,
+        Err(FinishEnrollmentError::AlreadyEnrolled) => errors.already_registered = true,
+        Err(FinishEnrollmentError::Link(_)) => {
+            return Err(ApiError::server_error("Device enrollment without a link"));
+        }
+        Err(FinishEnrollmentError::Internal(error)) => return Err(error.into()),
     }
-
-    tx.commit().await?;
-    Ok(ApiJson(()))
+    errors.fail()
 }
 
 /// Delete one of the logged-in account's passkeys
@@ -178,25 +112,22 @@ pub async fn delete_passkey(
     account: Account,
     Path(uuid): Path<AccountPasskeyUuid>,
 ) -> ApiResult<ApiJson<()>, DeletePasskeyErrors> {
-    let uuid = PasskeyUuid::from(uuid);
     let mut errors = FormErrors::<DeletePasskeyErrors>::new();
-    let mut tx = Database::global().start_transaction().await?;
-
-    let passkeys = Passkey::get_by_identity(&mut tx, account.identity).await?;
-    // Checked against the account's own passkeys, so a stranger's uuid reads as unknown rather
-    // than deleting somebody else's device.
-    if !passkeys.iter().any(|passkey| passkey.uuid == uuid) {
-        errors.unknown_passkey = true;
+    let removed = Passkeys::global()
+        .remove_passkey(account.identity, uuid.into())
+        .await;
+    match removed {
+        Ok(()) => return Ok(ApiJson(())),
+        Err(RemovePasskeyError::Refused(RemovalRefused::UnknownPasskey { last_passkey })) => {
+            errors.unknown_passkey = true;
+            errors.last_passkey = last_passkey;
+        }
+        Err(RemovePasskeyError::Refused(RemovalRefused::LastPasskey)) => {
+            errors.last_passkey = true;
+        }
+        Err(RemovePasskeyError::Internal(error)) => return Err(error.into()),
     }
-    if passkeys.len() <= 1 {
-        errors.last_passkey = true;
-    }
-    errors.check()?;
-
-    Passkey::delete(&mut tx, uuid).await?;
-
-    tx.commit().await?;
-    Ok(ApiJson(()))
+    errors.fail()
 }
 
 /// Delete the logged-in account
@@ -216,7 +147,6 @@ pub async fn delete_account(
     ApiJson(request): ApiJson<DeleteAccountRequest>,
 ) -> ApiResult<ApiJson<()>, DeleteAccountErrors> {
     let mut errors = FormErrors::<DeleteAccountErrors>::new();
-    // Case-insensitive, like every other lookup by name.
     if !request
         .username
         .eq_ignore_ascii_case(account.username.as_str())
@@ -229,11 +159,8 @@ pub async fn delete_account(
     Account::delete(&mut tx, account.uuid).await?;
     tx.commit().await?;
 
-    // The session outlives the account it named, and the extractor would answer
-    // every later request with a 401 anyway. Dropped here so the browser is not
-    // left holding a cookie for somebody who no longer exists.
-    session
-        .flush()
+    Passkeys::global()
+        .logout(&session)
         .await
         .map_err(ApiError::map_server_error("Failed to flush session"))?;
 

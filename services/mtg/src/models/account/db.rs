@@ -7,7 +7,7 @@ use galvyn::rorm::fields::types::ForeignModel;
 use galvyn::rorm::fields::types::MaxStr;
 use uuid::Uuid;
 
-use crate::models::identity::db::IdentityModel;
+use crate::modules::passkeys::IdentityModel;
 
 /// An account
 ///

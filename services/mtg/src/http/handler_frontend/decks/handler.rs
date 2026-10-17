@@ -76,7 +76,7 @@ use crate::models::deck::tag::DeckTagUuid;
 use crate::models::format::BRACKETS;
 use crate::models::format::FORMAT_RULES;
 use crate::models::format::has_brackets;
-use crate::modules::webauthn::WebauthnModule;
+use crate::modules::config::Conf;
 use crate::utils::archon;
 use crate::utils::deck_source::DeckSourceError;
 use crate::utils::deck_source::LocalDeck;
@@ -889,7 +889,8 @@ pub async fn read_deck_url(
     account: Account,
     ApiJson(ReadDeckUrlRequest { url }): ApiJson<ReadDeckUrlRequest>,
 ) -> ApiResult<ApiJson<ReadDeckUrlResponse>> {
-    let host = WebauthnModule::global()
+    let host = Conf::global()
+        .config
         .public_origin
         .host_str()
         .unwrap_or_default()
