@@ -99,7 +99,7 @@ Frontend (per app): `pnpm run dev` / `build` / `ci` / `format` / `gen-api`.
 
 ### Authentication
 
-- **Staff/user auth is passkey-only (WebAuthn)** — no passwords, ever.
+- **Staff/user auth is passkey (WebAuthn) or OIDC** — no passwords, ever.
   Backend: `webauthn-rs` (usernameless/discoverable login); frontend: `@simplewebauthn/browser`.
 - Account onboarding and device recovery work via one-time registration links
   (`RegistrationToken`), issued by a cli subcommand or an admin UI.
