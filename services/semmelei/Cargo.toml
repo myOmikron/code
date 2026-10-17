@@ -8,7 +8,7 @@ publish = false
 service-bootstrap = { workspace = true }
 galvyn = { workspace = true, default-features = true }
 
-# Identity, Passkey login and Registration links
+# Identity and passkey login
 galvyn-identity = { workspace = true, features = ["passkey"] }
 
 # Central NATS subject constants

@@ -1,6 +1,8 @@
 //! Adjustments to the WebAuthn ceremonies and reading their results
 
+use galvyn::core::stuff::api_error::core::CoreApiError;
 use galvyn::rorm::fields::types::MaxStr;
+use serde::Serialize;
 use uuid::Uuid;
 use webauthn_rs::prelude::CreationChallengeResponse;
 use webauthn_rs::prelude::CredentialID;
@@ -112,10 +114,19 @@ pub(super) fn choose_label(
 
 /// The base64url credential id of a passkey
 ///
-/// `None` if webauthn-rs ever stops serializing it as a string, or it outgrows the column.
-pub(super) fn credential_id_string(cred_id: &CredentialID) -> Option<MaxStr<1024>> {
-    let value = serde_json::to_value(cred_id).ok()?;
-    MaxStr::new(value.as_str()?.to_string()).ok()
+/// Fails if webauthn-rs ever stops serializing it as a string, or it outgrows the column.
+pub(super) fn credential_id_string(cred_id: &CredentialID) -> Result<MaxStr<1024>, CoreApiError> {
+    serde_json::to_value(cred_id)
+        .ok()
+        .and_then(|value| MaxStr::new(value.as_str()?.to_string()).ok())
+        .ok_or(CoreApiError::server_error("Unreadable credential id"))
+}
+
+/// A ceremony's challenge as the JSON handed to the browser
+pub(super) fn challenge_json(challenge: impl Serialize) -> Result<serde_json::Value, CoreApiError> {
+    serde_json::to_value(challenge).map_err(CoreApiError::map_server_error(
+        "Failed to serialize challenge",
+    ))
 }
 
 #[cfg(test)]

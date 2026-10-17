@@ -118,10 +118,10 @@ async fn prepare_signup(
     request: &SignupRequest,
     errors: &mut FormErrors<SignupErrors>,
 ) -> ApiResult<Option<(MaxStr<255>, Username, Url)>, SignupErrors> {
-    let passkeys = IdentityModule::global();
+    let identity_module = IdentityModule::global();
 
     if let Some(account) = Account::get_by_username(&mut *tx, &request.username).await? {
-        let has_passkey = !passkeys
+        let has_passkey = !identity_module
             .list_passkeys(&mut *tx, account.identity)
             .await?
             .is_empty();
@@ -131,7 +131,7 @@ async fn prepare_signup(
             return Ok(None);
         }
 
-        let link = passkeys
+        let link = identity_module
             .issue_registration_link(&mut *tx, account.identity)
             .await?;
         return Ok(Some((account.email, account.username, link)));
@@ -147,7 +147,9 @@ async fn prepare_signup(
 
     let identity =
         Account::insert(&mut *tx, request.username.clone(), request.email.clone()).await?;
-    let link = passkeys.issue_registration_link(&mut *tx, identity).await?;
+    let link = identity_module
+        .issue_registration_link(&mut *tx, identity)
+        .await?;
 
     Ok(Some((
         request.email.clone(),
@@ -224,7 +226,9 @@ pub async fn finish_login(
         Ok(_identity) => return Ok(ApiJson(())),
         Err(FinishLoginError::NoLoginInProgress) => errors.no_ceremony = true,
         Err(FinishLoginError::MalformedCredential) => errors.malformed_credential = true,
-        Err(FinishLoginError::VerificationFailed) => errors.authentication_failed = true,
+        Err(FinishLoginError::VerificationFailed | FinishLoginError::UnknownPasskey) => {
+            errors.authentication_failed = true
+        }
         Err(FinishLoginError::UnknownIdentity) => {
             return Err(ApiError::bad_request("Unknown account"));
         }
@@ -259,9 +263,9 @@ pub async fn start_registration(
     ApiJson(request): ApiJson<StartRegistrationRequest>,
 ) -> ApiResult<ApiJson<StartRegistrationResponse>, RegistrationErrors> {
     let mut errors = FormErrors::<RegistrationErrors>::new();
-    let passkeys = IdentityModule::global();
+    let identity_module = IdentityModule::global();
 
-    let link = match passkeys.open_registration_link(&request.token).await {
+    let link = match identity_module.open_registration_link(&request.token).await {
         Ok(link) => link,
         Err(OpenLinkError::Link(error)) => {
             report_link_error(&mut errors, error);
@@ -275,7 +279,7 @@ pub async fn start_registration(
     tx.commit().await?;
     let account = account.ok_or(ApiError::server_error("Token without account"))?;
 
-    let options = passkeys
+    let options = identity_module
         .begin_link_enrollment(&session, &link, account.username.as_str())
         .await?;
 

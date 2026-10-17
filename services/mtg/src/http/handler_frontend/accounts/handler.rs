@@ -10,7 +10,7 @@ use galvyn::delete;
 use galvyn::get;
 use galvyn::post;
 use galvyn::rorm::Database;
-use galvyn_identity::FinishEnrollmentError;
+use galvyn_identity::FinishDeviceEnrollmentError;
 use galvyn_identity::IdentityModule;
 use galvyn_identity::RemovalRefused;
 use galvyn_identity::RemovePasskeyError;
@@ -90,14 +90,11 @@ pub async fn finish_add_passkey(
         .await;
     match finished {
         Ok(()) => return Ok(ApiJson(())),
-        Err(FinishEnrollmentError::NoEnrollmentInProgress) => errors.no_ceremony = true,
-        Err(FinishEnrollmentError::MalformedCredential) => errors.malformed_credential = true,
-        Err(FinishEnrollmentError::VerificationFailed) => errors.registration_failed = true,
-        Err(FinishEnrollmentError::AlreadyEnrolled) => errors.already_registered = true,
-        Err(FinishEnrollmentError::Link(_)) => {
-            return Err(ApiError::server_error("Device enrollment without a link"));
-        }
-        Err(FinishEnrollmentError::Internal(error)) => return Err(error.into()),
+        Err(FinishDeviceEnrollmentError::NoEnrollmentInProgress) => errors.no_ceremony = true,
+        Err(FinishDeviceEnrollmentError::MalformedCredential) => errors.malformed_credential = true,
+        Err(FinishDeviceEnrollmentError::VerificationFailed) => errors.registration_failed = true,
+        Err(FinishDeviceEnrollmentError::AlreadyEnrolled) => errors.already_registered = true,
+        Err(FinishDeviceEnrollmentError::Internal(error)) => return Err(error.into()),
     }
     errors.fail()
 }

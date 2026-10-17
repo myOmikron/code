@@ -99,7 +99,7 @@ Frontend (per app): `pnpm run dev` / `build` / `ci` / `format` / `gen-api`.
 
 ### Authentication
 
-- **Staff/user auth is passkey (WebAuthn) or OIDC** — no passwords, ever.
+- **Staff/user auth is passkey (WebAuthn) or OIDC**: no passwords, ever.
   Backend: the `libs/galvyn-identity` galvyn module (`IdentityModule`, login methods as
   cargo features, e.g. `passkey`); frontend: `@simplewebauthn/browser`.
 - Passkey login is username first, then a Passkey of that account's Identity
