@@ -9,6 +9,7 @@ use webauthn_rs::prelude::PasskeyAuthentication;
 use webauthn_rs::prelude::PasskeyRegistration;
 
 use crate::models::IdentityUuid;
+use crate::models::RegistrationLinkUuid;
 
 /// Session key holding the state of a running Login
 const LOGIN_STATE: &str = "webauthn_login";
@@ -18,6 +19,9 @@ const LOGIN_IDENTITY: &str = "webauthn_login_account";
 
 /// Session key holding the state of a running Enrollment through a Registration link
 const LINK_ENROLLMENT_STATE: &str = "webauthn_registration";
+
+/// Session key holding the Registration link a running Enrollment through one began with
+const LINK_ENROLLMENT_LINK: &str = "webauthn_registration_link";
 
 /// Session key holding the state of a running Enrollment of an additional device
 const DEVICE_ENROLLMENT_STATE: &str = "webauthn_add_passkey";
@@ -46,8 +50,8 @@ pub(super) async fn take_login(
 /// The two kinds of Enrollment, which never share state
 #[derive(Debug, Clone, Copy)]
 pub(super) enum EnrollmentKind {
-    /// Enrollment through a Registration link
-    Link,
+    /// Enrollment through the given Registration link
+    Link(RegistrationLinkUuid),
     /// Enrollment of an additional device by the logged-in Identity
     Device,
 }
@@ -56,7 +60,7 @@ impl EnrollmentKind {
     /// The session key of this kind's state
     fn key(self) -> &'static str {
         match self {
-            EnrollmentKind::Link => LINK_ENROLLMENT_STATE,
+            EnrollmentKind::Link(_) => LINK_ENROLLMENT_STATE,
             EnrollmentKind::Device => DEVICE_ENROLLMENT_STATE,
         }
     }
@@ -68,15 +72,26 @@ pub(super) async fn start_enrollment(
     kind: EnrollmentKind,
     state: PasskeyRegistration,
 ) -> Result<(), Error> {
+    if let EnrollmentKind::Link(link) = kind {
+        session.insert(LINK_ENROLLMENT_LINK, link).await?;
+    }
     session.insert(kind.key(), state).await
 }
 
 /// Take the running Enrollment of `kind` out of the session
+///
+/// An Enrollment through a Registration link is only handed out for the link
+/// it began with, but taken out for any.
 pub(super) async fn take_enrollment(
     session: &Session,
     kind: EnrollmentKind,
 ) -> Result<Option<PasskeyRegistration>, Error> {
-    session.remove(kind.key()).await
+    let state = session.remove(kind.key()).await?;
+    let EnrollmentKind::Link(link) = kind else {
+        return Ok(state);
+    };
+    let began_with: Option<RegistrationLinkUuid> = session.remove(LINK_ENROLLMENT_LINK).await?;
+    Ok(state.filter(|_| began_with == Some(link)))
 }
 
 #[cfg(test)]
@@ -92,6 +107,10 @@ mod tests {
 
     fn session() -> Session {
         Session::new(None, Arc::new(MemoryStore::default()), None)
+    }
+
+    fn link(n: u128) -> RegistrationLinkUuid {
+        RegistrationLinkUuid(Uuid::from_u128(n))
     }
 
     fn enrollment_state() -> PasskeyRegistration {
@@ -113,14 +132,14 @@ mod tests {
             .await
             .unwrap();
 
-        let taken = take_enrollment(&session, EnrollmentKind::Link).await;
+        let taken = take_enrollment(&session, EnrollmentKind::Link(link(1))).await;
         assert!(taken.unwrap().is_none());
     }
 
     #[tokio::test]
     async fn a_link_enrollment_cannot_be_finished_as_device_enrollment() {
         let session = session();
-        start_enrollment(&session, EnrollmentKind::Link, enrollment_state())
+        start_enrollment(&session, EnrollmentKind::Link(link(1)), enrollment_state())
             .await
             .unwrap();
 
@@ -131,17 +150,41 @@ mod tests {
     #[tokio::test]
     async fn each_kind_finishes_the_enrollment_it_started() {
         let session = session();
-        start_enrollment(&session, EnrollmentKind::Link, enrollment_state())
+        start_enrollment(&session, EnrollmentKind::Link(link(1)), enrollment_state())
             .await
             .unwrap();
         start_enrollment(&session, EnrollmentKind::Device, enrollment_state())
             .await
             .unwrap();
 
-        let link = take_enrollment(&session, EnrollmentKind::Link).await;
+        let through_link = take_enrollment(&session, EnrollmentKind::Link(link(1))).await;
         let device = take_enrollment(&session, EnrollmentKind::Device).await;
-        assert!(link.unwrap().is_some());
+        assert!(through_link.unwrap().is_some());
         assert!(device.unwrap().is_some());
+    }
+
+    #[tokio::test]
+    async fn a_link_enrollment_cannot_be_finished_through_another_link() {
+        let session = session();
+        start_enrollment(&session, EnrollmentKind::Link(link(1)), enrollment_state())
+            .await
+            .unwrap();
+
+        let other = take_enrollment(&session, EnrollmentKind::Link(link(2))).await;
+        let original = take_enrollment(&session, EnrollmentKind::Link(link(1))).await;
+        assert!(other.unwrap().is_none());
+        assert!(original.unwrap().is_none());
+    }
+
+    #[tokio::test]
+    async fn a_link_enrollment_is_finished_through_the_link_it_began_with() {
+        let session = session();
+        start_enrollment(&session, EnrollmentKind::Link(link(1)), enrollment_state())
+            .await
+            .unwrap();
+
+        let taken = take_enrollment(&session, EnrollmentKind::Link(link(1))).await;
+        assert!(taken.unwrap().is_some());
     }
 
     #[tokio::test]

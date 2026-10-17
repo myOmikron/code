@@ -36,6 +36,8 @@ pub use self::models::IdentityUuid;
 #[cfg(feature = "passkey")]
 pub use self::passkey::BeginLoginError;
 #[cfg(feature = "passkey")]
+pub use self::passkey::FinishDeviceEnrollmentError;
+#[cfg(feature = "passkey")]
 pub use self::passkey::FinishEnrollmentError;
 #[cfg(feature = "passkey")]
 pub use self::passkey::FinishLoginError;

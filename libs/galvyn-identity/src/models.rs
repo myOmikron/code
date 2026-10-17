@@ -127,7 +127,7 @@ pub(crate) struct RegistrationLink {
 /// Wrapper for the primary key of the [`RegistrationLink`] model.
 /// To have better distinguishable types.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Hash, Eq, PartialEq)]
-pub(crate) struct RegistrationLinkUuid(Uuid);
+pub(crate) struct RegistrationLinkUuid(pub(crate) Uuid);
 
 impl RegistrationLink {
     /// Create and persist a new one-time link for `identity`, valid for `validity`
@@ -166,17 +166,25 @@ impl RegistrationLink {
         Ok(link.map(RegistrationLink::from))
     }
 
-    /// Mark a link as used
+    /// Mark a link as used if it is still usable at `now`
+    ///
+    /// Returns `false` if it is not: of two Enrollments racing for one link,
+    /// only the first to mark it gets `true`.
     #[instrument(name = "RegistrationLink::mark_used", skip(exe))]
     pub(crate) async fn mark_used(
         exe: impl Executor<'_>,
         uuid: RegistrationLinkUuid,
-    ) -> Result<(), rorm::Error> {
-        rorm::update(exe, RegistrationLinkModel)
+        now: OffsetDateTime,
+    ) -> Result<bool, rorm::Error> {
+        let affected = rorm::update(exe, RegistrationLinkModel)
             .set(RegistrationLinkModel.used, true)
-            .condition(RegistrationLinkModel.uuid.equals(uuid.0))
+            .condition(rorm::and![
+                RegistrationLinkModel.uuid.equals(uuid.0),
+                RegistrationLinkModel.used.equals(false),
+                RegistrationLinkModel.expires_at.greater_equals(now),
+            ])
             .await?;
-        Ok(())
+        Ok(affected > 0)
     }
 
     /// Whether the link can still enroll a login method at `now`

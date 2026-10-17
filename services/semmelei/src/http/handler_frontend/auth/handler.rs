@@ -12,6 +12,7 @@ use galvyn::get;
 use galvyn::post;
 use galvyn::rorm::Database;
 use galvyn_identity::BeginLoginError;
+use galvyn_identity::FinishDeviceEnrollmentError;
 use galvyn_identity::FinishEnrollmentError;
 use galvyn_identity::FinishLoginError;
 use galvyn_identity::IdentityModule;
@@ -75,7 +76,9 @@ pub async fn finish_login(
                 ApiError::bad_request("No login ceremony in progress")
             }
             FinishLoginError::MalformedCredential => ApiError::bad_request("Malformed credential"),
-            FinishLoginError::VerificationFailed => ApiError::bad_request("Authentication failed"),
+            FinishLoginError::VerificationFailed | FinishLoginError::UnknownPasskey => {
+                ApiError::bad_request("Authentication failed")
+            }
             FinishLoginError::UnknownIdentity => ApiError::bad_request("Unknown account"),
             FinishLoginError::Internal(error) => error.into(),
         })?;
@@ -100,7 +103,7 @@ fn link_refused(error: LinkError) -> ApiError {
     }
 }
 
-/// Why an Enrollment could not be finished
+/// Why an Enrollment through a Registration link could not be finished
 fn enrollment_refused(error: FinishEnrollmentError) -> ApiError {
     match error {
         FinishEnrollmentError::NoEnrollmentInProgress => {
@@ -116,15 +119,34 @@ fn enrollment_refused(error: FinishEnrollmentError) -> ApiError {
     }
 }
 
+/// Why an Enrollment of an additional device could not be finished
+fn device_enrollment_refused(error: FinishDeviceEnrollmentError) -> ApiError {
+    match error {
+        FinishDeviceEnrollmentError::NoEnrollmentInProgress => {
+            ApiError::bad_request("No enrollment ceremony in progress")
+        }
+        FinishDeviceEnrollmentError::MalformedCredential => {
+            ApiError::bad_request("Malformed credential")
+        }
+        FinishDeviceEnrollmentError::VerificationFailed => {
+            ApiError::bad_request("Registration failed")
+        }
+        FinishDeviceEnrollmentError::AlreadyEnrolled => {
+            ApiError::bad_request("This passkey is already registered")
+        }
+        FinishDeviceEnrollmentError::Internal(error) => error.into(),
+    }
+}
+
 /// Start an invite-based passkey registration
 #[post("/register/start")]
 pub async fn start_registration(
     session: Session,
     ApiJson(request): ApiJson<StartRegistrationRequest>,
 ) -> ApiResult<ApiJson<StartRegistrationResponse>> {
-    let identity = IdentityModule::global();
+    let identity_module = IdentityModule::global();
 
-    let link = identity
+    let link = identity_module
         .open_registration_link(&request.token)
         .await
         .map_err(|error| match error {
@@ -136,7 +158,7 @@ pub async fn start_registration(
         .await?
         .ok_or(ApiError::server_error("Token without account"))?;
 
-    let options = identity
+    let options = identity_module
         .begin_link_enrollment(&session, &link, &account.username)
         .await?;
 
@@ -181,7 +203,7 @@ pub async fn finish_add_passkey(
     IdentityModule::global()
         .finish_device_enrollment(&session, account.identity, request.credential, None)
         .await
-        .map_err(enrollment_refused)
+        .map_err(device_enrollment_refused)
 }
 
 /// List the passkeys of the logged-in account

@@ -7,6 +7,7 @@ use galvyn::rorm::Database;
 use webauthn_rs::prelude::Passkey as WebauthnPasskey;
 use webauthn_rs::prelude::PublicKeyCredential;
 
+use super::ceremony::challenge_json;
 use super::ceremony::credential_id_string;
 use super::error::BeginLoginError;
 use super::error::FinishLoginError;
@@ -46,11 +47,7 @@ impl IdentityModule {
 
         session::start_login(session, state, identity).await?;
 
-        Ok(
-            serde_json::to_value(challenge).map_err(CoreApiError::map_server_error(
-                "Failed to serialize challenge",
-            ))?,
-        )
+        Ok(challenge_json(challenge)?)
     }
 
     /// Finish the session's Login with the authenticator's response
@@ -64,6 +61,7 @@ impl IdentityModule {
     /// have drifted apart. Its signature counter and backup state are what let
     /// a cloned authenticator be spotted later, and its last-used time is
     /// stamped even though most authenticators keep their counter at zero.
+    /// Without such a Passkey of the Identity nobody is logged in.
     pub async fn finish_login(
         &self,
         session: &Session,
@@ -85,8 +83,7 @@ impl IdentityModule {
             return Err(FinishLoginError::VerificationFailed);
         };
 
-        let used = credential_id_string(result.cred_id())
-            .ok_or(CoreApiError::server_error("Unreadable credential id"))?;
+        let used = credential_id_string(result.cred_id())?;
 
         let mut tx = Database::global().start_transaction().await?;
 
@@ -96,15 +93,17 @@ impl IdentityModule {
         };
         let identity = identity.uuid;
 
-        for passkey in Passkey::get_by_identity(&mut tx, identity).await? {
-            if passkey.credential_id != used {
-                continue;
-            }
-            let mut credential = passkey.credential.clone();
-            credential.update_credential(&result);
-            Passkey::update_credential(&mut tx, passkey.uuid, credential).await?;
-            break;
-        }
+        let Some(passkey) = Passkey::get_by_identity(&mut tx, identity)
+            .await?
+            .into_iter()
+            .find(|passkey| passkey.credential_id == used)
+        else {
+            tx.rollback().await?;
+            return Err(FinishLoginError::UnknownPasskey);
+        };
+        let mut updated = passkey.credential;
+        updated.update_credential(&result);
+        Passkey::update_credential(&mut tx, passkey.uuid, updated).await?;
 
         Identity::record_login(&mut tx, identity).await?;
         tx.commit().await?;

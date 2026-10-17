@@ -31,6 +31,13 @@ pub enum MailLanguage {
     En,
 }
 
+/// How many days a freshly issued Registration link stays usable
+fn link_validity_days() -> i64 {
+    IdentityModule::global()
+        .registration_link_validity()
+        .whole_days()
+}
+
 /// Send the one-time passkey registration link to a new account
 ///
 /// The mail is only queued here; delivery is the `mail-gateway`'s job.
@@ -41,9 +48,7 @@ pub async fn send_registration_link(
     link: &Url,
     language: MailLanguage,
 ) -> Result<(), MailError> {
-    let days = IdentityModule::global()
-        .registration_link_validity()
-        .whole_days();
+    let days = link_validity_days();
     let username = username.as_str();
 
     let (subject, text_body) = match language {
@@ -110,9 +115,7 @@ pub async fn send_recovery_link(
     link: &Url,
     language: MailLanguage,
 ) -> Result<(), MailError> {
-    let days = IdentityModule::global()
-        .registration_link_validity()
-        .whole_days();
+    let days = link_validity_days();
     let username = username.as_str();
 
     let (subject, text_body) = match language {

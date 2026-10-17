@@ -5,6 +5,7 @@ use webauthn_rs::Webauthn;
 use webauthn_rs::WebauthnBuilder;
 
 pub use self::error::BeginLoginError;
+pub use self::error::FinishDeviceEnrollmentError;
 pub use self::error::FinishEnrollmentError;
 pub use self::error::FinishLoginError;
 pub use self::error::RemovalRefused;

@@ -17,6 +17,7 @@ use super::error::OpenLinkError;
 use super::models::Identity;
 use super::models::IdentityUuid;
 use super::models::RegistrationLink;
+use super::models::RegistrationLinkUuid;
 
 /// A Registration link that was usable when it was opened
 ///
@@ -24,6 +25,9 @@ use super::models::RegistrationLink;
 /// authenticator shows) before beginning the Enrollment.
 #[derive(Debug, Clone, Copy)]
 pub struct OpenLink {
+    /// The opened link
+    pub(crate) link: RegistrationLinkUuid,
+
     /// The Identity the link enrolls a login method for
     pub(crate) identity: IdentityUuid,
 }
@@ -44,6 +48,7 @@ impl IdentityModule {
 
         let link = link.map_err(OpenLinkError::Link)?;
         Ok(OpenLink {
+            link: link.uuid,
             identity: link.identity,
         })
     }

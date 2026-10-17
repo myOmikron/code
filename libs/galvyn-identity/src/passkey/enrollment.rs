@@ -5,8 +5,10 @@
 //! an Enrollment started for one can never be finished through the other.
 
 use galvyn::core::Module;
+use galvyn::core::re_exports::time::OffsetDateTime;
 use galvyn::core::session::Session;
 use galvyn::core::stuff::api_error::core::CoreApiError;
+use galvyn::rorm;
 use galvyn::rorm::Database;
 use galvyn::rorm::db::transaction::Transaction;
 use galvyn::rorm::fields::types::MaxStr;
@@ -15,21 +17,27 @@ use webauthn_rs::prelude::Passkey as WebauthnPasskey;
 use webauthn_rs::prelude::PasskeyRegistration;
 use webauthn_rs::prelude::RegisterPublicKeyCredential;
 
+use super::ceremony::challenge_json;
 use super::ceremony::choose_label;
 use super::ceremony::credential_id_string;
 use super::ceremony::registration_aaguid;
 use super::ceremony::request_attestation;
 use super::ceremony::require_discoverable_credential;
+use super::error::FinishDeviceEnrollmentError;
 use super::error::FinishEnrollmentError;
 use super::models::Passkey;
 use super::models::PasskeyInsert;
 use super::session;
 use super::session::EnrollmentKind;
 use crate::IdentityModule;
+use crate::LinkError;
 use crate::management::OpenLink;
 use crate::management::usable_link;
 use crate::models::IdentityUuid;
 use crate::models::RegistrationLink;
+
+/// Postgres' name for the unique constraint on a Passkey's credential id
+const CREDENTIAL_ID_UNIQUE: &str = "passkey_credential_id_key";
 
 impl IdentityModule {
     /// Begin an Enrollment through an opened Registration link
@@ -42,14 +50,20 @@ impl IdentityModule {
         link: &OpenLink,
         user_name: &str,
     ) -> Result<serde_json::Value, CoreApiError> {
-        self.begin_enrollment(session, EnrollmentKind::Link, link.identity, user_name)
-            .await
+        self.begin_enrollment(
+            session,
+            EnrollmentKind::Link(link.link),
+            link.identity,
+            user_name,
+        )
+        .await
     }
 
     /// Finish the session's Enrollment through the Registration link carrying `token`
     ///
-    /// The link is checked again and marked used together with storing the
-    /// Passkey, so it enrolls exactly one.
+    /// Only an Enrollment begun through that same link is finished. The link
+    /// is checked again and marked used together with storing the Passkey, so
+    /// it enrolls exactly one, even when two Enrollments race for it.
     pub async fn finish_link_enrollment(
         &self,
         session: &Session,
@@ -57,20 +71,26 @@ impl IdentityModule {
         credential: serde_json::Value,
         label: Option<MaxStr<255>>,
     ) -> Result<(), FinishEnrollmentError> {
-        let Some(state) = session::take_enrollment(session, EnrollmentKind::Link).await? else {
-            return Err(FinishEnrollmentError::NoEnrollmentInProgress);
-        };
-        let credential = parse_registration(credential)?;
-
         let mut tx = Database::global().start_transaction().await?;
 
         let link = usable_link(&mut tx, token)
             .await?
             .map_err(FinishEnrollmentError::Link)?;
 
+        let Some(state) =
+            session::take_enrollment(session, EnrollmentKind::Link(link.uuid)).await?
+        else {
+            tx.rollback().await?;
+            return Err(FinishEnrollmentError::NoEnrollmentInProgress);
+        };
+        let credential = parse_registration(credential)?;
         let passkey = self.verify_registration(&credential, &state)?;
+
+        if !RegistrationLink::mark_used(&mut tx, link.uuid, OffsetDateTime::now_utc()).await? {
+            tx.rollback().await?;
+            return Err(FinishEnrollmentError::Link(LinkError::LinkUsed));
+        }
         store_passkey(&mut tx, link.identity, &credential, passkey, label).await?;
-        RegistrationLink::mark_used(&mut tx, link.uuid).await?;
 
         tx.commit().await?;
         Ok(())
@@ -98,9 +118,9 @@ impl IdentityModule {
         identity: IdentityUuid,
         credential: serde_json::Value,
         label: Option<MaxStr<255>>,
-    ) -> Result<(), FinishEnrollmentError> {
+    ) -> Result<(), FinishDeviceEnrollmentError> {
         let Some(state) = session::take_enrollment(session, EnrollmentKind::Device).await? else {
-            return Err(FinishEnrollmentError::NoEnrollmentInProgress);
+            return Err(FinishDeviceEnrollmentError::NoEnrollmentInProgress);
         };
         let credential = parse_registration(credential)?;
         let passkey = self.verify_registration(&credential, &state)?;
@@ -145,9 +165,7 @@ impl IdentityModule {
 
         session::start_enrollment(session, kind, state).await?;
 
-        serde_json::to_value(challenge).map_err(CoreApiError::map_server_error(
-            "Failed to serialize challenge",
-        ))
+        challenge_json(challenge)
     }
 
     /// Check the authenticator's response against the ceremony state
@@ -155,18 +173,18 @@ impl IdentityModule {
         &self,
         credential: &RegisterPublicKeyCredential,
         state: &PasskeyRegistration,
-    ) -> Result<WebauthnPasskey, FinishEnrollmentError> {
+    ) -> Result<WebauthnPasskey, FinishDeviceEnrollmentError> {
         self.webauthn
             .finish_passkey_registration(credential, state)
-            .map_err(|_| FinishEnrollmentError::VerificationFailed)
+            .map_err(|_| FinishDeviceEnrollmentError::VerificationFailed)
     }
 }
 
 /// Parse the authenticator's response to an Enrollment
 fn parse_registration(
     credential: serde_json::Value,
-) -> Result<RegisterPublicKeyCredential, FinishEnrollmentError> {
-    serde_json::from_value(credential).map_err(|_| FinishEnrollmentError::MalformedCredential)
+) -> Result<RegisterPublicKeyCredential, FinishDeviceEnrollmentError> {
+    serde_json::from_value(credential).map_err(|_| FinishDeviceEnrollmentError::MalformedCredential)
 }
 
 /// Store a freshly enrolled Passkey for `identity`
@@ -176,10 +194,9 @@ async fn store_passkey(
     credential: &RegisterPublicKeyCredential,
     passkey: WebauthnPasskey,
     label: Option<MaxStr<255>>,
-) -> Result<(), FinishEnrollmentError> {
+) -> Result<(), FinishDeviceEnrollmentError> {
     let existing = Passkey::get_by_identity(&mut *tx, identity).await?.len();
-    let credential_id = credential_id_string(passkey.cred_id())
-        .ok_or(CoreApiError::server_error("Unreadable credential id"))?;
+    let credential_id = credential_id_string(passkey.cred_id())?;
 
     Passkey::insert(
         &mut *tx,
@@ -191,5 +208,36 @@ async fn store_passkey(
         },
     )
     .await
-    .map_err(|_| FinishEnrollmentError::AlreadyEnrolled)
+    .map_err(insert_failure)
+}
+
+/// What a failed insert of a Passkey means for the Enrollment
+///
+/// Only a clash on the credential id says the Passkey is already enrolled.
+fn insert_failure(error: rorm::Error) -> FinishDeviceEnrollmentError {
+    let clash = match &error {
+        rorm::Error::SqlxError(error) => error.as_database_error().is_some_and(|error| {
+            error.is_unique_violation() && error.constraint() == Some(CREDENTIAL_ID_UNIQUE)
+        }),
+        _ => false,
+    };
+    if clash {
+        FinishDeviceEnrollmentError::AlreadyEnrolled
+    } else {
+        FinishDeviceEnrollmentError::Internal(error.into())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_failure_other_than_a_credential_id_clash_is_internal() {
+        let error = rorm::Error::ConfigurationError("no database".to_string());
+        assert!(matches!(
+            insert_failure(error),
+            FinishDeviceEnrollmentError::Internal(_)
+        ));
+    }
 }

@@ -9,7 +9,7 @@ authors = ["Niklas Pfister <git@omikron.dev>"]
 service-bootstrap = { workspace = true }
 galvyn = { workspace = true, default-features = true, features = ["rorm-postgres-only"] }
 
-# Identity, Login and Enrollment (passkey-only login)
+# Identity and passkey login
 galvyn-identity = { workspace = true, features = ["passkey"] }
 
 # Response compression — a collection's entries run to megabytes of json

@@ -25,18 +25,20 @@ pub enum FinishLoginError {
     VerificationFailed,
     /// The Identity the Login targets is gone
     UnknownIdentity,
+    /// The Identity holds no Passkey with the credential id the authenticator answered with
+    UnknownPasskey,
     /// Something unrelated to the request broke
     Internal(CoreApiError),
 }
 
-/// Failure of finishing an Enrollment
+/// Failure of [`IdentityModule::finish_link_enrollment`](crate::IdentityModule::finish_link_enrollment)
 #[derive(Debug)]
 pub enum FinishEnrollmentError {
-    /// The session has no Enrollment of this kind in progress
+    /// The session has no Enrollment through this Registration link in progress
     NoEnrollmentInProgress,
     /// The authenticator response is not a WebAuthn credential
     MalformedCredential,
-    /// The Registration link cannot be used (only for Enrollment through one)
+    /// The Registration link cannot be used
     Link(LinkError),
     /// The authenticator response does not match the Enrollment
     VerificationFailed,
@@ -44,6 +46,33 @@ pub enum FinishEnrollmentError {
     AlreadyEnrolled,
     /// Something unrelated to the request broke
     Internal(CoreApiError),
+}
+
+/// Failure of [`IdentityModule::finish_device_enrollment`](crate::IdentityModule::finish_device_enrollment)
+#[derive(Debug)]
+pub enum FinishDeviceEnrollmentError {
+    /// The session has no Enrollment of an additional device in progress
+    NoEnrollmentInProgress,
+    /// The authenticator response is not a WebAuthn credential
+    MalformedCredential,
+    /// The authenticator response does not match the Enrollment
+    VerificationFailed,
+    /// The Passkey is already enrolled
+    AlreadyEnrolled,
+    /// Something unrelated to the request broke
+    Internal(CoreApiError),
+}
+
+impl From<FinishDeviceEnrollmentError> for FinishEnrollmentError {
+    fn from(value: FinishDeviceEnrollmentError) -> Self {
+        match value {
+            FinishDeviceEnrollmentError::NoEnrollmentInProgress => Self::NoEnrollmentInProgress,
+            FinishDeviceEnrollmentError::MalformedCredential => Self::MalformedCredential,
+            FinishDeviceEnrollmentError::VerificationFailed => Self::VerificationFailed,
+            FinishDeviceEnrollmentError::AlreadyEnrolled => Self::AlreadyEnrolled,
+            FinishDeviceEnrollmentError::Internal(error) => Self::Internal(error),
+        }
+    }
 }
 
 /// Why a Passkey must not be removed
@@ -71,5 +100,6 @@ internal_from!(
     BeginLoginError,
     FinishLoginError,
     FinishEnrollmentError,
+    FinishDeviceEnrollmentError,
     RemovePasskeyError,
 );
