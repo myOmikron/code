@@ -1,22 +1,3 @@
-# Passkeys and Registration links move into the galvyn-identity library and
-# hang off an Identity instead of the account.
-#
-# The Identity carries no name or role, the account references it through a
-# unique, cascading foreign key. Deleting the Identity takes the account, its
-# Passkeys and its Registration links with it.
-#
-# Every existing account gets an Identity with the account's own uuid. That
-# uuid is the WebAuthn user handle of the account's Passkeys and the value of
-# the logged-in session key, so both keep working unchanged.
-#
-# A not-null column can't be added to a table that has rows, so the account
-# table is rebuilt instead: the old one is renamed aside, a new one is created
-# with the identity column, the rows are copied over and the old one is
-# dropped. Nothing else references the account, and dropping the old table
-# fails if something does.
-#
-# Postgres only, like every deployment of this service.
-
 [Migration]
 Hash = "7779092631548714045"
 Initial = false
@@ -276,7 +257,6 @@ File = "libs/galvyn-identity/src/db.rs"
 Line = 49
 Column = 9
 
-# One Identity per account, sharing its uuid. The last login moves along.
 [[Migration.Operations]]
 Type = "RawSQL"
 StructureSafe = true
@@ -329,14 +309,11 @@ Name = "accountpasskey"
 Type = "DeleteModel"
 Name = "registrationtoken"
 
-# Rebuilding the account table, see the top of this file.
 [[Migration.Operations]]
 Type = "RenameModel"
 Old = "account"
 New = "account_old"
 
-# The renamed table keeps its constraint and index names. Moved out of the way,
-# so the new table gets the ones a fresh install has.
 [[Migration.Operations]]
 Type = "RawSQL"
 StructureSafe = true

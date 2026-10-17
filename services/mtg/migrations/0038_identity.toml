@@ -1,23 +1,3 @@
-# Passkeys and registration links hang off an identity instead of the account.
-#
-# The identity is the anchor the shared passkeys module will own: it carries no
-# name, role or contact data, and the account references it through a unique,
-# cascading foreign key. Deleting the identity takes the account, its passkeys
-# and its registration links with it. The tables already carry the names the
-# module will use, so moving the models into it needs no further migration.
-#
-# Every existing account gets an identity with the account's own uuid. That uuid
-# is the WebAuthn user handle of the account's passkeys, and the value of the
-# logged-in session key, so both keep working unchanged.
-#
-# A not-null column can't be added to a table that has rows, so the account
-# table is rebuilt instead: the old one is renamed aside, a new one is created
-# with the identity column, the rows are copied over, every foreign key that
-# pointed at the old table is pointed at the new one, and the old one is
-# dropped. Dropping it fails while anything still references it.
-#
-# Postgres only, like every deployment of this service.
-
 [Migration]
 Hash = "949320375033875435"
 Initial = false
@@ -277,7 +257,6 @@ File = "services/mtg/src/models/identity/db.rs"
 Line = 49
 Column = 9
 
-# One identity per account, sharing its uuid. The last login moves along.
 [[Migration.Operations]]
 Type = "RawSQL"
 StructureSafe = true
@@ -330,14 +309,11 @@ Name = "account_passkey"
 Type = "DeleteModel"
 Name = "registration_token"
 
-# Rebuilding the account table, see the top of this file.
 [[Migration.Operations]]
 Type = "RenameModel"
 Old = "account"
 New = "account_old"
 
-# The renamed table keeps its constraint and index names. Moved out of the way,
-# so the new table gets the ones a fresh install has.
 [[Migration.Operations]]
 Type = "RawSQL"
 StructureSafe = true
@@ -510,8 +486,6 @@ SELECT uuid, username, username_normalized, email, created_at, tombstone, uuid
 FROM account_old;
 """
 
-# Decks, collections, watch lists, scanner sessions and the stock rollup all
-# reference the account. Each keeps its constraint name and its cascades.
 [[Migration.Operations]]
 Type = "RawSQL"
 StructureSafe = true
