@@ -12,7 +12,6 @@ use galvyn::get;
 use galvyn::post;
 use galvyn::rorm::Database;
 use galvyn_identity::BeginLoginError;
-use galvyn_identity::FinishDeviceEnrollmentError;
 use galvyn_identity::FinishEnrollmentError;
 use galvyn_identity::FinishLoginError;
 use galvyn_identity::IdentityModule;
@@ -103,7 +102,7 @@ fn link_refused(error: LinkError) -> ApiError {
     }
 }
 
-/// Why an Enrollment through a Registration link could not be finished
+/// Why an Enrollment could not be finished
 fn enrollment_refused(error: FinishEnrollmentError) -> ApiError {
     match error {
         FinishEnrollmentError::NoEnrollmentInProgress => {
@@ -116,25 +115,6 @@ fn enrollment_refused(error: FinishEnrollmentError) -> ApiError {
             ApiError::bad_request("This passkey is already registered")
         }
         FinishEnrollmentError::Internal(error) => error.into(),
-    }
-}
-
-/// Why an Enrollment of an additional device could not be finished
-fn device_enrollment_refused(error: FinishDeviceEnrollmentError) -> ApiError {
-    match error {
-        FinishDeviceEnrollmentError::NoEnrollmentInProgress => {
-            ApiError::bad_request("No enrollment ceremony in progress")
-        }
-        FinishDeviceEnrollmentError::MalformedCredential => {
-            ApiError::bad_request("Malformed credential")
-        }
-        FinishDeviceEnrollmentError::VerificationFailed => {
-            ApiError::bad_request("Registration failed")
-        }
-        FinishDeviceEnrollmentError::AlreadyEnrolled => {
-            ApiError::bad_request("This passkey is already registered")
-        }
-        FinishDeviceEnrollmentError::Internal(error) => error.into(),
     }
 }
 
@@ -203,7 +183,7 @@ pub async fn finish_add_passkey(
     IdentityModule::global()
         .finish_device_enrollment(&session, account.identity, request.credential, None)
         .await
-        .map_err(device_enrollment_refused)
+        .map_err(|error| enrollment_refused(error.into()))
 }
 
 /// List the passkeys of the logged-in account

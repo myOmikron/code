@@ -176,9 +176,7 @@ fn is_plausible_email(email: &str) -> bool {
 
 /// Start a passkey login for a given username
 ///
-/// The account's passkeys are sent as the credential allow-list. Registration asks for
-/// `residentKey: discouraged`, so the credentials are not necessarily discoverable by the
-/// authenticator on its own — it has to be told which ones to look for.
+/// The account's passkeys are sent as the credential allow-list.
 #[post("/login/start")]
 pub async fn start_login(
     session: Session,

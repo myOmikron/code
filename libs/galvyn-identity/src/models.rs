@@ -47,6 +47,12 @@ impl IdentityUuid {
         self.0
     }
 
+    /// Wrap a raw uuid, for building fixtures
+    #[cfg(test)]
+    pub(crate) fn from_uuid(uuid: Uuid) -> Self {
+        Self(uuid)
+    }
+
     /// Create a new `IdentityUuid` from a `ForeignModel<IdentityModel>`
     pub fn new_from_field(field: ForeignModel<IdentityModel>) -> Self {
         Self(field.0)

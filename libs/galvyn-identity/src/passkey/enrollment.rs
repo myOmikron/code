@@ -61,9 +61,10 @@ impl IdentityModule {
 
     /// Finish the session's Enrollment through the Registration link carrying `token`
     ///
-    /// Only an Enrollment begun through that same link is finished. The link
-    /// is checked again and marked used together with storing the Passkey, so
-    /// it enrolls exactly one, even when two Enrollments race for it.
+    /// Only an Enrollment begun through that same link is finished. Marking
+    /// the link used checks again that it is unused and unexpired, together
+    /// with storing the Passkey, so it enrolls exactly one, even when two
+    /// Enrollments race for it.
     pub async fn finish_link_enrollment(
         &self,
         session: &Session,
@@ -72,20 +73,19 @@ impl IdentityModule {
         label: Option<MaxStr<255>>,
     ) -> Result<(), FinishEnrollmentError> {
         let mut tx = Database::global().start_transaction().await?;
-
-        let link = usable_link(&mut tx, token)
-            .await?
-            .map_err(FinishEnrollmentError::Link)?;
+        let link = usable_link(&mut tx, token).await?;
+        tx.commit().await?;
+        let link = link.map_err(FinishEnrollmentError::Link)?;
 
         let Some(state) =
             session::take_enrollment(session, EnrollmentKind::Link(link.uuid)).await?
         else {
-            tx.rollback().await?;
             return Err(FinishEnrollmentError::NoEnrollmentInProgress);
         };
         let credential = parse_registration(credential)?;
         let passkey = self.verify_registration(&credential, &state)?;
 
+        let mut tx = Database::global().start_transaction().await?;
         if !RegistrationLink::mark_used(&mut tx, link.uuid, OffsetDateTime::now_utc()).await? {
             tx.rollback().await?;
             return Err(FinishEnrollmentError::Link(LinkError::LinkUsed));
@@ -107,11 +107,19 @@ impl IdentityModule {
         identity: IdentityUuid,
         user_name: &str,
     ) -> Result<serde_json::Value, CoreApiError> {
-        self.begin_enrollment(session, EnrollmentKind::Device, identity, user_name)
-            .await
+        self.begin_enrollment(
+            session,
+            EnrollmentKind::Device(identity),
+            identity,
+            user_name,
+        )
+        .await
     }
 
     /// Finish the session's Enrollment of an additional device for `identity`
+    ///
+    /// Only an Enrollment begun for that same Identity is finished, so one
+    /// begun before another Identity logged in on the browser is refused.
     pub async fn finish_device_enrollment(
         &self,
         session: &Session,
@@ -119,7 +127,9 @@ impl IdentityModule {
         credential: serde_json::Value,
         label: Option<MaxStr<255>>,
     ) -> Result<(), FinishDeviceEnrollmentError> {
-        let Some(state) = session::take_enrollment(session, EnrollmentKind::Device).await? else {
+        let Some(state) =
+            session::take_enrollment(session, EnrollmentKind::Device(identity)).await?
+        else {
             return Err(FinishDeviceEnrollmentError::NoEnrollmentInProgress);
         };
         let credential = parse_registration(credential)?;
