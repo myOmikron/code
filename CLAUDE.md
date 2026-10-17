@@ -203,8 +203,11 @@ Frontend (per app): `pnpm run dev` / `build` / `ci` / `format` / `gen-api`.
   affected by the diff (`tools/changed-crates.py`); it also runs taplo, `ast-grep scan`
   and `cargo doc`. `tools/ci-image` mirrors it for local runs (`just run-ci-image`)
 - Dockerfile changes are build-checked by `docker-build.yaml`
-- Version pins in workflows/Dockerfiles carry `# renovate:` comments — keep them
-  directly above the assignment they pin
+- Renovate runs self-hosted (`.github/workflows/renovate.yaml`, config in `renovate.json`)
+  as a GitHub App, so its commits are signed. Image refs (`FROM`, compose `image:`)
+  carry full versions and are found by Renovate's own managers. Only versions no
+  manager sees (ARG/ENV/`toolchain:` in workflows and Dockerfiles) carry a
+  `# renovate:` comment, directly above the assignment it pins
 
 ## Release Workflow
 

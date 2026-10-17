@@ -52,7 +52,6 @@ runs:
     - name: Install Rust stable
       uses: dtolnay/rust-toolchain@efa25f7f19611383d5b0ccf2d1c8914531636bf9
       with:
-        # renovate: datasource=github-releases depName=rust-lang/rust versioning=semver
         toolchain: "1.96.0"
         components: clippy
 
