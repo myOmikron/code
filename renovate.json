@@ -1,7 +1,21 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": [":semanticCommits"],
+  "description": [
+    "Self-hosted via .github/workflows/renovate.yaml as a GitHub App, so platformCommit can produce the signed commits the main ruleset requires."
+  ],
+  "extends": ["config:recommended", ":semanticCommitsDisabled"],
   "labels": ["renovate"],
+  "timezone": "Europe/Berlin",
+  "schedule": ["before 6am on monday"],
+  "prConcurrentLimit": 10,
+  "platformCommit": "enabled",
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["before 6am on monday"]
+  },
+  "docker-compose": {
+    "managerFilePatterns": ["/^dev/[^/]+\\.ya?ml$/"]
+  },
   "customManagers": [
     {
       "customType": "regex",
@@ -32,7 +46,7 @@
   "rebaseWhen": "behind-base-branch",
   "packageRules": [
     {
-      "description": "Automerge Rust patch updates für stabile Crates",
+      "description": "Automerge Rust patch and minor updates of stable crates",
       "matchManagers": ["cargo"],
       "matchPackageNames": [
         "serde",
@@ -58,14 +72,14 @@
       "automerge": true
     },
     {
-      "description": "Automerge Rust build-only Dependencies",
+      "description": "Automerge Rust build-only dependencies",
       "matchManagers": ["cargo"],
       "matchPackageNames": ["prost-build", "tonic-prost-build"],
       "matchUpdateTypes": ["patch", "minor"],
       "automerge": true
     },
     {
-      "description": "Automerge alle Frontend devDependencies",
+      "description": "Automerge all frontend devDependencies",
       "matchManagers": ["npm"],
       // https://docs.renovatebot.com/modules/manager/npm/#dependency-types
       // catalog dependencies produce dynamic depType values: pnpm.catalog.<name>
@@ -73,7 +87,7 @@
       "automerge": true
     },
     {
-      "description": "Automerge Frontend Utility-Dependencies (patch)",
+      "description": "Automerge frontend utility dependencies (patch)",
       "matchManagers": ["npm"],
       "matchPackageNames": [
         "clsx",
@@ -87,22 +101,27 @@
       "automerge": true
     },
     {
-      "description": "Automerge Docker (patch, minor + digest)",
+      "description": "Automerge Dockerfile base images (patch, minor and digest)",
       "matchManagers": ["dockerfile"],
       "matchUpdateTypes": ["patch", "minor", "digest"],
       "automerge": true
     },
     {
-      "description": "Automerge GitHub Actions (patch + digest)",
+      "description": "Automerge GitHub Actions (patch and digest)",
       "matchManagers": ["github-actions"],
       "matchUpdateTypes": ["patch", "digest"],
       "automerge": true
     },
     {
+      "description": "Only update the lock file of the Python service, keep its ranges",
+      "matchManagers": ["pep621"],
+      "rangeStrategy": "update-lockfile"
+    },
+    {
       "description": "Group tonic packages",
       "groupName": "tonic monorepo",
       "matchManagers": ["cargo"],
-      "matchSourceUrls": "https://github.com/hyperium/tonic",
+      "matchSourceUrls": ["https://github.com/hyperium/tonic"],
       "matchUpdateTypes": ["digest", "patch", "minor", "major"]
     },
     {
@@ -110,7 +129,7 @@
       "groupName": "storybook monorepo",
       "matchManagers": ["npm"],
       "matchDepTypes": ["devDependencies", "pnpm.catalog.devDependencies"],
-      "matchSourceUrls": "https://github.com/storybookjs/storybook",
+      "matchSourceUrls": ["https://github.com/storybookjs/storybook"],
       "matchUpdateTypes": ["digest", "patch", "minor", "major"]
     },
     {
@@ -118,7 +137,7 @@
       "groupName": "vitest monorepo",
       "matchManagers": ["npm"],
       "matchDepTypes": ["devDependencies", "pnpm.catalog.devDependencies"],
-      "matchSourceUrls": "https://github.com/vitest-dev/vitest",
+      "matchSourceUrls": ["https://github.com/vitest-dev/vitest"],
       "matchUpdateTypes": ["digest", "patch", "minor", "major"]
     },
     {
@@ -126,7 +145,7 @@
       "groupName": "tsparticles monorepo",
       "matchManagers": ["npm"],
       "matchDepTypes": ["dependencies", "pnpm.catalog.dependencies"],
-      "matchSourceUrls": "https://github.com/tsparticles/tsparticles",
+      "matchSourceUrls": ["https://github.com/tsparticles/tsparticles"],
       "matchUpdateTypes": ["digest", "patch", "minor", "major"]
     },
     {
@@ -146,12 +165,18 @@
       "matchUpdateTypes": ["digest", "patch", "minor", "major"]
     },
     {
-      "description": "Avoid pinning docker image tags in helm's values.yaml",
-      "enabled": false,
-      "matchManagers": ["helm-values"],
-      "matchFileNames": [
-        "charts/**"
-      ]
+      "description": "Move the Rust toolchain of CI and every Dockerfile in one PR, never automerged since new clippy lints break -D warnings",
+      "groupName": "rust toolchain",
+      "matchPackageNames": ["rust"],
+      "matchDatasources": ["docker", "rust-version"],
+      "automerge": false
+    },
+    {
+      "description": "neo4j uses calendar versions with an edition suffix and holds the production graph, never automerged",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["neo4j"],
+      "versioning": "regex:^(?<major>\\d{4})\\.(?<minor>\\d{2})(\\.(?<patch>\\d+))?-(?<compatibility>community)$",
+      "automerge": false
     }
   ]
 }
