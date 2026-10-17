@@ -1,0 +1,548 @@
+# Passkeys and registration links hang off an identity instead of the account.
+#
+# The identity is the anchor the shared passkeys module will own: it carries no
+# name, role or contact data, and the account references it through a unique,
+# cascading foreign key. Deleting the identity takes the account, its passkeys
+# and its registration links with it. The tables already carry the names the
+# module will use, so moving the models into it needs no further migration.
+#
+# Every existing account gets an identity with the account's own uuid. That uuid
+# is the WebAuthn user handle of the account's passkeys, and the value of the
+# logged-in session key, so both keep working unchanged.
+#
+# A not-null column can't be added to a table that has rows, so the account
+# table is rebuilt instead: the old one is renamed aside, a new one is created
+# with the identity column, the rows are copied over, every foreign key that
+# pointed at the old table is pointed at the new one, and the old one is
+# dropped. Dropping it fails while anything still references it.
+#
+# Postgres only, like every deployment of this service.
+
+[Migration]
+Hash = "949320375033875435"
+Initial = false
+Dependency = 37
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateModel"
+Name = "identity"
+
+[[Migration.Operations.Fields]]
+Name = "uuid"
+Type = "uuid"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "primary_key"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/identity/db.rs"
+Line = 21
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "created_at"
+Type = "datetime"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "auto_create_time"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/identity/db.rs"
+Line = 25
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "last_login_at"
+Type = "datetime"
+Annotations = []
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/identity/db.rs"
+Line = 28
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateModel"
+Name = "passkey"
+
+[[Migration.Operations.Fields]]
+Name = "uuid"
+Type = "uuid"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "primary_key"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/identity/db.rs"
+Line = 45
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "label"
+Type = "text"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 255
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/identity/db.rs"
+Line = 52
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "credential_id"
+Type = "text"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 1024
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "unique"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/identity/db.rs"
+Line = 58
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "credential"
+Type = "binary"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/identity/db.rs"
+Line = 61
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "last_used_at"
+Type = "datetime"
+Annotations = []
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/identity/db.rs"
+Line = 64
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "created_at"
+Type = "datetime"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "auto_create_time"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/identity/db.rs"
+Line = 68
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateModel"
+Name = "registration_link"
+
+[[Migration.Operations.Fields]]
+Name = "uuid"
+Type = "uuid"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "primary_key"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/identity/db.rs"
+Line = 95
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "token"
+Type = "text"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 64
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "unique"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/identity/db.rs"
+Line = 103
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "expires_at"
+Type = "datetime"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/identity/db.rs"
+Line = 106
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "used"
+Type = "boolean"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/identity/db.rs"
+Line = 109
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "created_at"
+Type = "datetime"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "auto_create_time"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/identity/db.rs"
+Line = 113
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "registration_link"
+
+[Migration.Operations.Field]
+Name = "identity"
+Type = "uuid"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "foreign_key"
+
+[Migration.Operations.Field.Annotations.Value]
+TableName = "identity"
+ColumnName = "uuid"
+OnDelete = "Cascade"
+OnUpdate = "Cascade"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/identity/db.rs"
+Line = 99
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "passkey"
+
+[Migration.Operations.Field]
+Name = "identity"
+Type = "uuid"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "foreign_key"
+
+[Migration.Operations.Field.Annotations.Value]
+TableName = "identity"
+ColumnName = "uuid"
+OnDelete = "Cascade"
+OnUpdate = "Cascade"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/identity/db.rs"
+Line = 49
+Column = 9
+
+# One identity per account, sharing its uuid. The last login moves along.
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+INSERT INTO identity (uuid, created_at, last_login_at)
+SELECT uuid, created_at, last_login_at FROM account;
+"""
+
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+INSERT INTO passkey (uuid, identity, label, credential_id, credential, last_used_at, created_at)
+SELECT uuid, account, label, credential_id, credential, last_used_at, created_at
+FROM account_passkey;
+"""
+
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+INSERT INTO registration_link (uuid, identity, token, expires_at, used, created_at)
+SELECT uuid, account, token, expires_at, used, created_at
+FROM registration_token;
+"""
+
+[[Migration.Operations]]
+Type = "DeleteModel"
+Name = "account_passkey"
+
+[[Migration.Operations]]
+Type = "DeleteModel"
+Name = "registration_token"
+
+# Rebuilding the account table, see the top of this file.
+[[Migration.Operations]]
+Type = "RenameModel"
+Old = "account"
+New = "account_old"
+
+# The renamed table keeps its constraint and index names. Moved out of the way,
+# so the new table gets the ones a fresh install has.
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+DO $$
+DECLARE
+    r record;
+BEGIN
+    FOR r IN
+        SELECT conname FROM pg_constraint
+        WHERE conrelid = 'account_old'::regclass AND left(conname, 8) = 'account_'
+    LOOP
+        EXECUTE format(
+            'ALTER TABLE account_old RENAME CONSTRAINT %I TO %I',
+            r.conname,
+            'account_old_' || substr(r.conname, 9)
+        );
+    END LOOP;
+END
+$$;
+"""
+
+[[Migration.Operations]]
+Type = "CreateModel"
+Name = "account"
+
+[[Migration.Operations.Fields]]
+Name = "uuid"
+Type = "uuid"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "primary_key"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/account/db.rs"
+Line = 25
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "username"
+Type = "text"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 32
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/account/db.rs"
+Line = 28
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "username_normalized"
+Type = "text"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 32
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "unique"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/account/db.rs"
+Line = 32
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "email"
+Type = "text"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 255
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "unique"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/account/db.rs"
+Line = 36
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "created_at"
+Type = "datetime"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "auto_create_time"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/account/db.rs"
+Line = 40
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "tombstone"
+Type = "boolean"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "default_value"
+Value = false
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/account/db.rs"
+Line = 49
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "account"
+
+[Migration.Operations.Field]
+Name = "identity"
+Type = "uuid"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "foreign_key"
+
+[Migration.Operations.Field.Annotations.Value]
+TableName = "identity"
+ColumnName = "uuid"
+OnDelete = "Cascade"
+OnUpdate = "Cascade"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "unique"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/account/db.rs"
+Line = 55
+Column = 9
+
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+INSERT INTO account (uuid, username, username_normalized, email, created_at, tombstone, identity)
+SELECT uuid, username, username_normalized, email, created_at, tombstone, uuid
+FROM account_old;
+"""
+
+# Decks, collections, watch lists, scanner sessions and the stock rollup all
+# reference the account. Each keeps its constraint name and its cascades.
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+DO $$
+DECLARE
+    r record;
+BEGIN
+    FOR r IN
+        SELECT conrelid::regclass AS tbl, conname, pg_get_constraintdef(oid) AS def
+        FROM pg_constraint
+        WHERE contype = 'f' AND confrelid = 'account_old'::regclass
+    LOOP
+        EXECUTE format('ALTER TABLE %s DROP CONSTRAINT %I', r.tbl, r.conname);
+        EXECUTE format(
+            'ALTER TABLE %s ADD CONSTRAINT %I %s',
+            r.tbl,
+            r.conname,
+            replace(r.def, 'REFERENCES account_old(', 'REFERENCES account(')
+        );
+    END LOOP;
+END
+$$;
+"""
+
+[[Migration.Operations]]
+Type = "DeleteModel"
+Name = "account_old"

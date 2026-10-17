@@ -7,27 +7,10 @@ use galvyn::core::re_exports::axum::extract::FromRequestParts;
 use galvyn::core::re_exports::axum::http::request::Parts;
 use galvyn::core::session::Session;
 use galvyn::core::stuff::api_error::ApiError;
-use galvyn::core::stuff::api_error::ApiResult;
 use galvyn::rorm::Database;
 
 use crate::models::account::Account;
-use crate::models::account::AccountUuid;
-
-/// Session key holding the uuid of the logged-in account
-const SESSION_KEY: &str = "current_account";
-
-impl Account {
-    /// Set the account's session as logged-in
-    ///
-    /// Generic over the form-error type so it composes with handlers that report typed errors.
-    pub async fn set_logged_in<E>(&self, session: &Session) -> ApiResult<(), E> {
-        session
-            .insert(SESSION_KEY, self.uuid)
-            .await
-            .map_err(ApiError::map_server_error("Failed to write to session"))?;
-        Ok(())
-    }
-}
+use crate::models::identity::Identity;
 
 impl<S> FromRequestParts<S> for Account {
     type Rejection = ApiError;
@@ -54,19 +37,17 @@ impl<S> FromRequestParts<S> for Account {
                     "Can't extract session. Is `SessionManagerLayer` enabled?",
                 ))?;
 
-            let account_uuid = session
-                .get::<AccountUuid>(SESSION_KEY)
+            let identity = Identity::logged_in(session)
                 .await?
                 .ok_or(ApiError::unauthorized("Missing account uuid in session"))?;
 
             let mut tx = Database::global().start_transaction().await?;
-            let account = Account::get_by_uuid(&mut tx, account_uuid).await?;
+            let account = Account::get_by_identity(&mut tx, identity).await?;
             tx.commit().await?;
 
             // The account may have been deleted while its session was still alive.
             let Some(account) = account else {
-                session.remove_value(SESSION_KEY).await?;
-                session.save().await?;
+                Identity::forget_logged_in(session).await?;
                 return Err(ApiError::unauthorized("Unknown account uuid in session"));
             };
 

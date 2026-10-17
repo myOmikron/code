@@ -16,7 +16,7 @@ use tower_sessions::Expiry;
 use tower_sessions::cookie::time::Duration;
 use tracing::info;
 use webauthn_rs::prelude::CredentialID;
-use webauthn_rs::prelude::Passkey;
+use webauthn_rs::prelude::Passkey as WebauthnPasskey;
 use webauthn_rs::prelude::PasskeyAuthentication;
 use webauthn_rs::prelude::PasskeyRegistration;
 use webauthn_rs::prelude::PublicKeyCredential;
@@ -36,11 +36,12 @@ use crate::http::handler_frontend::auth::schema::StartLoginResponse;
 use crate::http::handler_frontend::auth::schema::StartRegistrationRequest;
 use crate::http::handler_frontend::auth::schema::StartRegistrationResponse;
 use crate::models::account::Account;
-use crate::models::account::AccountPasskey;
-use crate::models::account::AccountPasskeyInsert;
-use crate::models::account::AccountUuid;
-use crate::models::account::RegistrationToken;
 use crate::models::account::Username;
+use crate::models::identity::Identity;
+use crate::models::identity::IdentityUuid;
+use crate::models::identity::Passkey;
+use crate::models::identity::PasskeyInsert;
+use crate::models::identity::RegistrationLink;
 use crate::modules::webauthn::WebauthnModule;
 use crate::modules::webauthn::credential_id_string;
 use crate::modules::webauthn::passkey_label;
@@ -113,7 +114,7 @@ pub async fn recover_account(
         return Ok(ApiJson(()));
     };
 
-    let token = RegistrationToken::create(&mut tx, account.uuid).await?;
+    let token = RegistrationLink::create(&mut tx, account.identity).await?;
     tx.commit().await?;
 
     // Sent after the commit: a failing mail must not roll back the token, and
@@ -139,7 +140,7 @@ async fn prepare_signup(
         // no passkey yet — that is the "my invite mail got lost" case. Once a
         // passkey exists the account is somebody's, and a stranger typing the
         // username must not be able to trigger mail to them.
-        let has_passkey = !AccountPasskey::get_by_account(&mut *tx, account.uuid)
+        let has_passkey = !Passkey::get_by_identity(&mut *tx, account.identity)
             .await?
             .is_empty();
         if has_passkey {
@@ -148,7 +149,7 @@ async fn prepare_signup(
             return Ok(None);
         }
 
-        let token = RegistrationToken::create(&mut *tx, account.uuid).await?;
+        let token = RegistrationLink::create(&mut *tx, account.identity).await?;
         return Ok(Some((account.email, account.username, token)));
     }
 
@@ -161,8 +162,9 @@ async fn prepare_signup(
         return Ok(None);
     }
 
-    let uuid = Account::insert(&mut *tx, request.username.clone(), request.email.clone()).await?;
-    let token = RegistrationToken::create(&mut *tx, uuid).await?;
+    let identity =
+        Account::insert(&mut *tx, request.username.clone(), request.email.clone()).await?;
+    let token = RegistrationLink::create(&mut *tx, identity).await?;
 
     Ok(Some((
         request.email.clone(),
@@ -196,8 +198,8 @@ const REMEMBER_ME: Duration = Duration::days(30);
 /// Session key holding the state of a running login ceremony
 const LOGIN_STATE: &str = "webauthn_login";
 
-/// Session key holding the account uuid of a running login ceremony
-const LOGIN_ACCOUNT: &str = "webauthn_login_account";
+/// Session key holding the identity uuid a running login ceremony targets
+const LOGIN_IDENTITY: &str = "webauthn_login_account";
 
 /// Start a passkey login for a given username
 ///
@@ -211,8 +213,8 @@ pub async fn start_login(
 ) -> ApiResult<ApiJson<StartLoginResponse>, StartLoginErrors> {
     let mut tx = Database::global().start_transaction().await?;
     let account = Account::get_by_username(&mut tx, &request.username).await?;
-    let passkeys: Vec<Passkey> = match &account {
-        Some(account) => AccountPasskey::get_by_account(&mut tx, account.uuid)
+    let passkeys: Vec<WebauthnPasskey> = match &account {
+        Some(account) => Passkey::get_by_identity(&mut tx, account.identity)
             .await?
             .into_iter()
             .map(|passkey| passkey.credential)
@@ -239,7 +241,7 @@ pub async fn start_login(
         .await
         .map_err(ApiError::map_server_error("Failed to write to session"))?;
     session
-        .insert(LOGIN_ACCOUNT, account.uuid)
+        .insert(LOGIN_IDENTITY, account.identity)
         .await
         .map_err(ApiError::map_server_error("Failed to write to session"))?;
 
@@ -262,13 +264,13 @@ pub async fn finish_login(
         .remove(LOGIN_STATE)
         .await
         .map_err(ApiError::map_server_error("Failed to read session"))?;
-    let account_uuid: Option<AccountUuid> = session
-        .remove(LOGIN_ACCOUNT)
+    let identity: Option<IdentityUuid> = session
+        .remove(LOGIN_IDENTITY)
         .await
         .map_err(ApiError::map_server_error("Failed to read session"))?;
 
     let mut errors = FormErrors::<FinishLoginErrors>::new();
-    let (Some(state), Some(account_uuid)) = (state, account_uuid) else {
+    let (Some(state), Some(identity)) = (state, identity) else {
         errors.no_ceremony = true;
         return errors.fail();
     };
@@ -288,9 +290,10 @@ pub async fn finish_login(
 
     let mut tx = Database::global().start_transaction().await?;
 
-    let account = Account::get_by_uuid(&mut tx, account_uuid)
+    let identity = Identity::get_by_uuid(&mut tx, identity)
         .await?
-        .ok_or(ApiError::bad_request("Unknown account"))?;
+        .ok_or(ApiError::bad_request("Unknown account"))?
+        .uuid;
 
     // Persist the updated signature counter / backup state on the passkey that was used —
     // that is what lets a cloned authenticator be spotted later. Which one that
@@ -299,20 +302,20 @@ pub async fn finish_login(
     // apart, and the stamp does not depend on the ceremony having changed
     // anything: most authenticators keep their counter at zero forever.
     let used = credential_id_string::<FinishLoginErrors>(result.cred_id())?;
-    for passkey in AccountPasskey::get_by_account(&mut tx, account.uuid).await? {
+    for passkey in Passkey::get_by_identity(&mut tx, identity).await? {
         if passkey.credential_id != used {
             continue;
         }
         let mut credential = passkey.credential.clone();
         credential.update_credential(&result);
-        AccountPasskey::update_credential(&mut tx, passkey.uuid, credential).await?;
+        Passkey::update_credential(&mut tx, passkey.uuid, credential).await?;
         break;
     }
 
-    Account::record_login(&mut tx, account.uuid).await?;
+    Identity::record_login(&mut tx, identity).await?;
     tx.commit().await?;
 
-    account.set_logged_in(&session).await?;
+    Identity::set_logged_in(&session, identity).await?;
     // Set after the session is authenticated, so an abandoned ceremony cannot leave a
     // long-lived anonymous session behind.
     session.set_expiry(Some(if request.remember_me {
@@ -334,31 +337,31 @@ pub async fn logout(session: Session) -> ApiResult<()> {
     Ok(())
 }
 
-/// Validate a registration token and return it together with its account
+/// Validate a registration link's token and return the link together with its account
 async fn validate_token(
     tx: &mut Transaction,
     token: &MaxStr<64>,
     errors: &mut FormErrors<RegistrationErrors>,
-) -> ApiResult<Option<(RegistrationToken, Account)>, RegistrationErrors> {
-    let Some(registration_token) = RegistrationToken::get_by_token(&mut *tx, token).await? else {
+) -> ApiResult<Option<(RegistrationLink, Account)>, RegistrationErrors> {
+    let Some(link) = RegistrationLink::get_by_token(&mut *tx, token).await? else {
         errors.token_invalid = true;
         return Ok(None);
     };
 
-    if registration_token.used {
+    if link.used {
         errors.token_used = true;
         return Ok(None);
     }
-    if registration_token.expires_at < OffsetDateTime::now_utc() {
+    if link.expires_at < OffsetDateTime::now_utc() {
         errors.token_expired = true;
         return Ok(None);
     }
 
-    let account = Account::get_by_uuid(&mut *tx, registration_token.account)
+    let account = Account::get_by_identity(&mut *tx, link.identity)
         .await?
         .ok_or(ApiError::server_error("Token without account"))?;
 
-    Ok(Some((registration_token, account)))
+    Ok(Some((link, account)))
 }
 
 /// Start a passkey registration
@@ -373,7 +376,7 @@ pub async fn start_registration(
     else {
         return errors.fail();
     };
-    let existing = AccountPasskey::get_by_account(&mut tx, account.uuid).await?;
+    let existing = Passkey::get_by_identity(&mut tx, account.identity).await?;
     tx.commit().await?;
 
     let exclude: Vec<CredentialID> = existing
@@ -384,7 +387,7 @@ pub async fn start_registration(
     let (mut challenge, state) = WebauthnModule::global()
         .webauthn
         .start_passkey_registration(
-            account.uuid.into_inner(),
+            account.identity.into_inner(),
             account.username.as_str(),
             account.username.as_str(),
             (!exclude.is_empty()).then_some(exclude),
@@ -430,7 +433,7 @@ pub async fn finish_registration(
 
     let mut tx = Database::global().start_transaction().await?;
 
-    let Some((token, account)) = validate_token(&mut tx, &request.token, &mut errors).await? else {
+    let Some((link, account)) = validate_token(&mut tx, &request.token, &mut errors).await? else {
         return errors.fail();
     };
 
@@ -442,14 +445,14 @@ pub async fn finish_registration(
         return errors.fail();
     };
 
-    let existing = AccountPasskey::get_by_account(&mut tx, account.uuid)
+    let existing = Passkey::get_by_identity(&mut tx, account.identity)
         .await?
         .len();
 
-    let inserted = AccountPasskey::insert(
+    let inserted = Passkey::insert(
         &mut tx,
-        AccountPasskeyInsert {
-            account: account.uuid,
+        PasskeyInsert {
+            identity: account.identity,
             label: passkey_label(registration_aaguid(&credential), existing),
             credential_id: credential_id_string(passkey.cred_id())?,
             credential: passkey,
@@ -461,7 +464,7 @@ pub async fn finish_registration(
         return errors.fail();
     }
 
-    RegistrationToken::mark_used(&mut tx, token.uuid).await?;
+    RegistrationLink::mark_used(&mut tx, link.uuid).await?;
 
     tx.commit().await?;
     Ok(ApiJson(()))
