@@ -23,7 +23,7 @@ serde_cbor_2 = "0.13"
 
 # Session store behind galvyn's session layer. Needed to name `Expiry` — galvyn keeps it
 # private, so a per-session lifetime cannot be set through it.
-tower-sessions = "0.15"
+tower-sessions = { workspace = true }
 
 # Response compression — a collection's entries run to megabytes of json
 tower-http = { workspace = true }
