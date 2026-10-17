@@ -5256,7 +5256,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Start a passkey login for a given username  The account\'s passkeys are sent as the credential allow-list. Registration asks for `residentKey: discouraged`, so the credentials are not necessarily discoverable by the authenticator on its own — it has to be told which ones to look for.
+     * Start a passkey login for a given username  The account\'s passkeys are sent as the credential allow-list.
      * Start a passkey login for a given username
      */
     async startLoginRaw(requestParameters: StartLoginOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<StartLogin200Response>> {
@@ -5267,7 +5267,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Start a passkey login for a given username  The account\'s passkeys are sent as the credential allow-list. Registration asks for `residentKey: discouraged`, so the credentials are not necessarily discoverable by the authenticator on its own — it has to be told which ones to look for.
+     * Start a passkey login for a given username  The account\'s passkeys are sent as the credential allow-list.
      * Start a passkey login for a given username
      */
     async startLogin(requestParameters: StartLoginOperationRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<StartLogin200Response> {

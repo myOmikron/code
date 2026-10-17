@@ -6795,7 +6795,7 @@ No authorization required
 
 Start a passkey login for a given username
 
-Start a passkey login for a given username  The account\&#39;s passkeys are sent as the credential allow-list. Registration asks for &#x60;residentKey: discouraged&#x60;, so the credentials are not necessarily discoverable by the authenticator on its own — it has to be told which ones to look for.
+Start a passkey login for a given username  The account\&#39;s passkeys are sent as the credential allow-list.
 
 ### Example
 
