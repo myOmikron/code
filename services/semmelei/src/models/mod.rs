@@ -12,12 +12,8 @@ pub mod pickup_day;
 pub mod settings;
 
 pub use account::Account;
-pub use account::AccountPasskey;
-pub use account::AccountPasskeyInsert;
 pub use account::AccountPasskeyUuid;
 pub use account::AccountUuid;
-pub use account::RegistrationToken;
-pub use account::RegistrationTokenUuid;
 pub use account::Role;
 pub use category::Category;
 pub use category::CategoryUuid;

@@ -26,5 +26,8 @@ webauthn-rs-proto = { workspace = true, optional = true }
 serde_cbor_2 = { workspace = true, optional = true }
 openssl = { workspace = true, optional = true }
 
+[dev-dependencies]
+tokio = { workspace = true }
+
 [lints]
 workspace = true

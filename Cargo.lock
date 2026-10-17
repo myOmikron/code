@@ -1469,6 +1469,7 @@ dependencies = [
  "serde",
  "serde_cbor_2",
  "serde_json",
+ "tokio",
  "tower-sessions",
  "tracing",
  "url",
@@ -3904,9 +3905,9 @@ dependencies = [
  "base64 0.23.1",
  "clap",
  "galvyn",
+ "galvyn-identity",
  "image",
  "nats-subjects",
- "openssl",
  "prost",
  "rand 0.10.2",
  "serde",
@@ -3916,11 +3917,9 @@ dependencies = [
  "time",
  "time-tz",
  "tokio",
- "tower-sessions",
  "tracing",
  "url",
  "uuid",
- "webauthn-rs",
 ]
 
 [[package]]

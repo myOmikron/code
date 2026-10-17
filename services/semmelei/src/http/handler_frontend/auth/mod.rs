@@ -1,8 +1,7 @@
 //! Authentication: passkey login, invite-based registration, passkey management
 
 use galvyn::core::GalvynRouter;
-
-use crate::http::middleware::auth_required::AuthRequiredLayer;
+use galvyn_identity::AuthRequiredLayer;
 
 pub mod handler;
 pub mod schema;

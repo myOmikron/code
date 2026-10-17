@@ -100,12 +100,17 @@ Frontend (per app): `pnpm run dev` / `build` / `ci` / `format` / `gen-api`.
 ### Authentication
 
 - **Staff/user auth is passkey (WebAuthn) or OIDC** — no passwords, ever.
-  Backend: `webauthn-rs` (usernameless/discoverable login); frontend: `@simplewebauthn/browser`.
-- Account onboarding and device recovery work via one-time registration links
-  (`RegistrationToken`), issued by a cli subcommand or an admin UI.
+  Backend: the `libs/galvyn-identity` galvyn module (`IdentityModule`, login methods as
+  cargo features, e.g. `passkey`); frontend: `@simplewebauthn/browser`.
+- Passkey login is username first, then a Passkey of that account's Identity
+  (the Identity's Passkeys are the credential allow-list).
+- Account onboarding and device recovery work via one-time Registration links,
+  issued through the module by a cli subcommand or an admin UI.
 - The WebAuthn `rp_id`/`rp_origin` come from the `PUBLIC_ORIGIN` env var.
   Changing its host invalidates all registered passkeys.
-- See `services/semmelei` for the reference implementation.
+- Reference implementation: `libs/galvyn-identity` (and its `GLOSSARY.md`) with
+  `docs/adr/0001-passkeys-as-galvyn-module.md` and
+  `docs/adr/0002-one-identity-module-for-all-login-methods.md`.
 
 ### HTTP API
 

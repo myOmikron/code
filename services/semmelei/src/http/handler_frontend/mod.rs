@@ -1,9 +1,9 @@
 //! All handlers for the frontend are defined in this module
 
 use galvyn::core::GalvynRouter;
+use galvyn_identity::AuthRequiredLayer;
 
 use crate::http::middleware::admin_required::AdminRequiredLayer;
-use crate::http::middleware::auth_required::AuthRequiredLayer;
 use crate::http::middleware::rate_limit::RateLimitLayer;
 
 pub mod admin;
