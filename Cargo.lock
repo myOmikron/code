@@ -1390,9 +1390,9 @@ dependencies = [
 
 [[package]]
 name = "galvyn"
-version = "0.6.1"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2eae2e1fbfa224880e2d1ebc5cf08acff7a323787e7f684b3c3ba56fdd79247a"
+checksum = "d942124fe7db36366fb62c20df88bd1f3cf9d52ee782ccaae6649d7495bf91d0"
 dependencies = [
  "axum",
  "futures-lite",
@@ -1415,9 +1415,9 @@ dependencies = [
 
 [[package]]
 name = "galvyn-contrib-settings"
-version = "0.6.0"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "91d01b82cc4b52548b25530d58e5fd3f4de0c08cef1e5eb04d92ddc1b598006c"
+checksum = "b214dffbd297e4d8841416de70c28f57d9d52c20477a5c899a0c15304125cb8d"
 dependencies = [
  "galvyn-core",
  "rorm",
@@ -1427,9 +1427,9 @@ dependencies = [
 
 [[package]]
 name = "galvyn-core"
-version = "0.6.0"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3a6e613db968bb4f01ebc41ec4340629d121c03d01daa717509fb53f6c6c5621"
+checksum = "88411af7f6a0deaa6a125c0bea391dca7f9019a53ec26e0d34993c660dd8e3a6"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -3524,9 +3524,9 @@ dependencies = [
 
 [[package]]
 name = "rorm"
-version = "0.11.0"
+version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "18dda69ed17b6fc1a1bfd10b8c623d221d2c491a7e7128ea753e21dd602793ae"
+checksum = "b9c982d06690e6c9f364e4e80863d25f61173316380e24ed0f6bfda618691103"
 dependencies = [
  "bit-vec",
  "futures-core",
@@ -3545,6 +3545,7 @@ dependencies = [
  "tracing",
  "url",
  "uuid",
+ "zeroize",
 ]
 
 [[package]]

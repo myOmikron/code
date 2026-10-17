@@ -41,7 +41,7 @@ service-bootstrap = { path = "libs/service-bootstrap" }
 service-bootstrap-build = { path = "libs/service-bootstrap-build" }
 
 # Webframework on top of `axum` and `rorm`
-galvyn = { version = "~0.6", features = ["rorm", "rorm-default", "rorm-postgres-only"] }
+galvyn = { version = "~0.7", features = ["rorm", "rorm-default", "rorm-postgres-only"] }
 
 # Identity and login methods as a galvyn module
 galvyn-identity = { path = "libs/galvyn-identity" }
