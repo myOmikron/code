@@ -94,6 +94,8 @@ Frontend (per app): `pnpm run dev` / `build` / `ci` / `format` / `gen-api`.
 - Browser-facing services add the session layer themselves
   (`.layer(galvyn::core::session::layer())`) — `service_bootstrap::run` disables galvyn's
 - Use `tracing` (not `println`/`eprintln`) — exception: config errors before tracing init
+- HTTP tests drive the router in-process against a throwaway Postgres; copy
+  `services/bnv-manager-v2/src/tests/harness.rs` (needs `just dev infra up -d --wait test-postgres`)
 - **Panic semantic: "Panic anywhere -> restart"**. `service-bootstrap` installs a panic hook
   that triggers a graceful shutdown. Don't catch panics to keep the process alive.
 

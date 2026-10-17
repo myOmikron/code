@@ -101,6 +101,8 @@ run-ci-image base="": build-ci-image
         -v apps-ci-target:/var/cache/cargo-target \
         -v apps-ci-sccache:/var/cache/sccache \
         -e "CI_BASE_REF={{ base }}" \
+        --network dev \
+        -e TEST_POSTGRES_HOST=test-postgres \
         apps-ci:local
 
 # Operate a dev stack. Everything after the name is passed to docker compose.

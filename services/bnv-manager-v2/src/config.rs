@@ -52,7 +52,14 @@ pub static LISTEN_PORT: EnvVar<u16> = EnvVar::optional("LISTEN_PORT", || 8080);
 /// # Used for
 /// - generating links which should point back to bnv-manager
 /// - the OIDC issuer and token audience
+#[cfg(not(test))]
 pub static ORIGIN: EnvVar<Url> = EnvVar::required("ORIGIN");
+
+/// The url this server is reachable under
+///
+/// Tests serve the router in-process, so any origin works.
+#[cfg(test)]
+pub static ORIGIN: EnvVar<Url> = EnvVar::optional("ORIGIN", crate::tests::harness::origin);
 
 /// A directory bnv-manager puts files it creates.
 ///

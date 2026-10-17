@@ -46,6 +46,9 @@ galvyn = { version = "~0.7", features = ["rorm", "rorm-default", "rorm-postgres-
 # Identity and login methods as a galvyn module
 galvyn-identity = { path = "libs/galvyn-identity" }
 
+# Raw SQL against the Postgres server galvyn's `rorm` runs on (test databases)
+sqlx = { version = "~0.9", default-features = false, features = ["postgres", "runtime-tokio"] }
+
 
 # -------- #
 # WebAuthn #

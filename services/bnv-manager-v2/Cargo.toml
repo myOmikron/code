@@ -13,7 +13,7 @@ thiserror = { workspace = true }
 anyhow = { workspace = true }
 
 # Webframework
-tower = { version = "~0.5", features = ["limit"] }
+tower = { version = "~0.5", features = ["limit", "util"] }
 tower-http = { workspace = true }
 galvyn = { workspace = true, features = ["contrib-settings"] }
 service-bootstrap = { workspace = true }
@@ -51,6 +51,9 @@ serde_json = { workspace = true }
 
 # Mailcow API
 mailcow = { workspace = true }
+
+[dev-dependencies]
+sqlx = { workspace = true }
 
 [lints]
 workspace = true

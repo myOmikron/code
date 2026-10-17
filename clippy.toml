@@ -1,3 +1,5 @@
 enforced-import-renames = [
     { path = "anyhow::Error", rename = "AnyhowError" },
 ]
+allow-expect-in-tests = true
+allow-unwrap-in-tests = true

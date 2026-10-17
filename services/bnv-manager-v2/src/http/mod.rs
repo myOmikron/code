@@ -1,6 +1,7 @@
 //! HTTP related code
 
 use galvyn::core::GalvynRouter;
+use galvyn::core::session;
 use tower::ServiceBuilder;
 use tower_http::trace::DefaultMakeSpan;
 use tower_http::trace::DefaultOnResponse;
@@ -21,6 +22,7 @@ pub fn get_router() -> GalvynRouter {
                 .nest("/frontend", handler_frontend::initialize())
                 .nest("/auth", handler_auth::initialize()),
         )
+        .layer(session::layer())
         .layer(
             ServiceBuilder::new().layer(
                 TraceLayer::new_for_http()
