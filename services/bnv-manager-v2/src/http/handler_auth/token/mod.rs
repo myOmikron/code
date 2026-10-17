@@ -18,7 +18,6 @@ use rsa::pkcs1::EncodeRsaPrivateKey;
 use subtle::ConstantTimeEq;
 use tracing::instrument;
 
-use crate::config::MAILCOW_BASE_URL;
 use crate::config::ORIGIN;
 use crate::http::handler_auth::token::schema::Claims;
 use crate::http::handler_auth::token::schema::EmailClaim;
@@ -174,7 +173,9 @@ pub async fn get_token(
     // -------------
     // APP Password Hook follows
     // -------------
-    if token.redirect_url.domain() == MAILCOW_BASE_URL.domain() && !token.account.has_app_password {
+    if token.redirect_url.domain() == Mailcow::global().base_url.domain()
+        && !token.account.has_app_password
+    {
         let club = Club::find_by_uuid(&mut tx, token.account.club)
             .await?
             .ok_or(ApiError::bad_request("Club not found"))?;

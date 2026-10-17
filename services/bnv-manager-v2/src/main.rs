@@ -30,7 +30,9 @@ use crate::models::invite::Invite;
 use crate::models::invite::InviteType;
 use crate::modules::garbage_collector::GarbageCollector;
 use crate::modules::mailcow::Mailcow;
+use crate::modules::mailcow::MailcowSetup;
 use crate::modules::oidc::Oidc;
+use crate::modules::oidc::OidcSetup;
 use crate::utils::import::import_data;
 use crate::utils::links::Link;
 
@@ -41,16 +43,43 @@ pub mod models;
 pub mod modules;
 pub mod utils;
 
-async fn start(mut builder: ModuleBuilder, _config: ()) -> Result<RouterBuilder, GalvynError> {
-    let mut router = builder
-        .register_module::<Database>(DatabaseSetup::Custom(DatabaseConfiguration::new(
-            DB.clone(),
-        )))
+#[cfg(test)]
+mod tests;
+
+/// Setups of the modules the service runs with
+pub struct ModuleSetups {
+    /// Database connection
+    pub database: DatabaseConfiguration,
+    /// Mailcow instance
+    pub mailcow: MailcowSetup,
+    /// OIDC signing key
+    pub oidc: OidcSetup,
+}
+
+/// Registers and initializes all modules of the service
+pub async fn init_modules(
+    builder: &mut ModuleBuilder,
+    setups: ModuleSetups,
+) -> Result<RouterBuilder, GalvynError> {
+    builder
+        .register_module::<Database>(DatabaseSetup::Custom(setups.database))
         .register_module::<GarbageCollector>(())
-        .register_module::<Mailcow>(())
-        .register_module::<Oidc>(())
+        .register_module::<Mailcow>(setups.mailcow)
+        .register_module::<Oidc>(setups.oidc)
         .init_modules()
-        .await?;
+        .await
+}
+
+async fn start(mut builder: ModuleBuilder, _config: ()) -> Result<RouterBuilder, GalvynError> {
+    let mut router = init_modules(
+        &mut builder,
+        ModuleSetups {
+            database: DatabaseConfiguration::new(DB.clone()),
+            mailcow: MailcowSetup::default(),
+            oidc: OidcSetup::default(),
+        },
+    )
+    .await?;
 
     let addr = SocketAddr::new(*LISTEN_ADDRESS.get(), *LISTEN_PORT.get());
 
@@ -160,7 +189,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 .register_module::<Database>(DatabaseSetup::Custom(DatabaseConfiguration::new(
                     DB.clone(),
                 )))
-                .register_module::<Mailcow>(())
+                .register_module::<Mailcow>(MailcowSetup::default())
                 .init_modules()
                 .await?;
 

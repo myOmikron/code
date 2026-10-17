@@ -8,6 +8,7 @@
 //! providing access to the underlying MailcowClient SDK through a standardized interface.
 
 use std::collections::HashMap;
+use std::fmt;
 use std::sync::Arc;
 use std::sync::Mutex;
 
@@ -21,6 +22,7 @@ use mailcow::MailcowClient;
 use tokio::sync::RwLock;
 use tracing::info;
 use tracing::instrument;
+use url::Url;
 
 use crate::config::DISABLE_MAILCOW;
 use crate::config::MAILCOW_API_KEY;
@@ -42,6 +44,8 @@ mod sync;
 pub struct Mailcow {
     /// SDK client
     pub sdk: MailcowClient,
+    /// Base url of the mailcow instance
+    pub base_url: Url,
     /// Synchronization worker
     pub sync_worker: Mutex<Option<WorkerHandle<SyncWorker>>>,
     /// Domain statistics cache
@@ -69,30 +73,65 @@ impl Mailcow {
     }
 }
 
-impl Module for Mailcow {
-    type Setup = ();
-    type PreInit = ();
+/// Where to find the mailcow instance
+pub struct MailcowSetup {
+    /// Base url of the mailcow instance
+    pub base_url: Url,
+    /// API key of the mailcow user
+    pub api_key: String,
+    /// Skip the version check at startup
+    pub skip_version_check: bool,
+}
 
-    async fn pre_init(_setup: Self::Setup) -> Result<Self::PreInit, PreInitError> {
-        Ok(())
+impl Default for MailcowSetup {
+    /// Reads the setup from the environment
+    fn default() -> Self {
+        Self {
+            base_url: MAILCOW_BASE_URL.clone(),
+            api_key: MAILCOW_API_KEY.clone(),
+            skip_version_check: *DISABLE_MAILCOW.get(),
+        }
+    }
+}
+
+impl fmt::Debug for MailcowSetup {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("MailcowSetup")
+            .field("base_url", &self.base_url.as_str())
+            .field("skip_version_check", &self.skip_version_check)
+            .finish_non_exhaustive()
+    }
+}
+
+impl Module for Mailcow {
+    type Setup = MailcowSetup;
+    type PreInit = MailcowSetup;
+
+    async fn pre_init(setup: Self::Setup) -> Result<Self::PreInit, PreInitError> {
+        Ok(setup)
     }
 
     type Dependencies = (Database,);
 
     #[instrument(name = "Mailcow::initialize", skip_all)]
     async fn init(
-        _pre_init: Self::PreInit,
+        MailcowSetup {
+            base_url,
+            api_key,
+            skip_version_check,
+        }: Self::PreInit,
         _dependencies: &mut Self::Dependencies,
     ) -> Result<Self, InitError> {
-        let sdk = MailcowClient::new(MAILCOW_BASE_URL.clone(), MAILCOW_API_KEY.clone())?;
+        let sdk = MailcowClient::new(base_url.clone(), api_key)?;
 
-        if !*DISABLE_MAILCOW.get() {
+        if !skip_version_check {
             let version = sdk.get_version().await?;
             info!("Mailcow is running version: {}", version.version);
         }
 
         Ok(Self {
             sdk: sdk.clone(),
+            base_url,
             sync_worker: Mutex::new(None),
             domain_stats_cache: Arc::new(RwLock::new(HashMap::new())),
             stats_worker: Mutex::new(None),

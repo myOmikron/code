@@ -1,7 +1,7 @@
 //! Holds static information for OIDC
 
 use std::fs;
-use std::path::Path;
+use std::path::PathBuf;
 
 use base64ct::Base64UrlUnpadded;
 use base64ct::Encoding;
@@ -28,32 +28,45 @@ pub struct Oidc {
     pub kid: String,
 }
 
-impl Module for Oidc {
-    type Setup = ();
-    type PreInit = ();
+/// Where the signing key lives
+#[derive(Debug)]
+pub struct OidcSetup {
+    /// Path of the RSA signing key, generated on first start
+    pub key_path: PathBuf,
+}
 
-    async fn pre_init(_setup: Self::Setup) -> Result<Self::PreInit, PreInitError> {
-        Ok(())
+impl Default for OidcSetup {
+    fn default() -> Self {
+        Self {
+            key_path: PathBuf::from("/var/lib/bnv-manager/bnv.key"),
+        }
+    }
+}
+
+impl Module for Oidc {
+    type Setup = OidcSetup;
+    type PreInit = OidcSetup;
+
+    async fn pre_init(setup: Self::Setup) -> Result<Self::PreInit, PreInitError> {
+        Ok(setup)
     }
 
     type Dependencies = ();
 
-    #[instrument(name = "Oidc::init")]
+    #[instrument(name = "Oidc::init", skip_all)]
     async fn init(
-        _pre_init: Self::PreInit,
+        OidcSetup { key_path }: Self::PreInit,
         _dependencies: &mut Self::Dependencies,
     ) -> Result<Self, InitError> {
-        let key_path = Path::new("/var/lib/bnv-manager/bnv.key");
-
         let private_key = if key_path.exists() {
             info!("RSA key exists, loading from disk ..");
-            let pem = fs::read_to_string(key_path)?;
+            let pem = fs::read_to_string(&key_path)?;
             RsaPrivateKey::from_pkcs8_pem(&pem)?
         } else {
             info!("Generating new 2048-bit RSA signing key ..");
             let key = RsaPrivateKey::new(&mut rsa::rand_core::OsRng, 2048)?;
             let pem = key.to_pkcs8_pem(rsa::pkcs8::LineEnding::LF)?;
-            fs::write(key_path, pem.as_bytes())?;
+            fs::write(&key_path, pem.as_bytes())?;
             key
         };
 
