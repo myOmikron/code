@@ -5,7 +5,6 @@
 //! an Enrollment started for one can never be finished through the other.
 
 use galvyn::core::Module;
-use galvyn::core::re_exports::time::OffsetDateTime;
 use galvyn::core::session::Session;
 use galvyn::core::stuff::api_error::core::CoreApiError;
 use galvyn::rorm::Database;
@@ -16,52 +15,23 @@ use webauthn_rs::prelude::Passkey as WebauthnPasskey;
 use webauthn_rs::prelude::PasskeyRegistration;
 use webauthn_rs::prelude::RegisterPublicKeyCredential;
 
-use super::Passkeys;
 use super::ceremony::choose_label;
 use super::ceremony::credential_id_string;
 use super::ceremony::registration_aaguid;
 use super::ceremony::request_attestation;
 use super::ceremony::require_discoverable_credential;
 use super::error::FinishEnrollmentError;
-use super::error::LinkError;
-use super::error::OpenLinkError;
-use super::models::IdentityUuid;
 use super::models::Passkey;
 use super::models::PasskeyInsert;
-use super::models::RegistrationLink;
 use super::session;
 use super::session::EnrollmentKind;
+use crate::IdentityModule;
+use crate::management::OpenLink;
+use crate::management::usable_link;
+use crate::models::IdentityUuid;
+use crate::models::RegistrationLink;
 
-/// A Registration link that was usable when it was opened
-///
-/// Lets the service look up the Account behind it (for the name the
-/// authenticator shows) before beginning the Enrollment.
-#[derive(Debug, Clone, Copy)]
-pub struct OpenLink {
-    /// The Identity the link enrolls a Passkey for
-    identity: IdentityUuid,
-}
-
-impl OpenLink {
-    /// The Identity the link enrolls a Passkey for
-    pub fn identity(&self) -> IdentityUuid {
-        self.identity
-    }
-}
-
-impl Passkeys {
-    /// Open the Registration link carrying `token`, checking it is usable
-    pub async fn open_registration_link(&self, token: &str) -> Result<OpenLink, OpenLinkError> {
-        let mut tx = Database::global().start_transaction().await?;
-        let link = usable_link(&mut tx, token).await?;
-        tx.commit().await?;
-
-        let link = link.map_err(OpenLinkError::Link)?;
-        Ok(OpenLink {
-            identity: link.identity,
-        })
-    }
-
+impl IdentityModule {
     /// Begin an Enrollment through an opened Registration link
     ///
     /// `user_name` is what the authenticator shows for the new Passkey.
@@ -197,17 +167,6 @@ fn parse_registration(
     credential: serde_json::Value,
 ) -> Result<RegisterPublicKeyCredential, FinishEnrollmentError> {
     serde_json::from_value(credential).map_err(|_| FinishEnrollmentError::MalformedCredential)
-}
-
-/// The Registration link carrying `token`, if it is usable now
-async fn usable_link(
-    tx: &mut Transaction,
-    token: &str,
-) -> Result<Result<RegistrationLink, LinkError>, CoreApiError> {
-    let Some(link) = RegistrationLink::get_by_token(tx, token).await? else {
-        return Ok(Err(LinkError::UnknownLink));
-    };
-    Ok(link.usable_at(OffsetDateTime::now_utc()).map(|()| link))
 }
 
 /// Store a freshly enrolled Passkey for `identity`

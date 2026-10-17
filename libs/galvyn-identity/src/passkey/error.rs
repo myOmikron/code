@@ -1,28 +1,11 @@
-//! The ways the operations of [`Passkeys`](super::Passkeys) fail
+//! The ways the Passkey operations fail
 
 use galvyn::core::stuff::api_error::core::CoreApiError;
 
-/// Why a Registration link cannot enroll a Passkey
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum LinkError {
-    /// No Registration link carries this token
-    UnknownLink,
-    /// The Registration link has already enrolled a Passkey
-    LinkUsed,
-    /// The Registration link's validity has run out
-    LinkExpired,
-}
+use crate::error::LinkError;
+use crate::error::internal_from;
 
-/// Failure of [`Passkeys::open_registration_link`](super::Passkeys::open_registration_link)
-#[derive(Debug)]
-pub enum OpenLinkError {
-    /// The Registration link cannot be used
-    Link(LinkError),
-    /// Something unrelated to the request broke
-    Internal(CoreApiError),
-}
-
-/// Failure of [`Passkeys::begin_login`](super::Passkeys::begin_login)
+/// Failure of [`IdentityModule::begin_login`](crate::IdentityModule::begin_login)
 #[derive(Debug)]
 pub enum BeginLoginError {
     /// The Identity holds no Passkey to log in with
@@ -31,7 +14,7 @@ pub enum BeginLoginError {
     Internal(CoreApiError),
 }
 
-/// Failure of [`Passkeys::finish_login`](super::Passkeys::finish_login)
+/// Failure of [`IdentityModule::finish_login`](crate::IdentityModule::finish_login)
 #[derive(Debug)]
 pub enum FinishLoginError {
     /// The session has no Login in progress
@@ -75,7 +58,7 @@ pub enum RemovalRefused {
     LastPasskey,
 }
 
-/// Failure of [`Passkeys::remove_passkey`](super::Passkeys::remove_passkey)
+/// Failure of [`IdentityModule::remove_passkey`](crate::IdentityModule::remove_passkey)
 #[derive(Debug)]
 pub enum RemovePasskeyError {
     /// The Passkey must not be removed
@@ -84,25 +67,7 @@ pub enum RemovePasskeyError {
     Internal(CoreApiError),
 }
 
-/// Lets `?` turn infrastructure failures into the `Internal` variant
-macro_rules! internal_from {
-    ($($error:ty),* $(,)?) => {
-        $(
-            impl<F> From<F> for $error
-            where
-                CoreApiError: From<F>,
-            {
-                #[track_caller]
-                fn from(value: F) -> Self {
-                    Self::Internal(CoreApiError::from(value))
-                }
-            }
-        )*
-    };
-}
-
 internal_from!(
-    OpenLinkError,
     BeginLoginError,
     FinishLoginError,
     FinishEnrollmentError,

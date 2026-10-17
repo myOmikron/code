@@ -7,9 +7,9 @@ use galvyn::core::re_exports::axum::extract::FromRequestParts;
 use galvyn::core::re_exports::axum::http::request::Parts;
 use galvyn::core::stuff::api_error::ApiError;
 use galvyn::rorm::Database;
+use galvyn_identity::Identity;
 
 use crate::models::account::Account;
-use crate::modules::passkeys::Identity;
 
 impl<S> FromRequestParts<S> for Account {
     type Rejection = ApiError;

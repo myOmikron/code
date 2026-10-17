@@ -1,8 +1,7 @@
 //! What artwork MPCFill has for a card, and what a card back can be
 
 use galvyn::core::GalvynRouter;
-
-use crate::modules::passkeys::AuthRequiredLayer;
+use galvyn_identity::AuthRequiredLayer;
 
 pub mod handler;
 pub mod schema;

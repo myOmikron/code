@@ -1,45 +1,18 @@
-//! Identities, their Passkeys and Registration links outside of a ceremony
+//! Passkeys outside of a ceremony
 
 use galvyn::core::Module;
-use galvyn::core::re_exports::time::Duration;
-use galvyn::core::session::Session;
 use galvyn::rorm;
 use galvyn::rorm::Database;
 use galvyn::rorm::db::executor::Executor;
-use url::Url;
 
-use super::Passkeys;
 use super::error::RemovalRefused;
 use super::error::RemovePasskeyError;
-use super::models::Identity;
-use super::models::IdentityUuid;
 use super::models::Passkey;
 use super::models::PasskeyUuid;
-use super::models::RegistrationLink;
+use crate::IdentityModule;
+use crate::models::IdentityUuid;
 
-impl Passkeys {
-    /// Create a new Identity for the service's Account to reference
-    pub async fn create_identity(
-        &self,
-        exe: impl Executor<'_>,
-    ) -> Result<IdentityUuid, rorm::Error> {
-        Identity::insert(exe).await
-    }
-
-    /// Delete an Identity
-    ///
-    /// The cascades take its Passkeys, its Registration links and the
-    /// service's Account referencing it along.
-    ///
-    /// Returns `false` if the Identity does not exist.
-    pub async fn delete_identity(
-        &self,
-        exe: impl Executor<'_>,
-        identity: IdentityUuid,
-    ) -> Result<bool, rorm::Error> {
-        Identity::delete(exe, identity).await
-    }
-
+impl IdentityModule {
     /// List an Identity's Passkeys, oldest Enrollment first
     pub async fn list_passkeys(
         &self,
@@ -74,31 +47,6 @@ impl Passkeys {
 
         tx.commit().await?;
         Ok(())
-    }
-
-    /// Issue a Registration link for `identity` and return the full link
-    ///
-    /// The link only works once `exe`'s transaction is committed, so deliver
-    /// it after the commit.
-    pub async fn issue_registration_link(
-        &self,
-        exe: impl Executor<'_>,
-        identity: IdentityUuid,
-    ) -> Result<Url, rorm::Error> {
-        let token =
-            RegistrationLink::create(exe, identity, self.settings.registration_link_validity)
-                .await?;
-        Ok(self.settings.registration_link(&token))
-    }
-
-    /// How long a freshly issued Registration link stays usable
-    pub fn registration_link_validity(&self) -> Duration {
-        self.settings.registration_link_validity
-    }
-
-    /// Log out, clearing every Login and Enrollment state and the session itself
-    pub async fn logout(&self, session: &Session) -> Result<(), tower_sessions::session::Error> {
-        session.flush().await
     }
 }
 

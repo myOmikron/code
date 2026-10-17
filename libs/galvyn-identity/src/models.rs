@@ -1,6 +1,6 @@
-//! Identities, their Passkeys and Registration links
+//! Identities and their Registration links
 //!
-//! An Identity is the anchor a person's Passkeys hang off. The service's
+//! An Identity is the anchor a person's login methods hang off. The service's
 //! Account referencing it carries everything else (username, email, ...).
 
 use galvyn::core::re_exports::time::Duration;
@@ -8,7 +8,6 @@ use galvyn::core::re_exports::time::OffsetDateTime;
 use galvyn::rorm;
 use galvyn::rorm::db::executor::Executor;
 use galvyn::rorm::fields::types::ForeignModelByField;
-use galvyn::rorm::fields::types::Json;
 use galvyn::rorm::fields::types::MaxStr;
 use galvyn::rorm::prelude::ForeignModel;
 use rand::distr::Alphanumeric;
@@ -17,17 +16,14 @@ use serde::Deserialize;
 use serde::Serialize;
 use tracing::instrument;
 use uuid::Uuid;
-use webauthn_rs::prelude::Passkey as WebauthnPasskey;
 
 use super::db::IdentityInsertPatch;
 use super::db::IdentityModel;
-use super::db::PasskeyInsertPatch;
-use super::db::PasskeyModel;
 use super::db::RegistrationLinkInsertPatch;
 use super::db::RegistrationLinkModel;
 use super::error::LinkError;
 
-/// The anchor a person's Passkeys hang off
+/// The anchor a person's login methods hang off
 #[derive(Debug, Clone)]
 pub struct Identity {
     /// Primary key
@@ -60,7 +56,7 @@ impl IdentityUuid {
 impl Identity {
     /// Fetch an identity by its primary key
     #[instrument(name = "Identity::get_by_uuid", skip(exe))]
-    pub(super) async fn get_by_uuid(
+    pub(crate) async fn get_by_uuid(
         exe: impl Executor<'_>,
         uuid: IdentityUuid,
     ) -> Result<Option<Identity>, rorm::Error> {
@@ -73,7 +69,7 @@ impl Identity {
 
     /// Insert a new identity and return its primary key
     #[instrument(name = "Identity::insert", skip(exe))]
-    pub(super) async fn insert(exe: impl Executor<'_>) -> Result<IdentityUuid, rorm::Error> {
+    pub(crate) async fn insert(exe: impl Executor<'_>) -> Result<IdentityUuid, rorm::Error> {
         let uuid = rorm::insert(exe, IdentityModel)
             .return_primary_key()
             .single(&IdentityInsertPatch {
@@ -87,7 +83,7 @@ impl Identity {
     ///
     /// Returns `false` if the identity does not exist.
     #[instrument(name = "Identity::delete", skip(exe))]
-    pub(super) async fn delete(
+    pub(crate) async fn delete(
         exe: impl Executor<'_>,
         uuid: IdentityUuid,
     ) -> Result<bool, rorm::Error> {
@@ -99,7 +95,7 @@ impl Identity {
 
     /// Store that the identity just logged in
     #[instrument(name = "Identity::record_login", skip(exe))]
-    pub(super) async fn record_login(
+    pub(crate) async fn record_login(
         exe: impl Executor<'_>,
         uuid: IdentityUuid,
     ) -> Result<(), rorm::Error> {
@@ -111,137 +107,14 @@ impl Identity {
     }
 }
 
-/// A WebAuthn Passkey bound to an [`Identity`]
-pub struct Passkey {
-    /// Primary key
-    pub uuid: PasskeyUuid,
-
-    /// The identity this passkey belongs to
-    pub identity: IdentityUuid,
-
-    /// Human-readable device label shown in the passkey management UI
-    pub label: MaxStr<255>,
-
-    /// The point in time this passkey was last used for a login
-    pub last_used_at: Option<OffsetDateTime>,
-
-    /// The point in time this passkey was enrolled
-    pub created_at: OffsetDateTime,
-
-    /// The credential id (base64url), which is what a login names to say which passkey answered
-    pub(super) credential_id: MaxStr<1024>,
-
-    /// The passkey (public key, counter, ...)
-    pub(super) credential: WebauthnPasskey,
-}
-
-/// Wrapper for the primary key of the [`Passkey`] model.
-/// To have better distinguishable types.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, Hash, Eq, PartialEq)]
-pub struct PasskeyUuid(Uuid);
-
-impl PasskeyUuid {
-    /// Wrap a primary key that came from outside, e.g. a path parameter
-    pub fn new(uuid: Uuid) -> Self {
-        Self(uuid)
-    }
-
-    /// Get the underlying UUID type
-    pub fn into_inner(self) -> Uuid {
-        self.0
-    }
-}
-
-/// Data for inserting a new [`Passkey`]
-pub(super) struct PasskeyInsert {
-    /// The identity this passkey belongs to
-    pub identity: IdentityUuid,
-    /// Human-readable device label
-    pub label: MaxStr<255>,
-    /// The credential id (base64url)
-    pub credential_id: MaxStr<1024>,
-    /// The passkey returned by the finished enrollment ceremony
-    pub credential: WebauthnPasskey,
-}
-
-impl Passkey {
-    /// Fetch all passkeys of an identity
-    ///
-    /// Oldest enrollment first, with the primary key breaking ties: without
-    /// it a passkey jumps position the moment a login stamps `last_used_at`.
-    #[instrument(name = "Passkey::get_by_identity", skip(exe))]
-    pub(super) async fn get_by_identity(
-        exe: impl Executor<'_>,
-        identity: IdentityUuid,
-    ) -> Result<Vec<Passkey>, rorm::Error> {
-        let passkeys = rorm::query(exe, PasskeyModel)
-            .condition(PasskeyModel.identity.equals(identity.0))
-            .order_asc(PasskeyModel.created_at)
-            .order_asc(PasskeyModel.uuid)
-            .all()
-            .await?;
-        Ok(passkeys.into_iter().map(Passkey::from).collect())
-    }
-
-    /// Insert a freshly enrolled passkey
-    ///
-    /// Fails with a unique violation if the credential is already enrolled.
-    #[instrument(name = "Passkey::insert", skip(exe, insert))]
-    pub(super) async fn insert(
-        exe: impl Executor<'_>,
-        insert: PasskeyInsert,
-    ) -> Result<(), rorm::Error> {
-        rorm::insert(exe, PasskeyModel)
-            .single(&PasskeyInsertPatch {
-                uuid: Uuid::now_v7(),
-                identity: ForeignModelByField(insert.identity.0),
-                label: insert.label,
-                credential_id: insert.credential_id,
-                credential: Json(insert.credential),
-            })
-            .await?;
-        Ok(())
-    }
-
-    /// Persist an updated credential (counter, backup state)
-    /// and stamp `last_used_at`
-    #[instrument(name = "Passkey::update_credential", skip(exe, credential))]
-    pub(super) async fn update_credential(
-        exe: impl Executor<'_>,
-        uuid: PasskeyUuid,
-        credential: WebauthnPasskey,
-    ) -> Result<(), rorm::Error> {
-        rorm::update(exe, PasskeyModel)
-            .set(PasskeyModel.credential, Json(credential))
-            .set(PasskeyModel.last_used_at, Some(OffsetDateTime::now_utc()))
-            .condition(PasskeyModel.uuid.equals(uuid.0))
-            .await?;
-        Ok(())
-    }
-
-    /// Delete a passkey
-    ///
-    /// Returns `false` if the passkey does not exist.
-    #[instrument(name = "Passkey::delete", skip(exe))]
-    pub(super) async fn delete(
-        exe: impl Executor<'_>,
-        uuid: PasskeyUuid,
-    ) -> Result<bool, rorm::Error> {
-        let affected = rorm::delete(exe, PasskeyModel)
-            .condition(PasskeyModel.uuid.equals(uuid.0))
-            .await?;
-        Ok(affected > 0)
-    }
-}
-
-/// A one-time, expiring link to enroll a Passkey for one [`Identity`]
+/// A one-time, expiring link to enroll a login method for one [`Identity`]
 ///
 /// Used for onboarding and for recovery alike.
-pub(super) struct RegistrationLink {
+pub(crate) struct RegistrationLink {
     /// Primary key
     pub uuid: RegistrationLinkUuid,
 
-    /// The identity this link enrolls a passkey for
+    /// The identity this link enrolls a login method for
     pub identity: IdentityUuid,
 
     /// The point in time this link stops being valid
@@ -254,14 +127,14 @@ pub(super) struct RegistrationLink {
 /// Wrapper for the primary key of the [`RegistrationLink`] model.
 /// To have better distinguishable types.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Hash, Eq, PartialEq)]
-pub(super) struct RegistrationLinkUuid(Uuid);
+pub(crate) struct RegistrationLinkUuid(Uuid);
 
 impl RegistrationLink {
     /// Create and persist a new one-time link for `identity`, valid for `validity`
     ///
     /// Returns the secret token to embed in the link.
     #[instrument(name = "RegistrationLink::create", skip(exe))]
-    pub(super) async fn create(
+    pub(crate) async fn create(
         exe: impl Executor<'_>,
         identity: IdentityUuid,
         validity: Duration,
@@ -282,7 +155,7 @@ impl RegistrationLink {
 
     /// Fetch a link by its secret token
     #[instrument(name = "RegistrationLink::get_by_token", skip(exe, token))]
-    pub(super) async fn get_by_token(
+    pub(crate) async fn get_by_token(
         exe: impl Executor<'_>,
         token: &str,
     ) -> Result<Option<RegistrationLink>, rorm::Error> {
@@ -295,7 +168,7 @@ impl RegistrationLink {
 
     /// Mark a link as used
     #[instrument(name = "RegistrationLink::mark_used", skip(exe))]
-    pub(super) async fn mark_used(
+    pub(crate) async fn mark_used(
         exe: impl Executor<'_>,
         uuid: RegistrationLinkUuid,
     ) -> Result<(), rorm::Error> {
@@ -306,10 +179,10 @@ impl RegistrationLink {
         Ok(())
     }
 
-    /// Whether the link can still enroll a Passkey at `now`
+    /// Whether the link can still enroll a login method at `now`
     ///
     /// A used link is reported as used even once it has expired too.
-    pub(super) fn usable_at(&self, now: OffsetDateTime) -> Result<(), LinkError> {
+    pub(crate) fn usable_at(&self, now: OffsetDateTime) -> Result<(), LinkError> {
         if self.used {
             return Err(LinkError::LinkUsed);
         }
@@ -326,20 +199,6 @@ impl From<IdentityModel> for Identity {
             uuid: IdentityUuid(value.uuid),
             created_at: value.created_at,
             last_login_at: value.last_login_at,
-        }
-    }
-}
-
-impl From<PasskeyModel> for Passkey {
-    fn from(value: PasskeyModel) -> Self {
-        Self {
-            uuid: PasskeyUuid(value.uuid),
-            identity: IdentityUuid::new_from_field(value.identity),
-            label: value.label,
-            credential_id: value.credential_id,
-            credential: value.credential.0,
-            last_used_at: value.last_used_at,
-            created_at: value.created_at,
         }
     }
 }

@@ -9,21 +9,8 @@ authors = ["Niklas Pfister <git@omikron.dev>"]
 service-bootstrap = { workspace = true }
 galvyn = { workspace = true, default-features = true, features = ["rorm-postgres-only"] }
 
-# WebAuthn server-side ceremonies (passkey-only login).
-# danger-allow-state-serialisation: ceremony states are stored in the
-# (server-side, rorm-backed) session between start and finish.
-webauthn-rs = { version = "~0.5", features = ["danger-allow-state-serialisation"] }
-# The wire types behind `webauthn-rs`. Needed to raise the credential to a discoverable
-# one — `ResidentKeyRequirement` is not part of webauthn-rs' prelude.
-webauthn-rs-proto = "~0.5"
-
-# CBOR, to read the AAGUID out of the raw attestation object. webauthn-rs parses it but
-# only keeps it for attested registrations — see `registration_aaguid`.
-serde_cbor_2 = "0.13"
-
-# Session store behind galvyn's session layer. Needed to name `Expiry` — galvyn keeps it
-# private, so a per-session lifetime cannot be set through it.
-tower-sessions = { workspace = true }
+# Identity, Login and Enrollment (passkey-only login)
+galvyn-identity = { workspace = true, features = ["passkey"] }
 
 # Response compression — a collection's entries run to megabytes of json
 tower-http = { workspace = true }
@@ -73,10 +60,6 @@ regex = { workspace = true }
 # Error handling
 anyhow = { workspace = true }
 thiserror = { workspace = true }
-
-# webauthn-rs links OpenSSL; build and link it statically so the
-# musl release binary works in the hardened (libless) runtime image.
-openssl = { version = "~0.10", features = ["vendored"] }
 
 [build-dependencies]
 service-bootstrap-build = { workspace = true }
