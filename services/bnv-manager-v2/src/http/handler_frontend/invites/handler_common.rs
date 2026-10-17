@@ -62,42 +62,12 @@ pub async fn accept_invite(
         )
         .await?;
 
-    match res {
+    let domain_admin = match res {
         Ok(Account::ClubAdmin(club_admin)) => {
-            let mut domains = vec![];
-            domains.extend(Domain::find_all_by_club(&mut tx, club_admin.club).await?);
-
-            // Associate corresponding domains
-            tokio::spawn(async move {
-                let username = club_admin.username.into_inner();
-
-                let u = username.clone();
-                let res: anyhow::Result<()> = async move {
-                    let hashed_password =
-                        format!("{{BLF-CRYPT}}{}", Account::hash_password(&password)?);
-                    Mailcow::global()
-                        .sdk
-                        .create_domain_admin(CreateDomainAdminRequest {
-                            active: 1,
-                            domains: domains.into_iter().map(|x| x.domain.into_inner()).collect(),
-                            password: hashed_password.clone(),
-                            password2: hashed_password,
-                            username: u,
-                        })
-                        .await?;
-
-                    Ok(())
-                }
-                .await;
-
-                if let Err(err) = res {
-                    error!(err = ?err, "Could not create domain admin for account {username}");
-                } else {
-                    info!("Successfully added domain admin in mailcow for account {username}");
-                }
-            });
+            let domains = Domain::find_all_by_club(&mut tx, club_admin.club).await?;
+            Some((club_admin.username.into_inner(), domains))
         }
-        Ok(_) => {}
+        Ok(_) => None,
         Err(err) => {
             tx.rollback().await?;
             return match err {
@@ -109,9 +79,38 @@ pub async fn accept_invite(
                 }
             };
         }
-    }
+    };
 
     tx.commit().await?;
+
+    if let Some((username, domains)) = domain_admin {
+        tokio::spawn(async move {
+            let u = username.clone();
+            let res: anyhow::Result<()> = async move {
+                let hashed_password =
+                    format!("{{BLF-CRYPT}}{}", Account::hash_password(&password)?);
+                Mailcow::global()
+                    .sdk
+                    .create_domain_admin(CreateDomainAdminRequest {
+                        active: 1,
+                        domains: domains.into_iter().map(|x| x.domain.into_inner()).collect(),
+                        password: hashed_password.clone(),
+                        password2: hashed_password,
+                        username: u,
+                    })
+                    .await?;
+
+                Ok(())
+            }
+            .await;
+
+            if let Err(err) = res {
+                error!(err = ?err, "Could not create domain admin for account {username}");
+            } else {
+                info!("Successfully added domain admin in mailcow for account {username}");
+            }
+        });
+    }
 
     Ok(ApiJson(FormResult::ok(())))
 }
