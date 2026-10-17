@@ -20,6 +20,9 @@ use galvyn::rorm::DatabaseConfiguration;
 use galvyn::rorm::DatabaseDriver;
 use galvyn::rorm::config::DatabaseConfig;
 use galvyn::rorm::fields::types::MaxStr;
+use galvyn_identity::IdentityModule;
+use galvyn_identity::IdentitySetup;
+use galvyn_identity::PasskeySetup;
 use service_bootstrap::PUBLIC_HTTP;
 use service_bootstrap::nats::publisher::Nats;
 use service_bootstrap::nats::publisher::NatsSetup;
@@ -29,16 +32,12 @@ use crate::cli::CliRole;
 use crate::cli::Command;
 use crate::config::Config;
 use crate::models::Account;
-use crate::models::RegistrationToken;
 use crate::models::Role;
-use crate::modules::webauthn::WebauthnModule;
-use crate::modules::webauthn::WebauthnSetup;
 
 pub mod cli;
 pub mod config;
 pub mod http;
 pub mod models;
-pub mod modules;
 pub mod proto;
 pub mod utils;
 
@@ -77,9 +76,7 @@ async fn run(
             config.database_driver.clone(),
         )))
         .register_module::<Nats>(NatsSetup::FromEnv)
-        .register_module::<WebauthnModule>(WebauthnSetup {
-            public_origin: Some(config.public_origin.clone()),
-        })
+        .register_module::<IdentityModule>(identity_setup(&config))
         .init_modules()
         .await?;
 
@@ -90,6 +87,18 @@ async fn run(
 
     builder.add_listener(PUBLIC_HTTP, http::initialize_routes());
     Ok(builder)
+}
+
+/// Setup of the [`IdentityModule`], shared by the service and the cli
+fn identity_setup(config: &Config) -> IdentitySetup {
+    IdentitySetup {
+        public_origin: Some(config.public_origin.clone()),
+        registration_link_path: "/register".to_string(),
+        passkey: PasskeySetup {
+            rp_name: "Semmelei".to_string(),
+        },
+        ..IdentitySetup::default()
+    }
 }
 
 async fn migrate(driver: DatabaseDriver) -> Result<(), GalvynError> {
@@ -108,16 +117,16 @@ async fn migrate(driver: DatabaseDriver) -> Result<(), GalvynError> {
 fn make_migrations(migrations_dir: &str) -> Result<(), Box<dyn Error>> {
     use std::io::Write;
 
-    /// Temporary file to store models in
-    const MODELS: &str = "/tmp/.models.json";
+    let models = std::env::temp_dir().join(".models.json");
+    let models = models.to_string_lossy().into_owned();
 
-    let mut file = std::fs::File::create(MODELS)?;
+    let mut file = std::fs::File::create(&models)?;
     rorm::write_models(&mut file)?;
     file.flush()?;
 
     rorm::cli::make_migrations::run_make_migrations(
         rorm::cli::make_migrations::MakeMigrationsOptions {
-            models_file: MODELS.to_string(),
+            models_file: models.clone(),
             migration_dir: migrations_dir.to_string(),
             name: None,
             non_interactive: false,
@@ -125,7 +134,7 @@ fn make_migrations(migrations_dir: &str) -> Result<(), Box<dyn Error>> {
         },
     )?;
 
-    std::fs::remove_file(MODELS)?;
+    std::fs::remove_file(&models)?;
     Ok(())
 }
 
@@ -147,8 +156,9 @@ async fn create_account(
 
     Galvyn::builder(GalvynSetup::default())
         .register_module::<Database>(DatabaseSetup::Custom(DatabaseConfiguration::new(
-            config.database_driver,
+            config.database_driver.clone(),
         )))
+        .register_module::<IdentityModule>(identity_setup(&config))
         .init_modules()
         .await?;
 
@@ -162,7 +172,7 @@ async fn create_account(
         exit(1);
     }
 
-    let account_uuid = Account::insert(
+    let (_account, identity) = Account::insert(
         &mut tx,
         username,
         match role {
@@ -172,15 +182,18 @@ async fn create_account(
     )
     .await?;
 
-    let token = RegistrationToken::create(&mut tx, account_uuid).await?;
+    let identity_module = IdentityModule::global();
+    let link = identity_module
+        .issue_registration_link(&mut tx, identity)
+        .await?;
 
     tx.commit().await?;
 
-    let mut link = config.public_origin;
-    link.set_path("/register");
-    link.set_query(Some(&format!("token={token}")));
     println!("Created account.");
-    println!("One-time passkey registration link (valid for 7 days):");
+    println!(
+        "One-time passkey registration link (valid for {} days):",
+        identity_module.registration_link_validity().whole_days()
+    );
     println!("  {link}");
 
     Ok(())

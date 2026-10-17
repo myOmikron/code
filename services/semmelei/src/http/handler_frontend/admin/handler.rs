@@ -15,6 +15,7 @@ use galvyn::post;
 use galvyn::put;
 use galvyn::rorm::Database;
 use galvyn::rorm::db::Executor;
+use galvyn_identity::IdentityModule;
 use time::OffsetDateTime;
 
 use crate::http::handler_frontend::admin::schema::AccountSchema;
@@ -46,10 +47,8 @@ use crate::models::Order;
 use crate::models::OrderStatus;
 use crate::models::PickupDay;
 use crate::models::PickupDayOverride;
-use crate::models::RegistrationToken;
 use crate::models::Role;
 use crate::models::ShopSettings;
-use crate::modules::webauthn::WebauthnModule;
 use crate::utils::lock;
 use crate::utils::schedule;
 use crate::utils::schedule::ResolvedPickupDay;
@@ -268,11 +267,11 @@ pub async fn list_accounts() -> ApiResult<ApiJson<ListAccountsResponse>> {
     Ok(ApiJson(ListAccountsResponse {
         accounts: accounts
             .into_iter()
-            .map(|a| AccountSchema {
+            .map(|(a, last_login_at)| AccountSchema {
                 uuid: a.uuid,
                 username: a.username.to_string(),
                 role: a.role,
-                last_login_at: a.last_login_at.map(SchemaDateTime),
+                last_login_at: last_login_at.map(SchemaDateTime),
                 created_at: SchemaDateTime(a.created_at),
             })
             .collect(),
@@ -290,19 +289,19 @@ pub async fn create_account(
 
     let mut tx = Database::global().start_transaction().await?;
 
-    let uuid = Account::insert(&mut tx, request.username, request.role)
+    let (uuid, identity) = Account::insert(&mut tx, request.username, request.role)
         .await
         .map_err(|_| ApiError::bad_request("An account with this username exists already"))?;
 
-    let token = RegistrationToken::create(&mut tx, uuid).await?;
+    let link = IdentityModule::global()
+        .issue_registration_link(&mut tx, identity)
+        .await?;
 
     tx.commit().await?;
 
     Ok(ApiJson(InviteResponse {
         uuid,
-        registration_link: WebauthnModule::global()
-            .registration_link(&token)
-            .to_string(),
+        registration_link: link.to_string(),
     }))
 }
 
@@ -334,17 +333,22 @@ pub async fn update_account(
 /// Issue a new one-time registration link for an account ("lost device")
 #[post("/accounts/{uuid}/invite")]
 pub async fn create_invite(Path(uuid): Path<AccountUuid>) -> ApiResult<ApiJson<InviteResponse>> {
-    if !Account::exists(Database::global(), uuid).await? {
-        return Err(ApiError::bad_request("Unknown account"));
-    }
+    let mut tx = Database::global().start_transaction().await?;
 
-    let token = RegistrationToken::create(Database::global(), uuid).await?;
+    let Some(account) = Account::get_by_uuid(&mut tx, uuid).await? else {
+        tx.rollback().await?;
+        return Err(ApiError::bad_request("Unknown account"));
+    };
+
+    let link = IdentityModule::global()
+        .issue_registration_link(&mut tx, account.identity)
+        .await?;
+
+    tx.commit().await?;
 
     Ok(ApiJson(InviteResponse {
         uuid,
-        registration_link: WebauthnModule::global()
-            .registration_link(&token)
-            .to_string(),
+        registration_link: link.to_string(),
     }))
 }
 
@@ -356,9 +360,12 @@ pub async fn delete_account(admin: Account, Path(uuid): Path<AccountUuid>) -> Ap
     if admin.uuid == uuid {
         return Err(ApiError::bad_request("You cannot delete yourself"));
     }
-    if !Account::delete(Database::global(), uuid).await? {
+    let mut tx = Database::global().start_transaction().await?;
+    if !Account::delete(&mut tx, uuid).await? {
+        tx.rollback().await?;
         return Err(ApiError::bad_request("Unknown account"));
     }
+    tx.commit().await?;
     Ok(())
 }
 
