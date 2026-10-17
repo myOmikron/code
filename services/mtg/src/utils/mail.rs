@@ -11,7 +11,7 @@ use tracing::instrument;
 use url::Url;
 
 use crate::models::account::Username;
-use crate::models::identity::RegistrationLink;
+use crate::modules::passkeys::Passkeys;
 use crate::proto;
 
 /// Error returned when a mail could not be handed to the gateway
@@ -41,7 +41,7 @@ pub async fn send_registration_link(
     link: &Url,
     language: MailLanguage,
 ) -> Result<(), MailError> {
-    let days = RegistrationLink::VALIDITY.whole_days();
+    let days = Passkeys::global().registration_link_validity().whole_days();
     let username = username.as_str();
 
     let (subject, text_body) = match language {
@@ -108,7 +108,7 @@ pub async fn send_recovery_link(
     link: &Url,
     language: MailLanguage,
 ) -> Result<(), MailError> {
-    let days = RegistrationLink::VALIDITY.whole_days();
+    let days = Passkeys::global().registration_link_validity().whole_days();
     let username = username.as_str();
 
     let (subject, text_body) = match language {

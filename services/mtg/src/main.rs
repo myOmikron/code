@@ -37,8 +37,8 @@ use crate::modules::graph::GraphClient;
 use crate::modules::graph::GraphClientSetup;
 use crate::modules::mpcfill::MpcFill;
 use crate::modules::mpcfill::MpcFillSetup;
-use crate::modules::webauthn::WebauthnModule;
-use crate::modules::webauthn::WebauthnSetup;
+use crate::modules::passkeys::Passkeys;
+use crate::modules::passkeys::PasskeysSetup;
 use crate::utils::catalog_sync::SyncOutcome;
 use crate::utils::catalog_sync::sync_catalog;
 use crate::utils::price_sync::PriceOutcome;
@@ -103,8 +103,11 @@ async fn run(mut builder: ModuleBuilder, config: Config) -> Result<RouterBuilder
         .register_module::<Database>(DatabaseSetup::Custom(DatabaseConfiguration::new(
             config.database_driver.clone(),
         )))
-        .register_module::<WebauthnModule>(WebauthnSetup {
+        .register_module::<Passkeys>(PasskeysSetup {
             public_origin: Some(config.public_origin.clone()),
+            rp_name: "MTG".to_string(),
+            registration_link_path: "/auth/register".to_string(),
+            ..PasskeysSetup::default()
         })
         .register_module::<GraphClient>(GraphClientSetup {
             base_url: Some(config.graph_url.clone()),
