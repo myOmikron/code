@@ -16,7 +16,7 @@ use uuid::Uuid;
 
 /// AAGUID to product name, as shipped in `aaguid.json`
 static NAMES: LazyLock<HashMap<Uuid, &'static str>> = LazyLock::new(|| {
-    let raw: HashMap<&str, &str> = serde_json::from_str(include_str!("../../../aaguid.json"))
+    let raw: HashMap<&str, &str> = serde_json::from_str(include_str!("../../aaguid.json"))
         .expect("aaguid.json is malformed, this is a build-time error");
     raw.into_iter()
         .filter_map(|(aaguid, name)| Uuid::parse_str(aaguid).ok().map(|uuid| (uuid, name)))

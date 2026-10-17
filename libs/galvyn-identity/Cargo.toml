@@ -1,0 +1,30 @@
+[package]
+name = "galvyn-identity"
+version = "0.1.0"
+edition = "2024"
+license = "MPL-2.0"
+authors = ["Niklas Pfister <git@omikron.dev>"]
+publish = false
+
+[features]
+default = []
+passkey = ["dep:webauthn-rs", "dep:webauthn-rs-proto", "dep:serde_cbor_2", "dep:openssl"]
+
+[dependencies]
+galvyn = { workspace = true }
+tower-sessions = { workspace = true }
+
+serde = { workspace = true }
+serde_json = { workspace = true }
+url = { workspace = true }
+uuid = { workspace = true }
+rand = { workspace = true }
+tracing = { workspace = true }
+
+webauthn-rs = { workspace = true, optional = true }
+webauthn-rs-proto = { workspace = true, optional = true }
+serde_cbor_2 = { workspace = true, optional = true }
+openssl = { workspace = true, optional = true }
+
+[lints]
+workspace = true

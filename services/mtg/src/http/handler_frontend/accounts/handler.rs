@@ -10,6 +10,10 @@ use galvyn::delete;
 use galvyn::get;
 use galvyn::post;
 use galvyn::rorm::Database;
+use galvyn_identity::FinishEnrollmentError;
+use galvyn_identity::IdentityModule;
+use galvyn_identity::RemovalRefused;
+use galvyn_identity::RemovePasskeyError;
 
 use crate::http::handler_frontend::accounts::schema::AddPasskeyErrors;
 use crate::http::handler_frontend::accounts::schema::DeleteAccountErrors;
@@ -22,10 +26,6 @@ use crate::http::handler_frontend::accounts::schema::SimplePasskey;
 use crate::http::handler_frontend::accounts::schema::StartAddPasskeyResponse;
 use crate::models::account::Account;
 use crate::models::account::AccountPasskeyUuid;
-use crate::modules::passkeys::FinishEnrollmentError;
-use crate::modules::passkeys::Passkeys;
-use crate::modules::passkeys::RemovalRefused;
-use crate::modules::passkeys::RemovePasskeyError;
 
 /// The account the current session belongs to
 #[get("/me")]
@@ -39,7 +39,7 @@ pub async fn me(account: Account) -> ApiResult<ApiJson<MeResponse>> {
 /// List the passkeys of the logged-in account
 #[get("/passkeys")]
 pub async fn list_passkeys(account: Account) -> ApiResult<ApiJson<ListPasskeysResponse>> {
-    let passkeys = Passkeys::global()
+    let passkeys = IdentityModule::global()
         .list_passkeys(Database::global(), account.identity)
         .await?;
 
@@ -65,7 +65,7 @@ pub async fn start_add_passkey(
     session: Session,
     account: Account,
 ) -> ApiResult<ApiJson<StartAddPasskeyResponse>> {
-    let options = Passkeys::global()
+    let options = IdentityModule::global()
         .begin_device_enrollment(&session, account.identity, account.username.as_str())
         .await?;
 
@@ -80,7 +80,7 @@ pub async fn finish_add_passkey(
     ApiJson(request): ApiJson<FinishAddPasskeyRequest>,
 ) -> ApiResult<ApiJson<()>, AddPasskeyErrors> {
     let mut errors = FormErrors::<AddPasskeyErrors>::new();
-    let finished = Passkeys::global()
+    let finished = IdentityModule::global()
         .finish_device_enrollment(
             &session,
             account.identity,
@@ -113,7 +113,7 @@ pub async fn delete_passkey(
     Path(uuid): Path<AccountPasskeyUuid>,
 ) -> ApiResult<ApiJson<()>, DeletePasskeyErrors> {
     let mut errors = FormErrors::<DeletePasskeyErrors>::new();
-    let removed = Passkeys::global()
+    let removed = IdentityModule::global()
         .remove_passkey(account.identity, uuid.into())
         .await;
     match removed {
@@ -159,7 +159,7 @@ pub async fn delete_account(
     Account::delete(&mut tx, account.uuid).await?;
     tx.commit().await?;
 
-    Passkeys::global()
+    IdentityModule::global()
         .logout(&session)
         .await
         .map_err(ApiError::map_server_error("Failed to flush session"))?;

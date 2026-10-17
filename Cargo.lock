@@ -1460,6 +1460,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "galvyn-identity"
+version = "0.1.0"
+dependencies = [
+ "galvyn",
+ "openssl",
+ "rand 0.10.2",
+ "serde",
+ "serde_cbor_2",
+ "serde_json",
+ "tower-sessions",
+ "tracing",
+ "url",
+ "uuid",
+ "webauthn-rs",
+ "webauthn-rs-proto",
+]
+
+[[package]]
 name = "galvyn-macros"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2440,14 +2458,13 @@ dependencies = [
  "clap",
  "futures-util",
  "galvyn",
+ "galvyn-identity",
  "nats-subjects",
- "openssl",
  "prost",
  "rand 0.10.2",
  "regex",
  "reqwest 0.13.4",
  "serde",
- "serde_cbor_2",
  "serde_json",
  "service-bootstrap",
  "service-bootstrap-build",
@@ -2455,13 +2472,10 @@ dependencies = [
  "tokio",
  "tokio-util",
  "tower-http 0.7.0",
- "tower-sessions",
  "tracing",
  "tracing-subscriber",
  "url",
  "uuid",
- "webauthn-rs",
- "webauthn-rs-proto",
 ]
 
 [[package]]

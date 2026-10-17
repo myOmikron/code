@@ -38,7 +38,7 @@ MDS3 = "https://mds3.fidoalliance.org/"
 COMMUNITY = "https://raw.githubusercontent.com/passkeydeveloper/passkey-authenticator-aaguids/main/aaguid.json"
 
 TOOLS = Path(__file__).resolve().parent
-TARGET = TOOLS.parent / "services" / "mtg" / "aaguid.json"
+TARGET = TOOLS.parent / "libs" / "galvyn-identity" / "aaguid.json"
 # Pinned rather than taken from the system trust store: this verifies one specific signer, and
 # the set of roots that may vouch for it should not depend on the machine running the script.
 ROOT_CA = TOOLS / "globalsign-root-r3.pem"

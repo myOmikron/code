@@ -11,6 +11,12 @@ use galvyn::post;
 use galvyn::rorm::Database;
 use galvyn::rorm::db::transaction::Transaction;
 use galvyn::rorm::fields::types::MaxStr;
+use galvyn_identity::BeginLoginError;
+use galvyn_identity::FinishEnrollmentError;
+use galvyn_identity::FinishLoginError;
+use galvyn_identity::IdentityModule;
+use galvyn_identity::LinkError;
+use galvyn_identity::OpenLinkError;
 use tracing::info;
 use url::Url;
 
@@ -29,12 +35,6 @@ use crate::http::handler_frontend::auth::schema::StartRegistrationRequest;
 use crate::http::handler_frontend::auth::schema::StartRegistrationResponse;
 use crate::models::account::Account;
 use crate::models::account::Username;
-use crate::modules::passkeys::BeginLoginError;
-use crate::modules::passkeys::FinishEnrollmentError;
-use crate::modules::passkeys::FinishLoginError;
-use crate::modules::passkeys::LinkError;
-use crate::modules::passkeys::OpenLinkError;
-use crate::modules::passkeys::Passkeys;
 use crate::utils::mail::send_recovery_link;
 use crate::utils::mail::send_registration_link;
 
@@ -93,7 +93,7 @@ pub async fn recover_account(
         return Ok(ApiJson(()));
     };
 
-    let link = Passkeys::global()
+    let link = IdentityModule::global()
         .issue_registration_link(&mut tx, account.identity)
         .await?;
     tx.commit().await?;
@@ -118,7 +118,7 @@ async fn prepare_signup(
     request: &SignupRequest,
     errors: &mut FormErrors<SignupErrors>,
 ) -> ApiResult<Option<(MaxStr<255>, Username, Url)>, SignupErrors> {
-    let passkeys = Passkeys::global();
+    let passkeys = IdentityModule::global();
 
     if let Some(account) = Account::get_by_username(&mut *tx, &request.username).await? {
         let has_passkey = !passkeys
@@ -193,7 +193,7 @@ pub async fn start_login(
         return errors.fail();
     };
 
-    let options = match Passkeys::global()
+    let options = match IdentityModule::global()
         .begin_login(&session, account.identity)
         .await
     {
@@ -217,7 +217,7 @@ pub async fn finish_login(
     ApiJson(request): ApiJson<FinishLoginRequest>,
 ) -> ApiResult<ApiJson<()>, FinishLoginErrors> {
     let mut errors = FormErrors::<FinishLoginErrors>::new();
-    let finished = Passkeys::global()
+    let finished = IdentityModule::global()
         .finish_login(&session, request.credential, request.remember_me)
         .await;
     match finished {
@@ -236,7 +236,7 @@ pub async fn finish_login(
 /// Log out, dropping the session
 #[get("/logout")]
 pub async fn logout(session: Session) -> ApiResult<()> {
-    Passkeys::global()
+    IdentityModule::global()
         .logout(&session)
         .await
         .map_err(ApiError::map_server_error("Failed to flush session"))?;
@@ -259,7 +259,7 @@ pub async fn start_registration(
     ApiJson(request): ApiJson<StartRegistrationRequest>,
 ) -> ApiResult<ApiJson<StartRegistrationResponse>, RegistrationErrors> {
     let mut errors = FormErrors::<RegistrationErrors>::new();
-    let passkeys = Passkeys::global();
+    let passkeys = IdentityModule::global();
 
     let link = match passkeys.open_registration_link(&request.token).await {
         Ok(link) => link,
@@ -292,7 +292,7 @@ pub async fn finish_registration(
     ApiJson(request): ApiJson<FinishRegistrationRequest>,
 ) -> ApiResult<ApiJson<()>, RegistrationErrors> {
     let mut errors = FormErrors::<RegistrationErrors>::new();
-    let finished = Passkeys::global()
+    let finished = IdentityModule::global()
         .finish_link_enrollment(&session, &request.token, request.credential, None)
         .await;
     match finished {

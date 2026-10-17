@@ -5,9 +5,8 @@ use galvyn::rorm::Model;
 use galvyn::rorm::Patch;
 use galvyn::rorm::fields::types::ForeignModel;
 use galvyn::rorm::fields::types::MaxStr;
+use galvyn_identity::IdentityModel;
 use uuid::Uuid;
-
-use crate::modules::passkeys::IdentityModel;
 
 /// An account
 ///

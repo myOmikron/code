@@ -4,20 +4,20 @@ use galvyn::core::Module;
 use galvyn::core::session::Session;
 use galvyn::core::stuff::api_error::core::CoreApiError;
 use galvyn::rorm::Database;
-use tower_sessions::Expiry;
 use webauthn_rs::prelude::Passkey as WebauthnPasskey;
 use webauthn_rs::prelude::PublicKeyCredential;
 
-use super::Passkeys;
 use super::ceremony::credential_id_string;
 use super::error::BeginLoginError;
 use super::error::FinishLoginError;
-use super::models::Identity;
-use super::models::IdentityUuid;
 use super::models::Passkey;
 use super::session;
+use crate::IdentityModule;
+use crate::models::Identity;
+use crate::models::IdentityUuid;
+use crate::session::set_logged_in;
 
-impl Passkeys {
+impl IdentityModule {
     /// Begin a Login for `identity`
     ///
     /// The service resolves whatever the person typed (a username) to the
@@ -109,12 +109,8 @@ impl Passkeys {
         Identity::record_login(&mut tx, identity).await?;
         tx.commit().await?;
 
-        session::set_logged_in(session, identity).await?;
-        session.set_expiry(Some(if remember_me {
-            Expiry::OnInactivity(self.settings.remember_me)
-        } else {
-            Expiry::OnSessionEnd
-        }));
+        set_logged_in(session, identity).await?;
+        session.set_expiry(Some(self.settings.login_expiry(remember_me)));
 
         Ok(identity)
     }

@@ -9,6 +9,13 @@ use galvyn::rorm::db::transaction::Transaction;
 use galvyn::rorm::fields::types::ForeignModelByField;
 use galvyn::rorm::fields::types::MaxStr;
 use galvyn::rorm::prelude::ForeignModel;
+#[cfg(doc)]
+use galvyn_identity::Identity;
+use galvyn_identity::IdentityModule;
+use galvyn_identity::IdentityUuid;
+#[cfg(doc)]
+use galvyn_identity::Passkey as AccountPasskey;
+use galvyn_identity::PasskeyUuid;
 use serde::Deserialize;
 use serde::Deserializer;
 use serde::Serialize;
@@ -20,13 +27,6 @@ use crate::models::account::db::AccountInsertPatch;
 use crate::models::account::db::AccountModel;
 use crate::models::collection::Collection;
 use crate::models::deck::Deck;
-#[cfg(doc)]
-use crate::modules::passkeys::Identity;
-use crate::modules::passkeys::IdentityUuid;
-#[cfg(doc)]
-use crate::modules::passkeys::Passkey as AccountPasskey;
-use crate::modules::passkeys::PasskeyUuid;
-use crate::modules::passkeys::Passkeys;
 pub(in crate::models) mod db;
 mod extractor;
 
@@ -256,7 +256,7 @@ impl Account {
         username: Username,
         email: MaxStr<255>,
     ) -> Result<IdentityUuid, rorm::Error> {
-        let identity = Passkeys::global().create_identity(&mut *tx).await?;
+        let identity = IdentityModule::global().create_identity(&mut *tx).await?;
         rorm::insert(&mut *tx, AccountModel)
             .single(&AccountInsertPatch {
                 uuid: Uuid::now_v7(),
@@ -310,7 +310,7 @@ impl Account {
 
         let username = MaxStr::new(TOMBSTONE_USERNAME.to_owned())
             .unwrap_or_else(|_| unreachable!("the tombstone's name is a few ascii characters"));
-        let identity = Passkeys::global().create_identity(&mut *tx).await?;
+        let identity = IdentityModule::global().create_identity(&mut *tx).await?;
         let uuid = rorm::insert(&mut *tx, AccountModel)
             .return_primary_key()
             .single(&AccountInsertPatch {
@@ -351,7 +351,7 @@ impl Account {
         // Also before the delete, see `Collection::delete_all_of_account`.
         Collection::delete_all_of_account(&mut *tx, uuid).await?;
 
-        Passkeys::global()
+        IdentityModule::global()
             .delete_identity(&mut *tx, account.identity)
             .await
     }

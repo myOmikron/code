@@ -43,6 +43,26 @@ service-bootstrap-build = { path = "libs/service-bootstrap-build" }
 # Webframework on top of `axum` and `rorm`
 galvyn = { version = "~0.6", features = ["rorm", "rorm-default", "rorm-postgres-only"] }
 
+# Identity, Login and Enrollment as a galvyn module
+galvyn-identity = { path = "libs/galvyn-identity" }
+
+
+# -------- #
+# WebAuthn #
+# -------- #
+
+# Server-side WebAuthn ceremonies. The feature lets ceremony states live in the session.
+webauthn-rs = { version = "~0.5", features = ["danger-allow-state-serialisation"] }
+
+# The wire types behind `webauthn-rs`, for what its prelude does not export
+webauthn-rs-proto = { version = "~0.5" }
+
+# CBOR, to read the AAGUID out of a raw attestation object
+serde_cbor_2 = { version = "0.13" }
+
+# OpenSSL behind `webauthn-rs`, vendored so musl builds link it statically
+openssl = { version = "~0.10", features = ["vendored"] }
+
 
 # ---- #
 # NATS #

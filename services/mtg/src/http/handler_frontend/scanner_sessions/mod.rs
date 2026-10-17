@@ -1,8 +1,7 @@
 //! Persisted scanner-session routes
 
 use galvyn::core::GalvynRouter;
-
-use crate::modules::passkeys::AuthRequiredLayer;
+use galvyn_identity::AuthRequiredLayer;
 
 pub mod handler;
 pub mod schema;

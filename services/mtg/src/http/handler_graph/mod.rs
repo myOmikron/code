@@ -8,8 +8,7 @@
 //! is the public surface.
 
 use galvyn::core::GalvynRouter;
-
-use crate::modules::passkeys::AuthRequiredLayer;
+use galvyn_identity::AuthRequiredLayer;
 
 pub mod proxy;
 

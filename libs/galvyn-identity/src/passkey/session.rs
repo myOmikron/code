@@ -1,21 +1,14 @@
-//! Every session key the module owns
+//! Every session key of Passkey Login and Enrollment
 //!
 //! Key names and value formats are what sessions already in the store hold:
-//! renaming a key or changing its value logs everyone out.
+//! renaming a key or changing its value aborts every running ceremony.
 
 use galvyn::core::session::Session;
 use tower_sessions::session::Error;
 use webauthn_rs::prelude::PasskeyAuthentication;
 use webauthn_rs::prelude::PasskeyRegistration;
 
-use super::models::IdentityUuid;
-
-/// Session key holding the uuid of the logged-in Identity
-///
-/// Named after the account it used to hold. Every account that existed before
-/// identities did shares its uuid with its identity, so sessions from back
-/// then still name the right person.
-const LOGGED_IN: &str = "current_account";
+use crate::models::IdentityUuid;
 
 /// Session key holding the state of a running Login
 const LOGIN_STATE: &str = "webauthn_login";
@@ -28,22 +21,6 @@ const LINK_ENROLLMENT_STATE: &str = "webauthn_registration";
 
 /// Session key holding the state of a running Enrollment of an additional device
 const DEVICE_ENROLLMENT_STATE: &str = "webauthn_add_passkey";
-
-/// The logged-in Identity, if any
-pub(super) async fn logged_in(session: &Session) -> Result<Option<IdentityUuid>, Error> {
-    session.get(LOGGED_IN).await
-}
-
-/// Mark the session as logged in as `identity`
-pub(super) async fn set_logged_in(session: &Session, identity: IdentityUuid) -> Result<(), Error> {
-    session.insert(LOGGED_IN, identity).await
-}
-
-/// Forget the session's login, e.g. because its Identity is gone
-pub(super) async fn forget_logged_in(session: &Session) -> Result<(), Error> {
-    session.remove_value(LOGGED_IN).await?;
-    session.save().await
-}
 
 /// Store a started Login
 pub(super) async fn start_login(

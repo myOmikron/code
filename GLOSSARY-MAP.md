@@ -2,7 +2,7 @@
 
 ## Contexts
 
-- [Identity](./docs/identity/GLOSSARY.md): how people prove who they are, shared by the services that sign people in
+- [Identity](./libs/galvyn-identity/GLOSSARY.md): how people prove who they are, shared by the services that sign people in
 
 ## Relationships
 
