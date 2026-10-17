@@ -24,9 +24,10 @@ use crate::http::handler_frontend::accounts::schema::MeResponse;
 use crate::http::handler_frontend::accounts::schema::SimplePasskey;
 use crate::http::handler_frontend::accounts::schema::StartAddPasskeyResponse;
 use crate::models::account::Account;
-use crate::models::account::AccountPasskey;
-use crate::models::account::AccountPasskeyInsert;
 use crate::models::account::AccountPasskeyUuid;
+use crate::models::identity::Passkey;
+use crate::models::identity::PasskeyInsert;
+use crate::models::identity::PasskeyUuid;
 use crate::modules::webauthn::WebauthnModule;
 use crate::modules::webauthn::credential_id_string;
 use crate::modules::webauthn::passkey_label;
@@ -50,14 +51,14 @@ pub async fn me(account: Account) -> ApiResult<ApiJson<MeResponse>> {
 #[get("/passkeys")]
 pub async fn list_passkeys(account: Account) -> ApiResult<ApiJson<ListPasskeysResponse>> {
     let mut tx = Database::global().start_transaction().await?;
-    let passkeys = AccountPasskey::get_by_account(&mut tx, account.uuid).await?;
+    let passkeys = Passkey::get_by_identity(&mut tx, account.identity).await?;
     tx.commit().await?;
 
     Ok(ApiJson(ListPasskeysResponse {
         passkeys: passkeys
             .into_iter()
             .map(|passkey| SimplePasskey {
-                uuid: passkey.uuid,
+                uuid: AccountPasskeyUuid::from(passkey.uuid),
                 label: passkey.label.to_string(),
                 created_at: SchemaDateTime(passkey.created_at),
                 last_used_at: passkey.last_used_at.map(SchemaDateTime),
@@ -76,7 +77,7 @@ pub async fn start_add_passkey(
     account: Account,
 ) -> ApiResult<ApiJson<StartAddPasskeyResponse>> {
     let mut tx = Database::global().start_transaction().await?;
-    let existing = AccountPasskey::get_by_account(&mut tx, account.uuid).await?;
+    let existing = Passkey::get_by_identity(&mut tx, account.identity).await?;
     tx.commit().await?;
 
     // Registering the same authenticator twice would leave the user with two entries for one
@@ -89,7 +90,7 @@ pub async fn start_add_passkey(
     let (mut challenge, state) = WebauthnModule::global()
         .webauthn
         .start_passkey_registration(
-            account.uuid.into_inner(),
+            account.identity.into_inner(),
             account.username.as_str(),
             account.username.as_str(),
             (!exclude.is_empty()).then_some(exclude),
@@ -142,14 +143,14 @@ pub async fn finish_add_passkey(
     };
 
     let mut tx = Database::global().start_transaction().await?;
-    let existing = AccountPasskey::get_by_account(&mut tx, account.uuid)
+    let existing = Passkey::get_by_identity(&mut tx, account.identity)
         .await?
         .len();
 
-    let inserted = AccountPasskey::insert(
+    let inserted = Passkey::insert(
         &mut tx,
-        AccountPasskeyInsert {
-            account: account.uuid,
+        PasskeyInsert {
+            identity: account.identity,
             label: request
                 .label
                 .unwrap_or_else(|| passkey_label(registration_aaguid(&credential), existing)),
@@ -177,10 +178,11 @@ pub async fn delete_passkey(
     account: Account,
     Path(uuid): Path<AccountPasskeyUuid>,
 ) -> ApiResult<ApiJson<()>, DeletePasskeyErrors> {
+    let uuid = PasskeyUuid::from(uuid);
     let mut errors = FormErrors::<DeletePasskeyErrors>::new();
     let mut tx = Database::global().start_transaction().await?;
 
-    let passkeys = AccountPasskey::get_by_account(&mut tx, account.uuid).await?;
+    let passkeys = Passkey::get_by_identity(&mut tx, account.identity).await?;
     // Checked against the account's own passkeys, so a stranger's uuid reads as unknown rather
     // than deleting somebody else's device.
     if !passkeys.iter().any(|passkey| passkey.uuid == uuid) {
@@ -191,7 +193,7 @@ pub async fn delete_passkey(
     }
     errors.check()?;
 
-    AccountPasskey::delete(&mut tx, uuid).await?;
+    Passkey::delete(&mut tx, uuid).await?;
 
     tx.commit().await?;
     Ok(ApiJson(()))

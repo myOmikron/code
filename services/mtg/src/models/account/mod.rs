@@ -1,33 +1,29 @@
-//! Accounts, their passkeys and registration invites
+//! Accounts, each signing in as one [`Identity`]
 
 use galvyn::core::re_exports::schemars;
 use galvyn::core::re_exports::schemars::JsonSchema;
-use galvyn::core::re_exports::time::Duration;
 use galvyn::core::re_exports::time::OffsetDateTime;
 use galvyn::rorm;
 use galvyn::rorm::db::transaction::Transaction;
 use galvyn::rorm::fields::types::ForeignModelByField;
-use galvyn::rorm::fields::types::Json;
 use galvyn::rorm::fields::types::MaxStr;
 use galvyn::rorm::prelude::ForeignModel;
-use rand::distr::Alphanumeric;
-use rand::distr::SampleString;
 use serde::Deserialize;
 use serde::Deserializer;
 use serde::Serialize;
 use thiserror::Error;
 use tracing::instrument;
 use uuid::Uuid;
-use webauthn_rs::prelude::Passkey;
 
 use crate::models::account::db::AccountInsertPatch;
 use crate::models::account::db::AccountModel;
-use crate::models::account::db::AccountPasskeyInsertPatch;
-use crate::models::account::db::AccountPasskeyModel;
-use crate::models::account::db::RegistrationTokenInsertPatch;
-use crate::models::account::db::RegistrationTokenModel;
 use crate::models::collection::Collection;
 use crate::models::deck::Deck;
+use crate::models::identity::Identity;
+use crate::models::identity::IdentityUuid;
+#[cfg(doc)]
+use crate::models::identity::Passkey as AccountPasskey;
+use crate::models::identity::PasskeyUuid;
 pub(in crate::models) mod db;
 mod extractor;
 
@@ -126,8 +122,8 @@ const TOMBSTONE_EMAIL: &str = "#deleted";
 
 /// An account
 ///
-/// Authentication is passkey-only: an account has no password, only
-/// [`AccountPasskey`]s registered through invite links.
+/// Authentication is passkey-only: an account has no password, only the
+/// passkeys of its [`Identity`].
 #[derive(Debug, Clone)]
 pub struct Account {
     /// Primary key
@@ -142,8 +138,8 @@ pub struct Account {
     /// The point in time the account was created
     pub created_at: OffsetDateTime,
 
-    /// The point in time when the account logged in recently
-    pub last_login_at: Option<OffsetDateTime>,
+    /// The identity this account signs in as
+    pub identity: IdentityUuid,
 }
 
 /// Wrapper for the primary key of the [`Account`] model.
@@ -190,11 +186,24 @@ impl Account {
         Ok(account.map(Account::from))
     }
 
+    /// Fetch the account signing in as `identity`
+    #[instrument(name = "Account::get_by_identity", skip(tx))]
+    pub async fn get_by_identity(
+        tx: &mut Transaction,
+        identity: IdentityUuid,
+    ) -> Result<Option<Account>, rorm::Error> {
+        let account = rorm::query(tx, AccountModel)
+            .condition(AccountModel.identity.equals(identity.into_inner()))
+            .optional()
+            .await?;
+        Ok(account.map(Account::from))
+    }
+
     /// Fetch an account by its username
     ///
     /// The lookup ignores case. This is the first step of a login: the
-    /// credential ids of the returned account become the ceremony's
-    /// `allowCredentials`.
+    /// credential ids of the returned account's identity become the
+    /// ceremony's `allowCredentials`.
     ///
     /// The tombstone is never answered with. Its name is unspellable already,
     /// but this is the condition that matters: were it reachable by name, a
@@ -234,17 +243,7 @@ impl Account {
         Ok(account.map(Account::from))
     }
 
-    /// Check whether an account exists
-    #[instrument(name = "Account::exists", skip(tx))]
-    pub async fn exists(tx: &mut Transaction, uuid: AccountUuid) -> Result<bool, rorm::Error> {
-        Ok(rorm::query(tx, (AccountModel.uuid,))
-            .condition(AccountModel.uuid.equals(uuid.0))
-            .optional()
-            .await?
-            .is_some())
-    }
-
-    /// Insert a new account and return its primary key
+    /// Insert a new account with an identity of its own and return that identity
     ///
     /// Fails with a unique violation if the username or the email is already
     /// taken.
@@ -253,18 +252,19 @@ impl Account {
         tx: &mut Transaction,
         username: Username,
         email: MaxStr<255>,
-    ) -> Result<AccountUuid, rorm::Error> {
-        let uuid = rorm::insert(tx, AccountModel)
-            .return_primary_key()
+    ) -> Result<IdentityUuid, rorm::Error> {
+        let identity = Identity::insert(&mut *tx).await?;
+        rorm::insert(&mut *tx, AccountModel)
             .single(&AccountInsertPatch {
                 uuid: Uuid::now_v7(),
                 username_normalized: username.normalized(),
                 username: username.0,
                 email,
                 tombstone: false,
+                identity: ForeignModelByField(identity.into_inner()),
             })
             .await?;
-        Ok(AccountUuid(uuid))
+        Ok(identity)
     }
 
     /// Update an account's username and email
@@ -307,6 +307,7 @@ impl Account {
 
         let username = MaxStr::new(TOMBSTONE_USERNAME.to_owned())
             .unwrap_or_else(|_| unreachable!("the tombstone's name is a few ascii characters"));
+        let identity = Identity::insert(&mut *tx).await?;
         let uuid = rorm::insert(&mut *tx, AccountModel)
             .return_primary_key()
             .single(&AccountInsertPatch {
@@ -317,6 +318,7 @@ impl Account {
                     unreachable!("the tombstone's address is a few ascii characters")
                 }),
                 tombstone: true,
+                identity: ForeignModelByField(identity.into_inner()),
             })
             .await?;
         Ok(AccountUuid(uuid))
@@ -325,17 +327,18 @@ impl Account {
     /// Delete an account, leaving its public decks with the tombstone
     ///
     /// A decklist somebody linked to stays readable when its builder leaves,
-    /// with nothing left of the builder but the tombstone. Everything else the
-    /// account owns goes with it through the cascades on the foreign keys:
-    /// passkeys, registration tokens, collections, watch lists, folders, tags,
-    /// and every deck it did not put on show.
+    /// with nothing left of the builder but the tombstone. The account goes by
+    /// deleting its identity, and everything else it owns goes with it through
+    /// the cascades on the foreign keys: passkeys, registration links,
+    /// collections, watch lists, folders, tags, and every deck it did not put
+    /// on show.
     ///
     /// Returns `false` if the account does not exist.
     #[instrument(name = "Account::delete", skip(tx))]
     pub async fn delete(tx: &mut Transaction, uuid: AccountUuid) -> Result<bool, rorm::Error> {
-        if !Self::exists(&mut *tx, uuid).await? {
+        let Some(account) = Self::get_by_uuid(&mut *tx, uuid).await? else {
             return Ok(false);
-        }
+        };
 
         // Before the delete, not after: the cascade would otherwise take the
         // decks along with everything else.
@@ -345,45 +348,8 @@ impl Account {
         // Also before the delete, see `Collection::delete_all_of_account`.
         Collection::delete_all_of_account(&mut *tx, uuid).await?;
 
-        let affected = rorm::delete(&mut *tx, AccountModel)
-            .condition(AccountModel.uuid.equals(uuid.0))
-            .await?;
-        Ok(affected > 0)
+        Identity::delete(&mut *tx, account.identity).await
     }
-
-    /// Store that the account just logged in
-    #[instrument(name = "Account::record_login", skip(tx))]
-    pub async fn record_login(tx: &mut Transaction, uuid: AccountUuid) -> Result<(), rorm::Error> {
-        rorm::update(tx, AccountModel)
-            .set(AccountModel.last_login_at, Some(OffsetDateTime::now_utc()))
-            .condition(AccountModel.uuid.equals(uuid.0))
-            .await?;
-        Ok(())
-    }
-}
-
-/// A WebAuthn passkey registered to an [`Account`]
-pub struct AccountPasskey {
-    /// Primary key
-    pub uuid: AccountPasskeyUuid,
-
-    /// The account this passkey belongs to
-    pub account: AccountUuid,
-
-    /// Human-readable device label shown in the passkey management UI
-    pub label: MaxStr<255>,
-
-    /// The credential id (base64url), which is what a login names to say which passkey answered
-    pub credential_id: MaxStr<1024>,
-
-    /// The passkey (public key, counter, ...)
-    pub credential: Passkey,
-
-    /// The point in time this passkey was registered
-    pub created_at: OffsetDateTime,
-
-    /// The point in time this passkey was last used for a login
-    pub last_used_at: Option<OffsetDateTime>,
 }
 
 /// Wrapper for the primary key of the [`AccountPasskey`] model.
@@ -391,183 +357,15 @@ pub struct AccountPasskey {
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, JsonSchema, Hash, Eq, PartialEq)]
 pub struct AccountPasskeyUuid(Uuid);
 
-impl AccountPasskeyUuid {
-    /// Get the underlying UUID type
-    pub fn into_inner(self) -> Uuid {
-        self.0
+impl From<PasskeyUuid> for AccountPasskeyUuid {
+    fn from(value: PasskeyUuid) -> Self {
+        Self(value.into_inner())
     }
 }
 
-/// Data for inserting a new [`AccountPasskey`]
-pub struct AccountPasskeyInsert {
-    /// The account this passkey belongs to
-    pub account: AccountUuid,
-    /// Human-readable device label
-    pub label: MaxStr<255>,
-    /// The credential id (base64url)
-    pub credential_id: MaxStr<1024>,
-    /// The passkey returned by the finished registration ceremony
-    pub credential: Passkey,
-}
-
-impl AccountPasskey {
-    /// Fetch all passkeys of an account
-    /// Oldest registration first, with the primary key breaking ties — without
-    /// it a passkey jumps position the moment a login stamps `last_used_at`.
-    #[instrument(name = "AccountPasskey::get_by_account", skip(tx))]
-    pub async fn get_by_account(
-        tx: &mut Transaction,
-        account: AccountUuid,
-    ) -> Result<Vec<AccountPasskey>, rorm::Error> {
-        let passkeys = rorm::query(tx, AccountPasskeyModel)
-            .condition(AccountPasskeyModel.account.equals(account.0))
-            .order_asc(AccountPasskeyModel.created_at)
-            .order_asc(AccountPasskeyModel.uuid)
-            .all()
-            .await?;
-        Ok(passkeys.into_iter().map(AccountPasskey::from).collect())
-    }
-
-    /// Insert a freshly registered passkey
-    ///
-    /// Fails with a unique violation if the credential is already registered.
-    #[instrument(name = "AccountPasskey::insert", skip(tx, insert))]
-    pub async fn insert(
-        tx: &mut Transaction,
-        insert: AccountPasskeyInsert,
-    ) -> Result<(), rorm::Error> {
-        rorm::insert(tx, AccountPasskeyModel)
-            .single(&AccountPasskeyInsertPatch {
-                uuid: Uuid::now_v7(),
-                account: ForeignModelByField(insert.account.0),
-                label: insert.label,
-                credential_id: insert.credential_id,
-                credential: Json(insert.credential),
-            })
-            .await?;
-        Ok(())
-    }
-
-    /// Persist an updated credential (counter, backup state)
-    /// and stamp `last_used_at`
-    #[instrument(name = "AccountPasskey::update_credential", skip(tx, credential))]
-    pub async fn update_credential(
-        tx: &mut Transaction,
-        uuid: AccountPasskeyUuid,
-        credential: Passkey,
-    ) -> Result<(), rorm::Error> {
-        rorm::update(tx, AccountPasskeyModel)
-            .set(AccountPasskeyModel.credential, Json(credential))
-            .set(
-                AccountPasskeyModel.last_used_at,
-                Some(OffsetDateTime::now_utc()),
-            )
-            .condition(AccountPasskeyModel.uuid.equals(uuid.0))
-            .await?;
-        Ok(())
-    }
-
-    /// Delete a passkey
-    ///
-    /// Returns `false` if the passkey does not exist.
-    #[instrument(name = "AccountPasskey::delete", skip(tx))]
-    pub async fn delete(
-        tx: &mut Transaction,
-        uuid: AccountPasskeyUuid,
-    ) -> Result<bool, rorm::Error> {
-        let affected = rorm::delete(tx, AccountPasskeyModel)
-            .condition(AccountPasskeyModel.uuid.equals(uuid.0))
-            .await?;
-        Ok(affected > 0)
-    }
-}
-
-/// One-time invite token allowing an account to register another passkey
-///
-/// Created together with the account and consumed by the public registration
-/// endpoint. Also the "lost device" recovery mechanism: issue a new token.
-pub struct RegistrationToken {
-    /// Primary key
-    pub uuid: RegistrationTokenUuid,
-
-    /// The account this token registers a passkey for
-    pub account: AccountUuid,
-
-    /// The secret token contained in the invite link
-    pub token: MaxStr<64>,
-
-    /// The point in time this token stops being valid
-    pub expires_at: OffsetDateTime,
-
-    /// Whether this token has already been used
-    pub used: bool,
-
-    /// The point in time this token was created
-    pub created_at: OffsetDateTime,
-}
-
-/// Wrapper for the primary key of the [`RegistrationToken`] model.
-/// To have better distinguishable types.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, JsonSchema, Hash, Eq, PartialEq)]
-pub struct RegistrationTokenUuid(Uuid);
-
-impl RegistrationTokenUuid {
-    /// Get the underlying UUID type
-    pub fn into_inner(self) -> Uuid {
-        self.0
-    }
-}
-
-impl RegistrationToken {
-    /// How long a freshly issued registration token stays valid
-    pub const VALIDITY: Duration = Duration::days(7);
-
-    /// Create and persist a new one-time token for `account`
-    ///
-    /// Returns the secret to embed in the invite link.
-    #[instrument(name = "RegistrationToken::create", skip(tx))]
-    pub async fn create(
-        tx: &mut Transaction,
-        account: AccountUuid,
-    ) -> Result<MaxStr<64>, rorm::Error> {
-        let token = MaxStr::new(Alphanumeric.sample_string(&mut rand::rng(), 43))
-            .unwrap_or_else(|_| unreachable!("43 alphanumeric chars fit into 64"));
-        rorm::insert(tx, RegistrationTokenModel)
-            .single(&RegistrationTokenInsertPatch {
-                uuid: Uuid::now_v7(),
-                account: ForeignModelByField(account.0),
-                token: token.clone(),
-                expires_at: OffsetDateTime::now_utc() + Self::VALIDITY,
-                used: false,
-            })
-            .await?;
-        Ok(token)
-    }
-
-    /// Fetch a token by its secret
-    #[instrument(name = "RegistrationToken::get_by_token", skip(tx, token))]
-    pub async fn get_by_token(
-        tx: &mut Transaction,
-        token: &MaxStr<64>,
-    ) -> Result<Option<RegistrationToken>, rorm::Error> {
-        let registration_token = rorm::query(tx, RegistrationTokenModel)
-            .condition(RegistrationTokenModel.token.equals(token))
-            .optional()
-            .await?;
-        Ok(registration_token.map(RegistrationToken::from))
-    }
-
-    /// Mark a token as used
-    #[instrument(name = "RegistrationToken::mark_used", skip(tx))]
-    pub async fn mark_used(
-        tx: &mut Transaction,
-        uuid: RegistrationTokenUuid,
-    ) -> Result<(), rorm::Error> {
-        rorm::update(tx, RegistrationTokenModel)
-            .set(RegistrationTokenModel.used, true)
-            .condition(RegistrationTokenModel.uuid.equals(uuid.0))
-            .await?;
-        Ok(())
+impl From<AccountPasskeyUuid> for PasskeyUuid {
+    fn from(value: AccountPasskeyUuid) -> Self {
+        PasskeyUuid::new(value.0)
     }
 }
 
@@ -578,34 +376,7 @@ impl From<AccountModel> for Account {
             username: Username::new_from_field(value.username),
             email: value.email,
             created_at: value.created_at,
-            last_login_at: value.last_login_at,
-        }
-    }
-}
-
-impl From<AccountPasskeyModel> for AccountPasskey {
-    fn from(value: AccountPasskeyModel) -> Self {
-        Self {
-            uuid: AccountPasskeyUuid(value.uuid),
-            account: AccountUuid::new_from_field(value.account),
-            label: value.label,
-            credential_id: value.credential_id,
-            credential: value.credential.0,
-            created_at: value.created_at,
-            last_used_at: value.last_used_at,
-        }
-    }
-}
-
-impl From<RegistrationTokenModel> for RegistrationToken {
-    fn from(value: RegistrationTokenModel) -> Self {
-        Self {
-            uuid: RegistrationTokenUuid(value.uuid),
-            account: AccountUuid::new_from_field(value.account),
-            token: value.token,
-            expires_at: value.expires_at,
-            used: value.used,
-            created_at: value.created_at,
+            identity: IdentityUuid::new_from_field(value.identity),
         }
     }
 }
