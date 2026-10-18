@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import React from "react";
 import Logo from "src/assets/bnv.svg?react";
 import { PrimaryButton } from "src/components/base/button";
+import { Text } from "src/components/base/text";
 import { OidcErrorCode, validateOidcErrorSearch } from "src/utils/oidc";
 
 /**
@@ -26,7 +27,7 @@ export default function OidcError(props: OidcErrorProps) {
             <div className={"flex flex-col justify-center gap-6"}>
                 <Logo className={"h-8 w-fit dark:text-white"} />
                 <Heading className={"mt-12"}>{t("heading.error")}</Heading>
-                <span>{t(search.error ? MESSAGES[search.error] : "description.unknown")}</span>
+                <Text>{t(search.error ? MESSAGES[search.error] : "description.unknown")}</Text>
                 <PrimaryButton onClick={() => router.navigate({ to: "/" })}>{t("button.back-to-home")}</PrimaryButton>
             </div>
         </AuthLayout>

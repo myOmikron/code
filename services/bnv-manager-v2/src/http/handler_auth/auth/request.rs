@@ -18,7 +18,6 @@ use serde::Deserialize;
 use serde::Serialize;
 use time::Duration;
 use time::OffsetDateTime;
-use url::Url;
 use uuid::Uuid;
 
 use crate::http::handler_auth::auth::handler::ALLOWED_SCOPES;
@@ -36,7 +35,7 @@ pub struct AuthRequest {
     /// The client asking for the authorization
     pub client_id: OidcClientUuid,
     /// The client's registered `redirect_uri` the response goes to
-    pub redirect_uri: Url,
+    pub redirect_uri: MaxStr<1024>,
     /// The requested scopes, `openid` among them
     pub scopes: Vec<String>,
     /// Opaque value returned to the client unchanged
@@ -146,9 +145,9 @@ impl AuthRequestParams {
     pub fn validate(
         &self,
         client_id: OidcClientUuid,
-        registered_uri: &Url,
+        registered_uri: &MaxStr<1024>,
     ) -> Result<AuthRequest, AuthRequestError> {
-        if self.single("redirect_uri").ok().flatten() != Some(registered_uri.as_str()) {
+        if self.single("redirect_uri").ok().flatten() != Some(&**registered_uri) {
             return Err(AuthRequestError::InvalidRedirectUri);
         }
 
@@ -204,10 +203,8 @@ impl AuthRequestParams {
             }
         }
 
-        let scope = single("scope")?.unwrap_or_default();
-        if scope.len() > 1024 {
-            return Err(fail(AuthErrorCode::InvalidScope, "scope is too long"));
-        }
+        let scope: MaxStr<1024> = MaxStr::new(single("scope")?.unwrap_or_default().to_string())
+            .map_err(|_| fail(AuthErrorCode::InvalidScope, "scope is too long"))?;
         let scopes: Vec<String> = scope.split(' ').map(str::to_string).collect();
         if !scopes.iter().any(|scope| scope == "openid") {
             return Err(fail(

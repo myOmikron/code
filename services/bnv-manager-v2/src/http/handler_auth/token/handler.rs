@@ -12,6 +12,7 @@ use galvyn::post;
 use galvyn::rorm::Database;
 use subtle::ConstantTimeEq;
 use tracing::instrument;
+use url::Url;
 use uuid::Uuid;
 
 use crate::http::handler_auth::TOKEN_PATH;
@@ -97,7 +98,7 @@ pub async fn get_token(
         ));
     }
 
-    if &*redirect_uri != token.redirect_uri.as_str() {
+    if *redirect_uri != *token.redirect_uri {
         return Err(TokenError::invalid_grant(
             "redirect_uri differs from the authorization request",
         ));
@@ -167,7 +168,9 @@ pub async fn get_token(
 
     OidcAuthenticationToken::delete_by_code(&mut tx, &token.code).await?;
 
-    let create_app_password = if token.redirect_uri.domain() == Mailcow::global().base_url.domain()
+    let redirect_uri = Url::parse(&token.redirect_uri).ok();
+    let create_app_password = if redirect_uri.as_ref().and_then(Url::domain)
+        == Mailcow::global().base_url.domain()
         && !token.account.has_app_password
     {
         let club = Club::find_by_uuid(&mut tx, token.account.club)

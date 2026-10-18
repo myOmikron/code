@@ -11,7 +11,6 @@ use galvyn::get;
 use galvyn::post;
 use galvyn::rorm::Database;
 use tracing::instrument;
-use url::Url;
 
 use crate::http::handler_frontend::oidc_clients::CreateOidcClientError;
 use crate::http::handler_frontend::oidc_clients::CreateOidcClientRequest;
@@ -41,11 +40,7 @@ pub async fn get_all_oidc_clients() -> ApiResult<ApiJson<Vec<schema::OidcClientS
 pub async fn create_oidc_client(
     ApiJson(CreateOidcClientRequest { name, redirect_uri }): ApiJson<CreateOidcClientRequest>,
 ) -> ApiResult<ApiJson<FormResult<CreatedOidcClient, CreateOidcClientError>>> {
-    let Some(redirect_uri) = Url::parse(&redirect_uri)
-        .ok()
-        .filter(|redirect_uri| redirect_uri.as_str().len() <= 1024)
-        .filter(OidcClient::is_valid_redirect_uri)
-    else {
+    if !OidcClient::is_valid_redirect_uri(&redirect_uri) {
         return Ok(ApiJson(FormResult::err(CreateOidcClientError {
             invalid_redirect_uri: true,
         })));

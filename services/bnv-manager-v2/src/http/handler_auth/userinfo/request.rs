@@ -12,12 +12,16 @@ use galvyn::core::re_exports::axum::extract::Request;
 use galvyn::core::re_exports::axum::http::HeaderMap;
 use galvyn::core::re_exports::axum::http::header;
 use galvyn::core::re_exports::mime;
+use galvyn::rorm::fields::types::MaxStr;
 
 use crate::http::handler_auth::params::Params;
 use crate::http::handler_auth::userinfo::schema::UserinfoError;
 
 /// The bearer token of the request's `Authorization` header
-pub struct BearerToken(pub String);
+///
+/// The access tokens this provider issues are far shorter than the bound; a longer token
+/// is none of them and therefore `invalid_token`.
+pub struct BearerToken(pub MaxStr<4096>);
 
 impl<S: Send + Sync> FromRequest<S> for BearerToken {
     type Rejection = UserinfoError;
@@ -37,7 +41,9 @@ impl<S: Send + Sync> FromRequest<S> for BearerToken {
         let in_header = bearer_token(&headers)?;
 
         match (in_header, in_query || in_body) {
-            (Some(token), false) => Ok(Self(token.to_string())),
+            (Some(token), false) => MaxStr::new(token.to_string())
+                .map(Self)
+                .map_err(|_| UserinfoError::InvalidToken),
             (None, false) => Err(UserinfoError::MissingToken),
             (_, true) => Err(UserinfoError::InvalidRequest),
         }

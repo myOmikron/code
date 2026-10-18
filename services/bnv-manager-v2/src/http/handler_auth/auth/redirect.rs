@@ -20,7 +20,6 @@ use galvyn::core::re_exports::mime::Mime;
 use galvyn::core::re_exports::schemars::schema::Schema;
 use galvyn::rorm::fields::types::MaxStr;
 use serde::Serialize;
-use url::Url;
 
 /// A `302 Found` redirect
 ///
@@ -87,7 +86,7 @@ pub enum AuthErrorCode {
 pub struct ErrorRedirect {
     /// The client's registered `redirect_uri`
     #[serde(skip)]
-    pub redirect_uri: Url,
+    pub redirect_uri: MaxStr<1024>,
     /// The error
     pub error: AuthErrorCode,
     /// ASCII text for the client developer
@@ -100,7 +99,7 @@ pub struct ErrorRedirect {
 
 impl From<ErrorRedirect> for Found {
     fn from(value: ErrorRedirect) -> Self {
-        to_client(value.redirect_uri.clone(), &value)
+        to_client(&value.redirect_uri, &value)
     }
 }
 
@@ -115,18 +114,23 @@ struct Success<'a> {
 }
 
 /// The successful response, carrying the authorization `code` and the request's `state`
-pub fn success(redirect_uri: Url, code: &str, state: Option<&str>) -> Found {
+pub fn success(redirect_uri: &str, code: &str, state: Option<&str>) -> Found {
     to_client(redirect_uri, &Success { code, state })
 }
 
 /// Redirect to `redirect_uri` with `params` added to its query
-fn to_client(mut redirect_uri: Url, params: &impl Serialize) -> Found {
+///
+/// The registered `redirect_uri` is extended as text, so the client receives it unchanged;
+/// it has no fragment (see [`OidcClient::is_valid_redirect_uri`]), its query is at the end.
+///
+/// [`OidcClient::is_valid_redirect_uri`]: crate::models::oidc_client::OidcClient::is_valid_redirect_uri
+fn to_client(redirect_uri: &str, params: &impl Serialize) -> Found {
     #[allow(clippy::expect_used)]
     let params = serde_urlencoded::to_string(params).expect("Flat struct of strings");
-    let query = match redirect_uri.query() {
-        Some(query) if !query.is_empty() => format!("{query}&{params}"),
-        _ => params,
+    let location = match redirect_uri.split_once('?') {
+        None => format!("{redirect_uri}?{params}"),
+        Some((_, "")) => format!("{redirect_uri}{params}"),
+        Some(_) => format!("{redirect_uri}&{params}"),
     };
-    redirect_uri.set_query(Some(&query));
-    Found::to(redirect_uri.as_str())
+    Found::to(&location)
 }

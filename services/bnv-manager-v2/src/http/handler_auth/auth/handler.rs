@@ -72,7 +72,7 @@ pub async fn auth(params: AuthRequestParams, session: Session) -> ApiResult<Foun
         Ok(request) => request,
         Err(AuthRequestError::InvalidRedirectUri) => {
             warn!(
-                expected = client.redirect_uri.as_str(),
+                expected = %client.redirect_uri,
                 "Invalid redirect_uri"
             );
             return Ok(error_page(OidcErrorCode::InvalidRedirectUri));
@@ -244,7 +244,7 @@ pub async fn finish_auth(
     tx.commit().await?;
 
     Ok(redirect::success(
-        request.redirect_uri,
+        &request.redirect_uri,
         &auth_token.code,
         request.state.as_deref(),
     ))

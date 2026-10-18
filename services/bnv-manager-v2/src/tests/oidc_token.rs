@@ -588,3 +588,17 @@ fn discovery_lists_the_code_challenge_methods() {
         );
     });
 }
+
+#[test]
+fn id_token_omits_nonce_when_none_was_sent() {
+    harness::run(async {
+        let client = harness::register_client("https://rp.test/callback").await;
+        let member = harness::register_member().await;
+        let code = flow::issue_code(&client, &member, &[]).await;
+
+        let tokens = flow::redeem(&client, &code).await;
+        let claims = flow::jwt_claims(tokens["id_token"].as_str().expect("id_token"));
+
+        assert_eq!(claims.get("nonce"), None, "{claims}");
+    });
+}
