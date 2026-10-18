@@ -143,6 +143,21 @@ services:
       context: ..
       dockerfile: services/mtg/Dockerfile
 
+  statistics-snapshot:
+    command: [ "snapshot-statistics", "--every-minutes", "60" ]
+    env_file: [ common/env.common ]
+    environment:
+      - POSTGRES_HOST=postgres
+      - LISTEN_ADDRESS=127.0.0.1
+      - LISTEN_PORT=8080
+      - GRAPH_URL=http://graph:8000
+    depends_on:
+      webserver:
+        condition: service_healthy
+    build:
+      context: ..
+      dockerfile: services/mtg/Dockerfile
+
   postgres:
     image: postgres:18.6
     env_file: [ common/env.common ]

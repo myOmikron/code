@@ -590,6 +590,55 @@
                 }
             }
         },
+        "/api/frontend/v1/admin/statistics": {
+            "get": {
+                "summary": "The newest Statistics snapshot and the last 30 days of them",
+                "description": "The newest Statistics snapshot and the last 30 days of them",
+                "operationId": "admin_get_statistics",
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AdminStatisticsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/frontend/v1/admin/syncs": {
             "get": {
                 "summary": "The state of the catalog and price guide syncs, with their recent Sync runs",
@@ -8168,6 +8217,96 @@
                 },
                 "required": [
                     "role"
+                ]
+            },
+            "AdminStatisticsResponse": {
+                "description": "The newest Statistics snapshot and the ones of the last 30 days",
+                "type": "object",
+                "properties": {
+                    "history": {
+                        "description": "Snapshots of the last 30 days, oldest first",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/AdminStatisticsSnapshot"
+                        }
+                    },
+                    "newest": {
+                        "nullable": true,
+                        "description": "The most recent snapshot, `None` before the first one was taken",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/AdminStatisticsSnapshot"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "history"
+                ]
+            },
+            "AdminStatisticsSnapshot": {
+                "description": "Service-wide counts at one point in time",
+                "type": "object",
+                "properties": {
+                    "accounts": {
+                        "description": "Accounts, without the Tombstone",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "cards": {
+                        "description": "Cards, on the shelf and sleeved in decks",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "collections": {
+                        "description": "Collections on a shelf, without the ones standing for a deck",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "decks": {
+                        "description": "Decks",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "new_accounts": {
+                        "description": "Accounts created in the 7 days before `taken_at`",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "open_scanner_sessions": {
+                        "description": "Scanner sessions holding at least one card not yet filed",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "public_decks": {
+                        "description": "Public decks",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "taken_at": {
+                        "description": "When the counts were taken",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDateTime"
+                            }
+                        ]
+                    },
+                    "uuid": {
+                        "description": "Primary key",
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                },
+                "required": [
+                    "accounts",
+                    "cards",
+                    "collections",
+                    "decks",
+                    "new_accounts",
+                    "open_scanner_sessions",
+                    "public_decks",
+                    "taken_at",
+                    "uuid"
                 ]
             },
             "AdminSyncRun": {

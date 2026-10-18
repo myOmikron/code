@@ -14,6 +14,8 @@ docs/AdminPriceGuideStamp.md
 docs/AdminPriceGuideSync.md
 docs/AdminSetRoleErrors.md
 docs/AdminSetRoleRequest.md
+docs/AdminStatisticsResponse.md
+docs/AdminStatisticsSnapshot.md
 docs/AdminSyncRun.md
 docs/AdminSyncRuns.md
 docs/AdminSyncsResponse.md

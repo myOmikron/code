@@ -10,6 +10,7 @@ All URIs are relative to *http://localhost*
 | [**addScannerSessionEntry**](DefaultApi.md#addscannersessionentryoperation) | **POST** /api/frontend/v1/scanner-sessions/{session}/entries | Add scanned copies to a session |
 | [**addWatchListEntry**](DefaultApi.md#addwatchlistentryoperation) | **POST** /api/frontend/v1/watch-lists/{list}/entries | Put a card on a watch list |
 | [**adminGetAccount**](DefaultApi.md#admingetaccount) | **GET** /api/frontend/v1/admin/accounts/{uuid} | One Account with its card and passkey counts |
+| [**adminGetStatistics**](DefaultApi.md#admingetstatistics) | **GET** /api/frontend/v1/admin/statistics | The newest Statistics snapshot and the last 30 days of them |
 | [**adminGetSyncs**](DefaultApi.md#admingetsyncs) | **GET** /api/frontend/v1/admin/syncs | The state of the catalog and price guide syncs, with their recent Sync runs |
 | [**adminListAccounts**](DefaultApi.md#adminlistaccounts) | **GET** /api/frontend/v1/admin/accounts | List Accounts, newest first |
 | [**adminSetRole**](DefaultApi.md#adminsetroleoperation) | **PUT** /api/frontend/v1/admin/accounts/{uuid}/role | Change an Account\&#39;s Role |
@@ -534,6 +535,68 @@ example().catch(console.error);
 ### Return type
 
 [**AdminAccountDetail**](AdminAccountDetail.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## adminGetStatistics
+
+> AdminStatisticsResponse adminGetStatistics()
+
+The newest Statistics snapshot and the last 30 days of them
+
+The newest Statistics snapshot and the last 30 days of them
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { AdminGetStatisticsRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  try {
+    const data = await api.adminGetStatistics();
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+This endpoint does not need any parameter.
+
+### Return type
+
+[**AdminStatisticsResponse**](AdminStatisticsResponse.md)
 
 ### Authorization
 

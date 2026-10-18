@@ -6,10 +6,12 @@
         "make-member": "Make member"
     },
     "description": {
+        "last-30-days": "Last 30 days",
         "make-admin": "{{username}} gets the Admin role and can manage every account afterwards.",
         "make-member": "{{username}} loses the Admin role and no longer sees the admin area.",
         "no-accounts": "No account matches the search or the filter.",
         "no-runs": "No run recorded yet.",
+        "no-statistics": "The first snapshot appears once snapshot-statistics runs.",
         "own-account": "You cannot give up your own Admin role.",
         "run-durations": "One bar per run, the oldest on the left.",
         "syncs": "The syncs run in their own containers. This only shows how their runs went; runs older than 90 days are removed."
@@ -23,11 +25,14 @@
         "catalog-sync": "Catalog from Scryfall",
         "change-role": "Change role",
         "no-accounts": "No accounts found",
+        "no-statistics": "No statistics yet",
         "price-guide-sync": "Price guide from Cardmarket",
         "run-durations": "Duration of the recent runs",
+        "statistics": "Statistics",
         "syncs": "Syncs"
     },
     "label": {
+        "accounts": "Accounts",
         "cards": "Cards",
         "collections": "Collections",
         "created-at": "Created",
@@ -40,12 +45,18 @@
         "last-success": "Last success",
         "loading": "Loading …",
         "never": "Never",
+        "new-accounts_one": "+{{count}} in 7 days",
+        "new-accounts_other": "+{{count}} in 7 days",
+        "open-scanner-sessions": "Open scanner sessions",
         "outcome": "Outcome",
         "outcome-failed": "Failed",
         "outcome-synced": "New file read",
         "outcome-unchanged": "Unchanged",
         "passkeys": "Passkeys",
         "prices-of": "Prices of",
+        "public-decks": "Public decks",
+        "public-decks-of_one": "{{count}} of them public",
+        "public-decks-of_other": "{{count}} of them public",
         "read-at": "Read at",
         "role": "Role",
         "role-admin": "Admin",
@@ -54,6 +65,7 @@
         "search": "Username or email",
         "stamp": "File stamp",
         "started-at": "Started",
+        "taken-at": "As of {{time}}",
         "username": "Username"
     },
     "toast": {

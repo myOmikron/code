@@ -44,6 +44,7 @@ use crate::models::account::Role;
 use crate::models::account::Username;
 use crate::models::collection::stock::StockDrift;
 use crate::models::collection::stock::rebuild as rebuild_stock;
+use crate::models::statistics::StatisticsSnapshot;
 use crate::models::sync_run::SyncKind;
 use crate::models::sync_run::SyncRun;
 use crate::modules::config::Conf;
@@ -98,6 +99,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
             every_minutes,
         } => {
             sync_price_guide_command(*force, *every_minutes).await?;
+        }
+        Command::SnapshotStatistics { every_minutes } => {
+            snapshot_statistics_command(*every_minutes).await?;
         }
         Command::Health => {
             health_command().await?;
@@ -480,6 +484,70 @@ async fn sync_price_guide_command(
         }
         sleep(interval).await;
     }
+}
+
+/// Take Statistics snapshots, once or every `every_minutes`
+///
+/// Shaped like `sync_catalog_command`: a failed snapshot in the loop is logged
+/// and tried again on the next tick instead of ending the container.
+async fn snapshot_statistics_command(
+    every_minutes: Option<NonZeroU64>,
+) -> Result<(), Box<dyn Error>> {
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("mtg=info,warn")),
+        )
+        .init();
+
+    let config = match config::load() {
+        Ok(config) => config,
+        Err(err) => return Err(Box::from(err)),
+    };
+
+    let database = Database::connect(DatabaseConfiguration::new(config.database_driver)).await?;
+
+    let Some(minutes) = every_minutes else {
+        report_snapshot(take_snapshot(&database).await?);
+        database.close().await;
+        return Ok(());
+    };
+
+    let interval = Duration::from_secs(minutes.get().saturating_mul(60));
+    info!(
+        minutes = minutes.get(),
+        "Taking statistics snapshots on a loop"
+    );
+    loop {
+        match take_snapshot(&database).await {
+            Ok(snapshot) => report_snapshot(snapshot),
+            Err(error) => {
+                error!(error.display = %error, "Statistics snapshot failed, trying again later")
+            }
+        }
+        sleep(interval).await;
+    }
+}
+
+/// Take and store one Statistics snapshot
+async fn take_snapshot(database: &Database) -> Result<StatisticsSnapshot, Box<dyn Error>> {
+    let mut tx = database.start_transaction().await?;
+    let snapshot = StatisticsSnapshot::take(&mut tx).await?;
+    tx.commit().await?;
+    Ok(snapshot)
+}
+
+/// Logs what a snapshot counted
+fn report_snapshot(snapshot: StatisticsSnapshot) {
+    info!(
+        accounts = snapshot.accounts,
+        new_accounts = snapshot.new_accounts,
+        collections = snapshot.collections,
+        decks = snapshot.decks,
+        public_decks = snapshot.public_decks,
+        cards = snapshot.cards,
+        open_scanner_sessions = snapshot.open_scanner_sessions,
+        "Took a statistics snapshot"
+    );
 }
 
 /// Says what a price run came to, next to `report_sync`
