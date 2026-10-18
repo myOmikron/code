@@ -1,5 +1,6 @@
 {
     "label": {
+        "admin": "Admin",
         "collection": "Collection",
         "decks": "Decks",
         "game-utils": "Game utils",

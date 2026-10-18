@@ -1,0 +1,12 @@
+[Migration]
+Hash = "3171541398091309474"
+Initial = false
+Dependency = 9
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateIndex"
+Model = "passkey"
+
+[Migration.Operations.Index]
+Columns = ["identity"]

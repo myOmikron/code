@@ -113,6 +113,11 @@ dev name +args:
 gen-api name:
     docker compose -f dev/{{ name }}.yml exec frontend frontend/{{ name }}/scripts/gen-api.sh
 
+# Same as gen-api, without a dev stack: the service writes its own spec
+gen-api-local name:
+    cargo run --package {{ name }} -- openapi "${TMPDIR:-/tmp}/{{ name }}-frontend.json"
+    cd frontend/{{ name }} && OPENAPI_SPEC_FILE="${TMPDIR:-/tmp}/{{ name }}-frontend.json" scripts/gen-api.sh
+
 # Regenerate the mtg frontend's client for the graph advisor API
 gen-graph-api:
     docker compose -f dev/mtg.yml exec frontend frontend/mtg/scripts/gen-graph-api.sh

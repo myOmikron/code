@@ -99,6 +99,18 @@ impl IdentityModule {
     pub async fn logout(&self, session: &Session) -> Result<(), tower_sessions::session::Error> {
         session.flush().await
     }
+
+    /// Log the session in as `identity` without a ceremony
+    ///
+    /// Only for a service's tests, which have no authenticator to run one with.
+    #[cfg(feature = "test-support")]
+    pub async fn log_in_without_ceremony(
+        &self,
+        session: &Session,
+        identity: IdentityUuid,
+    ) -> Result<(), tower_sessions::session::Error> {
+        super::session::set_logged_in(session, identity).await
+    }
 }
 
 /// The Registration link carrying `token`, if it is usable now

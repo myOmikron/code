@@ -88,6 +88,19 @@ impl Passkey {
         Ok(passkeys.into_iter().map(Passkey::from).collect())
     }
 
+    /// Count the passkeys of an identity
+    #[instrument(name = "Passkey::count_by_identity", skip(exe))]
+    pub(super) async fn count_by_identity(
+        exe: impl Executor<'_>,
+        identity: IdentityUuid,
+    ) -> Result<u64, rorm::Error> {
+        let count = rorm::query(exe, PasskeyModel.uuid.count())
+            .condition(PasskeyModel.identity.equals(identity.into_inner()))
+            .one()
+            .await?;
+        Ok(u64::try_from(count).unwrap_or_default())
+    }
+
     /// Insert a freshly enrolled passkey
     ///
     /// Fails with a unique violation if the credential is already enrolled.

@@ -8,6 +8,7 @@ use serde::Serialize;
 use crate::http::handler_frontend::auth::schema::WebauthnJson;
 use crate::models::account::AccountPasskeyUuid;
 use crate::models::account::AccountUuid;
+use crate::models::account::Role;
 
 /// The account the current session belongs to
 #[derive(Serialize, JsonSchema)]
@@ -16,6 +17,8 @@ pub struct MeResponse {
     pub uuid: AccountUuid,
     /// The account's login handle and display name
     pub username: String,
+    /// What the account may do, decides whether the admin dashboard is offered
+    pub role: Role,
 }
 
 /// A passkey registered on the account

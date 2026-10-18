@@ -3,6 +3,7 @@
 ## Contexts
 
 - [Identity](./libs/galvyn-identity/GLOSSARY.md): how people prove who they are, shared by the services that sign people in
+- [mtg](./services/mtg/GLOSSARY.md): Accounts, their collections and decks, and the admin dashboard managing them
 
 ## Relationships
 

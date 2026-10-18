@@ -1,0 +1,126 @@
+import { ChevronLeftIcon } from "@heroicons/react/20/solid";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import {
+    Button,
+    ConfirmDialog,
+    DescriptionDetails,
+    DescriptionList,
+    DescriptionTerm,
+    Subheading,
+    Text,
+    notify,
+} from "components";
+import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { Api } from "src/api/api";
+import { Role } from "src/api/generated";
+import type { AdminAccountDetail } from "src/api/generated";
+import { AdminRoleBadge } from "src/components/admin-role-badge";
+import { useAccount } from "src/context/account";
+import { isFormError } from "src/utils/error";
+import { formatDate } from "src/utils/format";
+
+export const Route = createFileRoute("/_menu/admin/accounts/$accountUuid")({
+    component: RouteComponent,
+});
+
+/**
+ * One Account as an Admin sees it, with what it owns and its Role to change.
+ *
+ * @returns the page
+ */
+function RouteComponent() {
+    const [t] = useTranslation("admin");
+    const { accountUuid } = Route.useParams();
+    const me = useAccount();
+
+    const [detail, setDetail] = useState<AdminAccountDetail | null>(null);
+    const [confirming, setConfirming] = useState(false);
+
+    useEffect(() => {
+        let current = true;
+        setDetail(null);
+        Api.admin.accounts
+            .get(accountUuid)
+            .then((loaded) => {
+                if (current) setDetail(loaded);
+            })
+            .catch(() => undefined);
+        return () => {
+            current = false;
+        };
+    }, [accountUuid]);
+
+    if (detail === null) return <Text>{t("label.loading")}</Text>;
+
+    const { account } = detail;
+    const own = me.account?.uuid === account.uuid;
+    const nextRole = account.role === Role.Admin ? Role.Member : Role.Admin;
+
+    /**
+     * Gives the Account the other Role
+     */
+    async function changeRole() {
+        const response = await Api.admin.accounts.setRole(account.uuid, nextRole);
+        if (isFormError(response)) {
+            notify.error(t("error.own-account"));
+            return;
+        }
+        setDetail((held) => (held === null ? held : { ...held, account: { ...held.account, role: nextRole } }));
+        setConfirming(false);
+        notify.success(t("toast.role-changed"));
+    }
+
+    return (
+        <div className={"flex flex-col gap-6"}>
+            <Link
+                to={"/admin/accounts"}
+                className={
+                    "flex items-center gap-1 text-sm text-zinc-500 hover:text-(--color-accent) hover:underline dark:text-zinc-400"
+                }
+            >
+                <ChevronLeftIcon className={"size-4"} /> {t("button.back-to-accounts")}
+            </Link>
+
+            <Subheading>{account.username}</Subheading>
+
+            <DescriptionList>
+                <DescriptionTerm>{t("label.email")}</DescriptionTerm>
+                <DescriptionDetails>{account.email}</DescriptionDetails>
+                <DescriptionTerm>{t("label.role")}</DescriptionTerm>
+                <DescriptionDetails>
+                    <AdminRoleBadge role={account.role} />
+                </DescriptionDetails>
+                <DescriptionTerm>{t("label.created-at")}</DescriptionTerm>
+                <DescriptionDetails>{formatDate(account.created_at)}</DescriptionDetails>
+                <DescriptionTerm>{t("label.collections")}</DescriptionTerm>
+                <DescriptionDetails>{account.collections}</DescriptionDetails>
+                <DescriptionTerm>{t("label.decks")}</DescriptionTerm>
+                <DescriptionDetails>{account.decks}</DescriptionDetails>
+                <DescriptionTerm>{t("label.cards")}</DescriptionTerm>
+                <DescriptionDetails>{detail.cards}</DescriptionDetails>
+                <DescriptionTerm>{t("label.passkeys")}</DescriptionTerm>
+                <DescriptionDetails>{detail.passkeys}</DescriptionDetails>
+            </DescriptionList>
+
+            <div className={"flex flex-col items-start gap-2"}>
+                <Button outline={true} disabled={own} onClick={() => setConfirming(true)}>
+                    {nextRole === Role.Admin ? t("button.make-admin") : t("button.make-member")}
+                </Button>
+                {own && <Text>{t("description.own-account")}</Text>}
+            </div>
+
+            <ConfirmDialog
+                open={confirming}
+                onClose={() => setConfirming(false)}
+                onConfirm={changeRole}
+                title={t("heading.change-role")}
+                description={t(nextRole === Role.Admin ? "description.make-admin" : "description.make-member", {
+                    username: account.username,
+                })}
+                confirmLabel={nextRole === Role.Admin ? t("button.make-admin") : t("button.make-member")}
+                confirmColor={"blue"}
+            />
+        </div>
+    );
+}

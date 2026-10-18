@@ -37,8 +37,10 @@ import {
     HomeIcon,
     RectangleStackIcon,
     QuestionMarkCircleIcon,
+    ShieldCheckIcon,
     UserIcon,
 } from "@heroicons/react/20/solid";
+import { Role } from "src/api/generated";
 import { Suspense, useMemo, useState } from "react";
 import { useInstall } from "src/context/install-context";
 import { AppFooter } from "src/components/app-footer";
@@ -73,6 +75,7 @@ function RouteComponent() {
 
     const me = useAccount();
     const loggedIn = me.account !== null;
+    const admin = me.account?.role === Role.Admin;
     const known = !me.loading;
 
     const install = useInstall();
@@ -173,6 +176,14 @@ function RouteComponent() {
                                                 </Badge>
                                             )}
                                         </NavbarItem>
+                                        {admin && (
+                                            <NavbarItem href={"/admin"} title={t("label.admin")}>
+                                                <ShieldCheckIcon />
+                                                <NavbarLabel className={"max-lg:sr-only"}>
+                                                    {t("label.admin")}
+                                                </NavbarLabel>
+                                            </NavbarItem>
+                                        )}
                                     </NavbarSection>
                                 </>
                             )}
@@ -273,6 +284,12 @@ function RouteComponent() {
                                                 <SidebarLabel>{t("label.watch-lists")}</SidebarLabel>
                                                 {alarms > 0 && <Badge color={"amber"}>{alarms}</Badge>}
                                             </SidebarItem>
+                                            {admin && (
+                                                <SidebarItem href={"/admin"}>
+                                                    <ShieldCheckIcon />
+                                                    <SidebarLabel>{t("label.admin")}</SidebarLabel>
+                                                </SidebarItem>
+                                            )}
                                         </SidebarSection>
                                     </>
                                 )}

@@ -37,21 +37,7 @@ pub async fn get_frontend_openapi() -> SchemalessJson<&'static OpenAPI> {
 
 /// Initialize the main http router
 pub fn initialize_routes() -> GalvynRouter {
-    GalvynRouter::new()
-        .nest(
-            "/docs",
-            GalvynRouter::new()
-                .openapi_tag("Openapi")
-                .handler(get_openapi)
-                .handler(get_frontend_openapi),
-        )
-        .nest(
-            "/api/frontend/v1",
-            handler_frontend::initialize_routes().openapi_page(FrontendApi),
-        )
-        // Off the FrontendApi page on purpose: the ts client for these routes
-        // is generated from FastAPI's own spec (`just gen-graph-api`), not ours.
-        .nest("/api/graph", handler_graph::initialize_routes())
+    routes()
         .layer(session::layer())
         // Outermost, so it also covers the openapi documents. A collection's
         // entries are a few hundred bytes of json per stack and a big one runs
@@ -77,4 +63,26 @@ pub fn initialize_routes() -> GalvynRouter {
                 .br(true)
                 .quality(CompressionLevel::Precise(4)),
         )
+}
+
+/// Every route, without the layers around them
+///
+/// Split off so the `openapi` subcommand can register the routes without the
+/// session layer, which wants a database the subcommand does not have.
+pub fn routes() -> GalvynRouter {
+    GalvynRouter::new()
+        .nest(
+            "/docs",
+            GalvynRouter::new()
+                .openapi_tag("Openapi")
+                .handler(get_openapi)
+                .handler(get_frontend_openapi),
+        )
+        .nest(
+            "/api/frontend/v1",
+            handler_frontend::initialize_routes().openapi_page(FrontendApi),
+        )
+        // Off the FrontendApi page on purpose: the ts client for these routes
+        // is generated from FastAPI's own spec (`just gen-graph-api`), not ours.
+        .nest("/api/graph", handler_graph::initialize_routes())
 }

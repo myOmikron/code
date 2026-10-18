@@ -1,7 +1,11 @@
 use std::num::NonZeroU64;
+use std::path::PathBuf;
 
 use clap::Parser;
 use clap::Subcommand;
+use clap::ValueEnum;
+
+use crate::models::account::Role;
 
 #[derive(Parser)]
 pub struct Cli {
@@ -78,6 +82,16 @@ pub enum Command {
     /// the listener only after the migrations have been applied, so a webserver
     /// that answers is a database that is migrated.
     Health,
+    /// Print the frontend's openapi document and exit
+    ///
+    /// Needs no database and no config: the routes are registered on a
+    /// loopback port picked by the kernel, the document is read off them,
+    /// and the server is torn down again. This is what generates the
+    /// frontend's api client without a running dev stack.
+    Openapi {
+        /// Where to write the document
+        output: PathBuf,
+    },
     /// Check that the stock rollup still matches the collections
     ///
     /// `collection_stock` is kept by triggers, so it can only fall out of step
@@ -89,4 +103,33 @@ pub enum Command {
         #[clap(long)]
         repair: bool,
     },
+    /// Set an Account's Role
+    ///
+    /// How the first Admin is made; afterwards Admins change Roles in the
+    /// admin dashboard.
+    SetRole {
+        /// Username of the Account, case ignored
+        username: String,
+        /// The new Role
+        #[clap(value_enum)]
+        role: CliRole,
+    },
+}
+
+/// Role assignable via the cli
+#[derive(Copy, Clone, Debug, ValueEnum)]
+pub enum CliRole {
+    /// Manages its own collections and decks
+    Member,
+    /// Also manages other Accounts in the admin dashboard
+    Admin,
+}
+
+impl From<CliRole> for Role {
+    fn from(value: CliRole) -> Self {
+        match value {
+            CliRole::Member => Role::Member,
+            CliRole::Admin => Role::Admin,
+        }
+    }
 }

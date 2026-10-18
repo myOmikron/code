@@ -5,6 +5,7 @@ import {
     AddDeckCardRequest,
     AddScannerSessionEntryRequest,
     AddWatchListEntryRequest,
+    AdminListAccountsRequest,
     Configuration,
     CreateCollectionRequest,
     CreateDeckRequest,
@@ -25,6 +26,7 @@ import {
     PrintingLookupRequest,
     RequiredError,
     ResponseError,
+    Role,
     SearchPublicDecksRequest,
     SetAdvisorSettingsRequest,
     SetDeckRuleZeroRequest,
@@ -93,6 +95,17 @@ export const Api = {
         // `handleError`, since the typed username not matching is a message
         // next to the field rather than the error screen.
         delete: (username: string) => defaultApi.deleteAccount({ DeleteAccountRequest: { username } }),
+    },
+    // Answers 403 to anyone but an Admin. The admin pages check the Role before
+    // asking, so reaching the error screen through here means the Role changed
+    // underneath an open page.
+    admin: {
+        accounts: {
+            list: async (query: AdminListAccountsRequest = {}) => handleError(defaultApi.adminListAccounts(query)),
+            get: async (uuid: UUID) => handleError(defaultApi.adminGetAccount({ uuid })),
+            setRole: async (uuid: UUID, role: Role) =>
+                handleError(defaultApi.adminSetRole({ uuid, AdminSetRoleRequest: { role } })),
+        },
     },
     collections: {
         list: async () => handleError(defaultApi.getAllCollections()),

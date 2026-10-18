@@ -61,6 +61,11 @@ regex = { workspace = true }
 anyhow = { workspace = true }
 thiserror = { workspace = true }
 
+[dev-dependencies]
+galvyn-identity = { workspace = true, features = ["passkey", "test-support"] }
+sqlx = { workspace = true }
+tower = { version = "~0.5", features = ["util"] }
+
 [build-dependencies]
 service-bootstrap-build = { workspace = true }
 

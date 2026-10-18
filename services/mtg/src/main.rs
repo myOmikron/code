@@ -1,17 +1,22 @@
 use std::error::Error;
 use std::fmt;
+use std::fs;
 use std::io;
 use std::net::Ipv4Addr;
 use std::net::SocketAddr;
 use std::num::NonZeroU64;
+use std::path::Path;
 use std::time::Duration;
 
 use clap::Parser;
+use galvyn::Galvyn;
+use galvyn::GalvynSetup;
 use galvyn::ModuleBuilder;
 use galvyn::RouterBuilder;
 use galvyn::core::modules::database::DatabaseSetup;
 use galvyn::core::re_exports::rorm;
 use galvyn::error::GalvynError;
+use galvyn::openapi::get_openapi_for_page;
 use galvyn::rorm::Database;
 use galvyn::rorm::DatabaseConfiguration;
 use galvyn::rorm::DatabaseDriver;
@@ -33,6 +38,10 @@ use tracing_subscriber::EnvFilter;
 use crate::cli::Cli;
 use crate::cli::Command;
 use crate::config::Config;
+use crate::http::FrontendApi;
+use crate::models::account::Account;
+use crate::models::account::Role;
+use crate::models::account::Username;
 use crate::models::collection::stock::StockDrift;
 use crate::models::collection::stock::rebuild as rebuild_stock;
 use crate::modules::config::Conf;
@@ -52,6 +61,9 @@ pub mod models;
 pub mod modules;
 pub mod proto;
 pub mod utils;
+
+#[cfg(test)]
+mod tests;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -88,18 +100,37 @@ async fn main() -> Result<(), Box<dyn Error>> {
         Command::Health => {
             health_command().await?;
         }
+        Command::Openapi { output } => {
+            openapi_command(output).await?;
+        }
         Command::CheckStock { repair } => {
             check_stock_command(*repair).await?;
+        }
+        Command::SetRole { username, role } => {
+            set_role_command(username, Role::from(*role)).await?;
         }
     }
 
     Ok(())
 }
 
-async fn run(mut builder: ModuleBuilder, config: Config) -> Result<RouterBuilder, GalvynError> {
-    migrate(config.database_driver.clone()).await?;
+/// Setups of the modules the service runs with
+pub struct ModuleSetups {
+    /// The loaded configuration
+    pub config: Config,
+    /// The NATS connection, `None` to run without one
+    ///
+    /// Only mail goes through NATS, so tests can leave it out.
+    pub nats: Option<NatsSetup>,
+}
 
-    let mut builder = builder
+/// Registers and initializes all modules of the service
+pub async fn init_modules(
+    builder: &mut ModuleBuilder,
+    setups: ModuleSetups,
+) -> Result<RouterBuilder, GalvynError> {
+    let ModuleSetups { config, nats } = setups;
+    builder
         .register_module::<Conf>(Some(config.clone()))
         .register_module::<Database>(DatabaseSetup::Custom(DatabaseConfiguration::new(
             config.database_driver.clone(),
@@ -117,15 +148,27 @@ async fn run(mut builder: ModuleBuilder, config: Config) -> Result<RouterBuilder
         })
         .register_module::<MpcFill>(MpcFillSetup {
             base_url: Some(config.mpcfill_url.clone()),
-        })
-        .register_module::<Nats>(NatsSetup::FromEnv)
-        .init_modules()
-        .await?;
+        });
+    if let Some(nats) = nats {
+        builder.register_module::<Nats>(nats);
+    }
+    builder.init_modules().await
+}
 
-    builder.add_listener(
-        SocketAddr::new(config.listen_address, config.listen_port.get()),
-        http::initialize_routes(),
-    );
+async fn run(mut builder: ModuleBuilder, config: Config) -> Result<RouterBuilder, GalvynError> {
+    migrate(config.database_driver.clone()).await?;
+
+    let listen = SocketAddr::new(config.listen_address, config.listen_port.get());
+    let mut builder = init_modules(
+        &mut builder,
+        ModuleSetups {
+            config,
+            nats: Some(NatsSetup::FromEnv),
+        },
+    )
+    .await?;
+
+    builder.add_listener(listen, http::initialize_routes());
 
     Ok(builder)
 }
@@ -233,6 +276,38 @@ async fn health_command() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
+/// Write the frontend's openapi document to a file
+///
+/// Galvyn only knows its routes once it serves them, so this starts the router
+/// on a loopback port the kernel picks, reads the document and kills the
+/// server again. No module is registered: a handler touches the database only
+/// when a request arrives, and none does.
+async fn openapi_command(output: &Path) -> Result<(), Box<dyn Error>> {
+    let mut builder = Galvyn::builder(GalvynSetup {
+        disable_panic_hook: true,
+        disable_sessions: true,
+        ..GalvynSetup::default()
+    })
+    .init_modules()
+    .await?;
+    builder.add_listener(SocketAddr::from((Ipv4Addr::LOCALHOST, 0)), http::routes());
+    let mut server = tokio::spawn(async move { builder.start().await });
+
+    let galvyn = tokio::select! {
+        galvyn = Galvyn::global_wait() => galvyn,
+        stopped = &mut server => {
+            stopped??;
+            return Err(Box::from("the server stopped before registering its routes"));
+        }
+    };
+    let document = get_openapi_for_page(FrontendApi);
+    fs::write(output, serde_json::to_string_pretty(&document)?)?;
+
+    galvyn.kill();
+    server.await??;
+    Ok(())
+}
+
 /// Report where the stock rollup and the collections disagree, and put it right
 ///
 /// Reads before it writes even with `--repair`, so the log says what was wrong
@@ -285,6 +360,32 @@ async fn check_stock_command(repair: bool) -> Result<(), Box<dyn Error>> {
     // Dropping the pool instead leaves the last statements unflushed, and says
     // so in a warning on the way out.
     database.close().await;
+    Ok(())
+}
+
+/// Set the Role of the Account named `username`
+///
+/// Fails on an unknown username, so a typo exits non-zero instead of
+/// reporting success.
+async fn set_role_command(username: &str, role: Role) -> Result<(), Box<dyn Error>> {
+    let config = match config::load() {
+        Ok(config) => config,
+        Err(err) => return Err(Box::from(err)),
+    };
+    let username = Username::new(username)?;
+
+    let database = Database::connect(DatabaseConfiguration::new(config.database_driver)).await?;
+    let mut tx = database.start_transaction().await?;
+    let Some(account) = Account::get_by_username(&mut tx, &username).await? else {
+        tx.rollback().await?;
+        database.close().await;
+        return Err(format!("No account is named {}", username.as_str()).into());
+    };
+    Account::set_role(&mut tx, account.uuid, role).await?;
+    tx.commit().await?;
+    database.close().await;
+
+    println!("{} is now {role:?}", account.username.as_str());
     Ok(())
 }
 

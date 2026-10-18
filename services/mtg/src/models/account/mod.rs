@@ -19,6 +19,7 @@ use galvyn_identity::PasskeyUuid;
 use serde::Deserialize;
 use serde::Deserializer;
 use serde::Serialize;
+use service_bootstrap::custom_db_enum;
 use thiserror::Error;
 use tracing::instrument;
 use uuid::Uuid;
@@ -29,6 +30,7 @@ use crate::models::collection::Collection;
 use crate::models::deck::Deck;
 pub(in crate::models) mod db;
 mod extractor;
+pub mod overview;
 
 /// The login handle of an [`Account`]
 ///
@@ -114,6 +116,21 @@ impl<'de> Deserialize<'de> for Username {
     }
 }
 
+/// What an [`Account`] may do beyond managing its own things
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub enum Role {
+    /// Manages its own collections and decks
+    #[default]
+    Member,
+    /// Also manages other Accounts in the admin dashboard
+    Admin,
+}
+custom_db_enum! {
+    enum: Role,
+    variants: [Member, Admin],
+    decoder: RoleDecoder,
+}
+
 /// The username of the tombstone deleted accounts leave their public decks with
 ///
 /// Not a username [`Username::new`] would ever accept, so no request can name
@@ -140,6 +157,9 @@ pub struct Account {
 
     /// The point in time the account was created
     pub created_at: OffsetDateTime,
+
+    /// What the account may do
+    pub role: Role,
 
     /// The identity this account signs in as
     pub identity: IdentityUuid,
@@ -264,6 +284,7 @@ impl Account {
                 username: username.0,
                 email,
                 tombstone: false,
+                role: Role::Member,
                 identity: ForeignModelByField(identity.into_inner()),
             })
             .await?;
@@ -287,6 +308,25 @@ impl Account {
             .set(AccountModel.username, username.0)
             .set(AccountModel.email, email)
             .condition(AccountModel.uuid.equals(uuid.0))
+            .await?;
+        Ok(affected > 0)
+    }
+
+    /// Change an account's Role
+    ///
+    /// Returns `false` if the account does not exist or is the tombstone.
+    #[instrument(name = "Account::set_role", skip(tx))]
+    pub async fn set_role(
+        tx: &mut Transaction,
+        uuid: AccountUuid,
+        role: Role,
+    ) -> Result<bool, rorm::Error> {
+        let affected = rorm::update(tx, AccountModel)
+            .set(AccountModel.role, role)
+            .condition(rorm::and![
+                AccountModel.uuid.equals(uuid.0),
+                AccountModel.tombstone.equals(false),
+            ])
             .await?;
         Ok(affected > 0)
     }
@@ -321,6 +361,7 @@ impl Account {
                     unreachable!("the tombstone's address is a few ascii characters")
                 }),
                 tombstone: true,
+                role: Role::Member,
                 identity: ForeignModelByField(identity.into_inner()),
             })
             .await?;
@@ -381,6 +422,7 @@ impl From<AccountModel> for Account {
             username: Username::new_from_field(value.username),
             email: value.email,
             created_at: value.created_at,
+            role: value.role,
             identity: IdentityUuid::new_from_field(value.identity),
         }
     }
