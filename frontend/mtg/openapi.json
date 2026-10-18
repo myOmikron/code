@@ -520,6 +520,82 @@
                         }
                     }
                 }
+            },
+            "delete": {
+                "summary": "Delete an Account",
+                "description": "Delete an Account\n\nBy default its public decks go to the Tombstone, as on a self-deletion; a\nfull Deletion takes them too. The Admin types the Account's username to\nconfirm, and cannot delete itself. The Admin log entry is written first, so\nit keeps the username once the Account is gone.",
+                "operationId": "admin_delete_account",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "uuid",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Account`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AdminDeleteAccountRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "nullable": true
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/FormErrorResponse_for_AdminDeleteAccountErrors"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
             }
         },
         "/api/frontend/v1/admin/accounts/{uuid}/role": {
@@ -8437,6 +8513,46 @@
                     "runs"
                 ]
             },
+            "AdminDeleteAccountErrors": {
+                "description": "Why an Account could not be deleted",
+                "type": "object",
+                "properties": {
+                    "own_account": {
+                        "description": "The Account is the Admin's own, which it cannot delete",
+                        "type": "boolean"
+                    },
+                    "username_mismatch": {
+                        "description": "The typed username is not the Account's",
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "own_account",
+                    "username_mismatch"
+                ]
+            },
+            "AdminDeleteAccountRequest": {
+                "description": "Request to delete an Account",
+                "type": "object",
+                "properties": {
+                    "mode": {
+                        "description": "What happens to the Account's public decks",
+                        "default": "Tombstone",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DeletionMode"
+                            }
+                        ]
+                    },
+                    "username": {
+                        "description": "The Account's username, typed out by the Admin",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "username"
+                ]
+            },
             "AdminListAccountsResponse": {
                 "description": "One page of the Account list, newest first",
                 "type": "object",
@@ -8570,6 +8686,15 @@
                         "allOf": [
                             {
                                 "$ref": "#/components/schemas/SchemaDateTime"
+                            }
+                        ]
+                    },
+                    "deletion": {
+                        "nullable": true,
+                        "description": "What a Deletion did with the Account's public decks",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DeletionMode"
                             }
                         ]
                     },
@@ -10762,6 +10887,25 @@
                     "unknown_passkey"
                 ]
             },
+            "DeletionMode": {
+                "description": "What [`Account::delete`] does with the Account's public decks",
+                "oneOf": [
+                    {
+                        "description": "Hands them to the Tombstone, so links to them keep working",
+                        "type": "string",
+                        "enum": [
+                            "Tombstone"
+                        ]
+                    },
+                    {
+                        "description": "Deletes them along with everything else, the full Deletion",
+                        "type": "string",
+                        "enum": [
+                            "Full"
+                        ]
+                    }
+                ]
+            },
             "EntrySort": {
                 "description": "What a collection can be ordered by",
                 "oneOf": [
@@ -11033,6 +11177,32 @@
                         "allOf": [
                             {
                                 "$ref": "#/components/schemas/AddPasskeyErrors"
+                            }
+                        ]
+                    },
+                    "result": {
+                        "description": "A constant `\"Err\"` used to differentiate this schema from any other \"Ok\" schema",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ErrorConstant"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "error",
+                    "result"
+                ]
+            },
+            "FormErrorResponse_for_AdminDeleteAccountErrors": {
+                "description": "The response that is sent in a case of an error the caller should present his user",
+                "type": "object",
+                "properties": {
+                    "error": {
+                        "description": "The actual error struct",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/AdminDeleteAccountErrors"
                             }
                         ]
                     },

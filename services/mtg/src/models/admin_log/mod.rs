@@ -19,6 +19,7 @@ use uuid::Uuid;
 
 use crate::models::account::Account;
 use crate::models::account::AccountUuid;
+use crate::models::account::DeletionMode;
 use crate::models::account::LOCK_REASON_MAX_LEN;
 use crate::models::account::Role;
 use crate::models::admin_log::db::AdminLogEntryInsertPatch;
@@ -69,6 +70,8 @@ pub struct AdminLogEntry {
     pub role: Option<Role>,
     /// The reason the Admin gave
     pub reason: Option<String>,
+    /// What a Deletion did with the Account's public decks
+    pub deletion: Option<DeletionMode>,
 }
 
 /// What a new [`AdminLogEntry`] records
@@ -84,6 +87,8 @@ pub struct NewAdminLogEntry<'a> {
     pub role: Option<Role>,
     /// The reason the Admin gave
     pub reason: Option<MaxStr<LOCK_REASON_MAX_LEN>>,
+    /// What a Deletion did with the Account's public decks
+    pub deletion: Option<DeletionMode>,
 }
 
 /// What a page of the Admin log is narrowed to
@@ -124,6 +129,7 @@ impl AdminLogEntry {
                 action: entry.action,
                 role: entry.role,
                 reason: entry.reason,
+                deletion: entry.deletion,
             })
             .await
     }
@@ -155,7 +161,7 @@ impl AdminLogEntry {
         };
         let statement = format!(
             "SELECT uuid, created_at, admin, admin_username, account, account_username, \
-               action, role, reason \
+               action, role, reason, deletion \
              FROM admin_log_entry {condition} ORDER BY uuid DESC LIMIT ${}",
             values.len()
         );
@@ -195,6 +201,7 @@ fn decode_entry(row: &Row) -> Result<AdminLogEntry, rorm::Error> {
     let role: Option<String> = row.get("role").map_err(decode)?;
     let admin: Option<Uuid> = row.get("admin").map_err(decode)?;
     let account: Option<Uuid> = row.get("account").map_err(decode)?;
+    let deletion: Option<String> = row.get("deletion").map_err(decode)?;
     Ok(AdminLogEntry {
         uuid: AdminLogEntryUuid(row.get("uuid").map_err(decode)?),
         created_at: row.get("created_at").map_err(decode)?,
@@ -209,5 +216,9 @@ fn decode_entry(row: &Row) -> Result<AdminLogEntry, rorm::Error> {
                 .unwrap_or_else(|| unreachable!("only the Role's own encoding is written"))
         }),
         reason: row.get("reason").map_err(decode)?,
+        deletion: deletion.map(|deletion| {
+            DeletionMode::decode(&deletion)
+                .unwrap_or_else(|| unreachable!("only the mode's own encoding is written"))
+        }),
     })
 }

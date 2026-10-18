@@ -13,6 +13,7 @@ Name | Type
 `admin` | string
 `admin_username` | string
 `created_at` | string
+`deletion` | [DeletionMode](DeletionMode.md)
 `reason` | string
 `role` | [Role](Role.md)
 `uuid` | string

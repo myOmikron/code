@@ -26,6 +26,7 @@ use crate::http::handler_frontend::accounts::schema::SimplePasskey;
 use crate::http::handler_frontend::accounts::schema::StartAddPasskeyResponse;
 use crate::models::account::Account;
 use crate::models::account::AccountPasskeyUuid;
+use crate::models::account::DeletionMode;
 
 /// The account the current session belongs to
 #[get("/me")]
@@ -154,7 +155,7 @@ pub async fn delete_account(
     }
 
     let mut tx = Database::global().start_transaction().await?;
-    Account::delete(&mut tx, account.uuid).await?;
+    Account::delete(&mut tx, account.uuid, DeletionMode::Tombstone).await?;
     tx.commit().await?;
 
     IdentityModule::global()

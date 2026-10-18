@@ -1,6 +1,7 @@
 {
     "button": {
         "back-to-accounts": "Back to the accounts",
+        "delete": "Delete",
         "load-more": "Load more",
         "lock": "Lock",
         "make-admin": "Make admin",
@@ -8,15 +9,18 @@
         "unlock": "Unlock"
     },
     "description": {
+        "delete": "{{username}} is deleted with all collections, decks and passkeys. This cannot be undone.",
+        "deletion-full": "The public decks are deleted as well.",
+        "deletion-tombstone": "Public decks stay reachable without an owner, links to them keep working.",
         "last-30-days": "Last 30 days",
         "lock": "{{username}} can no longer log in, and open sessions end with their next request. Public decks and shares stay reachable.",
         "make-admin": "{{username}} gets the Admin role and can manage every account afterwards.",
         "make-member": "{{username}} loses the Admin role and no longer sees the admin area.",
         "no-accounts": "No account matches the search or the filter.",
-        "no-log-entries": "No Admin has locked, unlocked or changed the role of an account yet.",
+        "no-log-entries": "No Admin has locked, unlocked, deleted or changed the role of an account yet.",
         "no-runs": "No run recorded yet.",
         "no-statistics": "The first snapshot appears once snapshot-statistics runs.",
-        "own-account": "You cannot give up your own Admin role.",
+        "own-account": "You cannot lock or delete your own account, nor give up your own Admin role.",
         "reason": "Only Admins see this; the account is never told the reason.",
         "run-durations": "One bar per run, the oldest on the left.",
         "syncs": "The syncs run in their own containers. This only shows how their runs went; runs older than 90 days are removed.",
@@ -24,16 +28,20 @@
     },
     "error": {
         "already-locked": "The account is already locked.",
+        "delete-failed": "The account could not be deleted.",
         "not-locked": "The account is not locked.",
         "own-account": "You cannot give up your own Admin role.",
+        "own-deletion": "You cannot delete your own account here.",
         "own-lock": "You cannot lock your own account.",
-        "reason-missing": "Give a reason for the lock."
+        "reason-missing": "Give a reason for the lock.",
+        "username-mismatch": "The username does not match."
     },
     "heading": {
         "accounts": "Accounts",
         "admin": "Admin",
         "catalog-sync": "Catalog from Scryfall",
         "change-role": "Change role",
+        "delete": "Delete account",
         "lock": "Lock account",
         "log": "Log",
         "no-accounts": "No accounts found",
@@ -50,6 +58,7 @@
         "accounts": "Accounts",
         "action": "Action",
         "action-deletion": "Deleted",
+        "action-deletion-full": "Fully deleted",
         "action-lock": "Locked",
         "action-make-admin": "Made admin",
         "action-make-member": "Made member",
@@ -59,6 +68,9 @@
         "collections": "Collections",
         "created-at": "Created",
         "decks": "Decks",
+        "delete-confirm": "Type {{username}} to confirm",
+        "deletion-full": "Delete fully",
+        "deletion-tombstone": "Keep public decks",
         "duration": "Duration",
         "email": "Email",
         "error": "Error",
@@ -100,7 +112,10 @@
         "username": "Username"
     },
     "toast": {
+        "deleted": "Account deleted",
+        "deleting": "Deleting account …",
         "locked": "Account locked",
+        "not-deleted": "Account not deleted",
         "role-changed": "Role changed",
         "unlocked": "Account unlocked"
     }

@@ -1,0 +1,22 @@
+[Migration]
+Hash = "13844824080286746261"
+Initial = false
+Dependency = 43
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "admin_log_entry"
+
+[Migration.Operations.Field]
+Name = "deletion"
+Type = "text"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "max_length"
+Value = 255
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/admin_log/db.rs"
+Line = 65
+Column = 9

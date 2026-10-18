@@ -6,6 +6,7 @@ use serde::Deserialize;
 use serde::Serialize;
 
 use crate::models::account::AccountUuid;
+use crate::models::account::DeletionMode;
 use crate::models::account::LOCK_REASON_MAX_LEN;
 use crate::models::account::Role;
 use crate::models::account::overview::AccountOverview;
@@ -148,4 +149,23 @@ pub struct AdminUnlockAccountRequest {
 pub struct AdminUnlockAccountErrors {
     /// The Account is not locked
     pub not_locked: bool,
+}
+
+/// Request to delete an Account
+#[derive(Debug, Clone, Deserialize, JsonSchema)]
+pub struct AdminDeleteAccountRequest {
+    /// The Account's username, typed out by the Admin
+    pub username: String,
+    /// What happens to the Account's public decks
+    #[serde(default)]
+    pub mode: DeletionMode,
+}
+
+/// Why an Account could not be deleted
+#[derive(Debug, Default, Serialize, JsonSchema)]
+pub struct AdminDeleteAccountErrors {
+    /// The Account is the Admin's own, which it cannot delete
+    pub own_account: bool,
+    /// The typed username is not the Account's
+    pub username_mismatch: bool,
 }

@@ -11,6 +11,8 @@ docs/AdminAccountLock.md
 docs/AdminAction.md
 docs/AdminCatalogStamp.md
 docs/AdminCatalogSync.md
+docs/AdminDeleteAccountErrors.md
+docs/AdminDeleteAccountRequest.md
 docs/AdminListAccountsResponse.md
 docs/AdminListLogResponse.md
 docs/AdminLockAccountErrors.md
@@ -69,6 +71,7 @@ docs/DefaultApi.md
 docs/DeleteAccountErrors.md
 docs/DeleteAccountRequest.md
 docs/DeletePasskeyErrors.md
+docs/DeletionMode.md
 docs/EntrySort.md
 docs/ErrorConstant.md
 docs/ExtraTurnRule.md
@@ -81,6 +84,7 @@ docs/FinishLoginErrors.md
 docs/FinishLoginRequest.md
 docs/FinishRegistrationRequest.md
 docs/FormErrorResponseForAddPasskeyErrors.md
+docs/FormErrorResponseForAdminDeleteAccountErrors.md
 docs/FormErrorResponseForAdminLockAccountErrors.md
 docs/FormErrorResponseForAdminSetRoleErrors.md
 docs/FormErrorResponseForAdminUnlockAccountErrors.md

@@ -1,6 +1,7 @@
 {
     "button": {
         "back-to-accounts": "Zurück zu den Konten",
+        "delete": "Löschen",
         "load-more": "Mehr laden",
         "lock": "Sperren",
         "make-admin": "Zum Admin machen",
@@ -8,15 +9,18 @@
         "unlock": "Entsperren"
     },
     "description": {
+        "delete": "{{username}} wird mit allen Sammlungen, Decks und Passkeys gelöscht. Das lässt sich nicht rückgängig machen.",
+        "deletion-full": "Auch die öffentlichen Decks werden gelöscht.",
+        "deletion-tombstone": "Öffentliche Decks bleiben ohne Besitzer erreichbar, Links darauf funktionieren weiter.",
         "last-30-days": "Letzte 30 Tage",
         "lock": "{{username}} kann sich danach nicht mehr anmelden, offene Sitzungen enden mit der nächsten Anfrage. Öffentliche Decks und Freigaben bleiben erreichbar.",
         "make-admin": "{{username}} bekommt die Admin-Rolle und kann danach alle Konten verwalten.",
         "make-member": "{{username}} verliert die Admin-Rolle und sieht die Verwaltung nicht mehr.",
         "no-accounts": "Kein Konto passt zur Suche oder zum Filter.",
-        "no-log-entries": "Bisher hat kein Admin ein Konto gesperrt, entsperrt oder seine Rolle geändert.",
+        "no-log-entries": "Bisher hat kein Admin ein Konto gesperrt, entsperrt, gelöscht oder seine Rolle geändert.",
         "no-runs": "Noch kein Lauf aufgezeichnet.",
         "no-statistics": "Der erste Schnappschuss entsteht, sobald snapshot-statistics läuft.",
-        "own-account": "Deine eigene Admin-Rolle kannst du nicht abgeben.",
+        "own-account": "Dein eigenes Konto kannst du weder sperren noch löschen, und deine Admin-Rolle kannst du nicht abgeben.",
         "reason": "Sehen nur Admins, das Konto erfährt den Grund nicht.",
         "run-durations": "Ein Balken pro Lauf, der älteste links.",
         "syncs": "Die Synchronisierungen laufen in eigenen Containern. Hier steht nur, wie ihre Läufe ausgegangen sind; Läufe älter als 90 Tage werden entfernt.",
@@ -24,16 +28,20 @@
     },
     "error": {
         "already-locked": "Das Konto ist bereits gesperrt.",
+        "delete-failed": "Das Konto konnte nicht gelöscht werden.",
         "not-locked": "Das Konto ist nicht gesperrt.",
         "own-account": "Deine eigene Admin-Rolle kannst du nicht abgeben.",
+        "own-deletion": "Dein eigenes Konto kannst du hier nicht löschen.",
         "own-lock": "Dein eigenes Konto kannst du nicht sperren.",
-        "reason-missing": "Gib einen Grund für die Sperre an."
+        "reason-missing": "Gib einen Grund für die Sperre an.",
+        "username-mismatch": "Der Benutzername stimmt nicht."
     },
     "heading": {
         "accounts": "Konten",
         "admin": "Verwaltung",
         "catalog-sync": "Katalog von Scryfall",
         "change-role": "Rolle ändern",
+        "delete": "Konto löschen",
         "lock": "Konto sperren",
         "log": "Protokoll",
         "no-accounts": "Keine Konten gefunden",
@@ -50,6 +58,7 @@
         "accounts": "Konten",
         "action": "Aktion",
         "action-deletion": "Gelöscht",
+        "action-deletion-full": "Vollständig gelöscht",
         "action-lock": "Gesperrt",
         "action-make-admin": "Zum Admin gemacht",
         "action-make-member": "Zum Mitglied gemacht",
@@ -59,6 +68,9 @@
         "collections": "Sammlungen",
         "created-at": "Erstellt am",
         "decks": "Decks",
+        "delete-confirm": "Gib zur Bestätigung {{username}} ein",
+        "deletion-full": "Vollständig löschen",
+        "deletion-tombstone": "Öffentliche Decks behalten",
         "duration": "Dauer",
         "email": "E-Mail",
         "error": "Fehler",
@@ -100,7 +112,10 @@
         "username": "Benutzername"
     },
     "toast": {
+        "deleted": "Konto gelöscht",
+        "deleting": "Konto wird gelöscht …",
         "locked": "Konto gesperrt",
+        "not-deleted": "Konto nicht gelöscht",
         "role-changed": "Rolle geändert",
         "unlocked": "Konto entsperrt"
     }
