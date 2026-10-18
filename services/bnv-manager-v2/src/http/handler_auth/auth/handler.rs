@@ -55,7 +55,7 @@ const DUMMY_BCRYPT_HASH: &str = "$2b$12$YtivXzIrL86Uhnk5pXF5oOwNemHmre4qFeTGNPmF
 /// of the error and MUST NOT automatically redirect the user-agent to the invalid
 /// redirection URI." Every other error goes back to the client.
 #[get(AUTHORIZATION_PATH)]
-#[instrument(name = "Api::auth::auth", skip(params))]
+#[instrument(name = "Api::auth::auth", skip(params, session))]
 pub async fn auth(params: AuthRequestParams, session: Session) -> ApiResult<Found> {
     let mut tx = Database::global().start_transaction().await?;
     let client = match params.client_id() {
@@ -129,7 +129,7 @@ fn error_page(error: OidcErrorCode) -> Found {
 /// which usernames exist. On success the session gets a new id, so an id planted or seen
 /// before the login does not become a signed in session (session fixation).
 #[post(SIGN_IN_PATH)]
-#[instrument(name = "Api::auth::sign_in", skip(password))]
+#[instrument(name = "Api::auth::sign_in", skip(session, password))]
 pub async fn sign_in(
     session: Session,
     ApiJson(SignInRequest { username, password }): ApiJson<SignInRequest>,
@@ -182,7 +182,7 @@ pub async fn sign_in(
 /// when this session has no pending request with that id. An account that is no club
 /// member, or no longer exists, gets `access_denied`.
 #[get(FINISH_AUTH_PATH)]
-#[instrument(name = "Api::auth::finish_auth")]
+#[instrument(name = "Api::auth::finish_auth", skip(session))]
 pub async fn finish_auth(
     Query(FinishAuthQuery { request_id }): Query<FinishAuthQuery>,
     session: Session,
@@ -252,7 +252,7 @@ pub async fn finish_auth(
 
 /// Sign out of the current session
 #[post(SIGN_OUT_PATH)]
-#[instrument(name = "Api::auth::sign_out")]
+#[instrument(name = "Api::auth::sign_out", skip(session))]
 pub async fn sign_out(session: Session) -> ApiResult<()> {
     session.remove::<SessionUser>(SESSION_USER).await?;
     Ok(())
