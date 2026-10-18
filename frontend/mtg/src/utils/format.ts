@@ -155,3 +155,21 @@ export function formatDate(iso: string): string {
 export function formatDateTime(iso: string): string {
     return new Intl.DateTimeFormat("de-DE", { dateStyle: "medium", timeStyle: "short" }).format(new Date(iso));
 }
+
+/**
+ * Format a duration in the largest units that keep it readable, in German
+ *
+ * @param ms the duration in milliseconds
+ *
+ * @returns the formatted duration
+ */
+export function formatDuration(ms: number): string {
+    if (ms < 1_000) return `${Math.round(ms)} ms`;
+    if (ms < 60_000) {
+        const seconds = new Intl.NumberFormat("de-DE", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+        return `${seconds.format(Math.floor(ms / 100) / 10)} s`;
+    }
+    const totalSeconds = Math.floor(ms / 1_000);
+    if (totalSeconds < 3_600) return `${Math.floor(totalSeconds / 60)} min ${totalSeconds % 60} s`;
+    return `${Math.floor(totalSeconds / 3_600)} h ${Math.floor((totalSeconds % 3_600) / 60)} min`;
+}

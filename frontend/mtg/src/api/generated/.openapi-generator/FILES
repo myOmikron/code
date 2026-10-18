@@ -7,9 +7,16 @@ docs/AddScannerSessionEntryRequest.md
 docs/AddWatchListEntryRequest.md
 docs/AdminAccount.md
 docs/AdminAccountDetail.md
+docs/AdminCatalogStamp.md
+docs/AdminCatalogSync.md
 docs/AdminListAccountsResponse.md
+docs/AdminPriceGuideStamp.md
+docs/AdminPriceGuideSync.md
 docs/AdminSetRoleErrors.md
 docs/AdminSetRoleRequest.md
+docs/AdminSyncRun.md
+docs/AdminSyncRuns.md
+docs/AdminSyncsResponse.md
 docs/AdvisorSettingsResponse.md
 docs/ApiErrorResponse.md
 docs/BracketRulesResponse.md
@@ -161,6 +168,7 @@ docs/StartRegistration200Response.md
 docs/StartRegistrationRequest.md
 docs/StartRegistrationResponse.md
 docs/StatBucketResponse.md
+docs/SyncRunOutcome.md
 docs/TakeDeckCardsRequest.md
 docs/ThemePrefs.md
 docs/TimelinePointResponse.md

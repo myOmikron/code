@@ -25,6 +25,8 @@ use tracing::warn;
 use crate::models::price::CardmarketPrice;
 use crate::models::price::PriceGuideSync;
 use crate::models::price::PricePoint;
+use crate::models::sync_run::SyncResult;
+use crate::models::sync_run::SyncRunOutcome;
 use crate::utils::catalog_sync::parse_date;
 
 /// Where Cardmarket publishes the guide
@@ -55,6 +57,15 @@ pub enum PriceOutcome {
     },
     /// The file was new and has been applied
     Synced(PriceReport),
+}
+
+impl SyncResult for PriceOutcome {
+    fn outcome(&self) -> SyncRunOutcome {
+        match self {
+            PriceOutcome::Unchanged { .. } => SyncRunOutcome::Unchanged,
+            PriceOutcome::Synced(_) => SyncRunOutcome::Synced,
+        }
+    }
 }
 
 /// What a run did

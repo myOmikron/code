@@ -590,6 +590,55 @@
                 }
             }
         },
+        "/api/frontend/v1/admin/syncs": {
+            "get": {
+                "summary": "The state of the catalog and price guide syncs, with their recent Sync runs",
+                "description": "The state of the catalog and price guide syncs, with their recent Sync runs",
+                "operationId": "admin_get_syncs",
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AdminSyncsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/frontend/v1/auth/signup": {
             "post": {
                 "summary": "Sign up for a new account",
@@ -7970,6 +8019,54 @@
                     "passkeys"
                 ]
             },
+            "AdminCatalogStamp": {
+                "description": "The file the catalog was last read from",
+                "type": "object",
+                "properties": {
+                    "bulk_updated_at": {
+                        "description": "The `updated_at` Scryfall stamped the bulk file with",
+                        "type": "string"
+                    },
+                    "synced_at": {
+                        "description": "When it was read",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDateTime"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "bulk_updated_at",
+                    "synced_at"
+                ]
+            },
+            "AdminCatalogSync": {
+                "description": "The catalog sync",
+                "type": "object",
+                "properties": {
+                    "runs": {
+                        "description": "Its Sync runs",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/AdminSyncRuns"
+                            }
+                        ]
+                    },
+                    "stamp": {
+                        "nullable": true,
+                        "description": "The file the catalog was last read from, `None` before the first read",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/AdminCatalogStamp"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "runs"
+                ]
+            },
             "AdminListAccountsResponse": {
                 "description": "One page of the Account list, newest first",
                 "type": "object",
@@ -7993,6 +8090,54 @@
                 },
                 "required": [
                     "accounts"
+                ]
+            },
+            "AdminPriceGuideStamp": {
+                "description": "The file the prices were last read from",
+                "type": "object",
+                "properties": {
+                    "day": {
+                        "description": "The day it quoted prices for",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDate"
+                            }
+                        ]
+                    },
+                    "etag": {
+                        "description": "The etag the file was served under",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "day",
+                    "etag"
+                ]
+            },
+            "AdminPriceGuideSync": {
+                "description": "The price guide sync",
+                "type": "object",
+                "properties": {
+                    "runs": {
+                        "description": "Its Sync runs",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/AdminSyncRuns"
+                            }
+                        ]
+                    },
+                    "stamp": {
+                        "nullable": true,
+                        "description": "The file the prices were last read from, `None` before the first read",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/AdminPriceGuideStamp"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "runs"
                 ]
             },
             "AdminSetRoleErrors": {
@@ -8023,6 +8168,118 @@
                 },
                 "required": [
                     "role"
+                ]
+            },
+            "AdminSyncRun": {
+                "description": "One Sync run",
+                "type": "object",
+                "properties": {
+                    "duration_ms": {
+                        "description": "How long it took, in milliseconds",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "error": {
+                        "nullable": true,
+                        "description": "Why it failed",
+                        "type": "string"
+                    },
+                    "outcome": {
+                        "description": "What it came to",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SyncRunOutcome"
+                            }
+                        ]
+                    },
+                    "started_at": {
+                        "description": "When it started",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDateTime"
+                            }
+                        ]
+                    },
+                    "uuid": {
+                        "description": "Primary key",
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                },
+                "required": [
+                    "duration_ms",
+                    "outcome",
+                    "started_at",
+                    "uuid"
+                ]
+            },
+            "AdminSyncRuns": {
+                "description": "The Sync runs of one sync",
+                "type": "object",
+                "properties": {
+                    "last_attempt": {
+                        "nullable": true,
+                        "description": "The newest run",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/AdminSyncRun"
+                            }
+                        ]
+                    },
+                    "last_failure": {
+                        "nullable": true,
+                        "description": "The newest run that failed, with its error",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/AdminSyncRun"
+                            }
+                        ]
+                    },
+                    "last_success": {
+                        "nullable": true,
+                        "description": "The newest run that did not fail",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/AdminSyncRun"
+                            }
+                        ]
+                    },
+                    "recent": {
+                        "description": "The newest runs, newest first",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/AdminSyncRun"
+                        }
+                    }
+                },
+                "required": [
+                    "recent"
+                ]
+            },
+            "AdminSyncsResponse": {
+                "description": "The state of both syncs",
+                "type": "object",
+                "properties": {
+                    "catalog": {
+                        "description": "The catalog sync from Scryfall",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/AdminCatalogSync"
+                            }
+                        ]
+                    },
+                    "price_guide": {
+                        "description": "The price guide sync from Cardmarket",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/AdminPriceGuideSync"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "catalog",
+                    "price_guide"
                 ]
             },
             "AdvisorSettingsResponse": {
@@ -13230,6 +13487,32 @@
                 "required": [
                     "cards",
                     "key"
+                ]
+            },
+            "SyncRunOutcome": {
+                "description": "What a Sync run came to",
+                "oneOf": [
+                    {
+                        "description": "A new file was read",
+                        "type": "string",
+                        "enum": [
+                            "Synced"
+                        ]
+                    },
+                    {
+                        "description": "The file on offer was the one already read",
+                        "type": "string",
+                        "enum": [
+                            "Unchanged"
+                        ]
+                    },
+                    {
+                        "description": "The run failed",
+                        "type": "string",
+                        "enum": [
+                            "Failed"
+                        ]
+                    }
                 ]
             },
             "TakeDeckCardsRequest": {

@@ -20,6 +20,7 @@ import { Route as MenuHomeRouteImport } from './routes/_menu/home'
 import { Route as MenuLegalRouteImport } from './routes/_menu/legal'
 import { Route as MenuPrivacyRouteImport } from './routes/_menu/privacy'
 import { Route as MenuAdminIndexRouteImport } from './routes/_menu/admin/index'
+import { Route as MenuAdminSyncsRouteImport } from './routes/_menu/admin/syncs'
 import { Route as MenuAuthLoginRouteImport } from './routes/_menu/auth/login'
 import { Route as MenuAuthRegisterRouteImport } from './routes/_menu/auth/register'
 import { Route as MenuAuthSignupRouteImport } from './routes/_menu/auth/signup'
@@ -123,6 +124,11 @@ const MenuPrivacyRoute = MenuPrivacyRouteImport.update({
 const MenuAdminIndexRoute = MenuAdminIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => MenuAdminRoute,
+} as any)
+const MenuAdminSyncsRoute = MenuAdminSyncsRouteImport.update({
+  id: '/syncs',
+  path: '/syncs',
   getParentRoute: () => MenuAdminRoute,
 } as any)
 const MenuAuthLoginRoute = MenuAuthLoginRouteImport.update({
@@ -431,6 +437,7 @@ export interface FileRoutesByFullPath {
   '/home': typeof MenuHomeRoute
   '/legal': typeof MenuLegalRoute
   '/privacy': typeof MenuPrivacyRoute
+  '/admin/syncs': typeof MenuAdminSyncsRoute
   '/auth/login': typeof MenuAuthLoginRoute
   '/auth/register': typeof MenuAuthRegisterRoute
   '/auth/signup': typeof MenuAuthSignupRoute
@@ -491,6 +498,7 @@ export interface FileRoutesByTo {
   '/home': typeof MenuHomeRoute
   '/legal': typeof MenuLegalRoute
   '/privacy': typeof MenuPrivacyRoute
+  '/admin/syncs': typeof MenuAdminSyncsRoute
   '/auth/login': typeof MenuAuthLoginRoute
   '/auth/register': typeof MenuAuthRegisterRoute
   '/auth/signup': typeof MenuAuthSignupRoute
@@ -550,6 +558,7 @@ export interface FileRoutesById {
   '/_menu/legal': typeof MenuLegalRoute
   '/_menu/privacy': typeof MenuPrivacyRoute
   '/_menu/': typeof MenuIndexRoute
+  '/_menu/admin/syncs': typeof MenuAdminSyncsRoute
   '/_menu/auth/login': typeof MenuAuthLoginRoute
   '/_menu/auth/register': typeof MenuAuthRegisterRoute
   '/_menu/auth/signup': typeof MenuAuthSignupRoute
@@ -614,6 +623,7 @@ export interface FileRouteTypes {
     | '/home'
     | '/legal'
     | '/privacy'
+    | '/admin/syncs'
     | '/auth/login'
     | '/auth/register'
     | '/auth/signup'
@@ -674,6 +684,7 @@ export interface FileRouteTypes {
     | '/home'
     | '/legal'
     | '/privacy'
+    | '/admin/syncs'
     | '/auth/login'
     | '/auth/register'
     | '/auth/signup'
@@ -732,6 +743,7 @@ export interface FileRouteTypes {
     | '/_menu/legal'
     | '/_menu/privacy'
     | '/_menu/'
+    | '/_menu/admin/syncs'
     | '/_menu/auth/login'
     | '/_menu/auth/register'
     | '/_menu/auth/signup'
@@ -869,6 +881,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/admin/'
       preLoaderRoute: typeof MenuAdminIndexRouteImport
+      parentRoute: typeof MenuAdminRoute
+    }
+    '/_menu/admin/syncs': {
+      id: '/_menu/admin/syncs'
+      path: '/syncs'
+      fullPath: '/admin/syncs'
+      preLoaderRoute: typeof MenuAdminSyncsRouteImport
       parentRoute: typeof MenuAdminRoute
     }
     '/_menu/auth/login': {
@@ -1264,12 +1283,14 @@ const CollectRouteWithChildren =
   CollectRoute._addFileChildren(CollectRouteChildren)
 
 interface MenuAdminRouteChildren {
+  MenuAdminSyncsRoute: typeof MenuAdminSyncsRoute
   MenuAdminIndexRoute: typeof MenuAdminIndexRoute
   MenuAdminAccountsAccountUuidRoute: typeof MenuAdminAccountsAccountUuidRoute
   MenuAdminAccountsIndexRoute: typeof MenuAdminAccountsIndexRoute
 }
 
 const MenuAdminRouteChildren: MenuAdminRouteChildren = {
+  MenuAdminSyncsRoute: MenuAdminSyncsRoute,
   MenuAdminIndexRoute: MenuAdminIndexRoute,
   MenuAdminAccountsAccountUuidRoute: MenuAdminAccountsAccountUuidRoute,
   MenuAdminAccountsIndexRoute: MenuAdminAccountsIndexRoute,

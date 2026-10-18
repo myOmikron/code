@@ -21,6 +21,7 @@ import type {
     AdminAccountDetail,
     AdminListAccountsResponse,
     AdminSetRoleRequest,
+    AdminSyncsResponse,
     AdvisorSettingsResponse,
     ApiErrorResponse,
     CardCondition,
@@ -942,6 +943,45 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async adminGetAccount(requestParameters: AdminGetAccountRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AdminAccountDetail> {
         const response = await this.adminGetAccountRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for adminGetSyncs without sending the request
+     */
+    async adminGetSyncsRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/admin/syncs`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * The state of the catalog and price guide syncs, with their recent Sync runs
+     * The state of the catalog and price guide syncs, with their recent Sync runs
+     */
+    async adminGetSyncsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<AdminSyncsResponse>> {
+        const requestOptions = await this.adminGetSyncsRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * The state of the catalog and price guide syncs, with their recent Sync runs
+     * The state of the catalog and price guide syncs, with their recent Sync runs
+     */
+    async adminGetSyncs(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AdminSyncsResponse> {
+        const response = await this.adminGetSyncsRaw(initOverrides);
         return await response.value();
     }
 

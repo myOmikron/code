@@ -9,7 +9,10 @@
         "make-admin": "{{username}} gets the Admin role and can manage every account afterwards.",
         "make-member": "{{username}} loses the Admin role and no longer sees the admin area.",
         "no-accounts": "No account matches the search or the filter.",
-        "own-account": "You cannot give up your own Admin role."
+        "no-runs": "No run recorded yet.",
+        "own-account": "You cannot give up your own Admin role.",
+        "run-durations": "One bar per run, the oldest on the left.",
+        "syncs": "The syncs run in their own containers. This only shows how their runs went; runs older than 90 days are removed."
     },
     "error": {
         "own-account": "You cannot give up your own Admin role."
@@ -17,22 +20,40 @@
     "heading": {
         "accounts": "Accounts",
         "admin": "Admin",
+        "catalog-sync": "Catalog from Scryfall",
         "change-role": "Change role",
-        "no-accounts": "No accounts found"
+        "no-accounts": "No accounts found",
+        "price-guide-sync": "Price guide from Cardmarket",
+        "run-durations": "Duration of the recent runs",
+        "syncs": "Syncs"
     },
     "label": {
         "cards": "Cards",
         "collections": "Collections",
         "created-at": "Created",
         "decks": "Decks",
+        "duration": "Duration",
         "email": "Email",
+        "error": "Error",
+        "last-attempt": "Last attempt",
+        "last-failure": "Last failure",
+        "last-success": "Last success",
         "loading": "Loading …",
+        "never": "Never",
+        "outcome": "Outcome",
+        "outcome-failed": "Failed",
+        "outcome-synced": "New file read",
+        "outcome-unchanged": "Unchanged",
         "passkeys": "Passkeys",
+        "prices-of": "Prices of",
+        "read-at": "Read at",
         "role": "Role",
         "role-admin": "Admin",
         "role-all": "All roles",
         "role-member": "Member",
         "search": "Username or email",
+        "stamp": "File stamp",
+        "started-at": "Started",
         "username": "Username"
     },
     "toast": {

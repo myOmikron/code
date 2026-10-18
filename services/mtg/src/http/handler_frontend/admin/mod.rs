@@ -7,8 +7,11 @@
 use galvyn::core::GalvynRouter;
 
 pub mod accounts;
+pub mod syncs;
 
 /// Initializes the admin routes
 pub fn initialize_routes() -> GalvynRouter {
-    GalvynRouter::new().nest("/accounts", accounts::initialize_routes())
+    GalvynRouter::new()
+        .nest("/accounts", accounts::initialize_routes())
+        .nest("/syncs", syncs::initialize_routes())
 }

@@ -106,6 +106,9 @@ export const Api = {
             setRole: async (uuid: UUID, role: Role) =>
                 handleError(defaultApi.adminSetRole({ uuid, AdminSetRoleRequest: { role } })),
         },
+        syncs: {
+            get: async () => handleError(defaultApi.adminGetSyncs()),
+        },
     },
     collections: {
         list: async () => handleError(defaultApi.getAllCollections()),
