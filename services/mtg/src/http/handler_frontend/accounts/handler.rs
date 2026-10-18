@@ -33,6 +33,7 @@ pub async fn me(account: Account) -> ApiResult<ApiJson<MeResponse>> {
     Ok(ApiJson(MeResponse {
         uuid: account.uuid,
         username: account.username.as_str().to_string(),
+        role: account.role,
     }))
 }
 

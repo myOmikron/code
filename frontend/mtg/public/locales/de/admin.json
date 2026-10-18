@@ -1,0 +1,41 @@
+{
+    "button": {
+        "back-to-accounts": "Zurück zu den Konten",
+        "load-more": "Mehr laden",
+        "make-admin": "Zum Admin machen",
+        "make-member": "Zum Mitglied machen"
+    },
+    "description": {
+        "make-admin": "{{username}} bekommt die Admin-Rolle und kann danach alle Konten verwalten.",
+        "make-member": "{{username}} verliert die Admin-Rolle und sieht die Verwaltung nicht mehr.",
+        "no-accounts": "Kein Konto passt zur Suche oder zum Filter.",
+        "own-account": "Deine eigene Admin-Rolle kannst du nicht abgeben."
+    },
+    "error": {
+        "own-account": "Deine eigene Admin-Rolle kannst du nicht abgeben."
+    },
+    "heading": {
+        "accounts": "Konten",
+        "admin": "Verwaltung",
+        "change-role": "Rolle ändern",
+        "no-accounts": "Keine Konten gefunden"
+    },
+    "label": {
+        "cards": "Karten",
+        "collections": "Sammlungen",
+        "created-at": "Erstellt am",
+        "decks": "Decks",
+        "email": "E-Mail",
+        "loading": "Wird geladen …",
+        "passkeys": "Passkeys",
+        "role": "Rolle",
+        "role-admin": "Admin",
+        "role-all": "Alle Rollen",
+        "role-member": "Mitglied",
+        "search": "Benutzername oder E-Mail",
+        "username": "Benutzername"
+    },
+    "toast": {
+        "role-changed": "Rolle geändert"
+    }
+}

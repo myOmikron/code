@@ -47,9 +47,8 @@ impl IdentityUuid {
         self.0
     }
 
-    /// Wrap a raw uuid, for building fixtures
-    #[cfg(test)]
-    pub(crate) fn from_uuid(uuid: Uuid) -> Self {
+    /// Wrap a raw uuid read from the service's own tables
+    pub fn new(uuid: Uuid) -> Self {
         Self(uuid)
     }
 

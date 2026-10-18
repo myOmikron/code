@@ -1,0 +1,41 @@
+{
+    "button": {
+        "back-to-accounts": "Back to the accounts",
+        "load-more": "Load more",
+        "make-admin": "Make admin",
+        "make-member": "Make member"
+    },
+    "description": {
+        "make-admin": "{{username}} gets the Admin role and can manage every account afterwards.",
+        "make-member": "{{username}} loses the Admin role and no longer sees the admin area.",
+        "no-accounts": "No account matches the search or the filter.",
+        "own-account": "You cannot give up your own Admin role."
+    },
+    "error": {
+        "own-account": "You cannot give up your own Admin role."
+    },
+    "heading": {
+        "accounts": "Accounts",
+        "admin": "Admin",
+        "change-role": "Change role",
+        "no-accounts": "No accounts found"
+    },
+    "label": {
+        "cards": "Cards",
+        "collections": "Collections",
+        "created-at": "Created",
+        "decks": "Decks",
+        "email": "Email",
+        "loading": "Loading …",
+        "passkeys": "Passkeys",
+        "role": "Role",
+        "role-admin": "Admin",
+        "role-all": "All roles",
+        "role-member": "Member",
+        "search": "Username or email",
+        "username": "Username"
+    },
+    "toast": {
+        "role-changed": "Role changed"
+    }
+}

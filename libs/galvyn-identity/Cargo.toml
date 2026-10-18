@@ -9,6 +9,7 @@ publish = false
 [features]
 default = []
 passkey = ["dep:webauthn-rs", "dep:webauthn-rs-proto", "dep:serde_cbor_2", "dep:openssl"]
+test-support = []
 
 [dependencies]
 galvyn = { workspace = true }

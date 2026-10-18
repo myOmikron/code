@@ -1,5 +1,6 @@
 {
     "label": {
+        "admin": "Verwaltung",
         "collection": "Sammlung",
         "decks": "Decks",
         "game-utils": "Game-Tools",

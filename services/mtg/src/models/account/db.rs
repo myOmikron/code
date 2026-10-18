@@ -8,6 +8,8 @@ use galvyn::rorm::fields::types::MaxStr;
 use galvyn_identity::IdentityModel;
 use uuid::Uuid;
 
+use crate::models::account::Role;
+
 /// An account
 ///
 /// Authentication is passkey-only: an account has no password, only the
@@ -20,7 +22,10 @@ use uuid::Uuid;
 #[rorm(rename = "account")]
 pub struct AccountModel {
     /// Primary key
-    #[rorm(primary_key)]
+    ///
+    /// A v7 uuid, so ordering by it is ordering by creation. The second half
+    /// of the `account_role` index, see [`Self::role`].
+    #[rorm(primary_key, index(name = "account_role", priority = 2))]
     pub uuid: Uuid,
 
     /// The username, spelled the way the account chose it
@@ -47,6 +52,13 @@ pub struct AccountModel {
     #[rorm(default = false)]
     pub tombstone: bool,
 
+    /// What the account may do
+    ///
+    /// Indexed together with [`Self::uuid`], so the admin list filtered by
+    /// Role pages newest first without reading the other Role's rows.
+    #[rorm(default = "Member", index(name = "account_role", priority = 1))]
+    pub role: Role,
+
     /// The identity this account signs in as
     ///
     /// Deleting the identity deletes the account with it.
@@ -68,6 +80,8 @@ pub struct AccountInsertPatch {
     pub email: MaxStr<255>,
     /// Whether this row is the tombstone deleted accounts leave behind
     pub tombstone: bool,
+    /// What the account may do
+    pub role: Role,
     /// The identity this account signs in as
     pub identity: ForeignModel<IdentityModel>,
 }

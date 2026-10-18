@@ -5,6 +5,11 @@ docs/AddDeckCardRequest.md
 docs/AddPasskeyErrors.md
 docs/AddScannerSessionEntryRequest.md
 docs/AddWatchListEntryRequest.md
+docs/AdminAccount.md
+docs/AdminAccountDetail.md
+docs/AdminListAccountsResponse.md
+docs/AdminSetRoleErrors.md
+docs/AdminSetRoleRequest.md
 docs/AdvisorSettingsResponse.md
 docs/ApiErrorResponse.md
 docs/BracketRulesResponse.md
@@ -59,6 +64,7 @@ docs/FinishLoginErrors.md
 docs/FinishLoginRequest.md
 docs/FinishRegistrationRequest.md
 docs/FormErrorResponseForAddPasskeyErrors.md
+docs/FormErrorResponseForAdminSetRoleErrors.md
 docs/FormErrorResponseForDeleteAccountErrors.md
 docs/FormErrorResponseForDeletePasskeyErrors.md
 docs/FormErrorResponseForFinishLoginErrors.md
@@ -117,6 +123,7 @@ docs/ResolvedPrintingResponse.md
 docs/ReturnAllDeckCardsRequest.md
 docs/ReturnAllDeckCardsResponse.md
 docs/ReturnDeckCardsRequest.md
+docs/Role.md
 docs/RoleBansResponse.md
 docs/RotateDeckShareTokenResponse.md
 docs/RotateShareTokenResponse.md

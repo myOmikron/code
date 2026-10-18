@@ -126,7 +126,7 @@ mod tests {
     }
 
     fn identity(n: u128) -> IdentityUuid {
-        IdentityUuid::from_uuid(Uuid::from_u128(n))
+        IdentityUuid::new(Uuid::from_u128(n))
     }
 
     fn enrollment_state() -> PasskeyRegistration {

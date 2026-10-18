@@ -1,0 +1,56 @@
+# mtg
+
+Accounts, their collections and decks, and the admin dashboard that manages the Accounts. Login and Enrollment are the Identity context's (see `libs/galvyn-identity/GLOSSARY.md`).
+
+## Language
+
+**Account**:
+A person's record in mtg: username, email, Role, and everything they own (collections, decks, scanner sessions). References exactly one Identity.
+_Avoid_: user, profile
+
+**Role**:
+What an Account may do beyond managing its own things. Either **Member** (the default) or **Admin**. Set by the `set-role` cli subcommand or by an Admin in the admin dashboard. An Admin can never demote itself.
+_Avoid_: permission, group
+
+**Admin**:
+An Account with the Admin Role. Sees the admin dashboard and manages other Accounts, Admins included, but never Locks, deletes or demotes itself.
+_Avoid_: superuser, staff, moderator
+
+**Lock**:
+An Admin's block on an Account: its Login and Registration link Enrollment are refused with `locked`, its existing sessions fail on their next request. Its public decks and shares stay reachable. Carries a **Lock reason** (required); lifting it, the **unlock**, takes an optional **unlock reason**. Only Admins see either reason, and no mail is sent.
+_Avoid_: ban, suspension, disable
+
+**Admin log**:
+The record of what Admins did to Accounts: Lock, unlock, Role change and Deletion, each with the acting Admin, the affected Account's username and when. Outlives the Accounts it names.
+_Avoid_: audit log, history
+
+**Tombstone**:
+The one Account nobody can name, log into or sign up as, that holds the public decks of deleted Accounts so links to them keep working. Excluded from every Account list and count.
+_Avoid_: ghost account, deleted user
+
+**Deletion**:
+Removing an Account with everything it owns. By default its public decks go to the Tombstone; a **full Deletion** takes them too. An Account deletes itself, or an Admin deletes it after typing its username.
+_Avoid_: removal, purge
+
+**Sync run**:
+One attempt of the catalog sync or the price guide sync: when it started, how long it took, its outcome (new file read, unchanged, failed) and the error if it failed. Kept for 90 days.
+_Avoid_: job, import
+
+**Statistics snapshot**:
+Service-wide counts taken at one point in time by the `snapshot-statistics` subcommand: Accounts, collections, decks, public decks, cards and open scanner sessions. Kept forever; the admin dashboard only ever shows snapshots, never live counts.
+_Avoid_: metrics, report
+
+**Open scanner session**:
+A scanner session holding at least one scanned card not yet filed into a collection. Sessions are never closed: filing empties them.
+_Avoid_: active session
+
+## Relationships
+
+- An **Account** has exactly one **Role**, and at most one **Lock** at a time
+- Every **Lock**, unlock, **Role** change and **Deletion** by an **Admin** writes one **Admin log** entry
+- A **Deletion** hands the Account's public decks to the **Tombstone**, unless it is a full Deletion
+- A **Statistics snapshot** never counts the **Tombstone**
+
+## Flagged ambiguities
+
+- "Collection" in Account counts means a collection on the shelf; a collection standing for a deck's cards belongs to the deck and is counted with it, not as a collection.

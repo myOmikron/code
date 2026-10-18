@@ -22,6 +22,15 @@ impl IdentityModule {
         Passkey::get_by_identity(exe, identity).await
     }
 
+    /// Count an Identity's Passkeys
+    pub async fn count_passkeys(
+        &self,
+        exe: impl Executor<'_>,
+        identity: IdentityUuid,
+    ) -> Result<u64, rorm::Error> {
+        Passkey::count_by_identity(exe, identity).await
+    }
+
     /// Remove one of `identity`'s Passkeys
     ///
     /// Refuses the last one: with no Passkey left there is no way back in.

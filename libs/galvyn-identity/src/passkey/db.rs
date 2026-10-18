@@ -20,7 +20,10 @@ pub struct PasskeyModel {
     pub uuid: Uuid,
 
     /// The identity this passkey belongs to
-    #[rorm(on_delete = "Cascade", on_update = "Cascade")]
+    ///
+    /// Indexed: login and the passkey list filter on it, and Postgres does
+    /// not index a foreign key on its own.
+    #[rorm(index, on_delete = "Cascade", on_update = "Cascade")]
     pub identity: ForeignModel<IdentityModel>,
 
     /// Human-readable device label shown in the passkey management UI

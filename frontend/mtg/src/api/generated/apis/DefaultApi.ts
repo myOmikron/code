@@ -18,6 +18,9 @@ import type {
     AddDeckCardRequest,
     AddScannerSessionEntryRequest,
     AddWatchListEntryRequest,
+    AdminAccountDetail,
+    AdminListAccountsResponse,
+    AdminSetRoleRequest,
     AdvisorSettingsResponse,
     ApiErrorResponse,
     CardCondition,
@@ -51,6 +54,7 @@ import type {
     FinishLoginRequest,
     FinishRegistrationRequest,
     FormErrorResponseForAddPasskeyErrors,
+    FormErrorResponseForAdminSetRoleErrors,
     FormErrorResponseForDeleteAccountErrors,
     FormErrorResponseForDeletePasskeyErrors,
     FormErrorResponseForFinishLoginErrors,
@@ -89,6 +93,7 @@ import type {
     ReturnAllDeckCardsRequest,
     ReturnAllDeckCardsResponse,
     ReturnDeckCardsRequest,
+    Role,
     RotateDeckShareTokenResponse,
     RotateShareTokenResponse,
     ScannerSessionDetailResponse,
@@ -151,6 +156,22 @@ export interface AddScannerSessionEntryOperationRequest {
 export interface AddWatchListEntryOperationRequest {
     list: string;
     AddWatchListEntryRequest?: AddWatchListEntryRequest;
+}
+
+export interface AdminGetAccountRequest {
+    uuid: string;
+}
+
+export interface AdminListAccountsRequest {
+    after?: string | null;
+    limit?: number;
+    role?: Role | null;
+    search?: string | null;
+}
+
+export interface AdminSetRoleOperationRequest {
+    uuid: string;
+    AdminSetRoleRequest?: AdminSetRoleRequest;
 }
 
 export interface AssignCollectionEntryTagRequest {
@@ -874,6 +895,158 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async addWatchListEntry(requestParameters: AddWatchListEntryOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
         const response = await this.addWatchListEntryRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for adminGetAccount without sending the request
+     */
+    async adminGetAccountRequestOpts(requestParameters: AdminGetAccountRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['uuid'] == null) {
+            throw new runtime.RequiredError(
+                'uuid',
+                'Required parameter "uuid" was null or undefined when calling adminGetAccount().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/admin/accounts/{uuid}`;
+        urlPath = urlPath.replace('{uuid}', encodeURIComponent(String(requestParameters['uuid'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * One Account with its card and passkey counts
+     * One Account with its card and passkey counts
+     */
+    async adminGetAccountRaw(requestParameters: AdminGetAccountRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<AdminAccountDetail>> {
+        const requestOptions = await this.adminGetAccountRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * One Account with its card and passkey counts
+     * One Account with its card and passkey counts
+     */
+    async adminGetAccount(requestParameters: AdminGetAccountRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AdminAccountDetail> {
+        const response = await this.adminGetAccountRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for adminListAccounts without sending the request
+     */
+    async adminListAccountsRequestOpts(requestParameters: AdminListAccountsRequest): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        if (requestParameters['after'] != null) {
+            queryParameters['after'] = requestParameters['after'];
+        }
+
+        if (requestParameters['limit'] != null) {
+            queryParameters['limit'] = requestParameters['limit'];
+        }
+
+        if (requestParameters['role'] != null) {
+            queryParameters['role'] = requestParameters['role'];
+        }
+
+        if (requestParameters['search'] != null) {
+            queryParameters['search'] = requestParameters['search'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/admin/accounts`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * List Accounts, newest first
+     * List Accounts, newest first
+     */
+    async adminListAccountsRaw(requestParameters: AdminListAccountsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<AdminListAccountsResponse>> {
+        const requestOptions = await this.adminListAccountsRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * List Accounts, newest first
+     * List Accounts, newest first
+     */
+    async adminListAccounts(requestParameters: AdminListAccountsRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AdminListAccountsResponse> {
+        const response = await this.adminListAccountsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for adminSetRole without sending the request
+     */
+    async adminSetRoleRequestOpts(requestParameters: AdminSetRoleOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['uuid'] == null) {
+            throw new runtime.RequiredError(
+                'uuid',
+                'Required parameter "uuid" was null or undefined when calling adminSetRole().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/admin/accounts/{uuid}/role`;
+        urlPath = urlPath.replace('{uuid}', encodeURIComponent(String(requestParameters['uuid'])));
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['AdminSetRoleRequest'],
+        };
+    }
+
+    /**
+     * Change an Account\'s Role  An Admin cannot demote itself, so there is always an Admin left to undo a change.
+     * Change an Account\'s Role
+     */
+    async adminSetRoleRaw(requestParameters: AdminSetRoleOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FormErrorResponseForAdminSetRoleErrors>> {
+        const requestOptions = await this.adminSetRoleRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Change an Account\'s Role  An Admin cannot demote itself, so there is always an Admin left to undo a change.
+     * Change an Account\'s Role
+     */
+    async adminSetRole(requestParameters: AdminSetRoleOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FormErrorResponseForAdminSetRoleErrors> {
+        const response = await this.adminSetRoleRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

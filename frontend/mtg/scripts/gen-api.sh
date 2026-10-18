@@ -9,8 +9,12 @@ GENERATED="${PROJECT_ROOT}/src/api/generated"
 CONFIG="${GENERATED}/config.json"
 TMP="${PROJECT_ROOT}/tmp"
 
-WEBSERVER_URL="${WEBSERVER_URL:-http://webserver:8080}"
-wget --no-check-certificate "${WEBSERVER_URL}/docs/frontend.json" -O "$SPEC"
+if [ -n "${OPENAPI_SPEC_FILE:-}" ]; then
+    cp "${OPENAPI_SPEC_FILE}" "$SPEC"
+else
+    WEBSERVER_URL="${WEBSERVER_URL:-http://webserver:8080}"
+    wget --no-check-certificate "${WEBSERVER_URL}/docs/frontend.json" -O "$SPEC"
+fi
 
 mkdir -p "${TMP}"
 mkdir -p "${GENERATED}/.openapi-generator"

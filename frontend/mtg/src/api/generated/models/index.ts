@@ -180,6 +180,129 @@ export interface AddWatchListEntryRequest {
 
 
 /**
+ * An Account in the admin list
+ * @export
+ * @interface AdminAccount
+ */
+export interface AdminAccount {
+    /**
+     * Collections on the shelf, without the ones standing for a deck
+     * @type {number}
+     * @memberof AdminAccount
+     */
+    collections: number;
+    /**
+     * When the Account was created
+     * @type {string}
+     * @memberof AdminAccount
+     */
+    created_at: string;
+    /**
+     * Decks of the Account
+     * @type {number}
+     * @memberof AdminAccount
+     */
+    decks: number;
+    /**
+     * Email address
+     * @type {string}
+     * @memberof AdminAccount
+     */
+    email: string;
+    /**
+     * What the Account may do
+     * @type {Role}
+     * @memberof AdminAccount
+     */
+    role: Role;
+    /**
+     * Login handle and display name
+     * @type {string}
+     * @memberof AdminAccount
+     */
+    username: string;
+    /**
+     * Primary key
+     * @type {string}
+     * @memberof AdminAccount
+     */
+    uuid: string;
+}
+
+
+/**
+ * An Account on the admin detail page
+ * @export
+ * @interface AdminAccountDetail
+ */
+export interface AdminAccountDetail {
+    /**
+     * What the list shows
+     * @type {AdminAccount}
+     * @memberof AdminAccountDetail
+     */
+    account: AdminAccount;
+    /**
+     * Cards the Account owns, on the shelf and sleeved in decks
+     * @type {number}
+     * @memberof AdminAccountDetail
+     */
+    cards: number;
+    /**
+     * Passkeys the Account can log in with
+     * @type {number}
+     * @memberof AdminAccountDetail
+     */
+    passkeys: number;
+}
+/**
+ * One page of the Account list, newest first
+ * @export
+ * @interface AdminListAccountsResponse
+ */
+export interface AdminListAccountsResponse {
+    /**
+     * The Accounts
+     * @type {Array<AdminAccount>}
+     * @memberof AdminListAccountsResponse
+     */
+    accounts: Array<AdminAccount>;
+    /**
+     * Pass as `after` for the next page, `None` on the last one
+     * @type {string}
+     * @memberof AdminListAccountsResponse
+     */
+    next_cursor?: string | null;
+}
+/**
+ * Why a Role could not be changed
+ * @export
+ * @interface AdminSetRoleErrors
+ */
+export interface AdminSetRoleErrors {
+    /**
+     * The Account is the Admin's own, which it cannot demote
+     * @type {boolean}
+     * @memberof AdminSetRoleErrors
+     */
+    own_account: boolean;
+}
+/**
+ * Request to change an Account's Role
+ * @export
+ * @interface AdminSetRoleRequest
+ */
+export interface AdminSetRoleRequest {
+    /**
+     * The new Role
+     * @type {Role}
+     * @memberof AdminSetRoleRequest
+     */
+    role: Role;
+}
+
+
+/**
  * One reader's advisor settings for one deck
  * 
  * The same six fields as [`SetAdvisorSettingsRequest`] — a settings document is the same document going in and coming out. Two named types rather than one reused so the generated client names request and response separately.
@@ -2040,6 +2163,27 @@ export interface FormErrorResponseForAddPasskeyErrors {
 /**
  * The response that is sent in a case of an error the caller should present his user
  * @export
+ * @interface FormErrorResponseForAdminSetRoleErrors
+ */
+export interface FormErrorResponseForAdminSetRoleErrors {
+    /**
+     * The actual error struct
+     * @type {AdminSetRoleErrors}
+     * @memberof FormErrorResponseForAdminSetRoleErrors
+     */
+    error: AdminSetRoleErrors;
+    /**
+     * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
+     * @type {ErrorConstant}
+     * @memberof FormErrorResponseForAdminSetRoleErrors
+     */
+    result: ErrorConstant;
+}
+
+
+/**
+ * The response that is sent in a case of an error the caller should present his user
+ * @export
  * @interface FormErrorResponseForDeleteAccountErrors
  */
 export interface FormErrorResponseForDeleteAccountErrors {
@@ -2726,6 +2870,12 @@ export interface MarkedCard {
  */
 export interface MeResponse {
     /**
+     * What the account may do, decides whether the admin dashboard is offered
+     * @type {Role}
+     * @memberof MeResponse
+     */
+    role: Role;
+    /**
      * The account's login handle and display name
      * @type {string}
      * @memberof MeResponse
@@ -2738,6 +2888,8 @@ export interface MeResponse {
      */
     uuid: string;
 }
+
+
 /**
  * Request to combine stacks of the same cards into one
  * @export
@@ -3717,6 +3869,23 @@ export interface ReturnDeckCardsRequest {
      */
     target?: string | null;
 }
+
+/**
+ * What an [`Account`] may do beyond managing its own things
+ * @export
+ */
+export const Role = {
+    /**
+    * Manages its own collections and decks
+    */
+    Member: 'Member',
+    /**
+    * Also manages other Accounts in the admin dashboard
+    */
+    Admin: 'Admin'
+} as const;
+export type Role = typeof Role[keyof typeof Role];
+
 /**
  * The cards a format bans from a zone rather than from the deck
  * 

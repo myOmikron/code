@@ -2,7 +2,10 @@
 
 use galvyn::core::GalvynRouter;
 
+use crate::http::middleware::admin_required::AdminRequiredLayer;
+
 pub mod accounts;
+pub mod admin;
 pub mod auth;
 pub mod collections;
 pub mod decks;
@@ -19,6 +22,10 @@ pub mod watch_lists;
 pub fn initialize_routes() -> GalvynRouter {
     GalvynRouter::new()
         .nest("/accounts", accounts::initialize_routes())
+        .nest(
+            "/admin",
+            admin::initialize_routes().wrap(AdminRequiredLayer),
+        )
         .nest("/auth", auth::initialize_routes())
         .nest("/collections", collections::initialize_routes())
         .nest("/decks", decks::initialize_routes())

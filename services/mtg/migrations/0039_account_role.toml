@@ -1,0 +1,47 @@
+[Migration]
+Hash = "5450741043822114702"
+Initial = false
+Dependency = 38
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "account"
+
+[Migration.Operations.Field]
+Name = "role"
+Type = "text"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "default_value"
+Value = "Member"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "max_length"
+Value = 255
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/account/db.rs"
+Line = 60
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateIndex"
+Model = "account"
+
+[Migration.Operations.Index]
+Name = "account_role"
+Columns = [
+    "role",
+    "uuid",
+]
+
+[[Migration.Operations]]
+Type = "CreateIndex"
+Model = "passkey"
+
+[Migration.Operations.Index]
+Columns = ["identity"]

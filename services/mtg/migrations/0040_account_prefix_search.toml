@@ -1,0 +1,35 @@
+[Migration]
+Hash = "5450741043822114702"
+Initial = false
+Dependency = 39
+Replaces = []
+
+# Prefix search on username and email in the admin Account list.
+#
+# A `LIKE 'abc%'` only uses a btree in the C collation or with the pattern ops.
+
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+CREATE INDEX account_username_prefix ON account (username_normalized text_pattern_ops);
+"""
+
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+CREATE INDEX account_email_prefix ON account (lower(email) text_pattern_ops);
+"""

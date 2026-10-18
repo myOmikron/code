@@ -13,11 +13,13 @@ import { Route as CollectRouteImport } from './routes/_collect'
 import { Route as MenuRouteImport } from './routes/_menu'
 import { Route as CollectScanRouteImport } from './routes/_collect/_scan'
 import { Route as MenuIndexRouteImport } from './routes/_menu/index'
+import { Route as MenuAdminRouteImport } from './routes/_menu/admin'
 import { Route as MenuAuthRouteImport } from './routes/_menu/auth'
 import { Route as MenuGameUtilsRouteImport } from './routes/_menu/game-utils'
 import { Route as MenuHomeRouteImport } from './routes/_menu/home'
 import { Route as MenuLegalRouteImport } from './routes/_menu/legal'
 import { Route as MenuPrivacyRouteImport } from './routes/_menu/privacy'
+import { Route as MenuAdminIndexRouteImport } from './routes/_menu/admin/index'
 import { Route as MenuAuthLoginRouteImport } from './routes/_menu/auth/login'
 import { Route as MenuAuthRegisterRouteImport } from './routes/_menu/auth/register'
 import { Route as MenuAuthSignupRouteImport } from './routes/_menu/auth/signup'
@@ -32,6 +34,8 @@ import { Route as MenuScanIndexRouteImport } from './routes/_menu/scan/index'
 import { Route as MenuScanBenchRouteImport } from './routes/_menu/scan/bench'
 import { Route as MenuWatchListsIndexRouteImport } from './routes/_menu/watch-lists/index'
 import { Route as MenuWatchListsWatchListUuidRouteImport } from './routes/_menu/watch-lists/$watchListUuid'
+import { Route as MenuAdminAccountsIndexRouteImport } from './routes/_menu/admin/accounts/index'
+import { Route as MenuAdminAccountsAccountUuidRouteImport } from './routes/_menu/admin/accounts/$accountUuid'
 import { Route as MenuCollectionsCollectionUuidCollectionRouteImport } from './routes/_menu/collections/$collectionUuid/_collection'
 import { Route as MenuDecksDeckUuidDeckRouteImport } from './routes/_menu/decks/$deckUuid/_deck'
 import { Route as MenuGlobalDecksIndexRouteImport } from './routes/_menu/global/decks/index'
@@ -86,6 +90,11 @@ const MenuIndexRoute = MenuIndexRouteImport.update({
   path: '/',
   getParentRoute: () => MenuRoute,
 } as any)
+const MenuAdminRoute = MenuAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => MenuRoute,
+} as any)
 const MenuAuthRoute = MenuAuthRouteImport.update({
   id: '/auth',
   path: '/auth',
@@ -110,6 +119,11 @@ const MenuPrivacyRoute = MenuPrivacyRouteImport.update({
   id: '/privacy',
   path: '/privacy',
   getParentRoute: () => MenuRoute,
+} as any)
+const MenuAdminIndexRoute = MenuAdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => MenuAdminRoute,
 } as any)
 const MenuAuthLoginRoute = MenuAuthLoginRouteImport.update({
   id: '/login',
@@ -183,6 +197,17 @@ const MenuWatchListsWatchListUuidRoute =
     id: '/watch-lists/$watchListUuid',
     path: '/watch-lists/$watchListUuid',
     getParentRoute: () => MenuRoute,
+  } as any)
+const MenuAdminAccountsIndexRoute = MenuAdminAccountsIndexRouteImport.update({
+  id: '/accounts/',
+  path: '/accounts/',
+  getParentRoute: () => MenuAdminRoute,
+} as any)
+const MenuAdminAccountsAccountUuidRoute =
+  MenuAdminAccountsAccountUuidRouteImport.update({
+    id: '/accounts/$accountUuid',
+    path: '/accounts/$accountUuid',
+    getParentRoute: () => MenuAdminRoute,
   } as any)
 const MenuCollectionsCollectionUuidCollectionRoute =
   MenuCollectionsCollectionUuidCollectionRouteImport.update({
@@ -400,6 +425,7 @@ const MenuSharedDecksTokenSharedStatisticsRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof MenuIndexRoute
+  '/admin': typeof MenuAdminRouteWithChildren
   '/auth': typeof MenuAuthRouteWithChildren
   '/game-utils': typeof MenuGameUtilsRouteWithChildren
   '/home': typeof MenuHomeRoute
@@ -414,17 +440,20 @@ export interface FileRoutesByFullPath {
   '/profile': typeof MenuProfileProfileRouteWithChildren
   '/scan/bench': typeof MenuScanBenchRoute
   '/watch-lists/$watchListUuid': typeof MenuWatchListsWatchListUuidRoute
+  '/admin/': typeof MenuAdminIndexRoute
   '/collections/': typeof MenuCollectionsIndexRoute
   '/decks/': typeof MenuDecksIndexRoute
   '/game-utils/': typeof MenuGameUtilsIndexRoute
   '/scan/': typeof MenuScanIndexRoute
   '/watch-lists/': typeof MenuWatchListsIndexRoute
+  '/admin/accounts/$accountUuid': typeof MenuAdminAccountsAccountUuidRoute
   '/collections/$collectionUuid': typeof MenuCollectionsCollectionUuidCollectionRouteWithChildren
   '/decks/$deckUuid': typeof MenuDecksDeckUuidDeckRouteWithChildren
   '/global/profiles/$username': typeof MenuGlobalProfilesUsernameRoute
   '/profile/security': typeof MenuProfileProfileSecurityRoute
   '/profile/settings': typeof MenuProfileProfileSettingsRoute
   '/scan/staged/$sessionUuid': typeof MenuScanStagedSessionUuidRoute
+  '/admin/accounts/': typeof MenuAdminAccountsIndexRoute
   '/global/decks/': typeof MenuGlobalDecksIndexRoute
   '/profile/': typeof MenuProfileProfileIndexRoute
   '/scan/live/$sessionUuid': typeof CollectScanScanLiveSessionUuidRoute
@@ -470,15 +499,18 @@ export interface FileRoutesByTo {
   '/game-utils/proxy-printer': typeof MenuGameUtilsProxyPrinterRoute
   '/scan/bench': typeof MenuScanBenchRoute
   '/watch-lists/$watchListUuid': typeof MenuWatchListsWatchListUuidRoute
+  '/admin': typeof MenuAdminIndexRoute
   '/collections': typeof MenuCollectionsIndexRoute
   '/decks': typeof MenuDecksIndexRoute
   '/game-utils': typeof MenuGameUtilsIndexRoute
   '/scan': typeof MenuScanIndexRoute
   '/watch-lists': typeof MenuWatchListsIndexRoute
+  '/admin/accounts/$accountUuid': typeof MenuAdminAccountsAccountUuidRoute
   '/global/profiles/$username': typeof MenuGlobalProfilesUsernameRoute
   '/profile/security': typeof MenuProfileProfileSecurityRoute
   '/profile/settings': typeof MenuProfileProfileSettingsRoute
   '/scan/staged/$sessionUuid': typeof MenuScanStagedSessionUuidRoute
+  '/admin/accounts': typeof MenuAdminAccountsIndexRoute
   '/global/decks': typeof MenuGlobalDecksIndexRoute
   '/profile': typeof MenuProfileProfileIndexRoute
   '/scan/live/$sessionUuid': typeof CollectScanScanLiveSessionUuidRoute
@@ -511,6 +543,7 @@ export interface FileRoutesById {
   '/_collect': typeof CollectRouteWithChildren
   '/_menu': typeof MenuRouteWithChildren
   '/_collect/_scan': typeof CollectScanRouteWithChildren
+  '/_menu/admin': typeof MenuAdminRouteWithChildren
   '/_menu/auth': typeof MenuAuthRouteWithChildren
   '/_menu/game-utils': typeof MenuGameUtilsRouteWithChildren
   '/_menu/home': typeof MenuHomeRoute
@@ -526,17 +559,20 @@ export interface FileRoutesById {
   '/_menu/profile/_profile': typeof MenuProfileProfileRouteWithChildren
   '/_menu/scan/bench': typeof MenuScanBenchRoute
   '/_menu/watch-lists/$watchListUuid': typeof MenuWatchListsWatchListUuidRoute
+  '/_menu/admin/': typeof MenuAdminIndexRoute
   '/_menu/collections/': typeof MenuCollectionsIndexRoute
   '/_menu/decks/': typeof MenuDecksIndexRoute
   '/_menu/game-utils/': typeof MenuGameUtilsIndexRoute
   '/_menu/scan/': typeof MenuScanIndexRoute
   '/_menu/watch-lists/': typeof MenuWatchListsIndexRoute
+  '/_menu/admin/accounts/$accountUuid': typeof MenuAdminAccountsAccountUuidRoute
   '/_menu/collections/$collectionUuid/_collection': typeof MenuCollectionsCollectionUuidCollectionRouteWithChildren
   '/_menu/decks/$deckUuid/_deck': typeof MenuDecksDeckUuidDeckRouteWithChildren
   '/_menu/global/profiles/$username': typeof MenuGlobalProfilesUsernameRoute
   '/_menu/profile/_profile/security': typeof MenuProfileProfileSecurityRoute
   '/_menu/profile/_profile/settings': typeof MenuProfileProfileSettingsRoute
   '/_menu/scan/staged/$sessionUuid': typeof MenuScanStagedSessionUuidRoute
+  '/_menu/admin/accounts/': typeof MenuAdminAccountsIndexRoute
   '/_menu/global/decks/': typeof MenuGlobalDecksIndexRoute
   '/_menu/profile/_profile/': typeof MenuProfileProfileIndexRoute
   '/_collect/_scan/scan/live/$sessionUuid': typeof CollectScanScanLiveSessionUuidRoute
@@ -572,6 +608,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/admin'
     | '/auth'
     | '/game-utils'
     | '/home'
@@ -586,17 +623,20 @@ export interface FileRouteTypes {
     | '/profile'
     | '/scan/bench'
     | '/watch-lists/$watchListUuid'
+    | '/admin/'
     | '/collections/'
     | '/decks/'
     | '/game-utils/'
     | '/scan/'
     | '/watch-lists/'
+    | '/admin/accounts/$accountUuid'
     | '/collections/$collectionUuid'
     | '/decks/$deckUuid'
     | '/global/profiles/$username'
     | '/profile/security'
     | '/profile/settings'
     | '/scan/staged/$sessionUuid'
+    | '/admin/accounts/'
     | '/global/decks/'
     | '/profile/'
     | '/scan/live/$sessionUuid'
@@ -642,15 +682,18 @@ export interface FileRouteTypes {
     | '/game-utils/proxy-printer'
     | '/scan/bench'
     | '/watch-lists/$watchListUuid'
+    | '/admin'
     | '/collections'
     | '/decks'
     | '/game-utils'
     | '/scan'
     | '/watch-lists'
+    | '/admin/accounts/$accountUuid'
     | '/global/profiles/$username'
     | '/profile/security'
     | '/profile/settings'
     | '/scan/staged/$sessionUuid'
+    | '/admin/accounts'
     | '/global/decks'
     | '/profile'
     | '/scan/live/$sessionUuid'
@@ -682,6 +725,7 @@ export interface FileRouteTypes {
     | '/_collect'
     | '/_menu'
     | '/_collect/_scan'
+    | '/_menu/admin'
     | '/_menu/auth'
     | '/_menu/game-utils'
     | '/_menu/home'
@@ -697,17 +741,20 @@ export interface FileRouteTypes {
     | '/_menu/profile/_profile'
     | '/_menu/scan/bench'
     | '/_menu/watch-lists/$watchListUuid'
+    | '/_menu/admin/'
     | '/_menu/collections/'
     | '/_menu/decks/'
     | '/_menu/game-utils/'
     | '/_menu/scan/'
     | '/_menu/watch-lists/'
+    | '/_menu/admin/accounts/$accountUuid'
     | '/_menu/collections/$collectionUuid/_collection'
     | '/_menu/decks/$deckUuid/_deck'
     | '/_menu/global/profiles/$username'
     | '/_menu/profile/_profile/security'
     | '/_menu/profile/_profile/settings'
     | '/_menu/scan/staged/$sessionUuid'
+    | '/_menu/admin/accounts/'
     | '/_menu/global/decks/'
     | '/_menu/profile/_profile/'
     | '/_collect/_scan/scan/live/$sessionUuid'
@@ -775,6 +822,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MenuIndexRouteImport
       parentRoute: typeof MenuRoute
     }
+    '/_menu/admin': {
+      id: '/_menu/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof MenuAdminRouteImport
+      parentRoute: typeof MenuRoute
+    }
     '/_menu/auth': {
       id: '/_menu/auth'
       path: '/auth'
@@ -809,6 +863,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/privacy'
       preLoaderRoute: typeof MenuPrivacyRouteImport
       parentRoute: typeof MenuRoute
+    }
+    '/_menu/admin/': {
+      id: '/_menu/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof MenuAdminIndexRouteImport
+      parentRoute: typeof MenuAdminRoute
     }
     '/_menu/auth/login': {
       id: '/_menu/auth/login'
@@ -907,6 +968,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/watch-lists/$watchListUuid'
       preLoaderRoute: typeof MenuWatchListsWatchListUuidRouteImport
       parentRoute: typeof MenuRoute
+    }
+    '/_menu/admin/accounts/': {
+      id: '/_menu/admin/accounts/'
+      path: '/accounts'
+      fullPath: '/admin/accounts/'
+      preLoaderRoute: typeof MenuAdminAccountsIndexRouteImport
+      parentRoute: typeof MenuAdminRoute
+    }
+    '/_menu/admin/accounts/$accountUuid': {
+      id: '/_menu/admin/accounts/$accountUuid'
+      path: '/accounts/$accountUuid'
+      fullPath: '/admin/accounts/$accountUuid'
+      preLoaderRoute: typeof MenuAdminAccountsAccountUuidRouteImport
+      parentRoute: typeof MenuAdminRoute
     }
     '/_menu/collections/$collectionUuid/_collection': {
       id: '/_menu/collections/$collectionUuid/_collection'
@@ -1188,6 +1263,22 @@ const CollectRouteChildren: CollectRouteChildren = {
 const CollectRouteWithChildren =
   CollectRoute._addFileChildren(CollectRouteChildren)
 
+interface MenuAdminRouteChildren {
+  MenuAdminIndexRoute: typeof MenuAdminIndexRoute
+  MenuAdminAccountsAccountUuidRoute: typeof MenuAdminAccountsAccountUuidRoute
+  MenuAdminAccountsIndexRoute: typeof MenuAdminAccountsIndexRoute
+}
+
+const MenuAdminRouteChildren: MenuAdminRouteChildren = {
+  MenuAdminIndexRoute: MenuAdminIndexRoute,
+  MenuAdminAccountsAccountUuidRoute: MenuAdminAccountsAccountUuidRoute,
+  MenuAdminAccountsIndexRoute: MenuAdminAccountsIndexRoute,
+}
+
+const MenuAdminRouteWithChildren = MenuAdminRoute._addFileChildren(
+  MenuAdminRouteChildren,
+)
+
 interface MenuAuthRouteChildren {
   MenuAuthLoginRoute: typeof MenuAuthLoginRoute
   MenuAuthRegisterRoute: typeof MenuAuthRegisterRoute
@@ -1367,6 +1458,7 @@ const MenuSharedDecksTokenSharedRouteWithChildren =
   )
 
 interface MenuRouteChildren {
+  MenuAdminRoute: typeof MenuAdminRouteWithChildren
   MenuAuthRoute: typeof MenuAuthRouteWithChildren
   MenuGameUtilsRoute: typeof MenuGameUtilsRouteWithChildren
   MenuHomeRoute: typeof MenuHomeRoute
@@ -1392,6 +1484,7 @@ interface MenuRouteChildren {
 }
 
 const MenuRouteChildren: MenuRouteChildren = {
+  MenuAdminRoute: MenuAdminRouteWithChildren,
   MenuAuthRoute: MenuAuthRouteWithChildren,
   MenuGameUtilsRoute: MenuGameUtilsRouteWithChildren,
   MenuHomeRoute: MenuHomeRoute,
