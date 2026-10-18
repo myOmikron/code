@@ -37,6 +37,7 @@ All common tasks are available via [just](https://github.com/casey/just):
 just ci                      # Run all Rust checks (fmt, lint, lint-ast, test-ast, doc, test, deny)
 just check / test / lint     # Individual Rust checks
 just lint-ast / test-ast     # ast-grep lints (.ast-grep/rules) / their self-tests
+just lint-i18n               # frontend i18n keys and namespaces (tools/check-i18n.py)
 just doc                     # rustdoc with -D warnings (broken intra-doc links fail)
 just fmt / fmt-check         # Format code (rustfmt nightly, prettier, taplo)
 just deny                    # cargo-deny license/advisory checks
@@ -55,16 +56,9 @@ Frontend (per app): `pnpm run dev` / `build` / `ci` / `format` / `gen-api`.
 
 ## Conventions
 
-### Code Style
-
-- **Formatting**: `rustfmt` via nightly (see `.rustfmt.toml`); prettier for TypeScript;
-  `taplo` for TOML (see `.taplo.toml`, generated migrations are excluded)
-- **Lints**: Workspace-level clippy lints in root `Cargo.toml` plus `clippy.toml`;
-  CI runs clippy with `-D warnings`. Project-specific lints are ast-grep rules
-  in `.ast-grep/rules/`, each with test cases in `.ast-grep/rule-tests/`
-- **`unsafe` code is forbidden** (`unsafe_code = "forbid"`)
-- Every module gets a `//!` doc comment, every public item a `///` doc comment
-  (services set `#![warn(missing_docs)]`). Keep them short.
+**Coding standards**: `CODING_STANDARDS.md` holds the rules a review checks
+(comments, `MaxStr`, transactions, i18n keys and namespaces, Tailwind and dark mode,
+mtg query cost). A review applies all of it; read the sections a change touches before writing it.
 
 ### Dependencies
 
@@ -88,16 +82,10 @@ Frontend (per app): `pnpm run dev` / `build` / `ci` / `format` / `gen-api`.
   at startup (the Dockerfile copies them to `/migrations`). PRs get a warning for
   `RawSQL`/`RenameField`/`DeleteField`/`DeleteModel`/`SetFieldType`/`DeleteIndex`
   (`check-migrations.yaml`)
-- Every rorm transaction is resolved explicitly on every path: `commit` on success
-  and on read-only paths, `rollback` before an early `Ok(..)` that discards the
-  writes (enforced by the `uncommitted-transaction*` ast-grep rules). No `ast-grep-ignore`
 - Browser-facing services add the session layer themselves
   (`.layer(galvyn::core::session::layer())`) — `service_bootstrap::run` disables galvyn's
-- Use `tracing` (not `println`/`eprintln`) — exception: config errors before tracing init
 - HTTP tests drive the router in-process against a throwaway Postgres; copy
   `services/bnv-manager-v2/src/tests/harness.rs` (needs `just dev infra up -d --wait test-postgres`)
-- **Panic semantic: "Panic anywhere -> restart"**. `service-bootstrap` installs a panic hook
-  that triggers a graceful shutdown. Don't catch panics to keep the process alive.
 
 ### Authentication
 
@@ -119,28 +107,17 @@ Frontend (per app): `pnpm run dev` / `build` / `ci` / `format` / `gen-api`.
 
 - Handler layout: `src/http/handler_frontend/<domain>/{handler,schema}.rs`,
   routes grouped in `mod.rs` per auth level and wrapped with middleware
-  (`AuthRequiredLayer`, role layers) — never per-handler auth checks
-- Schemas derive `Serialize`/`Deserialize` + `JsonSchema` (via `galvyn::core::re_exports::schemars`),
-  use `MaxStr<N>` for bounded strings and `SchemaDateTime`/`SchemaDate` for timestamps
+  (`AuthRequiredLayer`, role layers)
 - The frontend OpenAPI spec is served at `/docs/frontend.json` (openapi page per consumer);
   `just gen-api <name>` regenerates the TypeScript client from it
-- Handler function names become OpenAPI operation ids — they must be unique across the service
 
-### NATS
+### NATS and Proto
 
-- All subject strings live in `libs/nats-subjects` — never hardcode subjects
-- Protobuf for message serialization (`prost`)
-- Metadata (correlation-id, source) goes in NATS headers, not in the proto payload
+- Subject strings live in `libs/nats-subjects`; payloads are protobuf (`prost`)
 - Invalid messages go to the DLQ (see `service-bootstrap`'s listener)
-- Use `o2o` to convert proto types into validated domain types
-
-### Proto
-
-- Organized by domain: `proto/<domain>/v1/`; `proto/common/` for shared types
-- Proto files define both NATS message payloads and gRPC services
-- Build with `service-bootstrap-build` in the service's `build.rs`
-- Datetimes as unix timestamps (int64) with doc comment;
-  `google.protobuf.Timestamp` for sub-second precision
+- Proto files are organized by domain: `proto/<domain>/v1/`, `proto/common/` for shared types.
+  They define both NATS message payloads and gRPC services; build them with
+  `service-bootstrap-build` in the service's `build.rs`
 
 ### Libraries
 
@@ -149,52 +126,6 @@ Frontend (per app): `pnpm run dev` / `build` / `ci` / `format` / `gen-api`.
 
 ### Frontend
 
-#### i18n translation keys
-
-- Every translation key is **exactly two levels deep**: `a.b` (no deeper nesting, no single-level keys).
-- The first segment `a` must be **one of these eight categories** — nothing else is allowed:
-  | Prefix | Use for |
-  |--------|---------|
-  | `heading` | headings, subheadings and dialog titles |
-  | `label` | labels and short notes |
-  | `button` | anything clickable (buttons, links, menu items) |
-  | `description` | longer explanatory text |
-  | `error` | error messages |
-  | `toast` | toast notifications |
-  | `accessibility` | accessibility-only strings (e.g. `aria-label`) |
-- The second segment `b` is a free-form kebab-case slug describing the specific string
-  (e.g. `heading.orders`, `button.create-item`, `toast.passkey-created`).
-  i18next plural suffixes (`label.positions_one`) count as part of the slug.
-
-#### i18n namespaces
-
-- A component may use **at most two** translation namespaces:
-  - **Page-specific** — bound to `t`, with an explicit namespace:
-    `const [t] = useTranslation("<namespace>")`. Holds strings only this page/component uses.
-  - **General** — bound to `tg`, the default namespace shared across many pages:
-    `const [tg] = useTranslation()`. Holds strings reused everywhere.
-- Never pull in a third namespace (also not via the `ns` option);
-  if a page-specific string is needed elsewhere, promote it to the general namespace.
-- German (`de`) is the primary language; keep `en` in sync
-  (`scripts/translation_scanner.py` finds missing keys).
-
-#### Component files
-
-- A `.tsx` file under `routes/` defines **exactly one** component (the route component).
-  No helper/secondary components in route files.
-- Extract any additional component into its own file:
-  - App-local components go in `src/components/`.
-  - Generic, reusable components go in the shared `components` library.
-
-#### Sidebar navigation
-
-- The app brand/logo in a persistent sidebar or mobile navbar always links to `/`
-  with exact active matching (`activeOptions={{ exact: true }}`). Never point the
-  brand at a section landing page such as `/verkauf`, otherwise fuzzy route matching
-  keeps it highlighted throughout that section.
-- Let index routes and their redirects choose a section's default page (for example
-  `/admin` redirects to `/admin/items`); keep those redirects separate from the
-  neutral app-brand link.
 
 #### New frontend apps
 
