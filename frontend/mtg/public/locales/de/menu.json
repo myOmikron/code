@@ -1,16 +1,49 @@
 {
+    "button": {
+        "add-cards": "Karten hinzufügen",
+        "change-printing": "Anderen Druck wählen",
+        "create-collection": "Sammlung anlegen",
+        "create-deck": "Deck anlegen",
+        "delete-collection": "Löschen",
+        "delete-deck": "Löschen",
+        "delete-entry": "Entfernen",
+        "edit-collection": "Bearbeiten",
+        "edit-deck": "Bearbeiten",
+        "file-cards": "Karten einräumen",
+        "inspect-card": "Karte ansehen",
+        "manage-tags": "Tags verwalten",
+        "mark-proxy": "Als Proxy markieren",
+        "open-collection": "Öffnen",
+        "share-collection": "Teilen",
+        "share-deck": "Teilen",
+        "use-foil": "Foil verwenden"
+    },
+    "description": {
+        "quick-tag": "Tag auf der Karte unter dem Zeiger",
+        "shortcut-quantity": "Anzahl erhöhen oder verringern",
+        "shortcut-sort": "Sortierrichtung umdrehen",
+        "shortcut-tabs": "Zwischen den Reitern wechseln"
+    },
+    "heading": {
+        "shortcuts": "Tastaturkürzel"
+    },
     "label": {
         "admin": "Verwaltung",
         "collection": "Sammlung",
         "decks": "Decks",
+        "filter-cards": "Karten filtern",
         "game-utils": "Game-Tools",
+        "grouping": "Gruppierung",
         "home": "Start",
         "login": "Anmelden",
         "logout": "Abmelden",
         "my-decks": "Meine Decks",
         "profile-settings": "Profil & Einstellungen",
         "scan": "Scannen",
+        "search-cards": "Karten im Deck suchen",
+        "search-decks": "Deck oder Commander suchen",
         "sign-up": "Konto erstellen",
+        "view": "Ansicht",
         "watch-lists": "Merklisten"
     }
 }

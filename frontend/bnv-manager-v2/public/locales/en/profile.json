@@ -1,7 +1,8 @@
 {
     "error": {
         "invalid-old-password": "The current password is incorrect.",
-        "password-mismatch": "Passwords do not match"
+        "password-mismatch": "Passwords do not match",
+        "stronger-password": "Password is too weak."
     },
     "heading": {
         "general": "General",
@@ -19,9 +20,6 @@
         "theme-dark": "Dark theme",
         "theme-light": "Light theme",
         "theme-system": "System preference"
-    },
-    "text": {
-        "stronger-password": "Password is too weak."
     },
     "toast": {
         "password-set": "Password has been changed",

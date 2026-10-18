@@ -11,21 +11,6 @@
         "retract-invite": "Retract invite",
         "unlink-domain": "Unlink domain"
     },
-    "dashboard": {
-        "admins": "Admins",
-        "created-at": "Created on",
-        "domain": "Domain:",
-        "domain-stats": "Domain Overview",
-        "email": "Email",
-        "mailbox-stats": "Mailbox Storage Usage",
-        "mailboxes": "Mailboxes",
-        "members": "Members",
-        "messages": "Messages",
-        "pending-invites": "Pending Invites",
-        "quota": "Quota",
-        "storage-used": "Used",
-        "unlimited": "Unlimited"
-    },
     "heading": {
         "admins": "Admins",
         "club": "Club: {{club}}",
@@ -35,11 +20,23 @@
         "members": "Members"
     },
     "label": {
+        "admins": "Admins",
+        "created-at": "Created on",
         "display-name": "Display name",
         "domain": "Domain",
+        "domain-stats": "Domain Overview",
+        "email": "Email",
         "expires-at": "Expires at",
+        "mailbox-stats": "Mailbox Storage Usage",
+        "mailboxes": "Mailboxes",
+        "members": "Members",
+        "messages": "Messages",
         "no-members": "No members found.",
+        "pending-invites": "Pending Invites",
         "primary-domain": "Primary Domain",
+        "quota": "Quota",
+        "storage-used": "Used",
+        "unlimited": "Unlimited",
         "username": "Username"
     },
     "toast": {

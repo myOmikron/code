@@ -11,21 +11,6 @@
         "retract-invite": "Einladung widerrufen",
         "unlink-domain": "Domain trennen"
     },
-    "dashboard": {
-        "admins": "Administratoren",
-        "created-at": "Erstellt am",
-        "domain": "Domain:",
-        "domain-stats": "Domain-\u00dcbersicht",
-        "email": "E-Mail",
-        "mailbox-stats": "Postfach-Speicherverbrauch",
-        "mailboxes": "Postf\u00e4cher",
-        "members": "Mitglieder",
-        "messages": "Nachrichten",
-        "pending-invites": "Offene Einladungen",
-        "quota": "Kontingent",
-        "storage-used": "Belegt",
-        "unlimited": "Unbegrenzt"
-    },
     "heading": {
         "admins": "Administratoren",
         "club": "Verein: {{club}}",
@@ -35,11 +20,23 @@
         "members": "Mitglieder"
     },
     "label": {
+        "admins": "Administratoren",
+        "created-at": "Erstellt am",
         "display-name": "Anzeigename",
         "domain": "Domain",
+        "domain-stats": "Domain-\u00dcbersicht",
+        "email": "E-Mail",
         "expires-at": "L\u00e4uft ab am",
+        "mailbox-stats": "Postfach-Speicherverbrauch",
+        "mailboxes": "Postf\u00e4cher",
+        "members": "Mitglieder",
+        "messages": "Nachrichten",
         "no-members": "Keine Mitglieder vorhanden.",
+        "pending-invites": "Offene Einladungen",
         "primary-domain": "Prim\u00e4re Domain",
+        "quota": "Kontingent",
+        "storage-used": "Belegt",
+        "unlimited": "Unbegrenzt",
         "username": "Nutzername"
     },
     "toast": {
