@@ -27,3 +27,15 @@ _Avoid_: unpublished, hidden
 **Published**:
 The state of a News Post that customers see. Carries the point in time it was published.
 _Avoid_: live, public, active
+
+**Item**:
+Something customers can pre-order, with a name and a price. Called "Artikel" in the UI.
+_Avoid_: product, article
+
+**Bakery Article Number**:
+The number the Bakery gives an Item in its own range, under which the Nachbarschaftshilfe orders it there. Optional, since not every Item comes from the Bakery, and several Items may share one. Staff only; customers never see it. Called "Artikelnummer (Bäckerei)" in the UI.
+_Avoid_: ID, item number, SKU
+
+**Procurement**:
+What the Nachbarschaftshilfe buys at the Bakery for one pickup day: all positions of that day's orders that were not cancelled, summed per Item. Final once the day is frozen. Called "Beschaffung" in the UI.
+_Avoid_: bakery order, purchase order
