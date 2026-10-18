@@ -1,7 +1,8 @@
 //! The logged-in account and the passkeys that can reach it
 
 use galvyn::core::GalvynRouter;
-use galvyn_identity::AuthRequiredLayer;
+
+use crate::http::middleware::account_required::AccountRequiredLayer;
 
 pub mod handler;
 pub mod schema;
@@ -16,6 +17,6 @@ pub fn initialize_routes() -> GalvynRouter {
             .handler(handler::finish_add_passkey)
             .handler(handler::delete_passkey)
             .handler(handler::delete_account)
-            .wrap(AuthRequiredLayer),
+            .wrap(AccountRequiredLayer),
     )
 }

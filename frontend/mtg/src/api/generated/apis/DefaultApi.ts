@@ -20,9 +20,12 @@ import type {
     AddWatchListEntryRequest,
     AdminAccountDetail,
     AdminListAccountsResponse,
+    AdminListLogResponse,
+    AdminLockAccountRequest,
     AdminSetRoleRequest,
     AdminStatisticsResponse,
     AdminSyncsResponse,
+    AdminUnlockAccountRequest,
     AdvisorSettingsResponse,
     ApiErrorResponse,
     CardCondition,
@@ -56,7 +59,9 @@ import type {
     FinishLoginRequest,
     FinishRegistrationRequest,
     FormErrorResponseForAddPasskeyErrors,
+    FormErrorResponseForAdminLockAccountErrors,
     FormErrorResponseForAdminSetRoleErrors,
+    FormErrorResponseForAdminUnlockAccountErrors,
     FormErrorResponseForDeleteAccountErrors,
     FormErrorResponseForDeletePasskeyErrors,
     FormErrorResponseForFinishLoginErrors,
@@ -167,13 +172,30 @@ export interface AdminGetAccountRequest {
 export interface AdminListAccountsRequest {
     after?: string | null;
     limit?: number;
+    locked?: boolean | null;
     role?: Role | null;
     search?: string | null;
+}
+
+export interface AdminListLogRequest {
+    account?: string | null;
+    after?: string | null;
+    limit?: number;
+}
+
+export interface AdminLockAccountOperationRequest {
+    uuid: string;
+    AdminLockAccountRequest?: AdminLockAccountRequest;
 }
 
 export interface AdminSetRoleOperationRequest {
     uuid: string;
     AdminSetRoleRequest?: AdminSetRoleRequest;
+}
+
+export interface AdminUnlockAccountOperationRequest {
+    uuid: string;
+    AdminUnlockAccountRequest?: AdminUnlockAccountRequest;
 }
 
 export interface AssignCollectionEntryTagRequest {
@@ -1039,6 +1061,10 @@ export class DefaultApi extends runtime.BaseAPI {
             queryParameters['limit'] = requestParameters['limit'];
         }
 
+        if (requestParameters['locked'] != null) {
+            queryParameters['locked'] = requestParameters['locked'];
+        }
+
         if (requestParameters['role'] != null) {
             queryParameters['role'] = requestParameters['role'];
         }
@@ -1081,6 +1107,107 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for adminListLog without sending the request
+     */
+    async adminListLogRequestOpts(requestParameters: AdminListLogRequest): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        if (requestParameters['account'] != null) {
+            queryParameters['account'] = requestParameters['account'];
+        }
+
+        if (requestParameters['after'] != null) {
+            queryParameters['after'] = requestParameters['after'];
+        }
+
+        if (requestParameters['limit'] != null) {
+            queryParameters['limit'] = requestParameters['limit'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/admin/log`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * List the Admin log, newest first
+     * List the Admin log, newest first
+     */
+    async adminListLogRaw(requestParameters: AdminListLogRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<AdminListLogResponse>> {
+        const requestOptions = await this.adminListLogRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * List the Admin log, newest first
+     * List the Admin log, newest first
+     */
+    async adminListLog(requestParameters: AdminListLogRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AdminListLogResponse> {
+        const response = await this.adminListLogRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for adminLockAccount without sending the request
+     */
+    async adminLockAccountRequestOpts(requestParameters: AdminLockAccountOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['uuid'] == null) {
+            throw new runtime.RequiredError(
+                'uuid',
+                'Required parameter "uuid" was null or undefined when calling adminLockAccount().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/admin/accounts/{uuid}/lock`;
+        urlPath = urlPath.replace('{uuid}', encodeURIComponent(String(requestParameters['uuid'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['AdminLockAccountRequest'],
+        };
+    }
+
+    /**
+     * Lock an Account  Its Login and Registration link Enrollment are refused from now on, and its sessions fail on their next request. An Admin cannot Lock itself.
+     * Lock an Account
+     */
+    async adminLockAccountRaw(requestParameters: AdminLockAccountOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FormErrorResponseForAdminLockAccountErrors>> {
+        const requestOptions = await this.adminLockAccountRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Lock an Account  Its Login and Registration link Enrollment are refused from now on, and its sessions fail on their next request. An Admin cannot Lock itself.
+     * Lock an Account
+     */
+    async adminLockAccount(requestParameters: AdminLockAccountOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FormErrorResponseForAdminLockAccountErrors> {
+        const response = await this.adminLockAccountRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for adminSetRole without sending the request
      */
     async adminSetRoleRequestOpts(requestParameters: AdminSetRoleOperationRequest): Promise<runtime.RequestOpts> {
@@ -1111,7 +1238,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Change an Account\'s Role  An Admin cannot demote itself, so there is always an Admin left to undo a change.
+     * Change an Account\'s Role  An Admin cannot demote itself, so there is always an Admin left to undo a change. A change writes an Admin log entry; setting the Role an Account has already writes none.
      * Change an Account\'s Role
      */
     async adminSetRoleRaw(requestParameters: AdminSetRoleOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FormErrorResponseForAdminSetRoleErrors>> {
@@ -1122,11 +1249,61 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Change an Account\'s Role  An Admin cannot demote itself, so there is always an Admin left to undo a change.
+     * Change an Account\'s Role  An Admin cannot demote itself, so there is always an Admin left to undo a change. A change writes an Admin log entry; setting the Role an Account has already writes none.
      * Change an Account\'s Role
      */
     async adminSetRole(requestParameters: AdminSetRoleOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FormErrorResponseForAdminSetRoleErrors> {
         const response = await this.adminSetRoleRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for adminUnlockAccount without sending the request
+     */
+    async adminUnlockAccountRequestOpts(requestParameters: AdminUnlockAccountOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['uuid'] == null) {
+            throw new runtime.RequiredError(
+                'uuid',
+                'Required parameter "uuid" was null or undefined when calling adminUnlockAccount().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/admin/accounts/{uuid}/unlock`;
+        urlPath = urlPath.replace('{uuid}', encodeURIComponent(String(requestParameters['uuid'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['AdminUnlockAccountRequest'],
+        };
+    }
+
+    /**
+     * Lift an Account\'s Lock
+     * Lift an Account\'s Lock
+     */
+    async adminUnlockAccountRaw(requestParameters: AdminUnlockAccountOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FormErrorResponseForAdminUnlockAccountErrors>> {
+        const requestOptions = await this.adminUnlockAccountRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Lift an Account\'s Lock
+     * Lift an Account\'s Lock
+     */
+    async adminUnlockAccount(requestParameters: AdminUnlockAccountOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FormErrorResponseForAdminUnlockAccountErrors> {
+        const response = await this.adminUnlockAccountRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -2511,7 +2688,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Finish a passkey login  Verifies the browser\'s credential and logs the account in.
+     * Finish a passkey login  Verifies the browser\'s credential and logs the account in. An account locked since its login started is logged right out again.
      * Finish a passkey login
      */
     async finishLoginRaw(requestParameters: FinishLoginOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FormErrorResponseForFinishLoginErrors>> {
@@ -2522,7 +2699,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Finish a passkey login  Verifies the browser\'s credential and logs the account in.
+     * Finish a passkey login  Verifies the browser\'s credential and logs the account in. An account locked since its login started is logged right out again.
      * Finish a passkey login
      */
     async finishLogin(requestParameters: FinishLoginOperationRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FormErrorResponseForFinishLoginErrors> {
@@ -4593,7 +4770,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Send a fresh registration link to an account\'s stored address  The \"lost passkey\" flow: a new device has no passkey, so the login form offers this instead of a dead end. Registering over the link only *adds* a passkey — the existing ones keep working until their owner removes them.  Always answers `200`, whether or not the username exists — the response must not be usable to probe which usernames are registered. The link is only ever sent to the address stored on the account, never to one from the request, so this endpoint cannot be used to mail a third party.
+     * Send a fresh registration link to an account\'s stored address  The \"lost passkey\" flow: a new device has no passkey, so the login form offers this instead of a dead end. Registering over the link only *adds* a passkey — the existing ones keep working until their owner removes them.  Always answers `200`, whether or not the username exists — the response must not be usable to probe which usernames are registered. The link is only ever sent to the address stored on the account, never to one from the request, so this endpoint cannot be used to mail a third party. A locked account gets no link either, and the answer is the same `200`.
      * Send a fresh registration link to an account\'s stored address
      */
     async recoverAccountRaw(requestParameters: RecoverAccountOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
@@ -4608,7 +4785,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Send a fresh registration link to an account\'s stored address  The \"lost passkey\" flow: a new device has no passkey, so the login form offers this instead of a dead end. Registering over the link only *adds* a passkey — the existing ones keep working until their owner removes them.  Always answers `200`, whether or not the username exists — the response must not be usable to probe which usernames are registered. The link is only ever sent to the address stored on the account, never to one from the request, so this endpoint cannot be used to mail a third party.
+     * Send a fresh registration link to an account\'s stored address  The \"lost passkey\" flow: a new device has no passkey, so the login form offers this instead of a dead end. Registering over the link only *adds* a passkey — the existing ones keep working until their owner removes them.  Always answers `200`, whether or not the username exists — the response must not be usable to probe which usernames are registered. The link is only ever sent to the address stored on the account, never to one from the request, so this endpoint cannot be used to mail a third party. A locked account gets no link either, and the answer is the same `200`.
      * Send a fresh registration link to an account\'s stored address
      */
     async recoverAccount(requestParameters: RecoverAccountOperationRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {

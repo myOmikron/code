@@ -12,6 +12,7 @@
         "authenticator-error": "Dein Gerät konnte keinen Passkey anlegen. Prüfe, ob eine Bildschirmsperre oder PIN eingerichtet ist.",
         "insecure-context": "Passkeys funktionieren nur über eine gesicherte Verbindung. Ruf den Link über HTTPS oder localhost auf.",
         "invalid-token": "Dieser Registrierungs-Link ist ungültig oder abgelaufen. Starte die Registrierung noch einmal, dann bekommst du einen neuen.",
+        "locked": "Dein Konto ist gesperrt.",
         "rejected": "Der Passkey konnte nicht gespeichert werden. Vielleicht ist der Link inzwischen abgelaufen oder schon benutzt worden.",
         "unknown": "Der Passkey konnte nicht erstellt werden. Probier es noch einmal.",
         "unsupported": "Dieser Browser unterstützt keine Passkeys. Öffne den Link in einem aktuellen Chrome, Firefox oder Safari.",

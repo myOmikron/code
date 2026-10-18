@@ -13,7 +13,10 @@ All URIs are relative to *http://localhost*
 | [**adminGetStatistics**](DefaultApi.md#admingetstatistics) | **GET** /api/frontend/v1/admin/statistics | The newest Statistics snapshot and the last 30 days of them |
 | [**adminGetSyncs**](DefaultApi.md#admingetsyncs) | **GET** /api/frontend/v1/admin/syncs | The state of the catalog and price guide syncs, with their recent Sync runs |
 | [**adminListAccounts**](DefaultApi.md#adminlistaccounts) | **GET** /api/frontend/v1/admin/accounts | List Accounts, newest first |
+| [**adminListLog**](DefaultApi.md#adminlistlog) | **GET** /api/frontend/v1/admin/log | List the Admin log, newest first |
+| [**adminLockAccount**](DefaultApi.md#adminlockaccountoperation) | **POST** /api/frontend/v1/admin/accounts/{uuid}/lock | Lock an Account |
 | [**adminSetRole**](DefaultApi.md#adminsetroleoperation) | **PUT** /api/frontend/v1/admin/accounts/{uuid}/role | Change an Account\&#39;s Role |
+| [**adminUnlockAccount**](DefaultApi.md#adminunlockaccountoperation) | **POST** /api/frontend/v1/admin/accounts/{uuid}/unlock | Lift an Account\&#39;s Lock |
 | [**assignCollectionEntryTag**](DefaultApi.md#assigncollectionentrytag) | **POST** /api/frontend/v1/collections/{collection}/entries/{entry}/tags/{tag} | Put a card-wide tag on a stack |
 | [**assignDeckCardTag**](DefaultApi.md#assigndeckcardtag) | **POST** /api/frontend/v1/decks/{deck}/cards/{card}/tags/{tag} | Put a tag on a card |
 | [**attachDeckCollection**](DefaultApi.md#attachdeckcollection) | **POST** /api/frontend/v1/decks/{deck}/collection | Start keeping the cards that are physically in this deck |
@@ -683,7 +686,7 @@ No authorization required
 
 ## adminListAccounts
 
-> AdminListAccountsResponse adminListAccounts(after, limit, role, search)
+> AdminListAccountsResponse adminListAccounts(after, limit, locked, role, search)
 
 List Accounts, newest first
 
@@ -707,6 +710,8 @@ async function example() {
     after: ...,
     // number (optional)
     limit: 56,
+    // boolean (optional)
+    locked: true,
     // Role (optional)
     role: ...,
     // string (optional)
@@ -732,6 +737,7 @@ example().catch(console.error);
 |------------- | ------------- | ------------- | -------------|
 | **after** | `string` |  | [Optional] [Defaults to `undefined`] |
 | **limit** | `number` |  | [Optional] [Defaults to `50`] |
+| **locked** | `boolean` |  | [Optional] [Defaults to `undefined`] |
 | **role** | [](.md) |  | [Optional] [Defaults to `undefined`] [Enum: Member, Admin] |
 | **search** | `string` |  | [Optional] [Defaults to `undefined`] |
 
@@ -760,13 +766,162 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## adminListLog
+
+> AdminListLogResponse adminListLog(account, after, limit)
+
+List the Admin log, newest first
+
+List the Admin log, newest first
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { AdminListLogRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string (optional)
+    account: ...,
+    // string (optional)
+    after: ...,
+    // number (optional)
+    limit: 56,
+  } satisfies AdminListLogRequest;
+
+  try {
+    const data = await api.adminListLog(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **account** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **after** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **limit** | `number` |  | [Optional] [Defaults to `50`] |
+
+### Return type
+
+[**AdminListLogResponse**](AdminListLogResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## adminLockAccount
+
+> FormErrorResponseForAdminLockAccountErrors adminLockAccount(uuid, AdminLockAccountRequest)
+
+Lock an Account
+
+Lock an Account  Its Login and Registration link Enrollment are refused from now on, and its sessions fail on their next request. An Admin cannot Lock itself.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { AdminLockAccountOperationRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    uuid: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // AdminLockAccountRequest (optional)
+    AdminLockAccountRequest: ...,
+  } satisfies AdminLockAccountOperationRequest;
+
+  try {
+    const data = await api.adminLockAccount(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **uuid** | `string` |  | [Defaults to `undefined`] |
+| **AdminLockAccountRequest** | [AdminLockAccountRequest](AdminLockAccountRequest.md) |  | [Optional] |
+
+### Return type
+
+[**FormErrorResponseForAdminLockAccountErrors**](FormErrorResponseForAdminLockAccountErrors.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## adminSetRole
 
 > FormErrorResponseForAdminSetRoleErrors adminSetRole(uuid, AdminSetRoleRequest)
 
 Change an Account\&#39;s Role
 
-Change an Account\&#39;s Role  An Admin cannot demote itself, so there is always an Admin left to undo a change.
+Change an Account\&#39;s Role  An Admin cannot demote itself, so there is always an Admin left to undo a change. A change writes an Admin log entry; setting the Role an Account has already writes none.
 
 ### Example
 
@@ -811,6 +966,79 @@ example().catch(console.error);
 ### Return type
 
 [**FormErrorResponseForAdminSetRoleErrors**](FormErrorResponseForAdminSetRoleErrors.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## adminUnlockAccount
+
+> FormErrorResponseForAdminUnlockAccountErrors adminUnlockAccount(uuid, AdminUnlockAccountRequest)
+
+Lift an Account\&#39;s Lock
+
+Lift an Account\&#39;s Lock
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { AdminUnlockAccountOperationRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    uuid: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // AdminUnlockAccountRequest (optional)
+    AdminUnlockAccountRequest: ...,
+  } satisfies AdminUnlockAccountOperationRequest;
+
+  try {
+    const data = await api.adminUnlockAccount(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **uuid** | `string` |  | [Defaults to `undefined`] |
+| **AdminUnlockAccountRequest** | [AdminUnlockAccountRequest](AdminUnlockAccountRequest.md) |  | [Optional] |
+
+### Return type
+
+[**FormErrorResponseForAdminUnlockAccountErrors**](FormErrorResponseForAdminUnlockAccountErrors.md)
 
 ### Authorization
 
@@ -2761,7 +2989,7 @@ No authorization required
 
 Finish a passkey login
 
-Finish a passkey login  Verifies the browser\&#39;s credential and logs the account in.
+Finish a passkey login  Verifies the browser\&#39;s credential and logs the account in. An account locked since its login started is logged right out again.
 
 ### Example
 
@@ -5840,7 +6068,7 @@ No authorization required
 
 Send a fresh registration link to an account\&#39;s stored address
 
-Send a fresh registration link to an account\&#39;s stored address  The \&quot;lost passkey\&quot; flow: a new device has no passkey, so the login form offers this instead of a dead end. Registering over the link only *adds* a passkey — the existing ones keep working until their owner removes them.  Always answers &#x60;200&#x60;, whether or not the username exists — the response must not be usable to probe which usernames are registered. The link is only ever sent to the address stored on the account, never to one from the request, so this endpoint cannot be used to mail a third party.
+Send a fresh registration link to an account\&#39;s stored address  The \&quot;lost passkey\&quot; flow: a new device has no passkey, so the login form offers this instead of a dead end. Registering over the link only *adds* a passkey — the existing ones keep working until their owner removes them.  Always answers &#x60;200&#x60;, whether or not the username exists — the response must not be usable to probe which usernames are registered. The link is only ever sent to the address stored on the account, never to one from the request, so this endpoint cannot be used to mail a third party. A locked account gets no link either, and the answer is the same &#x60;200&#x60;.
 
 ### Example
 

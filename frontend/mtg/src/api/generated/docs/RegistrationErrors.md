@@ -8,6 +8,7 @@ Why a passkey registration could not be started or completed
 Name | Type
 ------------ | -------------
 `already_registered` | boolean
+`locked` | boolean
 `malformed_credential` | boolean
 `no_ceremony` | boolean
 `registration_failed` | boolean

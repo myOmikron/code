@@ -210,6 +210,12 @@ export interface AdminAccount {
      */
     email: string;
     /**
+     * The Account's Lock, `None` while it is not locked
+     * @type {AdminAccountLock}
+     * @memberof AdminAccount
+     */
+    lock?: AdminAccountLock | null;
+    /**
      * What the Account may do
      * @type {Role}
      * @memberof AdminAccount
@@ -255,6 +261,50 @@ export interface AdminAccountDetail {
      */
     passkeys: number;
 }
+/**
+ * An Account's Lock
+ * @export
+ * @interface AdminAccountLock
+ */
+export interface AdminAccountLock {
+    /**
+     * When the Account was locked
+     * @type {string}
+     * @memberof AdminAccountLock
+     */
+    locked_at: string;
+    /**
+     * Why it was locked
+     * @type {string}
+     * @memberof AdminAccountLock
+     */
+    reason: string;
+}
+
+/**
+ * What an Admin did to an Account
+ * @export
+ */
+export const AdminAction = {
+    /**
+    * Locked the Account
+    */
+    Lock: 'Lock',
+    /**
+    * Lifted the Account&#39;s Lock
+    */
+    Unlock: 'Unlock',
+    /**
+    * Gave the Account another Role
+    */
+    RoleChange: 'RoleChange',
+    /**
+    * Deleted the Account
+    */
+    Deletion: 'Deletion'
+} as const;
+export type AdminAction = typeof AdminAction[keyof typeof AdminAction];
+
 /**
  * The file the catalog was last read from
  * @export
@@ -312,6 +362,126 @@ export interface AdminListAccountsResponse {
      */
     next_cursor?: string | null;
 }
+/**
+ * One page of the Admin log, newest first
+ * @export
+ * @interface AdminListLogResponse
+ */
+export interface AdminListLogResponse {
+    /**
+     * The entries
+     * @type {Array<AdminLogEntryResponse>}
+     * @memberof AdminListLogResponse
+     */
+    entries: Array<AdminLogEntryResponse>;
+    /**
+     * Pass as `after` for the next page, `None` on the last one
+     * @type {string}
+     * @memberof AdminListLogResponse
+     */
+    next_cursor?: string | null;
+}
+/**
+ * Why an Account could not be locked
+ * @export
+ * @interface AdminLockAccountErrors
+ */
+export interface AdminLockAccountErrors {
+    /**
+     * The Account is locked already
+     * @type {boolean}
+     * @memberof AdminLockAccountErrors
+     */
+    already_locked: boolean;
+    /**
+     * The Account is the Admin's own, which it cannot Lock
+     * @type {boolean}
+     * @memberof AdminLockAccountErrors
+     */
+    own_account: boolean;
+    /**
+     * No reason was given
+     * @type {boolean}
+     * @memberof AdminLockAccountErrors
+     */
+    reason_missing: boolean;
+}
+/**
+ * Request to Lock an Account
+ * @export
+ * @interface AdminLockAccountRequest
+ */
+export interface AdminLockAccountRequest {
+    /**
+     * Why the Account is locked, shown to Admins only
+     * @type {string}
+     * @memberof AdminLockAccountRequest
+     */
+    reason: string;
+}
+/**
+ * One entry of the Admin log
+ * @export
+ * @interface AdminLogEntryResponse
+ */
+export interface AdminLogEntryResponse {
+    /**
+     * The affected Account, `None` once it is deleted
+     * @type {string}
+     * @memberof AdminLogEntryResponse
+     */
+    account?: string | null;
+    /**
+     * The affected Account's username at the time
+     * @type {string}
+     * @memberof AdminLogEntryResponse
+     */
+    account_username: string;
+    /**
+     * What the Admin did
+     * @type {AdminAction}
+     * @memberof AdminLogEntryResponse
+     */
+    action: AdminAction;
+    /**
+     * The acting Admin, `None` once it is deleted
+     * @type {string}
+     * @memberof AdminLogEntryResponse
+     */
+    admin?: string | null;
+    /**
+     * The acting Admin's username at the time
+     * @type {string}
+     * @memberof AdminLogEntryResponse
+     */
+    admin_username: string;
+    /**
+     * When the Admin acted
+     * @type {string}
+     * @memberof AdminLogEntryResponse
+     */
+    created_at: string;
+    /**
+     * The reason the Admin gave
+     * @type {string}
+     * @memberof AdminLogEntryResponse
+     */
+    reason?: string | null;
+    /**
+     * The Role a Role change gave the Account
+     * @type {Role}
+     * @memberof AdminLogEntryResponse
+     */
+    role?: Role | null;
+    /**
+     * Primary key
+     * @type {string}
+     * @memberof AdminLogEntryResponse
+     */
+    uuid: string;
+}
+
+
 /**
  * The file the prices were last read from
  * @export
@@ -546,6 +716,32 @@ export interface AdminSyncsResponse {
      * @memberof AdminSyncsResponse
      */
     price_guide: AdminPriceGuideSync;
+}
+/**
+ * Why an Account's Lock could not be lifted
+ * @export
+ * @interface AdminUnlockAccountErrors
+ */
+export interface AdminUnlockAccountErrors {
+    /**
+     * The Account is not locked
+     * @type {boolean}
+     * @memberof AdminUnlockAccountErrors
+     */
+    not_locked: boolean;
+}
+/**
+ * Request to lift an Account's Lock
+ * @export
+ * @interface AdminUnlockAccountRequest
+ */
+export interface AdminUnlockAccountRequest {
+    /**
+     * Why the Lock is lifted, shown to Admins only
+     * @type {string}
+     * @memberof AdminUnlockAccountRequest
+     */
+    reason?: string | null;
 }
 /**
  * One reader's advisor settings for one deck
@@ -2332,6 +2528,12 @@ export interface FinishLoginErrors {
      */
     authentication_failed: boolean;
     /**
+     * An Admin locked the account
+     * @type {boolean}
+     * @memberof FinishLoginErrors
+     */
+    locked: boolean;
+    /**
      * The browser's response was not a credential
      * @type {boolean}
      * @memberof FinishLoginErrors
@@ -2408,6 +2610,27 @@ export interface FormErrorResponseForAddPasskeyErrors {
 /**
  * The response that is sent in a case of an error the caller should present his user
  * @export
+ * @interface FormErrorResponseForAdminLockAccountErrors
+ */
+export interface FormErrorResponseForAdminLockAccountErrors {
+    /**
+     * The actual error struct
+     * @type {AdminLockAccountErrors}
+     * @memberof FormErrorResponseForAdminLockAccountErrors
+     */
+    error: AdminLockAccountErrors;
+    /**
+     * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
+     * @type {ErrorConstant}
+     * @memberof FormErrorResponseForAdminLockAccountErrors
+     */
+    result: ErrorConstant;
+}
+
+
+/**
+ * The response that is sent in a case of an error the caller should present his user
+ * @export
  * @interface FormErrorResponseForAdminSetRoleErrors
  */
 export interface FormErrorResponseForAdminSetRoleErrors {
@@ -2421,6 +2644,27 @@ export interface FormErrorResponseForAdminSetRoleErrors {
      * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
      * @type {ErrorConstant}
      * @memberof FormErrorResponseForAdminSetRoleErrors
+     */
+    result: ErrorConstant;
+}
+
+
+/**
+ * The response that is sent in a case of an error the caller should present his user
+ * @export
+ * @interface FormErrorResponseForAdminUnlockAccountErrors
+ */
+export interface FormErrorResponseForAdminUnlockAccountErrors {
+    /**
+     * The actual error struct
+     * @type {AdminUnlockAccountErrors}
+     * @memberof FormErrorResponseForAdminUnlockAccountErrors
+     */
+    error: AdminUnlockAccountErrors;
+    /**
+     * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
+     * @type {ErrorConstant}
+     * @memberof FormErrorResponseForAdminUnlockAccountErrors
      */
     result: ErrorConstant;
 }
@@ -3936,6 +4180,12 @@ export interface RegistrationErrors {
      */
     already_registered: boolean;
     /**
+     * An Admin locked the account
+     * @type {boolean}
+     * @memberof RegistrationErrors
+     */
+    locked: boolean;
+    /**
      * The browser's response was not a credential
      * @type {boolean}
      * @memberof RegistrationErrors
@@ -5061,6 +5311,12 @@ export type StartLogin200Response = FormErrorResponseForStartLoginErrors | Start
  * @interface StartLoginErrors
  */
 export interface StartLoginErrors {
+    /**
+     * An Admin locked the account
+     * @type {boolean}
+     * @memberof StartLoginErrors
+     */
+    locked: boolean;
     /**
      * No account by that name, or it has no passkey — deliberately the same flag, so the endpoint does not say which usernames are actually able to log in
      * @type {boolean}

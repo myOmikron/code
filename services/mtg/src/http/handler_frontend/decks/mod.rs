@@ -1,7 +1,8 @@
 //! Building decks: their cards, zones and tags
 
 use galvyn::core::GalvynRouter;
-use galvyn_identity::AuthRequiredLayer;
+
+use crate::http::middleware::account_required::AccountRequiredLayer;
 
 pub mod handler;
 pub mod schema;
@@ -47,6 +48,6 @@ pub fn initialize_routes() -> GalvynRouter {
                 .handler(handler::delete_deck_tag)
                 .handler(handler::assign_deck_card_tag)
                 .handler(handler::unassign_deck_card_tag)
-                .wrap(AuthRequiredLayer),
+                .wrap(AccountRequiredLayer),
         )
 }

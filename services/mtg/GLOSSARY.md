@@ -17,11 +17,11 @@ An Account with the Admin Role. Sees the admin dashboard and manages other Accou
 _Avoid_: superuser, staff, moderator
 
 **Lock**:
-An Admin's block on an Account: its Login and Registration link Enrollment are refused with `locked`, its existing sessions fail on their next request. Its public decks and shares stay reachable. Carries a **Lock reason** (required); lifting it, the **unlock**, takes an optional **unlock reason**. Only Admins see either reason, and no mail is sent.
+An Admin's block on an Account: its Login and Registration link Enrollment are refused with `locked`, recovery silently mails no link, and its existing sessions fail on their next request. Its public decks and shares stay reachable. Carries a **Lock reason** (required); lifting it, the **unlock**, takes an optional **unlock reason**. Only Admins see either reason, and no mail is sent.
 _Avoid_: ban, suspension, disable
 
 **Admin log**:
-The record of what Admins did to Accounts: Lock, unlock, Role change and Deletion, each with the acting Admin, the affected Account's username and when. Outlives the Accounts it names.
+The record of what Admins did to Accounts: Lock, unlock, Role change and Deletion, each with the acting Admin, the affected Account's username, when, and the reason given. Names both Accounts by their username at the time, so it outlives the Accounts it names.
 _Avoid_: audit log, history
 
 **Tombstone**:

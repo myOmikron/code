@@ -78,6 +78,9 @@ function RouteComponent() {
                         unknown_username: (errors) => {
                             errors.fields.username = t("error.unknown-username");
                         },
+                        locked: (errors) => {
+                            errors.form = t("error.locked");
+                        },
                     });
                 }
 
@@ -123,6 +126,9 @@ function RouteComponent() {
                         },
                         authentication_failed: (errors) => {
                             errors.form = t("error.rejected");
+                        },
+                        locked: (errors) => {
+                            errors.form = t("error.locked");
                         },
                     });
                 }

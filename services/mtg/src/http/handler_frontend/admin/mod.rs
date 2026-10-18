@@ -7,6 +7,7 @@
 use galvyn::core::GalvynRouter;
 
 pub mod accounts;
+pub mod log;
 pub mod statistics;
 pub mod syncs;
 
@@ -14,6 +15,7 @@ pub mod syncs;
 pub fn initialize_routes() -> GalvynRouter {
     GalvynRouter::new()
         .nest("/accounts", accounts::initialize_routes())
+        .nest("/log", log::initialize_routes())
         .nest("/statistics", statistics::initialize_routes())
         .nest("/syncs", syncs::initialize_routes())
 }

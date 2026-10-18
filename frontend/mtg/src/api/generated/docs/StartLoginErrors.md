@@ -7,6 +7,7 @@ Why a login could not be started
 
 Name | Type
 ------------ | -------------
+`locked` | boolean
 `unknown_username` | boolean
 
 

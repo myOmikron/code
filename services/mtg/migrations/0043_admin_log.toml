@@ -1,0 +1,216 @@
+[Migration]
+Hash = "9793954232937381251"
+Initial = false
+Dependency = 42
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateModel"
+Name = "admin_log_entry"
+
+[[Migration.Operations.Fields]]
+Name = "uuid"
+Type = "uuid"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "primary_key"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/admin_log/db.rs"
+Line = 27
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "created_at"
+Type = "datetime"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "auto_create_time"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/admin_log/db.rs"
+Line = 31
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "admin_username"
+Type = "text"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 32
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/admin_log/db.rs"
+Line = 38
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "account_username"
+Type = "text"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 32
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/admin_log/db.rs"
+Line = 52
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "action"
+Type = "text"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 255
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/admin_log/db.rs"
+Line = 55
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "role"
+Type = "text"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 255
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/admin_log/db.rs"
+Line = 58
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "reason"
+Type = "text"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 1024
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/admin_log/db.rs"
+Line = 61
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "admin_log_entry"
+
+[Migration.Operations.Field]
+Name = "admin"
+Type = "uuid"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "foreign_key"
+
+[Migration.Operations.Field.Annotations.Value]
+TableName = "account"
+ColumnName = "uuid"
+OnDelete = "SetNull"
+OnUpdate = "Cascade"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/admin_log/db.rs"
+Line = 35
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "admin_log_entry"
+
+[Migration.Operations.Field]
+Name = "account"
+Type = "uuid"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "foreign_key"
+
+[Migration.Operations.Field.Annotations.Value]
+TableName = "account"
+ColumnName = "uuid"
+OnDelete = "SetNull"
+OnUpdate = "Cascade"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/admin_log/db.rs"
+Line = 49
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "account"
+
+[Migration.Operations.Field]
+Name = "locked_at"
+Type = "datetime"
+Annotations = []
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/account/db.rs"
+Line = 67
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "account"
+
+[Migration.Operations.Field]
+Name = "lock_reason"
+Type = "text"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "max_length"
+Value = 1024
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/account/db.rs"
+Line = 70
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateIndex"
+Model = "admin_log_entry"
+
+[Migration.Operations.Index]
+Name = "admin_log_affected"
+Columns = [
+    "account",
+    "uuid",
+]
+
+[[Migration.Operations]]
+Type = "CreateIndex"
+Model = "admin_log_entry"
+
+[Migration.Operations.Index]
+Columns = ["admin"]
+
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+CREATE INDEX account_locked ON account (uuid) WHERE locked_at IS NOT NULL;
+"""

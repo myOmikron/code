@@ -11,6 +11,7 @@
     "error": {
         "authenticator-error": "Dein Gerät konnte den Passkey nicht bereitstellen. Prüfe, ob eine Bildschirmsperre oder PIN eingerichtet ist.",
         "insecure-context": "Passkeys funktionieren nur über eine gesicherte Verbindung. Ruf die Seite über HTTPS oder localhost auf.",
+        "locked": "Dein Konto ist gesperrt.",
         "no-ceremony": "Der Anmeldeversuch ist abgelaufen. Fang noch einmal an.",
         "no-passkey-or-aborted": "Abgebrochen, oder auf diesem Gerät liegt kein passender Passkey. Nimm das Gerät, auf dem du ihn eingerichtet hast.",
         "recovery-failed": "Das hat gerade nicht geklappt. Versuch es später noch einmal.",

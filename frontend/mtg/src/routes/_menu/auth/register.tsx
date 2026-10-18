@@ -32,6 +32,7 @@ function RouteComponent() {
     const [username, setUsername] = useState<string | "invalid">();
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState<string>();
+    const [locked, setLocked] = useState(false);
 
     useEffect(() => {
         if (!token) {
@@ -45,6 +46,7 @@ function RouteComponent() {
             .start(token)
             .then((response) => {
                 if (!active) return;
+                if (isFormError(response) && response.error.locked) setLocked(true);
                 setUsername(isFormError(response) ? "invalid" : response.username);
             })
             .catch(() => {
@@ -66,6 +68,7 @@ function RouteComponent() {
         const started = await Api.register.start(token);
         if (isFormError(started)) {
             // The link went stale between opening the page and pressing the button.
+            if (started.error.locked) setLocked(true);
             setUsername("invalid");
             setLoading(false);
             return;
@@ -108,7 +111,9 @@ function RouteComponent() {
         const finished = await Api.register.finish(token, credential);
         if (isFormError(finished)) {
             const { error } = finished;
-            if (error.token_invalid || error.token_used || error.token_expired) {
+            if (error.locked) {
+                setLocked(true);
+            } else if (error.token_invalid || error.token_used || error.token_expired) {
                 setUsername("invalid");
             } else if (error.already_registered) {
                 setMessage(t("error.already-registered"));
@@ -131,6 +136,17 @@ function RouteComponent() {
     // Nothing to show until the token is validated; flashing the form first is worse.
     if (username === undefined) {
         return null;
+    }
+
+    if (locked) {
+        return (
+            <div className={"flex h-full w-full items-center justify-center"}>
+                <div className={"flex w-full max-w-sm flex-col gap-4"}>
+                    <Heading>{t("heading.register")}</Heading>
+                    <InlineError>{t("error.locked")}</InlineError>
+                </div>
+            </div>
+        );
     }
 
     if (username === "invalid") {

@@ -11,6 +11,7 @@
     "error": {
         "authenticator-error": "Your device could not provide the passkey. Check that a screen lock or PIN is set up.",
         "insecure-context": "Passkeys only work over a secure connection. Open the page via HTTPS or localhost.",
+        "locked": "Your account is locked.",
         "no-ceremony": "The sign-in attempt expired. Please start again.",
         "no-passkey-or-aborted": "Cancelled, or this device holds no matching passkey. Use the device you set it up on.",
         "recovery-failed": "That didn't work just now. Try again later.",

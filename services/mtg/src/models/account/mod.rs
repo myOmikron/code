@@ -131,6 +131,16 @@ custom_db_enum! {
     decoder: RoleDecoder,
 }
 
+impl Role {
+    /// Parse the Role's database encoding, read by a raw query
+    pub(in crate::models) fn decode(encoded: &str) -> Option<Role> {
+        Self::from_str(encoded)
+    }
+}
+
+/// The longest Lock reason or unlock reason an Admin may give
+pub const LOCK_REASON_MAX_LEN: usize = 1024;
+
 /// The username of the tombstone deleted accounts leave their public decks with
 ///
 /// Not a username [`Username::new`] would ever accept, so no request can name
@@ -161,6 +171,9 @@ pub struct Account {
     /// What the account may do
     pub role: Role,
 
+    /// Whether an Admin locked the account
+    pub locked: bool,
+
     /// The identity this account signs in as
     pub identity: IdentityUuid,
 }
@@ -174,6 +187,11 @@ impl AccountUuid {
     /// Get the underlying UUID type
     pub fn into_inner(self) -> Uuid {
         self.0
+    }
+
+    /// Wrap a primary key read from the database
+    pub(in crate::models) fn new(uuid: Uuid) -> Self {
+        Self(uuid)
     }
 
     /// Create a new `AccountUuid` from a `ForeignModel<AccountModel>`
@@ -331,6 +349,60 @@ impl Account {
         Ok(affected > 0)
     }
 
+    /// Fetch an account an Admin may manage: any but the tombstone
+    #[instrument(name = "Account::get_manageable", skip(tx))]
+    pub async fn get_manageable(
+        tx: &mut Transaction,
+        uuid: AccountUuid,
+    ) -> Result<Option<Account>, rorm::Error> {
+        let account = rorm::query(tx, AccountModel)
+            .condition(rorm::and![
+                AccountModel.uuid.equals(uuid.0),
+                AccountModel.tombstone.equals(false),
+            ])
+            .optional()
+            .await?;
+        Ok(account.map(Account::from))
+    }
+
+    /// Lock an account
+    ///
+    /// Returns `false` if the account does not exist, is the tombstone or is
+    /// locked already.
+    #[instrument(name = "Account::lock", skip(tx))]
+    pub async fn lock(
+        tx: &mut Transaction,
+        uuid: AccountUuid,
+        reason: MaxStr<LOCK_REASON_MAX_LEN>,
+    ) -> Result<bool, rorm::Error> {
+        let affected = rorm::update(tx, AccountModel)
+            .set(AccountModel.locked_at, Some(OffsetDateTime::now_utc()))
+            .set(AccountModel.lock_reason, Some(reason))
+            .condition(rorm::and![
+                AccountModel.uuid.equals(uuid.0),
+                AccountModel.tombstone.equals(false),
+                AccountModel.locked_at.is_none(),
+            ])
+            .await?;
+        Ok(affected > 0)
+    }
+
+    /// Lift the Lock of an account
+    ///
+    /// Returns `false` if the account does not exist or is not locked.
+    #[instrument(name = "Account::unlock", skip(tx))]
+    pub async fn unlock(tx: &mut Transaction, uuid: AccountUuid) -> Result<bool, rorm::Error> {
+        let affected = rorm::update(tx, AccountModel)
+            .set(AccountModel.locked_at, None)
+            .set(AccountModel.lock_reason, None)
+            .condition(rorm::and![
+                AccountModel.uuid.equals(uuid.0),
+                AccountModel.locked_at.is_some(),
+            ])
+            .await?;
+        Ok(affected > 0)
+    }
+
     /// The account deleted accounts leave their public decks with
     ///
     /// Made on the first deletion rather than by a migration: an instance that
@@ -423,6 +495,7 @@ impl From<AccountModel> for Account {
             email: value.email,
             created_at: value.created_at,
             role: value.role,
+            locked: value.locked_at.is_some(),
             identity: IdentityUuid::new_from_field(value.identity),
         }
     }

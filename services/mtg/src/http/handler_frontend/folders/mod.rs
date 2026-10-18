@@ -5,7 +5,8 @@
 //! on the deck, over in [`super::decks`].
 
 use galvyn::core::GalvynRouter;
-use galvyn_identity::AuthRequiredLayer;
+
+use crate::http::middleware::account_required::AccountRequiredLayer;
 
 pub mod handler;
 pub mod schema;
@@ -18,6 +19,6 @@ pub fn initialize_routes() -> GalvynRouter {
             .handler(handler::create_deck_folder)
             .handler(handler::update_deck_folder)
             .handler(handler::delete_deck_folder)
-            .wrap(AuthRequiredLayer),
+            .wrap(AccountRequiredLayer),
     )
 }

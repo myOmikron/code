@@ -1,6 +1,7 @@
 //! The service's domain models
 
 pub mod account;
+pub mod admin_log;
 pub mod card_attributes;
 pub mod catalog;
 pub mod collection;

@@ -2,37 +2,59 @@
     "button": {
         "back-to-accounts": "Zurück zu den Konten",
         "load-more": "Mehr laden",
+        "lock": "Sperren",
         "make-admin": "Zum Admin machen",
-        "make-member": "Zum Mitglied machen"
+        "make-member": "Zum Mitglied machen",
+        "unlock": "Entsperren"
     },
     "description": {
         "last-30-days": "Letzte 30 Tage",
+        "lock": "{{username}} kann sich danach nicht mehr anmelden, offene Sitzungen enden mit der nächsten Anfrage. Öffentliche Decks und Freigaben bleiben erreichbar.",
         "make-admin": "{{username}} bekommt die Admin-Rolle und kann danach alle Konten verwalten.",
         "make-member": "{{username}} verliert die Admin-Rolle und sieht die Verwaltung nicht mehr.",
         "no-accounts": "Kein Konto passt zur Suche oder zum Filter.",
+        "no-log-entries": "Bisher hat kein Admin ein Konto gesperrt, entsperrt oder seine Rolle geändert.",
         "no-runs": "Noch kein Lauf aufgezeichnet.",
         "no-statistics": "Der erste Schnappschuss entsteht, sobald snapshot-statistics läuft.",
         "own-account": "Deine eigene Admin-Rolle kannst du nicht abgeben.",
+        "reason": "Sehen nur Admins, das Konto erfährt den Grund nicht.",
         "run-durations": "Ein Balken pro Lauf, der älteste links.",
-        "syncs": "Die Synchronisierungen laufen in eigenen Containern. Hier steht nur, wie ihre Läufe ausgegangen sind; Läufe älter als 90 Tage werden entfernt."
+        "syncs": "Die Synchronisierungen laufen in eigenen Containern. Hier steht nur, wie ihre Läufe ausgegangen sind; Läufe älter als 90 Tage werden entfernt.",
+        "unlock": "{{username}} kann sich danach wieder anmelden."
     },
     "error": {
-        "own-account": "Deine eigene Admin-Rolle kannst du nicht abgeben."
+        "already-locked": "Das Konto ist bereits gesperrt.",
+        "not-locked": "Das Konto ist nicht gesperrt.",
+        "own-account": "Deine eigene Admin-Rolle kannst du nicht abgeben.",
+        "own-lock": "Dein eigenes Konto kannst du nicht sperren.",
+        "reason-missing": "Gib einen Grund für die Sperre an."
     },
     "heading": {
         "accounts": "Konten",
         "admin": "Verwaltung",
         "catalog-sync": "Katalog von Scryfall",
         "change-role": "Rolle ändern",
+        "lock": "Konto sperren",
+        "log": "Protokoll",
         "no-accounts": "Keine Konten gefunden",
+        "no-log-entries": "Keine Einträge",
         "no-statistics": "Noch keine Statistik",
         "price-guide-sync": "Preisliste von Cardmarket",
         "run-durations": "Dauer der letzten Läufe",
         "statistics": "Statistik",
-        "syncs": "Synchronisierung"
+        "syncs": "Synchronisierung",
+        "unlock": "Konto entsperren"
     },
     "label": {
+        "account": "Konto",
         "accounts": "Konten",
+        "action": "Aktion",
+        "action-deletion": "Gelöscht",
+        "action-lock": "Gesperrt",
+        "action-make-admin": "Zum Admin gemacht",
+        "action-make-member": "Zum Mitglied gemacht",
+        "action-unlock": "Entsperrt",
+        "admin": "Admin",
         "cards": "Karten",
         "collections": "Sammlungen",
         "created-at": "Erstellt am",
@@ -44,9 +66,15 @@
         "last-failure": "Letzter Fehler",
         "last-success": "Letzter Erfolg",
         "loading": "Wird geladen …",
+        "lock": "Sperre",
+        "lock-all": "Alle Konten",
+        "lock-reason": "Grund der Sperre",
+        "locked": "Gesperrt",
+        "locked-since": "Gesperrt seit {{date}}",
         "never": "Noch nie",
         "new-accounts_one": "+{{count}} in 7 Tagen",
         "new-accounts_other": "+{{count}} in 7 Tagen",
+        "not-locked": "Nicht gesperrt",
         "open-scanner-sessions": "Offene Scan-Sitzungen",
         "outcome": "Ergebnis",
         "outcome-failed": "Fehlgeschlagen",
@@ -58,6 +86,7 @@
         "public-decks-of_one": "davon {{count}} öffentlich",
         "public-decks-of_other": "davon {{count}} öffentlich",
         "read-at": "Gelesen am",
+        "reason": "Grund",
         "role": "Rolle",
         "role-admin": "Admin",
         "role-all": "Alle Rollen",
@@ -66,9 +95,13 @@
         "stamp": "Stand der Datei",
         "started-at": "Gestartet",
         "taken-at": "Stand: {{time}}",
+        "time": "Zeitpunkt",
+        "unlock-reason": "Grund der Entsperrung",
         "username": "Benutzername"
     },
     "toast": {
-        "role-changed": "Rolle geändert"
+        "locked": "Konto gesperrt",
+        "role-changed": "Rolle geändert",
+        "unlocked": "Konto entsperrt"
     }
 }

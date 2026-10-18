@@ -1,7 +1,8 @@
 //! The card catalog, as far as a client has to ask about it
 
 use galvyn::core::GalvynRouter;
-use galvyn_identity::AuthRequiredLayer;
+
+use crate::http::middleware::account_required::AccountRequiredLayer;
 
 pub mod handler;
 pub mod schema;
@@ -13,6 +14,6 @@ pub fn initialize_routes() -> GalvynRouter {
             .handler(handler::resolve_printings)
             .handler(handler::get_price_history)
             .handler(handler::get_printing_languages)
-            .wrap(AuthRequiredLayer),
+            .wrap(AccountRequiredLayer),
     )
 }

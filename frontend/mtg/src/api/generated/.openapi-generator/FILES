@@ -7,9 +7,15 @@ docs/AddScannerSessionEntryRequest.md
 docs/AddWatchListEntryRequest.md
 docs/AdminAccount.md
 docs/AdminAccountDetail.md
+docs/AdminAccountLock.md
+docs/AdminAction.md
 docs/AdminCatalogStamp.md
 docs/AdminCatalogSync.md
 docs/AdminListAccountsResponse.md
+docs/AdminListLogResponse.md
+docs/AdminLockAccountErrors.md
+docs/AdminLockAccountRequest.md
+docs/AdminLogEntryResponse.md
 docs/AdminPriceGuideStamp.md
 docs/AdminPriceGuideSync.md
 docs/AdminSetRoleErrors.md
@@ -19,6 +25,8 @@ docs/AdminStatisticsSnapshot.md
 docs/AdminSyncRun.md
 docs/AdminSyncRuns.md
 docs/AdminSyncsResponse.md
+docs/AdminUnlockAccountErrors.md
+docs/AdminUnlockAccountRequest.md
 docs/AdvisorSettingsResponse.md
 docs/ApiErrorResponse.md
 docs/BracketRulesResponse.md
@@ -73,7 +81,9 @@ docs/FinishLoginErrors.md
 docs/FinishLoginRequest.md
 docs/FinishRegistrationRequest.md
 docs/FormErrorResponseForAddPasskeyErrors.md
+docs/FormErrorResponseForAdminLockAccountErrors.md
 docs/FormErrorResponseForAdminSetRoleErrors.md
+docs/FormErrorResponseForAdminUnlockAccountErrors.md
 docs/FormErrorResponseForDeleteAccountErrors.md
 docs/FormErrorResponseForDeletePasskeyErrors.md
 docs/FormErrorResponseForFinishLoginErrors.md

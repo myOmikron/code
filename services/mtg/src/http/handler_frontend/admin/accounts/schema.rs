@@ -1,10 +1,12 @@
 use galvyn::core::re_exports::schemars;
 use galvyn::core::re_exports::schemars::JsonSchema;
 use galvyn::core::stuff::schema::SchemaDateTime;
+use galvyn::rorm::fields::types::MaxStr;
 use serde::Deserialize;
 use serde::Serialize;
 
 use crate::models::account::AccountUuid;
+use crate::models::account::LOCK_REASON_MAX_LEN;
 use crate::models::account::Role;
 use crate::models::account::overview::AccountOverview;
 
@@ -17,6 +19,9 @@ pub struct AdminListAccountsQuery {
     /// Only Accounts with this Role
     #[serde(default)]
     pub role: Option<Role>,
+    /// Only locked Accounts (`true`) or only Accounts that are not (`false`)
+    #[serde(default)]
+    pub locked: Option<bool>,
     /// Continue after this Account, from a previous page's `next_cursor`
     #[serde(default)]
     pub after: Option<AccountUuid>,
@@ -47,6 +52,17 @@ pub struct AdminAccount {
     pub collections: i64,
     /// Decks of the Account
     pub decks: i64,
+    /// The Account's Lock, `None` while it is not locked
+    pub lock: Option<AdminAccountLock>,
+}
+
+/// An Account's Lock
+#[derive(Debug, Clone, Serialize, JsonSchema)]
+pub struct AdminAccountLock {
+    /// When the Account was locked
+    pub locked_at: SchemaDateTime,
+    /// Why it was locked
+    pub reason: String,
 }
 
 impl From<AccountOverview> for AdminAccount {
@@ -59,6 +75,10 @@ impl From<AccountOverview> for AdminAccount {
             created_at: SchemaDateTime(value.created_at),
             collections: value.collections,
             decks: value.decks,
+            lock: value.lock.map(|lock| AdminAccountLock {
+                locked_at: SchemaDateTime(lock.locked_at),
+                reason: lock.reason,
+            }),
         }
     }
 }
@@ -95,4 +115,37 @@ pub struct AdminSetRoleRequest {
 pub struct AdminSetRoleErrors {
     /// The Account is the Admin's own, which it cannot demote
     pub own_account: bool,
+}
+
+/// Request to Lock an Account
+#[derive(Debug, Clone, Deserialize, JsonSchema)]
+pub struct AdminLockAccountRequest {
+    /// Why the Account is locked, shown to Admins only
+    pub reason: MaxStr<LOCK_REASON_MAX_LEN>,
+}
+
+/// Why an Account could not be locked
+#[derive(Debug, Default, Serialize, JsonSchema)]
+pub struct AdminLockAccountErrors {
+    /// The Account is the Admin's own, which it cannot Lock
+    pub own_account: bool,
+    /// No reason was given
+    pub reason_missing: bool,
+    /// The Account is locked already
+    pub already_locked: bool,
+}
+
+/// Request to lift an Account's Lock
+#[derive(Debug, Clone, Deserialize, JsonSchema)]
+pub struct AdminUnlockAccountRequest {
+    /// Why the Lock is lifted, shown to Admins only
+    #[serde(default)]
+    pub reason: Option<MaxStr<LOCK_REASON_MAX_LEN>>,
+}
+
+/// Why an Account's Lock could not be lifted
+#[derive(Debug, Default, Serialize, JsonSchema)]
+pub struct AdminUnlockAccountErrors {
+    /// The Account is not locked
+    pub not_locked: bool,
 }

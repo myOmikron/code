@@ -2,37 +2,59 @@
     "button": {
         "back-to-accounts": "Back to the accounts",
         "load-more": "Load more",
+        "lock": "Lock",
         "make-admin": "Make admin",
-        "make-member": "Make member"
+        "make-member": "Make member",
+        "unlock": "Unlock"
     },
     "description": {
         "last-30-days": "Last 30 days",
+        "lock": "{{username}} can no longer log in, and open sessions end with their next request. Public decks and shares stay reachable.",
         "make-admin": "{{username}} gets the Admin role and can manage every account afterwards.",
         "make-member": "{{username}} loses the Admin role and no longer sees the admin area.",
         "no-accounts": "No account matches the search or the filter.",
+        "no-log-entries": "No Admin has locked, unlocked or changed the role of an account yet.",
         "no-runs": "No run recorded yet.",
         "no-statistics": "The first snapshot appears once snapshot-statistics runs.",
         "own-account": "You cannot give up your own Admin role.",
+        "reason": "Only Admins see this; the account is never told the reason.",
         "run-durations": "One bar per run, the oldest on the left.",
-        "syncs": "The syncs run in their own containers. This only shows how their runs went; runs older than 90 days are removed."
+        "syncs": "The syncs run in their own containers. This only shows how their runs went; runs older than 90 days are removed.",
+        "unlock": "{{username}} can log in again."
     },
     "error": {
-        "own-account": "You cannot give up your own Admin role."
+        "already-locked": "The account is already locked.",
+        "not-locked": "The account is not locked.",
+        "own-account": "You cannot give up your own Admin role.",
+        "own-lock": "You cannot lock your own account.",
+        "reason-missing": "Give a reason for the lock."
     },
     "heading": {
         "accounts": "Accounts",
         "admin": "Admin",
         "catalog-sync": "Catalog from Scryfall",
         "change-role": "Change role",
+        "lock": "Lock account",
+        "log": "Log",
         "no-accounts": "No accounts found",
+        "no-log-entries": "No entries",
         "no-statistics": "No statistics yet",
         "price-guide-sync": "Price guide from Cardmarket",
         "run-durations": "Duration of the recent runs",
         "statistics": "Statistics",
-        "syncs": "Syncs"
+        "syncs": "Syncs",
+        "unlock": "Unlock account"
     },
     "label": {
+        "account": "Account",
         "accounts": "Accounts",
+        "action": "Action",
+        "action-deletion": "Deleted",
+        "action-lock": "Locked",
+        "action-make-admin": "Made admin",
+        "action-make-member": "Made member",
+        "action-unlock": "Unlocked",
+        "admin": "Admin",
         "cards": "Cards",
         "collections": "Collections",
         "created-at": "Created",
@@ -44,9 +66,15 @@
         "last-failure": "Last failure",
         "last-success": "Last success",
         "loading": "Loading …",
+        "lock": "Lock",
+        "lock-all": "All accounts",
+        "lock-reason": "Reason for the lock",
+        "locked": "Locked",
+        "locked-since": "Locked since {{date}}",
         "never": "Never",
         "new-accounts_one": "+{{count}} in 7 days",
         "new-accounts_other": "+{{count}} in 7 days",
+        "not-locked": "Not locked",
         "open-scanner-sessions": "Open scanner sessions",
         "outcome": "Outcome",
         "outcome-failed": "Failed",
@@ -58,6 +86,7 @@
         "public-decks-of_one": "{{count}} of them public",
         "public-decks-of_other": "{{count}} of them public",
         "read-at": "Read at",
+        "reason": "Reason",
         "role": "Role",
         "role-admin": "Admin",
         "role-all": "All roles",
@@ -66,9 +95,13 @@
         "stamp": "File stamp",
         "started-at": "Started",
         "taken-at": "As of {{time}}",
+        "time": "Time",
+        "unlock-reason": "Reason for the unlock",
         "username": "Username"
     },
     "toast": {
-        "role-changed": "Role changed"
+        "locked": "Account locked",
+        "role-changed": "Role changed",
+        "unlocked": "Account unlocked"
     }
 }

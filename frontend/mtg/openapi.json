@@ -383,6 +383,16 @@
                     },
                     {
                         "in": "query",
+                        "name": "locked",
+                        "schema": {
+                            "nullable": true,
+                            "description": "Only locked Accounts (`true`) or only Accounts that are not (`false`)",
+                            "type": "boolean"
+                        },
+                        "style": "form"
+                    },
+                    {
+                        "in": "query",
                         "name": "role",
                         "schema": {
                             "nullable": true,
@@ -515,7 +525,7 @@
         "/api/frontend/v1/admin/accounts/{uuid}/role": {
             "put": {
                 "summary": "Change an Account's Role",
-                "description": "Change an Account's Role\n\nAn Admin cannot demote itself, so there is always an Admin left to undo a change.",
+                "description": "Change an Account's Role\n\nAn Admin cannot demote itself, so there is always an Admin left to undo a change.\nA change writes an Admin log entry; setting the Role an Account has already writes none.",
                 "operationId": "admin_set_role",
                 "parameters": [
                     {
@@ -553,6 +563,253 @@
                                             "$ref": "#/components/schemas/FormErrorResponse_for_AdminSetRoleErrors"
                                         }
                                     ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/admin/accounts/{uuid}/lock": {
+            "post": {
+                "summary": "Lock an Account",
+                "description": "Lock an Account\n\nIts Login and Registration link Enrollment are refused from now on, and\nits sessions fail on their next request. An Admin cannot Lock itself.",
+                "operationId": "admin_lock_account",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "uuid",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Account`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AdminLockAccountRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "nullable": true
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/FormErrorResponse_for_AdminLockAccountErrors"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/admin/accounts/{uuid}/unlock": {
+            "post": {
+                "summary": "Lift an Account's Lock",
+                "description": "Lift an Account's Lock",
+                "operationId": "admin_unlock_account",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "uuid",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Account`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AdminUnlockAccountRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "nullable": true
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/FormErrorResponse_for_AdminUnlockAccountErrors"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/admin/log": {
+            "get": {
+                "summary": "List the Admin log, newest first",
+                "description": "List the Admin log, newest first",
+                "operationId": "admin_list_log",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "account",
+                        "schema": {
+                            "nullable": true,
+                            "description": "Only the entries about this Account",
+                            "allOf": [
+                                {
+                                    "$ref": "#/components/schemas/AccountUuid"
+                                }
+                            ]
+                        },
+                        "style": "form"
+                    },
+                    {
+                        "in": "query",
+                        "name": "after",
+                        "schema": {
+                            "nullable": true,
+                            "description": "Continue after this entry, from a previous page's `next_cursor`",
+                            "allOf": [
+                                {
+                                    "$ref": "#/components/schemas/AdminLogEntryUuid"
+                                }
+                            ]
+                        },
+                        "style": "form"
+                    },
+                    {
+                        "in": "query",
+                        "name": "limit",
+                        "schema": {
+                            "description": "How many entries to return, capped server-side",
+                            "default": 50,
+                            "type": "integer",
+                            "minimum": 0,
+                            "format": "uint32"
+                        },
+                        "style": "form"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AdminListLogResponse"
                                 }
                             }
                         }
@@ -756,7 +1013,7 @@
         "/api/frontend/v1/auth/recover": {
             "post": {
                 "summary": "Send a fresh registration link to an account's stored address",
-                "description": "Send a fresh registration link to an account's stored address\n\nThe \"lost passkey\" flow: a new device has no passkey, so the login form\noffers this instead of a dead end. Registering over the link only *adds* a\npasskey — the existing ones keep working until their owner removes them.\n\nAlways answers `200`, whether or not the username exists — the response\nmust not be usable to probe which usernames are registered. The link is\nonly ever sent to the address stored on the account, never to one from the\nrequest, so this endpoint cannot be used to mail a third party.",
+                "description": "Send a fresh registration link to an account's stored address\n\nThe \"lost passkey\" flow: a new device has no passkey, so the login form\noffers this instead of a dead end. Registering over the link only *adds* a\npasskey — the existing ones keep working until their owner removes them.\n\nAlways answers `200`, whether or not the username exists — the response\nmust not be usable to probe which usernames are registered. The link is\nonly ever sent to the address stored on the account, never to one from the\nrequest, so this endpoint cannot be used to mail a third party. A locked\naccount gets no link either, and the answer is the same `200`.",
                 "operationId": "recover_account",
                 "requestBody": {
                     "content": {
@@ -1009,7 +1266,7 @@
         "/api/frontend/v1/auth/login/finish": {
             "post": {
                 "summary": "Finish a passkey login",
-                "description": "Finish a passkey login\n\nVerifies the browser's credential and logs the account in.",
+                "description": "Finish a passkey login\n\nVerifies the browser's credential and logs the account in. An account\nlocked since its login started is logged right out again.",
                 "operationId": "finish_login",
                 "requestBody": {
                     "content": {
@@ -8007,6 +8264,15 @@
                         "description": "Email address",
                         "type": "string"
                     },
+                    "lock": {
+                        "nullable": true,
+                        "description": "The Account's Lock, `None` while it is not locked",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/AdminAccountLock"
+                            }
+                        ]
+                    },
                     "role": {
                         "description": "What the Account may do",
                         "allOf": [
@@ -8066,6 +8332,61 @@
                     "account",
                     "cards",
                     "passkeys"
+                ]
+            },
+            "AdminAccountLock": {
+                "description": "An Account's Lock",
+                "type": "object",
+                "properties": {
+                    "locked_at": {
+                        "description": "When the Account was locked",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDateTime"
+                            }
+                        ]
+                    },
+                    "reason": {
+                        "description": "Why it was locked",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "locked_at",
+                    "reason"
+                ]
+            },
+            "AdminAction": {
+                "description": "What an Admin did to an Account",
+                "oneOf": [
+                    {
+                        "description": "Locked the Account",
+                        "type": "string",
+                        "enum": [
+                            "Lock"
+                        ]
+                    },
+                    {
+                        "description": "Lifted the Account's Lock",
+                        "type": "string",
+                        "enum": [
+                            "Unlock"
+                        ]
+                    },
+                    {
+                        "description": "Gave the Account another Role",
+                        "type": "string",
+                        "enum": [
+                            "RoleChange"
+                        ]
+                    },
+                    {
+                        "description": "Deleted the Account",
+                        "type": "string",
+                        "enum": [
+                            "Deletion"
+                        ]
+                    }
                 ]
             },
             "AdminCatalogStamp": {
@@ -8140,6 +8461,153 @@
                 "required": [
                     "accounts"
                 ]
+            },
+            "AdminListLogResponse": {
+                "description": "One page of the Admin log, newest first",
+                "type": "object",
+                "properties": {
+                    "entries": {
+                        "description": "The entries",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/AdminLogEntryResponse"
+                        }
+                    },
+                    "next_cursor": {
+                        "nullable": true,
+                        "description": "Pass as `after` for the next page, `None` on the last one",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/AdminLogEntryUuid"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "entries"
+                ]
+            },
+            "AdminLockAccountErrors": {
+                "description": "Why an Account could not be locked",
+                "type": "object",
+                "properties": {
+                    "already_locked": {
+                        "description": "The Account is locked already",
+                        "type": "boolean"
+                    },
+                    "own_account": {
+                        "description": "The Account is the Admin's own, which it cannot Lock",
+                        "type": "boolean"
+                    },
+                    "reason_missing": {
+                        "description": "No reason was given",
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "already_locked",
+                    "own_account",
+                    "reason_missing"
+                ]
+            },
+            "AdminLockAccountRequest": {
+                "description": "Request to Lock an Account",
+                "type": "object",
+                "properties": {
+                    "reason": {
+                        "description": "Why the Account is locked, shown to Admins only",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_1024"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "reason"
+                ]
+            },
+            "AdminLogEntryResponse": {
+                "description": "One entry of the Admin log",
+                "type": "object",
+                "properties": {
+                    "account": {
+                        "nullable": true,
+                        "description": "The affected Account, `None` once it is deleted",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/AccountUuid"
+                            }
+                        ]
+                    },
+                    "account_username": {
+                        "description": "The affected Account's username at the time",
+                        "type": "string"
+                    },
+                    "action": {
+                        "description": "What the Admin did",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/AdminAction"
+                            }
+                        ]
+                    },
+                    "admin": {
+                        "nullable": true,
+                        "description": "The acting Admin, `None` once it is deleted",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/AccountUuid"
+                            }
+                        ]
+                    },
+                    "admin_username": {
+                        "description": "The acting Admin's username at the time",
+                        "type": "string"
+                    },
+                    "created_at": {
+                        "description": "When the Admin acted",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDateTime"
+                            }
+                        ]
+                    },
+                    "reason": {
+                        "nullable": true,
+                        "description": "The reason the Admin gave",
+                        "type": "string"
+                    },
+                    "role": {
+                        "nullable": true,
+                        "description": "The Role a Role change gave the Account",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/Role"
+                            }
+                        ]
+                    },
+                    "uuid": {
+                        "description": "Primary key",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/AdminLogEntryUuid"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "account_username",
+                    "action",
+                    "admin_username",
+                    "created_at",
+                    "uuid"
+                ]
+            },
+            "AdminLogEntryUuid": {
+                "description": "Primary key of an [`AdminLogEntry`]",
+                "type": "string",
+                "format": "uuid"
             },
             "AdminPriceGuideStamp": {
                 "description": "The file the prices were last read from",
@@ -8420,6 +8888,34 @@
                     "catalog",
                     "price_guide"
                 ]
+            },
+            "AdminUnlockAccountErrors": {
+                "description": "Why an Account's Lock could not be lifted",
+                "type": "object",
+                "properties": {
+                    "not_locked": {
+                        "description": "The Account is not locked",
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "not_locked"
+                ]
+            },
+            "AdminUnlockAccountRequest": {
+                "description": "Request to lift an Account's Lock",
+                "type": "object",
+                "properties": {
+                    "reason": {
+                        "nullable": true,
+                        "description": "Why the Lock is lifted, shown to Admins only",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_1024"
+                            }
+                        ]
+                    }
+                }
             },
             "AdvisorSettingsResponse": {
                 "description": "One reader's advisor settings for one deck\n\nThe same six fields as [`SetAdvisorSettingsRequest`] — a settings document is the same document going in and coming out. Two named types rather than one reused so the generated client names request and response separately.",
@@ -10470,6 +10966,10 @@
                         "description": "The signature did not check out",
                         "type": "boolean"
                     },
+                    "locked": {
+                        "description": "An Admin locked the account",
+                        "type": "boolean"
+                    },
                     "malformed_credential": {
                         "description": "The browser's response was not a credential",
                         "type": "boolean"
@@ -10481,6 +10981,7 @@
                 },
                 "required": [
                     "authentication_failed",
+                    "locked",
                     "malformed_credential",
                     "no_ceremony"
                 ]
@@ -10549,6 +11050,32 @@
                     "result"
                 ]
             },
+            "FormErrorResponse_for_AdminLockAccountErrors": {
+                "description": "The response that is sent in a case of an error the caller should present his user",
+                "type": "object",
+                "properties": {
+                    "error": {
+                        "description": "The actual error struct",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/AdminLockAccountErrors"
+                            }
+                        ]
+                    },
+                    "result": {
+                        "description": "A constant `\"Err\"` used to differentiate this schema from any other \"Ok\" schema",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ErrorConstant"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "error",
+                    "result"
+                ]
+            },
             "FormErrorResponse_for_AdminSetRoleErrors": {
                 "description": "The response that is sent in a case of an error the caller should present his user",
                 "type": "object",
@@ -10558,6 +11085,32 @@
                         "allOf": [
                             {
                                 "$ref": "#/components/schemas/AdminSetRoleErrors"
+                            }
+                        ]
+                    },
+                    "result": {
+                        "description": "A constant `\"Err\"` used to differentiate this schema from any other \"Ok\" schema",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ErrorConstant"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "error",
+                    "result"
+                ]
+            },
+            "FormErrorResponse_for_AdminUnlockAccountErrors": {
+                "description": "The response that is sent in a case of an error the caller should present his user",
+                "type": "object",
+                "properties": {
+                    "error": {
+                        "description": "The actual error struct",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/AdminUnlockAccountErrors"
                             }
                         ]
                     },
@@ -12260,6 +12813,10 @@
                         "description": "This authenticator already holds a passkey for this account",
                         "type": "boolean"
                     },
+                    "locked": {
+                        "description": "An Admin locked the account",
+                        "type": "boolean"
+                    },
                     "malformed_credential": {
                         "description": "The browser's response was not a credential",
                         "type": "boolean"
@@ -12287,6 +12844,7 @@
                 },
                 "required": [
                     "already_registered",
+                    "locked",
                     "malformed_credential",
                     "no_ceremony",
                     "registration_failed",
@@ -13537,12 +14095,17 @@
                 "description": "Why a login could not be started",
                 "type": "object",
                 "properties": {
+                    "locked": {
+                        "description": "An Admin locked the account",
+                        "type": "boolean"
+                    },
                     "unknown_username": {
                         "description": "No account by that name, or it has no passkey — deliberately the same flag, so the endpoint does not say which usernames are actually able to log in",
                         "type": "boolean"
                     }
                 },
                 "required": [
+                    "locked",
                     "unknown_username"
                 ]
             },
