@@ -37,5 +37,17 @@ The number the Bakery gives an Item in its own range, under which the Nachbarsch
 _Avoid_: ID, item number, SKU
 
 **Procurement**:
-What the Nachbarschaftshilfe buys at the Bakery for one pickup day: all positions of that day's orders that were not cancelled, summed per Item. Final once the day is frozen. Called "Beschaffung" in the UI.
+What the Nachbarschaftshilfe buys at the Bakery for one pickup day: all positions of that day's orders that were not cancelled, summed per Item. Final once the day is Dispatched. Called "Beschaffung" in the UI.
 _Avoid_: bakery order, purchase order
+
+**Deadline**:
+The point in time a pickup day stops taking orders. Customers can neither place nor cancel orders afterwards; staff can still cancel them until the Dispatch. Called "Bestellschluss" in the UI.
+_Avoid_: cutoff, order time, lock
+
+**Review Window**:
+The span between a pickup day's Deadline and its Dispatch, in which Admins look over the day's orders and cancel the ones that should not be bought. Called "Prüfzeit" in the UI.
+_Avoid_: grace period, buffer
+
+**Dispatch**:
+Sending a pickup day's Procurement to the Bakery, at the end of the Review Window. Customers get their binding confirmation with it. Called "Bestellversand" in the UI.
+_Avoid_: bakery order, export, submission
