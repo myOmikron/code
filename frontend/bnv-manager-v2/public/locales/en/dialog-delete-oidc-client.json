@@ -1,0 +1,11 @@
+{
+    "button": {
+        "delete-oidc-client": "Delete client"
+    },
+    "description": {
+        "delete-oidc-client": "The client can no longer sign users in via the BNV Manager afterwards. Tokens already issued stay valid until they expire."
+    },
+    "heading": {
+        "delete-oidc-client": "Delete OIDC client: {{client}}"
+    }
+}

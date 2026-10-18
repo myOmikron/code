@@ -1170,9 +1170,11 @@
                 }
             }
         },
-        "/api/v1/frontend/admin/oidc-providers": {
+        "/api/v1/frontend/admin/oidc-clients": {
             "get": {
-                "operationId": "get_all_oidc_providers",
+                "summary": "Retrieve all registered OIDC clients",
+                "description": "Retrieve all registered OIDC clients",
+                "operationId": "get_all_oidc_clients",
                 "responses": {
                     "200": {
                         "description": "",
@@ -1181,7 +1183,7 @@
                                 "schema": {
                                     "type": "array",
                                     "items": {
-                                        "$ref": "#/components/schemas/OidcProvider"
+                                        "$ref": "#/components/schemas/OidcClientSchema"
                                     }
                                 }
                             }
@@ -1220,12 +1222,14 @@
                 }
             },
             "post": {
-                "operationId": "create_oidc_provider",
+                "summary": "Register a new OIDC client",
+                "description": "Register a new OIDC client\n\nThe response contains the client secret, which is not retrievable afterwards.",
+                "operationId": "create_oidc_client",
                 "requestBody": {
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/CreateOidcProvider"
+                                "$ref": "#/components/schemas/CreateOidcClientRequest"
                             }
                         }
                     }
@@ -1236,10 +1240,64 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/OidcClientUuid"
+                                    "$ref": "#/components/schemas/FormResult_for_CreatedOidcClient_and_CreateOidcClientError"
                                 }
                             }
                         }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/frontend/admin/oidc-clients/{uuid}": {
+            "delete": {
+                "summary": "Delete an OIDC client",
+                "description": "Delete an OIDC client\n\nIts pending authorization codes are deleted with it.",
+                "operationId": "delete_oidc_client",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "uuid",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": ""
                     },
                     "400": {
                         "description": "",
@@ -1488,12 +1546,25 @@
                     "valid_days"
                 ]
             },
-            "CreateOidcProvider": {
-                "description": "Request to create an oidc provider",
+            "CreateOidcClientError": {
+                "description": "Errors when registering an OIDC client",
+                "type": "object",
+                "properties": {
+                    "invalid_redirect_uri": {
+                        "description": "The redirect uri is no absolute url, not `https` (or `http` on localhost) or contains a fragment",
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "invalid_redirect_uri"
+                ]
+            },
+            "CreateOidcClientRequest": {
+                "description": "Request to register an OIDC client",
                 "type": "object",
                 "properties": {
                     "name": {
-                        "description": "Name of the oidc provider",
+                        "description": "Human-readable name",
                         "allOf": [
                             {
                                 "$ref": "#/components/schemas/MaxStr_255"
@@ -1501,14 +1572,43 @@
                         ]
                     },
                     "redirect_uri": {
-                        "description": "Redirect url of the oidc provider",
-                        "type": "string",
-                        "format": "uri"
+                        "description": "The client's redirect uri\n\nMust be an absolute url using `https`, or `http` on localhost, and must not contain a fragment.",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_1024"
+                            }
+                        ]
                     }
                 },
                 "required": [
                     "name",
                     "redirect_uri"
+                ]
+            },
+            "CreatedOidcClient": {
+                "description": "The credentials of a newly registered OIDC client\n\nThis is the only time the secret is returned.",
+                "type": "object",
+                "properties": {
+                    "client_id": {
+                        "description": "Client id of the client",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/OidcClientUuid"
+                            }
+                        ]
+                    },
+                    "client_secret": {
+                        "description": "Secret the client authenticates with",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_64"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "client_id",
+                    "client_secret"
                 ]
             },
             "CredentialResetSchema": {
@@ -1729,6 +1829,47 @@
                         "properties": {
                             "error": {
                                 "$ref": "#/components/schemas/CreateClubError"
+                            },
+                            "result": {
+                                "type": "string",
+                                "enum": [
+                                    "Err"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "error",
+                            "result"
+                        ]
+                    }
+                ]
+            },
+            "FormResult_for_CreatedOidcClient_and_CreateOidcClientError": {
+                "description": "A `Result` with a custom serialization",
+                "oneOf": [
+                    {
+                        "type": "object",
+                        "properties": {
+                            "result": {
+                                "type": "string",
+                                "enum": [
+                                    "Ok"
+                                ]
+                            },
+                            "value": {
+                                "$ref": "#/components/schemas/CreatedOidcClient"
+                            }
+                        },
+                        "required": [
+                            "result",
+                            "value"
+                        ]
+                    },
+                    {
+                        "type": "object",
+                        "properties": {
+                            "error": {
+                                "$ref": "#/components/schemas/CreateOidcClientError"
                             },
                             "result": {
                                 "type": "string",
@@ -2008,28 +2149,15 @@
                 "type": "string",
                 "maxLength": 64
             },
-            "OidcClientUuid": {
-                "description": "Client id of an oidc provider",
-                "type": "string",
-                "format": "uuid"
-            },
-            "OidcProvider": {
-                "description": "A single OIDC Provider",
+            "OidcClientSchema": {
+                "description": "A registered OIDC client, without its secret",
                 "type": "object",
                 "properties": {
                     "client_id": {
-                        "description": "client id of the provider",
+                        "description": "Client id of the client",
                         "allOf": [
                             {
                                 "$ref": "#/components/schemas/OidcClientUuid"
-                            }
-                        ]
-                    },
-                    "client_secret": {
-                        "description": "Secret of the provider",
-                        "allOf": [
-                            {
-                                "$ref": "#/components/schemas/MaxStr_64"
                             }
                         ]
                     },
@@ -2042,17 +2170,21 @@
                         ]
                     },
                     "redirect_uri": {
-                        "description": "Redirect url associated with the provider",
+                        "description": "The client's registered redirect uri",
                         "type": "string",
                         "format": "uri"
                     }
                 },
                 "required": [
                     "client_id",
-                    "client_secret",
                     "name",
                     "redirect_uri"
                 ]
+            },
+            "OidcClientUuid": {
+                "description": "Client id of an OIDC client",
+                "type": "string",
+                "format": "uuid"
             },
             "Page_for_SimpleAccountSchema": {
                 "description": "A page of items",
@@ -2238,6 +2370,10 @@
                 "required": [
                     "domain"
                 ]
+            },
+            "MaxStr_1024": {
+                "maxLength": 1024,
+                "type": "string"
             }
         }
     }

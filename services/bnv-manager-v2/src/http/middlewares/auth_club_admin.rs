@@ -26,7 +26,9 @@ pub struct ClubPath {
 /// will proceed to the next handler in the chain. Otherwise, it will return an error.
 pub async fn auth_club_admin(
     Path(ClubPath { club_uuid }): Path<ClubPath>,
-    SessionUser { uuid: account_uuid }: SessionUser,
+    SessionUser {
+        uuid: account_uuid, ..
+    }: SessionUser,
     req: Request,
     next: Next,
 ) -> ApiResult<Response> {

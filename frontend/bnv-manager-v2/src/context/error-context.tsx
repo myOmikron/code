@@ -58,7 +58,7 @@ export function ErrorContext(props: ErrorContextProps) {
         return (
             <Navigate
                 to={"/oidc/auth"}
-                search={{ redirect_url: window.location.pathname + window.location.search, external: false }}
+                search={{ redirect_url: window.location.pathname + window.location.search }}
                 replace={true}
             />
         );

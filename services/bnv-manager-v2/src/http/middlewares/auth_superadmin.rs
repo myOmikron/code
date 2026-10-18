@@ -11,7 +11,9 @@ use crate::models::account::AdministrativeAccount;
 
 /// Middleware function to check for superadmins
 pub async fn auth_superadmin(
-    SessionUser { uuid: account_uuid }: SessionUser,
+    SessionUser {
+        uuid: account_uuid, ..
+    }: SessionUser,
     req: Request,
     next: Next,
 ) -> ApiResult<Response> {

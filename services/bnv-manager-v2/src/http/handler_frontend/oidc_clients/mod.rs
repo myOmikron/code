@@ -1,4 +1,4 @@
-//! Endpoints and schema for managing oidc providers
+//! Endpoints and schema for managing OIDC clients
 
 pub use schema::*;
 

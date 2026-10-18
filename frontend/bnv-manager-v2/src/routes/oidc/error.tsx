@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import React from "react";
 import Logo from "src/assets/bnv.svg?react";
 import { PrimaryButton } from "src/components/base/button";
+import { OidcErrorCode, validateOidcErrorSearch } from "src/utils/oidc";
 
 /**
  * Props for {@link OidcError}
@@ -25,27 +26,21 @@ export default function OidcError(props: OidcErrorProps) {
             <div className={"flex flex-col justify-center gap-6"}>
                 <Logo className={"h-8 w-fit dark:text-white"} />
                 <Heading className={"mt-12"}>{t("heading.error")}</Heading>
-                <span>{search.error}</span>
+                <span>{t(search.error ? MESSAGES[search.error] : "description.unknown")}</span>
                 <PrimaryButton onClick={() => router.navigate({ to: "/" })}>{t("button.back-to-home")}</PrimaryButton>
             </div>
         </AuthLayout>
     );
 }
 
-/**
- * Search parameters for the oidc error route
- */
-type ErrorParams = {
-    /** The errors to display */
-    error: string;
+/** Translation key of the message for each known error code */
+const MESSAGES: Record<OidcErrorCode, string> = {
+    "unknown-request": "description.unknown-request",
+    "unknown-client": "description.unknown-client",
+    "invalid-redirect-uri": "description.invalid-redirect-uri",
 };
 
 export const Route = createFileRoute("/oidc/error")({
     component: OidcError,
-    validateSearch: (search: Record<string, unknown>): ErrorParams => {
-        return {
-            error: search?.error as string | "/",
-        };
-    },
-    loaderDeps: ({ search: { error } }) => ({ error }),
+    validateSearch: validateOidcErrorSearch,
 });

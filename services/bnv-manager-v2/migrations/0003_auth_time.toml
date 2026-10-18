@@ -1,0 +1,63 @@
+[Migration]
+Hash = "15020058837353897976"
+Initial = false
+Dependency = 2
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "OidcAuthenticationToken"
+
+[Migration.Operations.Field]
+Name = "auth_time"
+Type = "datetime"
+Annotations = []
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/bnv-manager-v2/src/models/oidc_client/db.rs"
+Line = 56
+Column = 9
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "ClubAdminAccount"
+Name = "username"
+MaxLength = 255
+
+[[Migration.Operations]]
+Type = "DropFieldMaxLength"
+Model = "ClubAdminAccount"
+Name = "username"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "invitemodel"
+Name = "username"
+MaxLength = 255
+
+[[Migration.Operations]]
+Type = "DropFieldMaxLength"
+Model = "invitemodel"
+Name = "username"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "AdministrativeAccount"
+Name = "username"
+MaxLength = 255
+
+[[Migration.Operations]]
+Type = "DropFieldMaxLength"
+Model = "AdministrativeAccount"
+Name = "username"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "ClubAccount"
+Name = "username"
+MaxLength = 255
+
+[[Migration.Operations]]
+Type = "DropFieldMaxLength"
+Model = "ClubAccount"
+Name = "username"

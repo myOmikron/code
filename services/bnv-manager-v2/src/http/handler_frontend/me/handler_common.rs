@@ -27,7 +27,7 @@ use crate::modules::mailcow::Mailcow;
 
 #[get("/")]
 #[instrument(name = "Api::common::get_me")]
-pub async fn get_me(SessionUser { uuid }: SessionUser) -> ApiResult<ApiJson<MeSchema>> {
+pub async fn get_me(SessionUser { uuid, .. }: SessionUser) -> ApiResult<ApiJson<MeSchema>> {
     let mut tx = Database::global().start_transaction().await?;
 
     let account = Account::get_by_uuid(&mut tx, uuid)
@@ -87,7 +87,7 @@ pub async fn get_me(SessionUser { uuid }: SessionUser) -> ApiResult<ApiJson<MeSc
 #[put("/")]
 #[instrument(name = "Api::common::update_me")]
 pub async fn update_me(
-    SessionUser { uuid }: SessionUser,
+    SessionUser { uuid, .. }: SessionUser,
     ApiJson(UpdateMeRequest { display_name }): ApiJson<UpdateMeRequest>,
 ) -> ApiResult<()> {
     let mut tx = Database::global().start_transaction().await?;
@@ -107,7 +107,7 @@ pub async fn update_me(
 #[instrument(name = "Api::common::set_password", skip(password, old_password))]
 pub async fn set_password(
     session: Session,
-    SessionUser { uuid }: SessionUser,
+    SessionUser { uuid, .. }: SessionUser,
     ApiJson(SetPasswordRequest {
         old_password,
         password,

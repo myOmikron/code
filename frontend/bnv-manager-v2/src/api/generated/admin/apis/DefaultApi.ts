@@ -20,16 +20,17 @@ import type {
   ClubSchema,
   CreateClubRequest,
   CreateInviteRequestAdmin,
-  CreateOidcProvider,
+  CreateOidcClientRequest,
   CredentialResetSchema,
   DashboardStatsSchema,
   DomainSchema,
   ExtendInviteRequest,
   FormResultForClubUuidAndCreateClubError,
+  FormResultForCreatedOidcClientAndCreateOidcClientError,
   FormResultForNullAndExtendInviteExpiryError,
   FormResultForSingleLinkAndCreateInviteError,
   GetInvite,
-  OidcProvider,
+  OidcClientSchema,
   PageForSimpleAccountSchema,
   PageForSimpleMemberAccountSchema,
   SimpleAccountSchema,
@@ -49,8 +50,8 @@ export interface CreateInviteRequest {
     CreateInviteRequestAdmin?: CreateInviteRequestAdmin;
 }
 
-export interface CreateOidcProviderRequest {
-    CreateOidcProvider?: CreateOidcProvider;
+export interface CreateOidcClientOperationRequest {
+    CreateOidcClientRequest?: CreateOidcClientRequest;
 }
 
 export interface DeleteClubRequest {
@@ -58,6 +59,10 @@ export interface DeleteClubRequest {
 }
 
 export interface DeleteClubAdminRequest {
+    uuid: string;
+}
+
+export interface DeleteOidcClientRequest {
     uuid: string;
 }
 
@@ -206,8 +211,10 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Register a new OIDC client  The response contains the client secret, which is not retrievable afterwards.
+     * Register a new OIDC client
      */
-    async createOidcProviderRaw(requestParameters: CreateOidcProviderRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<string>> {
+    async createOidcClientRaw(requestParameters: CreateOidcClientOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FormResultForCreatedOidcClientAndCreateOidcClientError>> {
         const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
@@ -215,24 +222,22 @@ export class DefaultApi extends runtime.BaseAPI {
         headerParameters['Content-Type'] = 'application/json';
 
         const response = await this.request({
-            path: `/api/v1/frontend/admin/oidc-providers`,
+            path: `/api/v1/frontend/admin/oidc-clients`,
             method: 'POST',
             headers: headerParameters,
             query: queryParameters,
-            body: requestParameters['CreateOidcProvider'],
+            body: requestParameters['CreateOidcClientRequest'],
         }, initOverrides);
 
-        if (this.isJsonMime(response.headers.get('content-type'))) {
-            return new runtime.JSONApiResponse<string>(response);
-        } else {
-            return new runtime.TextApiResponse(response) as any;
-        }
+        return new runtime.JSONApiResponse(response);
     }
 
     /**
+     * Register a new OIDC client  The response contains the client secret, which is not retrievable afterwards.
+     * Register a new OIDC client
      */
-    async createOidcProvider(requestParameters: CreateOidcProviderRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<string> {
-        const response = await this.createOidcProviderRaw(requestParameters, initOverrides);
+    async createOidcClient(requestParameters: CreateOidcClientOperationRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FormResultForCreatedOidcClientAndCreateOidcClientError> {
+        const response = await this.createOidcClientRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -297,6 +302,40 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Delete an OIDC client  Its pending authorization codes are deleted with it.
+     * Delete an OIDC client
+     */
+    async deleteOidcClientRaw(requestParameters: DeleteOidcClientRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['uuid'] == null) {
+            throw new runtime.RequiredError(
+                'uuid',
+                'Required parameter "uuid" was null or undefined when calling deleteOidcClient().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        const response = await this.request({
+            path: `/api/v1/frontend/admin/oidc-clients/{uuid}`.replace(`{${"uuid"}}`, encodeURIComponent(String(requestParameters['uuid']))),
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * Delete an OIDC client  Its pending authorization codes are deleted with it.
+     * Delete an OIDC client
+     */
+    async deleteOidcClient(requestParameters: DeleteOidcClientRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.deleteOidcClientRaw(requestParameters, initOverrides);
+    }
+
+    /**
      */
     async extendInviteExpiryRaw(requestParameters: ExtendInviteExpiryRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FormResultForNullAndExtendInviteExpiryError>> {
         if (requestParameters['uuid'] == null) {
@@ -331,14 +370,16 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Retrieve all registered OIDC clients
+     * Retrieve all registered OIDC clients
      */
-    async getAllOidcProvidersRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<OidcProvider>>> {
+    async getAllOidcClientsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<OidcClientSchema>>> {
         const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
 
         const response = await this.request({
-            path: `/api/v1/frontend/admin/oidc-providers`,
+            path: `/api/v1/frontend/admin/oidc-clients`,
             method: 'GET',
             headers: headerParameters,
             query: queryParameters,
@@ -348,9 +389,11 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Retrieve all registered OIDC clients
+     * Retrieve all registered OIDC clients
      */
-    async getAllOidcProviders(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<OidcProvider>> {
-        const response = await this.getAllOidcProvidersRaw(initOverrides);
+    async getAllOidcClients(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<OidcClientSchema>> {
+        const response = await this.getAllOidcClientsRaw(initOverrides);
         return await response.value();
     }
 

@@ -164,23 +164,59 @@ export interface CreateInviteRequestAdmin {
     valid_days: number;
 }
 /**
- * Request to create an oidc provider
+ * Errors when registering an OIDC client
  * @export
- * @interface CreateOidcProvider
+ * @interface CreateOidcClientError
  */
-export interface CreateOidcProvider {
+export interface CreateOidcClientError {
     /**
-     * Name of the oidc provider
+     * The redirect uri is no absolute url, not `https` (or `http` on localhost) or contains a fragment
+     * @type {boolean}
+     * @memberof CreateOidcClientError
+     */
+    invalid_redirect_uri: boolean;
+}
+/**
+ * Request to register an OIDC client
+ * @export
+ * @interface CreateOidcClientRequest
+ */
+export interface CreateOidcClientRequest {
+    /**
+     * Human-readable name
      * @type {string}
-     * @memberof CreateOidcProvider
+     * @memberof CreateOidcClientRequest
      */
     name: string;
     /**
-     * Redirect url of the oidc provider
+     * The client's redirect uri
+     * 
+     * Must be an absolute url using `https`, or `http` on localhost, and must not contain a fragment.
      * @type {string}
-     * @memberof CreateOidcProvider
+     * @memberof CreateOidcClientRequest
      */
     redirect_uri: string;
+}
+/**
+ * The credentials of a newly registered OIDC client
+ * 
+ * This is the only time the secret is returned.
+ * @export
+ * @interface CreatedOidcClient
+ */
+export interface CreatedOidcClient {
+    /**
+     * Client id of the client
+     * @type {string}
+     * @memberof CreatedOidcClient
+     */
+    client_id: string;
+    /**
+     * Secret the client authenticates with
+     * @type {string}
+     * @memberof CreatedOidcClient
+     */
+    client_secret: string;
 }
 /**
  * Instance of the credential reset
@@ -401,6 +437,70 @@ export const FormResultForClubUuidAndCreateClubErrorOneOf1ResultEnum = {
     Err: 'Err'
 } as const;
 export type FormResultForClubUuidAndCreateClubErrorOneOf1ResultEnum = typeof FormResultForClubUuidAndCreateClubErrorOneOf1ResultEnum[keyof typeof FormResultForClubUuidAndCreateClubErrorOneOf1ResultEnum];
+
+/**
+ * @type FormResultForCreatedOidcClientAndCreateOidcClientError
+ * A `Result` with a custom serialization
+ * @export
+ */
+export type FormResultForCreatedOidcClientAndCreateOidcClientError = FormResultForCreatedOidcClientAndCreateOidcClientErrorOneOf | FormResultForCreatedOidcClientAndCreateOidcClientErrorOneOf1;
+/**
+ * 
+ * @export
+ * @interface FormResultForCreatedOidcClientAndCreateOidcClientErrorOneOf
+ */
+export interface FormResultForCreatedOidcClientAndCreateOidcClientErrorOneOf {
+    /**
+     * 
+     * @type {string}
+     * @memberof FormResultForCreatedOidcClientAndCreateOidcClientErrorOneOf
+     */
+    result: FormResultForCreatedOidcClientAndCreateOidcClientErrorOneOfResultEnum;
+    /**
+     * 
+     * @type {CreatedOidcClient}
+     * @memberof FormResultForCreatedOidcClientAndCreateOidcClientErrorOneOf
+     */
+    value: CreatedOidcClient;
+}
+
+
+/**
+ * @export
+ */
+export const FormResultForCreatedOidcClientAndCreateOidcClientErrorOneOfResultEnum = {
+    Ok: 'Ok'
+} as const;
+export type FormResultForCreatedOidcClientAndCreateOidcClientErrorOneOfResultEnum = typeof FormResultForCreatedOidcClientAndCreateOidcClientErrorOneOfResultEnum[keyof typeof FormResultForCreatedOidcClientAndCreateOidcClientErrorOneOfResultEnum];
+
+/**
+ * 
+ * @export
+ * @interface FormResultForCreatedOidcClientAndCreateOidcClientErrorOneOf1
+ */
+export interface FormResultForCreatedOidcClientAndCreateOidcClientErrorOneOf1 {
+    /**
+     * 
+     * @type {CreateOidcClientError}
+     * @memberof FormResultForCreatedOidcClientAndCreateOidcClientErrorOneOf1
+     */
+    error: CreateOidcClientError;
+    /**
+     * 
+     * @type {string}
+     * @memberof FormResultForCreatedOidcClientAndCreateOidcClientErrorOneOf1
+     */
+    result: FormResultForCreatedOidcClientAndCreateOidcClientErrorOneOf1ResultEnum;
+}
+
+
+/**
+ * @export
+ */
+export const FormResultForCreatedOidcClientAndCreateOidcClientErrorOneOf1ResultEnum = {
+    Err: 'Err'
+} as const;
+export type FormResultForCreatedOidcClientAndCreateOidcClientErrorOneOf1ResultEnum = typeof FormResultForCreatedOidcClientAndCreateOidcClientErrorOneOf1ResultEnum[keyof typeof FormResultForCreatedOidcClientAndCreateOidcClientErrorOneOf1ResultEnum];
 
 /**
  * @type FormResultForNullAndExtendInviteExpiryError
@@ -698,33 +798,27 @@ export interface MailboxStatsSchema {
     quota_used: number;
 }
 /**
- * A single OIDC Provider
+ * A registered OIDC client, without its secret
  * @export
- * @interface OidcProvider
+ * @interface OidcClientSchema
  */
-export interface OidcProvider {
+export interface OidcClientSchema {
     /**
-     * client id of the provider
+     * Client id of the client
      * @type {string}
-     * @memberof OidcProvider
+     * @memberof OidcClientSchema
      */
     client_id: string;
     /**
-     * Secret of the provider
-     * @type {string}
-     * @memberof OidcProvider
-     */
-    client_secret: string;
-    /**
      * Human-readable name
      * @type {string}
-     * @memberof OidcProvider
+     * @memberof OidcClientSchema
      */
     name: string;
     /**
-     * Redirect url associated with the provider
+     * The client's registered redirect uri
      * @type {string}
-     * @memberof OidcProvider
+     * @memberof OidcClientSchema
      */
     redirect_uri: string;
 }

@@ -6,6 +6,7 @@ use galvyn::core::session::Session;
 use galvyn::core::stuff::api_error::ApiError;
 use serde::Deserialize;
 use serde::Serialize;
+use time::OffsetDateTime;
 
 use crate::models::account::AccountUuid;
 
@@ -14,6 +15,11 @@ use crate::models::account::AccountUuid;
 pub struct SessionUser {
     /// The user's UUID.
     pub uuid: AccountUuid,
+    /// When the user signed in with their password
+    ///
+    /// `None` for sessions signed in before the login time was recorded.
+    #[serde(default, with = "time::serde::rfc3339::option")]
+    pub auth_time: Option<OffsetDateTime>,
 }
 
 /// The key of the session user in the session.

@@ -1,0 +1,11 @@
+{
+    "button": {
+        "delete-oidc-client": "Client l\u00f6schen"
+    },
+    "description": {
+        "delete-oidc-client": "Der Client kann danach keine Anmeldungen mehr \u00fcber den BNV Manager durchf\u00fchren. Bereits ausgestellte Tokens bleiben bis zu ihrem Ablauf g\u00fcltig."
+    },
+    "heading": {
+        "delete-oidc-client": "OIDC Client {{client}} l\u00f6schen"
+    }
+}

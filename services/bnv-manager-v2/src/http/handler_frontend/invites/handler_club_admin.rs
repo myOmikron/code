@@ -79,7 +79,9 @@ pub async fn create_member_invite(
 #[instrument(name = "Api::club_admin::retract_invite")]
 pub async fn retract_invite(
     Path((club_uuid, invite_uuid)): Path<(ClubUuid, InviteUuid)>,
-    SessionUser { uuid: session_user }: SessionUser,
+    SessionUser {
+        uuid: session_user, ..
+    }: SessionUser,
 ) -> ApiResult<()> {
     let mut tx = Database::global().start_transaction().await?;
 

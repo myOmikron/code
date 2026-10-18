@@ -43,6 +43,7 @@ use rand::distr::Alphanumeric;
 use rand::distr::SampleString;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
+use serde_json::json;
 use tokio::runtime::Runtime;
 use tokio::sync::OnceCell;
 use tower::ServiceExt;
@@ -57,10 +58,17 @@ use crate::models::club::Club;
 use crate::models::club::ClubUuid;
 use crate::models::club::CreateClub;
 use crate::models::domain::Domain;
-use crate::models::oidc_provider::OidcClient;
+use crate::models::invite::AcceptInviteParams;
+use crate::models::invite::CreateInviteParams;
+use crate::models::invite::Invite;
+use crate::models::invite::InviteType;
+use crate::models::oidc_client::OidcClient;
 use crate::modules::mailcow::MailcowSetup;
 use crate::modules::oidc::OidcSetup;
 use crate::tests::fake_mailcow;
+
+/// Name of the session cookie (tower-sessions' default)
+pub const SESSION_COOKIE: &str = "id";
 
 /// Prefix of every database the harness creates
 const DATABASE_PREFIX: &str = "bnv_manager_v2_test_";
@@ -246,6 +254,16 @@ impl TestClient {
                 u32::from(Ipv4Addr::new(10, 0, 0, 0)) + offset,
             )),
         }
+    }
+
+    /// The value of a cookie in the jar
+    pub fn cookie(&self, name: &str) -> Option<&str> {
+        self.cookies.get(name).map(String::as_str)
+    }
+
+    /// Puts a cookie into the jar, like an attacker planting one would
+    pub fn set_cookie(&mut self, name: &str, value: &str) {
+        self.cookies.insert(name.to_string(), value.to_string());
     }
 
     /// `GET`s the url
@@ -435,4 +453,58 @@ pub async fn register_member() -> Member {
     .expect("create the member");
 
     member
+}
+
+/// Deletes the account of `member`
+pub async fn remove_member(member: &Member) {
+    ClubAccount::get_by_username(
+        Database::global(),
+        &MaxStr::new(member.username.clone()).expect("short username"),
+    )
+    .await
+    .expect("look up the member")
+    .expect("the member exists")
+    .delete(Database::global())
+    .await
+    .expect("delete the member");
+}
+
+/// A browser signed in as a new superadmin
+pub async fn sign_in_superadmin() -> TestClient {
+    App::get().await;
+    let username = format!("admin-{}", &Uuid::new_v4().simple().to_string()[..12]);
+    let password = Alphanumeric.sample_string(&mut rand::rng(), 32);
+
+    let invite = Invite::create(
+        Database::global(),
+        CreateInviteParams {
+            username: MaxStr::new(username.clone()).expect("short username"),
+            display_name: MaxStr::new(format!("Admin {username}")).expect("short name"),
+            expires_at: time::OffsetDateTime::now_utc() + time::Duration::minutes(15),
+            invite_type: InviteType::SuperAdmin,
+        },
+    )
+    .await
+    .expect("create the invite")
+    .expect("the username is free");
+    invite
+        .accept_invite(
+            Database::global(),
+            AcceptInviteParams {
+                password: MaxStr::new(password.clone()).expect("short password"),
+            },
+        )
+        .await
+        .expect("accept the invite")
+        .expect("the invite is valid");
+
+    let mut browser = TestClient::new();
+    let response = browser
+        .post_json(
+            &origin().join("/api/v1/auth/sign-in").expect("valid url"),
+            &json!({ "username": username, "password": password }),
+        )
+        .await;
+    assert_eq!(response.status, StatusCode::OK, "sign in as superadmin");
+    browser
 }

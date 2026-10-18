@@ -2,6 +2,12 @@
     "button": {
         "back-to-home": "Zur\u00fcck zur Startseite"
     },
+    "description": {
+        "invalid-redirect-uri": "Der Dienst, bei dem du dich anmelden wolltest, ist hier nicht richtig eingerichtet. Bitte wende dich an die Betreiber des Dienstes.",
+        "unknown": "Bei der Anmeldung ist ein Fehler aufgetreten. Bitte starte die Anmeldung beim Dienst erneut.",
+        "unknown-client": "Der Dienst, bei dem du dich anmelden wolltest, ist hier nicht bekannt. Bitte wende dich an die Betreiber des Dienstes.",
+        "unknown-request": "Diese Anmeldung ist abgelaufen oder wurde bereits abgeschlossen. Bitte starte die Anmeldung beim Dienst erneut."
+    },
     "heading": {
         "error": "Fehler"
     }
