@@ -2,6 +2,12 @@
     "button": {
         "back-to-home": "Back to home"
     },
+    "description": {
+        "invalid-redirect-uri": "The service you wanted to sign in to is not set up correctly here. Please contact the operators of the service.",
+        "unknown": "Something went wrong while signing in. Please start the sign-in at the service again.",
+        "unknown-client": "The service you wanted to sign in to is not known here. Please contact the operators of the service.",
+        "unknown-request": "This sign-in has expired or was already completed. Please start the sign-in at the service again."
+    },
     "heading": {
         "error": "Error"
     }

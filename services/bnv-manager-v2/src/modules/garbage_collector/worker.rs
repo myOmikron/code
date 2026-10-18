@@ -7,6 +7,7 @@ use tracing::error;
 
 use crate::models::credential_reset::CredentialReset;
 use crate::models::invite::Invite;
+use crate::models::oidc_client::OidcAuthenticationToken;
 use crate::utils::worker::Worker;
 
 const GC_INTERVAL: Duration = Duration::from_secs(60 * 60);
@@ -35,6 +36,7 @@ impl GarbageCollectorWorker {
 
         Invite::clear_expired_superadmin_invites(&mut tx).await?;
         CredentialReset::clear_expired(&mut tx).await?;
+        OidcAuthenticationToken::clear_expired(&mut tx).await?;
 
         tx.commit().await?;
 

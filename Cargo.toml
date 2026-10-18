@@ -162,6 +162,10 @@ argon2 = { version = "~0.5" }
 # URL parsing following RFC 3986
 url = { version = "~2", features = ["serde"] }
 
+percent-encoding = { version = "~2" }
+
+serde_urlencoded = { version = "~0.7" }
+
 # UUID generation and parsing
 uuid = { version = "~1", features = ["v4", "v7", "serde", "std"] }
 

@@ -1,14 +1,25 @@
 {
+    "accessibility": {
+        "copy-client-id": "Copy client ID",
+        "copy-client-secret": "Copy client secret"
+    },
     "button": {
         "create-oidc-client": "Create OIDC client"
     },
+    "description": {
+        "secret-shown-once": "The client secret is only shown now. Copy it into the client's configuration, it can not be retrieved afterwards."
+    },
     "error": {
-        "redirect-url-invalid": "That is not a valid URL."
+        "redirect-url-invalid": "That is not a valid URL.",
+        "redirect-url-not-allowed": "The URL must use https (http only for localhost) and must not contain a fragment (#)."
     },
     "heading": {
+        "client-created": "OIDC client created",
         "create-oidc-client": "Create OIDC Client"
     },
     "label": {
+        "client-id": "Client ID",
+        "client-secret": "Client secret",
         "name": "Client Name",
         "redirect-url": "Redirect URL"
     }

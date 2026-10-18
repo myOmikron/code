@@ -16,12 +16,8 @@ pub mod middlewares;
 /// Retrieve the routes for the http server
 pub fn get_router() -> GalvynRouter {
     GalvynRouter::new()
-        .nest(
-            "/api/v1",
-            GalvynRouter::new()
-                .nest("/frontend", handler_frontend::initialize())
-                .nest("/auth", handler_auth::initialize()),
-        )
+        .nest("/api/v1/frontend", handler_frontend::initialize())
+        .nest(handler_auth::BASE_PATH, handler_auth::initialize())
         .layer(session::layer())
         .layer(
             ServiceBuilder::new().layer(

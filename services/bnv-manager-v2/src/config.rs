@@ -63,7 +63,8 @@ pub static ORIGIN: EnvVar<Url> = EnvVar::optional("ORIGIN", crate::tests::harnes
 
 /// A directory bnv-manager puts files it creates.
 ///
-/// Most noteworthy, this will contain a `/media` where file uploaded by users will be stored.
+/// Most noteworthy, this will contain a `/media` where file uploaded by users will be stored,
+/// and `bnv.key`, the OpenID provider's signing key.
 pub static STATE_DIR: EnvVar<PathBuf> = EnvVar::optional("BNV_MANAGER_STATE_DIR", || {
     PathBuf::from("/var/lib/bnv-manager")
 });

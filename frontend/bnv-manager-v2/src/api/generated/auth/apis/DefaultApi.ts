@@ -16,17 +16,20 @@
 import * as runtime from '../runtime';
 import type {
   ApiErrorResponse,
-  Claims,
   DiscoveryResponse,
   SignInRequest,
+  TokenErrorResponse,
   TokenResponse,
+  UserinfoResponse,
 } from '../models/index';
 
 export interface AuthRequest {
     client_id?: string;
     code_challenge?: string | null;
     code_challenge_method?: string | null;
+    max_age?: number | null;
     nonce?: string | null;
+    prompt?: string | null;
     redirect_uri?: string;
     response_mode?: string | null;
     response_type?: string;
@@ -34,13 +37,17 @@ export interface AuthRequest {
     state?: string | null;
 }
 
+export interface FinishAuthRequest {
+    request_id?: string;
+}
+
 export interface GetTokenRequest {
-    client_id: string;
-    client_secret: string;
-    code: string;
     grant_type: string;
-    redirect_uri: string;
+    client_id?: string | null;
+    client_secret?: string | null;
+    code?: string | null;
     code_verifier?: string | null;
+    redirect_uri?: string | null;
 }
 
 export interface SignInOperationRequest {
@@ -53,6 +60,8 @@ export interface SignInOperationRequest {
 export class DefaultApi extends runtime.BaseAPI {
 
     /**
+     * The authorization endpoint  Stores the authorization request in the session and sends the user to the login page, or straight on to finishing the authorization when they are signed in already and the login is recent enough for `prompt` and `max_age`. With `prompt=none` the user never sees the login page, the client gets `login_required` instead.  An unknown client or `redirect_uri` sends the user to the error page and never to the client. RFC 6749 §4.1.2.1: \"the authorization server SHOULD inform the resource owner of the error and MUST NOT automatically redirect the user-agent to the invalid redirection URI.\" Every other error goes back to the client.
+     * The authorization endpoint
      */
     async authRaw(requestParameters: AuthRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
         const queryParameters: any = {};
@@ -69,8 +78,16 @@ export class DefaultApi extends runtime.BaseAPI {
             queryParameters['code_challenge_method'] = requestParameters['code_challenge_method'];
         }
 
+        if (requestParameters['max_age'] != null) {
+            queryParameters['max_age'] = requestParameters['max_age'];
+        }
+
         if (requestParameters['nonce'] != null) {
             queryParameters['nonce'] = requestParameters['nonce'];
+        }
+
+        if (requestParameters['prompt'] != null) {
+            queryParameters['prompt'] = requestParameters['prompt'];
         }
 
         if (requestParameters['redirect_uri'] != null) {
@@ -106,12 +123,16 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * The authorization endpoint  Stores the authorization request in the session and sends the user to the login page, or straight on to finishing the authorization when they are signed in already and the login is recent enough for `prompt` and `max_age`. With `prompt=none` the user never sees the login page, the client gets `login_required` instead.  An unknown client or `redirect_uri` sends the user to the error page and never to the client. RFC 6749 §4.1.2.1: \"the authorization server SHOULD inform the resource owner of the error and MUST NOT automatically redirect the user-agent to the invalid redirection URI.\" Every other error goes back to the client.
+     * The authorization endpoint
      */
     async auth(requestParameters: AuthRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
         await this.authRaw(requestParameters, initOverrides);
     }
 
     /**
+     * The OpenID provider\'s metadata (OpenID Connect Discovery 1.0)
+     * The OpenID provider\'s metadata (OpenID Connect Discovery 1.0)
      */
     async discoveryRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DiscoveryResponse>> {
         const queryParameters: any = {};
@@ -129,6 +150,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * The OpenID provider\'s metadata (OpenID Connect Discovery 1.0)
+     * The OpenID provider\'s metadata (OpenID Connect Discovery 1.0)
      */
     async discovery(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DiscoveryResponse> {
         const response = await this.discoveryRaw(initOverrides);
@@ -136,9 +159,15 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Issue the authorization code for the pending authorization request and redirect to the client  Sends the user back to the login page when they are not signed in yet or their login is too old for the request (`login_required` with `prompt=none`), and to the error page when this session has no pending request with that id. An account that is no club member, or no longer exists, gets `access_denied`.
+     * Issue the authorization code for the pending authorization request and redirect to the client
      */
-    async finishAuthRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+    async finishAuthRaw(requestParameters: FinishAuthRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
         const queryParameters: any = {};
+
+        if (requestParameters['request_id'] != null) {
+            queryParameters['request_id'] = requestParameters['request_id'];
+        }
 
         const headerParameters: runtime.HTTPHeaders = {};
 
@@ -153,46 +182,22 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Issue the authorization code for the pending authorization request and redirect to the client  Sends the user back to the login page when they are not signed in yet or their login is too old for the request (`login_required` with `prompt=none`), and to the error page when this session has no pending request with that id. An account that is no club member, or no longer exists, gets `access_denied`.
+     * Issue the authorization code for the pending authorization request and redirect to the client
      */
-    async finishAuth(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
-        await this.finishAuthRaw(initOverrides);
+    async finishAuth(requestParameters: FinishAuthRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.finishAuthRaw(requestParameters, initOverrides);
     }
 
     /**
+     * Exchange an authorization code for an ID token and an access token  The client authenticates with `client_secret_basic` or `client_secret_post` (RFC 6749 §2.3.1). Errors are RFC 6749 §5.2 error objects. Every response carries `Cache-Control: no-store` and `Pragma: no-cache` (RFC 6749 §5.1).  A code is redeemed once. RFC 6749 §4.1.2: \"The client MUST NOT use the authorization code more than once. If an authorization code is used more than once, the authorization server MUST deny the request\". A row lock serializes concurrent redemptions.  The `redirect_uri` has to equal the one of the authorization request exactly, compared as a string like the authorization endpoint does.  RFC 9700 §2.1.1: \"a token request containing a code_verifier parameter is accepted only if a code_challenge parameter was present in the authorization request\"
+     * Exchange an authorization code for an ID token and an access token
      */
     async getTokenRaw(requestParameters: GetTokenRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<TokenResponse>> {
-        if (requestParameters['client_id'] == null) {
-            throw new runtime.RequiredError(
-                'client_id',
-                'Required parameter "client_id" was null or undefined when calling getToken().'
-            );
-        }
-
-        if (requestParameters['client_secret'] == null) {
-            throw new runtime.RequiredError(
-                'client_secret',
-                'Required parameter "client_secret" was null or undefined when calling getToken().'
-            );
-        }
-
-        if (requestParameters['code'] == null) {
-            throw new runtime.RequiredError(
-                'code',
-                'Required parameter "code" was null or undefined when calling getToken().'
-            );
-        }
-
         if (requestParameters['grant_type'] == null) {
             throw new runtime.RequiredError(
                 'grant_type',
                 'Required parameter "grant_type" was null or undefined when calling getToken().'
-            );
-        }
-
-        if (requestParameters['redirect_uri'] == null) {
-            throw new runtime.RequiredError(
-                'redirect_uri',
-                'Required parameter "redirect_uri" was null or undefined when calling getToken().'
             );
         }
 
@@ -215,7 +220,8 @@ export class DefaultApi extends runtime.BaseAPI {
         }
 
         if (requestParameters['client_id'] != null) {
-            formParams.append('client_id', requestParameters['client_id'] as any);
+
+            formParams.append('client_id', new Blob([JSON.stringify(requestParameters['client_id'])], { type: "application/json", }));
         }
 
         if (requestParameters['client_secret'] != null) {
@@ -234,11 +240,13 @@ export class DefaultApi extends runtime.BaseAPI {
         }
 
         if (requestParameters['grant_type'] != null) {
-            formParams.append('grant_type', requestParameters['grant_type'] as any);
+
+            formParams.append('grant_type', new Blob([JSON.stringify(requestParameters['grant_type'])], { type: "application/json", }));
         }
 
         if (requestParameters['redirect_uri'] != null) {
-            formParams.append('redirect_uri', requestParameters['redirect_uri'] as any);
+
+            formParams.append('redirect_uri', new Blob([JSON.stringify(requestParameters['redirect_uri'])], { type: "application/json", }));
         }
 
         const response = await this.request({
@@ -253,6 +261,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Exchange an authorization code for an ID token and an access token  The client authenticates with `client_secret_basic` or `client_secret_post` (RFC 6749 §2.3.1). Errors are RFC 6749 §5.2 error objects. Every response carries `Cache-Control: no-store` and `Pragma: no-cache` (RFC 6749 §5.1).  A code is redeemed once. RFC 6749 §4.1.2: \"The client MUST NOT use the authorization code more than once. If an authorization code is used more than once, the authorization server MUST deny the request\". A row lock serializes concurrent redemptions.  The `redirect_uri` has to equal the one of the authorization request exactly, compared as a string like the authorization endpoint does.  RFC 9700 §2.1.1: \"a token request containing a code_verifier parameter is accepted only if a code_challenge parameter was present in the authorization request\"
+     * Exchange an authorization code for an ID token and an access token
      */
     async getToken(requestParameters: GetTokenRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<TokenResponse> {
         const response = await this.getTokenRaw(requestParameters, initOverrides);
@@ -260,8 +270,10 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Claims about the end-user the bearer access token grants
+     * Claims about the end-user the bearer access token grants
      */
-    async getUserinfoRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Claims>> {
+    async getUserinfoRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<UserinfoResponse>> {
         const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
@@ -277,13 +289,17 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Claims about the end-user the bearer access token grants
+     * Claims about the end-user the bearer access token grants
      */
-    async getUserinfo(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Claims> {
+    async getUserinfo(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<UserinfoResponse> {
         const response = await this.getUserinfoRaw(initOverrides);
         return await response.value();
     }
 
     /**
+     * The public keys tokens of this provider are signed with (RFC 7517)
+     * The public keys tokens of this provider are signed with (RFC 7517)
      */
     async jwksRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
         const queryParameters: any = {};
@@ -305,6 +321,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * The public keys tokens of this provider are signed with (RFC 7517)
+     * The public keys tokens of this provider are signed with (RFC 7517)
      */
     async jwks(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
         const response = await this.jwksRaw(initOverrides);
@@ -312,6 +330,36 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Claims about the end-user the bearer access token grants
+     * Claims about the end-user the bearer access token grants
+     */
+    async postUserinfoRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<UserinfoResponse>> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        const response = await this.request({
+            path: `/api/v1/auth/userinfo`,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Claims about the end-user the bearer access token grants
+     * Claims about the end-user the bearer access token grants
+     */
+    async postUserinfo(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<UserinfoResponse> {
+        const response = await this.postUserinfoRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Sign in with username (or email) and password  An unknown username and a wrong password fail alike, so the response does not tell which usernames exist. On success the session gets a new id, so an id planted or seen before the login does not become a signed in session (session fixation).
+     * Sign in with username (or email) and password
      */
     async signInRaw(requestParameters: SignInOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
         const queryParameters: any = {};
@@ -332,12 +380,16 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Sign in with username (or email) and password  An unknown username and a wrong password fail alike, so the response does not tell which usernames exist. On success the session gets a new id, so an id planted or seen before the login does not become a signed in session (session fixation).
+     * Sign in with username (or email) and password
      */
     async signIn(requestParameters: SignInOperationRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
         await this.signInRaw(requestParameters, initOverrides);
     }
 
     /**
+     * Sign out of the current session
+     * Sign out of the current session
      */
     async signOutRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
         const queryParameters: any = {};
@@ -355,6 +407,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Sign out of the current session
+     * Sign out of the current session
      */
     async signOut(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
         await this.signOutRaw(initOverrides);

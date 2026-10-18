@@ -135,7 +135,6 @@ export class AccountProvider extends React.Component<AccountProviderProps, Accou
                         to="/oidc/auth"
                         search={{
                             redirect_url: this.redirect_to_last_page ? window.location.pathname : "/",
-                            external: false,
                         }}
                     />
                 );

@@ -13,7 +13,7 @@ pub mod credential_reset;
 pub mod domains;
 pub mod invites;
 pub mod me;
-pub mod oidc_provider;
+pub mod oidc_clients;
 pub mod openapi;
 pub mod settings;
 
@@ -58,10 +58,11 @@ pub fn router_admin() -> GalvynRouter {
                 .handler(invites::handler_admin::extend_invite_expiry),
         )
         .nest(
-            "/oidc-providers",
+            "/oidc-clients",
             GalvynRouter::new()
-                .handler(oidc_provider::handler_admin::get_all_oidc_providers)
-                .handler(oidc_provider::handler_admin::create_oidc_provider),
+                .handler(oidc_clients::handler_admin::get_all_oidc_clients)
+                .handler(oidc_clients::handler_admin::create_oidc_client)
+                .handler(oidc_clients::handler_admin::delete_oidc_client),
         )
         .layer(axum::middleware::from_fn(middlewares::auth_superadmin))
 }

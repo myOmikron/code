@@ -12,6 +12,7 @@ import { Input } from "src/components/base/input";
 import { PrimaryButton } from "src/components/base/button";
 import React from "react";
 import Logo from "src/assets/bnv.svg?react";
+import { finishAuthUrl, validateOidcAuthSearch } from "src/utils/oidc";
 
 /**
  * Props for {@link OidcAuthentication}
@@ -58,10 +59,10 @@ export default function OidcAuthentication(props: OidcAuthenticationProps) {
                     closeOnClick: true,
                 });
 
-                if (search.external) {
-                    window.location.href = search.redirect_url;
+                if (search.request_id) {
+                    window.location.assign(finishAuthUrl(search.request_id));
                 } else {
-                    router.history.push(search.redirect_url);
+                    router.history.push(search.redirect_url ?? "/");
                 }
             },
         },
@@ -138,21 +139,7 @@ export default function OidcAuthentication(props: OidcAuthenticationProps) {
     );
 }
 
-/**
- * Search parameters for the oidc authentication route
- */
-type SearchParams = {
-    /** Uri to redirect to after successful authentication */
-    redirect_url: string;
-    /** Whether to stay in this SPA */
-    external: boolean;
-};
-
 export const Route = createFileRoute("/oidc/auth")({
     component: OidcAuthentication,
-    validateSearch: (search: Record<string, unknown>): SearchParams => ({
-        redirect_url: (search?.redirect_url as string) || "/",
-        external: (search?.external as boolean) || false,
-    }),
-    loaderDeps: ({ search: { redirect_url, external } }) => ({ redirect_url, external }),
+    validateSearch: validateOidcAuthSearch,
 });

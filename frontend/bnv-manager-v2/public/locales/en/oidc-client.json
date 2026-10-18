@@ -8,8 +8,8 @@
     },
     "label": {
         "client-id": "Client ID",
-        "client-secret": "Client Secret",
         "name": "Name",
-        "no-clients-found": "No clients found"
+        "no-clients-found": "No OIDC clients found.",
+        "redirect-uri": "Redirect URI"
     }
 }

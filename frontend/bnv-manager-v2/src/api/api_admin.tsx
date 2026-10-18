@@ -2,7 +2,7 @@ import {
     Configuration,
     CreateClubRequest,
     CreateInviteRequestAdmin,
-    CreateOidcProvider,
+    CreateOidcClientRequest,
     DefaultApi,
     ExtendInviteRequest,
     GetClubAdminsRequest,
@@ -50,9 +50,11 @@ export const AdminApi = {
         extendExpiry: (invite_uuid: UUID, req: ExtendInviteRequest) =>
             handleError(adminApi.extendInviteExpiry({ uuid: invite_uuid, ExtendInviteRequest: req })),
     },
-    oidcProvider: {
-        create: (req: CreateOidcProvider) => handleError(adminApi.createOidcProvider({ CreateOidcProvider: req })),
-        all: () => handleError(adminApi.getAllOidcProviders()),
+    oidcClients: {
+        create: (req: CreateOidcClientRequest) =>
+            handleError(adminApi.createOidcClient({ CreateOidcClientRequest: req })),
+        all: () => handleError(adminApi.getAllOidcClients()),
+        delete: (uuid: UUID) => handleError(adminApi.deleteOidcClient({ uuid })),
     },
 };
 

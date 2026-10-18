@@ -39,6 +39,7 @@ tracing = { workspace = true }
 # Datatypes
 uuid = { workspace = true }
 url = { workspace = true }
+percent-encoding = { workspace = true }
 time = { workspace = true }
 
 # Async
@@ -48,6 +49,7 @@ futures-util = { workspace = true }
 # Serialization
 serde = { workspace = true }
 serde_json = { workspace = true }
+serde_urlencoded = { workspace = true }
 
 # Mailcow API
 mailcow = { workspace = true }

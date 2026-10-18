@@ -1,0 +1,352 @@
+[Migration]
+Hash = "4381338546539533026"
+Initial = false
+Dependency = 1
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateModel"
+Name = "galvynsettings"
+
+[[Migration.Operations.Fields]]
+Name = "uuid"
+Type = "uuid"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "primary_key"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "/home/omikron/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/galvyn-contrib-settings-0.7.0/src/model.rs"
+Line = 10
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "key"
+Type = "text"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 255
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "unique"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "/home/omikron/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/galvyn-contrib-settings-0.7.0/src/model.rs"
+Line = 13
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "value"
+Type = "binary"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "/home/omikron/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/galvyn-contrib-settings-0.7.0/src/model.rs"
+Line = 15
+Column = 9
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "ClubAdminAccount"
+Name = "display_name"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "ClubAdminAccount"
+Name = "display_name"
+MaxLength = 255
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "ClubAdminAccount"
+Name = "hashed_password"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "ClubAdminAccount"
+Name = "hashed_password"
+MaxLength = 255
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "ClubAdminAccount"
+Name = "username"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "CredentialResetSuperadmin"
+Name = "code"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "CredentialResetSuperadmin"
+Name = "code"
+MaxLength = 6
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "galvynsession"
+Name = "id"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "galvynsession"
+Name = "id"
+MaxLength = 255
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "invitemodel"
+Name = "display_name"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "invitemodel"
+Name = "display_name"
+MaxLength = 255
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "invitemodel"
+Name = "email"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "invitemodel"
+Name = "email"
+MaxLength = 255
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "invitemodel"
+Name = "username"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "CredentialResetClubAdmin"
+Name = "code"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "CredentialResetClubAdmin"
+Name = "code"
+MaxLength = 6
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "AdministrativeAccount"
+Name = "display_name"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "AdministrativeAccount"
+Name = "display_name"
+MaxLength = 255
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "AdministrativeAccount"
+Name = "hashed_password"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "AdministrativeAccount"
+Name = "hashed_password"
+MaxLength = 255
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "AdministrativeAccount"
+Name = "username"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "usernamemodel"
+Name = "username"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "usernamemodel"
+Name = "username"
+MaxLength = 255
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "ClubAccount"
+Name = "display_name"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "ClubAccount"
+Name = "display_name"
+MaxLength = 255
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "ClubAccount"
+Name = "email"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "ClubAccount"
+Name = "email"
+MaxLength = 255
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "ClubAccount"
+Name = "hashed_password"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "ClubAccount"
+Name = "hashed_password"
+MaxLength = 255
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "ClubAccount"
+Name = "username"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "Club"
+Name = "name"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "Club"
+Name = "name"
+MaxLength = 255
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "OidcClient"
+Name = "name"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "OidcClient"
+Name = "name"
+MaxLength = 255
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "OidcClient"
+Name = "client_secret"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "OidcClient"
+Name = "client_secret"
+MaxLength = 64
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "OidcClient"
+Name = "redirect_url"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "OidcClient"
+Name = "redirect_url"
+MaxLength = 1024
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "Domain"
+Name = "domain"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "Domain"
+Name = "domain"
+MaxLength = 255
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "CredentialResetClubAccount"
+Name = "code"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "CredentialResetClubAccount"
+Name = "code"
+MaxLength = 6
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "OidcAuthenticationToken"
+Name = "redirect_url"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "OidcAuthenticationToken"
+Name = "redirect_url"
+MaxLength = 1024
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "OidcAuthenticationToken"
+Name = "code"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "OidcAuthenticationToken"
+Name = "code"
+MaxLength = 64
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "OidcAuthenticationToken"
+Name = "nonce"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "OidcAuthenticationToken"
+Name = "nonce"
+MaxLength = 255
+
+[[Migration.Operations]]
+Type = "SetFieldType"
+Model = "OidcAuthenticationToken"
+Name = "code_challenge"
+DbType = "text"
+
+[[Migration.Operations]]
+Type = "SetFieldMaxLength"
+Model = "OidcAuthenticationToken"
+Name = "code_challenge"
+MaxLength = 128

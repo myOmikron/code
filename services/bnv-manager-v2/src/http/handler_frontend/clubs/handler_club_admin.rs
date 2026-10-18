@@ -28,7 +28,9 @@ use crate::modules::mailcow::Mailcow;
 #[instrument(name = "Api::club_admin::get_club")]
 pub async fn get_club(
     Path(club_uuid): Path<ClubUuid>,
-    SessionUser { uuid: account_uuid }: SessionUser,
+    SessionUser {
+        uuid: account_uuid, ..
+    }: SessionUser,
 ) -> ApiResult<ApiJson<schema::ClubSchema>> {
     let mut tx = Database::global().start_transaction().await?;
 
