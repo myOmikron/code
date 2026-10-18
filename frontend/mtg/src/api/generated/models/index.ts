@@ -280,31 +280,6 @@ export interface AdminAccountLock {
      */
     reason: string;
 }
-
-/**
- * What an Admin did to an Account
- * @export
- */
-export const AdminAction = {
-    /**
-    * Locked the Account
-    */
-    Lock: 'Lock',
-    /**
-    * Lifted the Account&#39;s Lock
-    */
-    Unlock: 'Unlock',
-    /**
-    * Gave the Account another Role
-    */
-    RoleChange: 'RoleChange',
-    /**
-    * Deleted the Account
-    */
-    Deletion: 'Deletion'
-} as const;
-export type AdminAction = typeof AdminAction[keyof typeof AdminAction];
-
 /**
  * The file the catalog was last read from
  * @export
@@ -460,6 +435,128 @@ export interface AdminLockAccountRequest {
     reason: string;
 }
 /**
+ * @type AdminLogAction
+ * What an Admin did to an Account, with what the action needs to be read
+ * @export
+ */
+export type AdminLogAction = AdminLogActionOneOf | AdminLogActionOneOf1 | AdminLogActionOneOf2 | AdminLogActionOneOf3;
+/**
+ * Locked the Account
+ * @export
+ * @interface AdminLogActionOneOf
+ */
+export interface AdminLogActionOneOf {
+    /**
+     * 
+     * @type {AdminLogActionOneOfKindEnum}
+     * @memberof AdminLogActionOneOf
+     */
+    kind: AdminLogActionOneOfKindEnum;
+    /**
+     * Why the Account was locked
+     * @type {string}
+     * @memberof AdminLogActionOneOf
+     */
+    reason: string;
+}
+
+
+/**
+ * @export
+ */
+export const AdminLogActionOneOfKindEnum = {
+    Lock: 'Lock'
+} as const;
+export type AdminLogActionOneOfKindEnum = typeof AdminLogActionOneOfKindEnum[keyof typeof AdminLogActionOneOfKindEnum];
+
+/**
+ * Lifted the Account's Lock
+ * @export
+ * @interface AdminLogActionOneOf1
+ */
+export interface AdminLogActionOneOf1 {
+    /**
+     * 
+     * @type {AdminLogActionOneOf1KindEnum}
+     * @memberof AdminLogActionOneOf1
+     */
+    kind: AdminLogActionOneOf1KindEnum;
+    /**
+     * Why the Lock was lifted, if the Admin said
+     * @type {string}
+     * @memberof AdminLogActionOneOf1
+     */
+    reason?: string | null;
+}
+
+
+/**
+ * @export
+ */
+export const AdminLogActionOneOf1KindEnum = {
+    Unlock: 'Unlock'
+} as const;
+export type AdminLogActionOneOf1KindEnum = typeof AdminLogActionOneOf1KindEnum[keyof typeof AdminLogActionOneOf1KindEnum];
+
+/**
+ * Gave the Account another Role
+ * @export
+ * @interface AdminLogActionOneOf2
+ */
+export interface AdminLogActionOneOf2 {
+    /**
+     * 
+     * @type {AdminLogActionOneOf2KindEnum}
+     * @memberof AdminLogActionOneOf2
+     */
+    kind: AdminLogActionOneOf2KindEnum;
+    /**
+     * The Role the Account has now
+     * @type {Role}
+     * @memberof AdminLogActionOneOf2
+     */
+    role: Role;
+}
+
+
+/**
+ * @export
+ */
+export const AdminLogActionOneOf2KindEnum = {
+    RoleChange: 'RoleChange'
+} as const;
+export type AdminLogActionOneOf2KindEnum = typeof AdminLogActionOneOf2KindEnum[keyof typeof AdminLogActionOneOf2KindEnum];
+
+/**
+ * Deleted the Account
+ * @export
+ * @interface AdminLogActionOneOf3
+ */
+export interface AdminLogActionOneOf3 {
+    /**
+     * 
+     * @type {AdminLogActionOneOf3KindEnum}
+     * @memberof AdminLogActionOneOf3
+     */
+    kind: AdminLogActionOneOf3KindEnum;
+    /**
+     * What happened to the Account's public decks
+     * @type {DeletionMode}
+     * @memberof AdminLogActionOneOf3
+     */
+    mode: DeletionMode;
+}
+
+
+/**
+ * @export
+ */
+export const AdminLogActionOneOf3KindEnum = {
+    Deletion: 'Deletion'
+} as const;
+export type AdminLogActionOneOf3KindEnum = typeof AdminLogActionOneOf3KindEnum[keyof typeof AdminLogActionOneOf3KindEnum];
+
+/**
  * One entry of the Admin log
  * @export
  * @interface AdminLogEntryResponse
@@ -479,12 +576,12 @@ export interface AdminLogEntryResponse {
     account_username: string;
     /**
      * What the Admin did
-     * @type {AdminAction}
+     * @type {AdminLogAction}
      * @memberof AdminLogEntryResponse
      */
-    action: AdminAction;
+    action: AdminLogAction;
     /**
-     * The acting Admin, `None` once it is deleted
+     * The acting Admin, `None` once it is deleted or for a change made through the cli
      * @type {string}
      * @memberof AdminLogEntryResponse
      */
@@ -502,32 +599,12 @@ export interface AdminLogEntryResponse {
      */
     created_at: string;
     /**
-     * What a Deletion did with the Account's public decks
-     * @type {DeletionMode}
-     * @memberof AdminLogEntryResponse
-     */
-    deletion?: DeletionMode | null;
-    /**
-     * The reason the Admin gave
-     * @type {string}
-     * @memberof AdminLogEntryResponse
-     */
-    reason?: string | null;
-    /**
-     * The Role a Role change gave the Account
-     * @type {Role}
-     * @memberof AdminLogEntryResponse
-     */
-    role?: Role | null;
-    /**
      * Primary key
      * @type {string}
      * @memberof AdminLogEntryResponse
      */
     uuid: string;
 }
-
-
 /**
  * The file the prices were last read from
  * @export
@@ -2820,6 +2897,27 @@ export interface FormErrorResponseForFinishLoginErrors {
 /**
  * The response that is sent in a case of an error the caller should present his user
  * @export
+ * @interface FormErrorResponseForMeErrors
+ */
+export interface FormErrorResponseForMeErrors {
+    /**
+     * The actual error struct
+     * @type {MeErrors}
+     * @memberof FormErrorResponseForMeErrors
+     */
+    error: MeErrors;
+    /**
+     * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
+     * @type {ErrorConstant}
+     * @memberof FormErrorResponseForMeErrors
+     */
+    result: ErrorConstant;
+}
+
+
+/**
+ * The response that is sent in a case of an error the caller should present his user
+ * @export
  * @interface FormErrorResponseForRegistrationErrors
  */
 export interface FormErrorResponseForRegistrationErrors {
@@ -3435,6 +3533,25 @@ export interface MarkedCard {
      * @memberof MarkedCard
      */
     oracle_id: string;
+}
+/**
+ * @type Me200Response
+ * 
+ * @export
+ */
+export type Me200Response = FormErrorResponseForMeErrors | MeResponse;
+/**
+ * Why the session has no account to answer with
+ * @export
+ * @interface MeErrors
+ */
+export interface MeErrors {
+    /**
+     * An Admin locked the account; the session is logged out
+     * @type {boolean}
+     * @memberof MeErrors
+     */
+    locked: boolean;
 }
 /**
  * The account the current session belongs to

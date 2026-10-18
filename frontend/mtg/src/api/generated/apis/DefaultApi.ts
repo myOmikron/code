@@ -83,7 +83,7 @@ import type {
     ListWatchListCopiesResponse,
     ListWatchListEntriesResponse,
     ListWatchListsResponse,
-    MeResponse,
+    Me200Response,
     MergeCollectionEntriesRequest,
     MpcFillCardbacksResponse,
     MpcFillSearchRequest,
@@ -4693,10 +4693,10 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * The account the current session belongs to
+     * The account the current session belongs to  The one route a locked Account\'s session still reaches: it answers with the `locked` flag, never the Lock reason, and logs the session out.
      * The account the current session belongs to
      */
-    async meRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MeResponse>> {
+    async meRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Me200Response>> {
         const requestOptions = await this.meRequestOpts();
         const response = await this.request(requestOptions, initOverrides);
 
@@ -4704,10 +4704,10 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * The account the current session belongs to
+     * The account the current session belongs to  The one route a locked Account\'s session still reaches: it answers with the `locked` flag, never the Lock reason, and logs the session out.
      * The account the current session belongs to
      */
-    async me(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MeResponse> {
+    async me(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Me200Response> {
         const response = await this.meRaw(initOverrides);
         return await response.value();
     }

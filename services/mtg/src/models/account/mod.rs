@@ -26,6 +26,10 @@ use uuid::Uuid;
 
 use crate::models::account::db::AccountInsertPatch;
 use crate::models::account::db::AccountModel;
+use crate::models::admin_log::AdminActor;
+use crate::models::admin_log::AdminLogAction;
+use crate::models::admin_log::AdminLogEntry;
+use crate::models::admin_log::NewAdminLogEntry;
 use crate::models::collection::Collection;
 use crate::models::deck::Deck;
 pub(in crate::models) mod db;
@@ -369,6 +373,32 @@ impl Account {
             ])
             .await?;
         Ok(affected > 0)
+    }
+
+    /// Give `account` the Role `role` and record it in the Admin log
+    ///
+    /// `account` is read in the same transaction. Giving it the Role it has
+    /// already changes nothing and records nothing; returns whether the Role changed.
+    #[instrument(name = "Account::change_role", skip(tx))]
+    pub async fn change_role(
+        tx: &mut Transaction,
+        actor: AdminActor<'_>,
+        account: &Account,
+        role: Role,
+    ) -> Result<bool, rorm::Error> {
+        if account.role == role || !Self::set_role(tx, account.uuid, role).await? {
+            return Ok(false);
+        }
+        AdminLogEntry::record(
+            tx,
+            NewAdminLogEntry {
+                admin: actor,
+                account,
+                action: AdminLogAction::RoleChange { role },
+            },
+        )
+        .await?;
+        Ok(true)
     }
 
     /// Fetch an account an Admin may manage: any but the tombstone

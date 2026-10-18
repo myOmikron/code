@@ -5,9 +5,7 @@ use serde::Deserialize;
 use serde::Serialize;
 
 use crate::models::account::AccountUuid;
-use crate::models::account::DeletionMode;
-use crate::models::account::Role;
-use crate::models::admin_log::AdminAction;
+use crate::models::admin_log::AdminLogAction;
 use crate::models::admin_log::AdminLogEntry;
 use crate::models::admin_log::AdminLogEntryUuid;
 
@@ -21,13 +19,8 @@ pub struct AdminListLogQuery {
     #[serde(default)]
     pub after: Option<AdminLogEntryUuid>,
     /// How many entries to return, capped server-side
-    #[serde(default = "default_limit")]
+    #[serde(default = "crate::http::handler_frontend::admin::default_limit")]
     pub limit: u32,
-}
-
-/// The page size a client gets without asking for one
-fn default_limit() -> u32 {
-    50
 }
 
 /// One entry of the Admin log
@@ -37,7 +30,7 @@ pub struct AdminLogEntryResponse {
     pub uuid: AdminLogEntryUuid,
     /// When the Admin acted
     pub created_at: SchemaDateTime,
-    /// The acting Admin, `None` once it is deleted
+    /// The acting Admin, `None` once it is deleted or for a change made through the cli
     pub admin: Option<AccountUuid>,
     /// The acting Admin's username at the time
     pub admin_username: String,
@@ -46,13 +39,7 @@ pub struct AdminLogEntryResponse {
     /// The affected Account's username at the time
     pub account_username: String,
     /// What the Admin did
-    pub action: AdminAction,
-    /// The Role a Role change gave the Account
-    pub role: Option<Role>,
-    /// The reason the Admin gave
-    pub reason: Option<String>,
-    /// What a Deletion did with the Account's public decks
-    pub deletion: Option<DeletionMode>,
+    pub action: AdminLogAction,
 }
 
 impl From<AdminLogEntry> for AdminLogEntryResponse {
@@ -65,9 +52,6 @@ impl From<AdminLogEntry> for AdminLogEntryResponse {
             account: value.account,
             account_username: value.account_username,
             action: value.action,
-            role: value.role,
-            reason: value.reason,
-            deletion: value.deletion,
         }
     }
 }

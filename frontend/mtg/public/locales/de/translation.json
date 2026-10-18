@@ -84,6 +84,7 @@
         "version-warning": "Frühe Version {{version}} – Fehler und Datenverlust sind noch möglich."
     },
     "toast": {
+        "account-locked": "Dein Konto ist gesperrt.",
         "logged-out": "Abgemeldet",
         "session-expired": "Sitzung abgelaufen, bitte erneut anmelden",
         "share-link-copied": "Link kopiert",

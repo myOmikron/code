@@ -9,6 +9,7 @@ use crate::models::account::AccountUuid;
 use crate::models::account::DeletionMode;
 use crate::models::account::LOCK_REASON_MAX_LEN;
 use crate::models::account::Role;
+use crate::models::account::Username;
 use crate::models::account::overview::AccountOverview;
 
 /// How to page and narrow the Account list
@@ -16,7 +17,7 @@ use crate::models::account::overview::AccountOverview;
 pub struct AdminListAccountsQuery {
     /// Prefix of the username or the email, case ignored
     #[serde(default)]
-    pub search: Option<String>,
+    pub search: Option<MaxStr<255>>,
     /// Only Accounts with this Role
     #[serde(default)]
     pub role: Option<Role>,
@@ -27,13 +28,8 @@ pub struct AdminListAccountsQuery {
     #[serde(default)]
     pub after: Option<AccountUuid>,
     /// How many Accounts to return, capped server-side
-    #[serde(default = "default_limit")]
+    #[serde(default = "crate::http::handler_frontend::admin::default_limit")]
     pub limit: u32,
-}
-
-/// The page size a client gets without asking for one
-fn default_limit() -> u32 {
-    50
 }
 
 /// An Account in the admin list
@@ -155,7 +151,7 @@ pub struct AdminUnlockAccountErrors {
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
 pub struct AdminDeleteAccountRequest {
     /// The Account's username, typed out by the Admin
-    pub username: String,
+    pub username: MaxStr<{ Username::MAX_LEN }>,
     /// What happens to the Account's public decks
     #[serde(default)]
     pub mode: DeletionMode,

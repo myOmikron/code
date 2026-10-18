@@ -13,7 +13,6 @@ use galvyn::core::re_exports::time::OffsetDateTime;
 use galvyn::rorm;
 use galvyn::rorm::Database;
 use galvyn::rorm::and;
-use galvyn::rorm::conditions::Condition;
 use galvyn::rorm::db::transaction::Transaction;
 use galvyn::rorm::fields::types::MaxStr;
 use serde::Deserialize;
@@ -203,12 +202,20 @@ impl SyncRun {
         Ok(runs.into_iter().map(SyncRun::from).collect())
     }
 
-    async fn newest<'a>(
+    /// The newest run of a sync with this outcome
+    ///
+    /// One step down the `sync_run_outcome` index, however many runs of
+    /// another outcome came since.
+    async fn newest(
         tx: &mut Transaction,
-        condition: impl Condition<'a>,
+        sync: SyncKind,
+        outcome: SyncRunOutcome,
     ) -> Result<Option<SyncRun>, rorm::Error> {
         let run = rorm::query(&mut *tx, SyncRunModel)
-            .condition(condition)
+            .condition(and![
+                SyncRunModel.sync.equals(sync),
+                SyncRunModel.outcome.equals(outcome)
+            ])
             .order_desc(SyncRunModel.started_at)
             .optional()
             .await?;
@@ -225,22 +232,13 @@ impl SyncStatus {
         recent: u64,
     ) -> Result<SyncStatus, rorm::Error> {
         let recent = SyncRun::recent(tx, sync, recent).await?;
-        let last_success = SyncRun::newest(
-            tx,
-            and![
-                SyncRunModel.sync.equals(sync),
-                SyncRunModel.outcome.not_equals(SyncRunOutcome::Failed)
-            ],
-        )
-        .await?;
-        let last_failure = SyncRun::newest(
-            tx,
-            and![
-                SyncRunModel.sync.equals(sync),
-                SyncRunModel.outcome.equals(SyncRunOutcome::Failed)
-            ],
-        )
-        .await?;
+        let last_synced = SyncRun::newest(tx, sync, SyncRunOutcome::Synced).await?;
+        let last_unchanged = SyncRun::newest(tx, sync, SyncRunOutcome::Unchanged).await?;
+        let last_success = last_synced
+            .into_iter()
+            .chain(last_unchanged)
+            .max_by_key(|run| run.started_at);
+        let last_failure = SyncRun::newest(tx, sync, SyncRunOutcome::Failed).await?;
         Ok(SyncStatus {
             last_attempt: recent.first().cloned(),
             last_success,

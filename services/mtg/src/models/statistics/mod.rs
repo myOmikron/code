@@ -16,6 +16,7 @@ use galvyn::rorm::db::transaction::Transaction;
 use tracing::instrument;
 use uuid::Uuid;
 
+use crate::models::row::decode;
 use crate::models::statistics::db::StatisticsSnapshotInsertPatch;
 use crate::models::statistics::db::StatisticsSnapshotModel;
 use crate::models::visibility::Visibility;
@@ -136,9 +137,4 @@ impl From<StatisticsSnapshotModel> for StatisticsSnapshot {
             open_scanner_sessions: model.open_scanner_sessions,
         }
     }
-}
-
-/// Turns a row error into the error the reads return
-fn decode(error: rorm::db::row::RowError<'_>) -> rorm::Error {
-    rorm::Error::RowError(error.into_owned())
 }

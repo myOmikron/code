@@ -42,6 +42,7 @@ use crate::http::FrontendApi;
 use crate::models::account::Account;
 use crate::models::account::Role;
 use crate::models::account::Username;
+use crate::models::admin_log::AdminActor;
 use crate::models::collection::stock::StockDrift;
 use crate::models::collection::stock::rebuild as rebuild_stock;
 use crate::models::statistics::StatisticsSnapshot;
@@ -372,8 +373,14 @@ async fn check_stock_command(repair: bool) -> Result<(), Box<dyn Error>> {
 /// Set the Role of the Account named `username`
 ///
 /// Fails on an unknown username, so a typo exits non-zero instead of
-/// reporting success.
+/// reporting success. A change lands in the Admin log with no acting Admin.
 async fn set_role_command(username: &str, role: Role) -> Result<(), Box<dyn Error>> {
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("mtg=info,warn")),
+        )
+        .init();
+
     let config = match config::load() {
         Ok(config) => config,
         Err(err) => return Err(Box::from(err)),
@@ -387,11 +394,23 @@ async fn set_role_command(username: &str, role: Role) -> Result<(), Box<dyn Erro
         database.close().await;
         return Err(format!("No account is named {}", username.as_str()).into());
     };
-    Account::set_role(&mut tx, account.uuid, role).await?;
+    let changed = Account::change_role(&mut tx, AdminActor::Cli, &account, role).await?;
     tx.commit().await?;
     database.close().await;
 
-    println!("{} is now {role:?}", account.username.as_str());
+    if changed {
+        info!(
+            username = account.username.as_str(),
+            ?role,
+            "Changed the Role"
+        );
+    } else {
+        info!(
+            username = account.username.as_str(),
+            ?role,
+            "The Account has the Role already"
+        );
+    }
     Ok(())
 }
 
@@ -554,36 +573,36 @@ fn report_snapshot(snapshot: StatisticsSnapshot) {
 fn report_prices(outcome: PriceOutcome) {
     match outcome {
         PriceOutcome::Unchanged { etag } => {
-            println!("price guide already up to date ({etag})");
+            info!(%etag, "Price guide already up to date");
         }
         PriceOutcome::Synced(report) => {
-            let day = report
-                .day
-                .map(|day| day.to_string())
-                .unwrap_or_else(|| String::from("?"));
-            println!(
-                "read {} prices for {day}, wrote {}, skipped {}; thinned {} old rows",
-                report.read, report.written, report.skipped, report.compacted
+            info!(
+                day = report.day.map(tracing::field::display),
+                read = report.read,
+                written = report.written,
+                skipped = report.skipped,
+                compacted = report.compacted,
+                "Synced the price guide"
             );
         }
     }
 }
 
-/// Says what a run came to, on stdout where `docker logs` picks it up
+/// Says what a run came to, in the log where `docker logs` picks it up
 fn report_sync(outcome: SyncOutcome) {
     match outcome {
         SyncOutcome::Unchanged { stamp } => {
-            println!("catalog already up to date ({stamp})");
+            info!(%stamp, "Catalog already up to date");
         }
         SyncOutcome::Synced(report) => {
-            println!(
-                "read {} printings, wrote {}, skipped {}, inherited {}; armed {} alarms, disarmed {}",
-                report.read,
-                report.written,
-                report.skipped,
-                report.inherited,
-                report.armed,
-                report.disarmed
+            info!(
+                read = report.read,
+                written = report.written,
+                skipped = report.skipped,
+                inherited = report.inherited,
+                armed = report.armed,
+                disarmed = report.disarmed,
+                "Synced the catalog"
             );
         }
     }

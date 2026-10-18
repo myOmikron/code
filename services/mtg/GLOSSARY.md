@@ -17,11 +17,11 @@ An Account with the Admin Role. Sees the admin dashboard and manages other Accou
 _Avoid_: superuser, staff, moderator
 
 **Lock**:
-An Admin's block on an Account: its Login and Registration link Enrollment are refused with `locked`, recovery silently mails no link, and its existing sessions fail on their next request. Its public decks and shares stay reachable. Carries a **Lock reason** (required); lifting it, the **unlock**, takes an optional **unlock reason**. Only Admins see either reason, and no mail is sent.
+An Admin's block on an Account: its Login and Registration link Enrollment are refused with `locked`, and its existing sessions fail on their next request, learning only that the Account is locked. Recovery answers the same silent `200` as for an unknown username and mails no link, by design: recovery must not reveal which usernames exist or are locked. Its public decks and shares stay reachable. Carries a **Lock reason** (required); lifting it, the **unlock**, takes an optional **unlock reason**. Only Admins see either reason, and no mail is sent.
 _Avoid_: ban, suspension, disable
 
 **Admin log**:
-The record of what Admins did to Accounts: Lock, unlock, Role change and Deletion, each with the acting Admin, the affected Account's username, when, and the reason given; a Deletion also records whether it was full. Names both Accounts by their username at the time, so it outlives the Accounts it names.
+The record of what Admins did to Accounts: Lock, unlock, Role change and Deletion, each with the acting Admin (none for a Role change through the `set-role` cli, named `cli`), the affected Account's username, when, and the reason given; a Deletion also records whether it was full. Names both Accounts by their username at the time, so it outlives the Accounts it names.
 _Avoid_: audit log, history
 
 **Tombstone**:
@@ -47,7 +47,7 @@ _Avoid_: active session
 ## Relationships
 
 - An **Account** has exactly one **Role**, and at most one **Lock** at a time
-- Every **Lock**, unlock, **Role** change and **Deletion** by an **Admin** writes one **Admin log** entry
+- Every **Lock**, unlock, **Role** change and **Deletion** by an **Admin** or the cli writes one **Admin log** entry
 - A **Deletion** hands the Account's public decks to the **Tombstone**, unless it is a full Deletion
 - A **Statistics snapshot** never counts the **Tombstone**
 

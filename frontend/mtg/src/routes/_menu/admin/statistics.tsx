@@ -1,13 +1,12 @@
 import { BookOpenIcon, CameraIcon, RectangleStackIcon, Square2StackIcon, UsersIcon } from "@heroicons/react/20/solid";
 import { createFileRoute } from "@tanstack/react-router";
 import { EmptyState, StatTile, Text } from "components";
-import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
-import type { AdminStatisticsResponse } from "src/api/generated";
 import { ChartCard } from "src/components/charts/chart-card";
 import { StatisticsCurve, type StatisticsCount } from "src/components/charts/statistics-curve";
 import { formatDateTime, formatDay } from "src/utils/format";
+import { useLoaded } from "src/utils/use-loaded";
 
 export const Route = createFileRoute("/_menu/admin/statistics")({
     component: RouteComponent,
@@ -22,20 +21,7 @@ export const Route = createFileRoute("/_menu/admin/statistics")({
  */
 function RouteComponent() {
     const [t] = useTranslation("admin");
-    const [statistics, setStatistics] = useState<AdminStatisticsResponse | null>(null);
-
-    useEffect(() => {
-        let current = true;
-        Api.admin
-            .statistics()
-            .then((response) => {
-                if (current) setStatistics(response);
-            })
-            .catch(() => undefined);
-        return () => {
-            current = false;
-        };
-    }, []);
+    const { data: statistics } = useLoaded(() => Api.admin.statistics(), []);
 
     if (statistics === null) return <Text>{t("label.loading")}</Text>;
 

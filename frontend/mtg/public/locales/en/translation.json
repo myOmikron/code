@@ -84,6 +84,7 @@
         "version-warning": "Early version {{version}} – bugs and data loss are still possible."
     },
     "toast": {
+        "account-locked": "Your account is locked.",
         "logged-out": "Signed out",
         "session-expired": "Session expired, please sign in again",
         "share-link-copied": "Link copied",

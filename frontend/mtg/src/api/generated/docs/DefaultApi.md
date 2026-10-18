@@ -789,7 +789,7 @@ async function example() {
     // Role (optional)
     role: ...,
     // string (optional)
-    search: search_example,
+    search: ...,
   } satisfies AdminListAccountsRequest;
 
   try {
@@ -5933,11 +5933,11 @@ No authorization required
 
 ## me
 
-> MeResponse me()
+> Me200Response me()
 
 The account the current session belongs to
 
-The account the current session belongs to
+The account the current session belongs to  The one route a locked Account\&#39;s session still reaches: it answers with the &#x60;locked&#x60; flag, never the Lock reason, and logs the session out.
 
 ### Example
 
@@ -5970,7 +5970,7 @@ This endpoint does not need any parameter.
 
 ### Return type
 
-[**MeResponse**](MeResponse.md)
+[**Me200Response**](Me200Response.md)
 
 ### Authorization
 

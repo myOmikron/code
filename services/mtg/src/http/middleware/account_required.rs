@@ -14,7 +14,8 @@ use crate::models::account::Account;
 ///
 /// mtg's replacement for `galvyn_identity::AuthRequiredLayer`, which only
 /// checks the Identity: wrapping with this refuses a locked Account's session
-/// also on routes whose handlers never extract the [`Account`]. The extractor
+/// also on routes whose handlers never extract the [`Account`]. Only
+/// `accounts/me` keeps the plain layer, to tell a locked session why it ends. The extractor
 /// caches the Account on the request, so handlers extracting it again pay no
 /// extra query.
 #[derive(Copy, Clone, Debug)]

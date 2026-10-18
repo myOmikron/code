@@ -25,6 +25,8 @@ use galvyn::rorm::db::transaction::Transaction;
 use tracing::instrument;
 use uuid::Uuid;
 
+use crate::models::row::decode;
+
 /// The key the single sync-state row is kept under
 const PRICE_SYNC_ID: &str = "cardmarket";
 
@@ -266,11 +268,6 @@ impl PriceGuideSync {
             .await?;
         Ok(())
     }
-}
-
-/// Turns a row error into the crate's error, as every raw read here does
-fn decode(error: rorm::db::row::RowError<'_>) -> rorm::Error {
-    rorm::Error::RowError(error.into_owned())
 }
 
 /// Binds an optional price, since `Value` has no option of its own

@@ -10,6 +10,7 @@ use galvyn::get;
 use galvyn::post;
 use galvyn::put;
 use galvyn::rorm::Database;
+use galvyn::rorm::db::transaction::Transaction;
 use galvyn::rorm::fields::types::MaxStr;
 
 use crate::http::handler_frontend::admin::accounts::schema::AdminAccount;
@@ -24,18 +25,18 @@ use crate::http::handler_frontend::admin::accounts::schema::AdminSetRoleErrors;
 use crate::http::handler_frontend::admin::accounts::schema::AdminSetRoleRequest;
 use crate::http::handler_frontend::admin::accounts::schema::AdminUnlockAccountErrors;
 use crate::http::handler_frontend::admin::accounts::schema::AdminUnlockAccountRequest;
+use crate::http::handler_frontend::admin::page_limit;
 use crate::models::account::Account;
 use crate::models::account::AccountUuid;
+use crate::models::account::LOCK_REASON_MAX_LEN;
 use crate::models::account::Role;
 use crate::models::account::overview::AccountDetail;
 use crate::models::account::overview::AccountFilter;
 use crate::models::account::overview::AccountOverview;
-use crate::models::admin_log::AdminAction;
+use crate::models::admin_log::AdminActor;
+use crate::models::admin_log::AdminLogAction;
 use crate::models::admin_log::AdminLogEntry;
 use crate::models::admin_log::NewAdminLogEntry;
-
-/// The largest page a client may ask for
-const MAX_LIMIT: u32 = 100;
 
 /// List Accounts, newest first
 #[get("/")]
@@ -46,11 +47,11 @@ pub async fn admin_list_accounts(
     let page = AccountOverview::page(
         &mut tx,
         &AccountFilter {
-            search: query.search,
+            search: query.search.map(|search| search.to_string()),
             role: query.role,
             locked: query.locked,
             after: query.after,
-            limit: query.limit.clamp(1, MAX_LIMIT),
+            limit: page_limit(query.limit),
         },
     )
     .await?;
@@ -96,28 +97,8 @@ pub async fn admin_set_role(
     }
 
     let mut tx = Database::global().start_transaction().await?;
-    let Some(account) = Account::get_manageable(&mut tx, uuid).await? else {
-        tx.commit().await?;
-        return Err(ApiError::bad_request("Unknown account"));
-    };
-    if account.role == request.role {
-        tx.commit().await?;
-        return Ok(ApiJson(()));
-    }
-
-    Account::set_role(&mut tx, uuid, request.role).await?;
-    AdminLogEntry::record(
-        &mut tx,
-        NewAdminLogEntry {
-            admin: &admin,
-            account: &account,
-            action: AdminAction::RoleChange,
-            role: Some(request.role),
-            reason: None,
-            deletion: None,
-        },
-    )
-    .await?;
+    let account = manageable_account(&mut tx, uuid).await?;
+    Account::change_role(&mut tx, AdminActor::Admin(&admin), &account, request.role).await?;
     tx.commit().await?;
 
     Ok(ApiJson(()))
@@ -137,19 +118,17 @@ pub async fn admin_lock_account(
     if uuid == admin.uuid {
         errors.own_account = true;
     }
-    let reason = request.reason.trim();
-    if reason.is_empty() {
+    let reason = trimmed_reason(&request.reason);
+    if reason.is_none() {
         errors.reason_missing = true;
     }
     errors.check()?;
-    let reason = MaxStr::new(reason.to_string())
-        .unwrap_or_else(|_| unreachable!("trimming does not make a string longer"));
+    let Some(reason) = reason else {
+        unreachable!("a missing reason fails the check");
+    };
 
     let mut tx = Database::global().start_transaction().await?;
-    let Some(account) = Account::get_manageable(&mut tx, uuid).await? else {
-        tx.commit().await?;
-        return Err(ApiError::bad_request("Unknown account"));
-    };
+    let account = manageable_account(&mut tx, uuid).await?;
     if !Account::lock(&mut tx, uuid, reason.clone()).await? {
         tx.rollback().await?;
         let mut errors = FormErrors::<AdminLockAccountErrors>::new();
@@ -159,12 +138,9 @@ pub async fn admin_lock_account(
     AdminLogEntry::record(
         &mut tx,
         NewAdminLogEntry {
-            admin: &admin,
+            admin: AdminActor::Admin(&admin),
             account: &account,
-            action: AdminAction::Lock,
-            role: None,
-            reason: Some(reason),
-            deletion: None,
+            action: AdminLogAction::Lock { reason },
         },
     )
     .await?;
@@ -180,20 +156,10 @@ pub async fn admin_unlock_account(
     Path(uuid): Path<AccountUuid>,
     ApiJson(request): ApiJson<AdminUnlockAccountRequest>,
 ) -> ApiResult<ApiJson<()>, AdminUnlockAccountErrors> {
-    let reason = request
-        .reason
-        .map(|reason| reason.trim().to_string())
-        .filter(|reason| !reason.is_empty())
-        .map(|reason| {
-            MaxStr::new(reason)
-                .unwrap_or_else(|_| unreachable!("trimming does not make a string longer"))
-        });
+    let reason = request.reason.as_ref().and_then(trimmed_reason);
 
     let mut tx = Database::global().start_transaction().await?;
-    let Some(account) = Account::get_manageable(&mut tx, uuid).await? else {
-        tx.commit().await?;
-        return Err(ApiError::bad_request("Unknown account"));
-    };
+    let account = manageable_account(&mut tx, uuid).await?;
     if !Account::unlock(&mut tx, uuid).await? {
         tx.rollback().await?;
         let mut errors = FormErrors::<AdminUnlockAccountErrors>::new();
@@ -203,12 +169,9 @@ pub async fn admin_unlock_account(
     AdminLogEntry::record(
         &mut tx,
         NewAdminLogEntry {
-            admin: &admin,
+            admin: AdminActor::Admin(&admin),
             account: &account,
-            action: AdminAction::Unlock,
-            role: None,
-            reason,
-            deletion: None,
+            action: AdminLogAction::Unlock { reason },
         },
     )
     .await?;
@@ -236,10 +199,7 @@ pub async fn admin_delete_account(
     }
 
     let mut tx = Database::global().start_transaction().await?;
-    let Some(account) = Account::get_manageable(&mut tx, uuid).await? else {
-        tx.commit().await?;
-        return Err(ApiError::bad_request("Unknown account"));
-    };
+    let account = manageable_account(&mut tx, uuid).await?;
     if !request
         .username
         .trim()
@@ -254,12 +214,9 @@ pub async fn admin_delete_account(
     AdminLogEntry::record(
         &mut tx,
         NewAdminLogEntry {
-            admin: &admin,
+            admin: AdminActor::Admin(&admin),
             account: &account,
-            action: AdminAction::Deletion,
-            role: None,
-            reason: None,
-            deletion: Some(request.mode),
+            action: AdminLogAction::Deletion { mode: request.mode },
         },
     )
     .await?;
@@ -267,4 +224,26 @@ pub async fn admin_delete_account(
     tx.commit().await?;
 
     Ok(ApiJson(()))
+}
+
+/// The Account an admin route acts on
+///
+/// An unknown Account or the Tombstone is a bad request. Nothing is written
+/// before the lookup, so the transaction rolling back on that error loses nothing.
+async fn manageable_account<E>(
+    tx: &mut Transaction,
+    uuid: AccountUuid,
+) -> Result<Account, ApiError<E>> {
+    Account::get_manageable(tx, uuid)
+        .await?
+        .ok_or(ApiError::bad_request("Unknown account"))
+}
+
+/// The reason an Admin gave, trimmed, `None` when nothing is left
+fn trimmed_reason(reason: &MaxStr<LOCK_REASON_MAX_LEN>) -> Option<MaxStr<LOCK_REASON_MAX_LEN>> {
+    let reason = reason.trim();
+    (!reason.is_empty()).then(|| {
+        MaxStr::new(reason.to_string())
+            .unwrap_or_else(|_| unreachable!("trimming does not make a string longer"))
+    })
 }

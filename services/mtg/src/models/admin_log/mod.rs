@@ -24,25 +24,64 @@ use crate::models::account::LOCK_REASON_MAX_LEN;
 use crate::models::account::Role;
 use crate::models::admin_log::db::AdminLogEntryInsertPatch;
 use crate::models::admin_log::db::AdminLogEntryModel;
+use crate::models::row::decode;
 
 pub(in crate::models) mod db;
 
-/// What an Admin did to an Account
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
-pub enum AdminAction {
+/// The name the log gives the acting Admin of a change made through the cli
+pub const CLI_ADMIN_USERNAME: &str = "cli";
+
+/// What an Admin did to an Account, with what the action needs to be read
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, JsonSchema)]
+#[serde(tag = "kind")]
+pub enum AdminLogAction {
     /// Locked the Account
-    Lock,
+    Lock {
+        /// Why the Account was locked
+        reason: MaxStr<LOCK_REASON_MAX_LEN>,
+    },
     /// Lifted the Account's Lock
-    Unlock,
+    Unlock {
+        /// Why the Lock was lifted, if the Admin said
+        reason: Option<MaxStr<LOCK_REASON_MAX_LEN>>,
+    },
     /// Gave the Account another Role
-    RoleChange,
+    RoleChange {
+        /// The Role the Account has now
+        role: Role,
+    },
     /// Deleted the Account
+    Deletion {
+        /// What happened to the Account's public decks
+        mode: DeletionMode,
+    },
+}
+
+/// The `action` column: which [`AdminLogAction`] an entry records
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum AdminAction {
+    /// [`AdminLogAction::Lock`]
+    Lock,
+    /// [`AdminLogAction::Unlock`]
+    Unlock,
+    /// [`AdminLogAction::RoleChange`]
+    RoleChange,
+    /// [`AdminLogAction::Deletion`]
     Deletion,
 }
 custom_db_enum! {
     enum: AdminAction,
     variants: [Lock, Unlock, RoleChange, Deletion],
     decoder: AdminActionDecoder,
+}
+
+/// Who made a change the Admin log records
+#[derive(Debug, Clone, Copy)]
+pub enum AdminActor<'a> {
+    /// An Admin, through the admin dashboard
+    Admin(&'a Account),
+    /// Somebody with access to the server, through the cli
+    Cli,
 }
 
 /// Primary key of an [`AdminLogEntry`]
@@ -56,39 +95,27 @@ pub struct AdminLogEntry {
     pub uuid: AdminLogEntryUuid,
     /// When the Admin acted
     pub created_at: OffsetDateTime,
-    /// The acting Admin, `None` once it is deleted
+    /// The acting Admin, `None` once it is deleted or for a change made through the cli
     pub admin: Option<AccountUuid>,
-    /// The acting Admin's username at the time
+    /// The acting Admin's username at the time, [`CLI_ADMIN_USERNAME`] for the cli
     pub admin_username: String,
     /// The affected Account, `None` once it is deleted
     pub account: Option<AccountUuid>,
     /// The affected Account's username at the time
     pub account_username: String,
     /// What the Admin did
-    pub action: AdminAction,
-    /// The Role a Role change gave the Account
-    pub role: Option<Role>,
-    /// The reason the Admin gave
-    pub reason: Option<String>,
-    /// What a Deletion did with the Account's public decks
-    pub deletion: Option<DeletionMode>,
+    pub action: AdminLogAction,
 }
 
 /// What a new [`AdminLogEntry`] records
 #[derive(Debug, Clone)]
 pub struct NewAdminLogEntry<'a> {
-    /// The acting Admin
-    pub admin: &'a Account,
+    /// Who made the change
+    pub admin: AdminActor<'a>,
     /// The affected Account
     pub account: &'a Account,
     /// What the Admin did
-    pub action: AdminAction,
-    /// The Role a Role change gave the Account
-    pub role: Option<Role>,
-    /// The reason the Admin gave
-    pub reason: Option<MaxStr<LOCK_REASON_MAX_LEN>>,
-    /// What a Deletion did with the Account's public decks
-    pub deletion: Option<DeletionMode>,
+    pub action: AdminLogAction,
 }
 
 /// What a page of the Admin log is narrowed to
@@ -118,18 +145,33 @@ impl AdminLogEntry {
         tx: &mut Transaction,
         entry: NewAdminLogEntry<'_>,
     ) -> Result<(), rorm::Error> {
+        let (admin, admin_username) = match entry.admin {
+            AdminActor::Admin(admin) => (
+                Some(ForeignModelByField(admin.uuid.into_inner())),
+                username_field(admin.username.as_str()),
+            ),
+            AdminActor::Cli => (None, username_field(CLI_ADMIN_USERNAME)),
+        };
+        let (action, role, reason, deletion) = match entry.action {
+            AdminLogAction::Lock { reason } => (AdminAction::Lock, None, Some(reason), None),
+            AdminLogAction::Unlock { reason } => (AdminAction::Unlock, None, reason, None),
+            AdminLogAction::RoleChange { role } => {
+                (AdminAction::RoleChange, Some(role), None, None)
+            }
+            AdminLogAction::Deletion { mode } => (AdminAction::Deletion, None, None, Some(mode)),
+        };
         rorm::insert(tx, AdminLogEntryModel)
             .return_nothing()
             .single(&AdminLogEntryInsertPatch {
                 uuid: Uuid::now_v7(),
-                admin: Some(ForeignModelByField(entry.admin.uuid.into_inner())),
-                admin_username: username_field(entry.admin),
+                admin,
+                admin_username,
                 account: Some(ForeignModelByField(entry.account.uuid.into_inner())),
-                account_username: username_field(entry.account),
-                action: entry.action,
-                role: entry.role,
-                reason: entry.reason,
-                deletion: entry.deletion,
+                account_username: username_field(entry.account.username.as_str()),
+                action,
+                role,
+                reason,
+                deletion,
             })
             .await
     }
@@ -184,24 +226,16 @@ impl AdminLogEntry {
     }
 }
 
-/// An Account's username as the log's column stores it
-fn username_field(account: &Account) -> MaxStr<32> {
-    MaxStr::new(account.username.as_str().to_string())
+/// A username as the log's columns store it
+fn username_field(username: &str) -> MaxStr<32> {
+    MaxStr::new(username.to_string())
         .unwrap_or_else(|_| unreachable!("a username has at most 32 characters"))
-}
-
-/// Turns a row error into the error the reads return
-fn decode(error: rorm::db::row::RowError<'_>) -> rorm::Error {
-    rorm::Error::RowError(error.into_owned())
 }
 
 /// Reads an entry from a row of [`AdminLogEntry::page`]
 fn decode_entry(row: &Row) -> Result<AdminLogEntry, rorm::Error> {
-    let action: String = row.get("action").map_err(decode)?;
-    let role: Option<String> = row.get("role").map_err(decode)?;
     let admin: Option<Uuid> = row.get("admin").map_err(decode)?;
     let account: Option<Uuid> = row.get("account").map_err(decode)?;
-    let deletion: Option<String> = row.get("deletion").map_err(decode)?;
     Ok(AdminLogEntry {
         uuid: AdminLogEntryUuid(row.get("uuid").map_err(decode)?),
         created_at: row.get("created_at").map_err(decode)?,
@@ -209,16 +243,43 @@ fn decode_entry(row: &Row) -> Result<AdminLogEntry, rorm::Error> {
         admin_username: row.get("admin_username").map_err(decode)?,
         account: account.map(AccountUuid::new),
         account_username: row.get("account_username").map_err(decode)?,
-        action: AdminAction::from_str(&action)
-            .unwrap_or_else(|| unreachable!("only the action's own encoding is written")),
-        role: role.map(|role| {
-            Role::decode(&role)
-                .unwrap_or_else(|| unreachable!("only the Role's own encoding is written"))
-        }),
-        reason: row.get("reason").map_err(decode)?,
-        deletion: deletion.map(|deletion| {
-            DeletionMode::decode(&deletion)
-                .unwrap_or_else(|| unreachable!("only the mode's own encoding is written"))
-        }),
+        action: decode_action(row)?,
     })
+}
+
+/// Reads the [`AdminLogAction`] of a row from its `action` and payload columns
+///
+/// Every row is written by [`AdminLogEntry::record`], so an action's payload
+/// column is always set.
+fn decode_action(row: &Row) -> Result<AdminLogAction, rorm::Error> {
+    let action: String = row.get("action").map_err(decode)?;
+    let role: Option<String> = row.get("role").map_err(decode)?;
+    let reason: Option<String> = row.get("reason").map_err(decode)?;
+    let deletion: Option<String> = row.get("deletion").map_err(decode)?;
+    let reason = reason.map(|reason| {
+        MaxStr::new(reason).unwrap_or_else(|_| unreachable!("the column holds at most the limit"))
+    });
+
+    Ok(
+        match AdminAction::from_str(&action)
+            .unwrap_or_else(|| unreachable!("only the action's own encoding is written"))
+        {
+            AdminAction::Lock => AdminLogAction::Lock {
+                reason: reason.unwrap_or_else(|| unreachable!("a Lock is written with a reason")),
+            },
+            AdminAction::Unlock => AdminLogAction::Unlock { reason },
+            AdminAction::RoleChange => AdminLogAction::RoleChange {
+                role: role
+                    .as_deref()
+                    .and_then(Role::decode)
+                    .unwrap_or_else(|| unreachable!("a Role change is written with its Role")),
+            },
+            AdminAction::Deletion => AdminLogAction::Deletion {
+                mode: deletion
+                    .as_deref()
+                    .and_then(DeletionMode::decode)
+                    .unwrap_or_else(|| unreachable!("a Deletion is written with its mode")),
+            },
+        },
+    )
 }
