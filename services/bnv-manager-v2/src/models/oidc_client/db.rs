@@ -4,7 +4,6 @@ use galvyn::rorm::Model;
 use galvyn::rorm::fields::types::Json;
 use galvyn::rorm::fields::types::MaxStr;
 use galvyn::rorm::prelude::ForeignModel;
-use url::Url;
 use uuid::Uuid;
 
 use crate::models::account::db::ClubAccountModel;
@@ -20,9 +19,9 @@ pub struct OidcClientModel {
     pub name: MaxStr<255>,
     /// Secret the client authenticates with
     pub client_secret: MaxStr<64>,
-    /// The registered redirect uri
-    #[rorm(max_length = 1024, rename = "redirect_url")]
-    pub redirect_uri: Url,
+    /// The registered redirect uri, as the admin entered it
+    #[rorm(rename = "redirect_url")]
+    pub redirect_uri: MaxStr<1024>,
 }
 
 /// An authorization code issued to a client
@@ -36,8 +35,8 @@ pub struct OidcAuthenticationTokenModel {
     #[rorm(on_update = "Cascade", on_delete = "Cascade")]
     pub client: ForeignModel<OidcClientModel>,
     /// The redirect uri the code was issued for
-    #[rorm(max_length = 1024, rename = "redirect_url")]
-    pub redirect_uri: Url,
+    #[rorm(rename = "redirect_url")]
+    pub redirect_uri: MaxStr<1024>,
     /// The code
     #[rorm(unique)]
     pub code: MaxStr<64>,

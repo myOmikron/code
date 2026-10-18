@@ -14,6 +14,7 @@ use galvyn::core::re_exports::axum::http::header;
 use galvyn::core::re_exports::mime;
 use galvyn::core::re_exports::mime::Mime;
 use galvyn::core::re_exports::schemars::schema::Schema;
+use galvyn::rorm::fields::types::MaxStr;
 use percent_encoding::percent_decode_str;
 
 use crate::http::handler_auth::params::Params;
@@ -60,11 +61,13 @@ impl RequestBody for TokenForm {
 }
 
 /// Credentials a client authenticates with
+///
+/// Bounded like the form parameters of [`TokenRequest`].
 pub struct ClientCredentials {
     /// The `client_id`
-    pub client_id: String,
+    pub client_id: MaxStr<255>,
     /// The `client_secret`
-    pub client_secret: String,
+    pub client_secret: MaxStr<255>,
 }
 
 impl ClientCredentials {
@@ -90,7 +93,7 @@ impl ClientCredentials {
                 if form
                     .client_id
                     .as_ref()
-                    .is_some_and(|client_id| **client_id != basic.client_id)
+                    .is_some_and(|client_id| *client_id != basic.client_id)
                 {
                     return Err(TokenError::invalid_request(
                         "client_id differs from the HTTP Basic credentials",
@@ -104,8 +107,8 @@ impl ClientCredentials {
                     .as_ref()
                     .ok_or(TokenError::invalid_client("Missing client_id"))?;
                 Ok(Self {
-                    client_id: client_id.to_string(),
-                    client_secret: client_secret.to_string(),
+                    client_id: client_id.clone(),
+                    client_secret: client_secret.clone(),
                 })
             }
             (None, None) => Err(TokenError::invalid_client("Missing client authentication")),
@@ -135,10 +138,11 @@ impl ClientCredentials {
         let credentials = String::from_utf8(credentials).map_err(|_| malformed())?;
         let (client_id, client_secret) = credentials.split_once(':').ok_or_else(malformed)?;
         let form_decode = |value: &str| {
-            percent_decode_str(&value.replace('+', " "))
+            let value = percent_decode_str(&value.replace('+', " "))
                 .decode_utf8()
-                .map(|value| value.into_owned())
-                .map_err(|_| malformed())
+                .map_err(|_| malformed())?
+                .into_owned();
+            MaxStr::new(value).map_err(|_| malformed())
         };
 
         Ok(Self {

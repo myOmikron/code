@@ -5,7 +5,6 @@ use galvyn::core::re_exports::schemars::JsonSchema;
 use galvyn::rorm::fields::types::MaxStr;
 use serde::Deserialize;
 use serde::Serialize;
-use url::Url;
 
 use crate::models::oidc_client::OidcClient;
 use crate::models::oidc_client::OidcClientUuid;
@@ -18,7 +17,7 @@ pub struct OidcClientSchema {
     /// Human-readable name
     pub name: MaxStr<255>,
     /// The client's registered redirect uri
-    pub redirect_uri: Url,
+    pub redirect_uri: MaxStr<1024>,
 }
 
 /// Request to register an OIDC client
@@ -28,8 +27,9 @@ pub struct CreateOidcClientRequest {
     pub name: MaxStr<255>,
     /// The client's redirect uri
     ///
-    /// Must be an absolute url using `https`, or `http` on localhost, and must not contain
-    /// a fragment.
+    /// Must be an absolute url of printable ASCII using `https`, or `http` on localhost, and
+    /// must not contain a fragment. It is stored as sent, a client's `redirect_uri` has to
+    /// match it exactly.
     pub redirect_uri: MaxStr<1024>,
 }
 
@@ -47,8 +47,8 @@ pub struct CreatedOidcClient {
 /// Errors when registering an OIDC client
 #[derive(Debug, Clone, Default, Serialize, Deserialize, JsonSchema)]
 pub struct CreateOidcClientError {
-    /// The redirect uri is no absolute url, not `https` (or `http` on localhost) or
-    /// contains a fragment
+    /// The redirect uri is no absolute url of printable ASCII, not `https` (or `http` on
+    /// localhost) or contains a fragment
     pub invalid_redirect_uri: bool,
 }
 

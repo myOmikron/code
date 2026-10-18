@@ -953,3 +953,34 @@ fn consent_and_select_account_are_ignored() {
         flow::query_param(&callback, "code");
     });
 }
+
+#[test]
+fn redirect_uri_is_used_as_registered() {
+    harness::run(async {
+        let member = harness::register_member().await;
+
+        for (registered, callback) in [
+            ("https://rp.test", "https://rp.test?"),
+            ("https://RP.test/callback", "https://RP.test/callback?"),
+            ("https://rp.test/cb?q=%7e", "https://rp.test/cb?q=%7e&"),
+            ("https://rp.test/cb?", "https://rp.test/cb?code="),
+        ] {
+            let client = harness::register_client(registered).await;
+            let mut browser = TestClient::new();
+            let login_page = flow::authorize(&mut browser, &client, &[]).await;
+            flow::sign_in(&mut browser, &member).await;
+            let response = browser
+                .get(&flow::finish_auth_url(&flow::query_param(
+                    &login_page,
+                    "request_id",
+                )))
+                .await;
+            assert_eq!(response.status, StatusCode::FOUND, "{registered}");
+            let location = response.headers[header::LOCATION].to_str().unwrap();
+            assert!(location.starts_with(callback), "{registered}: {location}");
+
+            let code = flow::query_param(&response.location(), "code");
+            flow::redeem(&client, &code).await;
+        }
+    });
+}

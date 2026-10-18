@@ -93,7 +93,14 @@ pub struct IdTokenClaims {
     pub exp: usize,
     /// Time at which the token was issued
     pub iat: usize,
-    /// Nonce of the authorization request
+    /// Nonce of the authorization request, omitted when it had none
+    ///
+    /// OpenID Connect Core §2: "If present in the Authentication Request, Authorization
+    /// Servers MUST include a nonce Claim in the ID Token with the Claim Value being the
+    /// same as the nonce value sent in the Authentication Request." §5.3.2: "If a Claim is
+    /// not returned, that Claim Name SHOULD be omitted from the JSON object representing
+    /// the Claims; it SHOULD NOT be present with a null or empty string value."
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub nonce: Option<String>,
     /// Time of the end-user's login, in seconds since the epoch
     pub auth_time: i64,

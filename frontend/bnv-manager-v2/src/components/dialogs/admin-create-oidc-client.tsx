@@ -19,9 +19,9 @@ import { toast } from "react-toastify";
 import { ClipboardIcon } from "@heroicons/react/16/solid";
 
 /**
- * The properties for {@link DialogCreateOidcClient}
+ * The properties for {@link AdminCreateOidcClientDialog}
  */
-export type DialogCreateOidcClientProps = DialogProps & {
+export type AdminCreateOidcClientDialogProps = DialogProps & {
     /** Callback once the new OIDC client was created and its credentials were shown */
     onCreate: () => void;
 };
@@ -31,7 +31,7 @@ export type DialogCreateOidcClientProps = DialogProps & {
  *
  * After the creation it shows the client's credentials, the only time its secret is visible.
  */
-export default function DialogCreateOidcClient(props: DialogCreateOidcClientProps) {
+export default function AdminCreateOidcClientDialog(props: AdminCreateOidcClientDialogProps) {
     const [t] = useTranslation("dialog-create-oidc-client");
     const [tg] = useTranslation();
 

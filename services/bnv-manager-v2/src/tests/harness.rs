@@ -393,7 +393,7 @@ pub struct RegisteredClient {
     /// `client_secret`
     pub client_secret: String,
     /// The one registered `redirect_uri`
-    pub redirect_uri: Url,
+    pub redirect_uri: String,
 }
 
 /// Registers an OIDC client
@@ -402,14 +402,14 @@ pub async fn register_client(redirect_uri: &str) -> RegisteredClient {
     let client = OidcClient::create(
         Database::global(),
         MaxStr::new(format!("client-{}", Uuid::new_v4().simple())).expect("short name"),
-        Url::parse(redirect_uri).expect("valid redirect_uri"),
+        MaxStr::new(redirect_uri.to_string()).expect("short redirect_uri"),
     )
     .await
     .expect("create the client");
     RegisteredClient {
         client_id: client.client_id.0,
         client_secret: client.client_secret.to_string(),
-        redirect_uri: client.redirect_uri,
+        redirect_uri: client.redirect_uri.into_inner(),
     }
 }
 

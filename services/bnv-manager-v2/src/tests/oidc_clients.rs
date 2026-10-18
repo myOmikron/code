@@ -56,6 +56,9 @@ fn invalid_redirect_uris_are_rejected() {
             "com.example.app:/callback",
             "not a url",
             "/callback",
+            " https://rp.test/callback",
+            "https://rp.test/callback\t",
+            "https://bücher.test/callback",
         ] {
             let response = create_client(&mut admin, redirect_uri).await;
             assert_eq!(response.status, StatusCode::OK, "{redirect_uri}");
@@ -152,5 +155,26 @@ fn deleted_client_can_no_longer_authorize() {
             "the deleted client is still listed"
         );
         assert!(!authorize_reaches_login(&client_id, redirect_uri).await);
+    })
+}
+
+#[test]
+fn redirect_uri_is_kept_as_entered() {
+    harness::run(async {
+        let mut admin = harness::sign_in_superadmin().await;
+        let redirect_uri = "https://RP.test";
+
+        let created: Value = create_client(&mut admin, redirect_uri).await.json();
+        assert_eq!(created["result"], "Ok", "{created}");
+        let client_id = created["value"]["client_id"].as_str().unwrap().to_string();
+
+        let clients: Vec<Value> = admin.get(&clients_url()).await.json();
+        let listed = clients
+            .iter()
+            .find(|client| client["client_id"] == client_id.as_str())
+            .expect("the new client is listed");
+        assert_eq!(listed["redirect_uri"], redirect_uri);
+        assert!(authorize_reaches_login(&client_id, redirect_uri).await);
+        assert!(!authorize_reaches_login(&client_id, "https://rp.test/").await);
     })
 }

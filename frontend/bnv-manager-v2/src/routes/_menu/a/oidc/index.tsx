@@ -17,7 +17,7 @@ import {
     DropdownSection,
 } from "src/components/base/dropdown";
 import { EllipsisVerticalIcon, TrashIcon } from "@heroicons/react/20/solid";
-import DialogCreateOidcClient from "src/components/dialogs/admin-create-oidc-client";
+import AdminCreateOidcClientDialog from "src/components/dialogs/admin-create-oidc-client";
 import AdminDeleteOidcClientDialog from "src/components/dialogs/admin-delete-oidc-client";
 import { OidcClientSchema } from "src/api/generated/admin";
 import { toast } from "react-toastify";
@@ -38,14 +38,14 @@ export default function OidcClients(props: OidcClientsProps) {
     const data = Route.useLoaderData();
     const router = useRouter();
 
-    const [openCreateProvider, setOpenCreateProvider] = React.useState(false);
+    const [openCreateClient, setOpenCreateClient] = React.useState(false);
     const [openDeleteClient, setOpenDeleteClient] = React.useState<OidcClientSchema>();
 
     return (
         <HeadingLayout
             heading={t("heading.oidc-clients")}
             headingChildren={
-                <PrimaryButton onClick={() => setOpenCreateProvider(true)}>{t("button.create-client")}</PrimaryButton>
+                <PrimaryButton onClick={() => setOpenCreateClient(true)}>{t("button.create-client")}</PrimaryButton>
             }
         >
             {data.length === 0 ? (
@@ -63,16 +63,16 @@ export default function OidcClients(props: OidcClientsProps) {
                         </TableRow>
                     </TableHead>
                     <TableBody>
-                        {data.map((provider) => (
-                            <TableRow key={provider.client_id}>
-                                <TableCell>{provider.name}</TableCell>
+                        {data.map((client) => (
+                            <TableRow key={client.client_id}>
+                                <TableCell>{client.name}</TableCell>
                                 <TableCell>
                                     <div className={"flex items-center gap-2"}>
-                                        <span>{provider.client_id}</span>
+                                        <span>{client.client_id}</span>
                                         <Button
                                             plain={true}
                                             onClick={async () => {
-                                                await navigator.clipboard.writeText(provider.client_id);
+                                                await navigator.clipboard.writeText(client.client_id);
                                                 toast.success(tg("toast.copied-to-clipboard"));
                                             }}
                                         >
@@ -80,7 +80,7 @@ export default function OidcClients(props: OidcClientsProps) {
                                         </Button>
                                     </div>
                                 </TableCell>
-                                <TableCell>{provider.redirect_uri}</TableCell>
+                                <TableCell>{client.redirect_uri}</TableCell>
                                 <TableCell>
                                     <Dropdown>
                                         <DropdownButton plain={true}>
@@ -89,7 +89,7 @@ export default function OidcClients(props: OidcClientsProps) {
                                         <DropdownMenu anchor={"bottom end"}>
                                             <DropdownSection>
                                                 <DropdownHeading>{tg("heading.danger-zone")}</DropdownHeading>
-                                                <DropdownItem onClick={() => setOpenDeleteClient(provider)}>
+                                                <DropdownItem onClick={() => setOpenDeleteClient(client)}>
                                                     <TrashIcon />
                                                     <DropdownLabel>{t("button.delete-oidc-client")}</DropdownLabel>
                                                 </DropdownItem>
@@ -103,11 +103,11 @@ export default function OidcClients(props: OidcClientsProps) {
                 </Table>
             )}
             <Suspense>
-                <DialogCreateOidcClient
-                    open={openCreateProvider}
-                    onClose={() => setOpenCreateProvider(false)}
+                <AdminCreateOidcClientDialog
+                    open={openCreateClient}
+                    onClose={() => setOpenCreateClient(false)}
                     onCreate={async () => {
-                        setOpenCreateProvider(false);
+                        setOpenCreateClient(false);
                         await router.invalidate({ sync: true });
                     }}
                 />

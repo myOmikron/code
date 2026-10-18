@@ -43,8 +43,12 @@ pub struct OidcClient {
     pub client_id: OidcClientUuid,
     /// Secret the client authenticates with
     pub client_secret: MaxStr<64>,
-    /// The registered redirect uri
-    pub redirect_uri: Url,
+    /// The registered redirect uri, as the admin entered it
+    ///
+    /// Kept as text, not as a parsed [`Url`]: parsing normalizes it (a bare origin gains a
+    /// trailing `/`, the host is lowercased), while a client's `redirect_uri` has to match
+    /// it character by character.
+    pub redirect_uri: MaxStr<1024>,
 }
 
 /// Client id of an OIDC client
@@ -57,7 +61,7 @@ impl OidcClient {
     pub async fn create(
         exe: impl Executor<'_>,
         name: MaxStr<255>,
-        redirect_uri: Url,
+        redirect_uri: MaxStr<1024>,
     ) -> anyhow::Result<Self> {
         let client_secret = MaxStr::new(Alphanumeric.sample_string(&mut rand::rng(), 64))?;
 
@@ -88,9 +92,19 @@ impl OidcClient {
 
     /// Whether a redirect uri may be registered for a client
     ///
-    /// It must use `https`, or `http` on a loopback host, and must not contain a fragment
+    /// It must be an absolute url of printable ASCII without spaces, use `https`, or `http`
+    /// on a loopback host, and must not contain a fragment
     /// ([RFC 6749 §3.1.2](https://www.rfc-editor.org/rfc/rfc6749#section-3.1.2)).
-    pub fn is_valid_redirect_uri(redirect_uri: &Url) -> bool {
+    /// RFC 3986 §2: "A URI is composed from a limited set of characters consisting of
+    /// digits, letters, and a few graphic symbols." Whitespace would be trimmed by parsing
+    /// and could never be matched.
+    pub fn is_valid_redirect_uri(redirect_uri: &str) -> bool {
+        if !redirect_uri.bytes().all(|byte| byte.is_ascii_graphic()) {
+            return false;
+        }
+        let Ok(redirect_uri) = Url::parse(redirect_uri) else {
+            return false;
+        };
         if redirect_uri.fragment().is_some() {
             return false;
         }
@@ -137,7 +151,7 @@ pub struct OidcAuthenticationToken {
     /// The point in time the code expires
     pub expires_at: OffsetDateTime,
     /// The redirect uri the code was issued for
-    pub redirect_uri: Url,
+    pub redirect_uri: MaxStr<1024>,
     /// The account that authorized the client
     pub account: ClubAccount,
     /// Nonce of the authorization request
@@ -199,7 +213,8 @@ impl OidcAuthenticationToken {
     /// The row lock (`SELECT ... FOR UPDATE`) makes a concurrent redemption of the same
     /// code wait until this one commits; deleting the code in the same transaction then
     /// leaves the waiting one without a row, so a code is redeemed only once. A code issued
-    /// before the login time was recorded is not found.
+    /// before the login time was recorded is not found, nor is one whose account is no club
+    /// account anymore.
     #[instrument(name = "OidcAuthenticationToken::lock_by_code", skip(tx))]
     pub async fn lock_by_code(
         tx: &mut Transaction,
@@ -218,9 +233,11 @@ impl OidcAuthenticationToken {
             return Ok(None);
         };
 
-        let account = ClubAccount::get_by_uuid(&mut *tx, AccountUuid(token.account.0))
-            .await?
-            .ok_or(ApiError::bad_request("Account not found"))?;
+        let Some(account) =
+            ClubAccount::get_by_uuid(&mut *tx, AccountUuid(token.account.0)).await?
+        else {
+            return Ok(None);
+        };
 
         Ok(Self::from_model(token, account))
     }
@@ -273,7 +290,7 @@ pub struct CreateOidcAuthenticationToken {
     /// The client the code is issued to
     pub client_id: OidcClientUuid,
     /// The redirect uri the code is issued for
-    pub redirect_uri: Url,
+    pub redirect_uri: MaxStr<1024>,
     /// The account that authorized the client
     pub account: AccountUuid,
     /// Nonce of the authorization request
