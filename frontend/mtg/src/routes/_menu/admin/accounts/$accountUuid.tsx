@@ -1,5 +1,5 @@
 import { ChevronLeftIcon } from "@heroicons/react/20/solid";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
     Badge,
     Button,
@@ -16,6 +16,7 @@ import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import { Role } from "src/api/generated";
 import type { AdminAccountDetail } from "src/api/generated";
+import { AdminDeleteAccountDialog } from "src/components/admin-delete-account-dialog";
 import { AdminLockDialog } from "src/components/admin-lock-dialog";
 import { AdminLogEntries } from "src/components/admin-log-entries";
 import { AdminRoleBadge } from "src/components/admin-role-badge";
@@ -37,10 +38,12 @@ function RouteComponent() {
     const [t] = useTranslation("admin");
     const { accountUuid } = Route.useParams();
     const me = useAccount();
+    const navigate = useNavigate();
 
     const [detail, setDetail] = useState<AdminAccountDetail | null>(null);
     const [confirming, setConfirming] = useState(false);
     const [locking, setLocking] = useState(false);
+    const [deleting, setDeleting] = useState(false);
     const [logVersion, setLogVersion] = useState(0);
 
     useEffect(() => {
@@ -143,6 +146,9 @@ function RouteComponent() {
                     <Button outline={true} disabled={own} onClick={() => setLocking(true)}>
                         {account.lock ? t("button.unlock") : t("button.lock")}
                     </Button>
+                    <Button color={"red"} disabled={own} onClick={() => setDeleting(true)}>
+                        {t("button.delete")}
+                    </Button>
                 </div>
                 {own && <Text>{t("description.own-account")}</Text>}
             </div>
@@ -153,6 +159,13 @@ function RouteComponent() {
             </div>
 
             <AdminLockDialog open={locking} account={account} onClose={() => setLocking(false)} onDone={lockChanged} />
+
+            <AdminDeleteAccountDialog
+                open={deleting}
+                account={account}
+                onClose={() => setDeleting(false)}
+                onDeleted={() => navigate({ to: "/admin/accounts" })}
+            />
 
             <ConfirmDialog
                 open={confirming}

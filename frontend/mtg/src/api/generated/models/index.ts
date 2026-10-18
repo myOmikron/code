@@ -344,6 +344,46 @@ export interface AdminCatalogSync {
     stamp?: AdminCatalogStamp | null;
 }
 /**
+ * Why an Account could not be deleted
+ * @export
+ * @interface AdminDeleteAccountErrors
+ */
+export interface AdminDeleteAccountErrors {
+    /**
+     * The Account is the Admin's own, which it cannot delete
+     * @type {boolean}
+     * @memberof AdminDeleteAccountErrors
+     */
+    own_account: boolean;
+    /**
+     * The typed username is not the Account's
+     * @type {boolean}
+     * @memberof AdminDeleteAccountErrors
+     */
+    username_mismatch: boolean;
+}
+/**
+ * Request to delete an Account
+ * @export
+ * @interface AdminDeleteAccountRequest
+ */
+export interface AdminDeleteAccountRequest {
+    /**
+     * What happens to the Account's public decks
+     * @type {DeletionMode}
+     * @memberof AdminDeleteAccountRequest
+     */
+    mode?: DeletionMode;
+    /**
+     * The Account's username, typed out by the Admin
+     * @type {string}
+     * @memberof AdminDeleteAccountRequest
+     */
+    username: string;
+}
+
+
+/**
  * One page of the Account list, newest first
  * @export
  * @interface AdminListAccountsResponse
@@ -461,6 +501,12 @@ export interface AdminLogEntryResponse {
      * @memberof AdminLogEntryResponse
      */
     created_at: string;
+    /**
+     * What a Deletion did with the Account's public decks
+     * @type {DeletionMode}
+     * @memberof AdminLogEntryResponse
+     */
+    deletion?: DeletionMode | null;
     /**
      * The reason the Admin gave
      * @type {string}
@@ -2356,6 +2402,23 @@ export interface DeletePasskeyErrors {
 }
 
 /**
+ * What [`Account::delete`] does with the Account's public decks
+ * @export
+ */
+export const DeletionMode = {
+    /**
+    * Hands them to the Tombstone, so links to them keep working
+    */
+    Tombstone: 'Tombstone',
+    /**
+    * Deletes them along with everything else, the full Deletion
+    */
+    Full: 'Full'
+} as const;
+export type DeletionMode = typeof DeletionMode[keyof typeof DeletionMode];
+
+
+/**
  * What a collection can be ordered by
  * @export
  */
@@ -2602,6 +2665,27 @@ export interface FormErrorResponseForAddPasskeyErrors {
      * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
      * @type {ErrorConstant}
      * @memberof FormErrorResponseForAddPasskeyErrors
+     */
+    result: ErrorConstant;
+}
+
+
+/**
+ * The response that is sent in a case of an error the caller should present his user
+ * @export
+ * @interface FormErrorResponseForAdminDeleteAccountErrors
+ */
+export interface FormErrorResponseForAdminDeleteAccountErrors {
+    /**
+     * The actual error struct
+     * @type {AdminDeleteAccountErrors}
+     * @memberof FormErrorResponseForAdminDeleteAccountErrors
+     */
+    error: AdminDeleteAccountErrors;
+    /**
+     * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
+     * @type {ErrorConstant}
+     * @memberof FormErrorResponseForAdminDeleteAccountErrors
      */
     result: ErrorConstant;
 }

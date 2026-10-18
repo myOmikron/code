@@ -5,6 +5,7 @@ use serde::Deserialize;
 use serde::Serialize;
 
 use crate::models::account::AccountUuid;
+use crate::models::account::DeletionMode;
 use crate::models::account::Role;
 use crate::models::admin_log::AdminAction;
 use crate::models::admin_log::AdminLogEntry;
@@ -50,6 +51,8 @@ pub struct AdminLogEntryResponse {
     pub role: Option<Role>,
     /// The reason the Admin gave
     pub reason: Option<String>,
+    /// What a Deletion did with the Account's public decks
+    pub deletion: Option<DeletionMode>,
 }
 
 impl From<AdminLogEntry> for AdminLogEntryResponse {
@@ -64,6 +67,7 @@ impl From<AdminLogEntry> for AdminLogEntryResponse {
             action: value.action,
             role: value.role,
             reason: value.reason,
+            deletion: value.deletion,
         }
     }
 }

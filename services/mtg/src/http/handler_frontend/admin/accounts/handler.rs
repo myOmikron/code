@@ -5,6 +5,7 @@ use galvyn::core::stuff::api_error::ApiError;
 use galvyn::core::stuff::api_error::ApiResult;
 use galvyn::core::stuff::api_error::FormErrors;
 use galvyn::core::stuff::api_json::ApiJson;
+use galvyn::delete;
 use galvyn::get;
 use galvyn::post;
 use galvyn::put;
@@ -13,6 +14,8 @@ use galvyn::rorm::fields::types::MaxStr;
 
 use crate::http::handler_frontend::admin::accounts::schema::AdminAccount;
 use crate::http::handler_frontend::admin::accounts::schema::AdminAccountDetail;
+use crate::http::handler_frontend::admin::accounts::schema::AdminDeleteAccountErrors;
+use crate::http::handler_frontend::admin::accounts::schema::AdminDeleteAccountRequest;
 use crate::http::handler_frontend::admin::accounts::schema::AdminListAccountsQuery;
 use crate::http::handler_frontend::admin::accounts::schema::AdminListAccountsResponse;
 use crate::http::handler_frontend::admin::accounts::schema::AdminLockAccountErrors;
@@ -111,6 +114,7 @@ pub async fn admin_set_role(
             action: AdminAction::RoleChange,
             role: Some(request.role),
             reason: None,
+            deletion: None,
         },
     )
     .await?;
@@ -160,6 +164,7 @@ pub async fn admin_lock_account(
             action: AdminAction::Lock,
             role: None,
             reason: Some(reason),
+            deletion: None,
         },
     )
     .await?;
@@ -203,9 +208,62 @@ pub async fn admin_unlock_account(
             action: AdminAction::Unlock,
             role: None,
             reason,
+            deletion: None,
         },
     )
     .await?;
+    tx.commit().await?;
+
+    Ok(ApiJson(()))
+}
+
+/// Delete an Account
+///
+/// By default its public decks go to the Tombstone, as on a self-deletion; a
+/// full Deletion takes them too. The Admin types the Account's username to
+/// confirm, and cannot delete itself. The Admin log entry is written first, so
+/// it keeps the username once the Account is gone.
+#[delete("/{uuid}")]
+pub async fn admin_delete_account(
+    admin: Account,
+    Path(uuid): Path<AccountUuid>,
+    ApiJson(request): ApiJson<AdminDeleteAccountRequest>,
+) -> ApiResult<ApiJson<()>, AdminDeleteAccountErrors> {
+    if uuid == admin.uuid {
+        let mut errors = FormErrors::<AdminDeleteAccountErrors>::new();
+        errors.own_account = true;
+        return errors.fail();
+    }
+
+    let mut tx = Database::global().start_transaction().await?;
+    let Some(account) = Account::get_manageable(&mut tx, uuid).await? else {
+        tx.commit().await?;
+        return Err(ApiError::bad_request("Unknown account"));
+    };
+    if !request
+        .username
+        .trim()
+        .eq_ignore_ascii_case(account.username.as_str())
+    {
+        tx.commit().await?;
+        let mut errors = FormErrors::<AdminDeleteAccountErrors>::new();
+        errors.username_mismatch = true;
+        return errors.fail();
+    }
+
+    AdminLogEntry::record(
+        &mut tx,
+        NewAdminLogEntry {
+            admin: &admin,
+            account: &account,
+            action: AdminAction::Deletion,
+            role: None,
+            reason: None,
+            deletion: Some(request.mode),
+        },
+    )
+    .await?;
+    Account::delete(&mut tx, uuid, request.mode).await?;
     tx.commit().await?;
 
     Ok(ApiJson(()))

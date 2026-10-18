@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { Badge, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Text } from "components";
 import { useTranslation } from "react-i18next";
-import { AdminAction, Role } from "src/api/generated";
+import { AdminAction, DeletionMode, Role } from "src/api/generated";
 import type { AdminLogEntryResponse } from "src/api/generated";
 import { formatDateTime } from "src/utils/format";
 
@@ -45,7 +45,13 @@ export function AdminLogTable({ entries, showAccount }: AdminLogTableProps) {
                     </Badge>
                 );
             case AdminAction.Deletion:
-                return <Badge color={"zinc"}>{t("label.action-deletion")}</Badge>;
+                return (
+                    <Badge color={"zinc"}>
+                        {entry.deletion === DeletionMode.Full
+                            ? t("label.action-deletion-full")
+                            : t("label.action-deletion")}
+                    </Badge>
+                );
         }
     }
 

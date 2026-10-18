@@ -138,6 +138,28 @@ impl Role {
     }
 }
 
+/// What [`Account::delete`] does with the Account's public decks
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub enum DeletionMode {
+    /// Hands them to the Tombstone, so links to them keep working
+    #[default]
+    Tombstone,
+    /// Deletes them along with everything else, the full Deletion
+    Full,
+}
+custom_db_enum! {
+    enum: DeletionMode,
+    variants: [Tombstone, Full],
+    decoder: DeletionModeDecoder,
+}
+
+impl DeletionMode {
+    /// Parse the mode's database encoding, read by a raw query
+    pub(in crate::models) fn decode(encoded: &str) -> Option<DeletionMode> {
+        Self::from_str(encoded)
+    }
+}
+
 /// The longest Lock reason or unlock reason an Admin may give
 pub const LOCK_REASON_MAX_LEN: usize = 1024;
 
@@ -440,26 +462,33 @@ impl Account {
         Ok(AccountUuid(uuid))
     }
 
-    /// Delete an account, leaving its public decks with the tombstone
+    /// Delete an account, by default leaving its public decks with the tombstone
     ///
-    /// A decklist somebody linked to stays readable when its builder leaves,
-    /// with nothing left of the builder but the tombstone. The account goes by
-    /// deleting its identity, and everything else it owns goes with it through
-    /// the cascades on the foreign keys: passkeys, registration links,
-    /// collections, watch lists, folders, tags, and every deck it did not put
-    /// on show.
+    /// With [`DeletionMode::Tombstone`] a decklist somebody linked to stays
+    /// readable when its builder leaves, with nothing left of the builder but
+    /// the tombstone; [`DeletionMode::Full`] takes the public decks as well.
+    /// The account goes by deleting its identity, and everything else it owns
+    /// goes with it through the cascades on the foreign keys: passkeys,
+    /// registration links, collections, watch lists, folders, tags, and every
+    /// deck it did not put on show.
     ///
     /// Returns `false` if the account does not exist.
     #[instrument(name = "Account::delete", skip(tx))]
-    pub async fn delete(tx: &mut Transaction, uuid: AccountUuid) -> Result<bool, rorm::Error> {
+    pub async fn delete(
+        tx: &mut Transaction,
+        uuid: AccountUuid,
+        mode: DeletionMode,
+    ) -> Result<bool, rorm::Error> {
         let Some(account) = Self::get_by_uuid(&mut *tx, uuid).await? else {
             return Ok(false);
         };
 
         // Before the delete, not after: the cascade would otherwise take the
         // decks along with everything else.
-        let tombstone = Self::tombstone(&mut *tx).await?;
-        Deck::hand_over_public(&mut *tx, uuid, tombstone).await?;
+        if mode == DeletionMode::Tombstone {
+            let tombstone = Self::tombstone(&mut *tx).await?;
+            Deck::hand_over_public(&mut *tx, uuid, tombstone).await?;
+        }
 
         // Also before the delete, see `Collection::delete_all_of_account`.
         Collection::delete_all_of_account(&mut *tx, uuid).await?;

@@ -9,6 +9,7 @@ All URIs are relative to *http://localhost*
 | [**addDeckCard**](DefaultApi.md#adddeckcardoperation) | **POST** /api/frontend/v1/decks/{deck}/cards | Put a card into a deck |
 | [**addScannerSessionEntry**](DefaultApi.md#addscannersessionentryoperation) | **POST** /api/frontend/v1/scanner-sessions/{session}/entries | Add scanned copies to a session |
 | [**addWatchListEntry**](DefaultApi.md#addwatchlistentryoperation) | **POST** /api/frontend/v1/watch-lists/{list}/entries | Put a card on a watch list |
+| [**adminDeleteAccount**](DefaultApi.md#admindeleteaccountoperation) | **DELETE** /api/frontend/v1/admin/accounts/{uuid} | Delete an Account |
 | [**adminGetAccount**](DefaultApi.md#admingetaccount) | **GET** /api/frontend/v1/admin/accounts/{uuid} | One Account with its card and passkey counts |
 | [**adminGetStatistics**](DefaultApi.md#admingetstatistics) | **GET** /api/frontend/v1/admin/statistics | The newest Statistics snapshot and the last 30 days of them |
 | [**adminGetSyncs**](DefaultApi.md#admingetsyncs) | **GET** /api/frontend/v1/admin/syncs | The state of the catalog and price guide syncs, with their recent Sync runs |
@@ -468,6 +469,79 @@ example().catch(console.error);
 ### Return type
 
 **any**
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## adminDeleteAccount
+
+> FormErrorResponseForAdminDeleteAccountErrors adminDeleteAccount(uuid, AdminDeleteAccountRequest)
+
+Delete an Account
+
+Delete an Account  By default its public decks go to the Tombstone, as on a self-deletion; a full Deletion takes them too. The Admin types the Account\&#39;s username to confirm, and cannot delete itself. The Admin log entry is written first, so it keeps the username once the Account is gone.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { AdminDeleteAccountOperationRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    uuid: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // AdminDeleteAccountRequest (optional)
+    AdminDeleteAccountRequest: ...,
+  } satisfies AdminDeleteAccountOperationRequest;
+
+  try {
+    const data = await api.adminDeleteAccount(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **uuid** | `string` |  | [Defaults to `undefined`] |
+| **AdminDeleteAccountRequest** | [AdminDeleteAccountRequest](AdminDeleteAccountRequest.md) |  | [Optional] |
+
+### Return type
+
+[**FormErrorResponseForAdminDeleteAccountErrors**](FormErrorResponseForAdminDeleteAccountErrors.md)
 
 ### Authorization
 

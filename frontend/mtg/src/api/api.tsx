@@ -8,6 +8,7 @@ import {
     AdminListAccountsRequest,
     AdminListLogRequest,
     Configuration,
+    DeletionMode,
     CreateCollectionRequest,
     CreateDeckRequest,
     CreateScannerSessionRequest,
@@ -110,6 +111,8 @@ export const Api = {
                 handleError(defaultApi.adminLockAccount({ uuid, AdminLockAccountRequest: { reason } })),
             unlock: async (uuid: UUID, reason?: string) =>
                 handleError(defaultApi.adminUnlockAccount({ uuid, AdminUnlockAccountRequest: { reason } })),
+            delete: async (uuid: UUID, username: string, mode: DeletionMode) =>
+                handleError(defaultApi.adminDeleteAccount({ uuid, AdminDeleteAccountRequest: { username, mode } })),
         },
         log: {
             list: async (query: AdminListLogRequest = {}) => handleError(defaultApi.adminListLog(query)),

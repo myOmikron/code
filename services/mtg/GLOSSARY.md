@@ -21,7 +21,7 @@ An Admin's block on an Account: its Login and Registration link Enrollment are r
 _Avoid_: ban, suspension, disable
 
 **Admin log**:
-The record of what Admins did to Accounts: Lock, unlock, Role change and Deletion, each with the acting Admin, the affected Account's username, when, and the reason given. Names both Accounts by their username at the time, so it outlives the Accounts it names.
+The record of what Admins did to Accounts: Lock, unlock, Role change and Deletion, each with the acting Admin, the affected Account's username, when, and the reason given; a Deletion also records whether it was full. Names both Accounts by their username at the time, so it outlives the Accounts it names.
 _Avoid_: audit log, history
 
 **Tombstone**:

@@ -19,6 +19,7 @@ import type {
     AddScannerSessionEntryRequest,
     AddWatchListEntryRequest,
     AdminAccountDetail,
+    AdminDeleteAccountRequest,
     AdminListAccountsResponse,
     AdminListLogResponse,
     AdminLockAccountRequest,
@@ -59,6 +60,7 @@ import type {
     FinishLoginRequest,
     FinishRegistrationRequest,
     FormErrorResponseForAddPasskeyErrors,
+    FormErrorResponseForAdminDeleteAccountErrors,
     FormErrorResponseForAdminLockAccountErrors,
     FormErrorResponseForAdminSetRoleErrors,
     FormErrorResponseForAdminUnlockAccountErrors,
@@ -163,6 +165,11 @@ export interface AddScannerSessionEntryOperationRequest {
 export interface AddWatchListEntryOperationRequest {
     list: string;
     AddWatchListEntryRequest?: AddWatchListEntryRequest;
+}
+
+export interface AdminDeleteAccountOperationRequest {
+    uuid: string;
+    AdminDeleteAccountRequest?: AdminDeleteAccountRequest;
 }
 
 export interface AdminGetAccountRequest {
@@ -919,6 +926,56 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async addWatchListEntry(requestParameters: AddWatchListEntryOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
         const response = await this.addWatchListEntryRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for adminDeleteAccount without sending the request
+     */
+    async adminDeleteAccountRequestOpts(requestParameters: AdminDeleteAccountOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['uuid'] == null) {
+            throw new runtime.RequiredError(
+                'uuid',
+                'Required parameter "uuid" was null or undefined when calling adminDeleteAccount().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/admin/accounts/{uuid}`;
+        urlPath = urlPath.replace('{uuid}', encodeURIComponent(String(requestParameters['uuid'])));
+
+        return {
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['AdminDeleteAccountRequest'],
+        };
+    }
+
+    /**
+     * Delete an Account  By default its public decks go to the Tombstone, as on a self-deletion; a full Deletion takes them too. The Admin types the Account\'s username to confirm, and cannot delete itself. The Admin log entry is written first, so it keeps the username once the Account is gone.
+     * Delete an Account
+     */
+    async adminDeleteAccountRaw(requestParameters: AdminDeleteAccountOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FormErrorResponseForAdminDeleteAccountErrors>> {
+        const requestOptions = await this.adminDeleteAccountRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Delete an Account  By default its public decks go to the Tombstone, as on a self-deletion; a full Deletion takes them too. The Admin types the Account\'s username to confirm, and cannot delete itself. The Admin log entry is written first, so it keeps the username once the Account is gone.
+     * Delete an Account
+     */
+    async adminDeleteAccount(requestParameters: AdminDeleteAccountOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FormErrorResponseForAdminDeleteAccountErrors> {
+        const response = await this.adminDeleteAccountRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
