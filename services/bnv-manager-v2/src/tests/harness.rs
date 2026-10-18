@@ -156,7 +156,7 @@ async fn create_database() -> DatabaseDriver {
         .parse()
         .expect("TEST_POSTGRES_PORT is a port");
     let user = var("TEST_POSTGRES_USER", "postgres");
-    let password = var("TEST_POSTGRES_PASSWORD", "postgres");
+    let password = var("TEST_POSTGRES_PASSWORD", "");
     let driver = |name: String| DatabaseDriver::Postgres {
         name,
         host: host.clone(),
