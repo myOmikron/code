@@ -1,6 +1,6 @@
 [package]
 name = "mail-gateway"
-edition = "2024"
+edition.workspace = true
 version = "0.1.0"
 authors = ["Niklas Pfister <git@omikron.dev>"]
 publish = false

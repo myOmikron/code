@@ -13,6 +13,9 @@ exclude = [
     "services/mtg-graph",
 ]
 
+[workspace.package]
+edition = "2024"
+
 # Replace the real sqlx-sqlite with a stub to resolve the `links = "libsqlite3-sys"`
 # conflict between galvyn (sqlx) and rusqlite users like matrix-sdk.
 # See libs/sqlx-sqlite/README.md — the crate is never actually compiled.
