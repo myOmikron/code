@@ -27,6 +27,8 @@ use crate::models::printing::Printing;
 use crate::models::printing::TRACKED_FORMATS;
 use crate::models::printing::collector_number_sort;
 use crate::models::printing::fold_name;
+use crate::models::sync_run::SyncResult;
+use crate::models::sync_run::SyncRunOutcome;
 use crate::models::watch_list::WatchListEntry;
 use crate::models::watch_list::alarms::AlarmSweep;
 use crate::utils::archon;
@@ -62,6 +64,15 @@ pub enum SyncOutcome {
     },
     /// The file was new and has been read
     Synced(SyncReport),
+}
+
+impl SyncResult for SyncOutcome {
+    fn outcome(&self) -> SyncRunOutcome {
+        match self {
+            SyncOutcome::Unchanged { .. } => SyncRunOutcome::Unchanged,
+            SyncOutcome::Synced(_) => SyncRunOutcome::Synced,
+        }
+    }
 }
 
 /// What a run did

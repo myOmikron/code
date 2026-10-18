@@ -1,0 +1,101 @@
+[Migration]
+Hash = "9178724969961653988"
+Initial = false
+Dependency = 40
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateModel"
+Name = "sync_run"
+
+[[Migration.Operations.Fields]]
+Name = "uuid"
+Type = "uuid"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "primary_key"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/sync_run/db.rs"
+Line = 17
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "sync"
+Type = "text"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 255
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/sync_run/db.rs"
+Line = 24
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "started_at"
+Type = "datetime"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/sync_run/db.rs"
+Line = 28
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "duration_ms"
+Type = "int64"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/sync_run/db.rs"
+Line = 31
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "outcome"
+Type = "text"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 255
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/sync_run/db.rs"
+Line = 34
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "error"
+Type = "text"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 2048
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/sync_run/db.rs"
+Line = 37
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateIndex"
+Model = "sync_run"
+
+[Migration.Operations.Index]
+Name = "sync_run_started"
+Columns = [
+    "sync",
+    "started_at",
+]

@@ -10,5 +10,6 @@ pub mod price;
 pub mod printing;
 pub mod scanner_session;
 pub mod share;
+pub mod sync_run;
 pub mod visibility;
 pub mod watch_list;

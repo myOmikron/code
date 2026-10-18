@@ -9,7 +9,10 @@
         "make-admin": "{{username}} bekommt die Admin-Rolle und kann danach alle Konten verwalten.",
         "make-member": "{{username}} verliert die Admin-Rolle und sieht die Verwaltung nicht mehr.",
         "no-accounts": "Kein Konto passt zur Suche oder zum Filter.",
-        "own-account": "Deine eigene Admin-Rolle kannst du nicht abgeben."
+        "no-runs": "Noch kein Lauf aufgezeichnet.",
+        "own-account": "Deine eigene Admin-Rolle kannst du nicht abgeben.",
+        "run-durations": "Ein Balken pro Lauf, der älteste links.",
+        "syncs": "Die Synchronisierungen laufen in eigenen Containern. Hier steht nur, wie ihre Läufe ausgegangen sind; Läufe älter als 90 Tage werden entfernt."
     },
     "error": {
         "own-account": "Deine eigene Admin-Rolle kannst du nicht abgeben."
@@ -17,22 +20,40 @@
     "heading": {
         "accounts": "Konten",
         "admin": "Verwaltung",
+        "catalog-sync": "Katalog von Scryfall",
         "change-role": "Rolle ändern",
-        "no-accounts": "Keine Konten gefunden"
+        "no-accounts": "Keine Konten gefunden",
+        "price-guide-sync": "Preisliste von Cardmarket",
+        "run-durations": "Dauer der letzten Läufe",
+        "syncs": "Synchronisierung"
     },
     "label": {
         "cards": "Karten",
         "collections": "Sammlungen",
         "created-at": "Erstellt am",
         "decks": "Decks",
+        "duration": "Dauer",
         "email": "E-Mail",
+        "error": "Fehler",
+        "last-attempt": "Letzter Versuch",
+        "last-failure": "Letzter Fehler",
+        "last-success": "Letzter Erfolg",
         "loading": "Wird geladen …",
+        "never": "Noch nie",
+        "outcome": "Ergebnis",
+        "outcome-failed": "Fehlgeschlagen",
+        "outcome-synced": "Neue Datei gelesen",
+        "outcome-unchanged": "Unverändert",
         "passkeys": "Passkeys",
+        "prices-of": "Preise vom",
+        "read-at": "Gelesen am",
         "role": "Rolle",
         "role-admin": "Admin",
         "role-all": "Alle Rollen",
         "role-member": "Mitglied",
         "search": "Benutzername oder E-Mail",
+        "stamp": "Stand der Datei",
+        "started-at": "Gestartet",
         "username": "Benutzername"
     },
     "toast": {

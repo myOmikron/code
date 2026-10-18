@@ -10,6 +10,7 @@ All URIs are relative to *http://localhost*
 | [**addScannerSessionEntry**](DefaultApi.md#addscannersessionentryoperation) | **POST** /api/frontend/v1/scanner-sessions/{session}/entries | Add scanned copies to a session |
 | [**addWatchListEntry**](DefaultApi.md#addwatchlistentryoperation) | **POST** /api/frontend/v1/watch-lists/{list}/entries | Put a card on a watch list |
 | [**adminGetAccount**](DefaultApi.md#admingetaccount) | **GET** /api/frontend/v1/admin/accounts/{uuid} | One Account with its card and passkey counts |
+| [**adminGetSyncs**](DefaultApi.md#admingetsyncs) | **GET** /api/frontend/v1/admin/syncs | The state of the catalog and price guide syncs, with their recent Sync runs |
 | [**adminListAccounts**](DefaultApi.md#adminlistaccounts) | **GET** /api/frontend/v1/admin/accounts | List Accounts, newest first |
 | [**adminSetRole**](DefaultApi.md#adminsetroleoperation) | **PUT** /api/frontend/v1/admin/accounts/{uuid}/role | Change an Account\&#39;s Role |
 | [**assignCollectionEntryTag**](DefaultApi.md#assigncollectionentrytag) | **POST** /api/frontend/v1/collections/{collection}/entries/{entry}/tags/{tag} | Put a card-wide tag on a stack |
@@ -533,6 +534,68 @@ example().catch(console.error);
 ### Return type
 
 [**AdminAccountDetail**](AdminAccountDetail.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## adminGetSyncs
+
+> AdminSyncsResponse adminGetSyncs()
+
+The state of the catalog and price guide syncs, with their recent Sync runs
+
+The state of the catalog and price guide syncs, with their recent Sync runs
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { AdminGetSyncsRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  try {
+    const data = await api.adminGetSyncs();
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+This endpoint does not need any parameter.
+
+### Return type
+
+[**AdminSyncsResponse**](AdminSyncsResponse.md)
 
 ### Authorization
 

@@ -15,7 +15,6 @@
         "close-diagnostics": "Close",
         "continue-with-selection": "Continue with your selection",
         "copy-diagnostics": "Copy",
-        "retry-webgpu": "Retry WebGPU (reload)",
         "debug": "Debug: {{state}}",
         "load-card-data": "Download",
         "mark-foil": "Mark as foil",
@@ -23,6 +22,7 @@
         "open-diagnostics": "Open diagnostics",
         "open-staged": "View scanned cards",
         "pick-photo": "Pick photo",
+        "retry-webgpu": "Retry WebGPU (reload)",
         "scanning": "Analysing",
         "start-camera": "Start camera",
         "stop-camera": "Stop camera"

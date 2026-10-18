@@ -6,10 +6,10 @@
         "fewer-copies": "Eine Kopie von {{name}} weniger",
         "flip-card": "{{name}} umdrehen",
         "more-copies": "Eine Kopie von {{name}} mehr",
-        "rebook-offer_one": "Letzter Treffer an {{player}}: 1 Leben. Als Commander-Schaden buchen?",
-        "rebook-offer_other": "Letzter Treffer an {{player}}: {{count}} Leben. Als Commander-Schaden buchen?",
         "next-art": "Nächstes Bild für {{name}}",
         "previous-art": "Vorheriges Bild für {{name}}",
+        "rebook-offer_one": "Letzter Treffer an {{player}}: 1 Leben. Als Commander-Schaden buchen?",
+        "rebook-offer_other": "Letzter Treffer an {{player}}: {{count}} Leben. Als Commander-Schaden buchen?",
         "starting-life-presets": "Übliche Startleben"
     },
     "button": {
@@ -22,8 +22,8 @@
         "commander-damage": "Commander-Schaden an {{player}}",
         "confirm-reset": "Zurücksetzen",
         "copy-list": "Liste kopieren",
-        "download-xml": "XML herunterladen",
         "dismiss-rebook": "War kein Commander-Schaden",
+        "download-xml": "XML herunterladen",
         "exit-fullscreen": "Vollbild verlassen",
         "fullscreen": "Vollbild",
         "load-deck": "Übernehmen",

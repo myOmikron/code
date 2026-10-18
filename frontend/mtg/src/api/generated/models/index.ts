@@ -256,6 +256,44 @@ export interface AdminAccountDetail {
     passkeys: number;
 }
 /**
+ * The file the catalog was last read from
+ * @export
+ * @interface AdminCatalogStamp
+ */
+export interface AdminCatalogStamp {
+    /**
+     * The `updated_at` Scryfall stamped the bulk file with
+     * @type {string}
+     * @memberof AdminCatalogStamp
+     */
+    bulk_updated_at: string;
+    /**
+     * When it was read
+     * @type {string}
+     * @memberof AdminCatalogStamp
+     */
+    synced_at: string;
+}
+/**
+ * The catalog sync
+ * @export
+ * @interface AdminCatalogSync
+ */
+export interface AdminCatalogSync {
+    /**
+     * Its Sync runs
+     * @type {AdminSyncRuns}
+     * @memberof AdminCatalogSync
+     */
+    runs: AdminSyncRuns;
+    /**
+     * The file the catalog was last read from, `None` before the first read
+     * @type {AdminCatalogStamp}
+     * @memberof AdminCatalogSync
+     */
+    stamp?: AdminCatalogStamp | null;
+}
+/**
  * One page of the Account list, newest first
  * @export
  * @interface AdminListAccountsResponse
@@ -273,6 +311,44 @@ export interface AdminListAccountsResponse {
      * @memberof AdminListAccountsResponse
      */
     next_cursor?: string | null;
+}
+/**
+ * The file the prices were last read from
+ * @export
+ * @interface AdminPriceGuideStamp
+ */
+export interface AdminPriceGuideStamp {
+    /**
+     * The day it quoted prices for
+     * @type {string}
+     * @memberof AdminPriceGuideStamp
+     */
+    day: string;
+    /**
+     * The etag the file was served under
+     * @type {string}
+     * @memberof AdminPriceGuideStamp
+     */
+    etag: string;
+}
+/**
+ * The price guide sync
+ * @export
+ * @interface AdminPriceGuideSync
+ */
+export interface AdminPriceGuideSync {
+    /**
+     * Its Sync runs
+     * @type {AdminSyncRuns}
+     * @memberof AdminPriceGuideSync
+     */
+    runs: AdminSyncRuns;
+    /**
+     * The file the prices were last read from, `None` before the first read
+     * @type {AdminPriceGuideStamp}
+     * @memberof AdminPriceGuideSync
+     */
+    stamp?: AdminPriceGuideStamp | null;
 }
 /**
  * Why a Role could not be changed
@@ -302,6 +378,95 @@ export interface AdminSetRoleRequest {
 }
 
 
+/**
+ * One Sync run
+ * @export
+ * @interface AdminSyncRun
+ */
+export interface AdminSyncRun {
+    /**
+     * How long it took, in milliseconds
+     * @type {number}
+     * @memberof AdminSyncRun
+     */
+    duration_ms: number;
+    /**
+     * Why it failed
+     * @type {string}
+     * @memberof AdminSyncRun
+     */
+    error?: string | null;
+    /**
+     * What it came to
+     * @type {SyncRunOutcome}
+     * @memberof AdminSyncRun
+     */
+    outcome: SyncRunOutcome;
+    /**
+     * When it started
+     * @type {string}
+     * @memberof AdminSyncRun
+     */
+    started_at: string;
+    /**
+     * Primary key
+     * @type {string}
+     * @memberof AdminSyncRun
+     */
+    uuid: string;
+}
+
+
+/**
+ * The Sync runs of one sync
+ * @export
+ * @interface AdminSyncRuns
+ */
+export interface AdminSyncRuns {
+    /**
+     * The newest run
+     * @type {AdminSyncRun}
+     * @memberof AdminSyncRuns
+     */
+    last_attempt?: AdminSyncRun | null;
+    /**
+     * The newest run that failed, with its error
+     * @type {AdminSyncRun}
+     * @memberof AdminSyncRuns
+     */
+    last_failure?: AdminSyncRun | null;
+    /**
+     * The newest run that did not fail
+     * @type {AdminSyncRun}
+     * @memberof AdminSyncRuns
+     */
+    last_success?: AdminSyncRun | null;
+    /**
+     * The newest runs, newest first
+     * @type {Array<AdminSyncRun>}
+     * @memberof AdminSyncRuns
+     */
+    recent: Array<AdminSyncRun>;
+}
+/**
+ * The state of both syncs
+ * @export
+ * @interface AdminSyncsResponse
+ */
+export interface AdminSyncsResponse {
+    /**
+     * The catalog sync from Scryfall
+     * @type {AdminCatalogSync}
+     * @memberof AdminSyncsResponse
+     */
+    catalog: AdminCatalogSync;
+    /**
+     * The price guide sync from Cardmarket
+     * @type {AdminPriceGuideSync}
+     * @memberof AdminSyncsResponse
+     */
+    price_guide: AdminPriceGuideSync;
+}
 /**
  * One reader's advisor settings for one deck
  * 
@@ -4908,6 +5073,27 @@ export interface StatBucketResponse {
      */
     key: string;
 }
+
+/**
+ * What a Sync run came to
+ * @export
+ */
+export const SyncRunOutcome = {
+    /**
+    * A new file was read
+    */
+    Synced: 'Synced',
+    /**
+    * The file on offer was the one already read
+    */
+    Unchanged: 'Unchanged',
+    /**
+    * The run failed
+    */
+    Failed: 'Failed'
+} as const;
+export type SyncRunOutcome = typeof SyncRunOutcome[keyof typeof SyncRunOutcome];
+
 /**
  * Request to move copies out of a collection and into the deck
  * @export

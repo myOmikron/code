@@ -44,6 +44,8 @@ use crate::models::account::Role;
 use crate::models::account::Username;
 use crate::models::collection::stock::StockDrift;
 use crate::models::collection::stock::rebuild as rebuild_stock;
+use crate::models::sync_run::SyncKind;
+use crate::models::sync_run::SyncRun;
 use crate::modules::config::Conf;
 use crate::modules::graph::GraphClient;
 use crate::modules::graph::GraphClientSetup;
@@ -411,7 +413,9 @@ async fn sync_catalog_command(
     let database = Database::connect(DatabaseConfiguration::new(config.database_driver)).await?;
 
     let Some(minutes) = every_minutes else {
-        report_sync(sync_catalog(&database, force).await?);
+        report_sync(
+            SyncRun::track(&database, SyncKind::Catalog, sync_catalog(&database, force)).await?,
+        );
         return Ok(());
     };
 
@@ -421,7 +425,7 @@ async fn sync_catalog_command(
         // A failed run must not end the container. Exiting would hand the retry
         // to docker's restart policy, which has no interval and would turn a
         // Scryfall outage into a hot loop against it.
-        match sync_catalog(&database, false).await {
+        match SyncRun::track(&database, SyncKind::Catalog, sync_catalog(&database, false)).await {
             Ok(outcome) => report_sync(outcome),
             Err(error) => error!(error.display = %error, "Catalog sync failed, trying again later"),
         }
@@ -449,7 +453,14 @@ async fn sync_price_guide_command(
     let database = Database::connect(DatabaseConfiguration::new(config.database_driver)).await?;
 
     let Some(minutes) = every_minutes else {
-        report_prices(sync_price_guide(&database, force).await?);
+        report_prices(
+            SyncRun::track(
+                &database,
+                SyncKind::PriceGuide,
+                sync_price_guide(&database, force),
+            )
+            .await?,
+        );
         return Ok(());
     };
 
@@ -457,7 +468,13 @@ async fn sync_price_guide_command(
     info!(minutes = minutes.get(), "Syncing prices on a loop");
     loop {
         // A failed run must not end the container, see `sync_catalog_command`.
-        match sync_price_guide(&database, false).await {
+        match SyncRun::track(
+            &database,
+            SyncKind::PriceGuide,
+            sync_price_guide(&database, false),
+        )
+        .await
+        {
             Ok(outcome) => report_prices(outcome),
             Err(error) => error!(error.display = %error, "Price sync failed, trying again later"),
         }
