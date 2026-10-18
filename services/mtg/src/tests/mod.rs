@@ -2,4 +2,5 @@
 
 mod admin;
 pub mod harness;
+mod statistics;
 mod syncs;

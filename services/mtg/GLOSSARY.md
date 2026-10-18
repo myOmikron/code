@@ -54,3 +54,4 @@ _Avoid_: active session
 ## Flagged ambiguities
 
 - "Collection" in Account counts means a collection on the shelf; a collection standing for a deck's cards belongs to the deck and is counted with it, not as a collection.
+- "Never counts the Tombstone" in a Statistics snapshot means the Tombstone is not an Account there. The public decks it holds are still decks on the site and counted as decks.

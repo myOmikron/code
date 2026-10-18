@@ -75,6 +75,14 @@ pub enum Command {
         #[clap(long, value_name = "MINUTES")]
         every_minutes: Option<NonZeroU64>,
     },
+    /// Take a Statistics snapshot for the admin dashboard
+    ///
+    /// One shot like the syncs: it counts, stores the snapshot and exits.
+    SnapshotStatistics {
+        /// Keep running and take a snapshot this often, in minutes, instead of exiting
+        #[clap(long, value_name = "MINUTES")]
+        every_minutes: Option<NonZeroU64>,
+    },
     /// Report whether the server is up, for the container's healthcheck
     ///
     /// Connects to the listener on loopback and exits non-zero if nothing
@@ -131,5 +139,41 @@ impl From<CliRole> for Role {
             CliRole::Member => Role::Member,
             CliRole::Admin => Role::Admin,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use clap::Parser;
+
+    use super::Cli;
+    use super::Command;
+
+    #[test]
+    fn snapshot_statistics_runs_once_without_an_interval() {
+        let cli = Cli::try_parse_from(["mtg", "snapshot-statistics"]).expect("valid arguments");
+        assert!(matches!(
+            cli.command,
+            Command::SnapshotStatistics {
+                every_minutes: None
+            }
+        ));
+    }
+
+    #[test]
+    fn snapshot_statistics_takes_an_interval_in_minutes() {
+        let cli = Cli::try_parse_from(["mtg", "snapshot-statistics", "--every-minutes", "60"])
+            .expect("valid arguments");
+        let Command::SnapshotStatistics { every_minutes } = cli.command else {
+            panic!("parsed another subcommand");
+        };
+        assert_eq!(every_minutes.map(|minutes| minutes.get()), Some(60));
+    }
+
+    #[test]
+    fn snapshot_statistics_refuses_a_zero_interval() {
+        assert!(
+            Cli::try_parse_from(["mtg", "snapshot-statistics", "--every-minutes", "0"]).is_err()
+        );
     }
 }

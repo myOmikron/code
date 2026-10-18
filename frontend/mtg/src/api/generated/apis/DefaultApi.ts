@@ -21,6 +21,7 @@ import type {
     AdminAccountDetail,
     AdminListAccountsResponse,
     AdminSetRoleRequest,
+    AdminStatisticsResponse,
     AdminSyncsResponse,
     AdvisorSettingsResponse,
     ApiErrorResponse,
@@ -943,6 +944,45 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async adminGetAccount(requestParameters: AdminGetAccountRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AdminAccountDetail> {
         const response = await this.adminGetAccountRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for adminGetStatistics without sending the request
+     */
+    async adminGetStatisticsRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/admin/statistics`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * The newest Statistics snapshot and the last 30 days of them
+     * The newest Statistics snapshot and the last 30 days of them
+     */
+    async adminGetStatisticsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<AdminStatisticsResponse>> {
+        const requestOptions = await this.adminGetStatisticsRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * The newest Statistics snapshot and the last 30 days of them
+     * The newest Statistics snapshot and the last 30 days of them
+     */
+    async adminGetStatistics(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AdminStatisticsResponse> {
+        const response = await this.adminGetStatisticsRaw(initOverrides);
         return await response.value();
     }
 

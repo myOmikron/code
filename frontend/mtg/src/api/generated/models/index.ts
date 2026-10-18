@@ -379,6 +379,86 @@ export interface AdminSetRoleRequest {
 
 
 /**
+ * The newest Statistics snapshot and the ones of the last 30 days
+ * @export
+ * @interface AdminStatisticsResponse
+ */
+export interface AdminStatisticsResponse {
+    /**
+     * Snapshots of the last 30 days, oldest first
+     * @type {Array<AdminStatisticsSnapshot>}
+     * @memberof AdminStatisticsResponse
+     */
+    history: Array<AdminStatisticsSnapshot>;
+    /**
+     * The most recent snapshot, `None` before the first one was taken
+     * @type {AdminStatisticsSnapshot}
+     * @memberof AdminStatisticsResponse
+     */
+    newest?: AdminStatisticsSnapshot | null;
+}
+/**
+ * Service-wide counts at one point in time
+ * @export
+ * @interface AdminStatisticsSnapshot
+ */
+export interface AdminStatisticsSnapshot {
+    /**
+     * Accounts, without the Tombstone
+     * @type {number}
+     * @memberof AdminStatisticsSnapshot
+     */
+    accounts: number;
+    /**
+     * Cards, on the shelf and sleeved in decks
+     * @type {number}
+     * @memberof AdminStatisticsSnapshot
+     */
+    cards: number;
+    /**
+     * Collections on a shelf, without the ones standing for a deck
+     * @type {number}
+     * @memberof AdminStatisticsSnapshot
+     */
+    collections: number;
+    /**
+     * Decks
+     * @type {number}
+     * @memberof AdminStatisticsSnapshot
+     */
+    decks: number;
+    /**
+     * Accounts created in the 7 days before `taken_at`
+     * @type {number}
+     * @memberof AdminStatisticsSnapshot
+     */
+    new_accounts: number;
+    /**
+     * Scanner sessions holding at least one card not yet filed
+     * @type {number}
+     * @memberof AdminStatisticsSnapshot
+     */
+    open_scanner_sessions: number;
+    /**
+     * Public decks
+     * @type {number}
+     * @memberof AdminStatisticsSnapshot
+     */
+    public_decks: number;
+    /**
+     * When the counts were taken
+     * @type {string}
+     * @memberof AdminStatisticsSnapshot
+     */
+    taken_at: string;
+    /**
+     * Primary key
+     * @type {string}
+     * @memberof AdminStatisticsSnapshot
+     */
+    uuid: string;
+}
+/**
  * One Sync run
  * @export
  * @interface AdminSyncRun

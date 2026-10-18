@@ -1,0 +1,124 @@
+[Migration]
+Hash = "978068448665440650"
+Initial = false
+Dependency = 41
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateModel"
+Name = "statistics_snapshot"
+
+[[Migration.Operations.Fields]]
+Name = "uuid"
+Type = "uuid"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "primary_key"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/statistics/db.rs"
+Line = 14
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "taken_at"
+Type = "datetime"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/statistics/db.rs"
+Line = 17
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "accounts"
+Type = "int64"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/statistics/db.rs"
+Line = 19
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "new_accounts"
+Type = "int64"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/statistics/db.rs"
+Line = 21
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "collections"
+Type = "int64"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/statistics/db.rs"
+Line = 23
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "decks"
+Type = "int64"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/statistics/db.rs"
+Line = 25
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "public_decks"
+Type = "int64"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/statistics/db.rs"
+Line = 27
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "cards"
+Type = "int64"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/statistics/db.rs"
+Line = 29
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "open_scanner_sessions"
+Type = "int64"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/statistics/db.rs"
+Line = 31
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateIndex"
+Model = "statistics_snapshot"
+
+[Migration.Operations.Index]
+Columns = ["taken_at"]
