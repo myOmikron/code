@@ -1,0 +1,28 @@
+name: i18n
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - "frontend/*/public/locales/**"
+      - "frontend/*/src/**"
+      - "tools/check-i18n.py"
+      - ".github/workflows/i18n.yaml"
+  pull_request:
+    paths:
+      - "frontend/*/public/locales/**"
+      - "frontend/*/src/**"
+      - "tools/check-i18n.py"
+      - ".github/workflows/i18n.yaml"
+
+permissions:
+  contents: read
+
+jobs:
+  i18n:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: Check keys and namespaces
+        run: python3 tools/check-i18n.py
