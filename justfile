@@ -19,6 +19,10 @@ lint:
 lint-ast:
     ast-grep scan
 
+# Check the frontends' i18n keys and namespaces (CODING_STANDARDS.md, i18n)
+lint-i18n:
+    python3 tools/check-i18n.py
+
 # Check the ast-grep lints against their test cases (.ast-grep/rule-tests)
 test-ast:
     ast-grep test
