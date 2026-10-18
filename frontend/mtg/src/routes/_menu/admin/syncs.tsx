@@ -1,11 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { DescriptionDetails, DescriptionTerm, Text } from "components";
-import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
-import type { AdminSyncsResponse } from "src/api/generated";
 import { AdminSyncPanel } from "src/components/admin-sync-panel";
 import { formatDateTime, formatFullDay } from "src/utils/format";
+import { useLoaded } from "src/utils/use-loaded";
 
 export const Route = createFileRoute("/_menu/admin/syncs")({
     component: RouteComponent,
@@ -19,20 +18,7 @@ export const Route = createFileRoute("/_menu/admin/syncs")({
  */
 function RouteComponent() {
     const [t] = useTranslation("admin");
-    const [syncs, setSyncs] = useState<AdminSyncsResponse | null>(null);
-
-    useEffect(() => {
-        let current = true;
-        Api.admin.syncs
-            .get()
-            .then((loaded) => {
-                if (current) setSyncs(loaded);
-            })
-            .catch(() => undefined);
-        return () => {
-            current = false;
-        };
-    }, []);
+    const { data: syncs } = useLoaded(() => Api.admin.syncs.get(), []);
 
     if (syncs === null) return <Text>{t("label.loading")}</Text>;
 

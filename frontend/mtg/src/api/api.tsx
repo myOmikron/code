@@ -1,6 +1,7 @@
 import { redirect } from "@tanstack/react-router";
 import { SESSION_STORE } from "src/api/session";
 import { ERROR_STORE } from "src/context/error-context";
+import { isFormError } from "src/utils/error";
 import {
     AddDeckCardRequest,
     AddScannerSessionEntryRequest,
@@ -24,6 +25,7 @@ import {
     ListPublicCollectionCardsRequest,
     ListSharedCollectionCardsRequest,
     MailLanguage,
+    MeResponse,
     NewCollectionEntry,
     PrintingLookupRequest,
     RequiredError,
@@ -83,7 +85,12 @@ export const Api = {
         // Takes a signal because the whole app chrome waits on this one read: a
         // gateway that accepts the connection and then never answers leaves the
         // fetch pending forever, and with it the navbar without a login button.
-        me: (signal?: AbortSignal) => defaultApi.me({ signal }),
+        me: async (signal?: AbortSignal): Promise<MeResponse | null> => {
+            const response = await defaultApi.me({ signal });
+            if (!isFormError(response)) return response;
+            if (response.error.locked) SESSION_STORE.locked();
+            return null;
+        },
         passkeys: {
             list: async () => handleError(defaultApi.listPasskeys()),
             // Adding a device from an existing session; the ceremony failures are the caller's

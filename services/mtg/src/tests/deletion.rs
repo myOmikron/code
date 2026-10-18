@@ -159,8 +159,8 @@ fn a_deletion_stays_in_the_admin_log_after_the_account_is_gone() {
             .iter()
             .find(|entry| entry["account_username"] == member.username.as_str())
             .expect("the Deletion is logged");
-        assert_eq!(entry["action"], "Deletion");
-        assert_eq!(entry["deletion"], "Full");
+        assert_eq!(entry["action"]["kind"], "Deletion");
+        assert_eq!(entry["action"]["mode"], "Full");
         assert_eq!(entry["account"], Value::Null);
         assert_eq!(entry["admin_username"], admin.username.as_str());
     });

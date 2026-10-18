@@ -9,13 +9,10 @@ Name | Type
 ------------ | -------------
 `account` | string
 `account_username` | string
-`action` | [AdminAction](AdminAction.md)
+`action` | [AdminLogAction](AdminLogAction.md)
 `admin` | string
 `admin_username` | string
 `created_at` | string
-`deletion` | [DeletionMode](DeletionMode.md)
-`reason` | string
-`role` | [Role](Role.md)
 `uuid` | string
 
 

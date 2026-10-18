@@ -89,10 +89,15 @@ export function AccountProvider({ children }: AccountProviderProps) {
     accountRef.current = account;
 
     useEffect(() => {
-        SESSION_STORE.subscribe(() => {
-            if (accountRef.current !== null) notify.error(tg("toast.session-expired"));
+        SESSION_STORE.subscribe((end) => {
+            const wasLoggedIn = accountRef.current !== null;
             setAccount(null);
             setLoading(false);
+            if (end === "locked") {
+                notify.error(tg("toast.account-locked"));
+            } else if (wasLoggedIn) {
+                Api.accounts.me().catch(() => notify.error(tg("toast.session-expired")));
+            }
         });
     }, [tg]);
 

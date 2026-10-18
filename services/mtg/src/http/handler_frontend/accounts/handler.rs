@@ -11,6 +11,7 @@ use galvyn::get;
 use galvyn::post;
 use galvyn::rorm::Database;
 use galvyn_identity::FinishDeviceEnrollmentError;
+use galvyn_identity::Identity;
 use galvyn_identity::IdentityModule;
 use galvyn_identity::RemovalRefused;
 use galvyn_identity::RemovePasskeyError;
@@ -21,6 +22,7 @@ use crate::http::handler_frontend::accounts::schema::DeleteAccountRequest;
 use crate::http::handler_frontend::accounts::schema::DeletePasskeyErrors;
 use crate::http::handler_frontend::accounts::schema::FinishAddPasskeyRequest;
 use crate::http::handler_frontend::accounts::schema::ListPasskeysResponse;
+use crate::http::handler_frontend::accounts::schema::MeErrors;
 use crate::http::handler_frontend::accounts::schema::MeResponse;
 use crate::http::handler_frontend::accounts::schema::SimplePasskey;
 use crate::http::handler_frontend::accounts::schema::StartAddPasskeyResponse;
@@ -29,8 +31,26 @@ use crate::models::account::AccountPasskeyUuid;
 use crate::models::account::DeletionMode;
 
 /// The account the current session belongs to
+///
+/// The one route a locked Account's session still reaches: it answers with
+/// the `locked` flag, never the Lock reason, and logs the session out.
 #[get("/me")]
-pub async fn me(account: Account) -> ApiResult<ApiJson<MeResponse>> {
+pub async fn me(session: Session, identity: Identity) -> ApiResult<ApiJson<MeResponse>, MeErrors> {
+    let mut tx = Database::global().start_transaction().await?;
+    let account = Account::get_by_identity(&mut tx, identity.uuid).await?;
+    tx.commit().await?;
+
+    let account = account.ok_or(ApiError::unauthorized("No account for the identity"))?;
+    if account.locked {
+        IdentityModule::global()
+            .logout(&session)
+            .await
+            .map_err(ApiError::map_server_error("Failed to flush session"))?;
+        let mut errors = FormErrors::<MeErrors>::new();
+        errors.locked = true;
+        return errors.fail();
+    }
+
     Ok(ApiJson(MeResponse {
         uuid: account.uuid,
         username: account.username.as_str().to_string(),

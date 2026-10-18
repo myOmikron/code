@@ -21,6 +21,13 @@ pub struct MeResponse {
     pub role: Role,
 }
 
+/// Why the session has no account to answer with
+#[derive(Debug, Default, Serialize, JsonSchema)]
+pub struct MeErrors {
+    /// An Admin locked the account; the session is logged out
+    pub locked: bool,
+}
+
 /// A passkey registered on the account
 #[derive(Serialize, JsonSchema)]
 pub struct SimplePasskey {

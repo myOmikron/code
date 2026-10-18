@@ -20,6 +20,7 @@ use uuid::Uuid;
 use crate::models::account::AccountUuid;
 use crate::models::account::Role;
 use crate::models::account::Username;
+use crate::models::row::decode;
 
 /// An Account in the admin list
 #[derive(Debug, Clone)]
@@ -86,6 +87,9 @@ pub struct AccountPage {
     pub next_cursor: Option<AccountUuid>,
 }
 
+/// The most prefix matches a search reads from each index before ordering them
+const SEARCH_CANDIDATES: i64 = 1000;
+
 /// The columns both reads select
 const COLUMNS: &str = "\
     a.uuid, a.username, a.email, a.role, a.created_at, a.locked_at, a.lock_reason, \
@@ -97,9 +101,14 @@ impl AccountOverview {
     ///
     /// Paged by uuid, which is a v7 and so creation-ordered: a page is a range
     /// scan of the primary key, or of `account_role` with a Role filter, or of
-    /// the partial `account_locked` when only locked Accounts are asked for. A
-    /// search reads the Accounts matching the prefix through the
-    /// `account_username_prefix` and `account_email_prefix` indexes.
+    /// the partial `account_locked` when only locked Accounts are asked for.
+    ///
+    /// A search reads at most [`SEARCH_CANDIDATES`] matches from each of the
+    /// `account_username_prefix` and `account_email_prefix` indexes and orders
+    /// only those newest first. The trade-off: a prefix matching more Accounts
+    /// than that pages through the first matches in index order, alphabetical
+    /// in practice, not through all of them; the Admin types more of the name.
+    /// The other filters apply to these candidates as well.
     #[instrument(name = "AccountOverview::page", skip(tx))]
     pub async fn page(
         tx: &mut Transaction,
@@ -129,7 +138,12 @@ impl AccountOverview {
         if let Some(pattern) = &pattern {
             values.push(Value::String(pattern));
             conditions.push(format!(
-                "(a.username_normalized LIKE ${n} OR lower(a.email) LIKE ${n})",
+                "a.uuid IN (\
+                   (SELECT uuid FROM account WHERE username_normalized LIKE ${n} \
+                    LIMIT {SEARCH_CANDIDATES}) \
+                   UNION ALL \
+                   (SELECT uuid FROM account WHERE lower(email) LIKE ${n} \
+                    LIMIT {SEARCH_CANDIDATES}))",
                 n = values.len()
             ));
         }
@@ -208,11 +222,6 @@ fn prefix_pattern(search: &str) -> String {
     pattern
 }
 
-/// Turns a row error into the error the reads return
-fn decode(error: rorm::db::row::RowError<'_>) -> rorm::Error {
-    rorm::Error::RowError(error.into_owned())
-}
-
 /// Reads the [`COLUMNS`] of a row
 fn decode_overview(row: &Row) -> Result<AccountOverview, rorm::Error> {
     let role: String = row.get("role").map_err(decode)?;
@@ -228,7 +237,7 @@ fn decode_overview(row: &Row) -> Result<AccountOverview, rorm::Error> {
         ),
         email: MaxStr::new(email)
             .unwrap_or_else(|_| unreachable!("the column holds at most 255 characters")),
-        role: Role::from_str(&role)
+        role: Role::decode(&role)
             .unwrap_or_else(|| unreachable!("only the Role's own encoding is written")),
         created_at: row.get("created_at").map_err(decode)?,
         collections: row.get("collections").map_err(decode)?,

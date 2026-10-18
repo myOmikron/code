@@ -1,5 +1,8 @@
+/** Why the server ended the session: it is gone, or an Admin locked its account */
+export type SessionEnd = "expired" | "locked";
+
 /** Told that the server refused a request for want of a session */
-type SessionExpiredListener = () => void;
+type SessionEndedListener = (end: SessionEnd) => void;
 
 /**
  * Carries "the server says there is no session" from the api layer to the app.
@@ -8,7 +11,7 @@ type SessionExpiredListener = () => void;
  * the account context reads `api.tsx` — sharing a file would make that a cycle.
  */
 class SessionStore {
-    private listener: SessionExpiredListener | null = null;
+    private listener: SessionEndedListener | null = null;
 
     /**
      * Register the listener, replacing whoever was there.
@@ -16,15 +19,20 @@ class SessionStore {
      * Last one wins: the provider re-subscribes whenever the closure it hands over goes
      * stale, and under `StrictMode` it subscribes twice on mount.
      *
-     * @param listener what to run when a request comes back 401
+     * @param listener what to run when the session ends
      */
-    subscribe(listener: SessionExpiredListener) {
+    subscribe(listener: SessionEndedListener) {
         this.listener = listener;
     }
 
     /** Report that a request needing an account was refused */
     expired() {
-        this.listener?.();
+        this.listener?.("expired");
+    }
+
+    /** Report that the server ended the session because its account is locked */
+    locked() {
+        this.listener?.("locked");
     }
 }
 

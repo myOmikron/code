@@ -1,0 +1,18 @@
+[Migration]
+Hash = "11176344664583299077"
+Initial = false
+Dependency = 44
+Replaces = []
+
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+CREATE INDEX sync_run_outcome ON sync_run (sync, outcome, started_at);
+"""

@@ -13,9 +13,9 @@ import {
 } from "components";
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { SyncRunOutcome } from "src/api/generated";
 import type { AdminSyncRun, AdminSyncRuns } from "src/api/generated";
 import { AdminSyncOutcomeBadge } from "src/components/admin-sync-outcome-badge";
+import { useSyncOutcomeLabel } from "src/components/sync-outcome-labels";
 import { ChartCard } from "src/components/charts/chart-card";
 import { SyncDurationChart } from "src/components/charts/sync-duration-chart";
 import { formatDateTime, formatDuration } from "src/utils/format";
@@ -59,11 +59,7 @@ export type AdminSyncPanelProps = {
 export function AdminSyncPanel({ title, stamp, runs }: AdminSyncPanelProps) {
     const [t] = useTranslation("admin");
 
-    const outcomeLabels: Record<SyncRunOutcome, string> = {
-        [SyncRunOutcome.Synced]: t("label.outcome-synced"),
-        [SyncRunOutcome.Unchanged]: t("label.outcome-unchanged"),
-        [SyncRunOutcome.Failed]: t("label.outcome-failed"),
-    };
+    const outcomeLabel = useSyncOutcomeLabel();
     const runSummary = (run: AdminSyncRun | null | undefined) =>
         run === null || run === undefined ? (
             <Text>{t("label.never")}</Text>
@@ -116,7 +112,7 @@ export function AdminSyncPanel({ title, stamp, runs }: AdminSyncPanelProps) {
                             data={oldestFirst.map((run) => ({
                                 started_at: run.started_at,
                                 duration_ms: run.duration_ms,
-                                outcome: outcomeLabels[run.outcome],
+                                outcome: outcomeLabel(run.outcome),
                             }))}
                             durationName={t("label.duration")}
                             formatTick={formatTick}

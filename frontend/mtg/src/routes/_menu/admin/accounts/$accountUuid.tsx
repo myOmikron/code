@@ -11,11 +11,10 @@ import {
     Text,
     notify,
 } from "components";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import { Role } from "src/api/generated";
-import type { AdminAccountDetail } from "src/api/generated";
 import { AdminDeleteAccountDialog } from "src/components/admin-delete-account-dialog";
 import { AdminLockDialog } from "src/components/admin-lock-dialog";
 import { AdminLogEntries } from "src/components/admin-log-entries";
@@ -23,6 +22,7 @@ import { AdminRoleBadge } from "src/components/admin-role-badge";
 import { useAccount } from "src/context/account";
 import { isFormError } from "src/utils/error";
 import { formatDate } from "src/utils/format";
+import { useLoaded } from "src/utils/use-loaded";
 
 export const Route = createFileRoute("/_menu/admin/accounts/$accountUuid")({
     component: RouteComponent,
@@ -40,28 +40,11 @@ function RouteComponent() {
     const me = useAccount();
     const navigate = useNavigate();
 
-    const [detail, setDetail] = useState<AdminAccountDetail | null>(null);
+    const { data: detail, reload } = useLoaded(() => Api.admin.accounts.get(accountUuid), [accountUuid]);
     const [confirming, setConfirming] = useState(false);
     const [locking, setLocking] = useState(false);
     const [deleting, setDeleting] = useState(false);
     const [logVersion, setLogVersion] = useState(0);
-
-    useEffect(() => {
-        setDetail(null);
-    }, [accountUuid]);
-
-    useEffect(() => {
-        let current = true;
-        Api.admin.accounts
-            .get(accountUuid)
-            .then((loaded) => {
-                if (current) setDetail(loaded);
-            })
-            .catch(() => undefined);
-        return () => {
-            current = false;
-        };
-    }, [accountUuid, logVersion]);
 
     if (detail === null) return <Text>{t("label.loading")}</Text>;
 
@@ -79,6 +62,7 @@ function RouteComponent() {
             return;
         }
         setConfirming(false);
+        reload();
         setLogVersion((held) => held + 1);
         notify.success(t("toast.role-changed"));
     }
@@ -89,6 +73,7 @@ function RouteComponent() {
     function lockChanged() {
         const wasLocked = account.lock !== null && account.lock !== undefined;
         setLocking(false);
+        reload();
         setLogVersion((held) => held + 1);
         notify.success(wasLocked ? t("toast.unlocked") : t("toast.locked"));
     }

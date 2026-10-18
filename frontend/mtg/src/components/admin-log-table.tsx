@@ -1,8 +1,8 @@
 import { Link } from "@tanstack/react-router";
 import { Badge, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Text } from "components";
 import { useTranslation } from "react-i18next";
-import { AdminAction, DeletionMode, Role } from "src/api/generated";
-import type { AdminLogEntryResponse } from "src/api/generated";
+import { DeletionMode, Role } from "src/api/generated";
+import type { AdminLogAction, AdminLogEntryResponse } from "src/api/generated";
 import { formatDateTime } from "src/utils/format";
 
 /**
@@ -29,30 +29,40 @@ export function AdminLogTable({ entries, showAccount }: AdminLogTableProps) {
     /**
      * What an entry records, in words
      *
-     * @param entry the entry
+     * @param action the entry's action
      * @returns the action as a badge
      */
-    function action(entry: AdminLogEntryResponse) {
-        switch (entry.action) {
-            case AdminAction.Lock:
+    function badge(action: AdminLogAction) {
+        switch (action.kind) {
+            case "Lock":
                 return <Badge color={"red"}>{t("label.action-lock")}</Badge>;
-            case AdminAction.Unlock:
+            case "Unlock":
                 return <Badge color={"green"}>{t("label.action-unlock")}</Badge>;
-            case AdminAction.RoleChange:
+            case "RoleChange":
                 return (
                     <Badge color={"blue"}>
-                        {entry.role === Role.Admin ? t("label.action-make-admin") : t("label.action-make-member")}
+                        {action.role === Role.Admin ? t("label.action-make-admin") : t("label.action-make-member")}
                     </Badge>
                 );
-            case AdminAction.Deletion:
+            case "Deletion":
                 return (
                     <Badge color={"zinc"}>
-                        {entry.deletion === DeletionMode.Full
+                        {action.mode === DeletionMode.Full
                             ? t("label.action-deletion-full")
                             : t("label.action-deletion")}
                     </Badge>
                 );
         }
+    }
+
+    /**
+     * The reason an Admin gave for an action, if it takes one
+     *
+     * @param action the entry's action
+     * @returns the reason, empty when there is none
+     */
+    function reason(action: AdminLogAction) {
+        return action.kind === "Lock" || action.kind === "Unlock" ? (action.reason ?? "") : "";
     }
 
     return (
@@ -72,7 +82,7 @@ export function AdminLogTable({ entries, showAccount }: AdminLogTableProps) {
                         <TableCell className={"whitespace-nowrap tabular-nums"}>
                             {formatDateTime(entry.created_at)}
                         </TableCell>
-                        <TableCell>{action(entry)}</TableCell>
+                        <TableCell>{badge(entry.action)}</TableCell>
                         {showAccount && (
                             <TableCell className={"font-medium"}>
                                 {entry.account === null || entry.account === undefined ? (
@@ -90,7 +100,7 @@ export function AdminLogTable({ entries, showAccount }: AdminLogTableProps) {
                         )}
                         <TableCell className={"max-sm:hidden"}>{entry.admin_username}</TableCell>
                         <TableCell className={"whitespace-normal"}>
-                            <Text>{entry.reason ?? ""}</Text>
+                            <Text>{reason(entry.action)}</Text>
                         </TableCell>
                     </TableRow>
                 ))}

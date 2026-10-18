@@ -11,6 +11,19 @@ pub mod log;
 pub mod statistics;
 pub mod syncs;
 
+/// The largest page of a paged admin list a client may ask for
+const MAX_LIMIT: u32 = 100;
+
+/// The page size of a paged admin list for a client that does not ask for one
+pub fn default_limit() -> u32 {
+    50
+}
+
+/// The page size a paged admin list serves for the `requested` one
+pub fn page_limit(requested: u32) -> u32 {
+    requested.clamp(1, MAX_LIMIT)
+}
+
 /// Initializes the admin routes
 pub fn initialize_routes() -> GalvynRouter {
     GalvynRouter::new()

@@ -8,7 +8,6 @@ docs/AddWatchListEntryRequest.md
 docs/AdminAccount.md
 docs/AdminAccountDetail.md
 docs/AdminAccountLock.md
-docs/AdminAction.md
 docs/AdminCatalogStamp.md
 docs/AdminCatalogSync.md
 docs/AdminDeleteAccountErrors.md
@@ -17,6 +16,11 @@ docs/AdminListAccountsResponse.md
 docs/AdminListLogResponse.md
 docs/AdminLockAccountErrors.md
 docs/AdminLockAccountRequest.md
+docs/AdminLogAction.md
+docs/AdminLogActionOneOf.md
+docs/AdminLogActionOneOf1.md
+docs/AdminLogActionOneOf2.md
+docs/AdminLogActionOneOf3.md
 docs/AdminLogEntryResponse.md
 docs/AdminPriceGuideStamp.md
 docs/AdminPriceGuideSync.md
@@ -91,6 +95,7 @@ docs/FormErrorResponseForAdminUnlockAccountErrors.md
 docs/FormErrorResponseForDeleteAccountErrors.md
 docs/FormErrorResponseForDeletePasskeyErrors.md
 docs/FormErrorResponseForFinishLoginErrors.md
+docs/FormErrorResponseForMeErrors.md
 docs/FormErrorResponseForRegistrationErrors.md
 docs/FormErrorResponseForSignupErrors.md
 docs/FormErrorResponseForStartLoginErrors.md
@@ -114,6 +119,8 @@ docs/ListedCardResponse.md
 docs/ListedEntryResponse.md
 docs/MailLanguage.md
 docs/MarkedCard.md
+docs/Me200Response.md
+docs/MeErrors.md
 docs/MeResponse.md
 docs/MergeCollectionEntriesRequest.md
 docs/MpcFillArtResponse.md

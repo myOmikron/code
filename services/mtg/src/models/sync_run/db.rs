@@ -31,6 +31,9 @@ pub struct SyncRunModel {
     pub duration_ms: i64,
 
     /// What the run came to
+    ///
+    /// The middle of the `sync_run_outcome (sync, outcome, started_at)` index,
+    /// created by hand in migration 0045: the newest run per outcome.
     pub outcome: SyncRunOutcome,
 
     /// Why the run failed, cut to fit

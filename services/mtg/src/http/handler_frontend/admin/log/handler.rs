@@ -8,11 +8,9 @@ use galvyn::rorm::Database;
 use crate::http::handler_frontend::admin::log::schema::AdminListLogQuery;
 use crate::http::handler_frontend::admin::log::schema::AdminListLogResponse;
 use crate::http::handler_frontend::admin::log::schema::AdminLogEntryResponse;
+use crate::http::handler_frontend::admin::page_limit;
 use crate::models::admin_log::AdminLogEntry;
 use crate::models::admin_log::AdminLogFilter;
-
-/// The largest page a client may ask for
-const MAX_LIMIT: u32 = 100;
 
 /// List the Admin log, newest first
 #[get("/")]
@@ -25,7 +23,7 @@ pub async fn admin_list_log(
         &AdminLogFilter {
             account: query.account,
             after: query.after,
-            limit: query.limit.clamp(1, MAX_LIMIT),
+            limit: page_limit(query.limit),
         },
     )
     .await?;
