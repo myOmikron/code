@@ -41,24 +41,24 @@ export default function AdminClubDashboard(props: AdminClubDashboardProps) {
             <div className={"grid grid-cols-1 gap-4 sm:grid-cols-3"}>
                 <StatCard
                     icon={<UsersIcon className={"size-5 text-blue-500"} />}
-                    label={t("dashboard.members")}
+                    label={t("label.members")}
                     value={ctx.data.member_count}
                 />
                 <StatCard
                     icon={<ShieldCheckIcon className={"size-5 text-emerald-500"} />}
-                    label={t("dashboard.admins")}
+                    label={t("label.admins")}
                     value={ctx.data.admin_count}
                 />
                 <StatCard
                     icon={<EnvelopeIcon className={"size-5 text-amber-500"} />}
-                    label={t("dashboard.pending-invites")}
+                    label={t("label.pending-invites")}
                     value={pendingInvites.length}
                 />
             </div>
 
             {domainStats.length > 0 && (
                 <div className={"flex flex-col gap-4"}>
-                    <Strong>{t("dashboard.domain-stats")}</Strong>
+                    <Strong>{t("label.domain-stats")}</Strong>
                     <div className={"flex flex-col gap-3"}>
                         {domainStats.map((d) => {
                             const storagePct = d.quota > 0 ? Math.min((d.bytes_used / d.quota) * 100, 100) : 0;
@@ -77,7 +77,7 @@ export default function AdminClubDashboard(props: AdminClubDashboardProps) {
                                     </div>
                                     <div className={"mt-3 grid grid-cols-2 gap-4"}>
                                         <div>
-                                            <Text className={"!text-xs"}>{t("dashboard.storage-used")}</Text>
+                                            <Text className={"!text-xs"}>{t("label.storage-used")}</Text>
                                             <span className={"text-sm font-semibold text-zinc-950 dark:text-white"}>
                                                 {formatBytes(d.bytes_used)}
                                                 {d.quota > 0 && (
@@ -101,7 +101,7 @@ export default function AdminClubDashboard(props: AdminClubDashboardProps) {
                                             )}
                                         </div>
                                         <div>
-                                            <Text className={"!text-xs"}>{t("dashboard.mailboxes")}</Text>
+                                            <Text className={"!text-xs"}>{t("label.mailboxes")}</Text>
                                             <span className={"text-sm font-semibold text-zinc-950 dark:text-white"}>
                                                 {d.mailboxes_used}
                                                 <span className={"font-normal text-zinc-400"}>
@@ -120,7 +120,7 @@ export default function AdminClubDashboard(props: AdminClubDashboardProps) {
 
             {mailboxStats.length > 0 && (
                 <div className={"flex flex-col gap-4"}>
-                    <Strong>{t("dashboard.mailbox-stats")}</Strong>
+                    <Strong>{t("label.mailbox-stats")}</Strong>
                     <div className={"flex flex-col gap-3"}>
                         {mailboxStats.map((m) => {
                             const hasQuota = m.quota > 0;
@@ -140,13 +140,13 @@ export default function AdminClubDashboard(props: AdminClubDashboardProps) {
                                         </div>
                                         <div className={"flex items-center gap-3"}>
                                             <Text className={"!text-xs"}>
-                                                {m.messages} {t("dashboard.messages")}
+                                                {m.messages} {t("label.messages")}
                                             </Text>
                                             <span className={"text-sm font-semibold text-zinc-950 dark:text-white"}>
                                                 {formatBytes(m.quota_used)}
                                                 <span className={"font-normal text-zinc-400"}>
                                                     {" "}
-                                                    / {hasQuota ? formatBytes(m.quota) : t("dashboard.unlimited")}
+                                                    / {hasQuota ? formatBytes(m.quota) : t("label.unlimited")}
                                                 </span>
                                             </span>
                                         </div>

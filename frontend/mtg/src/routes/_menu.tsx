@@ -65,8 +65,6 @@ export const Route = createFileRoute("/_menu")({
 function RouteComponent() {
     const [t] = useTranslation("menu");
     const [tg] = useTranslation();
-    const [td] = useTranslation("deck");
-    const [tc] = useTranslation("collection");
     const [helping, setHelping] = useState(false);
 
     const navigate = useNavigate();
@@ -88,7 +86,7 @@ function RouteComponent() {
     const path = useRouterState({ select: (state) => state.location.pathname });
     const building = /^\/decks\/[^/]+/.test(path) || /^\/game-utils(?:\/|$)/.test(path);
     const [pageShortcuts, setPageShortcuts] = useState<Array<ShortcutRow> | null>(null);
-    const shortcuts = pageShortcuts ?? shortcutsFor(path, td, tc, tg);
+    const shortcuts = pageShortcuts ?? shortcutsFor(path, t, tg);
     const shortcutHelp = useMemo<ShortcutHelp>(
         () => ({ open: helping, show: () => setHelping(true), register: setPageShortcuts }),
         [helping],
@@ -178,9 +176,9 @@ function RouteComponent() {
                             )}
                             <NavbarSpacer />
                             <NavbarSection>
-                                <NavbarItem onClick={() => setHelping(true)} title={td("heading.shortcuts")}>
+                                <NavbarItem onClick={() => setHelping(true)} title={t("heading.shortcuts")}>
                                     <QuestionMarkCircleIcon />
-                                    <NavbarLabel className={"sr-only"}>{td("heading.shortcuts")}</NavbarLabel>
+                                    <NavbarLabel className={"sr-only"}>{t("heading.shortcuts")}</NavbarLabel>
                                 </NavbarItem>
                             </NavbarSection>
                             {/* Labelled and on every width, unlike the sections next to it: the entry
@@ -282,7 +280,7 @@ function RouteComponent() {
                                 <SidebarSection>
                                     <SidebarItem onClick={() => setHelping(true)}>
                                         <QuestionMarkCircleIcon />
-                                        <SidebarLabel>{td("heading.shortcuts")}</SidebarLabel>
+                                        <SidebarLabel>{t("heading.shortcuts")}</SidebarLabel>
                                     </SidebarItem>
                                     {!known ? null : loggedIn ? (
                                         <>
@@ -329,8 +327,7 @@ function RouteComponent() {
  * The shortcuts available on the current page
  *
  * @param path the pathname being looked at
- * @param t the deck namespace's translator, which names the actions
- * @param tc the collection namespace's translator, for the shelf's own pages
+ * @param t the menu namespace's translator, which names the actions
  * @param tg the general translator, for actions named outside a page namespace
  *
  * @returns the rows the help dialog lists, empty for a page without shortcuts
@@ -338,7 +335,6 @@ function RouteComponent() {
 function shortcutsFor(
     path: string,
     t: (key: string, options?: Record<string, unknown>) => string,
-    tc: (key: string, options?: Record<string, unknown>) => string,
     tg: (key: string, options?: Record<string, unknown>) => string,
 ) {
     if (/^\/decks\/?$/.test(path)) {
@@ -366,10 +362,6 @@ function shortcutsFor(
         ];
     }
     if (/^\/decks\/[^/]+\/advisor/.test(path)) {
-        // Named from the general namespace rather than the advisor's, for the
-        // same reason the watch list rows below are: this file already reads
-        // two page namespaces, and a page string another page needs is meant
-        // to be promoted instead of pulled in as a third.
         return [
             { keys: "A", description: tg("button.add-hovered-card") },
             { keys: "?", description: t("heading.shortcuts") },
@@ -377,36 +369,32 @@ function shortcutsFor(
     }
     if (/^\/collections\/?$/.test(path)) {
         return [
-            { keys: "Enter", description: tc("button.open-collection") },
-            { keys: "A", description: tc("button.create-collection") },
-            { keys: "E", description: tc("button.edit-collection") },
-            { keys: "S", description: tc("button.share-collection") },
-            { keys: "Entf", description: tc("button.delete-collection") },
+            { keys: "Enter", description: t("button.open-collection") },
+            { keys: "A", description: t("button.create-collection") },
+            { keys: "E", description: t("button.edit-collection") },
+            { keys: "S", description: t("button.share-collection") },
+            { keys: "Entf", description: t("button.delete-collection") },
             { keys: "?", description: t("heading.shortcuts") },
         ];
     }
     if (/^\/collections\/[^/]+\/cards/.test(path)) {
         return [
-            { keys: "Enter", description: tc("button.inspect-card") },
-            { keys: "+ -", description: tc("description.shortcut-quantity") },
-            { keys: "Entf", description: tc("button.delete-entry") },
-            { keys: "A", description: tc("button.add-cards") },
-            { keys: "Ctrl/⌘ F", description: tc("label.filter-cards") },
-            { keys: "P", description: tc("button.change-printing") },
-            { keys: "T", description: tc("button.manage-tags") },
-            { keys: "V", description: tc("label.view") },
-            { keys: "O", description: tc("description.shortcut-sort") },
-            { keys: "E", description: tc("button.edit-collection") },
-            { keys: "S", description: tc("button.share-collection") },
-            { keys: "1 2 3", description: tc("description.shortcut-tabs") },
+            { keys: "Enter", description: t("button.inspect-card") },
+            { keys: "+ -", description: t("description.shortcut-quantity") },
+            { keys: "Entf", description: t("button.delete-entry") },
+            { keys: "A", description: t("button.file-cards") },
+            { keys: "Ctrl/⌘ F", description: t("label.filter-cards") },
+            { keys: "P", description: t("button.change-printing") },
+            { keys: "T", description: t("button.manage-tags") },
+            { keys: "V", description: t("label.view") },
+            { keys: "O", description: t("description.shortcut-sort") },
+            { keys: "E", description: t("button.edit-collection") },
+            { keys: "S", description: t("button.share-collection") },
+            { keys: "1 2 3", description: t("description.shortcut-tabs") },
             { keys: "?", description: t("heading.shortcuts") },
         ];
     }
     if (/^\/watch-lists\/?$/.test(path)) {
-        // The watch list labels sit in the general namespace rather than in
-        // `watch-list`: this file already reaches into two page namespaces for
-        // the same table, and a page-specific string needed elsewhere is meant
-        // to be promoted, not pulled in as a third.
         return [
             { keys: "Enter", description: tg("button.open-watch-list") },
             { keys: "A", description: tg("button.create-watch-list") },

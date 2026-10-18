@@ -1,15 +1,48 @@
 {
+    "button": {
+        "add-cards": "Add cards",
+        "change-printing": "Pick another printing",
+        "create-collection": "Create collection",
+        "create-deck": "Build a deck",
+        "delete-collection": "Delete",
+        "delete-deck": "Delete",
+        "delete-entry": "Remove",
+        "edit-collection": "Edit",
+        "edit-deck": "Edit",
+        "file-cards": "Add cards",
+        "inspect-card": "Inspect card",
+        "manage-tags": "Manage tags",
+        "mark-proxy": "Mark as proxy",
+        "open-collection": "Open",
+        "share-collection": "Share",
+        "share-deck": "Share",
+        "use-foil": "Use foil"
+    },
+    "description": {
+        "quick-tag": "Tag the card under the pointer",
+        "shortcut-quantity": "Raise or lower the count",
+        "shortcut-sort": "Reverse the sort order",
+        "shortcut-tabs": "Switch between the tabs"
+    },
+    "heading": {
+        "shortcuts": "Keyboard shortcuts"
+    },
     "label": {
         "collection": "Collection",
         "decks": "Decks",
+        "filter-cards": "Filter cards",
         "game-utils": "Game utils",
+        "grouping": "Grouping",
         "home": "Home",
         "login": "Sign in",
         "logout": "Sign out",
         "my-decks": "My decks",
         "profile-settings": "Profile & settings",
         "scan": "Scan",
+        "search-cards": "Search cards in deck",
+        "search-decks": "Search decks or commanders",
         "sign-up": "Create account",
+        "view": "View",
         "watch-lists": "Watch lists"
     }
 }

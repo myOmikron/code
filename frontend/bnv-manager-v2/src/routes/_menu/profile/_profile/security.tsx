@@ -49,7 +49,7 @@ export default function ProfileSecurity(props: ProfileSecurityProps) {
                 if (res.result === "Err") {
                     const errMsg = res.error.invalid_old_password
                         ? t("error.invalid-old-password")
-                        : t("text.stronger-password");
+                        : t("error.stronger-password");
 
                     toast.update(id, {
                         autoClose: 2500,
@@ -109,7 +109,7 @@ export default function ProfileSecurity(props: ProfileSecurityProps) {
                                         zxcvbn(value, [account.account.username, account.account.display_name]).score <
                                             3
                                     ) {
-                                        return t("text.stronger-password");
+                                        return t("error.stronger-password");
                                     }
                                     return undefined;
                                 },

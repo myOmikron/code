@@ -1,5 +1,6 @@
 {
     "button": {
+        "forgot-password": "Forgot password?",
         "sign-in": "Sign in"
     },
     "error": {
@@ -11,9 +12,6 @@
     "label": {
         "password": "Password",
         "username": "Username"
-    },
-    "link": {
-        "forgot-password": "Forgot password?"
     },
     "toast": {
         "sign-in-failed": "Sign in failed",

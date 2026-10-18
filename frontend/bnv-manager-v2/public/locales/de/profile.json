@@ -1,7 +1,8 @@
 {
     "error": {
         "invalid-old-password": "Das aktuelle Passwort ist falsch.",
-        "password-mismatch": "Passw\u00f6rter stimmen nicht \u00fcberein."
+        "password-mismatch": "Passw\u00f6rter stimmen nicht \u00fcberein.",
+        "stronger-password": "Passwort ist zu schwach."
     },
     "heading": {
         "general": "Generelles",
@@ -19,9 +20,6 @@
         "theme-dark": "Dunkel",
         "theme-light": "Hell",
         "theme-system": "Systempr\u00e4ferenz"
-    },
-    "text": {
-        "stronger-password": "Passwort ist zu schwach."
     },
     "toast": {
         "password-set": "Password wurde ge\u00e4ndert.",

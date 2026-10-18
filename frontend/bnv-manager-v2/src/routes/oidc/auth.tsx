@@ -128,7 +128,7 @@ export default function OidcAuthentication(props: OidcAuthenticationProps) {
 
                         <Text className={"text-center"}>
                             <a href={"/links/reset"} className={"text-sm underline"}>
-                                {t("link.forgot-password")}
+                                {t("button.forgot-password")}
                             </a>
                         </Text>
                     </FieldGroup>
