@@ -18,6 +18,7 @@ import { Route as AuthVerkaufRouteImport } from './routes/_auth/verkauf'
 import { Route as ShopIndexRouteImport } from './routes/_shop/index'
 import { Route as ShopCartRouteImport } from './routes/_shop/cart'
 import { Route as ShopCheckoutRouteImport } from './routes/_shop/checkout'
+import { Route as ShopNewsPrototypeRouteImport } from './routes/_shop/news-prototype'
 import { Route as AuthAdminIndexRouteImport } from './routes/_auth/admin/index'
 import { Route as AuthAdminCategoriesRouteImport } from './routes/_auth/admin/categories'
 import { Route as AuthAdminItemsRouteImport } from './routes/_auth/admin/items'
@@ -73,6 +74,11 @@ const ShopCartRoute = ShopCartRouteImport.update({
 const ShopCheckoutRoute = ShopCheckoutRouteImport.update({
   id: '/checkout',
   path: '/checkout',
+  getParentRoute: () => ShopRoute,
+} as any)
+const ShopNewsPrototypeRoute = ShopNewsPrototypeRouteImport.update({
+  id: '/news-prototype',
+  path: '/news-prototype',
   getParentRoute: () => ShopRoute,
 } as any)
 const AuthAdminIndexRoute = AuthAdminIndexRouteImport.update({
@@ -151,6 +157,7 @@ export interface FileRoutesByFullPath {
   '/verkauf': typeof AuthVerkaufRouteWithChildren
   '/cart': typeof ShopCartRoute
   '/checkout': typeof ShopCheckoutRoute
+  '/news-prototype': typeof ShopNewsPrototypeRoute
   '/admin/categories': typeof AuthAdminCategoriesRoute
   '/admin/items': typeof AuthAdminItemsRoute
   '/admin/rechtliches': typeof AuthAdminRechtlichesRoute
@@ -171,6 +178,7 @@ export interface FileRoutesByTo {
   '/register': typeof RegisterRoute
   '/cart': typeof ShopCartRoute
   '/checkout': typeof ShopCheckoutRoute
+  '/news-prototype': typeof ShopNewsPrototypeRoute
   '/admin/categories': typeof AuthAdminCategoriesRoute
   '/admin/items': typeof AuthAdminItemsRoute
   '/admin/rechtliches': typeof AuthAdminRechtlichesRoute
@@ -195,6 +203,7 @@ export interface FileRoutesById {
   '/_auth/verkauf': typeof AuthVerkaufRouteWithChildren
   '/_shop/cart': typeof ShopCartRoute
   '/_shop/checkout': typeof ShopCheckoutRoute
+  '/_shop/news-prototype': typeof ShopNewsPrototypeRoute
   '/_shop/': typeof ShopIndexRoute
   '/_auth/admin/categories': typeof AuthAdminCategoriesRoute
   '/_auth/admin/items': typeof AuthAdminItemsRoute
@@ -220,6 +229,7 @@ export interface FileRouteTypes {
     | '/verkauf'
     | '/cart'
     | '/checkout'
+    | '/news-prototype'
     | '/admin/categories'
     | '/admin/items'
     | '/admin/rechtliches'
@@ -240,6 +250,7 @@ export interface FileRouteTypes {
     | '/register'
     | '/cart'
     | '/checkout'
+    | '/news-prototype'
     | '/admin/categories'
     | '/admin/items'
     | '/admin/rechtliches'
@@ -263,6 +274,7 @@ export interface FileRouteTypes {
     | '/_auth/verkauf'
     | '/_shop/cart'
     | '/_shop/checkout'
+    | '/_shop/news-prototype'
     | '/_shop/'
     | '/_auth/admin/categories'
     | '/_auth/admin/items'
@@ -349,6 +361,13 @@ declare module '@tanstack/react-router' {
       path: '/checkout'
       fullPath: '/checkout'
       preLoaderRoute: typeof ShopCheckoutRouteImport
+      parentRoute: typeof ShopRoute
+    }
+    '/_shop/news-prototype': {
+      id: '/_shop/news-prototype'
+      path: '/news-prototype'
+      fullPath: '/news-prototype'
+      preLoaderRoute: typeof ShopNewsPrototypeRouteImport
       parentRoute: typeof ShopRoute
     }
     '/_auth/admin/': {
@@ -504,6 +523,7 @@ const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
 interface ShopRouteChildren {
   ShopCartRoute: typeof ShopCartRoute
   ShopCheckoutRoute: typeof ShopCheckoutRoute
+  ShopNewsPrototypeRoute: typeof ShopNewsPrototypeRoute
   ShopIndexRoute: typeof ShopIndexRoute
   ShopOrderPickupCodeRoute: typeof ShopOrderPickupCodeRoute
 }
@@ -511,6 +531,7 @@ interface ShopRouteChildren {
 const ShopRouteChildren: ShopRouteChildren = {
   ShopCartRoute: ShopCartRoute,
   ShopCheckoutRoute: ShopCheckoutRoute,
+  ShopNewsPrototypeRoute: ShopNewsPrototypeRoute,
   ShopIndexRoute: ShopIndexRoute,
   ShopOrderPickupCodeRoute: ShopOrderPickupCodeRoute,
 }

@@ -29,6 +29,7 @@
         "react": "catalog:dependencies",
         "react-dom": "catalog:dependencies",
         "react-i18next": "catalog:dependencies",
+        "react-markdown": "catalog:dependencies",
         "react-toastify": "catalog:dependencies"
     },
     "devDependencies": {

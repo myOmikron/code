@@ -8,6 +8,7 @@ import { LegalLinks } from "src/api/generated";
 import Logo from "src/assets/logo.svg?react";
 import { CartButton } from "src/components/cart-button";
 import { InstallBanner } from "src/components/install-banner";
+import { NewsHeaderLink } from "src/components/prototype-news/variants";
 import { CartProvider } from "src/context/cart";
 
 /** The languages offered in the footer switcher */
@@ -55,7 +56,10 @@ function ShopLayout() {
                             {tg("label.app-name")}
                         </span>
                     </Link>
-                    <CartButton />
+                    <div className={"flex items-center gap-2"}>
+                        <NewsHeaderLink />
+                        <CartButton />
+                    </div>
                 </header>
                 <main className={"flex flex-1 flex-col gap-6 pb-12"}>
                     <InstallBanner />

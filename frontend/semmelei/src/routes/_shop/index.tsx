@@ -7,6 +7,8 @@ import { Api } from "src/api/api";
 import { ListCategoriesResponse, ListItemsResponse, PickupWindowResponse, PublicItem } from "src/api/generated";
 import { ItemCard } from "src/components/item-card";
 import { ItemInfoDialog } from "src/components/item-info-dialog";
+import { NewsMainSlot, NewsTopSlot, useNewsVariant } from "src/components/prototype-news/variants";
+import { NEWS_VARIANTS, PrototypeSwitcher } from "src/components/prototype-switcher";
 import { formatDate, formatDateTime } from "src/utils/dates";
 import { RememberedOrder, loadRememberedOrders } from "src/utils/orders-storage";
 
@@ -39,6 +41,7 @@ function Catalog() {
     const [pickup, setPickup] = React.useState<PickupWindowResponse>();
     const [myOrders] = React.useState<RememberedOrder[]>(loadRememberedOrders);
     const [infoItem, setInfoItem] = React.useState<PublicItem>();
+    const newsVariant = useNewsVariant();
 
     React.useEffect(() => {
         Promise.all([Api.shop.categories(), Api.shop.items()]).then(([categories, items]) =>
@@ -74,6 +77,7 @@ function Catalog() {
 
     return (
         <div className={"flex flex-col gap-10 sm:gap-12"}>
+            <NewsTopSlot />
             <section className={"border-b border-zinc-950/10 py-6 sm:py-8 dark:border-white/10"}>
                 <div className={"max-w-3xl"}>
                     <h1 className={"text-3xl font-semibold tracking-tight text-zinc-950 sm:text-4xl dark:text-white"}>
@@ -130,6 +134,9 @@ function Catalog() {
                         ))}
                 </div>
             </section>
+
+            <NewsMainSlot />
+            <PrototypeSwitcher variants={NEWS_VARIANTS} current={newsVariant} />
 
             {myOrders.length > 0 && (
                 <section className={"flex flex-col gap-4"}>
