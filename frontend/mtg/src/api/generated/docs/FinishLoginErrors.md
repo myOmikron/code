@@ -8,6 +8,7 @@ Why a login could not be completed
 Name | Type
 ------------ | -------------
 `authentication_failed` | boolean
+`locked` | boolean
 `malformed_credential` | boolean
 `no_ceremony` | boolean
 

@@ -11,6 +11,7 @@ Name | Type
 `created_at` | string
 `decks` | number
 `email` | string
+`lock` | [AdminAccountLock](AdminAccountLock.md)
 `role` | [Role](Role.md)
 `username` | string
 `uuid` | string

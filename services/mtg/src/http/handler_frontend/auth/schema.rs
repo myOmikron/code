@@ -78,6 +78,8 @@ pub struct StartLoginErrors {
     /// No account by that name, or it has no passkey — deliberately the same flag, so the
     /// endpoint does not say which usernames are actually able to log in
     pub unknown_username: bool,
+    /// An Admin locked the account
+    pub locked: bool,
 }
 
 /// Why a login could not be completed
@@ -89,6 +91,8 @@ pub struct FinishLoginErrors {
     pub malformed_credential: bool,
     /// The signature did not check out
     pub authentication_failed: bool,
+    /// An Admin locked the account
+    pub locked: bool,
 }
 
 /// Why a passkey registration could not be started or completed
@@ -108,6 +112,8 @@ pub struct RegistrationErrors {
     pub registration_failed: bool,
     /// This authenticator already holds a passkey for this account
     pub already_registered: bool,
+    /// An Admin locked the account
+    pub locked: bool,
 }
 
 /// Request to start a login ceremony

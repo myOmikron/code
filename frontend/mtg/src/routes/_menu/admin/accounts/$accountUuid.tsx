@@ -1,6 +1,7 @@
 import { ChevronLeftIcon } from "@heroicons/react/20/solid";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
+    Badge,
     Button,
     ConfirmDialog,
     DescriptionDetails,
@@ -15,6 +16,8 @@ import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import { Role } from "src/api/generated";
 import type { AdminAccountDetail } from "src/api/generated";
+import { AdminLockDialog } from "src/components/admin-lock-dialog";
+import { AdminLogEntries } from "src/components/admin-log-entries";
 import { AdminRoleBadge } from "src/components/admin-role-badge";
 import { useAccount } from "src/context/account";
 import { isFormError } from "src/utils/error";
@@ -25,7 +28,8 @@ export const Route = createFileRoute("/_menu/admin/accounts/$accountUuid")({
 });
 
 /**
- * One Account as an Admin sees it, with what it owns and its Role to change.
+ * One Account as an Admin sees it: what it owns, its Role and Lock to change, and what
+ * Admins did to it so far.
  *
  * @returns the page
  */
@@ -36,10 +40,15 @@ function RouteComponent() {
 
     const [detail, setDetail] = useState<AdminAccountDetail | null>(null);
     const [confirming, setConfirming] = useState(false);
+    const [locking, setLocking] = useState(false);
+    const [logVersion, setLogVersion] = useState(0);
+
+    useEffect(() => {
+        setDetail(null);
+    }, [accountUuid]);
 
     useEffect(() => {
         let current = true;
-        setDetail(null);
         Api.admin.accounts
             .get(accountUuid)
             .then((loaded) => {
@@ -49,7 +58,7 @@ function RouteComponent() {
         return () => {
             current = false;
         };
-    }, [accountUuid]);
+    }, [accountUuid, logVersion]);
 
     if (detail === null) return <Text>{t("label.loading")}</Text>;
 
@@ -66,9 +75,19 @@ function RouteComponent() {
             notify.error(t("error.own-account"));
             return;
         }
-        setDetail((held) => (held === null ? held : { ...held, account: { ...held.account, role: nextRole } }));
         setConfirming(false);
+        setLogVersion((held) => held + 1);
         notify.success(t("toast.role-changed"));
+    }
+
+    /**
+     * Closes the Lock dialog after the Lock was set or lifted and reads the Account again
+     */
+    function lockChanged() {
+        const wasLocked = account.lock !== null && account.lock !== undefined;
+        setLocking(false);
+        setLogVersion((held) => held + 1);
+        notify.success(wasLocked ? t("toast.unlocked") : t("toast.locked"));
     }
 
     return (
@@ -91,6 +110,19 @@ function RouteComponent() {
                 <DescriptionDetails>
                     <AdminRoleBadge role={account.role} />
                 </DescriptionDetails>
+                <DescriptionTerm>{t("label.lock")}</DescriptionTerm>
+                <DescriptionDetails>
+                    {account.lock ? (
+                        <div className={"flex flex-col items-start gap-1"}>
+                            <Badge color={"red"}>
+                                {t("label.locked-since", { date: formatDate(account.lock.locked_at) })}
+                            </Badge>
+                            <Text>{account.lock.reason}</Text>
+                        </div>
+                    ) : (
+                        <Text>{t("label.not-locked")}</Text>
+                    )}
+                </DescriptionDetails>
                 <DescriptionTerm>{t("label.created-at")}</DescriptionTerm>
                 <DescriptionDetails>{formatDate(account.created_at)}</DescriptionDetails>
                 <DescriptionTerm>{t("label.collections")}</DescriptionTerm>
@@ -104,11 +136,23 @@ function RouteComponent() {
             </DescriptionList>
 
             <div className={"flex flex-col items-start gap-2"}>
-                <Button outline={true} disabled={own} onClick={() => setConfirming(true)}>
-                    {nextRole === Role.Admin ? t("button.make-admin") : t("button.make-member")}
-                </Button>
+                <div className={"flex flex-wrap gap-2"}>
+                    <Button outline={true} disabled={own} onClick={() => setConfirming(true)}>
+                        {nextRole === Role.Admin ? t("button.make-admin") : t("button.make-member")}
+                    </Button>
+                    <Button outline={true} disabled={own} onClick={() => setLocking(true)}>
+                        {account.lock ? t("button.unlock") : t("button.lock")}
+                    </Button>
+                </div>
                 {own && <Text>{t("description.own-account")}</Text>}
             </div>
+
+            <div className={"flex flex-col gap-4"}>
+                <Subheading>{t("heading.log")}</Subheading>
+                <AdminLogEntries account={account.uuid} version={logVersion} />
+            </div>
+
+            <AdminLockDialog open={locking} account={account} onClose={() => setLocking(false)} onDone={lockChanged} />
 
             <ConfirmDialog
                 open={confirming}

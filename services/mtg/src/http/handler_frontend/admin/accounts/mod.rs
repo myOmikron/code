@@ -11,4 +11,6 @@ pub fn initialize_routes() -> GalvynRouter {
         .handler(handler::admin_list_accounts)
         .handler(handler::admin_get_account)
         .handler(handler::admin_set_role)
+        .handler(handler::admin_lock_account)
+        .handler(handler::admin_unlock_account)
 }

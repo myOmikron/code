@@ -6,7 +6,8 @@
 //! deck first.
 
 use galvyn::core::GalvynRouter;
-use galvyn_identity::AuthRequiredLayer;
+
+use crate::http::middleware::account_required::AccountRequiredLayer;
 
 pub mod handler;
 pub mod schema;
@@ -19,6 +20,6 @@ pub fn initialize_routes() -> GalvynRouter {
             .handler(handler::create_global_tag)
             .handler(handler::update_global_tag)
             .handler(handler::delete_global_tag)
-            .wrap(AuthRequiredLayer),
+            .wrap(AccountRequiredLayer),
     )
 }

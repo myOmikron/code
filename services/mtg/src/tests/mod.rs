@@ -2,5 +2,6 @@
 
 mod admin;
 pub mod harness;
+mod lock;
 mod statistics;
 mod syncs;

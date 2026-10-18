@@ -1,7 +1,8 @@
 //! What artwork MPCFill has for a card, and what a card back can be
 
 use galvyn::core::GalvynRouter;
-use galvyn_identity::AuthRequiredLayer;
+
+use crate::http::middleware::account_required::AccountRequiredLayer;
 
 pub mod handler;
 pub mod schema;
@@ -12,6 +13,6 @@ pub fn initialize_routes() -> GalvynRouter {
         GalvynRouter::new()
             .handler(handler::search_mpcfill_art)
             .handler(handler::get_mpcfill_cardbacks)
-            .wrap(AuthRequiredLayer),
+            .wrap(AccountRequiredLayer),
     )
 }

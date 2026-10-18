@@ -1,4 +1,4 @@
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Text } from "components";
+import { Badge, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Text } from "components";
 import { useTranslation } from "react-i18next";
 import type { AdminAccount } from "src/api/generated";
 import { AdminRoleBadge } from "src/components/admin-role-badge";
@@ -45,7 +45,10 @@ export function AdminAccountTable({ accounts }: AdminAccountTableProps) {
                             <Text>{account.email}</Text>
                         </TableCell>
                         <TableCell>
-                            <AdminRoleBadge role={account.role} />
+                            <div className={"flex flex-wrap gap-1"}>
+                                <AdminRoleBadge role={account.role} />
+                                {account.lock && <Badge color={"red"}>{t("label.locked")}</Badge>}
+                            </div>
                         </TableCell>
                         <TableCell className={"max-sm:hidden"}>{formatDate(account.created_at)}</TableCell>
                         <TableCell className={"text-right tabular-nums max-sm:hidden"}>{account.collections}</TableCell>

@@ -26,7 +26,15 @@ type AccountSearch = {
     q?: string;
     /** Only Accounts with this Role */
     role?: Role;
+    /** Only locked Accounts, or only Accounts that are not */
+    lock?: LockFilter;
 };
+
+/** The choices of the Lock filter */
+const LOCK_FILTERS = ["locked", "unlocked"] as const;
+
+/** Narrows the list to locked Accounts or to the others */
+type LockFilter = (typeof LOCK_FILTERS)[number];
 
 /** How long typing has to pause before the list is asked again */
 const SEARCH_DEBOUNCE_MS = 250;
@@ -35,12 +43,13 @@ export const Route = createFileRoute("/_menu/admin/accounts/")({
     validateSearch: (search: Record<string, unknown>): AccountSearch => ({
         q: typeof search.q === "string" && search.q !== "" ? search.q : undefined,
         role: Object.values(Role).find((role) => role === search.role),
+        lock: LOCK_FILTERS.find((lock) => lock === search.lock),
     }),
     component: RouteComponent,
 });
 
 /**
- * Every Account, newest first, searchable by username or email and filterable by Role.
+ * Every Account, newest first, searchable by username or email and filterable by Role and Lock.
  *
  * Pages by cursor: "load more" appends the next page instead of numbering pages, so the
  * cost of a page does not grow with how far down the list it sits.
@@ -49,7 +58,8 @@ export const Route = createFileRoute("/_menu/admin/accounts/")({
  */
 function RouteComponent() {
     const [t] = useTranslation("admin");
-    const { q, role } = Route.useSearch();
+    const { q, role, lock } = Route.useSearch();
+    const locked = lock === undefined ? undefined : lock === "locked";
     const navigate = useNavigate({ from: Route.fullPath });
 
     const [typed, setTyped] = useState(q ?? "");
@@ -70,7 +80,7 @@ function RouteComponent() {
         let current = true;
         setAccounts(null);
         Api.admin.accounts
-            .list({ search: q, role })
+            .list({ search: q, role, locked })
             .then((page) => {
                 if (!current) return;
                 setAccounts(page.accounts);
@@ -80,7 +90,7 @@ function RouteComponent() {
         return () => {
             current = false;
         };
-    }, [q, role]);
+    }, [q, role, locked]);
 
     /**
      * Appends the page after the last loaded Account
@@ -89,7 +99,7 @@ function RouteComponent() {
         if (cursor === null) return;
         setLoadingMore(true);
         try {
-            const page = await Api.admin.accounts.list({ search: q, role, after: cursor });
+            const page = await Api.admin.accounts.list({ search: q, role, locked, after: cursor });
             setAccounts((held) => [...(held ?? []), ...page.accounts]);
             setCursor(page.next_cursor ?? null);
         } catch {
@@ -133,6 +143,28 @@ function RouteComponent() {
                         </ListboxOption>
                         <ListboxOption value={Role.Admin}>
                             <ListboxLabel>{t("label.role-admin")}</ListboxLabel>
+                        </ListboxOption>
+                    </Listbox>
+                </FilterBarControl>
+                <FilterBarControl>
+                    <Listbox
+                        value={lock ?? "all"}
+                        aria-label={t("label.lock")}
+                        onChange={(next: LockFilter | "all") =>
+                            void navigate({
+                                search: (held) => ({ ...held, lock: next === "all" ? undefined : next }),
+                                replace: true,
+                            })
+                        }
+                    >
+                        <ListboxOption value={"all"}>
+                            <ListboxLabel>{t("label.lock-all")}</ListboxLabel>
+                        </ListboxOption>
+                        <ListboxOption value={"locked"}>
+                            <ListboxLabel>{t("label.locked")}</ListboxLabel>
+                        </ListboxOption>
+                        <ListboxOption value={"unlocked"}>
+                            <ListboxLabel>{t("label.not-locked")}</ListboxLabel>
                         </ListboxOption>
                     </Listbox>
                 </FilterBarControl>

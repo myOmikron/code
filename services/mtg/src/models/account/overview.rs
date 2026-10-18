@@ -38,6 +38,17 @@ pub struct AccountOverview {
     pub collections: i64,
     /// Decks of the account
     pub decks: i64,
+    /// The account's Lock, `None` while it is not locked
+    pub lock: Option<AccountLock>,
+}
+
+/// An Account's Lock as Admins see it
+#[derive(Debug, Clone)]
+pub struct AccountLock {
+    /// When the account was locked
+    pub locked_at: OffsetDateTime,
+    /// Why it was locked
+    pub reason: String,
 }
 
 /// An Account on the admin detail page
@@ -58,6 +69,8 @@ pub struct AccountFilter {
     pub search: Option<String>,
     /// Only Accounts with this Role
     pub role: Option<Role>,
+    /// Only locked Accounts (`true`) or only Accounts that are not (`false`)
+    pub locked: Option<bool>,
     /// Continue after this Account, newest first
     pub after: Option<AccountUuid>,
     /// How many Accounts to return
@@ -75,7 +88,7 @@ pub struct AccountPage {
 
 /// The columns both reads select
 const COLUMNS: &str = "\
-    a.uuid, a.username, a.email, a.role, a.created_at, \
+    a.uuid, a.username, a.email, a.role, a.created_at, a.locked_at, a.lock_reason, \
     (SELECT count(*) FROM collection c WHERE c.owner = a.uuid AND c.deck IS NULL) AS collections, \
     (SELECT count(*) FROM deck d WHERE d.owner = a.uuid) AS decks";
 
@@ -83,7 +96,8 @@ impl AccountOverview {
     /// One page of Accounts, newest first, the tombstone left out
     ///
     /// Paged by uuid, which is a v7 and so creation-ordered: a page is a range
-    /// scan of the primary key, or of `account_role` with a Role filter. A
+    /// scan of the primary key, or of `account_role` with a Role filter, or of
+    /// the partial `account_locked` when only locked Accounts are asked for. A
     /// search reads the Accounts matching the prefix through the
     /// `account_username_prefix` and `account_email_prefix` indexes.
     #[instrument(name = "AccountOverview::page", skip(tx))]
@@ -96,6 +110,11 @@ impl AccountOverview {
         if let Some(role) = filter.role {
             values.push(Value::String(role.as_str()));
             conditions.push(format!("a.role = ${}", values.len()));
+        }
+        match filter.locked {
+            Some(true) => conditions.push("a.locked_at IS NOT NULL".to_string()),
+            Some(false) => conditions.push("a.locked_at IS NULL".to_string()),
+            None => {}
         }
         if let Some(after) = filter.after {
             values.push(Value::Uuid(after.0));
@@ -199,6 +218,8 @@ fn decode_overview(row: &Row) -> Result<AccountOverview, rorm::Error> {
     let role: String = row.get("role").map_err(decode)?;
     let username: String = row.get("username").map_err(decode)?;
     let email: String = row.get("email").map_err(decode)?;
+    let locked_at: Option<OffsetDateTime> = row.get("locked_at").map_err(decode)?;
+    let lock_reason: Option<String> = row.get("lock_reason").map_err(decode)?;
     Ok(AccountOverview {
         uuid: AccountUuid(row.get("uuid").map_err(decode)?),
         username: Username::new_from_field(
@@ -212,6 +233,10 @@ fn decode_overview(row: &Row) -> Result<AccountOverview, rorm::Error> {
         created_at: row.get("created_at").map_err(decode)?,
         collections: row.get("collections").map_err(decode)?,
         decks: row.get("decks").map_err(decode)?,
+        lock: locked_at.map(|locked_at| AccountLock {
+            locked_at,
+            reason: lock_reason.unwrap_or_default(),
+        }),
     })
 }
 

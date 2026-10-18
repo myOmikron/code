@@ -80,7 +80,8 @@ pub async fn signup(
 /// Always answers `200`, whether or not the username exists — the response
 /// must not be usable to probe which usernames are registered. The link is
 /// only ever sent to the address stored on the account, never to one from the
-/// request, so this endpoint cannot be used to mail a third party.
+/// request, so this endpoint cannot be used to mail a third party. A locked
+/// account gets no link either, and the answer is the same `200`.
 #[post("/recover")]
 pub async fn recover_account(
     ApiJson(request): ApiJson<RecoverAccountRequest>,
@@ -92,6 +93,11 @@ pub async fn recover_account(
         tx.commit().await?;
         return Ok(ApiJson(()));
     };
+    if account.locked {
+        info!("Recovery for a locked account");
+        tx.commit().await?;
+        return Ok(ApiJson(()));
+    }
 
     let link = IdentityModule::global()
         .issue_registration_link(&mut tx, account.identity)
@@ -112,7 +118,8 @@ pub async fn recover_account(
 /// A taken username gets a fresh link only while its account has no passkey
 /// yet: that is the "my invite mail got lost" case. Once a passkey exists the
 /// account is somebody's, and a stranger typing the username must not be able
-/// to trigger mail to them. The email is unique too, and just as unrevealable.
+/// to trigger mail to them. A locked account never gets one. The email is
+/// unique too, and just as unrevealable.
 async fn prepare_signup(
     tx: &mut Transaction,
     request: &SignupRequest,
@@ -125,7 +132,7 @@ async fn prepare_signup(
             .list_passkeys(&mut *tx, account.identity)
             .await?
             .is_empty();
-        if has_passkey {
+        if has_passkey || account.locked {
             info!("Signup for a username that is already registered");
             errors.username_taken = true;
             return Ok(None);
@@ -192,6 +199,10 @@ pub async fn start_login(
         errors.unknown_username = true;
         return errors.fail();
     };
+    if account.locked {
+        errors.locked = true;
+        return errors.fail();
+    }
 
     let options = match IdentityModule::global()
         .begin_login(&session, account.identity)
@@ -210,7 +221,8 @@ pub async fn start_login(
 
 /// Finish a passkey login
 ///
-/// Verifies the browser's credential and logs the account in.
+/// Verifies the browser's credential and logs the account in. An account
+/// locked since its login started is logged right out again.
 #[post("/login/finish")]
 pub async fn finish_login(
     session: Session,
@@ -221,7 +233,19 @@ pub async fn finish_login(
         .finish_login(&session, request.credential, request.remember_me)
         .await;
     match finished {
-        Ok(_identity) => return Ok(ApiJson(())),
+        Ok(identity) => {
+            let mut tx = Database::global().start_transaction().await?;
+            let account = Account::get_by_identity(&mut tx, identity).await?;
+            tx.commit().await?;
+            if !account.is_some_and(|account| account.locked) {
+                return Ok(ApiJson(()));
+            }
+            IdentityModule::global()
+                .logout(&session)
+                .await
+                .map_err(ApiError::map_server_error("Failed to flush session"))?;
+            errors.locked = true;
+        }
         Err(FinishLoginError::NoLoginInProgress) => errors.no_ceremony = true,
         Err(FinishLoginError::MalformedCredential) => errors.malformed_credential = true,
         Err(FinishLoginError::VerificationFailed | FinishLoginError::UnknownPasskey) => {
@@ -276,6 +300,10 @@ pub async fn start_registration(
     let account = Account::get_by_identity(&mut tx, link.identity()).await?;
     tx.commit().await?;
     let account = account.ok_or(ApiError::server_error("Token without account"))?;
+    if account.locked {
+        errors.locked = true;
+        return errors.fail();
+    }
 
     let options = identity_module
         .begin_link_enrollment(&session, &link, account.username.as_str())
@@ -294,7 +322,25 @@ pub async fn finish_registration(
     ApiJson(request): ApiJson<FinishRegistrationRequest>,
 ) -> ApiResult<ApiJson<()>, RegistrationErrors> {
     let mut errors = FormErrors::<RegistrationErrors>::new();
-    let finished = IdentityModule::global()
+    let identity_module = IdentityModule::global();
+
+    let link = match identity_module.open_registration_link(&request.token).await {
+        Ok(link) => link,
+        Err(OpenLinkError::Link(error)) => {
+            report_link_error(&mut errors, error);
+            return errors.fail();
+        }
+        Err(OpenLinkError::Internal(error)) => return Err(error.into()),
+    };
+    let mut tx = Database::global().start_transaction().await?;
+    let account = Account::get_by_identity(&mut tx, link.identity()).await?;
+    tx.commit().await?;
+    if account.is_some_and(|account| account.locked) {
+        errors.locked = true;
+        return errors.fail();
+    }
+
+    let finished = identity_module
         .finish_link_enrollment(&session, &request.token, request.credential, None)
         .await;
     match finished {

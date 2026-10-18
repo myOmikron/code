@@ -1,7 +1,8 @@
 //! Persisted scanner-session routes
 
 use galvyn::core::GalvynRouter;
-use galvyn_identity::AuthRequiredLayer;
+
+use crate::http::middleware::account_required::AccountRequiredLayer;
 
 pub mod handler;
 pub mod schema;
@@ -19,6 +20,6 @@ pub fn initialize_routes() -> GalvynRouter {
             .handler(handler::update_scanner_session_entry)
             .handler(handler::delete_scanner_session_entry)
             .handler(handler::file_scanner_session)
-            .wrap(AuthRequiredLayer),
+            .wrap(AccountRequiredLayer),
     )
 }

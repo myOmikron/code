@@ -8,7 +8,8 @@
 //! is the public surface.
 
 use galvyn::core::GalvynRouter;
-use galvyn_identity::AuthRequiredLayer;
+
+use crate::http::middleware::account_required::AccountRequiredLayer;
 
 pub mod proxy;
 
@@ -26,6 +27,6 @@ pub fn initialize_routes() -> GalvynRouter {
             .handler(proxy::post_warm)
             .handler(proxy::post_pool_query)
             .handler(proxy::get_facets)
-            .wrap(AuthRequiredLayer),
+            .wrap(AccountRequiredLayer),
     )
 }

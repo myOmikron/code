@@ -1,4 +1,7 @@
 //! Reading the logged-in [`Account`] out of the session
+//!
+//! A locked Account is refused like a missing one, so its sessions stop
+//! working on their next request.
 
 use std::future::Future;
 
@@ -34,6 +37,9 @@ impl<S> FromRequestParts<S> for Account {
             tx.commit().await?;
 
             let account = account.ok_or(ApiError::unauthorized("No account for the identity"))?;
+            if account.locked {
+                return Err(ApiError::unauthorized("The account is locked"));
+            }
 
             parts.extensions.insert(CachedAccount(account.clone()));
 

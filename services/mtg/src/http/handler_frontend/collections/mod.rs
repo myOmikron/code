@@ -1,5 +1,6 @@
 use galvyn::core::GalvynRouter;
-use galvyn_identity::AuthRequiredLayer;
+
+use crate::http::middleware::account_required::AccountRequiredLayer;
 
 pub mod handler;
 pub mod schema;
@@ -26,7 +27,7 @@ pub fn initialize_routes() -> GalvynRouter {
                 .handler(handler::delete_collection_entry)
                 .handler(handler::assign_collection_entry_tag)
                 .handler(handler::unassign_collection_entry_tag)
-                .wrap(AuthRequiredLayer),
+                .wrap(AccountRequiredLayer),
         )
         .merge(GalvynRouter::new())
 }

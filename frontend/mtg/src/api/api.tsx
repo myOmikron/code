@@ -6,6 +6,7 @@ import {
     AddScannerSessionEntryRequest,
     AddWatchListEntryRequest,
     AdminListAccountsRequest,
+    AdminListLogRequest,
     Configuration,
     CreateCollectionRequest,
     CreateDeckRequest,
@@ -105,6 +106,13 @@ export const Api = {
             get: async (uuid: UUID) => handleError(defaultApi.adminGetAccount({ uuid })),
             setRole: async (uuid: UUID, role: Role) =>
                 handleError(defaultApi.adminSetRole({ uuid, AdminSetRoleRequest: { role } })),
+            lock: async (uuid: UUID, reason: string) =>
+                handleError(defaultApi.adminLockAccount({ uuid, AdminLockAccountRequest: { reason } })),
+            unlock: async (uuid: UUID, reason?: string) =>
+                handleError(defaultApi.adminUnlockAccount({ uuid, AdminUnlockAccountRequest: { reason } })),
+        },
+        log: {
+            list: async (query: AdminListLogRequest = {}) => handleError(defaultApi.adminListLog(query)),
         },
         statistics: async () => handleError(defaultApi.adminGetStatistics()),
         syncs: {
