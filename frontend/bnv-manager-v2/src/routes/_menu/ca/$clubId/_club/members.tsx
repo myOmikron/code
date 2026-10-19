@@ -24,7 +24,7 @@ import Form from "src/components/base/form";
 import { useForm } from "@tanstack/react-form";
 import DeleteMemberDialog from "src/components/dialogs/ca-delete-member";
 import AdminResetCredentialsDialog from "src/components/dialogs/admin-reset-credentials";
-import { SimpleMemberAccountSchema } from "src/api/generated/club-admin";
+import { SimpleMemberAccountSchema } from "src/api/generated";
 
 /**
  * The properties for {@link ClubMembers}

@@ -10,7 +10,7 @@ import {
 } from "src/components/base/dialog";
 import { Button } from "src/components/base/button";
 import { Api } from "src/api/api";
-import { ClubSchema } from "src/api/generated/admin";
+import { ClubSchema } from "src/api/generated";
 
 /**
  * The properties for {@link AdminDeleteClubDialog}

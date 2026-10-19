@@ -2,7 +2,7 @@ import { useTranslation } from "react-i18next";
 import { Dialog, DialogActions, DialogBody, DialogProps, DialogTitle } from "src/components/base/dialog";
 import { Button, PrimaryButton } from "src/components/base/button";
 import React from "react";
-import { CredentialResetSchema, SimpleAccountSchema } from "src/api/generated/admin";
+import { CredentialResetSchema, SimpleAccountSchema } from "src/api/generated";
 import { Api } from "src/api/api";
 import { toast } from "react-toastify";
 import { Text } from "src/components/base/text";

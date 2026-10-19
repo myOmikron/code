@@ -8,7 +8,7 @@ import {
     UpdateMeRequest,
     SetPasswordRequest,
     ResetPasswordRequest,
-} from "src/api/generated/common";
+} from "src/api/generated";
 import { ClubAdminApi } from "src/api/api_club_admins";
 import { AdminApi } from "src/api/api_admin";
 import { AuthApi } from "src/api/api_auth";

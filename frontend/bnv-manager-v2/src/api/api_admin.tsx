@@ -7,9 +7,10 @@ import {
     ExtendInviteRequest,
     GetClubAdminsRequest,
     GetClubMembersRequest,
-} from "src/api/generated/admin";
+    RequiredError,
+    ResponseError,
+} from "src/api/generated";
 import { UUID } from "src/api/api";
-import { RequiredError, ResponseError } from "src/api/generated/admin";
 import { parseError } from "src/api/error";
 
 const adminApi = new DefaultApi(new Configuration({ basePath: window.location.origin }));

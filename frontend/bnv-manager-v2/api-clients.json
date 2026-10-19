@@ -1,0 +1,3 @@
+[
+    { "backend": "bnv-manager-v2", "out": "src/api/generated" }
+]

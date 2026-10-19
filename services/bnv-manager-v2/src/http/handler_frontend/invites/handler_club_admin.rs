@@ -77,7 +77,7 @@ pub async fn create_member_invite(
 
 #[post("/{uuid}/retract")]
 #[instrument(name = "Api::club_admin::retract_invite")]
-pub async fn retract_invite(
+pub async fn retract_invite_as_club_admin(
     Path((club_uuid, invite_uuid)): Path<(ClubUuid, InviteUuid)>,
     SessionUser {
         uuid: session_user, ..
@@ -111,8 +111,8 @@ pub async fn retract_invite(
 }
 
 #[post("/{invite_uuid}/extend-expiry")]
-#[instrument(name = "Api::admin::extend_invite_expiry")]
-pub async fn extend_invite_expiry(
+#[instrument(name = "Api::club_admin::extend_invite_expiry")]
+pub async fn extend_invite_expiry_as_club_admin(
     Path((club_uuid, invite_uuid)): Path<(ClubUuid, InviteUuid)>,
     ApiJson(ExtendInviteRequest { valid_days }): ApiJson<ExtendInviteRequest>,
 ) -> ApiResult<ApiJson<FormResult<(), ExtendInviteExpiryError>>> {

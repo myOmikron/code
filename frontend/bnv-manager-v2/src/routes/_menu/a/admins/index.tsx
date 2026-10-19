@@ -18,7 +18,7 @@ import DialogCreateAdmin from "src/components/dialogs/admin-create-admin";
 import { Button } from "src/components/base/button";
 import { KeyIcon } from "@heroicons/react/24/outline";
 import AdminResetCredentialsDialog from "src/components/dialogs/admin-reset-credentials";
-import { SimpleAccountSchema } from "src/api/generated/admin";
+import { SimpleAccountSchema } from "src/api/generated";
 
 /**
  * The properties for {@link AdminOverview}

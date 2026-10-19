@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "s
 import TablePagination from "src/components/table-pagination";
 import { Text } from "src/components/base/text";
 import React, { Suspense } from "react";
-import { SimpleAccountSchema } from "src/api/generated/admin";
+import { SimpleAccountSchema } from "src/api/generated";
 import {
     Dropdown,
     DropdownButton,

@@ -19,7 +19,7 @@ import {
 import { EllipsisVerticalIcon, TrashIcon } from "@heroicons/react/20/solid";
 import AdminCreateOidcClientDialog from "src/components/dialogs/admin-create-oidc-client";
 import AdminDeleteOidcClientDialog from "src/components/dialogs/admin-delete-oidc-client";
-import { OidcClientSchema } from "src/api/generated/admin";
+import { OidcClientSchema } from "src/api/generated";
 import { toast } from "react-toastify";
 import { ClipboardIcon } from "@heroicons/react/16/solid";
 
