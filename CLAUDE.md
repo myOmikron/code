@@ -45,14 +45,14 @@ just make-migrations <name>  # Generate rorm migrations for a service
 just build-service <name>    # Release build a specific service
 just docker-build <name>     # Build Docker image for a service
 just dev <name> <args...>    # Operate a dev stack, e.g. `just dev semmelei up -d --build`
-just gen-api [frontend]      # Regenerate API clients (tools/gen-api, frontend/<app>/api-clients.json)
+just gen-api [frontend]      # Regenerate a frontend's API specs and clients, every frontend without an argument
 just db <name>               # psql shell in a dev stack's database
 just prod <name> <args...>   # Operate a prod stack (on the deploy host), reads deploy/<name>/.env
 just prod-db <name>          # psql shell in a prod stack's database
 just prod-db-dump <name>     # gzipped pg_dump of a prod stack's database
 ```
 
-Frontend (per app): `pnpm run dev` / `build` / `ci` / `format` / `gen-api`.
+Frontend (per app): `pnpm run dev` / `build` / `ci` / `format`.
 
 ## Conventions
 
@@ -108,8 +108,18 @@ mtg query cost). A review applies all of it; read the sections a change touches 
 - Handler layout: `src/http/handler_frontend/<domain>/{handler,schema}.rs`,
   routes grouped in `mod.rs` per auth level and wrapped with middleware
   (`AuthRequiredLayer`, role layers)
-- The frontend OpenAPI spec is served at `/docs/frontend.json` (openapi page per consumer);
-  `just gen-api <name>` regenerates the TypeScript client from it
+- The frontend OpenAPI spec is served openly at `/docs/frontend.json` (one openapi page
+  per consumer, no debug gate, no login)
+- API clients: `frontend/<app>/api-clients.json` lists the app's backends as
+  `{ "backend": "<services/ dir>", "out": "<client dir>" }`, one generated client per
+  backend; any split by role or area lives in hand-written API wrappers.
+  `just gen-api [frontend]` (`tools/gen-api/gen-api.py`) has each backend write its spec to
+  `<out>/openapi.json` through its `openapi <output>` subcommand, then runs the generator
+  in a throwaway container of the frontend dev image. Commit spec and client together.
+  - Rust service: cargo runs the subcommand, wired via `service_bootstrap::openapi::write_openapi`
+  - Python service: uv runs the project's script entry, e.g. mtg-graph's `deck-lab openapi OUTPUT`
+  - Generator version: root `openapitools.json`; options: `tools/gen-api/generator-config.json`
+  - The host needs Docker, uv, cargo and installed `node_modules`; Java and a dev stack are not needed
 
 ### NATS and Proto
 
@@ -131,6 +141,8 @@ mtg query cost). A review applies all of it; read the sections a change touches 
 
 - Copy `frontend/example/`, rename in `package.json`, adjust `index.html` and the
   Dockerfile paths — the workspace glob picks it up automatically
+- Name the app's backends in its `api-clients.json` (the example's `example` backend is
+  skipped with a notice until `services/example` exists), then `just gen-api <app>`
 - API calls go through the generated client (`src/api/generated/`, never hand-edited)
   wrapped by `src/api/api.tsx` (`handleError` + `ERROR_STORE`)
 - PWA: `/api` must never be served from the service worker cache (NetworkOnly)
@@ -142,11 +154,15 @@ mtg query cost). A review applies all of it; read the sections a change touches 
   affected by the diff (`tools/changed-crates.py`); it also runs taplo, `ast-grep scan`
   and `cargo doc`. `tools/ci-image` mirrors it for local runs (`just run-ci-image`)
 - Dockerfile changes are build-checked by `docker-build.yaml`
+- `gen-api.yaml` is the drift check: it runs gen-api and fails on any diff in specs or
+  clients. On PRs only for frontends whose backend crates or gen-api inputs changed
+  (`tools/gen-api/changed-frontends.py`), on `main` for all
 - Renovate runs self-hosted (`.github/workflows/renovate.yaml`, config in `renovate.json`)
   as a GitHub App, so its commits are signed. Image refs (`FROM`, compose `image:`)
   carry full versions and are found by Renovate's own managers. Only versions no
   manager sees (ARG/ENV/`toolchain:` in workflows and Dockerfiles) carry a
-  `# renovate:` comment, directly above the assignment it pins
+  `# renovate:` comment, directly above the assignment it pins. JSON pins cannot carry
+  one and get a custom manager in `renovate.json` instead (the generator in `openapitools.json`)
 
 ## Release Workflow
 
@@ -165,7 +181,8 @@ mtg query cost). A review applies all of it; read the sections a change touches 
    (the workspace glob `services/*` picks it up automatically)
 2. Set `publish = false` and `[lints] workspace = true`
 3. Depend on `service-bootstrap`; `galvyn = { workspace = true, default-features = true }`
-4. Create `config.rs` using `EnvLoader`; clap cli with `start` / `make-migrations`
+4. Create `config.rs` using `EnvLoader`; clap cli with `start` / `make-migrations`, and
+   `openapi <output>` for a service with a frontend (see HTTP API)
 5. Run `just make-migrations <name>` and commit the generated migration
 6. Add a `Dockerfile` following `services/semmelei` (incl. `COPY .../migrations /migrations`)
 7. Add `dev/<name>.yml` (compose stack; traefik on `http://localhost` as single
