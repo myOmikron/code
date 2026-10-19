@@ -8,6 +8,7 @@ use crate::http::middleware::admin_required::AdminRequiredLayer;
 
 pub mod admin;
 pub mod auth;
+pub mod news;
 pub mod orders;
 pub mod shop;
 
@@ -15,14 +16,19 @@ pub mod shop;
 pub fn initialize_routes() -> GalvynRouter {
     GalvynRouter::new()
         .nest("/auth", auth::initialize_routes())
-        .nest("/shop", shop::initialize_routes())
+        .nest(
+            "/shop",
+            shop::initialize_routes().merge(news::initialize_shop_routes()),
+        )
         .nest(
             "/verkauf",
             orders::initialize_routes().wrap(AuthRequiredLayer),
         )
         .nest(
             "/admin",
-            admin::initialize_routes().wrap(AdminRequiredLayer),
+            admin::initialize_routes()
+                .merge(news::initialize_admin_routes())
+                .wrap(AdminRequiredLayer),
         )
 }
 

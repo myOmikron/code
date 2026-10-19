@@ -1,4 +1,4 @@
-import { ArrowRightEndOnRectangleIcon, MoonIcon, SunIcon } from "@heroicons/react/24/outline";
+import { ArrowRightEndOnRectangleIcon, MegaphoneIcon, MoonIcon, SunIcon } from "@heroicons/react/24/outline";
 import { Outlet, createFileRoute } from "@tanstack/react-router";
 import React from "react";
 import { useTranslation } from "react-i18next";
@@ -55,7 +55,19 @@ function ShopLayout() {
                             {tg("label.app-name")}
                         </span>
                     </Link>
-                    <CartButton />
+                    <div className={"flex items-center gap-2"}>
+                        <Link
+                            href={"/news"}
+                            aria-label={t("button.news")}
+                            className={
+                                "inline-flex min-h-11 items-center gap-2 rounded-xl px-3 text-sm font-medium text-zinc-600 hover:text-zinc-950 dark:text-zinc-300 dark:hover:text-white"
+                            }
+                        >
+                            <MegaphoneIcon className={"size-5"} />
+                            <span className={"hidden sm:inline"}>{t("button.news")}</span>
+                        </Link>
+                        <CartButton />
+                    </div>
                 </header>
                 <main className={"flex flex-1 flex-col gap-6 pb-12"}>
                     <InstallBanner />

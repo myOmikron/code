@@ -18,6 +18,7 @@ import { Route as AuthVerkaufRouteImport } from './routes/_auth/verkauf'
 import { Route as ShopIndexRouteImport } from './routes/_shop/index'
 import { Route as ShopCartRouteImport } from './routes/_shop/cart'
 import { Route as ShopCheckoutRouteImport } from './routes/_shop/checkout'
+import { Route as ShopNewsRouteImport } from './routes/_shop/news'
 import { Route as AuthAdminIndexRouteImport } from './routes/_auth/admin/index'
 import { Route as AuthAdminCategoriesRouteImport } from './routes/_auth/admin/categories'
 import { Route as AuthAdminItemsRouteImport } from './routes/_auth/admin/items'
@@ -28,6 +29,8 @@ import { Route as AuthVerkaufIndexRouteImport } from './routes/_auth/verkauf/ind
 import { Route as AuthVerkaufPasskeysRouteImport } from './routes/_auth/verkauf/passkeys'
 import { Route as AuthVerkaufScanRouteImport } from './routes/_auth/verkauf/scan'
 import { Route as ShopOrderPickupCodeRouteImport } from './routes/_shop/order.$pickupCode'
+import { Route as AuthAdminPostsIndexRouteImport } from './routes/_auth/admin/posts/index'
+import { Route as AuthAdminPostsUuidRouteImport } from './routes/_auth/admin/posts/$uuid'
 import { Route as AuthVerkaufBeschaffungDateRouteImport } from './routes/_auth/verkauf/beschaffung.$date'
 import { Route as AuthVerkaufOrderOrderIdRouteImport } from './routes/_auth/verkauf/order.$orderId'
 import { Route as AuthVerkaufTagesabschlussDateRouteImport } from './routes/_auth/verkauf/tagesabschluss.$date'
@@ -73,6 +76,11 @@ const ShopCartRoute = ShopCartRouteImport.update({
 const ShopCheckoutRoute = ShopCheckoutRouteImport.update({
   id: '/checkout',
   path: '/checkout',
+  getParentRoute: () => ShopRoute,
+} as any)
+const ShopNewsRoute = ShopNewsRouteImport.update({
+  id: '/news',
+  path: '/news',
   getParentRoute: () => ShopRoute,
 } as any)
 const AuthAdminIndexRoute = AuthAdminIndexRouteImport.update({
@@ -125,6 +133,16 @@ const ShopOrderPickupCodeRoute = ShopOrderPickupCodeRouteImport.update({
   path: '/order/$pickupCode',
   getParentRoute: () => ShopRoute,
 } as any)
+const AuthAdminPostsIndexRoute = AuthAdminPostsIndexRouteImport.update({
+  id: '/posts/',
+  path: '/posts/',
+  getParentRoute: () => AuthAdminRoute,
+} as any)
+const AuthAdminPostsUuidRoute = AuthAdminPostsUuidRouteImport.update({
+  id: '/posts/$uuid',
+  path: '/posts/$uuid',
+  getParentRoute: () => AuthAdminRoute,
+} as any)
 const AuthVerkaufBeschaffungDateRoute =
   AuthVerkaufBeschaffungDateRouteImport.update({
     id: '/beschaffung/$date',
@@ -151,6 +169,7 @@ export interface FileRoutesByFullPath {
   '/verkauf': typeof AuthVerkaufRouteWithChildren
   '/cart': typeof ShopCartRoute
   '/checkout': typeof ShopCheckoutRoute
+  '/news': typeof ShopNewsRoute
   '/admin/categories': typeof AuthAdminCategoriesRoute
   '/admin/items': typeof AuthAdminItemsRoute
   '/admin/rechtliches': typeof AuthAdminRechtlichesRoute
@@ -161,9 +180,11 @@ export interface FileRoutesByFullPath {
   '/order/$pickupCode': typeof ShopOrderPickupCodeRoute
   '/admin/': typeof AuthAdminIndexRoute
   '/verkauf/': typeof AuthVerkaufIndexRoute
+  '/admin/posts/$uuid': typeof AuthAdminPostsUuidRoute
   '/verkauf/beschaffung/$date': typeof AuthVerkaufBeschaffungDateRoute
   '/verkauf/order/$orderId': typeof AuthVerkaufOrderOrderIdRoute
   '/verkauf/tagesabschluss/$date': typeof AuthVerkaufTagesabschlussDateRoute
+  '/admin/posts/': typeof AuthAdminPostsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof ShopIndexRoute
@@ -171,6 +192,7 @@ export interface FileRoutesByTo {
   '/register': typeof RegisterRoute
   '/cart': typeof ShopCartRoute
   '/checkout': typeof ShopCheckoutRoute
+  '/news': typeof ShopNewsRoute
   '/admin/categories': typeof AuthAdminCategoriesRoute
   '/admin/items': typeof AuthAdminItemsRoute
   '/admin/rechtliches': typeof AuthAdminRechtlichesRoute
@@ -181,9 +203,11 @@ export interface FileRoutesByTo {
   '/order/$pickupCode': typeof ShopOrderPickupCodeRoute
   '/admin': typeof AuthAdminIndexRoute
   '/verkauf': typeof AuthVerkaufIndexRoute
+  '/admin/posts/$uuid': typeof AuthAdminPostsUuidRoute
   '/verkauf/beschaffung/$date': typeof AuthVerkaufBeschaffungDateRoute
   '/verkauf/order/$orderId': typeof AuthVerkaufOrderOrderIdRoute
   '/verkauf/tagesabschluss/$date': typeof AuthVerkaufTagesabschlussDateRoute
+  '/admin/posts': typeof AuthAdminPostsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -195,6 +219,7 @@ export interface FileRoutesById {
   '/_auth/verkauf': typeof AuthVerkaufRouteWithChildren
   '/_shop/cart': typeof ShopCartRoute
   '/_shop/checkout': typeof ShopCheckoutRoute
+  '/_shop/news': typeof ShopNewsRoute
   '/_shop/': typeof ShopIndexRoute
   '/_auth/admin/categories': typeof AuthAdminCategoriesRoute
   '/_auth/admin/items': typeof AuthAdminItemsRoute
@@ -206,9 +231,11 @@ export interface FileRoutesById {
   '/_shop/order/$pickupCode': typeof ShopOrderPickupCodeRoute
   '/_auth/admin/': typeof AuthAdminIndexRoute
   '/_auth/verkauf/': typeof AuthVerkaufIndexRoute
+  '/_auth/admin/posts/$uuid': typeof AuthAdminPostsUuidRoute
   '/_auth/verkauf/beschaffung/$date': typeof AuthVerkaufBeschaffungDateRoute
   '/_auth/verkauf/order/$orderId': typeof AuthVerkaufOrderOrderIdRoute
   '/_auth/verkauf/tagesabschluss/$date': typeof AuthVerkaufTagesabschlussDateRoute
+  '/_auth/admin/posts/': typeof AuthAdminPostsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -220,6 +247,7 @@ export interface FileRouteTypes {
     | '/verkauf'
     | '/cart'
     | '/checkout'
+    | '/news'
     | '/admin/categories'
     | '/admin/items'
     | '/admin/rechtliches'
@@ -230,9 +258,11 @@ export interface FileRouteTypes {
     | '/order/$pickupCode'
     | '/admin/'
     | '/verkauf/'
+    | '/admin/posts/$uuid'
     | '/verkauf/beschaffung/$date'
     | '/verkauf/order/$orderId'
     | '/verkauf/tagesabschluss/$date'
+    | '/admin/posts/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -240,6 +270,7 @@ export interface FileRouteTypes {
     | '/register'
     | '/cart'
     | '/checkout'
+    | '/news'
     | '/admin/categories'
     | '/admin/items'
     | '/admin/rechtliches'
@@ -250,9 +281,11 @@ export interface FileRouteTypes {
     | '/order/$pickupCode'
     | '/admin'
     | '/verkauf'
+    | '/admin/posts/$uuid'
     | '/verkauf/beschaffung/$date'
     | '/verkauf/order/$orderId'
     | '/verkauf/tagesabschluss/$date'
+    | '/admin/posts'
   id:
     | '__root__'
     | '/_auth'
@@ -263,6 +296,7 @@ export interface FileRouteTypes {
     | '/_auth/verkauf'
     | '/_shop/cart'
     | '/_shop/checkout'
+    | '/_shop/news'
     | '/_shop/'
     | '/_auth/admin/categories'
     | '/_auth/admin/items'
@@ -274,9 +308,11 @@ export interface FileRouteTypes {
     | '/_shop/order/$pickupCode'
     | '/_auth/admin/'
     | '/_auth/verkauf/'
+    | '/_auth/admin/posts/$uuid'
     | '/_auth/verkauf/beschaffung/$date'
     | '/_auth/verkauf/order/$orderId'
     | '/_auth/verkauf/tagesabschluss/$date'
+    | '/_auth/admin/posts/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -351,6 +387,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ShopCheckoutRouteImport
       parentRoute: typeof ShopRoute
     }
+    '/_shop/news': {
+      id: '/_shop/news'
+      path: '/news'
+      fullPath: '/news'
+      preLoaderRoute: typeof ShopNewsRouteImport
+      parentRoute: typeof ShopRoute
+    }
     '/_auth/admin/': {
       id: '/_auth/admin/'
       path: '/'
@@ -421,6 +464,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ShopOrderPickupCodeRouteImport
       parentRoute: typeof ShopRoute
     }
+    '/_auth/admin/posts/': {
+      id: '/_auth/admin/posts/'
+      path: '/posts'
+      fullPath: '/admin/posts/'
+      preLoaderRoute: typeof AuthAdminPostsIndexRouteImport
+      parentRoute: typeof AuthAdminRoute
+    }
+    '/_auth/admin/posts/$uuid': {
+      id: '/_auth/admin/posts/$uuid'
+      path: '/posts/$uuid'
+      fullPath: '/admin/posts/$uuid'
+      preLoaderRoute: typeof AuthAdminPostsUuidRouteImport
+      parentRoute: typeof AuthAdminRoute
+    }
     '/_auth/verkauf/beschaffung/$date': {
       id: '/_auth/verkauf/beschaffung/$date'
       path: '/beschaffung/$date'
@@ -452,6 +509,8 @@ interface AuthAdminRouteChildren {
   AuthAdminStaffRoute: typeof AuthAdminStaffRoute
   AuthAdminTermineRoute: typeof AuthAdminTermineRoute
   AuthAdminIndexRoute: typeof AuthAdminIndexRoute
+  AuthAdminPostsUuidRoute: typeof AuthAdminPostsUuidRoute
+  AuthAdminPostsIndexRoute: typeof AuthAdminPostsIndexRoute
 }
 
 const AuthAdminRouteChildren: AuthAdminRouteChildren = {
@@ -461,6 +520,8 @@ const AuthAdminRouteChildren: AuthAdminRouteChildren = {
   AuthAdminStaffRoute: AuthAdminStaffRoute,
   AuthAdminTermineRoute: AuthAdminTermineRoute,
   AuthAdminIndexRoute: AuthAdminIndexRoute,
+  AuthAdminPostsUuidRoute: AuthAdminPostsUuidRoute,
+  AuthAdminPostsIndexRoute: AuthAdminPostsIndexRoute,
 }
 
 const AuthAdminRouteWithChildren = AuthAdminRoute._addFileChildren(
@@ -504,6 +565,7 @@ const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
 interface ShopRouteChildren {
   ShopCartRoute: typeof ShopCartRoute
   ShopCheckoutRoute: typeof ShopCheckoutRoute
+  ShopNewsRoute: typeof ShopNewsRoute
   ShopIndexRoute: typeof ShopIndexRoute
   ShopOrderPickupCodeRoute: typeof ShopOrderPickupCodeRoute
 }
@@ -511,6 +573,7 @@ interface ShopRouteChildren {
 const ShopRouteChildren: ShopRouteChildren = {
   ShopCartRoute: ShopCartRoute,
   ShopCheckoutRoute: ShopCheckoutRoute,
+  ShopNewsRoute: ShopNewsRoute,
   ShopIndexRoute: ShopIndexRoute,
   ShopOrderPickupCodeRoute: ShopOrderPickupCodeRoute,
 }

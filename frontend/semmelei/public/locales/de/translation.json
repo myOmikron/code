@@ -17,7 +17,8 @@
         "scan": "Scannen",
         "procurement": "Beschaffung",
         "closing": "Tagesabschluss",
-        "legal": "Rechtliches"
+        "legal": "Rechtliches",
+        "news-posts": "Beiträge"
     },
     "heading": {
         "order-insight": "Bestellungen",
@@ -37,5 +38,8 @@
         "weekday-friday": "Freitag",
         "weekday-saturday": "Samstag",
         "weekday-sunday": "Sonntag"
+    },
+    "toast": {
+        "unsaved-changes": "Es gibt ungespeicherte Änderungen. Trotzdem verlassen?"
     }
 }

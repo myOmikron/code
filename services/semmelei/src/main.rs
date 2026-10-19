@@ -41,6 +41,9 @@ pub mod models;
 pub mod proto;
 pub mod utils;
 
+#[cfg(test)]
+mod tests;
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     let cli = Cli::parse();
@@ -75,14 +78,14 @@ async fn run(
 
     utils::mail::init(config.public_origin.clone());
 
-    let mut builder = builder
-        .register_module::<Database>(DatabaseSetup::Custom(DatabaseConfiguration::new(
-            config.database_driver.clone(),
-        )))
-        .register_module::<Nats>(NatsSetup::FromEnv)
-        .register_module::<IdentityModule>(identity_setup(&config))
-        .init_modules()
-        .await?;
+    let mut builder = init_modules(
+        &mut builder,
+        ModuleSetups {
+            config: config.clone(),
+            nats: Some(NatsSetup::FromEnv),
+        },
+    )
+    .await?;
 
     // Freezes pickup days once their deadline passes, and sends the binding
     // confirmations. Runs in-process: it needs nothing but the database and
@@ -91,6 +94,33 @@ async fn run(
 
     builder.add_listener(PUBLIC_HTTP, http::initialize_routes());
     Ok(builder)
+}
+
+/// Setups of the modules the service runs with
+pub struct ModuleSetups {
+    /// The loaded configuration
+    pub config: Config,
+    /// The NATS connection, `None` to run without one
+    ///
+    /// Only mail goes through NATS, so tests can leave it out.
+    pub nats: Option<NatsSetup>,
+}
+
+/// Registers and initializes all modules of the service
+pub async fn init_modules(
+    builder: &mut galvyn::ModuleBuilder,
+    setups: ModuleSetups,
+) -> Result<RouterBuilder, GalvynError> {
+    let ModuleSetups { config, nats } = setups;
+    builder
+        .register_module::<Database>(DatabaseSetup::Custom(DatabaseConfiguration::new(
+            config.database_driver.clone(),
+        )))
+        .register_module::<IdentityModule>(identity_setup(&config));
+    if let Some(nats) = nats {
+        builder.register_module::<Nats>(nats);
+    }
+    builder.init_modules().await
 }
 
 /// Setup of the [`IdentityModule`], shared by the service and the cli

@@ -9,11 +9,13 @@ All URIs are relative to *http://localhost*
 | [**createCategory**](DefaultApi.md#createcategory) | **POST** /api/frontend/v1/admin/categories | Create a category |
 | [**createInvite**](DefaultApi.md#createinvite) | **POST** /api/frontend/v1/admin/accounts/{uuid}/invite | Issue a new one-time registration link for an account (\&quot;lost device\&quot;) |
 | [**createItem**](DefaultApi.md#createitem) | **POST** /api/frontend/v1/admin/items | Create an item |
+| [**createNewsPost**](DefaultApi.md#createnewspost) | **POST** /api/frontend/v1/admin/news-posts | Create a News Post as a Draft |
 | [**createOrder**](DefaultApi.md#createorderoperation) | **POST** /api/frontend/v1/shop/orders | Place a pre-order |
 | [**deleteAccount**](DefaultApi.md#deleteaccount) | **DELETE** /api/frontend/v1/admin/accounts/{uuid} | Delete a staff account |
 | [**deleteCategory**](DefaultApi.md#deletecategory) | **DELETE** /api/frontend/v1/admin/categories/{uuid} | Delete a category |
 | [**deleteItem**](DefaultApi.md#deleteitem) | **DELETE** /api/frontend/v1/admin/items/{uuid} | Delete an item |
 | [**deleteItemImage**](DefaultApi.md#deleteitemimage) | **DELETE** /api/frontend/v1/admin/items/{uuid}/image | Remove an item\&#39;s product photo |
+| [**deleteNewsPost**](DefaultApi.md#deletenewspost) | **DELETE** /api/frontend/v1/admin/news-posts/{uuid} | Delete a News Post for good |
 | [**deletePasskey**](DefaultApi.md#deletepasskey) | **DELETE** /api/frontend/v1/auth/passkeys/{uuid} | Delete one of the logged-in account\&#39;s passkeys |
 | [**finishAddPasskey**](DefaultApi.md#finishaddpasskeyoperation) | **POST** /api/frontend/v1/auth/passkeys/finish | Finish adding another passkey to the logged-in account |
 | [**finishLogin**](DefaultApi.md#finishloginoperation) | **POST** /api/frontend/v1/auth/login/finish | Finish a passkey login |
@@ -22,6 +24,7 @@ All URIs are relative to *http://localhost*
 | [**getItems**](DefaultApi.md#getitems) | **GET** /api/frontend/v1/shop/items | List all currently orderable items |
 | [**getLegalLinks**](DefaultApi.md#getlegallinks) | **GET** /api/frontend/v1/shop/legal | The shop\&#39;s imprint and privacy policy links |
 | [**getLegalSettings**](DefaultApi.md#getlegalsettings) | **GET** /api/frontend/v1/admin/legal | Get the imprint and privacy policy links |
+| [**getNewsPost**](DefaultApi.md#getnewspost) | **GET** /api/frontend/v1/admin/news-posts/{uuid} | Get one News Post, Draft or Published |
 | [**getOrder**](DefaultApi.md#getorder) | **GET** /api/frontend/v1/shop/orders/{pickup_code} | Get an order by its pickup code |
 | [**getOrderDetail**](DefaultApi.md#getorderdetail) | **GET** /api/frontend/v1/verkauf/orders/{uuid} | Get a single order |
 | [**getPickupWindow**](DefaultApi.md#getpickupwindow) | **GET** /api/frontend/v1/shop/pickup | The pickup day customers can currently order for |
@@ -30,12 +33,15 @@ All URIs are relative to *http://localhost*
 | [**listAccounts**](DefaultApi.md#listaccounts) | **GET** /api/frontend/v1/admin/accounts | List all staff accounts |
 | [**listCategories**](DefaultApi.md#listcategories) | **GET** /api/frontend/v1/admin/categories | List all categories |
 | [**listItems**](DefaultApi.md#listitems) | **GET** /api/frontend/v1/admin/items | List all items, including inactive ones |
+| [**listNewsPosts**](DefaultApi.md#listnewsposts) | **GET** /api/frontend/v1/admin/news-posts | List all News Posts, Drafts included, newest first |
 | [**listOrders**](DefaultApi.md#listorders) | **GET** /api/frontend/v1/verkauf/orders | List orders, optionally filtered by status and pickup date |
 | [**listPasskeys**](DefaultApi.md#listpasskeys) | **GET** /api/frontend/v1/auth/passkeys | List the passkeys of the logged-in account |
 | [**listPickupDays**](DefaultApi.md#listpickupdays) | **GET** /api/frontend/v1/admin/pickup-days | List the upcoming pickup days |
+| [**listPublishedNewsPosts**](DefaultApi.md#listpublishednewsposts) | **GET** /api/frontend/v1/shop/news-posts | List the Published News Posts, newest first |
 | [**lockPickupDay**](DefaultApi.md#lockpickupday) | **POST** /api/frontend/v1/admin/pickup-days/{rule_date}/lock | Freeze a pickup day right now, before its deadline |
 | [**logout**](DefaultApi.md#logout) | **GET** /api/frontend/v1/auth/logout | Log out of the current session |
 | [**me**](DefaultApi.md#me) | **GET** /api/frontend/v1/auth/me | Get the currently logged-in account |
+| [**publishNewsPost**](DefaultApi.md#publishnewspost) | **POST** /api/frontend/v1/admin/news-posts/{uuid}/publish | Publish a News Post now |
 | [**setItemImage**](DefaultApi.md#setitemimageoperation) | **PUT** /api/frontend/v1/admin/items/{uuid}/image | Set an item\&#39;s product photo |
 | [**startAddPasskey**](DefaultApi.md#startaddpasskey) | **POST** /api/frontend/v1/auth/passkeys/start | Start adding another passkey to the logged-in account |
 | [**startLogin**](DefaultApi.md#startloginoperation) | **POST** /api/frontend/v1/auth/login/start | Start a passkey login for a given username |
@@ -45,10 +51,12 @@ All URIs are relative to *http://localhost*
 | [**updateCategory**](DefaultApi.md#updatecategory) | **PUT** /api/frontend/v1/admin/categories/{uuid} | Rename a category |
 | [**updateItem**](DefaultApi.md#updateitem) | **PUT** /api/frontend/v1/admin/items/{uuid} | Update an item |
 | [**updateLegalSettings**](DefaultApi.md#updatelegalsettings) | **PUT** /api/frontend/v1/admin/legal | Change the imprint and privacy policy links |
+| [**updateNewsPost**](DefaultApi.md#updatenewspost) | **PUT** /api/frontend/v1/admin/news-posts/{uuid} | Change a News Post\&#39;s title and body |
 | [**updateOrderItemPacked**](DefaultApi.md#updateorderitempackedoperation) | **PATCH** /api/frontend/v1/verkauf/order-items/{uuid} | Change a position\&#39;s packed flag (packing list checkbox) |
 | [**updateOrderStatus**](DefaultApi.md#updateorderstatusoperation) | **PATCH** /api/frontend/v1/verkauf/orders/{uuid} | Change an order\&#39;s status |
 | [**updatePickupDay**](DefaultApi.md#updatepickupdayoperation) | **PUT** /api/frontend/v1/admin/pickup-days/{rule_date} | Change a single pickup day |
 | [**updateSchedule**](DefaultApi.md#updateschedule) | **PUT** /api/frontend/v1/admin/schedule | Change the recurring rule |
+| [**withdrawNewsPost**](DefaultApi.md#withdrawnewspost) | **POST** /api/frontend/v1/admin/news-posts/{uuid}/withdraw | Withdraw a News Post, making it a Draft again |
 
 
 
@@ -402,6 +410,76 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## createNewsPost
+
+> string createNewsPost(NewsPostRequest)
+
+Create a News Post as a Draft
+
+Create a News Post as a Draft
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { CreateNewsPostRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // NewsPostRequest (optional)
+    NewsPostRequest: ...,
+  } satisfies CreateNewsPostRequest;
+
+  try {
+    const data = await api.createNewsPost(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **NewsPostRequest** | [NewsPostRequest](NewsPostRequest.md) |  | [Optional] |
+
+### Return type
+
+**string**
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## createOrder
 
 > CreateOrderResponse createOrder(CreateOrderRequest)
@@ -710,6 +788,76 @@ async function example() {
 
   try {
     const data = await api.deleteItemImage(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **uuid** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+`void` (Empty response body)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## deleteNewsPost
+
+> deleteNewsPost(uuid)
+
+Delete a News Post for good
+
+Delete a News Post for good
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { DeleteNewsPostRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    uuid: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies DeleteNewsPostRequest;
+
+  try {
+    const data = await api.deleteNewsPost(body);
     console.log(data);
   } catch (error) {
     console.error(error);
@@ -1280,6 +1428,76 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## getNewsPost
+
+> AdminNewsPost getNewsPost(uuid)
+
+Get one News Post, Draft or Published
+
+Get one News Post, Draft or Published
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { GetNewsPostRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    uuid: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies GetNewsPostRequest;
+
+  try {
+    const data = await api.getNewsPost(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **uuid** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**AdminNewsPost**](AdminNewsPost.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## getOrder
 
 > PublicOrder getOrder(pickup_code)
@@ -1800,6 +2018,68 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## listNewsPosts
+
+> ListAdminNewsPostsResponse listNewsPosts()
+
+List all News Posts, Drafts included, newest first
+
+List all News Posts, Drafts included, newest first
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { ListNewsPostsRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  try {
+    const data = await api.listNewsPosts();
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+This endpoint does not need any parameter.
+
+### Return type
+
+[**ListAdminNewsPostsResponse**](ListAdminNewsPostsResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## listOrders
 
 > ListOrdersResponse listOrders(pickup_date, status)
@@ -1997,6 +2277,68 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## listPublishedNewsPosts
+
+> ListPublishedNewsPostsResponse listPublishedNewsPosts()
+
+List the Published News Posts, newest first
+
+List the Published News Posts, newest first
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { ListPublishedNewsPostsRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  try {
+    const data = await api.listPublishedNewsPosts();
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+This endpoint does not need any parameter.
+
+### Return type
+
+[**ListPublishedNewsPostsResponse**](ListPublishedNewsPostsResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## lockPickupDay
 
 > PickupDayChangeResponse lockPickupDay(rule_date)
@@ -2169,6 +2511,76 @@ This endpoint does not need any parameter.
 ### Return type
 
 [**MeResponse**](MeResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## publishNewsPost
+
+> AdminNewsPost publishNewsPost(uuid)
+
+Publish a News Post now
+
+Publish a News Post now  Publishing a withdrawn News Post again gives it a new publication time.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { PublishNewsPostRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    uuid: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies PublishNewsPostRequest;
+
+  try {
+    const data = await api.publishNewsPost(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **uuid** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**AdminNewsPost**](AdminNewsPost.md)
 
 ### Authorization
 
@@ -2814,6 +3226,79 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## updateNewsPost
+
+> AdminNewsPost updateNewsPost(uuid, NewsPostRequest)
+
+Change a News Post\&#39;s title and body
+
+Change a News Post\&#39;s title and body  A Published News Post keeps its publication time.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { UpdateNewsPostRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    uuid: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // NewsPostRequest (optional)
+    NewsPostRequest: ...,
+  } satisfies UpdateNewsPostRequest;
+
+  try {
+    const data = await api.updateNewsPost(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **uuid** | `string` |  | [Defaults to `undefined`] |
+| **NewsPostRequest** | [NewsPostRequest](NewsPostRequest.md) |  | [Optional] |
+
+### Return type
+
+[**AdminNewsPost**](AdminNewsPost.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## updateOrderItemPacked
 
 > updateOrderItemPacked(uuid, UpdateOrderItemPackedRequest)
@@ -3089,6 +3574,76 @@ No authorization required
 ### HTTP request headers
 
 - **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## withdrawNewsPost
+
+> AdminNewsPost withdrawNewsPost(uuid)
+
+Withdraw a News Post, making it a Draft again
+
+Withdraw a News Post, making it a Draft again
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { WithdrawNewsPostRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    uuid: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies WithdrawNewsPostRequest;
+
+  try {
+    const data = await api.withdrawNewsPost(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **uuid** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**AdminNewsPost**](AdminNewsPost.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
 - **Accept**: `application/json`
 
 

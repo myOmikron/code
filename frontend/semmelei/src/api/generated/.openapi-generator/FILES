@@ -2,6 +2,7 @@ apis/DefaultApi.ts
 apis/index.ts
 docs/AccountSchema.md
 docs/AdminItem.md
+docs/AdminNewsPost.md
 docs/AdminPickupDay.md
 docs/ApiErrorResponse.md
 docs/CategoryRequest.md
@@ -19,12 +20,15 @@ docs/ItemRequest.md
 docs/LegalLinks.md
 docs/ListAccountsResponse.md
 docs/ListAdminItemsResponse.md
+docs/ListAdminNewsPostsResponse.md
 docs/ListCategoriesResponse.md
 docs/ListItemsResponse.md
 docs/ListOrdersResponse.md
 docs/ListPasskeysResponse.md
 docs/ListPickupDaysResponse.md
+docs/ListPublishedNewsPostsResponse.md
 docs/MeResponse.md
+docs/NewsPostRequest.md
 docs/OrderLanguage.md
 docs/OrderPositionRequest.md
 docs/OrderStatus.md
@@ -37,6 +41,7 @@ docs/PublicCategory.md
 docs/PublicItem.md
 docs/PublicOrder.md
 docs/PublicOrderPosition.md
+docs/PublishedNewsPost.md
 docs/Role.md
 docs/ScheduleSchema.md
 docs/ScheduleWeekday.md

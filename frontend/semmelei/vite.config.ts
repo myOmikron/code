@@ -19,6 +19,7 @@ export default defineConfig({
         VitePWA({
             // Staff tablets should silently stay current, no update prompt
             registerType: "autoUpdate",
+            disable: Boolean(process.env.VITEST),
             includeAssets: ["logo.svg", "apple-touch-icon.png"],
             // Serve a real manifest + service worker on the vite dev server too,
             // so the app is installable against the dev stack (not just the

@@ -7,6 +7,7 @@
         "dev": "vite --host",
         "build": "tsc && vite build --sourcemap true",
         "preview": "vite preview",
+        "test": "vitest run",
         "format": "prettier --config .prettierrc.json --write src/",
         "format-check": "prettier --config .prettierrc.json --check src/",
         "ci": "bash scripts/run-ci.sh"
@@ -24,10 +25,13 @@
         "i18next-browser-languagedetector": "catalog:dependencies",
         "i18next-http-backend": "catalog:dependencies",
         "jsqr": "catalog:dependencies",
+        "mdast-util-from-markdown": "catalog:dependencies",
+        "mdast-util-to-string": "catalog:dependencies",
         "motion": "catalog:dependencies",
         "react": "catalog:dependencies",
         "react-dom": "catalog:dependencies",
         "react-i18next": "catalog:dependencies",
+        "react-markdown": "catalog:dependencies",
         "react-toastify": "catalog:dependencies"
     },
     "devDependencies": {
@@ -50,6 +54,7 @@
         "vite-plugin-pwa": "catalog:devDependencies",
         "vite-plugin-static-copy": "catalog:devDependencies",
         "vite-plugin-svgr": "catalog:devDependencies",
+        "vitest": "catalog:devDependencies",
         "workbox-window": "catalog:devDependencies"
     }
 }

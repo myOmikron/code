@@ -4,6 +4,7 @@ import {
     ClipboardDocumentListIcon,
     CubeIcon,
     KeyIcon,
+    NewspaperIcon,
     ScaleIcon,
     TagIcon,
     UsersIcon,
@@ -90,6 +91,10 @@ export function StaffLayout() {
                         <SidebarItem href={"/admin/termine"}>
                             <CalendarDaysIcon />
                             <SidebarLabel>{tg("button.pickup-days")}</SidebarLabel>
+                        </SidebarItem>
+                        <SidebarItem href={"/admin/posts"}>
+                            <NewspaperIcon />
+                            <SidebarLabel>{tg("button.news-posts")}</SidebarLabel>
                         </SidebarItem>
                         <SidebarItem href={"/admin/staff"}>
                             <UsersIcon />

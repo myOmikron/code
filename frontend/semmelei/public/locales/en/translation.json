@@ -17,7 +17,8 @@
         "scan": "Scan",
         "procurement": "Procurement",
         "closing": "End of day",
-        "legal": "Legal"
+        "legal": "Legal",
+        "news-posts": "Posts"
     },
     "heading": {
         "order-insight": "Orders",
@@ -37,5 +38,8 @@
         "weekday-friday": "Friday",
         "weekday-saturday": "Saturday",
         "weekday-sunday": "Sunday"
+    },
+    "toast": {
+        "unsaved-changes": "There are unsaved changes. Leave anyway?"
     }
 }

@@ -7,7 +7,8 @@
         "order": "Deine Bestellung",
         "item-info": "Informationen zu {{name}}",
         "confirm-cancel": "Bestellung stornieren?",
-        "install-app": "App installieren"
+        "install-app": "App installieren",
+        "news": "Neuigkeiten"
     },
     "label": {
         "catalog-empty": "Im Moment sind keine Artikel bestellbar.",
@@ -34,7 +35,9 @@
         "orders-closed": "Zurzeit sind keine Bestellungen möglich",
         "next-pickup": "Nächster Abholtag: {{date}}",
         "cancel-until": "Stornierbar bis {{date}}",
-        "remember-details": "Daten fürs nächste Mal merken"
+        "remember-details": "Daten fürs nächste Mal merken",
+        "news-eyebrow": "Neuigkeit · {{date}}",
+        "news-empty": "Gerade gibt es keine Neuigkeiten."
     },
     "button": {
         "staff-login": "Mitarbeiter-Login",
@@ -47,7 +50,9 @@
         "cancel-order": "Bestellung stornieren",
         "imprint": "Impressum",
         "privacy": "Datenschutz",
-        "install-app": "App installieren"
+        "install-app": "App installieren",
+        "news": "Neuigkeiten",
+        "read-more": "Weiterlesen"
     },
     "description": {
         "catalog": "Wähle in Ruhe deine Produkte aus. Wir bereiten alles vor und du bezahlst bequem bei der Abholung.",

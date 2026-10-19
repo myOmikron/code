@@ -914,6 +914,55 @@
                 }
             }
         },
+        "/api/frontend/v1/shop/news-posts": {
+            "get": {
+                "summary": "List the Published News Posts, newest first",
+                "description": "List the Published News Posts, newest first",
+                "operationId": "list_published_news_posts",
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ListPublishedNewsPostsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/frontend/v1/verkauf/orders": {
             "get": {
                 "summary": "List orders, optionally filtered by status and pickup date",
@@ -2486,6 +2535,419 @@
                     }
                 }
             }
+        },
+        "/api/frontend/v1/admin/news-posts": {
+            "get": {
+                "summary": "List all News Posts, Drafts included, newest first",
+                "description": "List all News Posts, Drafts included, newest first",
+                "operationId": "list_news_posts",
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ListAdminNewsPostsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "summary": "Create a News Post as a Draft",
+                "description": "Create a News Post as a Draft",
+                "operationId": "create_news_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/NewsPostRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/NewsPostUuid"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/admin/news-posts/{uuid}": {
+            "get": {
+                "summary": "Get one News Post, Draft or Published",
+                "description": "Get one News Post, Draft or Published",
+                "operationId": "get_news_post",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "uuid",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`NewsPost`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AdminNewsPost"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "summary": "Change a News Post's title and body",
+                "description": "Change a News Post's title and body\n\nA Published News Post keeps its publication time.",
+                "operationId": "update_news_post",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "uuid",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`NewsPost`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/NewsPostRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AdminNewsPost"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "summary": "Delete a News Post for good",
+                "description": "Delete a News Post for good",
+                "operationId": "delete_news_post",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "uuid",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`NewsPost`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": ""
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/admin/news-posts/{uuid}/publish": {
+            "post": {
+                "summary": "Publish a News Post now",
+                "description": "Publish a News Post now\n\nPublishing a withdrawn News Post again gives it a new publication time.",
+                "operationId": "publish_news_post",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "uuid",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`NewsPost`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AdminNewsPost"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/admin/news-posts/{uuid}/withdraw": {
+            "post": {
+                "summary": "Withdraw a News Post, making it a Draft again",
+                "description": "Withdraw a News Post, making it a Draft again",
+                "operationId": "withdraw_news_post",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "uuid",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`NewsPost`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AdminNewsPost"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "components": {
@@ -2608,6 +3070,60 @@
                     "created_at",
                     "name",
                     "price_cents",
+                    "uuid"
+                ]
+            },
+            "AdminNewsPost": {
+                "description": "A News Post as Admins see it, Draft or Published",
+                "type": "object",
+                "properties": {
+                    "body": {
+                        "description": "The text, as Markdown",
+                        "type": "string"
+                    },
+                    "created_at": {
+                        "description": "The point in time the News Post was created",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDateTime"
+                            }
+                        ]
+                    },
+                    "published_at": {
+                        "nullable": true,
+                        "description": "The point in time the News Post was published, unset for a Draft",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDateTime"
+                            }
+                        ]
+                    },
+                    "title": {
+                        "description": "The title",
+                        "type": "string"
+                    },
+                    "updated_at": {
+                        "description": "The point in time the News Post was last changed",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDateTime"
+                            }
+                        ]
+                    },
+                    "uuid": {
+                        "description": "Primary key",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/NewsPostUuid"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "body",
+                    "created_at",
+                    "title",
+                    "updated_at",
                     "uuid"
                 ]
             },
@@ -3145,6 +3661,22 @@
                     "items"
                 ]
             },
+            "ListAdminNewsPostsResponse": {
+                "description": "All News Posts, Drafts included, newest first",
+                "type": "object",
+                "properties": {
+                    "news_posts": {
+                        "description": "The News Posts",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/AdminNewsPost"
+                        }
+                    }
+                },
+                "required": [
+                    "news_posts"
+                ]
+            },
             "ListCategoriesResponse": {
                 "description": "All categories",
                 "type": "object",
@@ -3225,9 +3757,29 @@
                     "days"
                 ]
             },
+            "ListPublishedNewsPostsResponse": {
+                "description": "All Published News Posts, newest first",
+                "type": "object",
+                "properties": {
+                    "news_posts": {
+                        "description": "The News Posts",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/PublishedNewsPost"
+                        }
+                    }
+                },
+                "required": [
+                    "news_posts"
+                ]
+            },
             "MaxStr_1024": {
                 "type": "string",
                 "maxLength": 1024
+            },
+            "MaxStr_20000": {
+                "type": "string",
+                "maxLength": 20000
             },
             "MaxStr_2048": {
                 "type": "string",
@@ -3275,6 +3827,37 @@
                     "username",
                     "uuid"
                 ]
+            },
+            "NewsPostRequest": {
+                "description": "Request to create a News Post or change its title and body",
+                "type": "object",
+                "properties": {
+                    "body": {
+                        "description": "The text, as Markdown",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_20000"
+                            }
+                        ]
+                    },
+                    "title": {
+                        "description": "The title",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_255"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "body",
+                    "title"
+                ]
+            },
+            "NewsPostUuid": {
+                "description": "Wrapper for the primary key of the [`NewsPost`] model. To have better distinguishable types.",
+                "type": "string",
+                "format": "uuid"
             },
             "OrderItemUuid": {
                 "description": "Wrapper for the primary key of the [`OrderItem`] model. To have better distinguishable types.",
@@ -3723,6 +4306,33 @@
                     "name",
                     "price_cents",
                     "quantity"
+                ]
+            },
+            "PublishedNewsPost": {
+                "description": "A Published News Post as customers see it",
+                "type": "object",
+                "properties": {
+                    "body": {
+                        "description": "The text, as Markdown",
+                        "type": "string"
+                    },
+                    "published_at": {
+                        "description": "The point in time the News Post was published",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDateTime"
+                            }
+                        ]
+                    },
+                    "title": {
+                        "description": "The title",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "body",
+                    "published_at",
+                    "title"
                 ]
             },
             "Role": {

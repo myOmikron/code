@@ -7,6 +7,7 @@
 pub mod account;
 pub mod category;
 pub mod item;
+pub mod news_post;
 pub mod order;
 pub mod pickup_day;
 pub mod settings;
@@ -20,6 +21,8 @@ pub use category::CategoryUuid;
 pub use item::Item;
 pub use item::ItemData;
 pub use item::ItemUuid;
+pub use news_post::NewsPost;
+pub use news_post::NewsPostUuid;
 pub use order::Order;
 pub use order::OrderInsert;
 pub use order::OrderItem;

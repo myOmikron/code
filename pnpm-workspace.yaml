@@ -31,6 +31,8 @@ catalogs:
     i18next-browser-languagedetector: ^8.2.1
     i18next-http-backend: ^4.0.0
     jsqr: ^1.4.0
+    mdast-util-from-markdown: ^2.0.2
+    mdast-util-to-string: ^4.0.0
     motion: ^12.42.2
     # WebGPU is unusable on ARM Mali gen-5: every arrangement returns non-finite values, while
     # that device's own compute shaders are provably correct. 1.30.0-dev was tried and behaves the
@@ -40,6 +42,7 @@ catalogs:
     react: ^19.2.7
     react-dom: ^19.2.7
     react-i18next: ^17.0.8
+    react-markdown: ^10.1.0
     react-toastify: ^11.1.0
     recharts: ^3.8.1
     tesseract.js: ^5.1.1

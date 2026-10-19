@@ -17,7 +17,10 @@
         "upcoming-pickup-days": "Kommende Termine",
         "edit-pickup-day": "Termin bearbeiten",
         "confirm-lock-day": "Termin jetzt einfrieren?",
-        "legal": "Rechtliches"
+        "legal": "Rechtliches",
+        "news-posts": "Beiträge",
+        "create-news-post": "Neuer Beitrag",
+        "confirm-delete-news-post": "Beitrag löschen?"
     },
     "label": {
         "items-empty": "Noch keine Artikel angelegt.",
@@ -48,7 +51,23 @@
         "state-locked": "Eingefroren",
         "state-closed": "Abgesagt",
         "imprint-url": "Link zum Impressum",
-        "privacy-url": "Link zur Datenschutzerklärung"
+        "privacy-url": "Link zur Datenschutzerklärung",
+        "news-posts-empty": "Noch keine Beiträge geschrieben.",
+        "title": "Titel",
+        "text": "Text",
+        "news-post-state": "Status",
+        "date": "Datum",
+        "draft": "Entwurf",
+        "published": "Veröffentlicht",
+        "published-on": "am {{date}}",
+        "unsaved-changes": "Ungespeicherte Änderungen",
+        "preview-empty": "Noch kein Text.",
+        "placeholder-bold": "fetter Text",
+        "placeholder-italic": "kursiver Text",
+        "placeholder-heading": "Überschrift",
+        "placeholder-list": "Listenpunkt",
+        "placeholder-link": "Linktext",
+        "preview": "Vorschau"
     },
     "button": {
         "nav-orders": "Bestellungen",
@@ -60,7 +79,14 @@
         "create-account": "Konto anlegen",
         "new-invite": "Neuer Registrierungs-Link",
         "remove-image": "Bild entfernen",
-        "lock-day": "Jetzt einfrieren"
+        "lock-day": "Jetzt einfrieren",
+        "create-news-post": "Neuer Beitrag",
+        "create-draft": "Entwurf anlegen",
+        "all-news-posts": "Alle Beiträge",
+        "publish": "Veröffentlichen",
+        "withdraw": "Zurückziehen",
+        "write": "Schreiben",
+        "preview": "Vorschau"
     },
     "description": {
         "additional-info": "Zum Beispiel Allergene, Zutaten oder Hinweise. Diese Angabe ist für Kunden über das Info-Symbol sichtbar.",
@@ -79,20 +105,37 @@
         "confirm-lock-day_other": "Der Termin wird sofort verbindlich. {{count}} Kunden bekommen die Bestätigungsmail, neue Bestellungen sind danach nicht mehr möglich.",
         "legal": "Diese beiden Links stehen im Footer des öffentlichen Shops. Leer lassen blendet den jeweiligen Link aus — für einen öffentlichen Shop sind beide allerdings Pflicht.",
         "imprint-url": "Vollständige Adresse inklusive https://, zum Beispiel die Impressumsseite des Vereins.",
-        "privacy-url": "Die Datenschutzerklärung muss beschreiben, was dieser Shop mit den Bestelldaten macht."
+        "privacy-url": "Die Datenschutzerklärung muss beschreiben, was dieser Shop mit den Bestelldaten macht.",
+        "draft": "Nur für Admins sichtbar.",
+        "confirm-delete-news-post": "\"{{title}}\" wird endgültig gelöscht."
     },
     "error": {
         "name-required": "Name wird benötigt",
         "price-invalid": "Ungültiger Preis",
-        "username-required": "Benutzername wird benötigt"
+        "username-required": "Benutzername wird benötigt",
+        "title-required": "Bitte gib einen Titel ein",
+        "title-too-long": "Der Titel ist zu lang",
+        "body-required": "Bitte schreib einen Text",
+        "body-too-long": "Der Text ist zu lang, bitte kürze ihn"
     },
     "accessibility": {
-        "copy-invite": "Registrierungs-Link kopieren"
+        "copy-invite": "Registrierungs-Link kopieren",
+        "formatting": "Formatierung",
+        "bold": "Fett",
+        "italic": "Kursiv",
+        "heading": "Überschrift",
+        "list": "Liste",
+        "link": "Link",
+        "preview": "Vorschau"
     },
     "toast": {
         "schedule-saved": "Regel gespeichert",
         "day-locked_one": "Termin eingefroren, {{count}} Bestätigung verschickt",
         "day-locked_other": "Termin eingefroren, {{count}} Bestätigungen verschickt",
-        "legal-saved": "Links gespeichert"
+        "legal-saved": "Links gespeichert",
+        "news-post-saved": "Beitrag gespeichert",
+        "news-post-published": "Beitrag veröffentlicht",
+        "news-post-withdrawn": "Beitrag zurückgezogen, er ist wieder ein Entwurf",
+        "news-post-deleted": "Beitrag gelöscht"
     }
 }
