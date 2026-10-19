@@ -137,6 +137,26 @@ impl Passkey {
         Ok(())
     }
 
+    /// Rename one of `identity`'s passkeys
+    ///
+    /// Returns `false` if the identity holds no passkey with this uuid.
+    #[instrument(name = "Passkey::set_label", skip(exe))]
+    pub(super) async fn set_label(
+        exe: impl Executor<'_>,
+        identity: IdentityUuid,
+        uuid: PasskeyUuid,
+        label: MaxStr<255>,
+    ) -> Result<bool, rorm::Error> {
+        let affected = rorm::update(exe, PasskeyModel)
+            .set(PasskeyModel.label, label)
+            .condition(rorm::and![
+                PasskeyModel.uuid.equals(uuid.0),
+                PasskeyModel.identity.equals(identity.into_inner()),
+            ])
+            .await?;
+        Ok(affected > 0)
+    }
+
     /// Delete a passkey
     ///
     /// Returns `false` if the passkey does not exist.

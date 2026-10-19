@@ -2939,6 +2939,27 @@ export interface FormErrorResponseForRegistrationErrors {
 /**
  * The response that is sent in a case of an error the caller should present his user
  * @export
+ * @interface FormErrorResponseForRenamePasskeyErrors
+ */
+export interface FormErrorResponseForRenamePasskeyErrors {
+    /**
+     * The actual error struct
+     * @type {RenamePasskeyErrors}
+     * @memberof FormErrorResponseForRenamePasskeyErrors
+     */
+    error: RenamePasskeyErrors;
+    /**
+     * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
+     * @type {ErrorConstant}
+     * @memberof FormErrorResponseForRenamePasskeyErrors
+     */
+    result: ErrorConstant;
+}
+
+
+/**
+ * The response that is sent in a case of an error the caller should present his user
+ * @export
  * @interface FormErrorResponseForSignupErrors
  */
 export interface FormErrorResponseForSignupErrors {
@@ -4422,6 +4443,38 @@ export interface RegistrationErrors {
      * @memberof RegistrationErrors
      */
     token_used: boolean;
+}
+/**
+ * Why a passkey could not be renamed
+ * @export
+ * @interface RenamePasskeyErrors
+ */
+export interface RenamePasskeyErrors {
+    /**
+     * Nothing is left of the label once trimmed
+     * @type {boolean}
+     * @memberof RenamePasskeyErrors
+     */
+    empty_label: boolean;
+    /**
+     * No passkey with that id belongs to this account
+     * @type {boolean}
+     * @memberof RenamePasskeyErrors
+     */
+    unknown_passkey: boolean;
+}
+/**
+ * Request to rename one of the logged-in account's passkeys
+ * @export
+ * @interface RenamePasskeyRequest
+ */
+export interface RenamePasskeyRequest {
+    /**
+     * The new label, trimmed before it is stored
+     * @type {string}
+     * @memberof RenamePasskeyRequest
+     */
+    label: string;
 }
 /**
  * A list of cards to place in the catalog

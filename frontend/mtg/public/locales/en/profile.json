@@ -1,12 +1,14 @@
 {
     "accessibility": {
-        "remove-passkey": "Remove passkey {{label}}"
+        "remove-passkey": "Remove passkey {{label}}",
+        "rename-passkey": "Rename passkey {{label}}"
     },
     "button": {
         "add-passkey": "Add this device",
         "cancel": "Cancel",
         "delete-account": "Delete account",
-        "remove-passkey": "Remove"
+        "remove-passkey": "Remove",
+        "rename-passkey": "Rename"
     },
     "description": {
         "add-passkey": "Registers a passkey on the device you are currently signed in from.",
@@ -23,6 +25,7 @@
         "passkeys": "These devices can sign you in. Add a passkey per device — if you lose one, the others still get you in.",
         "proxy-fade": "Cards marked as proxies are drawn washed out in the deck, so a stand-in never passes for the real card at a glance.",
         "remove-passkey": "You will no longer be able to sign in with \"{{label}}\". The only way back is to add the device again.",
+        "rename-passkey": "Only you see this name. It tells your devices apart in this list.",
         "theme": "“Match system” follows your device's setting and changes along with it."
     },
     "error": {
@@ -30,6 +33,7 @@
         "already-registered": "This device is already registered as a passkey.",
         "authenticator-error": "Your device could not create a passkey. Check that a screen lock or PIN is set up.",
         "delete-failed": "The account could not be deleted. Please try again.",
+        "empty-label": "Enter a name.",
         "insecure-context": "Passkeys only work over a secure connection. Open the page via HTTPS or localhost.",
         "rejected": "The passkey could not be stored. Please try again.",
         "unknown": "The passkey could not be created. Please try again.",
@@ -45,6 +49,7 @@
         "passkeys": "Passkeys",
         "profile": "Profile",
         "remove-passkey": "Remove passkey?",
+        "rename-passkey": "Rename passkey",
         "security": "Security",
         "settings": "Settings"
     },
@@ -63,6 +68,7 @@
         "last-used": "Last used: {{date}}",
         "never-used": "Never used",
         "only-passkey": "Only passkey",
+        "passkey-label": "Name",
         "proxy-fade": "Fade out proxy artwork",
         "theme": "Theme",
         "theme-dark": "Dark",
@@ -76,6 +82,7 @@
         "foil-tilt-denied": "This needs access to the motion sensors. You can allow it again in your browser's settings.",
         "foil-tilt-silent": "Your browser is not reporting any motion. Brave blocks the sensors by default: allow them under Settings → Site settings → Motion sensors. They are also unavailable over http rather than https.",
         "passkey-added": "Passkey added",
-        "passkey-removed": "Passkey removed"
+        "passkey-removed": "Passkey removed",
+        "passkey-renamed": "Passkey renamed"
     }
 }

@@ -9,7 +9,9 @@ use galvyn::core::stuff::schema::SchemaDateTime;
 use galvyn::delete;
 use galvyn::get;
 use galvyn::post;
+use galvyn::put;
 use galvyn::rorm::Database;
+use galvyn::rorm::fields::types::MaxStr;
 use galvyn_identity::FinishDeviceEnrollmentError;
 use galvyn_identity::Identity;
 use galvyn_identity::IdentityModule;
@@ -24,6 +26,8 @@ use crate::http::handler_frontend::accounts::schema::FinishAddPasskeyRequest;
 use crate::http::handler_frontend::accounts::schema::ListPasskeysResponse;
 use crate::http::handler_frontend::accounts::schema::MeErrors;
 use crate::http::handler_frontend::accounts::schema::MeResponse;
+use crate::http::handler_frontend::accounts::schema::RenamePasskeyErrors;
+use crate::http::handler_frontend::accounts::schema::RenamePasskeyRequest;
 use crate::http::handler_frontend::accounts::schema::SimplePasskey;
 use crate::http::handler_frontend::accounts::schema::StartAddPasskeyResponse;
 use crate::models::account::Account;
@@ -119,6 +123,32 @@ pub async fn finish_add_passkey(
         Err(FinishDeviceEnrollmentError::Internal(error)) => return Err(error.into()),
     }
     errors.fail()
+}
+
+/// Rename one of the logged-in account's passkeys
+#[put("/passkeys/{uuid}")]
+pub async fn rename_passkey(
+    account: Account,
+    Path(uuid): Path<AccountPasskeyUuid>,
+    ApiJson(request): ApiJson<RenamePasskeyRequest>,
+) -> ApiResult<ApiJson<()>, RenamePasskeyErrors> {
+    let mut errors = FormErrors::<RenamePasskeyErrors>::new();
+    let label = request.label.trim();
+    if label.is_empty() {
+        errors.empty_label = true;
+        return errors.fail();
+    }
+    let label = MaxStr::new(label.to_string())
+        .unwrap_or_else(|_| unreachable!("trimming does not make a string longer"));
+
+    let renamed = IdentityModule::global()
+        .rename_passkey(Database::global(), account.identity, uuid.into(), label)
+        .await?;
+    if !renamed {
+        errors.unknown_passkey = true;
+        return errors.fail();
+    }
+    Ok(ApiJson(()))
 }
 
 /// Delete one of the logged-in account's passkeys

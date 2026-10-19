@@ -5,5 +5,6 @@ mod admin_log;
 mod deletion;
 pub mod harness;
 mod lock;
+mod passkeys;
 mod statistics;
 mod syncs;

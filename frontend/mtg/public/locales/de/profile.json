@@ -1,12 +1,14 @@
 {
     "accessibility": {
-        "remove-passkey": "Passkey {{label}} entfernen"
+        "remove-passkey": "Passkey {{label}} entfernen",
+        "rename-passkey": "Passkey {{label}} umbenennen"
     },
     "button": {
         "add-passkey": "Dieses Gerät hinzufügen",
         "cancel": "Abbrechen",
         "delete-account": "Konto löschen",
-        "remove-passkey": "Entfernen"
+        "remove-passkey": "Entfernen",
+        "rename-passkey": "Umbenennen"
     },
     "description": {
         "add-passkey": "Registriert einen Passkey auf dem Gerät, mit dem du gerade angemeldet bist.",
@@ -23,6 +25,7 @@
         "passkeys": "Mit diesen Geräten kannst du dich anmelden. Lege für jedes Gerät einen eigenen Passkey an — geht eines verloren, kommst du mit den anderen weiterhin rein.",
         "proxy-fade": "Als Proxy markierte Karten werden im Deck ausgewaschen gezeichnet, damit ein Platzhalter nicht auf den ersten Blick als echte Karte durchgeht.",
         "remove-passkey": "Mit \"{{label}}\" kannst du dich danach nicht mehr anmelden. Das lässt sich nur rückgängig machen, indem du das Gerät neu hinzufügst.",
+        "rename-passkey": "Den Namen siehst nur du. Er hilft dir, deine Geräte in dieser Liste auseinanderzuhalten.",
         "theme": "„Wie das System“ folgt der Einstellung deines Geräts und wechselt mit ihr mit."
     },
     "error": {
@@ -30,6 +33,7 @@
         "already-registered": "Dieses Gerät ist bereits als Passkey hinterlegt.",
         "authenticator-error": "Dein Gerät konnte keinen Passkey anlegen. Prüfe, ob eine Bildschirmsperre oder PIN eingerichtet ist.",
         "delete-failed": "Das Konto konnte nicht gelöscht werden. Probier es noch einmal.",
+        "empty-label": "Gib einen Namen ein.",
         "insecure-context": "Passkeys funktionieren nur über eine gesicherte Verbindung. Ruf die Seite über HTTPS oder localhost auf.",
         "rejected": "Der Passkey konnte nicht gespeichert werden. Probier es noch einmal.",
         "unknown": "Der Passkey konnte nicht erstellt werden. Probier es noch einmal.",
@@ -45,6 +49,7 @@
         "passkeys": "Passkeys",
         "profile": "Profil",
         "remove-passkey": "Passkey entfernen?",
+        "rename-passkey": "Passkey umbenennen",
         "security": "Sicherheit",
         "settings": "Einstellungen"
     },
@@ -63,6 +68,7 @@
         "last-used": "Zuletzt: {{date}}",
         "never-used": "Noch nie benutzt",
         "only-passkey": "Einziger Passkey",
+        "passkey-label": "Name",
         "proxy-fade": "Proxy-Bilder ausbleichen",
         "theme": "Erscheinungsbild",
         "theme-dark": "Dunkel",
@@ -76,6 +82,7 @@
         "foil-tilt-denied": "Ohne Zugriff auf die Bewegungssensoren geht das nicht. Der Zugriff lässt sich in den Einstellungen des Browsers wieder erlauben.",
         "foil-tilt-silent": "Dein Browser liefert keine Bewegungsdaten. Brave blockiert die Sensoren standardmäßig: unter Einstellungen → Website-Einstellungen → Bewegungssensoren erlauben. Über http statt https gibt es sie ebenfalls nicht.",
         "passkey-added": "Passkey hinzugefügt",
-        "passkey-removed": "Passkey entfernt"
+        "passkey-removed": "Passkey entfernt",
+        "passkey-renamed": "Passkey umbenannt"
     }
 }
