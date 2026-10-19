@@ -2,12 +2,10 @@ FROM node:24-bookworm-slim@sha256:b506e7321f176aae77317f99d67a24b272c1f09f1d10f1
 
 WORKDIR /app
 
-# wget + Java are needed by `just gen-api <name>`, which runs inside
-# this container (fetches the OpenAPI spec, runs openapi-generator).
 RUN <<EOF
 set -e
 apt-get update
-apt-get install -y --no-install-recommends wget default-jre-headless
+apt-get install -y --no-install-recommends default-jre-headless
 rm -rf /var/lib/apt/lists/*
 EOF
 

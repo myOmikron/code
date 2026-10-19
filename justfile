@@ -115,14 +115,8 @@ dev name +args:
     docker compose -f dev/{{ name }}.yml {{ args }}
 
 # Regenerate a frontend's API clients from its api-clients.json, every such frontend's without a name.
-# A frontend without a declaration still goes through its dev stack's scripts/gen-api.sh.
 gen-api name="":
-    #!/usr/bin/env bash
-    set -euo pipefail
-    if [ -n "{{ name }}" ] && [ ! -f "frontend/{{ name }}/api-clients.json" ]; then
-        exec docker compose -f dev/{{ name }}.yml exec frontend frontend/{{ name }}/scripts/gen-api.sh
-    fi
-    exec python3 tools/gen-api/gen-api.py {{ name }}
+    python3 tools/gen-api/gen-api.py {{ name }}
 
 # Run the deck-lab CLI inside the mtg dev stack's graph container.
 # just graph ingest | just graph ingest-tags | just graph build-semantics | ...
