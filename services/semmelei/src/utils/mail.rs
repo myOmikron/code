@@ -201,6 +201,7 @@ async fn publish(to: &str, subject: &str, text_body: String) -> Result<(), MailE
                 to: to.to_string(),
                 subject: subject.to_string(),
                 text_body,
+                ..Default::default()
             },
         )
         .await?;

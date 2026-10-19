@@ -95,6 +95,7 @@ pub async fn send_registration_link(
                 to: to.to_string(),
                 subject: String::from(subject),
                 text_body,
+                ..Default::default()
             },
         )
         .await?;
@@ -170,6 +171,7 @@ pub async fn send_recovery_link(
                 to: to.to_string(),
                 subject: String::from(subject),
                 text_body,
+                ..Default::default()
             },
         )
         .await?;
