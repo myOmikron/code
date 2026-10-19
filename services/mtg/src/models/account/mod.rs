@@ -5,6 +5,8 @@ use galvyn::core::re_exports::schemars;
 use galvyn::core::re_exports::schemars::JsonSchema;
 use galvyn::core::re_exports::time::OffsetDateTime;
 use galvyn::rorm;
+use galvyn::rorm::db::Executor;
+use galvyn::rorm::db::executor::All;
 use galvyn::rorm::db::transaction::Transaction;
 use galvyn::rorm::fields::types::ForeignModelByField;
 use galvyn::rorm::fields::types::MaxStr;
@@ -175,6 +177,11 @@ const TOMBSTONE_USERNAME: &str = "#deleted";
 
 /// The email of the tombstone, spelled so that no signup can collide with it
 const TOMBSTONE_EMAIL: &str = "#deleted";
+
+/// Key of the advisory lock that serializes making the tombstone
+///
+/// Any constant does, as long as it differs from the other advisory locks.
+const TOMBSTONE_LOCK: i64 = 6_275_193_762_129_040_002;
 
 /// An account
 ///
@@ -461,9 +468,20 @@ impl Account {
     /// has never lost an account has nothing to put on it. There is only ever
     /// one, which is what [`AccountModel::tombstone`] marks.
     ///
+    /// Two first deletions at once would both find no tombstone and both
+    /// insert one, and the second would fail on the unique username. So the
+    /// lookup is taken under a transaction-scoped advisory lock: the second
+    /// waits for the first to commit and then finds its tombstone.
+    ///
     /// [`AccountModel::tombstone`]: db::AccountModel::tombstone
     #[instrument(name = "Account::tombstone", skip(tx))]
     pub async fn tombstone(tx: &mut Transaction) -> Result<AccountUuid, rorm::Error> {
+        (&mut *tx)
+            .execute::<All>(
+                format!("SELECT pg_advisory_xact_lock({TOMBSTONE_LOCK})"),
+                Vec::new(),
+            )
+            .await?;
         let existing = rorm::query(&mut *tx, (AccountModel.uuid,))
             .condition(AccountModel.tombstone.equals(true))
             .optional()
