@@ -2,10 +2,11 @@
 
 ## Contexts
 
+- [home](./services/home/GLOSSARY.md): the household's lights, heating, shared Lists and Reminders, controlled from phones, the Dashboard or by voice
 - [Identity](./libs/galvyn-identity/GLOSSARY.md): how people prove who they are, shared by the services that sign people in
 - [mtg](./services/mtg/GLOSSARY.md): Accounts, their collections and decks, and the admin dashboard managing them
 - [semmelei](./services/semmelei/GLOSSARY.md): the Nachbarschaftshilfe's pre-order shop, its staff, and the News Posts Admins write for customers
 
 ## Relationships
 
-- **semmelei, mtg → Identity**: each service's Account references one Identity; Login and Enrollment happen in Identity, roles and profile data stay in the service
+- **semmelei, mtg, home → Identity**: each service's Account references one Identity; Login and Enrollment happen in Identity, roles and profile data stay in the service
