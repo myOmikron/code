@@ -1,0 +1,3 @@
+[
+    { "backend": "example", "out": "src/api/generated" }
+]
