@@ -109,7 +109,8 @@ mtg query cost). A review applies all of it; read the sections a change touches 
   routes grouped in `mod.rs` per auth level and wrapped with middleware
   (`AuthRequiredLayer`, role layers)
 - The frontend OpenAPI spec is served openly at `/docs/frontend.json` (one openapi page
-  per consumer, no debug gate, no login)
+  per consumer, no debug gate, no login); nest `service_bootstrap::openapi_docs_routes!(<page>)`
+  under `/docs`
 - API clients: `frontend/<app>/api-clients.json` lists the app's backends as
   `{ "backend": "<services/ dir>", "out": "<client dir>" }`, one generated client per
   backend; any split by role or area lives in hand-written API wrappers.
@@ -117,7 +118,9 @@ mtg query cost). A review applies all of it; read the sections a change touches 
   `<out>/openapi.json` through its `openapi <output>` subcommand, then runs the generator
   in a throwaway container of the frontend dev image. Commit spec and client together.
   - Rust service: cargo runs the subcommand, wired via `service_bootstrap::openapi::write_openapi`
-  - Python service: uv runs the project's script entry, e.g. mtg-graph's `deck-lab openapi OUTPUT`
+  - Python service: uv runs the project's single script entry without the dev group and with
+    the extras in `[tool.gen-api] extras` of its `pyproject.toml`, e.g. mtg-graph's
+    `deck-lab openapi OUTPUT` with `api`
   - Generator version: root `openapitools.json`; options: `tools/gen-api/generator-config.json`
   - The host needs Docker, uv, cargo and installed `node_modules`; Java and a dev stack are not needed
 
