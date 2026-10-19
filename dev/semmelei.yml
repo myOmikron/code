@@ -41,8 +41,6 @@ services:
       - FRONTEND=semmelei
       # vite's own /api proxy target — only relevant when bypassing traefik
       - API_PROXY_TARGET=http://webserver:8080
-      # used by `just gen-api semmelei` (runs inside this container)
-      - WEBSERVER_URL=http://webserver:8080
     volumes:
       - ../:/app
 
