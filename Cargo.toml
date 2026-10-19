@@ -197,7 +197,10 @@ prometheus = { version = "~0.14", default-features = false }
 # ----- #
 
 # SMTP client used by the mail-gateway (rustls, async via tokio)
-lettre = { version = "~0.11", default-features = false, features = ["builder", "smtp-transport", "tokio1", "tokio1-rustls", "rustls", "aws-lc-rs", "webpki-roots", "hostname"] }
+lettre = { version = "~0.11", default-features = false, features = ["builder", "smtp-transport", "tokio1", "tokio1-rustls", "rustls", "aws-lc-rs", "webpki-roots", "hostname", "mime03"] }
+
+# MIME types, e.g. of mail attachments
+mime = { version = "~0.3" }
 
 # ----------- #
 # HTTP client #

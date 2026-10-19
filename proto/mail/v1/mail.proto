@@ -1,7 +1,7 @@
 syntax = "proto3";
 package mail.v1;
 
-// Request to send a single plain-text email.
+// Request to send a single plain-text email, optionally with attachments.
 //
 // The producer renders the complete subject and body; the mail-gateway only
 // transports them. The sender address is the gateway's own configuration.
@@ -15,4 +15,22 @@ message SendEmail {
 
   // Plain-text body (UTF-8)
   string text_body = 3;
+
+  // Additional recipients in the CC header, same format as `to`
+  repeated string cc = 4;
+
+  // Files attached to the mail; without any the mail is a single plain-text part
+  repeated Attachment attachments = 5;
+}
+
+// A file attached to a `SendEmail`
+message Attachment {
+  // File name the receiver sees ("rechnung-2026-17.pdf")
+  string filename = 1;
+
+  // MIME type of `content` ("application/pdf")
+  string content_type = 2;
+
+  // Raw file content
+  bytes content = 3;
 }
