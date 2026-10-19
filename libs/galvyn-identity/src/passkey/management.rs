@@ -4,10 +4,13 @@ use galvyn::core::Module;
 use galvyn::rorm;
 use galvyn::rorm::Database;
 use galvyn::rorm::db::executor::Executor;
+use galvyn::rorm::fields::types::MaxStr;
 
 use super::error::RemovalRefused;
 use super::error::RemovePasskeyError;
 use super::models::Passkey;
+#[cfg(feature = "test-support")]
+use super::models::PasskeyInsert;
 use super::models::PasskeyUuid;
 use crate::IdentityModule;
 use crate::models::IdentityUuid;
@@ -29,6 +32,69 @@ impl IdentityModule {
         identity: IdentityUuid,
     ) -> Result<u64, rorm::Error> {
         Passkey::count_by_identity(exe, identity).await
+    }
+
+    /// Change the Label of one of `identity`'s Passkeys
+    ///
+    /// Returns `false` if the Identity holds no Passkey with this uuid,
+    /// which includes a Passkey of another Identity.
+    pub async fn rename_passkey(
+        &self,
+        exe: impl Executor<'_>,
+        identity: IdentityUuid,
+        passkey: PasskeyUuid,
+        label: MaxStr<255>,
+    ) -> Result<bool, rorm::Error> {
+        Passkey::set_label(exe, identity, passkey, label).await
+    }
+
+    /// Enroll a Passkey for `identity` without a ceremony
+    ///
+    /// Only for a service's tests, which have no authenticator to run one with.
+    /// The Passkey cannot log in: its public key is no valid curve point.
+    #[cfg(feature = "test-support")]
+    pub async fn enroll_passkey_without_ceremony(
+        &self,
+        exe: impl Executor<'_>,
+        identity: IdentityUuid,
+        label: MaxStr<255>,
+    ) -> Result<(), rorm::Error> {
+        let zeros = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+        let credential = serde_json::from_value(serde_json::json!({
+            "cred": {
+                "cred_id": "AAECAw",
+                "cred": {
+                    "type_": "ES256",
+                    "key": { "EC_EC2": { "curve": "SECP256R1", "x": zeros, "y": zeros } },
+                },
+                "counter": 0,
+                "transports": null,
+                "user_verified": true,
+                "backup_eligible": false,
+                "backup_state": false,
+                "registration_policy": "required",
+                "extensions": {
+                    "cred_protect": "NotRequested",
+                    "hmac_create_secret": "NotRequested",
+                    "appid": "NotRequested",
+                    "cred_props": "Ignored",
+                },
+                "attestation": { "data": "None", "metadata": "None" },
+                "attestation_format": "none",
+            }
+        }))
+        .unwrap_or_else(|error| panic!("the fixture is a webauthn passkey: {error}"));
+        Passkey::insert(
+            exe,
+            PasskeyInsert {
+                identity,
+                label,
+                credential_id: MaxStr::new(uuid::Uuid::new_v4().to_string())
+                    .unwrap_or_else(|_| unreachable!("a uuid fits")),
+                credential,
+            },
+        )
+        .await
     }
 
     /// Remove one of `identity`'s Passkeys

@@ -102,3 +102,19 @@ pub struct DeletePasskeyErrors {
     /// It is the account's only passkey — deleting it would lock the account out for good
     pub last_passkey: bool,
 }
+
+/// Request to rename one of the logged-in account's passkeys
+#[derive(Deserialize, JsonSchema)]
+pub struct RenamePasskeyRequest {
+    /// The new label, trimmed before it is stored
+    pub label: MaxStr<255>,
+}
+
+/// Why a passkey could not be renamed
+#[derive(Default, Serialize, JsonSchema)]
+pub struct RenamePasskeyErrors {
+    /// Nothing is left of the label once trimmed
+    pub empty_label: bool,
+    /// No passkey with that id belongs to this account
+    pub unknown_passkey: bool,
+}

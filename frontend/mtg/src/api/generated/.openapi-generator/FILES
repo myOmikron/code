@@ -97,6 +97,7 @@ docs/FormErrorResponseForDeletePasskeyErrors.md
 docs/FormErrorResponseForFinishLoginErrors.md
 docs/FormErrorResponseForMeErrors.md
 docs/FormErrorResponseForRegistrationErrors.md
+docs/FormErrorResponseForRenamePasskeyErrors.md
 docs/FormErrorResponseForSignupErrors.md
 docs/FormErrorResponseForStartLoginErrors.md
 docs/FormatRulesResponse.md
@@ -147,6 +148,8 @@ docs/ReadDeckUrlRequest.md
 docs/ReadDeckUrlResponse.md
 docs/RecoverAccountRequest.md
 docs/RegistrationErrors.md
+docs/RenamePasskeyErrors.md
+docs/RenamePasskeyRequest.md
 docs/ResolvePrintingsRequest.md
 docs/ResolvePrintingsResponse.md
 docs/ResolvedPrintingResponse.md

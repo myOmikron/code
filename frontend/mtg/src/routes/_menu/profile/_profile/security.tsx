@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { KeyIcon, TrashIcon } from "@heroicons/react/20/solid";
+import { KeyIcon, PencilIcon, TrashIcon } from "@heroicons/react/20/solid";
 import {
     Alert,
     AlertActions,
@@ -21,6 +21,7 @@ import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import { useAccount } from "src/context/account";
 import { DeleteAccountDialog } from "src/components/delete-account-dialog";
+import { RenamePasskeyDialog } from "src/components/rename-passkey-dialog";
 import { InlineError } from "src/components/inline-error";
 import type { SimplePasskey } from "src/api/generated";
 import { formatDateTime } from "src/utils/format";
@@ -32,7 +33,7 @@ export const Route = createFileRoute("/_menu/profile/_profile/security")({
 });
 
 /**
- * Passkey management: which devices can sign in, adding one, removing one.
+ * Passkey management: which devices can sign in, adding one, renaming one, removing one.
  *
  * @returns the page
  */
@@ -44,6 +45,7 @@ function RouteComponent() {
     const [adding, setAdding] = useState(false);
     const [message, setMessage] = useState<string>();
     const [confirming, setConfirming] = useState<SimplePasskey | null>(null);
+    const [renaming, setRenaming] = useState<SimplePasskey | null>(null);
     const [deleting, setDeleting] = useState(false);
 
     const refresh = useCallback(async () => {
@@ -174,6 +176,13 @@ function RouteComponent() {
                             </div>
                             <Button
                                 plain
+                                aria-label={t("accessibility.rename-passkey", { label: passkey.label })}
+                                onClick={() => setRenaming(passkey)}
+                            >
+                                <PencilIcon className={"size-5"} />
+                            </Button>
+                            <Button
+                                plain
                                 disabled={isLast}
                                 aria-label={t("accessibility.remove-passkey", { label: passkey.label })}
                                 onClick={() => setConfirming(passkey)}
@@ -212,6 +221,8 @@ function RouteComponent() {
                     await navigate({ to: "/" });
                 }}
             />
+
+            <RenamePasskeyDialog passkey={renaming} onClose={() => setRenaming(null)} onChanged={refresh} />
 
             <Alert open={confirming !== null} onClose={() => setConfirming(null)}>
                 <AlertTitle>{t("heading.remove-passkey")}</AlertTitle>

@@ -90,6 +90,7 @@ All URIs are relative to *http://localhost*
 | [**mergeCollectionEntries**](DefaultApi.md#mergecollectionentriesoperation) | **POST** /api/frontend/v1/collections/{collection}/entries/merge | Combine stacks of the same cards into one |
 | [**readDeckUrl**](DefaultApi.md#readdeckurloperation) | **POST** /api/frontend/v1/decks/import/url | Read a decklist off a link to another builder, or off one of our own links |
 | [**recoverAccount**](DefaultApi.md#recoveraccountoperation) | **POST** /api/frontend/v1/auth/recover | Send a fresh registration link to an account\&#39;s stored address |
+| [**renamePasskey**](DefaultApi.md#renamepasskeyoperation) | **PUT** /api/frontend/v1/accounts/passkeys/{uuid} | Rename one of the logged-in account\&#39;s passkeys |
 | [**resolvePrintings**](DefaultApi.md#resolveprintingsoperation) | **POST** /api/frontend/v1/printings/resolve | Place cards in the catalog |
 | [**returnAllDeckCards**](DefaultApi.md#returnalldeckcardsoperation) | **POST** /api/frontend/v1/decks/{deck}/sourcing/return-all | Sort everything in the deck back where it came from |
 | [**returnDeckCards**](DefaultApi.md#returndeckcardsoperation) | **POST** /api/frontend/v1/decks/{deck}/sourcing/return | Sort copies out of the deck back into a collection |
@@ -6184,6 +6185,79 @@ example().catch(console.error);
 ### Return type
 
 **any**
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## renamePasskey
+
+> FormErrorResponseForRenamePasskeyErrors renamePasskey(uuid, RenamePasskeyRequest)
+
+Rename one of the logged-in account\&#39;s passkeys
+
+Rename one of the logged-in account\&#39;s passkeys
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { RenamePasskeyOperationRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    uuid: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // RenamePasskeyRequest (optional)
+    RenamePasskeyRequest: ...,
+  } satisfies RenamePasskeyOperationRequest;
+
+  try {
+    const data = await api.renamePasskey(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **uuid** | `string` |  | [Defaults to `undefined`] |
+| **RenamePasskeyRequest** | [RenamePasskeyRequest](RenamePasskeyRequest.md) |  | [Optional] |
+
+### Return type
+
+[**FormErrorResponseForRenamePasskeyErrors**](FormErrorResponseForRenamePasskeyErrors.md)
 
 ### Authorization
 

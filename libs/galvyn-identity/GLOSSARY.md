@@ -20,6 +20,10 @@ _Avoid_: OIDC account, federated user, social login
 A WebAuthn credential bound to one local Identity. A local Identity may hold several, one per device or password manager.
 _Avoid_: credential, key, authenticator
 
+**Label**:
+What a Passkey is called, so the person can tell their devices apart. It starts as the authenticator's product name (or a number when that is unknown) and the person may rename it later.
+_Avoid_: name, nickname
+
 **Login**:
 Proving control of an Identity. Two alternatives: a **Passkey login** (the person names their Account by username, then uses one of the Identity's Passkeys) or an **OIDC login** (an external OpenID provider vouches for the person).
 _Avoid_: sign-in, authentication

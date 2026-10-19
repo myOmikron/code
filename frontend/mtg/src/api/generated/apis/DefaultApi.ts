@@ -68,6 +68,7 @@ import type {
     FormErrorResponseForDeletePasskeyErrors,
     FormErrorResponseForFinishLoginErrors,
     FormErrorResponseForRegistrationErrors,
+    FormErrorResponseForRenamePasskeyErrors,
     ImportDeckCardsRequest,
     ImportDeckCardsResponse,
     ListCardsResponse,
@@ -97,6 +98,7 @@ import type {
     ReadDeckUrlRequest,
     ReadDeckUrlResponse,
     RecoverAccountRequest,
+    RenamePasskeyRequest,
     ResolvePrintingsRequest,
     ResolvePrintingsResponse,
     ReturnAllDeckCardsRequest,
@@ -488,6 +490,11 @@ export interface ReadDeckUrlOperationRequest {
 
 export interface RecoverAccountOperationRequest {
     RecoverAccountRequest?: RecoverAccountRequest;
+}
+
+export interface RenamePasskeyOperationRequest {
+    uuid: string;
+    RenamePasskeyRequest?: RenamePasskeyRequest;
 }
 
 export interface ResolvePrintingsOperationRequest {
@@ -4847,6 +4854,56 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async recoverAccount(requestParameters: RecoverAccountOperationRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
         const response = await this.recoverAccountRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for renamePasskey without sending the request
+     */
+    async renamePasskeyRequestOpts(requestParameters: RenamePasskeyOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['uuid'] == null) {
+            throw new runtime.RequiredError(
+                'uuid',
+                'Required parameter "uuid" was null or undefined when calling renamePasskey().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/accounts/passkeys/{uuid}`;
+        urlPath = urlPath.replace('{uuid}', encodeURIComponent(String(requestParameters['uuid'])));
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['RenamePasskeyRequest'],
+        };
+    }
+
+    /**
+     * Rename one of the logged-in account\'s passkeys
+     * Rename one of the logged-in account\'s passkeys
+     */
+    async renamePasskeyRaw(requestParameters: RenamePasskeyOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FormErrorResponseForRenamePasskeyErrors>> {
+        const requestOptions = await this.renamePasskeyRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Rename one of the logged-in account\'s passkeys
+     * Rename one of the logged-in account\'s passkeys
+     */
+    async renamePasskey(requestParameters: RenamePasskeyOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FormErrorResponseForRenamePasskeyErrors> {
+        const response = await this.renamePasskeyRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

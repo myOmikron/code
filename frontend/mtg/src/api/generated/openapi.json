@@ -288,6 +288,82 @@
             }
         },
         "/api/frontend/v1/accounts/passkeys/{uuid}": {
+            "put": {
+                "summary": "Rename one of the logged-in account's passkeys",
+                "description": "Rename one of the logged-in account's passkeys",
+                "operationId": "rename_passkey",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "uuid",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`AccountPasskey`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RenamePasskeyRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "nullable": true
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/FormErrorResponse_for_RenamePasskeyErrors"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
             "delete": {
                 "summary": "Delete one of the logged-in account's passkeys",
                 "description": "Delete one of the logged-in account's passkeys\n\nThe last one cannot be deleted: with no passkey left there is no way back into the account,\nand the invite flow only issues a token while an account has none — which this would not\nrestore, since the account still exists.",
@@ -11488,6 +11564,32 @@
                     "result"
                 ]
             },
+            "FormErrorResponse_for_RenamePasskeyErrors": {
+                "description": "The response that is sent in a case of an error the caller should present his user",
+                "type": "object",
+                "properties": {
+                    "error": {
+                        "description": "The actual error struct",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/RenamePasskeyErrors"
+                            }
+                        ]
+                    },
+                    "result": {
+                        "description": "A constant `\"Err\"` used to differentiate this schema from any other \"Ok\" schema",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ErrorConstant"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "error",
+                    "result"
+                ]
+            },
             "FormErrorResponse_for_SignupErrors": {
                 "description": "The response that is sent in a case of an error the caller should present his user",
                 "type": "object",
@@ -13120,6 +13222,41 @@
                     "token_expired",
                     "token_invalid",
                     "token_used"
+                ]
+            },
+            "RenamePasskeyErrors": {
+                "description": "Why a passkey could not be renamed",
+                "type": "object",
+                "properties": {
+                    "empty_label": {
+                        "description": "Nothing is left of the label once trimmed",
+                        "type": "boolean"
+                    },
+                    "unknown_passkey": {
+                        "description": "No passkey with that id belongs to this account",
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "empty_label",
+                    "unknown_passkey"
+                ]
+            },
+            "RenamePasskeyRequest": {
+                "description": "Request to rename one of the logged-in account's passkeys",
+                "type": "object",
+                "properties": {
+                    "label": {
+                        "description": "The new label, trimmed before it is stored",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_255"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "label"
                 ]
             },
             "ResolvePrintingsRequest": {

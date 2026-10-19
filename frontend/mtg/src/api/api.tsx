@@ -98,6 +98,8 @@ export const Api = {
             startAdd: () => defaultApi.startAddPasskey(),
             finishAdd: (credential: unknown, label?: string) =>
                 defaultApi.finishAddPasskey({ FinishAddPasskeyRequest: { credential, label } }),
+            rename: async (uuid: string, label: string) =>
+                handleError(defaultApi.renamePasskey({ uuid, RenamePasskeyRequest: { label } })),
             delete: async (uuid: string) => handleError(defaultApi.deletePasskey({ uuid })),
         },
         // Takes the account and everything private to it with it. Bypasses
