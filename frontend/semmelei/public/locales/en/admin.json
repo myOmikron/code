@@ -17,7 +17,10 @@
         "upcoming-pickup-days": "Upcoming days",
         "edit-pickup-day": "Edit pickup day",
         "confirm-lock-day": "Freeze this day now?",
-        "legal": "Legal"
+        "legal": "Legal",
+        "news-posts": "Posts",
+        "create-news-post": "New post",
+        "confirm-delete-news-post": "Delete post?"
     },
     "label": {
         "items-empty": "No items yet.",
@@ -48,7 +51,23 @@
         "state-locked": "Frozen",
         "state-closed": "Called off",
         "imprint-url": "Imprint link",
-        "privacy-url": "Privacy policy link"
+        "privacy-url": "Privacy policy link",
+        "news-posts-empty": "No posts written yet.",
+        "title": "Title",
+        "text": "Text",
+        "news-post-state": "Status",
+        "date": "Date",
+        "draft": "Draft",
+        "published": "Published",
+        "published-on": "on {{date}}",
+        "unsaved-changes": "Unsaved changes",
+        "preview-empty": "No text yet.",
+        "placeholder-bold": "bold text",
+        "placeholder-italic": "italic text",
+        "placeholder-heading": "Heading",
+        "placeholder-list": "List item",
+        "placeholder-link": "Link text",
+        "preview": "Preview"
     },
     "button": {
         "nav-orders": "Orders",
@@ -60,7 +79,14 @@
         "create-account": "Create account",
         "new-invite": "New registration link",
         "remove-image": "Remove photo",
-        "lock-day": "Freeze now"
+        "lock-day": "Freeze now",
+        "create-news-post": "New post",
+        "create-draft": "Create draft",
+        "all-news-posts": "All posts",
+        "publish": "Publish",
+        "withdraw": "Withdraw",
+        "write": "Write",
+        "preview": "Preview"
     },
     "description": {
         "additional-info": "For example allergens, ingredients, or notes. Customers can view this through the information icon.",
@@ -79,20 +105,37 @@
         "confirm-lock-day_other": "The day becomes binding immediately. {{count}} customers get the confirmation mail, no new orders afterwards.",
         "legal": "Both links appear in the public shop footer. Leaving one empty hides it — for a public shop both are mandatory though.",
         "imprint-url": "Full address including https://, for example the association’s imprint page.",
-        "privacy-url": "The privacy policy has to describe what this shop does with the order data."
+        "privacy-url": "The privacy policy has to describe what this shop does with the order data.",
+        "draft": "Only visible to admins.",
+        "confirm-delete-news-post": "\"{{title}}\" will be deleted for good."
     },
     "error": {
         "name-required": "Name is required",
         "price-invalid": "Invalid price",
-        "username-required": "Username is required"
+        "username-required": "Username is required",
+        "title-required": "Please enter a title",
+        "title-too-long": "The title is too long",
+        "body-required": "Please write a text",
+        "body-too-long": "The text is too long, please shorten it"
     },
     "accessibility": {
-        "copy-invite": "Copy registration link"
+        "copy-invite": "Copy registration link",
+        "formatting": "Formatting",
+        "bold": "Bold",
+        "italic": "Italic",
+        "heading": "Heading",
+        "list": "List",
+        "link": "Link",
+        "preview": "Preview"
     },
     "toast": {
         "schedule-saved": "Rule saved",
         "day-locked_one": "Day frozen, {{count}} confirmation sent",
         "day-locked_other": "Day frozen, {{count}} confirmations sent",
-        "legal-saved": "Links saved"
+        "legal-saved": "Links saved",
+        "news-post-saved": "Post saved",
+        "news-post-published": "Post published",
+        "news-post-withdrawn": "Post withdrawn, it is a draft again",
+        "news-post-deleted": "Post deleted"
     }
 }

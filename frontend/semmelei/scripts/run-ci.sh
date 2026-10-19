@@ -10,6 +10,7 @@ set -e
 # build and the run still reports success.
 tsc
 vite build --sourcemap true
+vitest run
 # Check prettier
 prettier --check src/
 # Check eslint

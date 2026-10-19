@@ -95,6 +95,49 @@ export interface AdminItem {
     uuid: string;
 }
 /**
+ * A News Post as Admins see it, Draft or Published
+ * @export
+ * @interface AdminNewsPost
+ */
+export interface AdminNewsPost {
+    /**
+     * The text, as Markdown
+     * @type {string}
+     * @memberof AdminNewsPost
+     */
+    body: string;
+    /**
+     * The point in time the News Post was created
+     * @type {string}
+     * @memberof AdminNewsPost
+     */
+    created_at: string;
+    /**
+     * The point in time the News Post was published, unset for a Draft
+     * @type {string}
+     * @memberof AdminNewsPost
+     */
+    published_at?: string | null;
+    /**
+     * The title
+     * @type {string}
+     * @memberof AdminNewsPost
+     */
+    title: string;
+    /**
+     * The point in time the News Post was last changed
+     * @type {string}
+     * @memberof AdminNewsPost
+     */
+    updated_at: string;
+    /**
+     * Primary key
+     * @type {string}
+     * @memberof AdminNewsPost
+     */
+    uuid: string;
+}
+/**
  * A single upcoming pickup day, rule and override already applied
  * @export
  * @interface AdminPickupDay
@@ -549,6 +592,19 @@ export interface ListAdminItemsResponse {
     items: Array<AdminItem>;
 }
 /**
+ * All News Posts, Drafts included, newest first
+ * @export
+ * @interface ListAdminNewsPostsResponse
+ */
+export interface ListAdminNewsPostsResponse {
+    /**
+     * The News Posts
+     * @type {Array<AdminNewsPost>}
+     * @memberof ListAdminNewsPostsResponse
+     */
+    news_posts: Array<AdminNewsPost>;
+}
+/**
  * All categories
  * @export
  * @interface ListCategoriesResponse
@@ -614,6 +670,19 @@ export interface ListPickupDaysResponse {
     days: Array<AdminPickupDay>;
 }
 /**
+ * All Published News Posts, newest first
+ * @export
+ * @interface ListPublishedNewsPostsResponse
+ */
+export interface ListPublishedNewsPostsResponse {
+    /**
+     * The News Posts
+     * @type {Array<PublishedNewsPost>}
+     * @memberof ListPublishedNewsPostsResponse
+     */
+    news_posts: Array<PublishedNewsPost>;
+}
+/**
  * The currently logged-in account
  * @export
  * @interface MeResponse
@@ -640,6 +709,25 @@ export interface MeResponse {
 }
 
 
+/**
+ * Request to create a News Post or change its title and body
+ * @export
+ * @interface NewsPostRequest
+ */
+export interface NewsPostRequest {
+    /**
+     * The text, as Markdown
+     * @type {string}
+     * @memberof NewsPostRequest
+     */
+    body: string;
+    /**
+     * The title
+     * @type {string}
+     * @memberof NewsPostRequest
+     */
+    title: string;
+}
 
 /**
  * The language every mail about an order is written in
@@ -1027,6 +1115,31 @@ export interface PublicOrderPosition {
      * @memberof PublicOrderPosition
      */
     quantity: number;
+}
+/**
+ * A Published News Post as customers see it
+ * @export
+ * @interface PublishedNewsPost
+ */
+export interface PublishedNewsPost {
+    /**
+     * The text, as Markdown
+     * @type {string}
+     * @memberof PublishedNewsPost
+     */
+    body: string;
+    /**
+     * The point in time the News Post was published
+     * @type {string}
+     * @memberof PublishedNewsPost
+     */
+    published_at: string;
+    /**
+     * The title
+     * @type {string}
+     * @memberof PublishedNewsPost
+     */
+    title: string;
 }
 
 /**

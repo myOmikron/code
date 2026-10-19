@@ -14,6 +14,7 @@
 
 import * as runtime from '../runtime';
 import type {
+    AdminNewsPost,
     ApiErrorResponse,
     CategoryRequest,
     CreateAccountRequest,
@@ -28,12 +29,15 @@ import type {
     LegalLinks,
     ListAccountsResponse,
     ListAdminItemsResponse,
+    ListAdminNewsPostsResponse,
     ListCategoriesResponse,
     ListItemsResponse,
     ListOrdersResponse,
     ListPasskeysResponse,
     ListPickupDaysResponse,
+    ListPublishedNewsPostsResponse,
     MeResponse,
+    NewsPostRequest,
     OrderStatus,
     PickupDayChangeResponse,
     PickupWindowResponse,
@@ -72,6 +76,10 @@ export interface CreateItemRequest {
     ItemRequest?: ItemRequest;
 }
 
+export interface CreateNewsPostRequest {
+    NewsPostRequest?: NewsPostRequest;
+}
+
 export interface CreateOrderOperationRequest {
     CreateOrderRequest?: CreateOrderRequest;
 }
@@ -92,6 +100,10 @@ export interface DeleteItemImageRequest {
     uuid: string;
 }
 
+export interface DeleteNewsPostRequest {
+    uuid: string;
+}
+
 export interface DeletePasskeyRequest {
     uuid: string;
 }
@@ -106,6 +118,10 @@ export interface FinishLoginOperationRequest {
 
 export interface FinishRegistrationOperationRequest {
     FinishRegistrationRequest?: FinishRegistrationRequest;
+}
+
+export interface GetNewsPostRequest {
+    uuid: string;
 }
 
 export interface GetOrderRequest {
@@ -127,6 +143,10 @@ export interface ListOrdersRequest {
 
 export interface LockPickupDayRequest {
     rule_date: string;
+}
+
+export interface PublishNewsPostRequest {
+    uuid: string;
 }
 
 export interface SetItemImageOperationRequest {
@@ -161,6 +181,11 @@ export interface UpdateLegalSettingsRequest {
     LegalLinks?: LegalLinks;
 }
 
+export interface UpdateNewsPostRequest {
+    uuid: string;
+    NewsPostRequest?: NewsPostRequest;
+}
+
 export interface UpdateOrderItemPackedOperationRequest {
     uuid: string;
     UpdateOrderItemPackedRequest?: UpdateOrderItemPackedRequest;
@@ -178,6 +203,10 @@ export interface UpdatePickupDayOperationRequest {
 
 export interface UpdateScheduleRequest {
     ScheduleSchema?: ScheduleSchema;
+}
+
+export interface WithdrawNewsPostRequest {
+    uuid: string;
 }
 
 /**
@@ -414,6 +443,52 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for createNewsPost without sending the request
+     */
+    async createNewsPostRequestOpts(requestParameters: CreateNewsPostRequest): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/admin/news-posts`;
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['NewsPostRequest'],
+        };
+    }
+
+    /**
+     * Create a News Post as a Draft
+     * Create a News Post as a Draft
+     */
+    async createNewsPostRaw(requestParameters: CreateNewsPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<string>> {
+        const requestOptions = await this.createNewsPostRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<string>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     * Create a News Post as a Draft
+     * Create a News Post as a Draft
+     */
+    async createNewsPost(requestParameters: CreateNewsPostRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<string> {
+        const response = await this.createNewsPostRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for createOrder without sending the request
      */
     async createOrderRequestOpts(requestParameters: CreateOrderOperationRequest): Promise<runtime.RequestOpts> {
@@ -637,6 +712,52 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async deleteItemImage(requestParameters: DeleteItemImageRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
         await this.deleteItemImageRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * Creates request options for deleteNewsPost without sending the request
+     */
+    async deleteNewsPostRequestOpts(requestParameters: DeleteNewsPostRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['uuid'] == null) {
+            throw new runtime.RequiredError(
+                'uuid',
+                'Required parameter "uuid" was null or undefined when calling deleteNewsPost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/admin/news-posts/{uuid}`;
+        urlPath = urlPath.replace('{uuid}', encodeURIComponent(String(requestParameters['uuid'])));
+
+        return {
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Delete a News Post for good
+     * Delete a News Post for good
+     */
+    async deleteNewsPostRaw(requestParameters: DeleteNewsPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.deleteNewsPostRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * Delete a News Post for good
+     * Delete a News Post for good
+     */
+    async deleteNewsPost(requestParameters: DeleteNewsPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.deleteNewsPostRaw(requestParameters, initOverrides);
     }
 
     /**
@@ -962,6 +1083,53 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async getLegalSettings(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<LegalLinks> {
         const response = await this.getLegalSettingsRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for getNewsPost without sending the request
+     */
+    async getNewsPostRequestOpts(requestParameters: GetNewsPostRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['uuid'] == null) {
+            throw new runtime.RequiredError(
+                'uuid',
+                'Required parameter "uuid" was null or undefined when calling getNewsPost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/admin/news-posts/{uuid}`;
+        urlPath = urlPath.replace('{uuid}', encodeURIComponent(String(requestParameters['uuid'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Get one News Post, Draft or Published
+     * Get one News Post, Draft or Published
+     */
+    async getNewsPostRaw(requestParameters: GetNewsPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<AdminNewsPost>> {
+        const requestOptions = await this.getNewsPostRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Get one News Post, Draft or Published
+     * Get one News Post, Draft or Published
+     */
+    async getNewsPost(requestParameters: GetNewsPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AdminNewsPost> {
+        const response = await this.getNewsPostRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -1302,6 +1470,45 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for listNewsPosts without sending the request
+     */
+    async listNewsPostsRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/admin/news-posts`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * List all News Posts, Drafts included, newest first
+     * List all News Posts, Drafts included, newest first
+     */
+    async listNewsPostsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListAdminNewsPostsResponse>> {
+        const requestOptions = await this.listNewsPostsRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * List all News Posts, Drafts included, newest first
+     * List all News Posts, Drafts included, newest first
+     */
+    async listNewsPosts(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListAdminNewsPostsResponse> {
+        const response = await this.listNewsPostsRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for listOrders without sending the request
      */
     async listOrdersRequestOpts(requestParameters: ListOrdersRequest): Promise<runtime.RequestOpts> {
@@ -1427,6 +1634,45 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for listPublishedNewsPosts without sending the request
+     */
+    async listPublishedNewsPostsRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/shop/news-posts`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * List the Published News Posts, newest first
+     * List the Published News Posts, newest first
+     */
+    async listPublishedNewsPostsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListPublishedNewsPostsResponse>> {
+        const requestOptions = await this.listPublishedNewsPostsRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * List the Published News Posts, newest first
+     * List the Published News Posts, newest first
+     */
+    async listPublishedNewsPosts(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListPublishedNewsPostsResponse> {
+        const response = await this.listPublishedNewsPostsRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for lockPickupDay without sending the request
      */
     async lockPickupDayRequestOpts(requestParameters: LockPickupDayRequest): Promise<runtime.RequestOpts> {
@@ -1547,6 +1793,53 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async me(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MeResponse> {
         const response = await this.meRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for publishNewsPost without sending the request
+     */
+    async publishNewsPostRequestOpts(requestParameters: PublishNewsPostRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['uuid'] == null) {
+            throw new runtime.RequiredError(
+                'uuid',
+                'Required parameter "uuid" was null or undefined when calling publishNewsPost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/admin/news-posts/{uuid}/publish`;
+        urlPath = urlPath.replace('{uuid}', encodeURIComponent(String(requestParameters['uuid'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Publish a News Post now  Publishing a withdrawn News Post again gives it a new publication time.
+     * Publish a News Post now
+     */
+    async publishNewsPostRaw(requestParameters: PublishNewsPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<AdminNewsPost>> {
+        const requestOptions = await this.publishNewsPostRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Publish a News Post now  Publishing a withdrawn News Post again gives it a new publication time.
+     * Publish a News Post now
+     */
+    async publishNewsPost(requestParameters: PublishNewsPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AdminNewsPost> {
+        const response = await this.publishNewsPostRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -1950,6 +2243,56 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for updateNewsPost without sending the request
+     */
+    async updateNewsPostRequestOpts(requestParameters: UpdateNewsPostRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['uuid'] == null) {
+            throw new runtime.RequiredError(
+                'uuid',
+                'Required parameter "uuid" was null or undefined when calling updateNewsPost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/admin/news-posts/{uuid}`;
+        urlPath = urlPath.replace('{uuid}', encodeURIComponent(String(requestParameters['uuid'])));
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['NewsPostRequest'],
+        };
+    }
+
+    /**
+     * Change a News Post\'s title and body  A Published News Post keeps its publication time.
+     * Change a News Post\'s title and body
+     */
+    async updateNewsPostRaw(requestParameters: UpdateNewsPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<AdminNewsPost>> {
+        const requestOptions = await this.updateNewsPostRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Change a News Post\'s title and body  A Published News Post keeps its publication time.
+     * Change a News Post\'s title and body
+     */
+    async updateNewsPost(requestParameters: UpdateNewsPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AdminNewsPost> {
+        const response = await this.updateNewsPostRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for updateOrderItemPacked without sending the request
      */
     async updateOrderItemPackedRequestOpts(requestParameters: UpdateOrderItemPackedOperationRequest): Promise<runtime.RequestOpts> {
@@ -2137,6 +2480,53 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async updateSchedule(requestParameters: UpdateScheduleRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ScheduleSchema> {
         const response = await this.updateScheduleRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for withdrawNewsPost without sending the request
+     */
+    async withdrawNewsPostRequestOpts(requestParameters: WithdrawNewsPostRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['uuid'] == null) {
+            throw new runtime.RequiredError(
+                'uuid',
+                'Required parameter "uuid" was null or undefined when calling withdrawNewsPost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/admin/news-posts/{uuid}/withdraw`;
+        urlPath = urlPath.replace('{uuid}', encodeURIComponent(String(requestParameters['uuid'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Withdraw a News Post, making it a Draft again
+     * Withdraw a News Post, making it a Draft again
+     */
+    async withdrawNewsPostRaw(requestParameters: WithdrawNewsPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<AdminNewsPost>> {
+        const requestOptions = await this.withdrawNewsPostRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Withdraw a News Post, making it a Draft again
+     * Withdraw a News Post, making it a Draft again
+     */
+    async withdrawNewsPost(requestParameters: WithdrawNewsPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AdminNewsPost> {
+        const response = await this.withdrawNewsPostRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

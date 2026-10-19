@@ -1,0 +1,96 @@
+[Migration]
+Hash = "3163178507475873292"
+Initial = false
+Dependency = 10
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateModel"
+Name = "news_post"
+
+[[Migration.Operations.Fields]]
+Name = "uuid"
+Type = "uuid"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "primary_key"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/semmelei/src/models/news_post/db.rs"
+Line = 13
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "title"
+Type = "text"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 255
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/semmelei/src/models/news_post/db.rs"
+Line = 16
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "body"
+Type = "text"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 20000
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/semmelei/src/models/news_post/db.rs"
+Line = 19
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "published_at"
+Type = "datetime"
+Annotations = []
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/semmelei/src/models/news_post/db.rs"
+Line = 22
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "created_at"
+Type = "datetime"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "auto_create_time"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/semmelei/src/models/news_post/db.rs"
+Line = 26
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "updated_at"
+Type = "datetime"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "auto_create_time"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "auto_update_time"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/semmelei/src/models/news_post/db.rs"
+Line = 30
+Column = 9

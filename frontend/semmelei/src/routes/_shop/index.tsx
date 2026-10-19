@@ -4,10 +4,18 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 import { EmptyState, Link, Skeleton, Subheading } from "components";
 import { Api } from "src/api/api";
-import { ListCategoriesResponse, ListItemsResponse, PickupWindowResponse, PublicItem } from "src/api/generated";
+import {
+    ListCategoriesResponse,
+    ListItemsResponse,
+    PickupWindowResponse,
+    PublicItem,
+    PublishedNewsPost,
+} from "src/api/generated";
 import { ItemCard } from "src/components/item-card";
 import { ItemInfoDialog } from "src/components/item-info-dialog";
+import { NewsTeaser } from "src/components/news-teaser";
 import { formatDate, formatDateTime } from "src/utils/dates";
+import { teaserPost } from "src/utils/news";
 import { RememberedOrder, loadRememberedOrders } from "src/utils/orders-storage";
 
 /** Catalog data loaded from the public API. */
@@ -39,12 +47,14 @@ function Catalog() {
     const [pickup, setPickup] = React.useState<PickupWindowResponse>();
     const [myOrders] = React.useState<RememberedOrder[]>(loadRememberedOrders);
     const [infoItem, setInfoItem] = React.useState<PublicItem>();
+    const [news, setNews] = React.useState<PublishedNewsPost>();
 
     React.useEffect(() => {
         Promise.all([Api.shop.categories(), Api.shop.items()]).then(([categories, items]) =>
             setData({ categories, items }),
         );
         Api.shop.pickupWindow().then(setPickup);
+        Api.shop.newsPosts().then((r) => setNews(teaserPost(r.news_posts, new Date())));
     }, []);
 
     if (!data) {
@@ -130,6 +140,8 @@ function Catalog() {
                         ))}
                 </div>
             </section>
+
+            {news && <NewsTeaser post={news} />}
 
             {myOrders.length > 0 && (
                 <section className={"flex flex-col gap-4"}>

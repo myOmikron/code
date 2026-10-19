@@ -9,6 +9,7 @@ import {
     type ItemRequest,
     type CategoryRequest,
     type LegalLinks,
+    type NewsPostRequest,
     type OrderStatus,
     type ScheduleSchema,
     type UpdateAccountRequest,
@@ -70,6 +71,7 @@ export const Api = {
         items: () => handleError(defaultApi.getItems()),
         pickupWindow: () => handleError(defaultApi.getPickupWindow()),
         legal: () => handleError(defaultApi.getLegalLinks()),
+        newsPosts: () => handleError(defaultApi.listPublishedNewsPosts()),
         createOrder: (request: CreateOrderRequest) =>
             handleError(defaultApi.createOrder({ CreateOrderRequest: request })),
         orderStatus: (pickupCode: string) => handleError(defaultApi.getOrder({ pickup_code: pickupCode })),
@@ -110,6 +112,16 @@ export const Api = {
                 handleError(defaultApi.updateAccount({ uuid, UpdateAccountRequest: request })),
             invite: (uuid: UUID) => handleError(defaultApi.createInvite({ uuid })),
             delete: (uuid: UUID) => handleError(defaultApi.deleteAccount({ uuid })),
+        },
+        newsPosts: {
+            list: () => handleError(defaultApi.listNewsPosts()),
+            get: (uuid: UUID) => handleError(defaultApi.getNewsPost({ uuid })),
+            create: (request: NewsPostRequest) => handleError(defaultApi.createNewsPost({ NewsPostRequest: request })),
+            update: (uuid: UUID, request: NewsPostRequest) =>
+                handleError(defaultApi.updateNewsPost({ uuid, NewsPostRequest: request })),
+            publish: (uuid: UUID) => handleError(defaultApi.publishNewsPost({ uuid })),
+            withdraw: (uuid: UUID) => handleError(defaultApi.withdrawNewsPost({ uuid })),
+            delete: (uuid: UUID) => handleError(defaultApi.deleteNewsPost({ uuid })),
         },
         legal: {
             get: () => handleError(defaultApi.getLegalSettings()),
