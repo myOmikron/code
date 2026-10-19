@@ -1088,3 +1088,17 @@ def measure_axes_cmd(
 
     measurement = measure_axes(scene, candidate_pool=candidate_pool, bins_per_axis=bins)
     typer.echo(render_axes_constants(measurement))
+
+
+@app.command()
+def openapi(output: str = typer.Argument(..., help="File to write the spec to.")) -> None:
+    """Write the API's OpenAPI spec, without a server or a graph (`just gen-api mtg`)."""
+    import json
+
+    from .api import app as api
+
+    # Served, the spec lists uvicorn's `--root-path` (see the Dockerfile) as its
+    # server, which the generated client takes as its base path. FastAPI adds it
+    # per request, last, so this does the same.
+    spec = {**api.openapi(), "servers": [{"url": "/api/graph"}]}
+    Path(output).write_text(json.dumps(spec))

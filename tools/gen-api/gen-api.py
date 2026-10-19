@@ -7,11 +7,12 @@ A frontend declares its clients in `frontend/<app>/api-clients.json`:
     [{ "backend": "mtg", "out": "src/api/generated" }]
 
 For each entry the backend writes its spec to `<out>/openapi.json` on the host
-(a Rust service through its `openapi <output>` subcommand), then the OpenAPI
-generator (typescript-fetch, version pinned in the root `openapitools.json`,
-options in `generator-config.json` next to this script) and the app's prettier
-run in a one-off container of the frontend dev image. A declared backend with
-no directory under `services/` is skipped with a notice.
+(a Rust service through cargo, a Python service through uv, both with an
+`openapi <output>` subcommand), then the OpenAPI generator (typescript-fetch,
+version pinned in the root `openapitools.json`, options in
+`generator-config.json` next to this script) and the app's prettier run in a
+one-off container of the frontend dev image. A declared backend with no
+directory under `services/` is skipped with a notice.
 
 usage: tools/gen-api/gen-api.py [frontend]
 """
@@ -27,6 +28,7 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+import tomllib
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -84,8 +86,17 @@ def clean(out: Path) -> None:
 def write_spec(backend: str, service: Path, spec: Path) -> None:
     if (service / "Cargo.toml").is_file():
         run(["cargo", "run", "--quiet", "--package", backend, "--", "openapi", str(spec)])
+    elif (service / "pyproject.toml").is_file():
+        # The project's console script, e.g. `deck-lab`, carries the same
+        # `openapi <output>` subcommand as a Rust service.
+        project = tomllib.loads((service / "pyproject.toml").read_text())["project"]
+        (cli,) = project["scripts"]
+        run(
+            ["uv", "run", "--directory", str(service), "--locked", "--all-extras"]
+            + [cli, "openapi", str(spec)]
+        )
     else:
-        sys.exit(f"services/{backend} is no Rust service, gen-api cannot produce its spec")
+        sys.exit(f"services/{backend} is neither a Rust nor a Python service, gen-api has no spec")
 
 
 def build_image() -> None:

@@ -16,9 +16,6 @@ dev-dist
 .cache/
 .vite/
 
-# Scratch space of the openapi generator (see scripts/gen-api.sh)
-tmp
-
 # TanStack Router plugin scratch space
 .tanstack/
 

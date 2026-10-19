@@ -124,10 +124,6 @@ gen-api name="":
     fi
     exec python3 tools/gen-api/gen-api.py {{ name }}
 
-# Regenerate the mtg frontend's client for the graph advisor API
-gen-graph-api:
-    docker compose -f dev/mtg.yml exec frontend frontend/mtg/scripts/gen-graph-api.sh
-
 # Run the deck-lab CLI inside the mtg dev stack's graph container.
 # just graph ingest | just graph ingest-tags | just graph build-semantics | ...
 graph +args:

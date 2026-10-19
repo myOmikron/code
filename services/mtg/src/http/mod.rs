@@ -83,6 +83,6 @@ pub fn routes() -> GalvynRouter {
             handler_frontend::initialize_routes().openapi_page(FrontendApi),
         )
         // Off the FrontendApi page on purpose: the ts client for these routes
-        // is generated from FastAPI's own spec (`just gen-graph-api`), not ours.
+        // is generated from FastAPI's own spec (`just gen-api mtg`), not ours.
         .nest("/api/graph", handler_graph::initialize_routes())
 }
