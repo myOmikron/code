@@ -19,9 +19,9 @@ use galvyn::core::re_exports::axum::http::header;
 use galvyn::core::re_exports::axum::response::Response;
 use galvyn::get;
 use galvyn::post;
+use service_bootstrap::http::rate_limit::trusted_client_ip;
 use tracing::warn;
 
-use crate::http::middleware::rate_limit::trusted_client_ip;
 use crate::modules::graph::GraphClient;
 
 /// Deck diagnostics: curve, role quotas, resource balance, themes

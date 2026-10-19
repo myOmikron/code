@@ -2,9 +2,9 @@
 
 use galvyn::core::GalvynRouter;
 use galvyn_identity::AuthRequiredLayer;
+use service_bootstrap::http::rate_limit::RateLimitLayer;
 
 use crate::http::middleware::admin_required::AdminRequiredLayer;
-use crate::http::middleware::rate_limit::RateLimitLayer;
 
 pub mod admin;
 pub mod auth;

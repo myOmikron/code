@@ -1,4 +1,4 @@
-//! Tiny in-process fixed-window rate limiter for the public endpoints.
+//! Tiny in-process fixed-window rate limiter for public endpoints, keyed on the client IP
 
 use std::collections::HashMap;
 use std::net::IpAddr;
@@ -17,10 +17,16 @@ use galvyn::core::re_exports::axum::response::Response;
 use galvyn::core::stuff::api_error::ApiError;
 use tracing::warn;
 
-/// Fixed-window per-IP rate limiter.
+/// Above this many tracked IPs, expired windows are swept out of the map
+const SWEEP_THRESHOLD: usize = 10_000;
+
+/// Fixed-window per-IP rate limiter
 ///
-/// State lives in-process and is lost on restart, which is fine — this only
+/// State lives in-process and is lost on restart, which is fine: this only
 /// bounds abuse of the public endpoints, it is not a security boundary.
+///
+/// A request without a client IP (see [`trusted_client_ip`]) is let through
+/// with a warning rather than rejected. A poisoned counter map is used as is.
 #[derive(Clone, Debug)]
 pub struct RateLimitLayer {
     max_requests: u32,
@@ -41,11 +47,11 @@ impl RateLimitLayer {
 
 /// The address a request is actually from
 ///
-/// Everything reaches this service through traefik, so the socket address
+/// Everything reaches the services through traefik, so the socket address
 /// is always the proxy and the client is in `X-Forwarded-For`. Which hop of
 /// it is the client is the whole question: the header arrives partly
-/// written by the client itself, and reading the *first* entry — the usual
-/// spelling — hands the answer to whoever is being identified. For the rate
+/// written by the client itself, and reading the *first* entry (the usual
+/// spelling) hands the answer to whoever is being identified. For the rate
 /// limiter that means a fresh budget per request, which is no limit at all.
 ///
 /// So the **last** hop is taken. That one is not the client's to write:
@@ -58,7 +64,10 @@ impl RateLimitLayer {
 /// Only the last header line is read, for the same reason: a client sending
 /// an `X-Forwarded-For` of its own must not be able to get its value looked
 /// at instead of the proxy's.
-pub(crate) fn trusted_client_ip(req: &Request) -> Option<IpAddr> {
+///
+/// Without a parseable header the socket address from [`ConnectInfo`] is
+/// used, if the server provides one.
+pub fn trusted_client_ip(req: &Request) -> Option<IpAddr> {
     if let Some(forwarded) = req.headers().get_all("x-forwarded-for").iter().next_back()
         && let Ok(value) = forwarded.to_str()
         && let Some(last) = value.rsplit(',').next()
@@ -74,19 +83,16 @@ pub(crate) fn trusted_client_ip(req: &Request) -> Option<IpAddr> {
 impl SimpleGalvynMiddleware for RateLimitLayer {
     async fn pre_handler(&mut self, req: Request) -> ControlFlow<Response, Request> {
         let Some(ip) = trusted_client_ip(&req) else {
-            // No IP to key on — let the request through instead of breaking
-            // deployments without ConnectInfo.
             warn!("Rate limiter could not determine a client ip");
             return ControlFlow::Continue(req);
         };
 
         let now = Instant::now();
-        let mut state = self.state.lock().unwrap_or_else(|poison| {
-            // A poisoned counter map is not worth crashing requests over.
-            poison.into_inner()
-        });
-        // Keep the map from growing unboundedly.
-        if state.len() > 10_000 {
+        let mut state = self
+            .state
+            .lock()
+            .unwrap_or_else(|poison| poison.into_inner());
+        if state.len() > SWEEP_THRESHOLD {
             state.retain(|_, (start, _)| now.duration_since(*start) < self.window);
         }
         let (window_start, count) = state.entry(ip).or_insert((now, 0));
@@ -130,8 +136,6 @@ mod tests {
 
     #[test]
     fn takes_the_last_header_line() {
-        // A client-sent header survives as an earlier line; only the
-        // proxy-written last line may be believed.
         let req = request(&["6.6.6.6", "203.0.113.7, 198.51.100.2"]);
         assert_eq!(
             trusted_client_ip(&req),
