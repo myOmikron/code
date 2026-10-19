@@ -26,6 +26,7 @@ pub mod grpc;
 pub mod http;
 pub mod nats;
 pub mod o2o_helper;
+pub mod openapi;
 pub mod tracing_init;
 pub mod utils;
 

@@ -1,22 +1,17 @@
 use std::error::Error;
 use std::fmt;
-use std::fs;
 use std::io;
 use std::net::Ipv4Addr;
 use std::net::SocketAddr;
 use std::num::NonZeroU64;
-use std::path::Path;
 use std::time::Duration;
 
 use clap::Parser;
-use galvyn::Galvyn;
-use galvyn::GalvynSetup;
 use galvyn::ModuleBuilder;
 use galvyn::RouterBuilder;
 use galvyn::core::modules::database::DatabaseSetup;
 use galvyn::core::re_exports::rorm;
 use galvyn::error::GalvynError;
-use galvyn::openapi::get_openapi_for_page;
 use galvyn::rorm::Database;
 use galvyn::rorm::DatabaseConfiguration;
 use galvyn::rorm::DatabaseDriver;
@@ -108,7 +103,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             health_command().await?;
         }
         Command::Openapi { output } => {
-            openapi_command(output).await?;
+            service_bootstrap::openapi::write_openapi(http::routes(), FrontendApi, output).await?;
         }
         Command::CheckStock { repair } => {
             check_stock_command(*repair).await?;
@@ -280,38 +275,6 @@ async fn health_command() -> Result<(), Box<dyn Error>> {
 
     let address = SocketAddr::from((Ipv4Addr::LOCALHOST, config.listen_port.get()));
     TcpStream::connect(address).await?;
-    Ok(())
-}
-
-/// Write the frontend's openapi document to a file
-///
-/// Galvyn only knows its routes once it serves them, so this starts the router
-/// on a loopback port the kernel picks, reads the document and kills the
-/// server again. No module is registered: a handler touches the database only
-/// when a request arrives, and none does.
-async fn openapi_command(output: &Path) -> Result<(), Box<dyn Error>> {
-    let mut builder = Galvyn::builder(GalvynSetup {
-        disable_panic_hook: true,
-        disable_sessions: true,
-        ..GalvynSetup::default()
-    })
-    .init_modules()
-    .await?;
-    builder.add_listener(SocketAddr::from((Ipv4Addr::LOCALHOST, 0)), http::routes());
-    let mut server = tokio::spawn(async move { builder.start().await });
-
-    let galvyn = tokio::select! {
-        galvyn = Galvyn::global_wait() => galvyn,
-        stopped = &mut server => {
-            stopped??;
-            return Err(Box::from("the server stopped before registering its routes"));
-        }
-    };
-    let document = get_openapi_for_page(FrontendApi);
-    fs::write(output, serde_json::to_string_pretty(&document)?)?;
-
-    galvyn.kill();
-    server.await??;
     Ok(())
 }
 
