@@ -1,0 +1,105 @@
+# Drift check: gen-api must reproduce the committed specs and clients. PRs
+# regenerate the frontends tools/gen-api/changed-frontends.py selects, main all.
+name: gen-api
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  gen-api:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          fetch-depth: 0
+
+      - name: Install Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: "3.13"
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@efa25f7f19611383d5b0ccf2d1c8914531636bf9
+        with:
+          toolchain: "1.96.0"
+
+      - name: Determine frontends
+        id: scope
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            FRONTENDS=$(./tools/gen-api/changed-frontends.py "origin/${BASE_REF}")
+          else
+            FRONTENDS=$(find frontend -mindepth 2 -maxdepth 2 -name api-clients.json | cut -d/ -f2 | sort)
+          fi
+          FRONTENDS=$(echo "$FRONTENDS" | paste -sd ' ')
+          if [ -z "$FRONTENDS" ]; then
+            echo "Nothing gen-api relevant changed, generation will be skipped."
+          else
+            echo "Frontends: $FRONTENDS"
+          fi
+          echo "frontends=$FRONTENDS" >> "$GITHUB_OUTPUT"
+
+      - name: Install build dependencies
+        if: steps.scope.outputs.frontends != ''
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends protobuf-compiler libprotobuf-dev mold
+
+      - name: Cache cargo registry, git deps and target dir
+        if: steps.scope.outputs.frontends != ''
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          shared-key: gen-api
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+
+      - name: Install uv
+        if: steps.scope.outputs.frontends != ''
+        uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          # renovate: datasource=github-releases depName=astral-sh/uv versioning=semver
+          version: "0.13.1"
+
+      - name: Install pnpm
+        if: steps.scope.outputs.frontends != ''
+        uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6
+
+      - name: Install Node
+        if: steps.scope.outputs.frontends != ''
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
+        with:
+          node-version: 24
+          cache: 'pnpm'
+
+      - name: Install node_modules
+        if: steps.scope.outputs.frontends != ''
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate API clients
+        if: steps.scope.outputs.frontends != ''
+        env:
+          FRONTENDS: ${{ steps.scope.outputs.frontends }}
+        run: |
+          set -euo pipefail
+          for frontend in $FRONTENDS; do
+            python3 tools/gen-api/gen-api.py "$frontend"
+          done
+
+      - name: Fail on drift
+        if: steps.scope.outputs.frontends != ''
+        run: |
+          set -euo pipefail
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "::error::Committed API specs or clients differ from gen-api's output. Run \`just gen-api <frontend>\` and commit the result."
+            git status --short
+            git diff
+            exit 1
+          fi
