@@ -14,7 +14,7 @@ import {
 
 /**
  * The graph advisor (services/mtg-graph) — a second backend beside the
- * webserver, regenerated with `just gen-graph-api`.
+ * webserver, regenerated with `just gen-api mtg`.
  *
  * Served under `/api/graph`, which the webserver proxies to the advisor
  * behind its auth layer — the advisor itself is not publicly routable.

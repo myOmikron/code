@@ -1,3 +1,4 @@
 [
-    { "backend": "mtg", "out": "src/api/generated" }
+    { "backend": "mtg", "out": "src/api/generated" },
+    { "backend": "mtg-graph", "out": "src/api/graph-generated" }
 ]

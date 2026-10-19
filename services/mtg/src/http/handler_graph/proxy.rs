@@ -6,7 +6,7 @@
 //!
 //! The requests and responses are passed through opaquely — the ts client
 //! for these routes is generated from FastAPI's own spec (`just
-//! gen-graph-api`), so the payloads are not this service's contract to
+//! gen-api mtg`), so the payloads are not this service's contract to
 //! describe.
 
 use galvyn::core::Module;
