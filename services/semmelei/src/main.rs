@@ -58,6 +58,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
             let config = config::load()?;
             create_account(config, username, *role).await?;
         }
+        Command::Openapi { output } => {
+            service_bootstrap::openapi::write_openapi(http::routes(), http::FrontendApi, output)
+                .await?;
+        }
     }
 
     Ok(())

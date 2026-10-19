@@ -34,6 +34,14 @@ pub async fn get_frontend_openapi() -> SchemalessJson<&'static OpenAPI> {
 
 /// Initializes all routes
 pub fn initialize_routes() -> GalvynRouter {
+    routes().layer(session::layer())
+}
+
+/// Every route, without the layers around them
+///
+/// Split off so the `openapi` subcommand can register the routes without the
+/// session layer, which wants a database the subcommand does not have.
+pub fn routes() -> GalvynRouter {
     GalvynRouter::new()
         .nest(
             "/docs",
@@ -53,5 +61,4 @@ pub fn initialize_routes() -> GalvynRouter {
             "/api/frontend/v1/shop",
             GalvynRouter::new().handler(handler_frontend::shop::handler::get_item_image),
         )
-        .layer(session::layer())
 }

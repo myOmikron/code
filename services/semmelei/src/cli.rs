@@ -1,5 +1,7 @@
 //! CLI for semmelei
 
+use std::path::PathBuf;
+
 use clap::Parser;
 use clap::Subcommand;
 use clap::ValueEnum;
@@ -30,6 +32,15 @@ pub enum Command {
     MakeMigrations {
         /// Directory to write the migrations to
         migration_directory: String,
+    },
+    /// Write the frontend's openapi document to a file and exit
+    ///
+    /// Needs no database, no NATS and no config, see
+    /// `service_bootstrap::openapi::write_openapi`. `just gen-api` builds the
+    /// frontend's api client from it.
+    Openapi {
+        /// Where to write the document
+        output: PathBuf,
     },
 }
 
