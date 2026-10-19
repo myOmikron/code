@@ -37,6 +37,15 @@
         // ARG CARGO_DENY_VERSION=0.19.4
         "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)(?: versioning=(?<versioning>\\S+))?\\n[^\\S\\n]*(?:ARG[^\\S\\n]+)?\\S+\\s*[=:]\\s*[\"']?v?(?<currentValue>[^\"'\\s]+)"
       ]
+    },
+    {
+      "customType": "jsonata",
+      "description": "Update the openapi-generator release gen-api runs, pinned in openapitools.json (JSON cannot carry a renovate comment); the gen-api drift check fails the PR until the clients are regenerated",
+      "fileFormat": "json",
+      "managerFilePatterns": ["/^openapitools\\.json$/"],
+      "matchStrings": ["{ \"currentValue\": `generator-cli`.version }"],
+      "datasourceTemplate": "maven",
+      "depNameTemplate": "org.openapitools:openapi-generator-cli"
     }
   ],
   // disabled because of renovate bug
