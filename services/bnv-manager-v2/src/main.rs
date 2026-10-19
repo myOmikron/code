@@ -93,12 +93,9 @@ async fn start(mut builder: ModuleBuilder, _config: ()) -> Result<RouterBuilder,
 async fn main() -> Result<(), Box<dyn Error>> {
     let cli = Cli::parse();
 
-    if let Command::Openapi { output } = &cli.command {
-        return service_bootstrap::openapi::write_openapi(http::routes(), FrontendApi, output)
-            .await;
-    }
-
-    if let Err(errors) = config::load_env() {
+    if !matches!(cli.command, Command::Openapi { .. })
+        && let Err(errors) = config::load_env()
+    {
         for error in errors {
             eprintln!("{error}");
         }
@@ -106,7 +103,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
     }
 
     match cli.command {
-        Command::Openapi { .. } => unreachable!("handled before loading the env"),
+        Command::Openapi { output } => {
+            service_bootstrap::openapi::write_openapi(http::routes(), FrontendApi, &output).await?;
+        }
         Command::Start { without_migrations } => {
             if !without_migrations {
                 rorm::cli::migrate::run_migrate_custom(
