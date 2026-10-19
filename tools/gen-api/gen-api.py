@@ -127,6 +127,8 @@ def generate(app: Path, out: Path) -> None:
                 "--rm",
                 "--user",
                 f"{os.getuid()}:{os.getgid()}",
+                "--env",
+                "TZ=UTC",
                 "--volume",
                 f"{REPO_ROOT}:/app",
                 "--volume",
