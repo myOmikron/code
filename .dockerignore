@@ -17,9 +17,6 @@ node_modules
 **/.tanstack
 .pnpm-store
 
-# Scratch space of the openapi generator (see scripts/gen-api.sh)
-**/tmp
-
 # The scanner's working data: reference scans, embeddings, OCR corpora and checkpoints, 55 GB of
 # it. No image is built from any of it — the index and the models are baked once and shipped as
 # ghcr.io/<owner>/mtg/assets — and without this line every build hands the whole lot to the daemon
