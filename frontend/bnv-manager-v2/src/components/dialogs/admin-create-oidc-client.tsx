@@ -14,7 +14,7 @@ import { ErrorMessage, Field, FieldGroup, Fieldset, Label, RequiredLabel } from 
 import { Button, PrimaryButton } from "src/components/base/button";
 import { Api } from "src/api/api";
 import { Input } from "src/components/base/input";
-import { CreatedOidcClient } from "src/api/generated/admin";
+import { CreatedOidcClient } from "src/api/generated";
 import { toast } from "react-toastify";
 import { ClipboardIcon } from "@heroicons/react/16/solid";
 

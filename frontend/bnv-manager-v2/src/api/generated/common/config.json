@@ -1,8 +1,0 @@
-{
-    "typescriptThreePlus": true,
-    "nullSafeAdditionalProps": true,
-    "withoutRuntimeChecks": true,
-    "paramNaming": "original",
-    "modelPropertyNaming": "original",
-    "enumPropertyNaming": "original"
-}

@@ -1,5 +1,7 @@
 //! Definitions of the CLI arguments
 
+use std::path::PathBuf;
+
 use clap::Parser;
 use clap::Subcommand;
 
@@ -44,5 +46,14 @@ pub enum Command {
     ImportData {
         /// Path to the file where to read the data from
         filename: String,
+    },
+    /// Write the frontend's openapi document to a file and exit
+    ///
+    /// Needs no database, no mailcow and no config, see
+    /// `service_bootstrap::openapi::write_openapi`. `just gen-api` builds the
+    /// frontend's api client from it.
+    Openapi {
+        /// Where to write the document
+        output: PathBuf,
     },
 }

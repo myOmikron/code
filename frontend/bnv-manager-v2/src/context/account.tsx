@@ -1,8 +1,7 @@
 import React from "react";
 import { Api } from "src/api/api";
-import { MeSchema } from "src/api/generated/common";
+import { MeSchema, RequiredError, ResponseError } from "src/api/generated";
 import { Navigate } from "@tanstack/react-router";
-import { RequiredError, ResponseError } from "src/api/generated/common";
 
 /** The global {@link AccountProvider} instance */
 let ACCOUNT_PROVIDER: AccountProvider | null = null;

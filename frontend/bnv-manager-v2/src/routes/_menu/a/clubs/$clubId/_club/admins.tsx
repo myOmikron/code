@@ -22,7 +22,7 @@ import { toast } from "react-toastify";
 import AdminRetractInviteDialog from "src/components/dialogs/admin-retract-invite";
 import AdminDeleteClubAdmin from "src/components/dialogs/admin-delete-club-admin";
 import { KeyIcon } from "@heroicons/react/24/outline";
-import { SimpleAccountSchema } from "src/api/generated/admin";
+import { SimpleAccountSchema } from "src/api/generated";
 import AdminResetCredentialsDialog from "src/components/dialogs/admin-reset-credentials";
 
 /**

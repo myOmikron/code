@@ -15,7 +15,7 @@ import {
 import { Input } from "src/components/base/input";
 import { Button, PrimaryButton } from "src/components/base/button";
 import { Api } from "src/api/api";
-import { DomainSchema } from "src/api/generated/admin";
+import { DomainSchema } from "src/api/generated";
 import { Combobox, ComboboxLabel, ComboboxOption } from "src/components/base/combobox";
 import { Switch, SwitchField } from "src/components/base/switch";
 

@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
 import { Api, UUID } from "src/api/api";
-import { ClubSchema } from "src/api/generated/admin";
+import { ClubSchema } from "src/api/generated";
 
 /** Data provided by the {@link ADMIN_SINGLE_CLUB} */
 export type AdminSingleClubContext = {

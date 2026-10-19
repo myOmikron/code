@@ -10,7 +10,7 @@ import {
 } from "src/components/base/dialog";
 import { Button } from "src/components/base/button";
 import { Api } from "src/api/api";
-import { OidcClientSchema } from "src/api/generated/admin";
+import { OidcClientSchema } from "src/api/generated";
 
 /**
  * The properties for {@link AdminDeleteOidcClientDialog}

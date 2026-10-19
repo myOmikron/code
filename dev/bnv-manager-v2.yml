@@ -1,6 +1,6 @@
 # Dev stack for bnv-manager-v2: just dev bnv-manager-v2 up -d --build
-# Single entrypoint is traefik on http://localhost — it routes /api to the
-# webserver, /swagger-ui to the OpenAPI explorer and everything else to the
+# Single entrypoint is traefik on http://localhost: it routes /api and /docs to
+# the webserver, /swagger-ui to the OpenAPI explorer and everything else to the
 # vite dev server.
 # No shared infra needed: this service talks to Postgres and mailcow only,
 # not to NATS.
@@ -24,24 +24,17 @@ services:
     user: "1000:1000"
     environment:
       - FRONTEND=bnv-manager-v2
-      # used by `just gen-api bnv-manager-v2` (runs inside this container)
-      - WEBSERVER_URL=http://webserver:8080
     volumes:
       - ../:/app
 
-  # OpenAPI explorer for the webserver's specs, on http://localhost/swagger-ui.
+  # OpenAPI explorer for the webserver's spec, on http://localhost/swagger-ui.
   # The spec urls are same-origin paths, so the browser fetches them back
-  # through traefik — no CORS, and no second host to configure.
-  #
-  # The five spec handlers are `#[cfg(debug_assertions)]`-gated (see
-  # http/handler_frontend/mod.rs) and this stack builds the release
-  # Dockerfile, so they 404 until that gate is lifted. Same for
-  # `just gen-api bnv-manager-v2`.
+  # through traefik: no CORS, and no second host to configure.
   swagger:
     image: swaggerapi/swagger-ui:v5.32.8
     environment:
       - BASE_URL=/swagger-ui
-      - 'URLS=[{ url: "/api/v1/frontend/admin.json", name: "Admin" }, { url: "/api/v1/frontend/club-admin.json", name: "Club admin" }, { url: "/api/v1/frontend/club-member.json", name: "Club member" }, { url: "/api/v1/frontend/common.json", name: "Common" }, { url: "/api/v1/frontend/auth.json", name: "Auth" }]'
+      - 'URLS=[{ url: "/docs/frontend.json", name: "Frontend" }, { url: "/docs/openapi.json", name: "All routes" }]'
 
   webserver:
     env_file: [ common/env.common ]

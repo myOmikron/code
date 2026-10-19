@@ -25,6 +25,7 @@ use crate::cli::Command;
 use crate::config::DB;
 use crate::config::LISTEN_ADDRESS;
 use crate::config::LISTEN_PORT;
+use crate::http::FrontendApi;
 use crate::models::invite::CreateInviteParams;
 use crate::models::invite::Invite;
 use crate::models::invite::InviteType;
@@ -90,6 +91,13 @@ async fn start(mut builder: ModuleBuilder, _config: ()) -> Result<RouterBuilder,
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
+    let cli = Cli::parse();
+
+    if let Command::Openapi { output } = &cli.command {
+        return service_bootstrap::openapi::write_openapi(http::routes(), FrontendApi, output)
+            .await;
+    }
+
     if let Err(errors) = config::load_env() {
         for error in errors {
             eprintln!("{error}");
@@ -97,9 +105,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
         return Err("Failed to load configuration".into());
     }
 
-    let cli = Cli::parse();
-
     match cli.command {
+        Command::Openapi { .. } => unreachable!("handled before loading the env"),
         Command::Start { without_migrations } => {
             if !without_migrations {
                 rorm::cli::migrate::run_migrate_custom(

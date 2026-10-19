@@ -26,7 +26,7 @@ use crate::modules::mailcow::Mailcow;
 
 #[get("/")]
 #[instrument(name = "Api::club_admin::get_club")]
-pub async fn get_club(
+pub async fn get_club_as_club_admin(
     Path(club_uuid): Path<ClubUuid>,
     SessionUser {
         uuid: account_uuid, ..
@@ -45,7 +45,7 @@ pub async fn get_club(
 
 #[get("/members")]
 #[instrument(name = "Api::club_admin::get_club_members")]
-pub async fn get_club_members(
+pub async fn get_club_members_as_club_admin(
     Path(club_uuid): Path<ClubUuid>,
     Query(PageParams {
         limit,
@@ -77,7 +77,7 @@ pub async fn get_club_members(
 
 #[get("/members/invites")]
 #[instrument(name = "Api::club_admin::get_club_member_invites")]
-pub async fn get_club_member_invites(
+pub async fn get_club_member_invites_as_club_admin(
     Path(club_uuid): Path<ClubUuid>,
 ) -> ApiResult<ApiJson<Vec<GetInvite>>> {
     let mut tx = Database::global().start_transaction().await?;
@@ -95,7 +95,7 @@ pub async fn get_club_member_invites(
 
 #[get("/dashboard-stats")]
 #[instrument(name = "Api::club_admin::get_dashboard_stats")]
-pub async fn get_dashboard_stats(
+pub async fn get_dashboard_stats_as_club_admin(
     Path(club_uuid): Path<ClubUuid>,
 ) -> ApiResult<ApiJson<schema::DashboardStatsSchema>> {
     let mut tx = Database::global().start_transaction().await?;

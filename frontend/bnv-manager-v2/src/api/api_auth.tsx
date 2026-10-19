@@ -1,5 +1,4 @@
-import { Configuration, DefaultApi } from "src/api/generated/auth";
-import { RequiredError, ResponseError } from "src/api/generated/auth";
+import { Configuration, DefaultApi, RequiredError, ResponseError } from "src/api/generated";
 import { parseError } from "src/api/error";
 
 const authApi = new DefaultApi(new Configuration({ basePath: window.location.origin }));

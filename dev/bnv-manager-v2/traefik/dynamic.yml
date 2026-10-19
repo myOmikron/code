@@ -1,12 +1,12 @@
-# Routing: /api goes to the webserver (the OpenAPI specs live under
-# /api/v1/frontend/*.json), /swagger-ui to the OpenAPI explorer, everything
-# else to the vite dev server (incl. its HMR websocket).
-# The longer /api and /swagger-ui rules outrank the catch-all by rule length.
+# Routing: /api and /docs (the OpenAPI specs) go to the webserver, /swagger-ui
+# to the OpenAPI explorer, everything else to the vite dev server (incl. its
+# HMR websocket). The /api|/docs and /swagger-ui rules outrank the catch-all
+# by rule length.
 
 http:
   routers:
     webserver:
-      rule: "PathPrefix(`/api`)"
+      rule: "PathPrefix(`/api`) || PathPrefix(`/docs`)"
       entryPoints: [ web ]
       service: webserver
     swagger:

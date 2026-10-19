@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { Dialog, DialogActions, DialogBody, DialogProps, DialogTitle } from "src/components/base/dialog";
-import { DomainSchema } from "src/api/generated/admin";
+import { DomainSchema } from "src/api/generated";
 import { useForm } from "@tanstack/react-form";
 import Form from "src/components/base/form";
 import { Button, PrimaryButton } from "src/components/base/button";

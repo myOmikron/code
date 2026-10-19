@@ -1,7 +1,6 @@
 //! The OpenID provider's endpoints
 
 use galvyn::core::GalvynRouter;
-use galvyn::openapi::OpenapiRouterExt;
 use url::Url;
 
 use crate::config::ORIGIN;
@@ -51,13 +50,9 @@ pub fn issuer() -> Url {
     endpoint_url("")
 }
 
-/// The OpenAPI page of the OpenID provider's endpoints
-pub struct AuthPage;
-
 /// Routes of the OpenID provider
 pub fn initialize() -> GalvynRouter {
     GalvynRouter::new()
-        .openapi_page(AuthPage)
         .handler(auth::handler::auth)
         .handler(auth::handler::sign_out)
         .handler(auth::handler::finish_auth)

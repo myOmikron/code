@@ -9,7 +9,7 @@ import { Description, ErrorMessage, Field, FieldGroup, Fieldset, RequiredLabel }
 import { Input } from "src/components/base/input";
 import { toast } from "react-toastify";
 import { ClipboardDocumentListIcon } from "@heroicons/react/20/solid";
-import { ClubSchema } from "src/api/generated/club-admin";
+import { ClubSchema } from "src/api/generated";
 
 /**
  * The properties for {@link ClubAdminCreateMemberInviteDialog}

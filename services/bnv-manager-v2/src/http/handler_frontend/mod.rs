@@ -2,7 +2,6 @@
 
 use galvyn::core::GalvynRouter;
 use galvyn::core::re_exports::axum;
-use galvyn::openapi::OpenapiRouterExt;
 
 use crate::http::middlewares;
 use crate::http::middlewares::AuthRateLimit;
@@ -14,15 +13,11 @@ pub mod domains;
 pub mod invites;
 pub mod me;
 pub mod oidc_clients;
-pub mod openapi;
 pub mod settings;
-
-/// Openapi page for the admin API
-pub struct AdminAPI;
 
 /// Handler for the admin
 pub fn router_admin() -> GalvynRouter {
-    GalvynRouter::with_openapi_page(AdminAPI)
+    GalvynRouter::new()
         .nest(
             "/accounts",
             GalvynRouter::new()
@@ -67,92 +62,64 @@ pub fn router_admin() -> GalvynRouter {
         .layer(axum::middleware::from_fn(middlewares::auth_superadmin))
 }
 
-/// Openapi page for the club admin API
-pub struct ClubAdminApi;
-
 /// Handler for the club admin
 pub fn router_club_admin() -> GalvynRouter {
-    GalvynRouter::with_openapi_page(ClubAdminApi).nest(
+    GalvynRouter::new().nest(
         "/clubs/{club_uuid}",
         GalvynRouter::new()
             .nest(
                 "/club",
                 GalvynRouter::new()
-                    .handler(clubs::handler_club_admin::get_club)
-                    .handler(clubs::handler_club_admin::get_club_members)
-                    .handler(clubs::handler_club_admin::get_club_member_invites)
-                    .handler(clubs::handler_club_admin::get_dashboard_stats),
+                    .handler(clubs::handler_club_admin::get_club_as_club_admin)
+                    .handler(clubs::handler_club_admin::get_club_members_as_club_admin)
+                    .handler(clubs::handler_club_admin::get_club_member_invites_as_club_admin)
+                    .handler(clubs::handler_club_admin::get_dashboard_stats_as_club_admin),
             )
             .nest("/domains", GalvynRouter::new())
             .nest(
                 "/invites",
                 GalvynRouter::new()
                     .handler(invites::handler_club_admin::create_member_invite)
-                    .handler(invites::handler_club_admin::retract_invite)
-                    .handler(invites::handler_club_admin::extend_invite_expiry),
+                    .handler(invites::handler_club_admin::retract_invite_as_club_admin)
+                    .handler(invites::handler_club_admin::extend_invite_expiry_as_club_admin),
             )
             .nest(
                 "/members",
                 GalvynRouter::new()
                     .handler(clubs::handler_club_admin::delete_member)
-                    .handler(accounts::handler_club_admin::reset_credentials),
+                    .handler(accounts::handler_club_admin::reset_credentials_as_club_admin),
             )
             .layer(axum::middleware::from_fn(middlewares::auth_club_admin)),
     )
 }
 
-/// Openapi page for the club member API
-pub struct ClubMemberApi;
-
-/// Handler for the club members
-pub fn router_club_member() -> GalvynRouter {
-    GalvynRouter::with_openapi_page(ClubMemberApi)
-}
-
 /// Unauthenticated handler_frontend
 pub fn router_unauthenticated() -> GalvynRouter {
-    let mut router = GalvynRouter::with_openapi_page(CommonApi);
-
-    #[cfg(debug_assertions)]
-    {
-        router = router
-            .handler(openapi::handler_common::openapi_admin)
-            .handler(openapi::handler_common::openapi_club_admin)
-            .handler(openapi::handler_common::openapi_club_member)
-            .handler(openapi::handler_common::openapi_common)
-            .handler(openapi::handler_common::openapi_auth);
-    }
-
-    router = router.nest(
-        "/invite",
-        GalvynRouter::new()
-            .handler(invites::handler_common::get_invite_common)
-            .merge(
-                GalvynRouter::new()
-                    .handler(invites::handler_common::accept_invite)
-                    .wrap(AuthRateLimit::new(25)),
-            ),
-    );
-
-    router = router.nest(
-        "/credential-reset",
-        GalvynRouter::new()
-            .handler(credential_reset::handler_common::verify_code)
-            .handler(credential_reset::handler_common::verify_uuid)
-            .handler(credential_reset::handler_common::reset_password)
-            .handler(credential_reset::handler_common::reset_password_by_uuid)
-            .wrap(AuthRateLimit::new(5)),
-    );
-
-    router
+    GalvynRouter::new()
+        .nest(
+            "/invite",
+            GalvynRouter::new()
+                .handler(invites::handler_common::get_invite_common)
+                .merge(
+                    GalvynRouter::new()
+                        .handler(invites::handler_common::accept_invite)
+                        .wrap(AuthRateLimit::new(25)),
+                ),
+        )
+        .nest(
+            "/credential-reset",
+            GalvynRouter::new()
+                .handler(credential_reset::handler_common::verify_code)
+                .handler(credential_reset::handler_common::verify_uuid)
+                .handler(credential_reset::handler_common::reset_password)
+                .handler(credential_reset::handler_common::reset_password_by_uuid)
+                .wrap(AuthRateLimit::new(5)),
+        )
 }
-
-/// Openapi page for the common API
-pub struct CommonApi;
 
 /// Common handler_frontend
 pub fn router_common() -> GalvynRouter {
-    GalvynRouter::with_openapi_page(CommonApi)
+    GalvynRouter::new()
         .nest(
             "/me",
             GalvynRouter::new()

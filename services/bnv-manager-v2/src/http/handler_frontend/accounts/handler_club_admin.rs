@@ -16,7 +16,7 @@ use crate::models::club::ClubUuid;
 
 #[post("/{uuid}/reset-credentials")]
 #[instrument(name = "Api::club_admin::reset_credentials")]
-pub async fn reset_credentials(
+pub async fn reset_credentials_as_club_admin(
     Path((club_uuid, account_uuid)): Path<(ClubUuid, AccountUuid)>,
 ) -> ApiResult<ApiJson<CredentialResetSchema>> {
     let mut tx = Database::global().start_transaction().await?;

@@ -2,33 +2,37 @@ import {
     Configuration,
     CreateMemberInviteRequest,
     DefaultApi,
-    GetClubMembersRequest,
-} from "src/api/generated/club-admin";
+    ExtendInviteRequest,
+    GetClubMembersAsClubAdminRequest,
+    RequiredError,
+    ResponseError,
+} from "src/api/generated";
 import { UUID } from "src/api/api";
-import { RequiredError, ResponseError } from "src/api/generated/club-admin";
 import { parseError } from "src/api/error";
-import { ExtendInviteRequest } from "src/api/generated/admin";
 
 const clubAdminApi = new DefaultApi(new Configuration({ basePath: window.location.origin }));
 
 export const ClubAdminApi = {
     club: {
-        get: (club_uuid: UUID) => handleError(clubAdminApi.getClub({ club_uuid })),
-        getMembers: (req: GetClubMembersRequest) => handleError(clubAdminApi.getClubMembers(req)),
-        getInvitedMembers: (club_uuid: UUID) => handleError(clubAdminApi.getClubMemberInvites({ club_uuid })),
+        get: (club_uuid: UUID) => handleError(clubAdminApi.getClubAsClubAdmin({ club_uuid })),
+        getMembers: (req: GetClubMembersAsClubAdminRequest) => handleError(clubAdminApi.getClubMembersAsClubAdmin(req)),
+        getInvitedMembers: (club_uuid: UUID) =>
+            handleError(clubAdminApi.getClubMemberInvitesAsClubAdmin({ club_uuid })),
         deleteMember: (club_uuid: UUID, member_uuid: UUID) =>
             handleError(clubAdminApi.deleteMember({ member_uuid, club_uuid })),
         resetCredentials: (club_uuid: UUID, member_uuid: UUID) =>
-            handleError(clubAdminApi.resetCredentials({ club_uuid, uuid: member_uuid })),
-        getDashboardStats: (club_uuid: UUID) => handleError(clubAdminApi.getDashboardStats({ club_uuid })),
+            handleError(clubAdminApi.resetCredentialsAsClubAdmin({ club_uuid, uuid: member_uuid })),
+        getDashboardStats: (club_uuid: UUID) => handleError(clubAdminApi.getDashboardStatsAsClubAdmin({ club_uuid })),
     },
     invites: {
         create: (club_uuid: UUID, req: CreateMemberInviteRequest) =>
             handleError(clubAdminApi.createMemberInvite({ club_uuid, CreateMemberInviteRequest: req })),
         retract: (uuid: UUID, club_uuid: UUID) =>
-            handleError(clubAdminApi.retractInvite({ uuid, club_uuid: club_uuid })),
+            handleError(clubAdminApi.retractInviteAsClubAdmin({ uuid, club_uuid: club_uuid })),
         extendExpiry: (invite_uuid: UUID, club_uuid: UUID, req: ExtendInviteRequest) =>
-            handleError(clubAdminApi.extendInviteExpiry({ invite_uuid, club_uuid, ExtendInviteRequest: req })),
+            handleError(
+                clubAdminApi.extendInviteExpiryAsClubAdmin({ invite_uuid, club_uuid, ExtendInviteRequest: req }),
+            ),
     },
 };
 
