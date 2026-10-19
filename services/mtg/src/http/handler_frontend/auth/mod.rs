@@ -3,8 +3,7 @@
 use std::time::Duration;
 
 use galvyn::core::GalvynRouter;
-
-use crate::http::middleware::rate_limit::RateLimitLayer;
+use service_bootstrap::http::rate_limit::RateLimitLayer;
 
 pub mod handler;
 pub mod schema;
