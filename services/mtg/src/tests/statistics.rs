@@ -107,6 +107,18 @@ async fn create_session(tx: &mut Transaction, owner: AccountUuid) -> ScannerSess
 fn a_snapshot_counts_what_the_accounts_own() {
     run(async {
         App::get().await;
+        // Made and committed up front: the snapshot of the transaction below
+        // would not see a tombstone a deletion test commits later, and it
+        // would insert a second one.
+        let mut setup = Database::global()
+            .start_transaction()
+            .await
+            .expect("start a transaction");
+        Account::tombstone(&mut setup)
+            .await
+            .expect("make the tombstone");
+        setup.commit().await.expect("commit the tombstone");
+
         let mut tx = Database::global()
             .start_transaction()
             .await
@@ -133,9 +145,6 @@ fn a_snapshot_counts_what_the_accounts_own() {
             )
             .await
             .expect("backdate the account");
-        Account::tombstone(&mut tx)
-            .await
-            .expect("make the tombstone");
 
         let shelf = Collection::create(
             &mut tx,
@@ -181,8 +190,17 @@ fn a_snapshot_counts_what_the_accounts_own() {
         let after = StatisticsSnapshot::take(&mut tx)
             .await
             .expect("take a snapshot");
+        let rows = (&mut tx)
+            .execute::<All>(
+                "SELECT count(*) AS total FROM account".to_string(),
+                Vec::new(),
+            )
+            .await
+            .expect("count the accounts");
+        let total: i64 = rows[0].get("total").expect("read the count");
         tx.rollback().await.expect("roll back");
 
+        assert_eq!(after.accounts, total - 1, "the tombstone is not counted");
         assert_eq!(after.accounts - before.accounts, 2);
         assert_eq!(after.new_accounts - before.new_accounts, 1);
         assert_eq!(after.collections - before.collections, 1);
