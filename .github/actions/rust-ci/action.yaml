@@ -44,7 +44,7 @@ runs:
     # toolchain (`cargo build`/`clippy`/`test`) while fmt opts into nightly via
     # `cargo +nightly`.
     - name: Install Rust nightly (rustfmt)
-      uses: dtolnay/rust-toolchain@efa25f7f19611383d5b0ccf2d1c8914531636bf9 # nightly
+      uses: dtolnay/rust-toolchain@2c76c034f9e32a5d6e2c104dc4df23a22476db04 # nightly
       with:
         toolchain: nightly
         components: rustfmt
