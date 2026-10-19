@@ -64,7 +64,7 @@ cargo build --target x86_64-unknown-linux-musl --locked --release --package mail
 cp -v /build/target/x86_64-unknown-linux-musl/release/mail-gateway /build
 EOF
 
-FROM dhi.io/alpine-base:3.23@sha256:851d99ede519a3c3550d51d2f4f3998f91dfb3754cb510755dc8742fa50c1867
+FROM dhi.io/alpine-base:3.23@sha256:b9d3f74989db66757080994a59c89268bd2e72e83b5d4784969addec65ab3530
 
 COPY --from=builder /build/mail-gateway /usr/local/bin/
 

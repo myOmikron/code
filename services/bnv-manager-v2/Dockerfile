@@ -68,7 +68,7 @@ EOF
 # has no shell user that could `mkdir` one there.
 RUN mkdir -p /build/state
 
-FROM dhi.io/alpine-base:3.23@sha256:851d99ede519a3c3550d51d2f4f3998f91dfb3754cb510755dc8742fa50c1867
+FROM dhi.io/alpine-base:3.23@sha256:b9d3f74989db66757080994a59c89268bd2e72e83b5d4784969addec65ab3530
 
 COPY --from=builder /build/bnv-manager-v2 /usr/local/bin/
 
