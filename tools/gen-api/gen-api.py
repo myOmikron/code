@@ -6,13 +6,18 @@ A frontend declares its clients in `frontend/<app>/api-clients.json`:
 
     [{ "backend": "mtg", "out": "src/api/generated" }]
 
-For each entry the backend writes its spec to `<out>/openapi.json` on the host
-(a Rust service through cargo, a Python service through uv, both with an
-`openapi <output>` subcommand), then the OpenAPI generator (typescript-fetch,
-version pinned in the root `openapitools.json`, options in
-`generator-config.json` next to this script) and the app's prettier run in a
-one-off container of the frontend dev image. A declared backend with no
-directory under `services/` is skipped with a notice.
+For each entry the backend writes its spec on the host (a Rust service through
+cargo, a Python service through uv, both with an `openapi <output>`
+subcommand), then the OpenAPI generator (typescript-fetch, version pinned in the
+root `openapitools.json`, options in `generator-config.json` next to this
+script) and the app's prettier run in a one-off container of the frontend dev
+image. All of it goes to a scratch directory first; only once it succeeded does
+it replace `<out>`, the spec landing at `<out>/openapi.json`. A declared backend
+with no directory under `services/` is skipped with a notice.
+
+A Python service runs its single `[project.scripts]` entry, without the dev
+group and with the extras listed under `[tool.gen-api] extras` in its
+`pyproject.toml`.
 
 usage: tools/gen-api/gen-api.py [frontend]
 """
@@ -21,7 +26,6 @@ from __future__ import annotations
 
 import argparse
 import io
-import json
 import os
 import shutil
 import subprocess
@@ -31,11 +35,20 @@ import tempfile
 import tomllib
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-DECLARATION = "api-clients.json"
+from declarations import (
+    DECLARATION,
+    REPO_ROOT,
+    BackendKind,
+    Client,
+    backend_kind,
+    clients,
+    declarations,
+)
+
 GENERATOR_CONFIG = Path(__file__).resolve().parent / "generator-config.json"
 IMAGE = "code-frontend-dev:gen-api"
 KEPT_FILES = {".openapi-generator-ignore"}
+CONTAINER_HOME = "/tmp"
 
 
 def main() -> None:
@@ -44,35 +57,65 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.frontend:
-        declarations = [REPO_ROOT / "frontend" / args.frontend / DECLARATION]
-        if not declarations[0].is_file():
+        selected = [REPO_ROOT / "frontend" / args.frontend / DECLARATION]
+        if not selected[0].is_file():
             sys.exit(f"frontend/{args.frontend} has no {DECLARATION}")
     else:
-        declarations = sorted(REPO_ROOT.glob(f"frontend/*/{DECLARATION}"))
+        selected = declarations()
 
     image_built = False
-    for declaration in declarations:
-        app = declaration.parent
-        for entry in json.loads(declaration.read_text()):
-            backend, out = entry["backend"], app / entry["out"]
-            service = REPO_ROOT / "services" / backend
-            if not service.is_dir():
-                print(f"{app.name}: skipping {backend}, there is no services/{backend}")
+    for declaration in selected:
+        for client in clients(declaration):
+            if not client.service.is_dir():
+                print(
+                    f"{client.app.name}: skipping {client.backend}, "
+                    f"there is no services/{client.backend}"
+                )
                 continue
+            kind = backend_kind(client.backend)
+            if kind is None:
+                sys.exit(
+                    f"services/{client.backend} is neither a Rust nor a Python service, "
+                    "gen-api has no spec"
+                )
 
-            print(f"{app.name}: generating {entry['out']} from {backend}")
+            print(f"{client.app.name}: generating {client.out} from {client.backend}")
             if not image_built:
                 build_image()
                 image_built = True
-            with tempfile.TemporaryDirectory() as scratch:
-                spec = Path(scratch) / "openapi.json"
-                write_spec(backend, service, spec)
-                clean(out)
-                shutil.move(spec, out / "openapi.json")
-            generate(app, out)
+            with tempfile.TemporaryDirectory(prefix=".gen-api-", dir=client.app) as scratch:
+                generated = Path(scratch)
+                write_spec(client, kind, generated / "openapi.json")
+                for kept in KEPT_FILES:
+                    if (client.out_dir / kept).is_file():
+                        shutil.copy2(client.out_dir / kept, generated / kept)
+                generate(client.app, generated)
+                replace(client.out_dir, generated)
 
 
-def clean(out: Path) -> None:
+def write_spec(client: Client, kind: BackendKind, spec: Path) -> None:
+    match kind:
+        case BackendKind.RUST:
+            run(
+                ["cargo", "run", "--quiet", "--package", client.backend, "--", "openapi", str(spec)]
+            )
+        case BackendKind.PYTHON:
+            pyproject = tomllib.loads((client.service / "pyproject.toml").read_text())
+            scripts = list(pyproject["project"].get("scripts", {}))
+            if len(scripts) != 1:
+                sys.exit(
+                    f"services/{client.backend} has {len(scripts)} [project.scripts] entries, "
+                    "gen-api needs exactly one to run `<script> openapi <output>`"
+                )
+            extras = pyproject.get("tool", {}).get("gen-api", {}).get("extras", [])
+            run(
+                ["uv", "run", "--directory", str(client.service), "--locked", "--no-dev"]
+                + [arg for extra in extras for arg in ("--extra", extra)]
+                + [scripts[0], "openapi", str(spec)]
+            )
+
+
+def replace(out: Path, generated: Path) -> None:
     out.mkdir(parents=True, exist_ok=True)
     for child in out.iterdir():
         if child.name in KEPT_FILES:
@@ -81,22 +124,9 @@ def clean(out: Path) -> None:
             shutil.rmtree(child)
         else:
             child.unlink()
-
-
-def write_spec(backend: str, service: Path, spec: Path) -> None:
-    if (service / "Cargo.toml").is_file():
-        run(["cargo", "run", "--quiet", "--package", backend, "--", "openapi", str(spec)])
-    elif (service / "pyproject.toml").is_file():
-        # The project's console script, e.g. `deck-lab`, carries the same
-        # `openapi <output>` subcommand as a Rust service.
-        project = tomllib.loads((service / "pyproject.toml").read_text())["project"]
-        (cli,) = project["scripts"]
-        run(
-            ["uv", "run", "--directory", str(service), "--locked", "--all-extras"]
-            + [cli, "openapi", str(spec)]
-        )
-    else:
-        sys.exit(f"services/{backend} is neither a Rust nor a Python service, gen-api has no spec")
+    for child in generated.iterdir():
+        if child.name not in KEPT_FILES or not (out / child.name).exists():
+            shutil.move(child, out / child.name)
 
 
 def build_image() -> None:
@@ -129,10 +159,12 @@ def generate(app: Path, out: Path) -> None:
                 f"{os.getuid()}:{os.getgid()}",
                 "--env",
                 "TZ=UTC",
+                "--env",
+                f"HOME={CONTAINER_HOME}",
                 "--volume",
                 f"{REPO_ROOT}:/app",
                 "--volume",
-                f"{jar_cache}:/home/node/.cache/openapi-generator-cli",
+                f"{jar_cache}:{CONTAINER_HOME}/.cache/openapi-generator-cli",
                 "--workdir",
                 container_app,
                 IMAGE,
@@ -155,7 +187,9 @@ def generate(app: Path, out: Path) -> None:
         "--config",
         container_config,
     )
-    in_container("npx", "prettier", "--ignore-path", "/dev/null", "--write", f"{container_out}/openapi.json")
+    in_container(
+        "npx", "prettier", "--ignore-path", "/dev/null", "--write", f"{container_out}/openapi.json"
+    )
 
 
 def run(command: list[str]) -> None:
