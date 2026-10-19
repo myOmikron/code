@@ -90,12 +90,11 @@ pub enum Command {
     /// the listener only after the migrations have been applied, so a webserver
     /// that answers is a database that is migrated.
     Health,
-    /// Print the frontend's openapi document and exit
+    /// Write the frontend's openapi document to a file and exit
     ///
-    /// Needs no database and no config: the routes are registered on a
-    /// loopback port picked by the kernel, the document is read off them,
-    /// and the server is torn down again. This is what generates the
-    /// frontend's api client without a running dev stack.
+    /// Needs no database, no NATS and no config, see
+    /// `service_bootstrap::openapi::write_openapi`. `just gen-api` builds the
+    /// frontend's api client from it.
     Openapi {
         /// Where to write the document
         output: PathBuf,

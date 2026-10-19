@@ -4082,6 +4082,7 @@ dependencies = [
  "rustls",
  "secrecy",
  "serde",
+ "serde_json",
  "service-bootstrap-build",
  "sha2 0.11.0",
  "thiserror 2.0.20",

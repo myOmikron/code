@@ -114,13 +114,15 @@ run-ci-image base="": build-ci-image
 dev name +args:
     docker compose -f dev/{{ name }}.yml {{ args }}
 
-gen-api name:
-    docker compose -f dev/{{ name }}.yml exec frontend frontend/{{ name }}/scripts/gen-api.sh
-
-# Same as gen-api, without a dev stack: the service writes its own spec
-gen-api-local name:
-    cargo run --package {{ name }} -- openapi "${TMPDIR:-/tmp}/{{ name }}-frontend.json"
-    cd frontend/{{ name }} && OPENAPI_SPEC_FILE="${TMPDIR:-/tmp}/{{ name }}-frontend.json" scripts/gen-api.sh
+# Regenerate a frontend's API clients from its api-clients.json, every such frontend's without a name.
+# A frontend without a declaration still goes through its dev stack's scripts/gen-api.sh.
+gen-api name="":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [ -n "{{ name }}" ] && [ ! -f "frontend/{{ name }}/api-clients.json" ]; then
+        exec docker compose -f dev/{{ name }}.yml exec frontend frontend/{{ name }}/scripts/gen-api.sh
+    fi
+    exec python3 tools/gen-api/gen-api.py {{ name }}
 
 # Regenerate the mtg frontend's client for the graph advisor API
 gen-graph-api:

@@ -45,7 +45,7 @@ just make-migrations <name>  # Generate rorm migrations for a service
 just build-service <name>    # Release build a specific service
 just docker-build <name>     # Build Docker image for a service
 just dev <name> <args...>    # Operate a dev stack, e.g. `just dev semmelei up -d --build`
-just gen-api <name>          # Regenerate a frontend's API client from the running dev stack
+just gen-api [frontend]      # Regenerate API clients (tools/gen-api, frontend/<app>/api-clients.json)
 just db <name>               # psql shell in a dev stack's database
 just prod <name> <args...>   # Operate a prod stack (on the deploy host), reads deploy/<name>/.env
 just prod-db <name>          # psql shell in a prod stack's database
