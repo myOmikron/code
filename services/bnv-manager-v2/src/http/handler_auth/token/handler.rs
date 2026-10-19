@@ -32,6 +32,7 @@ use crate::models::club::Club;
 use crate::models::oidc_client::OidcAuthenticationToken;
 use crate::models::oidc_client::OidcClient;
 use crate::models::oidc_client::OidcClientUuid;
+use crate::models::oidc_client::scope::Scope;
 use crate::modules::mailcow::Mailcow;
 use crate::modules::oidc::Oidc;
 
@@ -160,7 +161,7 @@ pub async fn get_token(
             aud: endpoint_url(USERINFO_PATH).to_string(),
             exp,
             iat,
-            scope: token.scopes.join(" "),
+            scope: Scope::format_list(&token.scopes),
         },
         &oidc.encoding_key,
     )

@@ -37,9 +37,6 @@ use crate::models::oidc_client::OidcClient;
 use crate::utils::links::Link;
 use crate::utils::links::OidcErrorCode;
 
-/// Scopes a client may request
-pub const ALLOWED_SCOPES: &[&str] = &["openid", "profile", "email", "mailcow_template"];
-
 /// Bcrypt hash verified when the username is unknown, so the response takes as long as for a known one
 const DUMMY_BCRYPT_HASH: &str = "$2b$12$YtivXzIrL86Uhnk5pXF5oOwNemHmre4qFeTGNPmFUFZlJE8kcv3a2";
 

@@ -7,6 +7,7 @@ use galvyn::rorm::prelude::ForeignModel;
 use uuid::Uuid;
 
 use crate::models::account::db::ClubAccountModel;
+use crate::models::oidc_client::scope::Scope;
 
 /// A registered relying party
 #[derive(Debug, Model)]
@@ -48,7 +49,7 @@ pub struct OidcAuthenticationTokenModel {
     /// Nonce of the authorization request
     pub nonce: Option<MaxStr<255>>,
     /// Scopes the client requested
-    pub scopes: Json<Vec<String>>,
+    pub scopes: Json<Vec<Scope>>,
     /// PKCE code challenge (RFC 7636)
     pub code_challenge: Option<MaxStr<128>>,
     /// When the account signed in, `None` only for codes issued before it was recorded

@@ -20,7 +20,6 @@ use time::Duration;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::http::handler_auth::auth::handler::ALLOWED_SCOPES;
 use crate::http::handler_auth::auth::redirect::AuthErrorCode;
 use crate::http::handler_auth::auth::redirect::ErrorRedirect;
 use crate::http::handler_auth::auth::schema::AuthQuery;
@@ -28,6 +27,7 @@ use crate::http::handler_auth::params::Params;
 use crate::http::handler_auth::params::Repeated;
 use crate::http::handler_auth::pkce;
 use crate::models::oidc_client::OidcClientUuid;
+use crate::models::oidc_client::scope::Scope;
 
 /// A validated authorization request
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -37,7 +37,7 @@ pub struct AuthRequest {
     /// The client's registered `redirect_uri` the response goes to
     pub redirect_uri: MaxStr<1024>,
     /// The requested scopes, `openid` among them
-    pub scopes: Vec<String>,
+    pub scopes: Vec<Scope>,
     /// Opaque value returned to the client unchanged
     pub state: Option<MaxStr<1024>>,
     /// Value the ID token echoes, binding it to this request
@@ -205,18 +205,16 @@ impl AuthRequestParams {
 
         let scope: MaxStr<1024> = MaxStr::new(single("scope")?.unwrap_or_default().to_string())
             .map_err(|_| fail(AuthErrorCode::InvalidScope, "scope is too long"))?;
-        let scopes: Vec<String> = scope.split(' ').map(str::to_string).collect();
-        if !scopes.iter().any(|scope| scope == "openid") {
+        let scopes = match Scope::parse_list(&scope) {
+            Ok(scopes) => scopes,
+            Err(_) if scope.is_empty() => Vec::new(),
+            Err(_) => return Err(fail(AuthErrorCode::InvalidScope, "Unknown scope requested")),
+        };
+        if !scopes.contains(&Scope::Openid) {
             return Err(fail(
                 AuthErrorCode::InvalidScope,
                 "The scope openid is required",
             ));
-        }
-        if !scopes
-            .iter()
-            .all(|scope| ALLOWED_SCOPES.contains(&scope.as_str()))
-        {
-            return Err(fail(AuthErrorCode::InvalidScope, "Unknown scope requested"));
         }
 
         let nonce = single("nonce")?

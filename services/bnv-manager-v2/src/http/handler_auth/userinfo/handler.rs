@@ -23,6 +23,7 @@ use crate::http::handler_auth::userinfo::schema::UserinfoError;
 use crate::http::handler_auth::userinfo::schema::UserinfoResponse;
 use crate::models::account::Account;
 use crate::models::account::AccountUuid;
+use crate::models::oidc_client::scope::Scope;
 use crate::modules::oidc::Oidc;
 
 /// Claims about the end-user the bearer access token grants
@@ -63,7 +64,7 @@ async fn userinfo(token: &str) -> Result<UserinfoResponse, UserinfoError> {
         return Err(UserinfoError::InvalidToken);
     };
 
-    let scopes: Vec<&str> = claims.scope.split(' ').collect();
+    let scopes = Scope::parse_list(&claims.scope).map_err(|_| UserinfoError::InvalidToken)?;
     Ok(UserinfoResponse {
         sub: claims.sub,
         scope_claims: ScopeClaims::new(&account, &scopes),

@@ -7,6 +7,7 @@ use serde::Deserialize;
 use serde::Serialize;
 
 use crate::models::account::ClubAccount;
+use crate::models::oidc_client::scope::Scope;
 
 /// Value of the `mailcow_template` claim
 ///
@@ -142,18 +143,18 @@ pub struct ScopeClaims {
 
 impl ScopeClaims {
     /// The claims about `account` the granted `scopes` allow
-    pub fn new(account: &ClubAccount, scopes: &[impl AsRef<str>]) -> Self {
-        let granted = |scope: &str| scopes.iter().any(|x| x.as_ref() == scope);
+    pub fn new(account: &ClubAccount, scopes: &[Scope]) -> Self {
+        let granted = |scope| scopes.contains(&scope);
         Self {
-            email_claim: granted("email").then(|| EmailClaim {
+            email_claim: granted(Scope::Email).then(|| EmailClaim {
                 email: account.email.to_string(),
                 email_verified: true,
             }),
-            profile_claim: granted("profile").then(|| ProfileClaim {
+            profile_claim: granted(Scope::Profile).then(|| ProfileClaim {
                 preferred_username: account.username.to_string(),
                 name: account.display_name.to_string(),
             }),
-            mailcow_template: granted("mailcow_template").then(|| MAILCOW_TEMPLATE.to_string()),
+            mailcow_template: granted(Scope::MailcowTemplate).then(|| MAILCOW_TEMPLATE.to_string()),
         }
     }
 }

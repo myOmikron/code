@@ -3,6 +3,7 @@
 use galvyn::core::stuff::api_error::ApiResult;
 use galvyn::core::stuff::api_json::ApiJson;
 use galvyn::get;
+use strum::IntoEnumIterator;
 use tracing::instrument;
 
 use crate::http::handler_auth::AUTHORIZATION_PATH;
@@ -10,11 +11,11 @@ use crate::http::handler_auth::DISCOVERY_PATH;
 use crate::http::handler_auth::JWKS_PATH;
 use crate::http::handler_auth::TOKEN_PATH;
 use crate::http::handler_auth::USERINFO_PATH;
-use crate::http::handler_auth::auth::handler::ALLOWED_SCOPES;
 use crate::http::handler_auth::discovery::schema::DiscoveryResponse;
 use crate::http::handler_auth::endpoint_url;
 use crate::http::handler_auth::issuer;
 use crate::http::handler_auth::pkce;
+use crate::models::oidc_client::scope::Scope;
 
 /// Claims the ID token and the userinfo response may contain
 pub const CLAIMS_SUPPORTED: &[&str] = &[
@@ -43,7 +44,7 @@ pub async fn discovery() -> ApiResult<ApiJson<DiscoveryResponse>> {
         token_endpoint: endpoint_url(TOKEN_PATH),
         userinfo_endpoint: endpoint_url(USERINFO_PATH),
         jwks_uri: endpoint_url(JWKS_PATH),
-        scopes_supported: ALLOWED_SCOPES.iter().map(|x| x.to_string()).collect(),
+        scopes_supported: Scope::iter().map(|scope| scope.to_string()).collect(),
         response_types_supported: vec!["code".to_string()],
         response_modes_supported: vec!["query".to_string()],
         grant_types_supported: vec!["authorization_code".to_string()],

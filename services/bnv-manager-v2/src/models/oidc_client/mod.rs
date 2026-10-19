@@ -28,8 +28,10 @@ use crate::models::account::AccountUuid;
 use crate::models::account::ClubAccount;
 use crate::models::oidc_client::db::OidcAuthenticationTokenModel;
 use crate::models::oidc_client::db::OidcClientModel;
+use crate::models::oidc_client::scope::Scope;
 
 pub(in crate::models) mod db;
+pub mod scope;
 
 /// How long an authorization code can be redeemed
 pub const AUTHORIZATION_CODE_LIFETIME: Duration = Duration::minutes(10);
@@ -157,7 +159,7 @@ pub struct OidcAuthenticationToken {
     /// Nonce of the authorization request
     pub nonce: Option<MaxStr<255>>,
     /// Scopes the client requested
-    pub scopes: Vec<String>,
+    pub scopes: Vec<Scope>,
     /// PKCE code challenge (RFC 7636)
     pub code_challenge: Option<MaxStr<128>>,
     /// When the account signed in
@@ -296,7 +298,7 @@ pub struct CreateOidcAuthenticationToken {
     /// Nonce of the authorization request
     pub nonce: Option<MaxStr<255>>,
     /// Scopes the client requested
-    pub scopes: Vec<String>,
+    pub scopes: Vec<Scope>,
     /// PKCE code challenge (RFC 7636)
     pub code_challenge: Option<MaxStr<128>>,
     /// When the account signed in
