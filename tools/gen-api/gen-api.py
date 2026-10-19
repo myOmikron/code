@@ -25,12 +25,10 @@ usage: tools/gen-api/gen-api.py [frontend]
 from __future__ import annotations
 
 import argparse
-import io
 import os
 import shutil
 import subprocess
 import sys
-import tarfile
 import tempfile
 import tomllib
 from pathlib import Path
@@ -63,7 +61,7 @@ def main() -> None:
     else:
         selected = declarations()
 
-    image_built = False
+    work = []
     for declaration in selected:
         for client in clients(declaration):
             if not client.service.is_dir():
@@ -78,19 +76,29 @@ def main() -> None:
                     f"services/{client.backend} is neither a Rust nor a Python service, "
                     "gen-api has no spec"
                 )
+            work.append((client, kind))
+    if not work:
+        return
 
-            print(f"{client.app.name}: generating {client.out} from {client.backend}")
-            if not image_built:
-                build_image()
-                image_built = True
-            with tempfile.TemporaryDirectory(prefix=".gen-api-", dir=client.app) as scratch:
-                generated = Path(scratch)
-                write_spec(client, kind, generated / "openapi.json")
-                for kept in KEPT_FILES:
-                    if (client.out_dir / kept).is_file():
-                        shutil.copy2(client.out_dir / kept, generated / kept)
-                generate(client.app, generated)
-                replace(client.out_dir, generated)
+    tools = {"docker"} | {TOOLS[kind] for _, kind in work}
+    missing = sorted(tool for tool in tools if shutil.which(tool) is None)
+    if missing:
+        sys.exit(f"gen-api needs {', '.join(missing)} on the PATH")
+
+    build_image()
+    for client, kind in work:
+        print(f"{client.app.name}: generating {client.out} from {client.backend}")
+        with tempfile.TemporaryDirectory(prefix=".gen-api-", dir=client.app) as scratch:
+            generated = Path(scratch)
+            write_spec(client, kind, generated / "openapi.json")
+            for kept in KEPT_FILES:
+                if (client.out_dir / kept).is_file():
+                    shutil.copy2(client.out_dir / kept, generated / kept)
+            generate(client.app, generated)
+            replace(client.out_dir, generated)
+
+
+TOOLS = {BackendKind.RUST: "cargo", BackendKind.PYTHON: "uv"}
 
 
 def write_spec(client: Client, kind: BackendKind, spec: Path) -> None:
@@ -130,16 +138,14 @@ def replace(out: Path, generated: Path) -> None:
 
 
 def build_image() -> None:
-    context = io.BytesIO()
-    with tarfile.open(fileobj=context, mode="w") as tar:
-        tar.add(REPO_ROOT / "dev/common/frontend-dev.Dockerfile", arcname="Dockerfile")
-        tar.add(REPO_ROOT / "package.json", arcname="package.json")
-    subprocess.run(
-        ["docker", "build", "--quiet", "--tag", IMAGE, "-"],
-        input=context.getvalue(),
-        stdout=subprocess.DEVNULL,
-        check=True,
-    )
+    with tempfile.TemporaryDirectory(prefix="gen-api-image-") as context:
+        shutil.copy(REPO_ROOT / "dev/common/frontend-dev.Dockerfile", Path(context) / "Dockerfile")
+        shutil.copy(REPO_ROOT / "package.json", Path(context) / "package.json")
+        subprocess.run(
+            ["docker", "build", "--quiet", "--tag", IMAGE, context],
+            stdout=subprocess.DEVNULL,
+            check=True,
+        )
 
 
 def generate(app: Path, out: Path) -> None:
