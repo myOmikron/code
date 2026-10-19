@@ -50,3 +50,41 @@ pub async fn write_openapi(
     server.await??;
     Ok(())
 }
+
+/// The routes to nest under `/docs`: `openapi.json` with every route and
+/// `frontend.json` with the routes of the openapi page `$page`
+///
+/// ```ignore
+/// GalvynRouter::new().nest("/docs", service_bootstrap::openapi_docs_routes!(FrontendApi))
+/// ```
+#[macro_export]
+macro_rules! openapi_docs_routes {
+    ($page:expr) => {{
+        /// The general openapi page
+        #[::galvyn::get("/openapi.json")]
+        #[::tracing::instrument]
+        async fn get_openapi()
+        -> ::galvyn::core::SchemalessJson<&'static ::galvyn::openapi::OpenAPI> {
+            ::galvyn::core::SchemalessJson(::galvyn::openapi::get_openapi())
+        }
+
+        /// Frontend openapi
+        #[::galvyn::get("/frontend.json")]
+        #[::tracing::instrument]
+        async fn get_frontend_openapi()
+        -> ::galvyn::core::SchemalessJson<&'static ::galvyn::openapi::OpenAPI> {
+            static CACHE: ::std::sync::OnceLock<::galvyn::openapi::OpenAPI> =
+                ::std::sync::OnceLock::new();
+            ::galvyn::core::SchemalessJson(
+                CACHE.get_or_init(|| ::galvyn::openapi::get_openapi_for_page($page)),
+            )
+        }
+
+        ::galvyn::openapi::OpenapiRouterExt::openapi_tag(
+            ::galvyn::core::GalvynRouter::new(),
+            "Openapi",
+        )
+        .handler(get_openapi)
+        .handler(get_frontend_openapi)
+    }};
+}
