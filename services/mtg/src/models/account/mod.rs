@@ -342,25 +342,28 @@ impl Account {
         Ok(identity)
     }
 
-    /// Update an account's username and email
+    /// Rename an account
     ///
-    /// Returns `false` if the account does not exist.
-    /// Fails with a unique violation if the username or the email is already
-    /// taken.
-    #[instrument(name = "Account::update", skip(tx))]
-    pub async fn update(
+    /// Returns `false` if another account goes by `username` already, case
+    /// ignored; the account's own username in another spelling is free to it.
+    /// The old username is free for anybody once the transaction commits.
+    #[instrument(name = "Account::rename", skip(tx))]
+    pub async fn rename(
         tx: &mut Transaction,
         uuid: AccountUuid,
         username: Username,
-        email: MaxStr<255>,
     ) -> Result<bool, rorm::Error> {
-        let affected = rorm::update(tx, AccountModel)
+        if let Some(holder) = Self::get_by_username(&mut *tx, &username).await?
+            && holder.uuid != uuid
+        {
+            return Ok(false);
+        }
+        rorm::update(&mut *tx, AccountModel)
             .set(AccountModel.username_normalized, username.normalized())
             .set(AccountModel.username, username.0)
-            .set(AccountModel.email, email)
             .condition(AccountModel.uuid.equals(uuid.0))
             .await?;
-        Ok(affected > 0)
+        Ok(true)
     }
 
     /// Change an account's Role

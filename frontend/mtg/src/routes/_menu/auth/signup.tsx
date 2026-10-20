@@ -27,6 +27,7 @@ export const Route = createFileRoute("/_menu/auth/signup")({
 
 function RouteComponent() {
     const [t, i18n] = useTranslation("signup");
+    const [tg] = useTranslation();
     const [sentFor, setSentFor] = useState<string | null>(null);
 
     const form = useForm({
@@ -44,9 +45,9 @@ function RouteComponent() {
                     return {
                         fields: {
                             username: {
-                                length: t("error.username-length"),
-                                charset: t("error.username-charset"),
-                                start: t("error.username-start"),
+                                length: tg("error.username-length"),
+                                charset: tg("error.username-charset"),
+                                start: tg("error.username-start"),
                             }[usernameError],
                         },
                         form: undefined,
@@ -60,7 +61,7 @@ function RouteComponent() {
                 if (isFormError(response)) {
                     return handleFormError(response.error, {
                         username_taken: (errors) => {
-                            errors.fields.username = t("error.username-taken");
+                            errors.fields.username = tg("error.username-taken");
                         },
                         email_malformed: (errors) => {
                             errors.fields.email = t("error.email-malformed");
@@ -110,8 +111,8 @@ function RouteComponent() {
                         <form.Field name={"username"}>
                             {(fieldApi) => (
                                 <Field>
-                                    <RequiredLabel>{t("label.username")}</RequiredLabel>
-                                    <Description>{t("description.username")}</Description>
+                                    <RequiredLabel>{tg("label.username")}</RequiredLabel>
+                                    <Description>{tg("description.username")}</Description>
                                     <Input
                                         autoFocus={true}
                                         required={true}

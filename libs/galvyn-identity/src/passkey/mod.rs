@@ -10,6 +10,7 @@ pub use self::error::FinishEnrollmentError;
 pub use self::error::FinishLoginError;
 pub use self::error::RemovalRefused;
 pub use self::error::RemovePasskeyError;
+pub use self::management::PasskeyUser;
 pub use self::models::Passkey;
 pub use self::models::PasskeyUuid;
 

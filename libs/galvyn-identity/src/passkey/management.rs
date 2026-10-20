@@ -5,6 +5,7 @@ use galvyn::rorm;
 use galvyn::rorm::Database;
 use galvyn::rorm::db::executor::Executor;
 use galvyn::rorm::fields::types::MaxStr;
+use webauthn_rs::prelude::Base64UrlSafeData;
 
 use super::error::RemovalRefused;
 use super::error::RemovePasskeyError;
@@ -15,7 +16,33 @@ use super::models::PasskeyUuid;
 use crate::IdentityModule;
 use crate::models::IdentityUuid;
 
+/// What an Identity's Passkeys hold about it, for the WebAuthn Signal API
+///
+/// Together with the name the service gave the authenticators, this is what
+/// `PublicKeyCredential.signalCurrentUserDetails` takes, so the authenticators
+/// show a changed name.
+#[derive(Debug, Clone)]
+pub struct PasskeyUser {
+    /// The relying party id, the host of the public origin
+    pub rp_id: String,
+    /// The user handle in base64url, the Identity's uuid
+    pub user_id: String,
+}
+
 impl IdentityModule {
+    /// What `identity`'s Passkeys hold about it, see [`PasskeyUser`]
+    pub fn passkey_user(&self, identity: IdentityUuid) -> PasskeyUser {
+        PasskeyUser {
+            rp_id: self
+                .settings
+                .public_origin
+                .host_str()
+                .unwrap_or_else(|| unreachable!("the public origin was checked for a host"))
+                .to_string(),
+            user_id: user_handle(identity),
+        }
+    }
+
     /// List an Identity's Passkeys, oldest Enrollment first
     pub async fn list_passkeys(
         &self,
@@ -125,6 +152,19 @@ impl IdentityModule {
     }
 }
 
+/// The base64url user handle of `identity`'s Passkeys
+///
+/// The Enrollment hands webauthn-rs the Identity's uuid as the user handle,
+/// which takes its 16 bytes.
+fn user_handle(identity: IdentityUuid) -> String {
+    match serde_json::to_value(Base64UrlSafeData::from(
+        identity.into_inner().as_bytes().to_vec(),
+    )) {
+        Ok(serde_json::Value::String(handle)) => handle,
+        _ => unreachable!("webauthn-rs serializes base64url data as a string"),
+    }
+}
+
 /// Why `passkey` must not be removed from an Identity owning `owned`, if at all
 fn removal_refused(owned: &[PasskeyUuid], passkey: PasskeyUuid) -> Option<RemovalRefused> {
     let last_passkey = owned.len() <= 1;
@@ -142,6 +182,13 @@ mod tests {
 
     fn passkey(n: u128) -> PasskeyUuid {
         PasskeyUuid::new(Uuid::from_u128(n))
+    }
+
+    #[test]
+    fn the_user_handle_is_the_identity_uuid_in_base64url() {
+        let identity =
+            IdentityUuid::new(Uuid::from_u128(0xfbff_0000_0000_0000_0000_0000_0000_0001));
+        assert_eq!(user_handle(identity), "-_8AAAAAAAAAAAAAAAAAAQ");
     }
 
     #[test]

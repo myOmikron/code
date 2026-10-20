@@ -102,6 +102,8 @@ export const Api = {
                 handleError(defaultApi.renamePasskey({ uuid, RenamePasskeyRequest: { label } })),
             delete: async (uuid: string) => handleError(defaultApi.deletePasskey({ uuid })),
         },
+        rename: async (username: string) =>
+            handleError(defaultApi.renameAccount({ RenameAccountRequest: { username } })),
         // Takes the account and everything private to it with it. Bypasses
         // `handleError`, since the typed username not matching is a message
         // next to the field rather than the error screen.

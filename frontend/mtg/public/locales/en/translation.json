@@ -41,10 +41,15 @@
         "install-ios-share": "Tap “Share” in the bar below.",
         "share-link-none": "This is not shared through a link yet. With one, anybody holding it can see the contents.",
         "share-link-replaces-public": "It is public at the moment. Creating a link switches it to link only, so it no longer stands in your public profile.",
-        "share-link-rotate": "A new link stops the old one right away. Withdrawing it sets the collection back to private."
+        "share-link-rotate": "A new link stops the old one right away. Withdrawing it sets the collection back to private.",
+        "username": "Shown publicly. 3 to 32 characters; letters, digits, underscore, hyphen and dot are allowed, and the first character has to be a letter or a digit."
     },
     "error": {
-        "index-not-ready": "The reference index is not ready yet."
+        "index-not-ready": "The reference index is not ready yet.",
+        "username-charset": "Only letters, digits, underscore, hyphen and dot are allowed.",
+        "username-length": "The username has to be 3 to 32 characters long.",
+        "username-start": "The first character has to be a letter or a digit.",
+        "username-taken": "That username is already taken. Pick a different one."
     },
     "heading": {
         "delete-session": "Delete staging area",
@@ -80,6 +85,7 @@
         "share-link": "Link",
         "signed": "Signed",
         "staged-cards": "Scanned cards",
+        "username": "Username",
         "version": "Version {{version}}",
         "version-warning": "Early version {{version}} – bugs and data loss are still possible."
     },
