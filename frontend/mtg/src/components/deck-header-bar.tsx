@@ -38,6 +38,10 @@ import type { CardFocus } from "src/utils/card-focus";
 import type { DeckLegality, DeckViolation } from "src/utils/deck-rules";
 import { isBracketViolation } from "src/utils/deck-rules";
 
+/** How the undo and redo buttons look */
+const STEP_BUTTON =
+    "shrink-0 rounded-(--radius-control) p-1.5 text-zinc-500 transition hover:bg-lime-400/15 hover:text-lime-700 disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-zinc-500 dark:text-zinc-400 dark:hover:bg-lime-400/15 dark:hover:text-lime-300 dark:disabled:hover:text-zinc-400 pointer-coarse:p-2.5";
+
 /**
  * The properties for {@link DeckHeaderBar}
  */
@@ -358,9 +362,7 @@ export function DeckHeaderBar({
                         disabled={!canUndo}
                         aria-label={tg("button.undo")}
                         title={tg("button.undo")}
-                        className={
-                            "shrink-0 rounded-(--radius-control) p-1.5 text-zinc-500 transition hover:bg-lime-400/15 hover:text-lime-700 disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-zinc-500 dark:text-zinc-400 dark:hover:bg-lime-400/15 dark:hover:text-lime-300 dark:disabled:hover:text-zinc-400 pointer-coarse:p-2.5"
-                        }
+                        className={STEP_BUTTON}
                     >
                         <ArrowUturnLeftIcon className={"size-5"} />
                     </button>
@@ -370,9 +372,7 @@ export function DeckHeaderBar({
                         disabled={!canRedo}
                         aria-label={tg("button.redo")}
                         title={tg("button.redo")}
-                        className={
-                            "shrink-0 rounded-(--radius-control) p-1.5 text-zinc-500 transition hover:bg-lime-400/15 hover:text-lime-700 disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-zinc-500 dark:text-zinc-400 dark:hover:bg-lime-400/15 dark:hover:text-lime-300 dark:disabled:hover:text-zinc-400 pointer-coarse:p-2.5"
-                        }
+                        className={STEP_BUTTON}
                     >
                         <ArrowUturnRightIcon className={"size-5"} />
                     </button>
