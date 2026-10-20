@@ -1605,3 +1605,28 @@ fn tags_folder_visibility_sharing_advisor_settings_and_the_deck_collection_recor
         assert_eq!(fixture.kinds().await, before);
     });
 }
+
+#[test]
+fn a_new_decks_first_deck_change_holds_its_settings() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+
+        let mut fields = fixture.latest_fields().await;
+        fields.sort_by(|a, b| a.0.cmp(&b.0));
+
+        assert_eq!(
+            fields,
+            vec![
+                field("AllowBanned", json!(false), json!(false)),
+                field("AllowDuplicates", json!(false), json!(false)),
+                field("AllowExtraCommanders", json!(false), json!(false)),
+                field("Bracket", Value::Null, Value::Null),
+                field("Colors", Value::Null, Value::Null),
+                field("DeckSize", Value::Null, Value::Null),
+                field("Description", Value::Null, Value::Null),
+                field("Format", json!("modern"), json!("modern")),
+                field("Name", json!("History"), json!("History")),
+            ]
+        );
+    });
+}

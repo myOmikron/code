@@ -11,6 +11,7 @@ use uuid::Uuid;
 use crate::models::account::Role;
 use crate::models::deck::history::DeckChangeKind;
 use crate::models::deck::history::DeckHistory;
+use crate::models::deck::history::FieldDifference;
 use crate::tests::harness::TestAccount;
 use crate::tests::harness::TestClient;
 use crate::tests::harness::api;
@@ -149,6 +150,14 @@ fn a_public_deck_reaches_the_tombstone_with_only_its_current_state_as_deck_histo
         let mut expected = vec![(kept, 0, 1), (raised, 0, 3)];
         expected.sort();
         assert_eq!(entries, expected);
+        assert!(
+            history.changes[0].fields.iter().any(|field| matches!(
+                field,
+                FieldDifference::Format { before, after }
+                    if &**before == "commander" && &**after == "commander"
+            )),
+            "{history:?}"
+        );
     });
 }
 
