@@ -10747,6 +10747,15 @@
                 "description": "Request to create a deck",
                 "type": "object",
                 "properties": {
+                    "colors": {
+                        "nullable": true,
+                        "description": "The colours as the letters `WUBRG`, `null` or left out to follow the commander\n\nLets a clone take over its original's colours in its created Deck change instead of a Deck change of its own.",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_8"
+                            }
+                        ]
+                    },
                     "description": {
                         "nullable": true,
                         "description": "Optional description",

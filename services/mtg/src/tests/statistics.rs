@@ -82,6 +82,7 @@ async fn create_deck(tx: &mut Transaction, owner: AccountUuid, visibility: Visib
             description: None,
             format: text("commander"),
             visibility,
+            allowed_color_identity: None,
         },
     )
     .await
