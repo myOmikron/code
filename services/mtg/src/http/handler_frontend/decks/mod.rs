@@ -5,6 +5,7 @@ use galvyn::core::GalvynRouter;
 use crate::http::middleware::account_required::AccountRequiredLayer;
 
 pub mod handler;
+pub mod history;
 pub mod schema;
 
 /// Initialize the routes for decks
@@ -48,6 +49,7 @@ pub fn initialize_routes() -> GalvynRouter {
                 .handler(handler::delete_deck_tag)
                 .handler(handler::assign_deck_card_tag)
                 .handler(handler::unassign_deck_card_tag)
+                .merge(history::initialize_routes())
                 .wrap(AccountRequiredLayer),
         )
 }

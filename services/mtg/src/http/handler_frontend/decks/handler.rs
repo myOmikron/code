@@ -67,6 +67,9 @@ use crate::models::deck::DeckUuid;
 use crate::models::deck::DetachOutcome;
 use crate::models::deck::advisor::AdvisorSettings;
 use crate::models::deck::drift::DeckDrift;
+use crate::models::deck::history::DeckChangeKind;
+use crate::models::deck::history::DeckDifference;
+use crate::models::deck::history::DeckHistory;
 use crate::models::deck::listing::DeckSummary;
 use crate::models::deck::listing::ListedSlot;
 use crate::models::deck::sourcing::DeckSourcing;
@@ -547,6 +550,7 @@ pub async fn create_deck(
         },
     )
     .await?;
+    DeckHistory::record_created(&mut tx, &deck).await?;
 
     tx.commit().await?;
 
@@ -845,7 +849,7 @@ pub async fn add_deck_card(
 ) -> ApiResult<ApiJson<DeckCardResponse>> {
     let mut tx = Database::global().start_transaction().await?;
 
-    granted(Deck::may_administer(&mut tx, deck_uuid, account.uuid).await?)?;
+    let edit = granted(DeckHistory::lock(&mut tx, deck_uuid, account.uuid).await?)?;
 
     if quantity < 1 {
         return Err(ApiError::bad_request("A slot holds at least one copy"));
@@ -863,6 +867,10 @@ pub async fn add_deck_card(
         },
     )
     .await?;
+    let mut difference = DeckDifference::default();
+    difference.entry(card.key(), card.quantity - quantity, card.quantity);
+    edit.record(&mut tx, DeckChangeKind::Edit, difference)
+        .await?;
 
     tx.commit().await?;
 
@@ -1059,13 +1067,17 @@ pub async fn update_deck_card(
 ) -> ApiResult<ApiJson<()>> {
     let mut tx = Database::global().start_transaction().await?;
 
-    granted(Deck::may_administer(&mut tx, deck_uuid, account.uuid).await?)?;
+    let edit = granted(DeckHistory::lock(&mut tx, deck_uuid, account.uuid).await?)?;
 
     if request.quantity.is_some_and(|quantity| quantity < 0) {
         return Err(ApiError::bad_request("A quantity is never negative"));
     }
 
-    granted(
+    let entry = DeckCard::get(&mut tx, deck_uuid, card_uuid)
+        .await?
+        .ok_or_else(denied)?;
+    let quantity = request.quantity.unwrap_or(entry.quantity);
+    let updated = granted(
         DeckCard::update(
             &mut tx,
             deck_uuid,
@@ -1081,6 +1093,20 @@ pub async fn update_deck_card(
         .await?,
     )?;
 
+    let mut difference = DeckDifference::default();
+    match updated {
+        None => difference.entry(entry.key(), entry.quantity, 0),
+        Some(updated) if updated.key() == entry.key() => {
+            difference.entry(entry.key(), entry.quantity, updated.quantity)
+        }
+        Some(updated) => {
+            difference.entry(entry.key(), entry.quantity, 0);
+            difference.entry(updated.key(), updated.quantity - quantity, updated.quantity);
+        }
+    }
+    edit.record(&mut tx, DeckChangeKind::Edit, difference)
+        .await?;
+
     tx.commit().await?;
 
     Ok(ApiJson(()))
@@ -1094,8 +1120,16 @@ pub async fn delete_deck_card(
 ) -> ApiResult<ApiJson<()>> {
     let mut tx = Database::global().start_transaction().await?;
 
-    granted(Deck::may_administer(&mut tx, deck_uuid, account.uuid).await?)?;
+    let edit = granted(DeckHistory::lock(&mut tx, deck_uuid, account.uuid).await?)?;
+    let entry = DeckCard::get(&mut tx, deck_uuid, card_uuid)
+        .await?
+        .ok_or_else(denied)?;
     granted(DeckCard::delete(&mut tx, deck_uuid, card_uuid).await?)?;
+
+    let mut difference = DeckDifference::default();
+    difference.entry(entry.key(), entry.quantity, 0);
+    edit.record(&mut tx, DeckChangeKind::Edit, difference)
+        .await?;
 
     tx.commit().await?;
 
@@ -1217,7 +1251,7 @@ pub async fn unassign_deck_card_tag(
 }
 
 /// Turn a denied access into the one answer every refused request gets
-fn granted<T>(access: DeckAccess<T>) -> ApiResult<T> {
+pub(in crate::http::handler_frontend::decks) fn granted<T>(access: DeckAccess<T>) -> ApiResult<T> {
     access.granted().ok_or_else(denied)
 }
 

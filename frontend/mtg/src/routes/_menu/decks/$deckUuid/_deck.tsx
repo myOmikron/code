@@ -366,6 +366,9 @@ function RouteComponent() {
                             <Tab href={"/decks/$deckUuid/goldfish"} params={{ deckUuid }}>
                                 {t("heading.goldfish")}
                             </Tab>
+                            <Tab href={"/decks/$deckUuid/history"} params={{ deckUuid }}>
+                                {t("heading.history")}
+                            </Tab>
                             {/* Opinions live behind their own tab, and only where
                                 the graph has any: the advisor reads Commander. */}
                             {deck.format === "commander" && (
