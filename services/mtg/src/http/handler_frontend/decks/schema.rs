@@ -758,6 +758,21 @@ pub struct UpdateDeckCardRequest {
     pub proxy: Option<bool>,
 }
 
+/// Copies of a Deck entry to give up for another card in the same zone
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct SwapDeckCardRequest {
+    /// How many copies leave the entry and how many of the other card come in
+    pub quantity: i32,
+    /// Scryfall's id of the printing coming in
+    pub printing: Uuid,
+    /// Whether the incoming copies are the foil ones, `null` for the ordinary ones
+    #[serde(default)]
+    pub foil: Option<bool>,
+    /// Whether the incoming copies are stand-ins rather than the real cards, `null` for the ordinary ones
+    #[serde(default)]
+    pub proxy: Option<bool>,
+}
+
 /// A decklist to write into a deck
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct ImportDeckCardsRequest {

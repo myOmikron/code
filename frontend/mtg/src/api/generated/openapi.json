@@ -4737,6 +4737,84 @@
                 }
             }
         },
+        "/api/frontend/v1/decks/{deck}/cards/{card}/swap": {
+            "post": {
+                "summary": "Give up copies of a Deck entry for another card in the same zone",
+                "description": "Give up copies of a Deck entry for another card in the same zone\n\nBoth halves happen in one transaction: the entry loses the copies, which\nremoves it when none are left, and the incoming card joins an alike Deck\nentry or opens its own. A swap that cannot happen as a whole changes\nnothing. The answer is the Deck entry the incoming card sits in.",
+                "operationId": "swap_deck_card",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "deck",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/DeckUuid"
+                        },
+                        "style": "simple"
+                    },
+                    {
+                        "in": "path",
+                        "name": "card",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/DeckCardUuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SwapDeckCardRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DeckCardResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/frontend/v1/decks/{deck}/tags": {
             "post": {
                 "summary": "Create a tag on a deck",
@@ -15096,6 +15174,36 @@
                 "required": [
                     "cards",
                     "key"
+                ]
+            },
+            "SwapDeckCardRequest": {
+                "description": "Copies of a Deck entry to give up for another card in the same zone",
+                "type": "object",
+                "properties": {
+                    "foil": {
+                        "nullable": true,
+                        "description": "Whether the incoming copies are the foil ones, `null` for the ordinary ones",
+                        "type": "boolean"
+                    },
+                    "printing": {
+                        "description": "Scryfall's id of the printing coming in",
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "proxy": {
+                        "nullable": true,
+                        "description": "Whether the incoming copies are stand-ins rather than the real cards, `null` for the ordinary ones",
+                        "type": "boolean"
+                    },
+                    "quantity": {
+                        "description": "How many copies leave the entry and how many of the other card come in",
+                        "type": "integer",
+                        "format": "int32"
+                    }
+                },
+                "required": [
+                    "printing",
+                    "quantity"
                 ]
             },
             "SyncRunOutcome": {

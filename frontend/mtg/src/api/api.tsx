@@ -38,6 +38,7 @@ import {
     SplitCollectionEntryRequest,
     UpdateCollectionEntryRequest,
     UpdateCollectionRequest,
+    SwapDeckCardRequest,
     UpdateDeckCardRequest,
     UpdateDeckRequest,
     UpdateDeckTagRequest,
@@ -297,6 +298,17 @@ export const Api = {
             update: async (deck: UUID, card: UUID, req: UpdateDeckCardRequest) =>
                 handleError(defaultApi.updateDeckCard({ deck, card, UpdateDeckCardRequest: req })),
             delete: async (deck: UUID, card: UUID) => handleError(defaultApi.deleteDeckCard({ deck, card })),
+            /**
+             * Swaps copies of one Deck entry for another card in its zone, whole or not at all
+             *
+             * @param deck the deck
+             * @param card the Deck entry giving up copies
+             * @param req how many copies and the card coming in
+             *
+             * @returns the Deck entry the incoming card sits in
+             */
+            swap: async (deck: UUID, card: UUID, req: SwapDeckCardRequest) =>
+                handleError(defaultApi.swapDeckCard({ deck, card, SwapDeckCardRequest: req })),
             // A pasted decklist in one transaction: it either lands whole or
             // not at all.
             import: async (deck: UUID, req: ImportDeckCardsRequest) =>

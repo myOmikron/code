@@ -44,6 +44,7 @@ pub fn initialize_routes() -> GalvynRouter {
                 .handler(handler::read_deck_url)
                 .handler(handler::update_deck_card)
                 .handler(handler::delete_deck_card)
+                .handler(handler::swap_deck_card)
                 .handler(handler::create_deck_tag)
                 .handler(handler::update_deck_tag)
                 .handler(handler::delete_deck_tag)

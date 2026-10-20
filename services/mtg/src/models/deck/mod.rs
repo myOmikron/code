@@ -1060,6 +1060,28 @@ impl DeckCard {
         Ok(access(affected, ()))
     }
 
+    /// Give up copies of a Deck entry for another card
+    ///
+    /// `coming.quantity` copies leave `going`, which is removed when none are
+    /// left, and as many copies of `coming` are added the way
+    /// [`DeckCard::add`] adds them. The caller checks that `going` holds
+    /// enough copies; run both halves in one transaction to keep the swap whole.
+    /// Returns the Deck entry `coming` sits in.
+    #[instrument(name = "DeckCard::swap", skip(tx))]
+    pub async fn swap(
+        tx: &mut Transaction,
+        going: DeckCard,
+        coming: DeckCardInsert,
+    ) -> Result<DeckCard, rorm::Error> {
+        let left = going.quantity - coming.quantity;
+        if left < 1 {
+            Self::delete(&mut *tx, going.deck, going.uuid).await?;
+        } else {
+            Self::set_quantity(&mut *tx, going.uuid, left).await?;
+        }
+        Self::add(&mut *tx, going.deck, coming).await
+    }
+
     /// Replace a deck's card list wholesale
     ///
     /// For importing a decklist, not for editing: every Deck entry is deleted

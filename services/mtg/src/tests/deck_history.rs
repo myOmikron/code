@@ -13,6 +13,7 @@ use crate::models::deck::DeckUuid;
 use crate::models::deck::history::DeckChangeKind;
 use crate::models::deck::history::DeckHistory;
 use crate::tests::harness::TestClient;
+use crate::tests::harness::TestResponse;
 use crate::tests::harness::api;
 use crate::tests::harness::create_account;
 use crate::tests::harness::migrate;
@@ -166,6 +167,17 @@ impl Fixture {
             )
             .await
             .ok_json();
+    }
+
+    /// Swaps copies of a Deck entry for another card
+    async fn swap(&mut self, entry: &str, swap: Value) -> TestResponse {
+        self.owner
+            .json(
+                Method::POST,
+                &api(&format!("decks/{}/cards/{entry}/swap", self.deck)),
+                &swap,
+            )
+            .await
     }
 
     /// The deck's Deck entries as the card list shows them
@@ -767,5 +779,152 @@ fn deleting_a_deck_deletes_its_deck_history() {
             .get(&api(&format!("decks/{}/history", fixture.deck)))
             .await;
         assert_ne!(response.status, StatusCode::OK, "{response:?}");
+    });
+}
+
+/// The deck's Deck entries as (printing, zone, quantity), sorted
+fn lines(entries: &[Value]) -> Vec<(String, String, i64)> {
+    let mut lines: Vec<_> = entries
+        .iter()
+        .map(|entry| {
+            (
+                entry["printing"].as_str().expect("printing").to_string(),
+                entry["zone"].as_str().expect("zone").to_string(),
+                entry["quantity"].as_i64().expect("quantity"),
+            )
+        })
+        .collect();
+    lines.sort();
+    lines
+}
+
+#[test]
+fn swapping_replaces_copies_of_an_entry_by_another_card_in_its_zone() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        let going = Uuid::new_v4();
+        let coming = Uuid::new_v4();
+        let entry = fixture
+            .add(json!({ "printing": going, "quantity": 3, "zone": "Side" }))
+            .await;
+
+        fixture
+            .swap(&entry, json!({ "quantity": 1, "printing": coming }))
+            .await
+            .ok_json();
+
+        let mut expected = vec![
+            (going.to_string(), "Side".to_string(), 2),
+            (coming.to_string(), "Side".to_string(), 1),
+        ];
+        expected.sort();
+        assert_eq!(lines(&fixture.entries().await), expected);
+    });
+}
+
+#[test]
+fn swapping_every_copy_removes_the_entry() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        let coming = Uuid::new_v4();
+        let entry = fixture
+            .add(json!({ "printing": Uuid::new_v4(), "quantity": 2, "zone": "Main" }))
+            .await;
+
+        fixture
+            .swap(&entry, json!({ "quantity": 2, "printing": coming }))
+            .await
+            .ok_json();
+
+        assert_eq!(
+            lines(&fixture.entries().await),
+            vec![(coming.to_string(), "Main".to_string(), 2)]
+        );
+    });
+}
+
+#[test]
+fn a_swapped_in_card_joins_its_alike_entry() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        let going = Uuid::new_v4();
+        let coming = Uuid::new_v4();
+        let entry = fixture
+            .add(json!({ "printing": going, "quantity": 1, "zone": "Main" }))
+            .await;
+        let alike = fixture
+            .add(json!({ "printing": coming, "quantity": 2, "zone": "Main", "foil": true }))
+            .await;
+        let ramp = fixture.tag(&alike, "Ramp").await;
+
+        let joined = fixture
+            .swap(
+                &entry,
+                json!({ "quantity": 1, "printing": coming, "foil": true }),
+            )
+            .await
+            .ok_json();
+
+        assert_eq!(joined["uuid"], alike.as_str());
+        let entries = fixture.entries().await;
+        assert_eq!(entries.len(), 1, "{entries:?}");
+        assert_eq!(entries[0]["quantity"], 3);
+        assert_eq!(entries[0]["foil"], true);
+        assert_eq!(tags(&entries[0]), vec![ramp]);
+    });
+}
+
+#[test]
+fn a_swap_that_cannot_happen_as_a_whole_changes_nothing() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        let going = Uuid::new_v4();
+        let coming = Uuid::new_v4();
+        let entry = fixture
+            .add(json!({ "printing": going, "quantity": 2, "zone": "Main" }))
+            .await;
+        fixture
+            .add(json!({ "printing": coming, "quantity": 1, "zone": "Main" }))
+            .await;
+        let before = lines(&fixture.entries().await);
+
+        for (target, swap) in [
+            (entry.clone(), json!({ "quantity": 3, "printing": coming })),
+            (entry.clone(), json!({ "quantity": 0, "printing": coming })),
+            (entry.clone(), json!({ "quantity": 1, "printing": going })),
+            (
+                Uuid::new_v4().to_string(),
+                json!({ "quantity": 1, "printing": coming }),
+            ),
+        ] {
+            let response = fixture.swap(&target, swap.clone()).await;
+            assert_eq!(response.status, StatusCode::BAD_REQUEST, "{swap}");
+        }
+
+        assert_eq!(lines(&fixture.entries().await), before);
+    });
+}
+
+#[test]
+fn only_the_owner_swaps() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        let going = Uuid::new_v4();
+        let entry = fixture
+            .add(json!({ "printing": going, "quantity": 1, "zone": "Main" }))
+            .await;
+        let mut stranger = TestClient::logged_in(&create_account(Role::Member).await).await;
+        let url = api(&format!("decks/{}/cards/{entry}/swap", fixture.deck));
+        let swap = json!({ "quantity": 1, "printing": Uuid::new_v4() });
+
+        let response = stranger.json(Method::POST, &url, &swap).await;
+        assert_eq!(response.status, StatusCode::BAD_REQUEST);
+        let response = TestClient::new().json(Method::POST, &url, &swap).await;
+        assert_eq!(response.status, StatusCode::UNAUTHORIZED);
+
+        assert_eq!(
+            lines(&fixture.entries().await),
+            vec![(going.to_string(), "Main".to_string(), 1)]
+        );
     });
 }

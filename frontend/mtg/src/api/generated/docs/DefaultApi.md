@@ -113,6 +113,7 @@ All URIs are relative to *http://localhost*
 | [**startAddPasskey**](DefaultApi.md#startaddpasskey) | **POST** /api/frontend/v1/accounts/passkeys/start | Start registering another passkey for the logged-in account |
 | [**startLogin**](DefaultApi.md#startloginoperation) | **POST** /api/frontend/v1/auth/login/start | Start a passkey login for a given username |
 | [**startRegistration**](DefaultApi.md#startregistrationoperation) | **POST** /api/frontend/v1/auth/register/start | Start a passkey registration |
+| [**swapDeckCard**](DefaultApi.md#swapdeckcardoperation) | **POST** /api/frontend/v1/decks/{deck}/cards/{card}/swap | Give up copies of a Deck entry for another card in the same zone |
 | [**takeDeckCards**](DefaultApi.md#takedeckcardsoperation) | **POST** /api/frontend/v1/decks/{deck}/sourcing/take | Move copies out of a collection and into the deck |
 | [**unassignCollectionEntryTag**](DefaultApi.md#unassigncollectionentrytag) | **DELETE** /api/frontend/v1/collections/{collection}/entries/{entry}/tags/{tag} | Take a card-wide tag off a stack, see [&#x60;assign_collection_entry_tag&#x60;] |
 | [**unassignDeckCardTag**](DefaultApi.md#unassigndeckcardtag) | **DELETE** /api/frontend/v1/decks/{deck}/cards/{card}/tags/{tag} | Take a tag off a card |
@@ -7853,6 +7854,82 @@ example().catch(console.error);
 ### Return type
 
 [**StartRegistration200Response**](StartRegistration200Response.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## swapDeckCard
+
+> DeckCardResponse swapDeckCard(deck, card, SwapDeckCardRequest)
+
+Give up copies of a Deck entry for another card in the same zone
+
+Give up copies of a Deck entry for another card in the same zone  Both halves happen in one transaction: the entry loses the copies, which removes it when none are left, and the incoming card joins an alike Deck entry or opens its own. A swap that cannot happen as a whole changes nothing. The answer is the Deck entry the incoming card sits in.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { SwapDeckCardOperationRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    deck: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string
+    card: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // SwapDeckCardRequest (optional)
+    SwapDeckCardRequest: ...,
+  } satisfies SwapDeckCardOperationRequest;
+
+  try {
+    const data = await api.swapDeckCard(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **deck** | `string` |  | [Defaults to `undefined`] |
+| **card** | `string` |  | [Defaults to `undefined`] |
+| **SwapDeckCardRequest** | [SwapDeckCardRequest](SwapDeckCardRequest.md) |  | [Optional] |
+
+### Return type
+
+[**DeckCardResponse**](DeckCardResponse.md)
 
 ### Authorization
 

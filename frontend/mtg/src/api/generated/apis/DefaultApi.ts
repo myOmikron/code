@@ -134,6 +134,7 @@ import type {
     StartLoginRequest,
     StartRegistration200Response,
     StartRegistrationRequest,
+    SwapDeckCardRequest,
     TakeDeckCardsRequest,
     UpdateCollectionEntryRequest,
     UpdateCollectionRequest,
@@ -604,6 +605,12 @@ export interface StartLoginOperationRequest {
 
 export interface StartRegistrationOperationRequest {
     StartRegistrationRequest?: StartRegistrationRequest;
+}
+
+export interface SwapDeckCardOperationRequest {
+    deck: string;
+    card: string;
+    SwapDeckCardRequest?: SwapDeckCardRequest;
 }
 
 export interface TakeDeckCardsOperationRequest {
@@ -6016,6 +6023,64 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async startRegistration(requestParameters: StartRegistrationOperationRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<StartRegistration200Response> {
         const response = await this.startRegistrationRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for swapDeckCard without sending the request
+     */
+    async swapDeckCardRequestOpts(requestParameters: SwapDeckCardOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['deck'] == null) {
+            throw new runtime.RequiredError(
+                'deck',
+                'Required parameter "deck" was null or undefined when calling swapDeckCard().'
+            );
+        }
+
+        if (requestParameters['card'] == null) {
+            throw new runtime.RequiredError(
+                'card',
+                'Required parameter "card" was null or undefined when calling swapDeckCard().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/decks/{deck}/cards/{card}/swap`;
+        urlPath = urlPath.replace('{deck}', encodeURIComponent(String(requestParameters['deck'])));
+        urlPath = urlPath.replace('{card}', encodeURIComponent(String(requestParameters['card'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['SwapDeckCardRequest'],
+        };
+    }
+
+    /**
+     * Give up copies of a Deck entry for another card in the same zone  Both halves happen in one transaction: the entry loses the copies, which removes it when none are left, and the incoming card joins an alike Deck entry or opens its own. A swap that cannot happen as a whole changes nothing. The answer is the Deck entry the incoming card sits in.
+     * Give up copies of a Deck entry for another card in the same zone
+     */
+    async swapDeckCardRaw(requestParameters: SwapDeckCardOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DeckCardResponse>> {
+        const requestOptions = await this.swapDeckCardRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Give up copies of a Deck entry for another card in the same zone  Both halves happen in one transaction: the entry loses the copies, which removes it when none are left, and the incoming card joins an alike Deck entry or opens its own. A swap that cannot happen as a whole changes nothing. The answer is the Deck entry the incoming card sits in.
+     * Give up copies of a Deck entry for another card in the same zone
+     */
+    async swapDeckCard(requestParameters: SwapDeckCardOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DeckCardResponse> {
+        const response = await this.swapDeckCardRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

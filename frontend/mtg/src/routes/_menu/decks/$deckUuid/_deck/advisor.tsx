@@ -1,4 +1,4 @@
-import { createFileRoute, isRedirect, useLoaderData, useNavigate, useRouter } from "@tanstack/react-router";
+import { createFileRoute, useLoaderData, useNavigate, useRouter } from "@tanstack/react-router";
 import { EmptyState, notify } from "components";
 import { MotionConfig } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -617,18 +617,11 @@ function RouteComponent() {
     /**
      * Trades one card for another: the add goes in, the cut comes out.
      *
-     * The outgoing card's Main-zone slot is located first — if the deck no
+     * The outgoing card's Main-zone slot is located first. If the deck no
      * longer holds one (it was already cut, or moved, in another tab) the
      * swap is refused with an error rather than silently turning into a
-     * one-sided add. Only once that slot is confirmed does the add happen,
-     * followed by the removal: neither order is atomic — the deck API has no
-     * endpoint that does both — and of the two ways to fail, ending up
-     * holding an extra card is recoverable in a way that a silently missing
-     * one is not: when the removal fails after the add landed, the catch
-     * below takes the added copy back out, so a failed swap leaves the deck
-     * exactly as it was. If that rollback fails too, the deck really is
-     * holding a copy it did not ask for, and the toast says so instead of
-     * claiming otherwise — the user cannot fix what they are not told about.
+     * one-sided add. The swap itself is one request that the deck applies
+     * whole or not at all.
      *
      * @param going the card being given up
      * @param add the card taking its slot
@@ -646,24 +639,7 @@ function RouteComponent() {
         }
         setBusyOracle(going.oracle_id);
         try {
-            const added = await Api.decks.cards.add(deckUuid, { printing: printing.id, quantity: 1, zone: "Main" });
-            try {
-                await removeSlot(slot);
-            } catch (error) {
-                if (isRedirect(error)) throw error; // a 401 must still land on /auth/login
-                // The remove failed after the add landed: take the added copy back out,
-                // so a failed swap leaves the deck exactly as it was.
-                let restored = true;
-                try {
-                    await removeSlot(added);
-                } catch (rollbackError) {
-                    if (isRedirect(rollbackError)) throw rollbackError;
-                    restored = false;
-                }
-                notify.error(restored ? t("toast.swap-failed") : t("toast.swap-stranded", { name: add.name }));
-                await router.invalidate();
-                return;
-            }
+            await Api.decks.cards.swap(deckUuid, slot.uuid, { printing: printing.id, quantity: 1 });
             notify.success(t("toast.card-swapped", { out: going.name, in: add.name }));
             defend(add.oracle_id);
             await router.invalidate();
