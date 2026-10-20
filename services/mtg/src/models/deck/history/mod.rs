@@ -107,7 +107,8 @@ custom_db_enum! {
 
 /// How long a plain edit stays open for a quick successive one to join it
 ///
-/// Each joining edit restarts it.
+/// Counted from when the joined Deck change started: a joining edit neither
+/// restarts it nor moves the Deck change's time.
 const COALESCING_WINDOW: Duration = Duration::seconds(60);
 
 /// Wrapper for the primary key of a Deck change
@@ -629,7 +630,6 @@ impl DeckEdit {
                         .await?;
                 } else {
                     rorm::update(&mut *tx, DeckChangeModel)
-                        .set(DeckChangeModel.changed_at, now)
                         .set(DeckChangeModel.difference, Json(joined))
                         .condition(DeckChangeModel.uuid.equals(uuid.0))
                         .await?;
