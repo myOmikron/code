@@ -5397,6 +5397,144 @@
                 }
             }
         },
+        "/api/frontend/v1/decks/{deck}/history/{change}": {
+            "get": {
+                "summary": "The deck as it was right after one of its Deck changes, read-only",
+                "description": "The deck as it was right after one of its Deck changes, read-only\n\nOnly the owner reads it. Computed backwards from the deck as it is now.",
+                "operationId": "get_deck_point",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "deck",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/DeckUuid"
+                        },
+                        "style": "simple"
+                    },
+                    {
+                        "in": "path",
+                        "name": "change",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/DeckChangeUuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DeckPointResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/decks/{deck}/history/{change}/reset": {
+            "post": {
+                "summary": "Bring the deck back to how it was right after one of its Deck changes",
+                "description": "Bring the deck back to how it was right after one of its Deck changes\n\nOnly the owner resets. Recorded as one Deck change of its own, which can be\nundone; the Deck changes since stay in the Deck history.",
+                "operationId": "reset_deck",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "deck",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/DeckUuid"
+                        },
+                        "style": "simple"
+                    },
+                    {
+                        "in": "path",
+                        "name": "change",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/DeckChangeUuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DeckUndoResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/frontend/v1/explore/decks": {
             "get": {
                 "summary": "Search the decks their owners put on show",
@@ -10981,6 +11119,13 @@
                         "enum": [
                             "Redo"
                         ]
+                    },
+                    {
+                        "description": "The deck brought back to an earlier point of its Deck history",
+                        "type": "string",
+                        "enum": [
+                            "Reset"
+                        ]
                     }
                 ]
             },
@@ -11020,7 +11165,7 @@
                     },
                     "reference": {
                         "nullable": true,
-                        "description": "The Deck change an undo takes back or a redo applies again, `None` for any other kind",
+                        "description": "The Deck change an undo takes back, a redo applies again or a reset returns to, `None` for any other kind",
                         "allOf": [
                             {
                                 "$ref": "#/components/schemas/DeckChangeUuid"
@@ -11365,6 +11510,84 @@
                     "price_eur_cents"
                 ]
             },
+            "DeckPointEntryResponse": {
+                "description": "One Deck entry a deck held at an earlier point",
+                "type": "object",
+                "properties": {
+                    "foil": {
+                        "description": "Whether the copies were the foil ones",
+                        "type": "boolean"
+                    },
+                    "name": {
+                        "nullable": true,
+                        "description": "The card's printed name, `None` while the catalog does not know the printing",
+                        "type": "string"
+                    },
+                    "printing": {
+                        "description": "Scryfall's id of the printing",
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "proxy": {
+                        "description": "Whether the copies were stand-ins rather than the real cards",
+                        "type": "boolean"
+                    },
+                    "quantity": {
+                        "description": "How many copies it held",
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "zone": {
+                        "description": "Which zone the entry sat in",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DeckZone"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "foil",
+                    "printing",
+                    "proxy",
+                    "quantity",
+                    "zone"
+                ]
+            },
+            "DeckPointResponse": {
+                "description": "A deck as it was right after one of its Deck changes, read-only",
+                "type": "object",
+                "properties": {
+                    "change": {
+                        "description": "The Deck change",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DeckChangeResponse"
+                            }
+                        ]
+                    },
+                    "entries": {
+                        "description": "The Deck entries the deck held then",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/DeckPointEntryResponse"
+                        }
+                    },
+                    "settings": {
+                        "description": "The recorded deck fields as they were then",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DeckSettingsResponse"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "change",
+                    "entries",
+                    "settings"
+                ]
+            },
             "DeckResponse": {
                 "description": "A deck as its owner sees it",
                 "type": "object",
@@ -11489,6 +11712,61 @@
                     "name",
                     "uuid",
                     "visibility"
+                ]
+            },
+            "DeckSettingsResponse": {
+                "description": "The recorded deck fields at an earlier point",
+                "type": "object",
+                "properties": {
+                    "allow_banned": {
+                        "description": "Whether the table agreed to cards the format bans",
+                        "type": "boolean"
+                    },
+                    "allow_duplicates": {
+                        "description": "Whether the table agreed to more copies of a card than the format allows",
+                        "type": "boolean"
+                    },
+                    "allow_extra_commanders": {
+                        "description": "Whether the table agreed to more commanders than the format allows",
+                        "type": "boolean"
+                    },
+                    "allowed_color_identity": {
+                        "nullable": true,
+                        "description": "The colours the deck could play, `None` for whatever the commander allows",
+                        "type": "string"
+                    },
+                    "bracket": {
+                        "nullable": true,
+                        "description": "The Commander bracket the deck was built to, `None` when unset",
+                        "type": "integer",
+                        "format": "int16"
+                    },
+                    "deck_size": {
+                        "nullable": true,
+                        "description": "How many cards the deck was built to, `None` for the format's rule",
+                        "type": "integer",
+                        "format": "int16"
+                    },
+                    "description": {
+                        "nullable": true,
+                        "description": "The deck's description, `None` for none",
+                        "type": "string"
+                    },
+                    "format": {
+                        "description": "The format the deck was built for",
+                        "type": "string"
+                    },
+                    "name": {
+                        "description": "The deck's name",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "allow_banned",
+                    "allow_duplicates",
+                    "allow_extra_commanders",
+                    "format",
+                    "name"
                 ]
             },
             "DeckSize": {

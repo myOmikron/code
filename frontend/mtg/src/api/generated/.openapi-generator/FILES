@@ -70,7 +70,10 @@ docs/DeckFolderKind.md
 docs/DeckFolderResponse.md
 docs/DeckHistoryResponse.md
 docs/DeckOverviewResponse.md
+docs/DeckPointEntryResponse.md
+docs/DeckPointResponse.md
 docs/DeckResponse.md
+docs/DeckSettingsResponse.md
 docs/DeckSize.md
 docs/DeckSizeOneOf.md
 docs/DeckSizeOneOf1.md

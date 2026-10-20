@@ -50,6 +50,7 @@ import type {
     DeckFolderResponse,
     DeckHistoryResponse,
     DeckOverviewResponse,
+    DeckPointResponse,
     DeckResponse,
     DeckSourcingResponse,
     DeckTagResponse,
@@ -372,6 +373,11 @@ export interface GetDeckHistoryRequest {
     limit?: number;
 }
 
+export interface GetDeckPointRequest {
+    deck: string;
+    change: string;
+}
+
 export interface GetDeckSourcingRequest {
     deck: string;
 }
@@ -520,6 +526,11 @@ export interface RenameAccountOperationRequest {
 export interface RenamePasskeyOperationRequest {
     uuid: string;
     RenamePasskeyRequest?: RenamePasskeyRequest;
+}
+
+export interface ResetDeckRequest {
+    deck: string;
+    change: string;
 }
 
 export interface ResolvePrintingsOperationRequest {
@@ -3446,6 +3457,61 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for getDeckPoint without sending the request
+     */
+    async getDeckPointRequestOpts(requestParameters: GetDeckPointRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['deck'] == null) {
+            throw new runtime.RequiredError(
+                'deck',
+                'Required parameter "deck" was null or undefined when calling getDeckPoint().'
+            );
+        }
+
+        if (requestParameters['change'] == null) {
+            throw new runtime.RequiredError(
+                'change',
+                'Required parameter "change" was null or undefined when calling getDeckPoint().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/decks/{deck}/history/{change}`;
+        urlPath = urlPath.replace('{deck}', encodeURIComponent(String(requestParameters['deck'])));
+        urlPath = urlPath.replace('{change}', encodeURIComponent(String(requestParameters['change'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * The deck as it was right after one of its Deck changes, read-only  Only the owner reads it. Computed backwards from the deck as it is now.
+     * The deck as it was right after one of its Deck changes, read-only
+     */
+    async getDeckPointRaw(requestParameters: GetDeckPointRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DeckPointResponse>> {
+        const requestOptions = await this.getDeckPointRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * The deck as it was right after one of its Deck changes, read-only  Only the owner reads it. Computed backwards from the deck as it is now.
+     * The deck as it was right after one of its Deck changes, read-only
+     */
+    async getDeckPoint(requestParameters: GetDeckPointRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DeckPointResponse> {
+        const response = await this.getDeckPointRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for getDeckSourcing without sending the request
      */
     async getDeckSourcingRequestOpts(requestParameters: GetDeckSourcingRequest): Promise<runtime.RequestOpts> {
@@ -5125,6 +5191,61 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async renamePasskey(requestParameters: RenamePasskeyOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FormErrorResponseForRenamePasskeyErrors> {
         const response = await this.renamePasskeyRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for resetDeck without sending the request
+     */
+    async resetDeckRequestOpts(requestParameters: ResetDeckRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['deck'] == null) {
+            throw new runtime.RequiredError(
+                'deck',
+                'Required parameter "deck" was null or undefined when calling resetDeck().'
+            );
+        }
+
+        if (requestParameters['change'] == null) {
+            throw new runtime.RequiredError(
+                'change',
+                'Required parameter "change" was null or undefined when calling resetDeck().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/decks/{deck}/history/{change}/reset`;
+        urlPath = urlPath.replace('{deck}', encodeURIComponent(String(requestParameters['deck'])));
+        urlPath = urlPath.replace('{change}', encodeURIComponent(String(requestParameters['change'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Bring the deck back to how it was right after one of its Deck changes  Only the owner resets. Recorded as one Deck change of its own, which can be undone; the Deck changes since stay in the Deck history.
+     * Bring the deck back to how it was right after one of its Deck changes
+     */
+    async resetDeckRaw(requestParameters: ResetDeckRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DeckUndoResponse>> {
+        const requestOptions = await this.resetDeckRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Bring the deck back to how it was right after one of its Deck changes  Only the owner resets. Recorded as one Deck change of its own, which can be undone; the Deck changes since stay in the Deck history.
+     * Bring the deck back to how it was right after one of its Deck changes
+     */
+    async resetDeck(requestParameters: ResetDeckRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DeckUndoResponse> {
+        const response = await this.resetDeckRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

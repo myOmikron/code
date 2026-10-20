@@ -85,6 +85,8 @@ pub enum DeckChangeKind {
     Undo,
     /// An undone Deck change applied again
     Redo,
+    /// The deck brought back to an earlier point of its Deck history
+    Reset,
 }
 
 impl DeckChangeKind {
@@ -96,7 +98,7 @@ impl DeckChangeKind {
 
 custom_db_enum! {
     enum: DeckChangeKind,
-    variants: [Created, Introduced, Edit, Move, Switch, Swap, Import, Replace, Fill, Sourcing, Settings, Undo, Redo],
+    variants: [Created, Introduced, Edit, Move, Switch, Swap, Import, Replace, Fill, Sourcing, Settings, Undo, Redo, Reset],
     decoder: DeckChangeKindDecoder,
 }
 
@@ -192,9 +194,67 @@ pub enum FieldDifference {
     },
 }
 
+/// The recorded deck fields of a deck at one point
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DeckSettings {
+    /// The deck's name
+    pub name: MaxStr<255>,
+    /// The deck's description, `None` for none
+    pub description: Option<MaxStr<1024>>,
+    /// The format the deck is built for
+    pub format: MaxStr<32>,
+    /// The colours the deck may play, `None` for whatever the commander allows
+    pub allowed_color_identity: Option<MaxStr<8>>,
+    /// The Commander bracket the deck is built to, `None` when unset
+    pub bracket: Option<i16>,
+    /// Whether the table agreed to more commanders than the format allows
+    pub allow_extra_commanders: bool,
+    /// Whether the table agreed to more copies of a card than the format allows
+    pub allow_duplicates: bool,
+    /// Whether the table agreed to cards the format bans
+    pub allow_banned: bool,
+    /// How many cards the deck is built to, `None` for the format's rule
+    pub deck_size: Option<i16>,
+}
+
+impl From<&Deck> for DeckSettings {
+    fn from(deck: &Deck) -> Self {
+        Self {
+            name: deck.name.clone(),
+            description: deck.description.clone(),
+            format: deck.format.clone(),
+            allowed_color_identity: deck.allowed_color_identity.clone(),
+            bracket: deck.bracket,
+            allow_extra_commanders: deck.allow_extra_commanders,
+            allow_duplicates: deck.allow_duplicates,
+            allow_banned: deck.allow_banned,
+            deck_size: deck.deck_size,
+        }
+    }
+}
+
+impl DeckSettings {
+    /// Takes the field back to the value it held before a Deck change
+    fn take_before(&mut self, field: &FieldDifference) {
+        match field.clone() {
+            FieldDifference::Name { before, .. } => self.name = before,
+            FieldDifference::Description { before, .. } => self.description = before,
+            FieldDifference::Format { before, .. } => self.format = before,
+            FieldDifference::Colors { before, .. } => self.allowed_color_identity = before,
+            FieldDifference::Bracket { before, .. } => self.bracket = before,
+            FieldDifference::AllowExtraCommanders { before, .. } => {
+                self.allow_extra_commanders = before
+            }
+            FieldDifference::AllowDuplicates { before, .. } => self.allow_duplicates = before,
+            FieldDifference::AllowBanned { before, .. } => self.allow_banned = before,
+            FieldDifference::DeckSize { before, .. } => self.deck_size = before,
+        }
+    }
+}
+
 impl FieldDifference {
-    /// Every recorded deck field, from one deck to another state of it
-    fn all(before: &Deck, after: &Deck) -> Vec<Self> {
+    /// Every recorded deck field, from one state of a deck to another
+    fn all(before: &DeckSettings, after: &DeckSettings) -> Vec<Self> {
         vec![
             Self::Name {
                 before: before.name.clone(),
@@ -462,9 +522,10 @@ impl DeckDifference {
     /// `entries` are the deck's Deck entries, all from zero; every recorded
     /// field is there with its value before and after.
     fn state(deck: &Deck, entries: Self) -> Self {
+        let settings = DeckSettings::from(deck);
         Self {
             entries: entries.entries,
-            fields: FieldDifference::all(deck, deck),
+            fields: FieldDifference::all(&settings, &settings),
         }
     }
 
@@ -475,7 +536,7 @@ impl DeckDifference {
     pub fn settings(before: &Deck, after: &Deck) -> Self {
         Self {
             entries: Vec::new(),
-            fields: FieldDifference::all(before, after),
+            fields: FieldDifference::all(&before.into(), &after.into()),
         }
     }
 
@@ -698,7 +759,7 @@ impl DeckEdit {
                     .await?;
             }
             let after = read_deck(&mut *tx, self.deck).await?;
-            applied.fields = FieldDifference::all(&before, &after);
+            applied.fields = FieldDifference::all(&(&before).into(), &(&after).into());
         }
 
         Ok(applied.settled())
@@ -738,6 +799,37 @@ impl DeckEdit {
         Ok(true)
     }
 
+    /// Bring the deck back to how it was right after an earlier Deck change
+    ///
+    /// Records one [`DeckChangeKind::Reset`] referring to `point`, even when
+    /// the deck already is that way; the Deck changes since `point` stay in
+    /// the Deck history. A Deck entry that comes back is a new one without
+    /// card tags. The deck's collection is never touched. Answers `false` and
+    /// changes nothing when `point` is not a Deck change of this deck.
+    #[instrument(name = "DeckEdit::reset", skip(tx))]
+    pub async fn reset(
+        &self,
+        tx: &mut Transaction,
+        point: DeckChangeUuid,
+    ) -> Result<bool, rorm::Error> {
+        let Some(rewound) = rewind(&mut *tx, self.deck, point).await? else {
+            return Ok(false);
+        };
+        let mut wanted = DeckDifference::default();
+        for entry in DeckCard::get_all_in_deck(&mut *tx, self.deck).await? {
+            wanted.entry(entry.key(), entry.quantity, 0);
+        }
+        for (key, quantity) in rewound.entries {
+            wanted.entry(key, 0, quantity);
+        }
+        let current = DeckSettings::from(&read_deck(&mut *tx, self.deck).await?);
+        wanted.fields = FieldDifference::all(&current, &rewound.settings);
+
+        let applied = self.apply(&mut *tx, &wanted.settled()).await?;
+        insert_referring(&mut *tx, self.deck, DeckChangeKind::Reset, applied, point).await?;
+        Ok(true)
+    }
+
     /// Record an undo or redo of `target` and mark `target` as undone or not
     ///
     /// Recorded even when it changed nothing, so the undo stack stays whole.
@@ -749,17 +841,7 @@ impl DeckEdit {
         target: DeckChangeUuid,
         undone: bool,
     ) -> Result<(), rorm::Error> {
-        rorm::insert(&mut *tx, DeckChangeModel)
-            .return_nothing()
-            .single(&DeckChangeReferringInsertPatch {
-                uuid: Uuid::now_v7(),
-                deck: ForeignModelByField(self.deck.into_inner()),
-                changed_at: OffsetDateTime::now_utc(),
-                kind,
-                difference: Json(applied),
-                reference: Some(ForeignModelByField(target.0)),
-            })
-            .await?;
+        insert_referring(&mut *tx, self.deck, kind, applied, target).await?;
         rorm::update(&mut *tx, DeckChangeModel)
             .set(DeckChangeModel.undone, undone)
             .condition(DeckChangeModel.uuid.equals(target.0))
@@ -790,10 +872,33 @@ pub struct DeckChange {
     pub entries: Vec<ChangedEntry>,
     /// The deck fields it changed
     pub fields: Vec<FieldDifference>,
-    /// The Deck change an undo or redo refers to, `None` for any other kind
+    /// The Deck change an undo or redo refers to or a reset returns to,
+    /// `None` for any other kind
     pub reference: Option<DeckChangeUuid>,
     /// Whether an undo took it back and no redo applied it again since
     pub undone: bool,
+}
+
+/// A deck as it was right after one of its Deck changes
+#[derive(Debug, Clone)]
+pub struct DeckPoint {
+    /// The Deck change
+    pub change: DeckChange,
+    /// The Deck entries the deck held then, by name
+    pub entries: Vec<PointEntry>,
+    /// The recorded deck fields as they were then
+    pub settings: DeckSettings,
+}
+
+/// One Deck entry a deck held at a [`DeckPoint`]
+#[derive(Debug, Clone)]
+pub struct PointEntry {
+    /// Which Deck entry it was
+    pub key: DeckEntryKey,
+    /// How many copies it held
+    pub quantity: i32,
+    /// The card's printed name, `None` while the catalog does not know the printing
+    pub name: Option<String>,
 }
 
 /// One Deck entry a [`DeckChange`] touched, with the card's name
@@ -1058,29 +1163,129 @@ impl DeckHistory {
 
         let changes = stored
             .into_iter()
-            .map(|change| DeckChange {
-                uuid: change.uuid,
-                kind: change.kind,
-                changed_at: change.changed_at,
-                entries: change
-                    .difference
-                    .entries
-                    .into_iter()
-                    .map(|difference| ChangedEntry {
-                        name: names.get(&difference.printing).cloned(),
-                        difference,
-                    })
-                    .collect(),
-                fields: change.difference.fields,
-                reference: change.reference,
-                undone: change.undone,
-            })
+            .map(|change| change.named(&names))
             .collect();
         Ok(DeckHistoryPage {
             changes,
             next_cursor,
         })
     }
+
+    /// A deck as it was right after one of its Deck changes
+    ///
+    /// Computed backwards from the deck as it is now. `None` when `change` is
+    /// not a Deck change of this deck. The caller has to have established
+    /// that the account owns the deck.
+    #[instrument(name = "DeckHistory::point", skip(tx))]
+    pub async fn point(
+        tx: &mut Transaction,
+        deck: DeckUuid,
+        change: DeckChangeUuid,
+    ) -> Result<Option<DeckPoint>, rorm::Error> {
+        let Some(rewound) = rewind(&mut *tx, deck, change).await? else {
+            return Ok(None);
+        };
+
+        let mut printings: Vec<Uuid> = rewound
+            .entries
+            .keys()
+            .map(|key| key.printing)
+            .chain(
+                rewound
+                    .change
+                    .difference
+                    .entries
+                    .iter()
+                    .map(|entry| entry.printing),
+            )
+            .collect();
+        printings.sort_unstable();
+        printings.dedup();
+        let names = printing_names(&mut *tx, &printings).await?;
+
+        let mut entries: Vec<PointEntry> = rewound
+            .entries
+            .into_iter()
+            .map(|(key, quantity)| PointEntry {
+                key,
+                quantity,
+                name: names.get(&key.printing).cloned(),
+            })
+            .collect();
+        entries.sort_by_cached_key(|entry| {
+            let key = entry.key;
+            (
+                entry.name.clone(),
+                key.printing,
+                key.zone.as_str(),
+                key.foil,
+                key.proxy,
+            )
+        });
+        Ok(Some(DeckPoint {
+            change: rewound.change.named(&names),
+            entries,
+            settings: rewound.settings,
+        }))
+    }
+}
+
+/// A deck computed back to how it was right after one of its Deck changes
+struct Rewound {
+    /// The Deck change
+    change: StoredChange,
+    /// The copies each Deck entry held then, none with zero
+    entries: HashMap<DeckEntryKey, i32>,
+    /// The recorded deck fields then
+    settings: DeckSettings,
+}
+
+/// Compute a deck back to how it was right after `point`
+///
+/// Takes every Deck change since `point` back, newest first, from the deck as
+/// it is now. `None` when `point` is not a Deck change of the deck.
+async fn rewind(
+    tx: &mut Transaction,
+    deck: DeckUuid,
+    point: DeckChangeUuid,
+) -> Result<Option<Rewound>, rorm::Error> {
+    let rows = (&mut *tx)
+        .execute::<All>(
+            "SELECT uuid, changed_at, kind, difference, reference, undone FROM deck_change \
+             WHERE deck = $1 AND uuid >= $2 ORDER BY uuid DESC"
+                .to_string(),
+            vec![Value::Uuid(deck.into_inner()), Value::Uuid(point.0)],
+        )
+        .await?;
+    let mut changes = rows
+        .iter()
+        .map(decode_change)
+        .collect::<Result<Vec<_>, _>>()?;
+    let Some(change) = changes.pop().filter(|change| change.uuid == point) else {
+        return Ok(None);
+    };
+
+    let mut entries: HashMap<DeckEntryKey, i32> = DeckCard::get_all_in_deck(&mut *tx, deck)
+        .await?
+        .into_iter()
+        .map(|entry| (entry.key(), entry.quantity))
+        .collect();
+    let mut settings = DeckSettings::from(&read_deck(&mut *tx, deck).await?);
+    for later in &changes {
+        for entry in &later.difference.entries {
+            entries.insert(entry.key(), entry.before);
+        }
+        for field in &later.difference.fields {
+            settings.take_before(field);
+        }
+    }
+    entries.retain(|_, quantity| *quantity > 0);
+
+    Ok(Some(Rewound {
+        change,
+        entries,
+        settings,
+    }))
 }
 
 /// Append a Deck change, timestamped now
@@ -1098,6 +1303,29 @@ async fn insert(
             changed_at: OffsetDateTime::now_utc(),
             kind,
             difference: Json(difference),
+        })
+        .await
+}
+
+/// Append a Deck change referring to an earlier one, timestamped now
+///
+/// For an undo, a redo or a reset; recorded even with an empty difference.
+async fn insert_referring(
+    tx: &mut Transaction,
+    deck: DeckUuid,
+    kind: DeckChangeKind,
+    difference: DeckDifference,
+    reference: DeckChangeUuid,
+) -> Result<(), rorm::Error> {
+    rorm::insert(&mut *tx, DeckChangeModel)
+        .return_nothing()
+        .single(&DeckChangeReferringInsertPatch {
+            uuid: Uuid::now_v7(),
+            deck: ForeignModelByField(deck.into_inner()),
+            changed_at: OffsetDateTime::now_utc(),
+            kind,
+            difference: Json(difference),
+            reference: Some(ForeignModelByField(reference.0)),
         })
         .await
 }
@@ -1135,10 +1363,33 @@ struct StoredChange {
     kind: DeckChangeKind,
     /// What it did to the deck
     difference: DeckDifference,
-    /// The Deck change an undo or redo refers to
+    /// The Deck change an undo or redo refers to or a reset returns to
     reference: Option<DeckChangeUuid>,
     /// Whether it is undone
     undone: bool,
+}
+
+impl StoredChange {
+    /// The Deck change as the Deck history lists it, with the names of its cards
+    fn named(self, names: &HashMap<Uuid, String>) -> DeckChange {
+        DeckChange {
+            uuid: self.uuid,
+            kind: self.kind,
+            changed_at: self.changed_at,
+            entries: self
+                .difference
+                .entries
+                .into_iter()
+                .map(|difference| ChangedEntry {
+                    name: names.get(&difference.printing).cloned(),
+                    difference,
+                })
+                .collect(),
+            fields: self.difference.fields,
+            reference: self.reference,
+            undone: self.undone,
+        }
+    }
 }
 
 /// Reads a stored Deck change from a row holding its columns

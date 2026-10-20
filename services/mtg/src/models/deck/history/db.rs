@@ -45,7 +45,8 @@ pub struct DeckChangeModel {
     /// What the Deck change did to the deck
     pub difference: Json<DeckDifference>,
 
-    /// The earlier Deck change an undo inverts or a redo reapplies
+    /// The earlier Deck change an undo inverts, a redo reapplies or a reset
+    /// returns to
     ///
     /// `None` for every other kind. Points backwards only, so removing the
     /// latest Deck change never leaves a dangling reference.
@@ -77,7 +78,7 @@ pub struct DeckChangeInsertPatch {
     pub difference: Json<DeckDifference>,
 }
 
-/// Insert patch for an undo or redo [`DeckChangeModel`], which refers to another
+/// Insert patch for an undo, redo or reset [`DeckChangeModel`], which refers to another
 #[derive(Patch)]
 #[rorm(model = "DeckChangeModel")]
 pub struct DeckChangeReferringInsertPatch {
@@ -91,6 +92,6 @@ pub struct DeckChangeReferringInsertPatch {
     pub kind: DeckChangeKind,
     /// What the Deck change did to the deck
     pub difference: Json<DeckDifference>,
-    /// The earlier Deck change it inverts or reapplies
+    /// The earlier Deck change it inverts, reapplies or returns to
     pub reference: Option<ForeignModel<DeckChangeModel>>,
 }

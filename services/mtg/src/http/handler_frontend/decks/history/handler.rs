@@ -11,11 +11,13 @@ use galvyn::rorm::Database;
 use crate::http::handler_frontend::decks::handler::granted;
 use crate::http::handler_frontend::decks::history::schema::DeckChangeResponse;
 use crate::http::handler_frontend::decks::history::schema::DeckHistoryResponse;
+use crate::http::handler_frontend::decks::history::schema::DeckPointResponse;
 use crate::http::handler_frontend::decks::history::schema::DeckUndoResponse;
 use crate::http::handler_frontend::decks::history::schema::GetDeckHistoryQuery;
 use crate::models::account::Account;
 use crate::models::deck::Deck;
 use crate::models::deck::DeckUuid;
+use crate::models::deck::history::DeckChangeUuid;
 use crate::models::deck::history::DeckHistory;
 
 /// The most Deck changes one page holds
@@ -93,6 +95,48 @@ pub async fn redo_deck_change(
     if !edit.redo(&mut tx).await? {
         tx.rollback().await?;
         return Err(ApiError::bad_request("Nothing to redo"));
+    }
+    let state = DeckHistory::undo_state(&mut tx, deck_uuid).await?;
+
+    tx.commit().await?;
+
+    Ok(ApiJson(DeckUndoResponse::from(state)))
+}
+
+/// The deck as it was right after one of its Deck changes, read-only
+///
+/// Only the owner reads it. Computed backwards from the deck as it is now.
+#[get("/{deck}/history/{change}")]
+pub async fn get_deck_point(
+    account: Account,
+    Path((deck_uuid, change)): Path<(DeckUuid, DeckChangeUuid)>,
+) -> ApiResult<ApiJson<DeckPointResponse>> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    granted(Deck::may_administer(&mut tx, deck_uuid, account.uuid).await?)?;
+    let point = DeckHistory::point(&mut tx, deck_uuid, change).await?;
+
+    tx.commit().await?;
+
+    let point = point.ok_or_else(|| ApiError::bad_request("No such Deck change"))?;
+    Ok(ApiJson(DeckPointResponse::from(point)))
+}
+
+/// Bring the deck back to how it was right after one of its Deck changes
+///
+/// Only the owner resets. Recorded as one Deck change of its own, which can be
+/// undone; the Deck changes since stay in the Deck history.
+#[post("/{deck}/history/{change}/reset")]
+pub async fn reset_deck(
+    account: Account,
+    Path((deck_uuid, change)): Path<(DeckUuid, DeckChangeUuid)>,
+) -> ApiResult<ApiJson<DeckUndoResponse>> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    let edit = granted(DeckHistory::lock(&mut tx, deck_uuid, account.uuid).await?)?;
+    if !edit.reset(&mut tx, change).await? {
+        tx.rollback().await?;
+        return Err(ApiError::bad_request("No such Deck change"));
     }
     let state = DeckHistory::undo_state(&mut tx, deck_uuid).await?;
 
