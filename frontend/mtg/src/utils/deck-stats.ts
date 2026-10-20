@@ -7,7 +7,7 @@
  */
 
 import type { DeckCardResponse, DeckTagResponse } from "src/api/generated";
-import { primaryType, TYPE_GROUP_ORDER } from "src/utils/card-types";
+import { isSnowSource, primaryType, TYPE_GROUP_ORDER } from "src/utils/card-types";
 import { effectiveManaValue } from "src/utils/commander";
 import { letters } from "src/utils/deck-rules";
 
@@ -62,7 +62,7 @@ export type TagStats = {
     averageManaValue: number;
     /** What they are worth together, in euro */
     value: number;
-    /** Coloured mana symbols across their costs, keyed `W U B R G` */
+    /** Coloured mana symbols across their costs, keyed `W U B R G`, Snow pips as `S` */
     pips: Array<Bucket>;
     /** Copies per card type */
     types: Array<Bucket>;
@@ -90,11 +90,11 @@ export type DeckStats = {
     manaCurveSplit: SplitChart;
     /** Copies whose colour identity contains each colour, keyed `W U B R G` */
     colorIdentity: Array<Bucket>;
-    /** Coloured mana symbols across all costs, weighted by copies */
+    /** Coloured mana symbols across all costs, weighted by copies, Snow pips as `S` */
     pips: Array<Bucket>;
     /** The same symbols, broken up by each split */
     pipsSplit: SplitChart;
-    /** Copies that can produce each colour, lands and rocks alike */
+    /** Copies that can produce each colour, lands and rocks alike, Snow sources as `S` */
     manaSources: Array<Bucket>;
     /** Copies per card type */
     types: Array<Bucket>;
@@ -122,6 +122,12 @@ const TOP_LIMIT = 10;
 
 /** The colours, in the order they are written */
 const COLOR_LETTERS = ["W", "U", "B", "R", "G"];
+
+/** The key Snow pips and Snow sources are counted under, Scryfall's symbol for them */
+const SNOW = "S";
+
+/** What {@link countPips} counts, in the order it answers */
+const PIP_LETTERS = [...COLOR_LETTERS, SNOW];
 
 /** The colour buckets a card falls into, in the order they are drawn */
 const COLOR_BUCKETS = [...COLOR_LETTERS, "multicolor", "colorless"];
@@ -210,9 +216,10 @@ export function deckStats(
         for (const color of card.produced_mana) {
             if (COLOR_LETTERS.includes(color)) add(manaSources, color, copies);
         }
+        if (isSnowSource(card.type_line, card.produced_mana)) add(manaSources, SNOW, copies);
         const cost = countPips(card.mana_cost);
         cost.forEach((count, index) => {
-            const color = COLOR_LETTERS[index] ?? "";
+            const color = PIP_LETTERS[index] ?? "";
             if (count === 0 || color === "") return;
             add(pips, color, count * copies);
             stack(pipSplit, parts, color, count * copies);
@@ -245,7 +252,7 @@ export function deckStats(
                 tally.manaValueSum += manaValue * copies;
             }
             cost.forEach((count, index) => {
-                if (count > 0) add(tally.pips, COLOR_LETTERS[index] ?? "", count * copies);
+                if (count > 0) add(tally.pips, PIP_LETTERS[index] ?? "", count * copies);
             });
         }
     }
@@ -256,6 +263,12 @@ export function deckStats(
     // at four has nothing to say with three empty bars after it.
     const curveKeys = curveBuckets(manaCurve);
     const tagOrder = [...tags.map((tag) => tag.uuid), UNTAGGED];
+    // Snow is no colour the deck plays, so it only gets a bar where it has
+    // something to say. Pips and sources are read side by side, though: a deck
+    // with Snow sources and no Snow pip still shows that it has them.
+    const snowPips = (pips.get(SNOW) ?? 0) > 0;
+    const pipKeys = snowPips ? [...shown, SNOW] : shown;
+    const sourceKeys = snowPips || (manaSources.get(SNOW) ?? 0) > 0 ? [...shown, SNOW] : shown;
 
     return {
         totalCards,
@@ -268,14 +281,14 @@ export function deckStats(
         manaCurve: fixed(manaCurve, curveKeys),
         manaCurveSplit: chartOf(curveSplit, curveKeys, tagOrder),
         colorIdentity: fixed(colorIdentity, shown),
-        pips: fixed(pips, shown),
-        pipsSplit: chartOf(pipSplit, shown, tagOrder),
-        manaSources: fixed(manaSources, shown),
+        pips: fixed(pips, sourceKeys),
+        pipsSplit: chartOf(pipSplit, pipKeys, tagOrder),
+        manaSources: fixed(manaSources, sourceKeys),
         types: sorted(types),
         rarities: sorted(rarities),
         tagStats: tagOrder
             .filter((key) => perTag.has(key))
-            .map((key) => statsOfTally(key, perTag.get(key) as TagTally, shown)),
+            .map((key) => statsOfTally(key, perTag.get(key) as TagTally, pipKeys)),
         topCards: top.slice(0, TOP_LIMIT),
     };
 }
@@ -285,16 +298,17 @@ export function deckStats(
  *
  * Hybrid symbols count for every colour in them, which is what makes a deck's
  * colour requirements readable: `{W/U}` asks for either, so it is a pip of both.
+ * A Snow pip is no colour, but asks for a Snow source all the same.
  *
  * @param manaCost the cost as Scryfall spells it
  *
- * @returns the counts in `WUBRG` order
+ * @returns the counts in `WUBRG` order, then the Snow pips
  */
 export function countPips(manaCost: string): Array<number> {
-    const counts = [0, 0, 0, 0, 0];
+    const counts = PIP_LETTERS.map(() => 0);
     for (const symbol of manaCost.matchAll(/\{([^}]*)\}/g)) {
         const inside = symbol[1]?.toUpperCase() ?? "";
-        COLOR_LETTERS.forEach((color, index) => {
+        PIP_LETTERS.forEach((color, index) => {
             if (inside.includes(color)) counts[index] = (counts[index] ?? 0) + 1;
         });
     }
@@ -450,7 +464,7 @@ function tallyOf(tallies: Map<string, TagTally>, key: string): TagTally {
  *
  * @param key the tag
  * @param tally what was counted
- * @param colors the colours the deck plays
+ * @param colors the colours the deck plays, Snow behind them where it has pips
  *
  * @returns the tag's numbers
  */

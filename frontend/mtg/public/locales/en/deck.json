@@ -232,6 +232,7 @@
         "color-green": "Green",
         "color-multicolor": "Multicolor",
         "color-red": "Red",
+        "color-snow": "Snow",
         "color-white": "White",
         "colors": "Colors",
         "colors-allowed": "Colors: {{colors}}",

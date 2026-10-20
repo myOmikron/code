@@ -64,6 +64,8 @@ const RAMP: DeckTagResponse = { uuid: "tag-ramp", name: "Ramp", color: "lime", i
  * @param card the catalog data behind it
  * @param card.type its type line
  * @param card.manaValue what its cost adds up to
+ * @param card.cost its mana cost, as Scryfall spells it, none by default
+ * @param card.produces the mana it makes, none by default
  * @param quantity how many copies
  * @param tags the tags on it
  *
@@ -71,7 +73,7 @@ const RAMP: DeckTagResponse = { uuid: "tag-ramp", name: "Ramp", color: "lime", i
  */
 function slot(
     uuid: string,
-    card: { type: string; manaValue: number },
+    card: { type: string; manaValue: number; cost?: string; produces?: Array<string> },
     quantity: number,
     tags: Array<string>,
 ): DeckCardResponse {
@@ -85,10 +87,10 @@ function slot(
         card: {
             name: uuid,
             type_line: card.type,
-            mana_cost: "",
+            mana_cost: card.cost ?? "",
             mana_value: card.manaValue,
             color_identity: "",
-            produced_mana: [],
+            produced_mana: card.produces ?? [],
             rarity: "Common",
             set_code: "tst",
             price_eur_cents: 100,
@@ -103,6 +105,48 @@ const DECK = [
     slot("bear", { type: "Creature — Bear", manaValue: 2 }, 21, []),
     slot("dragon", { type: "Creature — Dragon", manaValue: 9 }, 30, []),
 ];
+
+describe("deckOdds and snow", () => {
+    const SNOW = [
+        slot("snow-forest", { type: "Basic Snow Land — Forest", manaValue: 0, produces: ["G"] }, 4, []),
+        slot("forest", { type: "Basic Land — Forest", manaValue: 0, produces: ["G"] }, 32, []),
+        slot("brawl", { type: "Snow Sorcery", manaValue: 2, cost: "{G}{S}" }, 4, []),
+        slot("bear", { type: "Creature — Bear", manaValue: 2, cost: "{1}{G}" }, 59, []),
+    ];
+
+    it("asks a Snow pip for a Snow source, apart from the colours", () => {
+        const odds = deckOdds(SNOW, ["G"]);
+
+        expect(odds.thin).toStrictEqual([
+            expect.objectContaining({ name: "brawl", color: "S", wanted: 1, sources: 4, turn: 2 }),
+        ]);
+    });
+
+    it("reads the chance of a Snow source in the opening hand behind the colours", () => {
+        const odds = deckOdds(SNOW, ["G"]);
+
+        expect(odds.opening.colors.map((color) => color.key)).toStrictEqual(["G", "S"]);
+    });
+
+    it("says nothing about snow in a deck without a Snow pip", () => {
+        const odds = deckOdds(
+            SNOW.filter((card) => card.uuid !== "brawl"),
+            ["G"],
+        );
+
+        expect(odds.opening.colors.map((color) => color.key)).toStrictEqual(["G"]);
+    });
+
+    it("checks a card that costs nothing but Snow pips", () => {
+        const odds = deckOdds(
+            [...SNOW.slice(0, 2), slot("coat", { type: "Snow Artifact", manaValue: 2, cost: "{S}{S}" }, 1, [])],
+            ["G"],
+        );
+
+        expect(odds.checked).toBe(1);
+        expect(odds.thin.map((card) => card.color)).toStrictEqual(["S"]);
+    });
+});
 
 describe("deckOdds composition", () => {
     const odds = deckOdds(DECK, ["G"], [RAMP]);

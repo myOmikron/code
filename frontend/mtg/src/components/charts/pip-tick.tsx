@@ -17,14 +17,15 @@ const MULTICOLOR = "#c8a02c";
  * The five colours are already spelled the way Scryfall names its symbols. The
  * two heaps beside them are not: "colourless" is Scryfall's `C`, and
  * "multicoloured" is no symbol at all — Scryfall has none for it, so it is
- * drawn here as the gold dot the charts already colour those bars with.
+ * drawn here as the gold dot the charts already colour those bars with. Snow is
+ * no colour, but the deck's pips count it beside them as Scryfall's `S`.
  *
  * @param key the bucket the statistics counted under
  *
  * @returns what to draw, or `undefined` for a bucket that is not a colour
  */
 export function colorPip(key: string): string | undefined {
-    if (["W", "U", "B", "R", "G", "C"].includes(key)) return key;
+    if (["W", "U", "B", "R", "G", "C", "S"].includes(key)) return key;
     if (key === "colorless") return "C";
     if (key === "multicolor") return MULTICOLOR_PIP;
     return undefined;

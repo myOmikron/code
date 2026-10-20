@@ -48,6 +48,14 @@ _Avoid_: metrics, report
 A scanner session holding at least one scanned card not yet filed into a collection. Sessions are never closed: filing empties them.
 _Avoid_: active session
 
+**Snow pip**:
+An `{S}` in a mana cost: one mana of any colour or colourless, as long as a Snow source made it. Counts towards mana value like a generic symbol.
+_Avoid_: snow mana symbol, snow colour
+
+**Snow source**:
+A card with the Snow supertype that produces mana. Everything it produces is snow mana, in whatever colour it makes, so a Snow-Covered Forest is a green source and a Snow source at once. Effects that count the snow mana spent on a cost are not part of it.
+_Avoid_: snow land, snow colour
+
 ## Relationships
 
 - An **Account** has exactly one **Role**, and at most one **Lock** at a time

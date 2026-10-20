@@ -96,6 +96,23 @@ export function primaryType(typeLine: string): string {
 }
 
 /**
+ * Whether a card is a Snow source: snow, and making mana at all
+ *
+ * Snow is a supertype, so only what stands before the dash counts — a subtype
+ * or a name with the word in it does not make a card snow. Any face will do,
+ * since what a card produces is not told apart by face either.
+ *
+ * @param typeLine the type line as printed, both faces included
+ * @param producedMana the mana the card makes, as Scryfall lists it
+ *
+ * @returns whether everything it produces is snow mana
+ */
+export function isSnowSource(typeLine: string, producedMana: Array<string>): boolean {
+    if (producedMana.length === 0) return false;
+    return typeLine.split("//").some((face) => (face.split("—")[0] ?? "").toLowerCase().split(/\s+/).includes("snow"));
+}
+
+/**
  * Whether a card is a basic land, which no copy limit applies to
  *
  * @param typeLine the type line as printed
