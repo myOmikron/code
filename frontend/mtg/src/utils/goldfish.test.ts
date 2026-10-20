@@ -14,9 +14,12 @@ import {
     inZone,
     isLand,
     moveCard,
+    moveZone,
     mulligan,
     newGame,
     nextTurn,
+    reorderLibraryTop,
+    shuffleIntoLibrary,
     shuffleLibrary,
     toggleTapped,
     zoneCounts,
@@ -299,6 +302,91 @@ describe("attachments", () => {
         game = moveCard(game, named(game, "sword")!.id, "hand");
         expect(named(game, "sword")!.attachedTo).toBeNull();
         expect(named(game, "bear")!.zone).toBe("battlefield");
+    });
+});
+
+describe("reorderLibraryTop", () => {
+    it("puts the given cards on top in that order and leaves the rest below", () => {
+        const game = newGame(
+            [...DECK, ...Array.from({ length: 5 }, (_, index) => slot(`more-${index}`, 1))],
+            new Map(),
+            20,
+        );
+        const before = inZone(game, "library").map((card) => card.id);
+        const [first, second, third, ...rest] = before;
+        const after = reorderLibraryTop(game, [third!, first!, second!]);
+        expect(inZone(after, "library").map((card) => card.id)).toEqual([third, first, second, ...rest]);
+        expect(inZone(after, "hand")).toEqual(inZone(game, "hand"));
+    });
+
+    it("ignores cards that are not in the library", () => {
+        const game = newGame(DECK, new Map(), 20);
+        const library = inZone(game, "library").map((card) => card.id);
+        const inHand = inZone(game, "hand")[0]!.id;
+        const after = reorderLibraryTop(game, [library[1]!, inHand, "nowhere"]);
+        expect(inZone(after, "library").map((card) => card.id)).toEqual([library[1], library[0], library[2]]);
+        expect(after.cards.find((card) => card.id === inHand)!.zone).toBe("hand");
+    });
+});
+
+describe("moveZone", () => {
+    it("moves every card of a zone, bare and in order", () => {
+        let game = newGame(DECK, new Map(), 20, still);
+        const [first, second] = inZone(game, "hand");
+        game = moveCard(game, first!.id, "battlefield");
+        game = changeCounter(game, first!.id, "+1/+1", 1);
+        game = moveCard(game, first!.id, "graveyard");
+        game = moveCard(game, second!.id, "graveyard");
+        const after = moveZone(game, "graveyard", "exile");
+        expect(inZone(after, "graveyard")).toEqual([]);
+        expect(inZone(after, "exile").map((card) => card.id)).toEqual([first!.id, second!.id]);
+        expect(inZone(after, "exile").every((card) => Object.keys(card.counters).length === 0)).toBe(true);
+    });
+
+    it("puts a zone below the library in its order", () => {
+        let game = newGame(DECK, new Map(), 20, still);
+        const library = inZone(game, "library").map((card) => card.id);
+        const [first, second] = inZone(game, "hand");
+        game = moveCard(game, first!.id, "graveyard");
+        game = moveCard(game, second!.id, "graveyard");
+        const after = moveZone(game, "graveyard", "library");
+        expect(inZone(after, "library").map((card) => card.id)).toEqual([...library, first!.id, second!.id]);
+    });
+
+    it("lets tokens leaving the battlefield cease to exist", () => {
+        let game = newGame(DECK, new Map(), 20, still);
+        const card = inZone(game, "hand")[0]!;
+        game = moveCard(game, card.id, "battlefield");
+        game = createToken(game, {
+            printing: "tok",
+            name: "Treasure",
+            typeLine: "Token",
+            image: null,
+            backImage: null,
+        });
+        const after = moveZone(game, "battlefield", "graveyard");
+        expect(inZone(after, "battlefield")).toEqual([]);
+        expect(inZone(after, "graveyard").map((entry) => entry.id)).toEqual([card.id]);
+        expect(after.cards.some((entry) => entry.token)).toBe(false);
+    });
+});
+
+describe("shuffleIntoLibrary", () => {
+    it("empties the zone into the library and shuffles it, a source always saying zero moving the top card to the bottom", () => {
+        let game = newGame(DECK, new Map(), 20, still);
+        const [first, second] = inZone(game, "hand");
+        game = moveCard(game, first!.id, "graveyard");
+        game = moveCard(game, second!.id, "graveyard");
+        const before = inZone(game, "library").map((card) => card.id);
+        const after = shuffleIntoLibrary(game, "graveyard", () => 0);
+        expect(inZone(after, "graveyard")).toEqual([]);
+        expect(inZone(after, "library").map((card) => card.id)).toEqual([
+            before[1],
+            before[2],
+            first!.id,
+            second!.id,
+            before[0],
+        ]);
     });
 });
 

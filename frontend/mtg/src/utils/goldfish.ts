@@ -314,6 +314,44 @@ export function shuffleLibrary(game: GoldfishGame, random: () => number = Math.r
 }
 
 /**
+ * Shuffles every card of a zone into the library, the way a graveyard goes
+ * back with an Elixir
+ *
+ * @param game the game
+ * @param zone the zone to empty
+ * @param random the source of randomness, replaceable for tests
+ *
+ * @returns the game after
+ */
+export function shuffleIntoLibrary(
+    game: GoldfishGame,
+    zone: GoldfishZone,
+    random: () => number = Math.random,
+): GoldfishGame {
+    return shuffleLibrary(moveZone(game, zone, "library"), random);
+}
+
+/**
+ * Puts library cards on top in a given order, the way a look at the top cards
+ * ends. The rest of the library keeps its order below them.
+ *
+ * @param game the game
+ * @param ids the cards, top first; ids not in the library are ignored
+ *
+ * @returns the game after
+ */
+export function reorderLibraryTop(game: GoldfishGame, ids: Array<string>): GoldfishGame {
+    const deck = library(game);
+    const top = ids
+        .map((id) => deck.find((card) => card.id === id))
+        .filter((card, index, all): card is GoldfishCard => card !== undefined && all.indexOf(card) === index);
+    const order = [...top, ...deck.filter((card) => !top.includes(card))];
+    let next = 0;
+    const cards = game.cards.map((card) => (card.zone === "library" ? (order[next++] as GoldfishCard) : card));
+    return { ...game, cards };
+}
+
+/**
  * Sends the hand back, shuffles and draws seven again.
  *
  * The London rule's "put one on the bottom per mulligan" is left to the
@@ -434,6 +472,29 @@ export function moveCard(game: GoldfishGame, id: string, zone: GoldfishZone, end
         return { ...game, cards: [...rest.slice(0, last + 1), moved, ...rest.slice(last + 1)] };
     }
     return { ...game, cards: [...rest, moved] };
+}
+
+/**
+ * Puts every card of one zone somewhere else, each the way {@link moveCard}
+ * would, keeping their order. Into the library they go below what is there.
+ * A card that already left along the way, such as an Aura buried with its
+ * host, stays where it went.
+ *
+ * @param game the game
+ * @param from the zone to empty
+ * @param to where its cards go
+ *
+ * @returns the game after
+ */
+export function moveZone(game: GoldfishGame, from: GoldfishZone, to: GoldfishZone): GoldfishGame {
+    if (from === to) return game;
+    return inZone(game, from).reduce(
+        (current, card) =>
+            current.cards.find((entry) => entry.id === card.id)?.zone === from
+                ? moveCard(current, card.id, to, "bottom")
+                : current,
+        game,
+    );
 }
 
 /**

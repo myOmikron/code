@@ -6,26 +6,37 @@ import { useTranslation } from "react-i18next";
 /** The counts offered without typing */
 const PRESETS = [2, 3, 4, 5, 7];
 
+/** What the count can be for: drawing that many, or looking at that many from the top */
+export type CountPurpose = "draw" | "look";
+
+/** The dialog's words, per purpose */
+const TEXTS = {
+    draw: { heading: "heading.draw-many", confirm: "button.draw-count" },
+    look: { heading: "heading.look-top", confirm: "button.look-count" },
+} as const;
+
 /**
  * The properties for {@link GoldfishDrawDialog}
  */
 export type GoldfishDrawDialogProps = {
     /** Whether the dialog is open */
     open: boolean;
+    /** What the count is for */
+    purpose?: CountPurpose;
     /** How many cards the library holds */
     available: number;
-    /** Draws that many cards */
-    onDraw: (count: number) => void;
+    /** Takes the chosen count */
+    onChoose: (count: number) => void;
     /** Closes the dialog */
     onClose: () => void;
 };
 
 /**
- * Drawing several cards at once.
+ * Drawing several cards at once, or picking how many top cards to look at.
  *
  * @returns the dialog
  */
-export function GoldfishDrawDialog({ open, available, onDraw, onClose }: GoldfishDrawDialogProps) {
+export function GoldfishDrawDialog({ open, purpose = "draw", available, onChoose, onClose }: GoldfishDrawDialogProps) {
     const [t] = useTranslation("goldfish");
     const [tg] = useTranslation();
     const [count, setCount] = useState("2");
@@ -37,19 +48,19 @@ export function GoldfishDrawDialog({ open, available, onDraw, onClose }: Goldfis
     const amount = Math.max(0, Math.min(available, Math.floor(Number(count) || 0)));
 
     /**
-     * Draws and closes
+     * Hands over the count and closes
      *
      * @param wanted how many
      */
     function submit(wanted: number) {
         if (wanted <= 0) return;
-        onDraw(wanted);
+        onChoose(wanted);
         onClose();
     }
 
     return (
         <Dialog open={open} onClose={onClose} size={"xs"}>
-            <DialogTitle>{t("heading.draw-many")}</DialogTitle>
+            <DialogTitle>{t(TEXTS[purpose].heading)}</DialogTitle>
             <DialogBody>
                 <div className={"flex flex-col gap-4"}>
                     <div className={"flex flex-wrap gap-2"}>
@@ -84,7 +95,7 @@ export function GoldfishDrawDialog({ open, available, onDraw, onClose }: Goldfis
                     {tg("button.cancel")}
                 </Button>
                 <PrimaryButton disabled={amount <= 0} onClick={() => submit(amount)}>
-                    {t("button.draw-count", { count: amount })}
+                    {t(TEXTS[purpose].confirm, { count: amount })}
                 </PrimaryButton>
             </DialogActions>
         </Dialog>

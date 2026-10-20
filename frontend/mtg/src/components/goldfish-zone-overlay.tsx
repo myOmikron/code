@@ -5,6 +5,7 @@ import clsx from "clsx";
 import { useTranslation } from "react-i18next";
 import type { MenuAt } from "src/components/context-menu";
 import { useGoldfishZoneLabel } from "src/components/goldfish-labels";
+import { GoldfishTopCards } from "src/components/goldfish-top-cards";
 import { GoldfishZoneGrid } from "src/components/goldfish-zone-grid";
 import { QuietButton } from "src/components/quiet-button";
 import type { GoldfishCard, GoldfishZone } from "src/utils/goldfish";
@@ -31,6 +32,11 @@ export type GoldfishZoneOverlayProps = {
     onHover: (card: GoldfishCard | null) => void;
     /** Shuffles the library, offered while looking through it */
     onShuffle: () => void;
+    /**
+     * Puts the cards on top of the library in a new order. Given, the sheet
+     * shows only the top cards of the library, to be dragged into order.
+     */
+    onReorder?: (ids: Array<string>) => void;
     /** Puts the table back */
     onClose: () => void;
     /** Whether the sheet covers the whole screen rather than the table */
@@ -55,6 +61,7 @@ export function GoldfishZoneOverlay({
     onOpenMenu,
     onHover,
     onShuffle,
+    onReorder,
     onClose,
     fullscreen = false,
 }: GoldfishZoneOverlayProps) {
@@ -75,13 +82,13 @@ export function GoldfishZoneOverlay({
         >
             <div className={"flex items-center gap-3 border-b border-white/10 px-4 py-2"}>
                 <span className={"text-[11px]/4 font-semibold tracking-[0.25em] text-white/70 uppercase"}>
-                    {zoneLabel(zone)}
+                    {onReorder === undefined ? zoneLabel(zone) : t("label.library-top")}
                 </span>
                 <span className={"text-xs text-white/50 tabular-nums"}>
                     {t("label.cards-count", { count: cards.length })}
                 </span>
                 <div className={"ml-auto flex items-center gap-1"}>
-                    {zone === "library" && (
+                    {zone === "library" && onReorder === undefined && (
                         <QuietButton
                             onClick={onShuffle}
                             className={"text-white/70 ring-white/15 hover:bg-lime-400/15 hover:text-lime-300"}
@@ -103,16 +110,27 @@ export function GoldfishZoneOverlay({
                 </div>
             </div>
             <div className={"min-h-0 grow overflow-y-auto"}>
-                <GoldfishZoneGrid
-                    zone={zone}
-                    cards={cards}
-                    menued={menued}
-                    onZoom={onZoom}
-                    onPick={onPick}
-                    hint={hint}
-                    onOpenMenu={onOpenMenu}
-                    onHover={onHover}
-                />
+                {onReorder === undefined ? (
+                    <GoldfishZoneGrid
+                        zone={zone}
+                        cards={cards}
+                        menued={menued}
+                        onZoom={onZoom}
+                        onPick={onPick}
+                        hint={hint}
+                        onOpenMenu={onOpenMenu}
+                        onHover={onHover}
+                    />
+                ) : (
+                    <GoldfishTopCards
+                        cards={cards}
+                        menued={menued}
+                        onZoom={onZoom}
+                        onReorder={onReorder}
+                        onOpenMenu={onOpenMenu}
+                        onHover={onHover}
+                    />
+                )}
             </div>
         </motion.div>
     );
