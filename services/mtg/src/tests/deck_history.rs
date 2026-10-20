@@ -1,9 +1,13 @@
 //! The Deck history and the Deck entries it is kept for
 
+use galvyn::core::Module;
 use galvyn::core::re_exports::axum::http::Method;
 use galvyn::core::re_exports::axum::http::StatusCode;
 use galvyn::rorm::Database;
 use galvyn::rorm::DatabaseConfiguration;
+use galvyn::rorm::db::Executor;
+use galvyn::rorm::db::executor::All;
+use galvyn::rorm::db::sql::value::Value as SqlValue;
 use serde_json::Value;
 use serde_json::json;
 use uuid::Uuid;
@@ -646,6 +650,7 @@ fn adding_a_card_records_one_deck_change() {
             .await;
         assert_eq!(fixture.kinds().await, vec!["Edit", "Created"]);
         assert_eq!(fixture.latest().await, vec![("Main".to_string(), 0, 2)]);
+        fixture.age_latest().await;
 
         fixture
             .add(json!({ "printing": printing, "quantity": 1, "zone": "Main" }))
@@ -662,10 +667,12 @@ fn changing_an_entrys_quantity_records_one_deck_change() {
         let entry = fixture
             .add(json!({ "printing": Uuid::new_v4(), "quantity": 3, "zone": "Side" }))
             .await;
+        fixture.age_latest().await;
 
         fixture.patch(&entry, json!({ "quantity": 1 })).await;
         assert_eq!(fixture.kinds().await, vec!["Edit", "Edit", "Created"]);
         assert_eq!(fixture.latest().await, vec![("Side".to_string(), 3, 1)]);
+        fixture.age_latest().await;
 
         fixture.patch(&entry, json!({ "quantity": 0 })).await;
         assert_eq!(fixture.kinds().await.len(), 4);
@@ -680,6 +687,7 @@ fn removing_an_entry_records_one_deck_change() {
         let entry = fixture
             .add(json!({ "printing": Uuid::new_v4(), "quantity": 4, "zone": "Main" }))
             .await;
+        fixture.age_latest().await;
 
         fixture.remove(&entry).await;
 
@@ -1627,6 +1635,214 @@ fn a_new_decks_first_deck_change_holds_its_settings() {
                 field("Format", json!("modern"), json!("modern")),
                 field("Name", json!("History"), json!("History")),
             ]
+        );
+    });
+}
+
+impl Fixture {
+    /// Makes the newest Deck change look older than the coalescing window
+    async fn age_latest(&mut self) {
+        let mut tx = Database::global()
+            .start_transaction()
+            .await
+            .expect("start a transaction");
+        (&mut tx)
+            .execute::<All>(
+                "UPDATE deck_change SET changed_at = changed_at - INTERVAL '2 minutes' \
+                 WHERE uuid = (SELECT uuid FROM deck_change WHERE deck = $1 \
+                 ORDER BY uuid DESC LIMIT 1)"
+                    .to_string(),
+                vec![SqlValue::Uuid(self.deck.parse().expect("deck uuid"))],
+            )
+            .await
+            .expect("backdate the newest Deck change");
+        tx.commit().await.expect("commit");
+    }
+}
+
+#[test]
+fn quick_additions_to_one_entry_become_one_deck_change() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        let printing = Uuid::new_v4();
+        let entry = fixture
+            .add(json!({ "printing": printing, "quantity": 1, "zone": "Main" }))
+            .await;
+
+        fixture.patch(&entry, json!({ "quantity": 2 })).await;
+        fixture
+            .add(json!({ "printing": printing, "quantity": 1, "zone": "Main" }))
+            .await;
+
+        assert_eq!(fixture.kinds().await, vec!["Edit", "Created"]);
+        assert_eq!(fixture.latest().await, vec![("Main".to_string(), 0, 3)]);
+    });
+}
+
+#[test]
+fn quick_description_saves_become_one_deck_change() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+
+        for description in ["Go", "Go wide", "Go wide fast"] {
+            fixture
+                .send(
+                    Method::PUT,
+                    "",
+                    json!({ "name": "History", "description": description, "format": "modern" }),
+                )
+                .await;
+        }
+
+        assert_eq!(fixture.kinds().await, vec!["Settings", "Created"]);
+        assert_eq!(
+            fixture.latest_fields().await,
+            vec![field("Description", Value::Null, json!("Go wide fast"))]
+        );
+    });
+}
+
+#[test]
+fn adding_and_taking_away_a_copy_quickly_leaves_no_deck_change() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        let printing = Uuid::new_v4();
+        let entry = fixture
+            .add(json!({ "printing": printing, "quantity": 2, "zone": "Main" }))
+            .await;
+        fixture.age_latest().await;
+
+        fixture.patch(&entry, json!({ "quantity": 3 })).await;
+        fixture.patch(&entry, json!({ "quantity": 2 })).await;
+
+        assert_eq!(fixture.kinds().await, vec!["Edit", "Created"]);
+        assert_eq!(fixture.latest().await, vec![("Main".to_string(), 0, 2)]);
+    });
+}
+
+#[test]
+fn quick_edits_of_different_entries_or_fields_stay_apart() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        let printing = Uuid::new_v4();
+        fixture
+            .add(json!({ "printing": printing, "quantity": 1, "zone": "Main" }))
+            .await;
+        fixture
+            .add(json!({ "printing": printing, "quantity": 1, "zone": "Side" }))
+            .await;
+        fixture
+            .add(json!({ "printing": Uuid::new_v4(), "quantity": 1, "zone": "Side" }))
+            .await;
+        fixture
+            .send(Method::PUT, "colors", json!({ "colors": "WU" }))
+            .await;
+        fixture
+            .send(
+                Method::PUT,
+                "",
+                json!({ "name": "Renamed", "description": null, "format": "modern" }),
+            )
+            .await;
+
+        assert_eq!(
+            fixture.kinds().await,
+            vec!["Settings", "Settings", "Edit", "Edit", "Edit", "Created"]
+        );
+    });
+}
+
+#[test]
+fn an_edit_after_the_window_stays_apart() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        let entry = fixture
+            .add(json!({ "printing": Uuid::new_v4(), "quantity": 1, "zone": "Main" }))
+            .await;
+        fixture
+            .send(Method::PUT, "colors", json!({ "colors": "WU" }))
+            .await;
+        fixture.age_latest().await;
+        fixture
+            .send(Method::PUT, "colors", json!({ "colors": "B" }))
+            .await;
+        fixture.patch(&entry, json!({ "quantity": 2 })).await;
+        fixture.age_latest().await;
+
+        fixture.patch(&entry, json!({ "quantity": 3 })).await;
+
+        assert_eq!(
+            fixture.kinds().await,
+            vec!["Edit", "Edit", "Settings", "Settings", "Edit", "Created"]
+        );
+        assert_eq!(fixture.latest().await, vec![("Main".to_string(), 2, 3)]);
+    });
+}
+
+#[test]
+fn moves_never_join_quick_edits() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        let entry = fixture
+            .add(json!({ "printing": Uuid::new_v4(), "quantity": 2, "zone": "Main" }))
+            .await;
+
+        fixture.patch(&entry, json!({ "zone": "Side" })).await;
+        fixture.patch(&entry, json!({ "zone": "Main" })).await;
+        fixture.patch(&entry, json!({ "quantity": 3 })).await;
+
+        assert_eq!(
+            fixture.kinds().await,
+            vec!["Edit", "Move", "Move", "Edit", "Created"]
+        );
+    });
+}
+
+#[test]
+fn imports_never_join_quick_edits() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        let printing = Uuid::new_v4();
+        let card = json!([{ "printing": printing, "quantity": 1, "zone": "Main" }]);
+        fixture
+            .add(json!({ "printing": printing, "quantity": 1, "zone": "Main" }))
+            .await;
+
+        fixture.import(card.clone(), false).await;
+        fixture.import(card, false).await;
+        fixture
+            .add(json!({ "printing": printing, "quantity": 1, "zone": "Main" }))
+            .await;
+
+        assert_eq!(
+            fixture.kinds().await,
+            vec!["Edit", "Import", "Import", "Edit", "Created"]
+        );
+    });
+}
+
+#[test]
+fn swaps_never_join_quick_edits() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        let incoming = Uuid::new_v4();
+        let entry = fixture
+            .add(json!({ "printing": Uuid::new_v4(), "quantity": 3, "zone": "Main" }))
+            .await;
+
+        let response = fixture
+            .swap(&entry, json!({ "quantity": 1, "printing": incoming }))
+            .await;
+        let swapped_in = response.ok_json()["uuid"]
+            .as_str()
+            .expect("entry uuid")
+            .to_string();
+        fixture.patch(&entry, json!({ "quantity": 1 })).await;
+        fixture.patch(&swapped_in, json!({ "quantity": 2 })).await;
+
+        assert_eq!(
+            fixture.kinds().await,
+            vec!["Edit", "Edit", "Swap", "Edit", "Created"]
         );
     });
 }
