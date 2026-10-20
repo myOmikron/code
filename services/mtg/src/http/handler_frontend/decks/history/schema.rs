@@ -11,6 +11,7 @@ use crate::models::deck::history::DeckChange;
 use crate::models::deck::history::DeckChangeKind;
 use crate::models::deck::history::DeckChangeUuid;
 use crate::models::deck::history::FieldDifference;
+use crate::models::deck::history::UndoState;
 
 /// The page size of a Deck history for a client that does not ask for one
 fn default_limit() -> u32 {
@@ -35,6 +36,19 @@ pub struct DeckHistoryResponse {
     pub changes: Vec<DeckChangeResponse>,
     /// Pass as `after` for the next page, `None` on the last one
     pub next_cursor: Option<DeckChangeUuid>,
+    /// Whether there is a Deck change to undo
+    pub can_undo: bool,
+    /// Whether there is an undone Deck change to redo
+    pub can_redo: bool,
+}
+
+/// What undo and redo can do after one of them
+#[derive(Debug, Clone, Serialize, JsonSchema)]
+pub struct DeckUndoResponse {
+    /// Whether there is a Deck change to undo
+    pub can_undo: bool,
+    /// Whether there is an undone Deck change to redo
+    pub can_redo: bool,
 }
 
 /// One Deck change
@@ -50,6 +64,10 @@ pub struct DeckChangeResponse {
     pub entries: Vec<DeckEntryChangeResponse>,
     /// The deck fields it changed
     pub fields: Vec<FieldDifference>,
+    /// The Deck change an undo takes back or a redo applies again, `None` for any other kind
+    pub reference: Option<DeckChangeUuid>,
+    /// Whether an undo took it back and no redo applied it again since
+    pub undone: bool,
 }
 
 /// How many copies one Deck entry held before and after a Deck change
@@ -83,6 +101,8 @@ impl From<DeckChange> for DeckChangeResponse {
                 .map(DeckEntryChangeResponse::from)
                 .collect(),
             fields: value.fields,
+            reference: value.reference,
+            undone: value.undone,
         }
     }
 }
@@ -97,6 +117,15 @@ impl From<ChangedEntry> for DeckEntryChangeResponse {
             proxy: difference.proxy,
             before: difference.before,
             after: difference.after,
+        }
+    }
+}
+
+impl From<UndoState> for DeckUndoResponse {
+    fn from(state: UndoState) -> Self {
+        Self {
+            can_undo: state.undo.is_some(),
+            can_redo: state.redo.is_some(),
         }
     }
 }

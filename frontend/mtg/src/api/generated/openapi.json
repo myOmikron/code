@@ -5273,6 +5273,130 @@
                 }
             }
         },
+        "/api/frontend/v1/decks/{deck}/history/undo": {
+            "post": {
+                "summary": "Take back the latest Deck change that is not undone yet",
+                "description": "Take back the latest Deck change that is not undone yet\n\nOnly the owner undoes. Refused when only the deck's first Deck change is left.",
+                "operationId": "undo_deck_change",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "deck",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Deck`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DeckUndoResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/decks/{deck}/history/redo": {
+            "post": {
+                "summary": "Apply the latest undone Deck change again",
+                "description": "Apply the latest undone Deck change again\n\nOnly the owner redoes. Refused when nothing is undone or a later Deck\nchange discarded the undo.",
+                "operationId": "redo_deck_change",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "deck",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Deck`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DeckUndoResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/frontend/v1/explore/decks": {
             "get": {
                 "summary": "Search the decks their owners put on show",
@@ -10843,6 +10967,20 @@
                         "enum": [
                             "Settings"
                         ]
+                    },
+                    {
+                        "description": "An earlier Deck change taken back",
+                        "type": "string",
+                        "enum": [
+                            "Undo"
+                        ]
+                    },
+                    {
+                        "description": "An undone Deck change applied again",
+                        "type": "string",
+                        "enum": [
+                            "Redo"
+                        ]
                     }
                 ]
             },
@@ -10880,6 +11018,19 @@
                             }
                         ]
                     },
+                    "reference": {
+                        "nullable": true,
+                        "description": "The Deck change an undo takes back or a redo applies again, `None` for any other kind",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DeckChangeUuid"
+                            }
+                        ]
+                    },
+                    "undone": {
+                        "description": "Whether an undo took it back and no redo applied it again since",
+                        "type": "boolean"
+                    },
                     "uuid": {
                         "description": "Primary key",
                         "allOf": [
@@ -10894,6 +11045,7 @@
                     "entries",
                     "fields",
                     "kind",
+                    "undone",
                     "uuid"
                 ]
             },
@@ -11145,6 +11297,14 @@
                 "description": "One page of a Deck history, newest first",
                 "type": "object",
                 "properties": {
+                    "can_redo": {
+                        "description": "Whether there is an undone Deck change to redo",
+                        "type": "boolean"
+                    },
+                    "can_undo": {
+                        "description": "Whether there is a Deck change to undo",
+                        "type": "boolean"
+                    },
                     "changes": {
                         "description": "The Deck changes",
                         "type": "array",
@@ -11163,6 +11323,8 @@
                     }
                 },
                 "required": [
+                    "can_redo",
+                    "can_undo",
                     "changes"
                 ]
             },
@@ -11233,6 +11395,14 @@
                         "description": "Which Commander bracket the deck is built to, `null` when unset",
                         "type": "integer",
                         "format": "int16"
+                    },
+                    "can_redo": {
+                        "description": "Whether the owner can redo an undone Deck change, always `false` for anyone else",
+                        "type": "boolean"
+                    },
+                    "can_undo": {
+                        "description": "Whether the owner can undo a Deck change, always `false` for anyone else",
+                        "type": "boolean"
                     },
                     "created_at": {
                         "description": "When the deck was created",
@@ -11312,6 +11482,8 @@
                     "allow_banned",
                     "allow_duplicates",
                     "allow_extra_commanders",
+                    "can_redo",
+                    "can_undo",
                     "created_at",
                     "format",
                     "name",
@@ -11497,6 +11669,24 @@
                         }
                     }
                 }
+            },
+            "DeckUndoResponse": {
+                "description": "What undo and redo can do after one of them",
+                "type": "object",
+                "properties": {
+                    "can_redo": {
+                        "description": "Whether there is an undone Deck change to redo",
+                        "type": "boolean"
+                    },
+                    "can_undo": {
+                        "description": "Whether there is a Deck change to undo",
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "can_redo",
+                    "can_undo"
+                ]
             },
             "DeckUuid": {
                 "description": "Wrapper for the primary key of the [`Deck`] model. To have better distinguishable types.",

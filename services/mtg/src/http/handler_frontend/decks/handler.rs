@@ -74,6 +74,7 @@ use crate::models::deck::history::DeckChangeKind;
 use crate::models::deck::history::DeckDifference;
 use crate::models::deck::history::DeckEdit;
 use crate::models::deck::history::DeckHistory;
+use crate::models::deck::history::UndoState;
 use crate::models::deck::listing::DeckSummary;
 use crate::models::deck::listing::ListedSlot;
 use crate::models::deck::sourcing::DeckSourcing;
@@ -576,10 +577,19 @@ pub async fn get_deck(
     let deck = Deck::get_visible(&mut tx, deck_uuid, Some(account.uuid))
         .await?
         .ok_or_else(denied)?;
+    let state = if deck.owner == account.uuid {
+        DeckHistory::undo_state(&mut tx, deck_uuid).await?
+    } else {
+        UndoState::default()
+    };
 
     tx.commit().await?;
 
-    Ok(ApiJson(DeckResponse::from(deck)))
+    Ok(ApiJson(DeckResponse {
+        can_undo: state.undo.is_some(),
+        can_redo: state.redo.is_some(),
+        ..DeckResponse::from(deck)
+    }))
 }
 
 /// Rename a deck, change its description or the format it is built for

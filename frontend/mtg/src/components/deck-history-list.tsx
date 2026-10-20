@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { Badge, Button, Strong, Text } from "components";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -64,7 +65,11 @@ export function DeckHistoryList({ deckUuid }: DeckHistoryListProps) {
         <div className={"flex flex-col gap-6"}>
             <ol className={"divide-y divide-zinc-950/5 dark:divide-white/5"}>
                 {changes.map((change) => (
-                    <DeckChangeRow key={change.uuid} change={change} />
+                    <DeckChangeRow
+                        key={change.uuid}
+                        change={change}
+                        referenced={changes.find((other) => other.uuid === change.reference)}
+                    />
                 ))}
             </ol>
             {cursor !== null && (
@@ -84,6 +89,8 @@ export function DeckHistoryList({ deckUuid }: DeckHistoryListProps) {
 type DeckChangeRowProps = {
     /** The Deck change */
     change: DeckChangeResponse;
+    /** The Deck change an undo or redo refers to, when it is loaded */
+    referenced?: DeckChangeResponse;
 };
 
 /**
@@ -91,7 +98,7 @@ type DeckChangeRowProps = {
  *
  * @returns the row
  */
-function DeckChangeRow({ change }: DeckChangeRowProps) {
+function DeckChangeRow({ change, referenced }: DeckChangeRowProps) {
     const [t] = useTranslation("deck");
 
     const added = change.entries.reduce((sum, entry) => sum + Math.max(entry.after - entry.before, 0), 0);
@@ -147,12 +154,17 @@ function DeckChangeRow({ change }: DeckChangeRowProps) {
             case "Replace":
                 return <Collapsed heading={t("label.history-replace", { added, removed })} entries={change.entries} />;
             case "Settings":
+                return <FieldLines fields={change.fields} />;
+            case "Undo":
+            case "Redo":
                 return (
-                    <ul className={"flex flex-col gap-1"}>
-                        {change.fields.map((field) => (
-                            <FieldLine key={field.field} field={field} />
-                        ))}
-                    </ul>
+                    <Headed heading={change.kind === "Undo" ? t("label.history-undo") : t("label.history-redo")}>
+                        {referenced !== undefined && (
+                            <Text>{t("label.history-undo-of", { date: formatDateTime(referenced.changed_at) })}</Text>
+                        )}
+                        <EntryLines entries={change.entries} />
+                        <FieldLines fields={change.fields} />
+                    </Headed>
                 );
         }
     }
@@ -160,7 +172,14 @@ function DeckChangeRow({ change }: DeckChangeRowProps) {
     return (
         <li className={"flex flex-col gap-1 py-3 sm:flex-row sm:gap-6"}>
             <Text className={"shrink-0 tabular-nums sm:w-40"}>{formatDateTime(change.changed_at)}</Text>
-            <div className={"min-w-0"}>{body()}</div>
+            <div className={clsx("flex min-w-0 flex-col gap-1", change.undone && "opacity-60")}>
+                {change.undone && (
+                    <span>
+                        <Badge color={"zinc"}>{t("label.history-undone")}</Badge>
+                    </span>
+                )}
+                {body()}
+            </div>
         </li>
     );
 }
@@ -275,6 +294,29 @@ function EntryLine({ entry }: EntryLineProps) {
                 {t("label.history-quantities", { before: entry.before, after: entry.after })}
             </Text>
         </li>
+    );
+}
+
+/**
+ * The properties for {@link FieldLines}
+ */
+type FieldLinesProps = {
+    /** The deck fields a Deck change changed */
+    fields: Array<FieldDifference>;
+};
+
+/**
+ * One line per deck field a Deck change changed
+ *
+ * @returns the list
+ */
+function FieldLines({ fields }: FieldLinesProps) {
+    return (
+        <ul className={"flex flex-col gap-1"}>
+            {fields.map((field) => (
+                <FieldLine key={field.field} field={field} />
+            ))}
+        </ul>
     );
 }
 

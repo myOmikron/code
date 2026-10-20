@@ -1,4 +1,6 @@
 import {
+    ArrowUturnLeftIcon,
+    ArrowUturnRightIcon,
     CheckCircleIcon,
     ExclamationTriangleIcon,
     FunnelIcon,
@@ -90,6 +92,14 @@ export type DeckHeaderBarProps = {
     onManageTags: () => void;
     /** Records a claimed bracket */
     onChangeBracket: (bracket: number | null) => void;
+    /** Whether there is a Deck change to undo */
+    canUndo: boolean;
+    /** Whether there is an undone Deck change to redo */
+    canRedo: boolean;
+    /** Takes back the latest Deck change */
+    onUndo: () => void;
+    /** Applies the latest undone Deck change again */
+    onRedo: () => void;
     /** The bar itself, for a page that has to know how much room it takes */
     ref?: Ref<HTMLDivElement>;
     /** The search field, so its keyboard shortcut can focus it */
@@ -135,8 +145,13 @@ export function DeckHeaderBar({
     ref,
     searchRef,
     onChangeBracket,
+    canUndo,
+    canRedo,
+    onUndo,
+    onRedo,
 }: DeckHeaderBarProps) {
     const [t] = useTranslation("deck");
+    const [tg] = useTranslation();
     const labels = useDeckLabels();
 
     const remarks = legality.deck.length + (legality.slots.size > 0 ? 1 : 0);
@@ -337,6 +352,30 @@ export function DeckHeaderBar({
                         "ml-auto flex w-full basis-full flex-wrap items-center justify-end gap-2 sm:w-auto sm:flex-none sm:basis-auto sm:flex-nowrap"
                     }
                 >
+                    <button
+                        type={"button"}
+                        onClick={onUndo}
+                        disabled={!canUndo}
+                        aria-label={tg("button.undo")}
+                        title={tg("button.undo")}
+                        className={
+                            "shrink-0 rounded-(--radius-control) p-1.5 text-zinc-500 transition hover:bg-lime-400/15 hover:text-lime-700 disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-zinc-500 dark:text-zinc-400 dark:hover:bg-lime-400/15 dark:hover:text-lime-300 dark:disabled:hover:text-zinc-400 pointer-coarse:p-2.5"
+                        }
+                    >
+                        <ArrowUturnLeftIcon className={"size-5"} />
+                    </button>
+                    <button
+                        type={"button"}
+                        onClick={onRedo}
+                        disabled={!canRedo}
+                        aria-label={tg("button.redo")}
+                        title={tg("button.redo")}
+                        className={
+                            "shrink-0 rounded-(--radius-control) p-1.5 text-zinc-500 transition hover:bg-lime-400/15 hover:text-lime-700 disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-zinc-500 dark:text-zinc-400 dark:hover:bg-lime-400/15 dark:hover:text-lime-300 dark:disabled:hover:text-zinc-400 pointer-coarse:p-2.5"
+                        }
+                    >
+                        <ArrowUturnRightIcon className={"size-5"} />
+                    </button>
                     <button
                         type={"button"}
                         onClick={onOpenSearch}

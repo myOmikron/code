@@ -77,6 +77,10 @@ pub struct DeckResponse {
     pub created_at: SchemaDateTime,
     /// The folder the deck is filed in, `null` while it is on no shelf
     pub folder: Option<DeckFolderUuid>,
+    /// Whether the owner can undo a Deck change, always `false` for anyone else
+    pub can_undo: bool,
+    /// Whether the owner can redo an undone Deck change, always `false` for anyone else
+    pub can_redo: bool,
 }
 
 /// What the catalog knows about a card the sourcing view shows
@@ -919,6 +923,8 @@ impl From<Deck> for DeckResponse {
             deck_size: deck.deck_size,
             folder: deck.folder,
             created_at: SchemaDateTime(deck.created_at),
+            can_undo: false,
+            can_redo: false,
         }
     }
 }

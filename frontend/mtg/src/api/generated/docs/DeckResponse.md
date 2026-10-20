@@ -12,6 +12,8 @@ Name | Type
 `allow_extra_commanders` | boolean
 `allowed_color_identity` | string
 `bracket` | number
+`can_redo` | boolean
+`can_undo` | boolean
 `created_at` | string
 `deck_size` | number
 `description` | string

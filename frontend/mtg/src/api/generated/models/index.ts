@@ -2059,7 +2059,15 @@ export const DeckChangeKind = {
     /**
     * Deck fields changed: name, description, format, colors, bracket, rule-zero exceptions or size
     */
-    Settings: 'Settings'
+    Settings: 'Settings',
+    /**
+    * An earlier Deck change taken back
+    */
+    Undo: 'Undo',
+    /**
+    * An undone Deck change applied again
+    */
+    Redo: 'Redo'
 } as const;
 export type DeckChangeKind = typeof DeckChangeKind[keyof typeof DeckChangeKind];
 
@@ -2093,6 +2101,18 @@ export interface DeckChangeResponse {
      * @memberof DeckChangeResponse
      */
     kind: DeckChangeKind;
+    /**
+     * The Deck change an undo takes back or a redo applies again, `None` for any other kind
+     * @type {string}
+     * @memberof DeckChangeResponse
+     */
+    reference?: string | null;
+    /**
+     * Whether an undo took it back and no redo applied it again since
+     * @type {boolean}
+     * @memberof DeckChangeResponse
+     */
+    undone: boolean;
     /**
      * Primary key
      * @type {string}
@@ -2325,6 +2345,18 @@ export interface DeckFolderResponse {
  */
 export interface DeckHistoryResponse {
     /**
+     * Whether there is an undone Deck change to redo
+     * @type {boolean}
+     * @memberof DeckHistoryResponse
+     */
+    can_redo: boolean;
+    /**
+     * Whether there is a Deck change to undo
+     * @type {boolean}
+     * @memberof DeckHistoryResponse
+     */
+    can_undo: boolean;
+    /**
      * The Deck changes
      * @type {Array<DeckChangeResponse>}
      * @memberof DeckHistoryResponse
@@ -2404,6 +2436,18 @@ export interface DeckResponse {
      * @memberof DeckResponse
      */
     bracket?: number | null;
+    /**
+     * Whether the owner can redo an undone Deck change, always `false` for anyone else
+     * @type {boolean}
+     * @memberof DeckResponse
+     */
+    can_redo: boolean;
+    /**
+     * Whether the owner can undo a Deck change, always `false` for anyone else
+     * @type {boolean}
+     * @memberof DeckResponse
+     */
+    can_undo: boolean;
     /**
      * When the deck was created
      * @type {string}
@@ -2619,6 +2663,25 @@ export interface DeckTargets {
      * @memberof DeckTargets
      */
     types?: { [key: string]: Corridor | undefined; };
+}
+/**
+ * What undo and redo can do after one of them
+ * @export
+ * @interface DeckUndoResponse
+ */
+export interface DeckUndoResponse {
+    /**
+     * Whether there is an undone Deck change to redo
+     * @type {boolean}
+     * @memberof DeckUndoResponse
+     */
+    can_redo: boolean;
+    /**
+     * Whether there is a Deck change to undo
+     * @type {boolean}
+     * @memberof DeckUndoResponse
+     */
+    can_undo: boolean;
 }
 
 /**

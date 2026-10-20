@@ -53,6 +53,7 @@ import type {
     DeckResponse,
     DeckSourcingResponse,
     DeckTagResponse,
+    DeckUndoResponse,
     DeleteAccountRequest,
     EntrySort,
     FileScannerSessionRequest,
@@ -508,6 +509,10 @@ export interface RecoverAccountOperationRequest {
     RecoverAccountRequest?: RecoverAccountRequest;
 }
 
+export interface RedoDeckChangeRequest {
+    deck: string;
+}
+
 export interface RenameAccountOperationRequest {
     RenameAccountRequest?: RenameAccountRequest;
 }
@@ -628,6 +633,10 @@ export interface UnassignDeckCardTagRequest {
     deck: string;
     card: string;
     tag: string;
+}
+
+export interface UndoDeckChangeRequest {
+    deck: string;
 }
 
 export interface UpdateCollectionOperationRequest {
@@ -4981,6 +4990,53 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for redoDeckChange without sending the request
+     */
+    async redoDeckChangeRequestOpts(requestParameters: RedoDeckChangeRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['deck'] == null) {
+            throw new runtime.RequiredError(
+                'deck',
+                'Required parameter "deck" was null or undefined when calling redoDeckChange().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/decks/{deck}/history/redo`;
+        urlPath = urlPath.replace('{deck}', encodeURIComponent(String(requestParameters['deck'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Apply the latest undone Deck change again  Only the owner redoes. Refused when nothing is undone or a later Deck change discarded the undo.
+     * Apply the latest undone Deck change again
+     */
+    async redoDeckChangeRaw(requestParameters: RedoDeckChangeRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DeckUndoResponse>> {
+        const requestOptions = await this.redoDeckChangeRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Apply the latest undone Deck change again  Only the owner redoes. Refused when nothing is undone or a later Deck change discarded the undo.
+     * Apply the latest undone Deck change again
+     */
+    async redoDeckChange(requestParameters: RedoDeckChangeRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DeckUndoResponse> {
+        const response = await this.redoDeckChangeRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for renameAccount without sending the request
      */
     async renameAccountRequestOpts(requestParameters: RenameAccountOperationRequest): Promise<runtime.RequestOpts> {
@@ -6269,6 +6325,53 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async unassignDeckCardTag(requestParameters: UnassignDeckCardTagRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
         const response = await this.unassignDeckCardTagRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for undoDeckChange without sending the request
+     */
+    async undoDeckChangeRequestOpts(requestParameters: UndoDeckChangeRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['deck'] == null) {
+            throw new runtime.RequiredError(
+                'deck',
+                'Required parameter "deck" was null or undefined when calling undoDeckChange().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/decks/{deck}/history/undo`;
+        urlPath = urlPath.replace('{deck}', encodeURIComponent(String(requestParameters['deck'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Take back the latest Deck change that is not undone yet  Only the owner undoes. Refused when only the deck\'s first Deck change is left.
+     * Take back the latest Deck change that is not undone yet
+     */
+    async undoDeckChangeRaw(requestParameters: UndoDeckChangeRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DeckUndoResponse>> {
+        const requestOptions = await this.undoDeckChangeRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Take back the latest Deck change that is not undone yet  Only the owner undoes. Refused when only the deck\'s first Deck change is left.
+     * Take back the latest Deck change that is not undone yet
+     */
+    async undoDeckChange(requestParameters: UndoDeckChangeRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DeckUndoResponse> {
+        const response = await this.undoDeckChangeRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

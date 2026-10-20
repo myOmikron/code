@@ -77,6 +77,7 @@ docs/DeckSizeOneOf1.md
 docs/DeckSourcingResponse.md
 docs/DeckTagResponse.md
 docs/DeckTargets.md
+docs/DeckUndoResponse.md
 docs/DeckZone.md
 docs/DefaultApi.md
 docs/DeleteAccountErrors.md
