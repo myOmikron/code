@@ -3,6 +3,7 @@ import clsx from "clsx";
 import { Badge, Button } from "components";
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { CardFinish } from "src/api/generated";
 import { CutCandidate, Swap } from "src/api/graph-generated";
@@ -65,6 +66,8 @@ export type DeckAdvisorCutsProps = {
      * only the offers stay off screen.
      */
     cutsOnly?: boolean;
+    /** Drawn beside an offer's name, given the card going in and the one going out */
+    markOf?: (name: string, cut: string) => ReactNode;
 };
 
 /**
@@ -127,6 +130,7 @@ export function DeckAdvisorCuts({
     onIgnoreAdd,
     busyOracle,
     cutsOnly = false,
+    markOf,
 }: DeckAdvisorCutsProps) {
     const [t] = useTranslation("advisor");
     // Whichever card was last clicked. Every piece of artwork on this panel
@@ -286,6 +290,7 @@ export function DeckAdvisorCuts({
                                         onIgnore={(add) => onIgnoreAdd(add)}
                                         onSwap={(add) => onSwap(cut, add)}
                                         busy={busyOracle !== null}
+                                        markOf={markOf}
                                     />
                                 )}
                             </motion.li>

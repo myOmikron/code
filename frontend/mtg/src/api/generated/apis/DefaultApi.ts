@@ -29,6 +29,8 @@ import type {
     AdminUnlockAccountRequest,
     AdvisorSettingsResponse,
     ApiErrorResponse,
+    BracketFlagsRequest,
+    BracketFlagsResponse,
     CardCondition,
     CardFinish,
     CardRarity,
@@ -335,6 +337,10 @@ export interface FinishLoginOperationRequest {
 
 export interface FinishRegistrationOperationRequest {
     FinishRegistrationRequest?: FinishRegistrationRequest;
+}
+
+export interface GetBracketFlagsRequest {
+    BracketFlagsRequest?: BracketFlagsRequest;
 }
 
 export interface GetCollectionRequest {
@@ -3046,6 +3052,48 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async getAllWatchLists(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListWatchListsResponse> {
         const response = await this.getAllWatchListsRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for getBracketFlags without sending the request
+     */
+    async getBracketFlagsRequestOpts(requestParameters: GetBracketFlagsRequest): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/printings/bracket-flags`;
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['BracketFlagsRequest'],
+        };
+    }
+
+    /**
+     * Which Commander bracket rules the given printings count towards  What a card would do to a deck\'s Bracket claim, asked before it is added.
+     * Which Commander bracket rules the given printings count towards
+     */
+    async getBracketFlagsRaw(requestParameters: GetBracketFlagsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BracketFlagsResponse>> {
+        const requestOptions = await this.getBracketFlagsRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Which Commander bracket rules the given printings count towards  What a card would do to a deck\'s Bracket claim, asked before it is added.
+     * Which Commander bracket rules the given printings count towards
+     */
+    async getBracketFlags(requestParameters: GetBracketFlagsRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BracketFlagsResponse> {
+        const response = await this.getBracketFlagsRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

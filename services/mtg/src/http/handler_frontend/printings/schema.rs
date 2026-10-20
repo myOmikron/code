@@ -9,6 +9,7 @@ use serde::Serialize;
 use uuid::Uuid;
 
 use crate::models::price::PriceDay;
+use crate::models::printing::BracketFlags;
 use crate::models::printing::PrintingLanguage;
 use crate::models::printing::resolve::PrintingLookup;
 use crate::models::printing::resolve::ResolvedPrinting;
@@ -181,6 +182,44 @@ impl From<PrintingLanguage> for PrintingLanguageResponse {
             id: language.id,
             lang: language.lang,
             image_small: language.image_small,
+        }
+    }
+}
+
+/// Printings to read the bracket flags of
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct BracketFlagsRequest {
+    /// Scryfall's ids of the printings
+    pub printings: Vec<Uuid>,
+}
+
+/// Which Commander bracket rules one printing counts towards
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct BracketFlagsEntryResponse {
+    /// Scryfall's id of the printing
+    pub id: Uuid,
+    /// Whether Wizards lists the card as a Game Changer
+    pub game_changer: bool,
+    /// Whether the card denies lands en masse
+    pub mass_land_denial: bool,
+    /// Whether the card takes extra turns
+    pub extra_turns: bool,
+}
+
+/// The printings asked about that count towards a bracket rule
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct BracketFlagsResponse {
+    /// One per flagged printing; a printing that is missing counts towards none
+    pub printings: Vec<BracketFlagsEntryResponse>,
+}
+
+impl From<BracketFlags> for BracketFlagsEntryResponse {
+    fn from(flags: BracketFlags) -> Self {
+        Self {
+            id: flags.id,
+            game_changer: flags.game_changer,
+            mass_land_denial: flags.mass_land_denial,
+            extra_turns: flags.extra_turns,
         }
     }
 }

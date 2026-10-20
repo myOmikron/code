@@ -925,6 +925,63 @@ export interface ApiErrorResponse {
     trace_id: string;
 }
 /**
+ * Which Commander bracket rules one printing counts towards
+ * @export
+ * @interface BracketFlagsEntryResponse
+ */
+export interface BracketFlagsEntryResponse {
+    /**
+     * Whether the card takes extra turns
+     * @type {boolean}
+     * @memberof BracketFlagsEntryResponse
+     */
+    extra_turns: boolean;
+    /**
+     * Whether Wizards lists the card as a Game Changer
+     * @type {boolean}
+     * @memberof BracketFlagsEntryResponse
+     */
+    game_changer: boolean;
+    /**
+     * Scryfall's id of the printing
+     * @type {string}
+     * @memberof BracketFlagsEntryResponse
+     */
+    id: string;
+    /**
+     * Whether the card denies lands en masse
+     * @type {boolean}
+     * @memberof BracketFlagsEntryResponse
+     */
+    mass_land_denial: boolean;
+}
+/**
+ * Printings to read the bracket flags of
+ * @export
+ * @interface BracketFlagsRequest
+ */
+export interface BracketFlagsRequest {
+    /**
+     * Scryfall's ids of the printings
+     * @type {Array<string>}
+     * @memberof BracketFlagsRequest
+     */
+    printings: Array<string>;
+}
+/**
+ * The printings asked about that count towards a bracket rule
+ * @export
+ * @interface BracketFlagsResponse
+ */
+export interface BracketFlagsResponse {
+    /**
+     * One per flagged printing; a printing that is missing counts towards none
+     * @type {Array<BracketFlagsEntryResponse>}
+     * @memberof BracketFlagsResponse
+     */
+    printings: Array<BracketFlagsEntryResponse>;
+}
+/**
  * What a Commander bracket asks of a deck
  * @export
  * @interface BracketRulesResponse

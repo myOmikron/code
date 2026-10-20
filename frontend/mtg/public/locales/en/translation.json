@@ -91,6 +91,7 @@
     },
     "toast": {
         "account-locked": "Your account is locked.",
+        "bracket-detected": "Bracket {{number}} claimed from the cards",
         "logged-out": "Signed out",
         "session-expired": "Session expired, please sign in again",
         "share-link-copied": "Link copied",

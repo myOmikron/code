@@ -4,14 +4,17 @@ import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import { GraphApi } from "src/api/graph";
 import { Replacement, ReplaceResponse } from "src/api/graph-generated";
-import { DeckCardResponse } from "src/api/generated";
+import { BracketRulesResponse, DeckCardResponse } from "src/api/generated";
+import { BracketBreakMark } from "src/components/bracket-break-mark";
 import { CardDetailDialog } from "src/components/card-detail-dialog";
 import { DeckAdvisorAddRow } from "src/components/deck-advisor-add-row";
 import { DeckAdvisorNotes } from "src/components/deck-advisor-notes";
 import { InlineError } from "src/components/inline-error";
 import { AdvisorDeck } from "src/utils/deck-advisor";
+import { BracketCounts } from "src/utils/deck-rules";
 import { Printing } from "src/utils/scryfall";
 import { useAdvisorSettings } from "src/utils/use-advisor-settings";
+import { useBracketMarks } from "src/utils/use-bracket-marks";
 import { useSuggestionCards } from "src/utils/use-suggestion-cards";
 
 /**
@@ -30,6 +33,10 @@ export type DeckReplaceDialogProps = {
     speed: number;
     /** Called after a replacement landed in the deck */
     onReplaced: () => void;
+    /** What the deck holds, as the bracket rules count it */
+    counts: BracketCounts;
+    /** What the deck's claimed bracket asks, `undefined` when it claims none */
+    claim: BracketRulesResponse | undefined;
 };
 
 /** What the dialog knows right now */
@@ -49,7 +56,16 @@ type ReplaceState = { state: "asking" } | { state: "ready"; response: ReplaceRes
  *
  * @returns the dialog
  */
-export function DeckReplaceDialog({ card, onClose, deckUuid, deck, speed, onReplaced }: DeckReplaceDialogProps) {
+export function DeckReplaceDialog({
+    card,
+    onClose,
+    deckUuid,
+    deck,
+    speed,
+    onReplaced,
+    counts,
+    claim,
+}: DeckReplaceDialogProps) {
     const [t] = useTranslation("advisor");
     const { settings, ready, save } = useAdvisorSettings(deckUuid);
     const excluded = useMemo(() => settings.ignored.map((held) => held.oracle_id), [settings.ignored]);
@@ -70,6 +86,11 @@ export function DeckReplaceDialog({ card, onClose, deckUuid, deck, speed, onRepl
     // lookup and blank the artwork of the rows that stay.
     const names = useMemo(() => replacements.map((row) => row.name), [replacements]);
     const { cards: printings, state: printingsState, retry: retryPrintings } = useSuggestionCards(names);
+    const candidates = useMemo(
+        () => [...printings].map(([name, printing]) => ({ name, printing: printing.id })),
+        [printings],
+    );
+    const marks = useBracketMarks(counts, claim, candidates);
     const shown = replacements.filter((row) => !hidden.includes(row.oracle_id));
 
     useEffect(() => {
@@ -210,6 +231,14 @@ export function DeckReplaceDialog({ card, onClose, deckUuid, deck, speed, onRepl
                                     onIgnore={() => ignore(row)}
                                     onSwap={() => void replace(row.name)}
                                     busy={busy}
+                                    mark={
+                                        claim === undefined ? null : (
+                                            <BracketBreakMark
+                                                breaks={marks(row.name, card?.card?.name)}
+                                                bracket={claim.number}
+                                            />
+                                        )
+                                    }
                                 />
                             ))}
                         </div>

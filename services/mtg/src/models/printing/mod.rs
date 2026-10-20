@@ -11,6 +11,8 @@ use std::collections::hash_map::Entry;
 use galvyn::core::re_exports::time::Date;
 use galvyn::core::re_exports::time::OffsetDateTime;
 use galvyn::rorm;
+use galvyn::rorm::conditions::Condition;
+use galvyn::rorm::conditions::DynamicCollection;
 use galvyn::rorm::db::Executor;
 use galvyn::rorm::db::executor::AffectedRows;
 use galvyn::rorm::db::sql::value::NullType;
@@ -234,6 +236,19 @@ pub struct PrintingLanguage {
     pub image_small: Option<String>,
 }
 
+/// Which Commander bracket rules a printing counts towards
+#[derive(Debug, Clone)]
+pub struct BracketFlags {
+    /// Scryfall's id of the printing
+    pub id: Uuid,
+    /// Whether Wizards lists the card as a Game Changer
+    pub game_changer: bool,
+    /// Whether the card denies lands en masse
+    pub mass_land_denial: bool,
+    /// Whether the card takes extra turns
+    pub extra_turns: bool,
+}
+
 impl Printing {
     /// Writes printings, replacing whatever the catalog held for them
     ///
@@ -452,6 +467,52 @@ impl Printing {
                 lang: lang.into_inner(),
                 image_small: image_small.map(MaxStr::into_inner),
             })
+            .collect())
+    }
+
+    /// The printings among `ids` that count towards a bracket rule
+    ///
+    /// A printing that counts towards none, or that the catalog does not know,
+    /// is left out.
+    #[instrument(name = "Printing::bracket_flags", skip(tx, ids))]
+    pub async fn bracket_flags(
+        tx: &mut Transaction,
+        ids: &[Uuid],
+    ) -> Result<Vec<BracketFlags>, rorm::Error> {
+        if ids.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        let rows = rorm::query(
+            &mut *tx,
+            (
+                db::PrintingModel.id,
+                db::PrintingModel.game_changer,
+                db::PrintingModel.mass_land_denial,
+                db::PrintingModel.extra_turns,
+            ),
+        )
+        .condition(DynamicCollection::or_unchecked(
+            ids.iter()
+                .map(|id| db::PrintingModel.id.equals(*id).boxed())
+                .collect(),
+        ))
+        .all()
+        .await?;
+
+        Ok(rows
+            .into_iter()
+            .filter(|(_, game_changer, mass_land_denial, extra_turns)| {
+                *game_changer || *mass_land_denial || *extra_turns
+            })
+            .map(
+                |(id, game_changer, mass_land_denial, extra_turns)| BracketFlags {
+                    id,
+                    game_changer,
+                    mass_land_denial,
+                    extra_turns,
+                },
+            )
             .collect())
     }
 

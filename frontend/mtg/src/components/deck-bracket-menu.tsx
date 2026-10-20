@@ -21,7 +21,7 @@ import type { BracketCounts, BracketRuleCheck } from "src/utils/deck-rules";
 import { BRACKET_RULE_KINDS, checkBracket, detectedBracket, playedBracket } from "src/utils/deck-rules";
 
 /** The mark each bracket rule wears, wherever the deck bar shows one */
-const RULE_ICONS: Record<BracketRuleCheck["kind"], ComponentType<SVGProps<SVGSVGElement>>> = {
+export const RULE_ICONS: Record<BracketRuleCheck["kind"], ComponentType<SVGProps<SVGSVGElement>>> = {
     // The trophy the Game Changer marker already wears everywhere else.
     "game-changers": TrophyIcon,
     "mass-land-denial": MapIcon,
@@ -231,7 +231,9 @@ export function DeckBracketMenu({ brackets, bracket, counts, onChange, onFocus, 
                                         </span>
                                     )}
                                 </DropdownLabel>
-                                <DropdownDescription>{ruleLabel(t, check, counts)}</DropdownDescription>
+                                <DropdownDescription>
+                                    {ruleLabel(t, check, counts.chainsExtraTurns)}
+                                </DropdownDescription>
                             </DropdownItem>
                         );
                     })}
@@ -270,14 +272,14 @@ export function DeckBracketMenu({ brackets, bracket, counts, onChange, onFocus, 
  *
  * @param t the deck namespace's translate function
  * @param check the rule
- * @param counts what the deck holds
+ * @param chains whether the deck can take extra turns back to back
  *
  * @returns the label
  */
-function ruleLabel(
+export function ruleLabel(
     t: (key: string, options?: Record<string, unknown>) => string,
     check: BracketRuleCheck,
-    counts: BracketCounts,
+    chains: boolean,
 ): string {
     if (check.have === 0) return t("description.rule-none");
     if (check.step === "any") return t("description.rule-any", { count: check.have });
@@ -285,7 +287,7 @@ function ruleLabel(
     if (check.kind === "extra-turns" && check.step === "limited") {
         // The bracket seats the cards and only asks that they cannot follow
         // one another, so the count alone would say nothing about the rule.
-        return counts.chainsExtraTurns
+        return chains
             ? t("description.rule-extra-turns-chain", { count: check.have })
             : t("description.rule-extra-turns-alone");
     }

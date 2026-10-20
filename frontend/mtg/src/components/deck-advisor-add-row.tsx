@@ -1,5 +1,6 @@
 import { ArrowsRightLeftIcon, EyeSlashIcon } from "@heroicons/react/20/solid";
 import { Badge, Button } from "components";
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { CardFinish } from "src/api/generated";
 import { CardThumbnail } from "src/components/card-thumbnail";
@@ -36,6 +37,8 @@ export type DeckAdvisorAddRowProps = {
     onSwap: () => void;
     /** Whether a card is already moving, which holds the row's actions */
     busy: boolean;
+    /** Drawn beside the name, e.g. that the card breaks the deck's bracket */
+    mark?: ReactNode;
 };
 
 /**
@@ -60,6 +63,7 @@ export function DeckAdvisorAddRow({
     onIgnore,
     onSwap,
     busy,
+    mark,
 }: DeckAdvisorAddRowProps) {
     const [t] = useTranslation("advisor");
     return (
@@ -84,7 +88,10 @@ export function DeckAdvisorAddRow({
                 />
             </button>
             <div className={"min-w-0 flex-1"}>
-                <div className={"truncate text-sm font-medium text-zinc-950 dark:text-white"}>{name}</div>
+                <div className={"flex items-center gap-1.5"}>
+                    <span className={"truncate text-sm font-medium text-zinc-950 dark:text-white"}>{name}</span>
+                    {mark}
+                </div>
                 {(fills.length > 0 || sharedRoles.length > 0) && (
                     <div className={"mt-0.5 flex flex-wrap gap-1"}>
                         {/* Why this card fits this slot rather than any. A

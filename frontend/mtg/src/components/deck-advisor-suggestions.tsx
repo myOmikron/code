@@ -2,6 +2,7 @@ import { Button } from "components";
 import { TFunction } from "i18next";
 import { AnimatePresence, LayoutGroup } from "motion/react";
 import { useCallback, useMemo, useRef, useState } from "react";
+import type { BracketMarks } from "src/utils/use-bracket-marks";
 import { useTranslation } from "react-i18next";
 import { Suggestion, SuggestionGroup, SuggestionReport } from "src/api/graph-generated";
 import { say } from "src/utils/advisor-phrase";
@@ -54,6 +55,10 @@ export type DeckAdvisorSuggestionsProps = {
     onIgnore: (suggestion: Suggestion) => void;
     /** The oracle id of the card currently being added, or nothing */
     busyOracle: string | null;
+    /** What each suggestion would do to the deck's Bracket claim */
+    marks?: BracketMarks;
+    /** The bracket the deck claims, `null` when it claims none */
+    bracket?: number | null;
     /**
      * Whether the cEDH cockpit applies to this deck
      * (`src/utils/use-deck-lines.ts`'s `cedhCockpitApplies`).
@@ -191,6 +196,8 @@ export function DeckAdvisorSuggestions({
     onIgnore,
     busyOracle,
     cedh = false,
+    marks,
+    bracket,
 }: DeckAdvisorSuggestionsProps) {
     const [t] = useTranslation("advisor");
     // The card being looked at, by oracle id. Held rather than the suggestion
@@ -333,6 +340,8 @@ export function DeckAdvisorSuggestions({
                                         inMaybe={maybeOracles.has(suggestion.oracle_id)}
                                         onIgnore={onIgnore}
                                         busy={busyOracle === suggestion.oracle_id}
+                                        breaks={marks?.(suggestion.name)}
+                                        bracket={bracket}
                                     />
                                 ))}
                             </AnimatePresence>

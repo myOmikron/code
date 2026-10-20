@@ -10,6 +10,9 @@ use galvyn::post;
 use galvyn::rorm::Database;
 use uuid::Uuid;
 
+use crate::http::handler_frontend::printings::schema::BracketFlagsEntryResponse;
+use crate::http::handler_frontend::printings::schema::BracketFlagsRequest;
+use crate::http::handler_frontend::printings::schema::BracketFlagsResponse;
 use crate::http::handler_frontend::printings::schema::PriceDayResponse;
 use crate::http::handler_frontend::printings::schema::PriceHistoryResponse;
 use crate::http::handler_frontend::printings::schema::PrintingLanguageResponse;
@@ -62,6 +65,34 @@ pub async fn resolve_printings(
                 // if it held more lookups than `MAX_LOOKUPS`.
                 printing.map(|printing| ResolvedPrintingResponse::from((lookup as u32, printing)))
             })
+            .collect(),
+    }))
+}
+
+/// How many printings one bracket flag request may ask about
+///
+/// A page of search hits or a fill, not a collection.
+const MAX_FLAG_LOOKUPS: usize = 500;
+
+/// Which Commander bracket rules the given printings count towards
+///
+/// What a card would do to a deck's Bracket claim, asked before it is added.
+#[post("/bracket-flags")]
+pub async fn get_bracket_flags(
+    ApiJson(BracketFlagsRequest { printings }): ApiJson<BracketFlagsRequest>,
+) -> ApiResult<ApiJson<BracketFlagsResponse>> {
+    if printings.len() > MAX_FLAG_LOOKUPS {
+        return Err(ApiError::bad_request("Too many cards in one request"));
+    }
+
+    let mut tx = Database::global().start_transaction().await?;
+    let flags = Printing::bracket_flags(&mut tx, &printings).await?;
+    tx.commit().await?;
+
+    Ok(ApiJson(BracketFlagsResponse {
+        printings: flags
+            .into_iter()
+            .map(BracketFlagsEntryResponse::from)
             .collect(),
     }))
 }

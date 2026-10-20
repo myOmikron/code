@@ -7,6 +7,7 @@ import {
     type FormatRulesResponse,
 } from "src/api/generated";
 import {
+    bracketBreaks,
     checkBracket,
     checkDeck,
     deckRuleZero,
@@ -16,6 +17,7 @@ import {
     playedBracket,
     ruleZeroCount,
     ruleZeroSave,
+    type BracketCandidate,
     type BracketCounts,
     type DeckLegality,
     type RuleZeroForm,
@@ -723,5 +725,76 @@ describe("checkDeck against a claimed bracket's combo rule", () => {
 
     it("carries the answer even for a format without rules", () => {
         expect(checkDeck(deckHeader(), [], undefined, BRACKETS[1], []).combos).toStrictEqual([]);
+    });
+});
+
+/**
+ * A card about to go in, flagged as the catalog would
+ *
+ * @param name the card's name
+ * @param flags what the catalog says about it
+ *
+ * @returns the candidate
+ */
+function candidate(name: string, flags: Partial<BracketCandidate> = {}): BracketCandidate {
+    return { name, gameChanger: false, massLandDenial: false, extraTurns: false, ...flags };
+}
+
+describe("bracketBreaks", () => {
+    const UPGRADED = BRACKETS[2];
+
+    it("lets a Game Changer in while the bracket still seats it", () => {
+        const deck = counted({ gameChangers: ["Cyclonic Rift", "Rhystic Study"] });
+        expect(bracketBreaks(deck, UPGRADED, [candidate("Smothering Tithe", { gameChanger: true })]).size).toBe(0);
+    });
+
+    it("marks the Game Changer one past the limit", () => {
+        const deck = counted({ gameChangers: ["Cyclonic Rift", "Rhystic Study", "Smothering Tithe"] });
+        const breaks = bracketBreaks(deck, UPGRADED, [candidate("Demonic Tutor", { gameChanger: true })]);
+        expect(breaks.get("Demonic Tutor")).toMatchObject([
+            { kind: "game-changers", have: 4, allowed: 3, breaking: 1 },
+        ]);
+        expect(breaks.get("Demonic Tutor")?.[0].names).toContain("Demonic Tutor");
+    });
+
+    it("reads a batch as one step", () => {
+        const deck = counted({ gameChangers: ["Cyclonic Rift", "Rhystic Study"] });
+        const breaks = bracketBreaks(deck, UPGRADED, [
+            candidate("Smothering Tithe", { gameChanger: true }),
+            candidate("Demonic Tutor", { gameChanger: true }),
+            candidate("Forest"),
+        ]);
+        expect([...breaks.keys()].sort()).toStrictEqual(["Demonic Tutor", "Smothering Tithe"]);
+    });
+
+    it("never marks a card the deck already plays", () => {
+        const deck = counted({ gameChangers: ["Cyclonic Rift", "Demonic Tutor", "Rhystic Study", "Smothering Tithe"] });
+        expect(bracketBreaks(deck, UPGRADED, [candidate("Demonic Tutor", { gameChanger: true })]).size).toBe(0);
+    });
+
+    it("marks a card that breaks a rule the deck already breaks", () => {
+        const deck = counted({ massLandDenial: ["Armageddon"] });
+        const breaks = bracketBreaks(deck, CORE, [candidate("Ravages of War", { massLandDenial: true })]);
+        expect(breaks.get("Ravages of War")).toMatchObject([{ kind: "mass-land-denial", breaking: 2 }]);
+    });
+
+    it("marks the second extra-turn card where turns may not be chained", () => {
+        expect(bracketBreaks(counted({}), CORE, [candidate("Time Warp", { extraTurns: true })]).size).toBe(0);
+        const breaks = bracketBreaks(counted({ extraTurns: ["Time Warp"] }), CORE, [
+            candidate("Temporal Manipulation", { extraTurns: true }),
+        ]);
+        expect(breaks.get("Temporal Manipulation")).toMatchObject([{ kind: "extra-turns" }]);
+    });
+
+    it("marks nothing in a bracket without limits", () => {
+        const deck = counted({ gameChangers: ["a", "b", "c", "d"] });
+        expect(
+            bracketBreaks(deck, BRACKETS[3], [candidate("Armageddon", { massLandDenial: true, gameChanger: true })])
+                .size,
+        ).toBe(0);
+    });
+
+    it("leaves a card that falls under no rule unmarked", () => {
+        expect(bracketBreaks(counted({}), EXHIBITION, [candidate("Forest")]).size).toBe(0);
     });
 });

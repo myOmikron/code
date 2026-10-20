@@ -25,10 +25,18 @@ import { DeckAdvisorShapeSummary } from "src/components/deck-advisor-shape-summa
 import { DeckAdvisorState } from "src/components/deck-advisor-state";
 import { DeckAdvisorSuggestions } from "src/components/deck-advisor-suggestions";
 import { DeckAdvisorUpdating } from "src/components/deck-advisor-updating";
+import { BracketBreakMark } from "src/components/bracket-break-mark";
 import { DeckFillDialog } from "src/components/deck-fill-dialog";
 import { effectiveManaValue } from "src/utils/commander";
 import { IgnoredCard, KeptCard, cycleTheme, pruneThemePrefs } from "src/utils/advisor-settings";
-import { advisorDeck, bracketSpeed, filterReport, filterSwaps, suggestionAddQuantity } from "src/utils/deck-advisor";
+import {
+    advisorDeck,
+    bracketSpeed,
+    filterReport,
+    filterSwaps,
+    playedNames,
+    suggestionAddQuantity,
+} from "src/utils/deck-advisor";
 import { deckArt } from "src/utils/deck-art";
 import {
     DEFAULT_TARGETS,
@@ -41,7 +49,10 @@ import {
     withoutCurve,
     withoutTypeCorridor,
 } from "src/utils/deck-targets";
-import { commanderColors, deckRuleZero, houseRulesSummary } from "src/utils/deck-rules";
+import { commanderColors, countBracket, deckRuleZero, detectedBracket, houseRulesSummary } from "src/utils/deck-rules";
+import { useBracketClaim } from "src/utils/use-bracket-claim";
+import { useBracketMarks } from "src/utils/use-bracket-marks";
+import { useDeckCombos } from "src/utils/use-deck-combos";
 import { useAdvisorSettings } from "src/utils/use-advisor-settings";
 import { useDeckAnalysis } from "src/utils/use-deck-analysis";
 import { cedhCockpitApplies, useDeckLines } from "src/utils/use-deck-lines";
@@ -83,6 +94,7 @@ function RouteComponent() {
     const { cards } = Route.useLoaderData();
     const { deck, formats, brackets } = useLoaderData({ from: "/_menu/decks/$deckUuid/_deck" });
     const [t] = useTranslation("advisor");
+    const [tg] = useTranslation();
     const router = useRouter();
     const navigate = useNavigate({ from: Route.fullPath });
     const lastCount = useRef<number | null>(null);
@@ -179,6 +191,28 @@ function RouteComponent() {
     // about how hard it plays, it sits on the chip beside the deck's name, and
     // a second dial for the same thing here only ever disagreed with it.
     const speed = bracketSpeed(deck.bracket);
+    const played = useMemo(() => playedNames(cards), [cards]);
+    const combos = useDeckCombos(advisor, played, [], commander);
+    const bracketCounts = useMemo(
+        () =>
+            countBracket(
+                cards,
+                combos.data === null || combos.stale ? null : combos.data.complete.map((combo) => combo.card_names),
+            ),
+        [cards, combos.data, combos.stale],
+    );
+    const claimedRules = brackets.find((entry) => entry.number === deck.bracket);
+    useBracketClaim(
+        deckUuid,
+        deck.bracket ?? null,
+        cardCount,
+        target,
+        bracketCounts.combos === null ? null : detectedBracket(bracketCounts, brackets),
+        (bracket) => {
+            saveBracket(bracket);
+            notify.success(tg("toast.bracket-detected", { number: bracket }));
+        },
+    );
     const excludedIds = useMemo(() => settings.ignored.map((card) => card.oracle_id), [settings.ignored]);
     // What the user accepted this session plus what they durably keep —
     // both ride the request's `keep` parameter. The commanders are not in
@@ -259,6 +293,11 @@ function RouteComponent() {
         state: suggestionCardsState,
         retry: retrySuggestionCards,
     } = useSuggestionCards(suggestionNames);
+    const suggestionCandidates = useMemo(
+        () => [...suggestionCards].map(([name, printing]) => ({ name, printing: printing.id })),
+        [suggestionCards],
+    );
+    const marks = useBracketMarks(bracketCounts, claimedRules, suggestionCandidates);
 
     // The service will not offer a card the deck now holds; mirrored locally
     // so an accepted card leaves the adds gallery before the next report
@@ -868,6 +907,8 @@ function RouteComponent() {
                             onIgnore={ignore}
                             busyOracle={busyOracle}
                             cedh={cedh}
+                            marks={marks}
+                            bracket={claimedRules?.number ?? null}
                         />
                     </div>
                 )}
@@ -927,6 +968,11 @@ function RouteComponent() {
                             onKeep={keep}
                             onIgnoreAdd={ignore}
                             busyOracle={busyOracle}
+                            markOf={(name, cut) =>
+                                claimedRules === undefined ? null : (
+                                    <BracketBreakMark breaks={marks(name, cut)} bracket={claimedRules.number} />
+                                )
+                            }
                         />
                     </div>
                 )}
@@ -942,6 +988,8 @@ function RouteComponent() {
                     poolQuery={settings.pool_query}
                     targets={settings.targets}
                     onFilled={() => void router.invalidate()}
+                    counts={bracketCounts}
+                    claim={claimedRules}
                 />
 
                 <DeckAdvisorAssumptions

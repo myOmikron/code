@@ -35,6 +35,9 @@ docs/AdminUnlockAccountErrors.md
 docs/AdminUnlockAccountRequest.md
 docs/AdvisorSettingsResponse.md
 docs/ApiErrorResponse.md
+docs/BracketFlagsEntryResponse.md
+docs/BracketFlagsRequest.md
+docs/BracketFlagsResponse.md
 docs/BracketRulesResponse.md
 docs/CardCondition.md
 docs/CardFinish.md
