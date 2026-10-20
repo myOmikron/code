@@ -159,38 +159,23 @@ export type RuleZeroForm = {
 };
 
 /**
- * The writes one save owes the service.
- *
- * The colours keep their own endpoint, so a form that only moved a switch must
- * not rewrite them and a form that only moved a colour must not rewrite the
- * switches. An absent half is a request that is not worth making.
- */
-export type RuleZeroSave = {
-    /** The identity to store, `null` to hand the decision back to the commander */
-    colors?: string | null;
-    /** The four flags to store */
-    rules?: SetDeckRuleZeroRequest;
-};
-
-/**
- * What a Rule 0 form changed, as the requests it takes to write it.
+ * What a Rule 0 form changed, as the one request it takes to write it.
  *
  * An untouched form asks for nothing: the dialog is opened far more often than
- * it is edited, and a save that rewrites both halves either way would make the
- * deck look changed to every other tab watching it.
+ * it is edited, and a save that rewrites the deck either way would make it
+ * look changed to every other tab watching it. A form that moved anything
+ * writes all of it, colours included, in one request, so the Deck history
+ * records one Deck change; the fields that did not move drop out there.
  *
  * @param deck the deck as it stands
  * @param form the form as the reader left it
  *
- * @returns the halves that actually moved
+ * @returns the request, `null` when nothing moved
  */
-export function ruleZeroSave(deck: DeckResponse, form: RuleZeroForm): RuleZeroSave {
-    const save: RuleZeroSave = {};
-
+export function ruleZeroSave(deck: DeckResponse, form: RuleZeroForm): SetDeckRuleZeroRequest | null {
     // Following the commander is the one thing an empty claim cannot say — a
     // deck may well claim no colours at all — so the switch says it instead.
     const colors = form.follow ? null : letters(form.colors.join("")).join("");
-    if (colors !== (deck.allowed_color_identity ?? null)) save.colors = colors;
 
     // Anything that is not a whole number of cards is the format's rule: the
     // field is emptied far more often than it is filled with nonsense, and both
@@ -198,21 +183,21 @@ export function ruleZeroSave(deck: DeckResponse, form: RuleZeroForm): RuleZeroSa
     const typed = Number.parseInt(form.deckSize, 10);
     const deckSize = Number.isInteger(typed) && typed >= 1 ? typed : null;
     const now = deckRuleZero(deck);
-    if (
+    const moved =
+        colors !== (deck.allowed_color_identity ?? null) ||
         form.extraCommanders !== now.extraCommanders ||
         form.duplicates !== now.duplicates ||
         form.banned !== now.banned ||
-        deckSize !== now.deckSize
-    ) {
-        save.rules = {
-            allow_extra_commanders: form.extraCommanders,
-            allow_duplicates: form.duplicates,
-            allow_banned: form.banned,
-            deck_size: deckSize,
-        };
-    }
+        deckSize !== now.deckSize;
+    if (!moved) return null;
 
-    return save;
+    return {
+        colors,
+        allow_extra_commanders: form.extraCommanders,
+        allow_duplicates: form.duplicates,
+        allow_banned: form.banned,
+        deck_size: deckSize,
+    };
 }
 
 /**

@@ -1429,6 +1429,7 @@ fn each_recorded_deck_field_records_one_settings_change() {
                 Method::PUT,
                 "rule-zero",
                 json!({
+                    "colors": "WU",
                     "allow_extra_commanders": true,
                     "allow_duplicates": false,
                     "allow_banned": true,
@@ -1450,6 +1451,38 @@ fn each_recorded_deck_field_records_one_settings_change() {
         assert_eq!(
             fixture.kinds().await,
             vec!["Settings", "Settings", "Settings", "Settings", "Created"]
+        );
+    });
+}
+
+#[test]
+fn saving_colors_and_rule_zero_together_records_one_settings_change() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+
+        fixture
+            .send(
+                Method::PUT,
+                "rule-zero",
+                json!({
+                    "colors": "BG",
+                    "allow_extra_commanders": false,
+                    "allow_duplicates": true,
+                    "allow_banned": false,
+                    "deck_size": null,
+                }),
+            )
+            .await;
+
+        assert_eq!(fixture.kinds().await, vec!["Settings", "Created"]);
+        let mut fields = fixture.latest_fields().await;
+        fields.sort_by(|a, b| a.0.cmp(&b.0));
+        assert_eq!(
+            fields,
+            vec![
+                field("AllowDuplicates", json!(false), json!(true)),
+                field("Colors", Value::Null, json!("BG")),
+            ]
         );
     });
 }

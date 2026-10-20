@@ -347,45 +347,51 @@ function ruleZeroForm(overrides: Partial<RuleZeroForm> = {}): RuleZeroForm {
 
 describe("ruleZeroSave", () => {
     it("asks for nothing when the form was not touched", () => {
-        expect(ruleZeroSave(deckHeader(), ruleZeroForm())).toStrictEqual({});
+        expect(ruleZeroSave(deckHeader(), ruleZeroForm())).toBeNull();
     });
 
-    it("writes only the colours when only the colours moved", () => {
+    it("writes the whole form when only the colours moved", () => {
         const save = ruleZeroSave(deckHeader(), ruleZeroForm({ follow: false, colors: ["G", "U"] }));
-        expect(save).toStrictEqual({ colors: "UG" });
+        expect(save).toStrictEqual({
+            colors: "UG",
+            allow_extra_commanders: false,
+            allow_duplicates: false,
+            allow_banned: false,
+            deck_size: null,
+        });
     });
 
     it("hands the colours back to the commander", () => {
         const deck = deckHeader({ allowed_color_identity: "UG" });
-        expect(ruleZeroSave(deck, ruleZeroForm({ colors: ["U", "G"] }))).toStrictEqual({ colors: null });
+        expect(ruleZeroSave(deck, ruleZeroForm({ colors: ["U", "G"] }))?.colors).toBeNull();
     });
 
-    it("writes only the house rules when only a switch moved", () => {
-        const save = ruleZeroSave(deckHeader(), ruleZeroForm({ duplicates: true }));
+    it("keeps the colours the deck claims when only a switch moved", () => {
+        const deck = deckHeader({ allowed_color_identity: "UG" });
+        const save = ruleZeroSave(deck, ruleZeroForm({ follow: false, colors: ["U", "G"], duplicates: true }));
         expect(save).toStrictEqual({
-            rules: {
-                allow_extra_commanders: false,
-                allow_duplicates: true,
-                allow_banned: false,
-                deck_size: null,
-            },
+            colors: "UG",
+            allow_extra_commanders: false,
+            allow_duplicates: true,
+            allow_banned: false,
+            deck_size: null,
         });
     });
 
-    it("writes both halves when both moved", () => {
+    it("writes both halves in one request when both moved", () => {
         const save = ruleZeroSave(deckHeader(), ruleZeroForm({ follow: false, colors: ["W"], banned: true }));
-        expect(save.colors).toBe("W");
-        expect(save.rules?.allow_banned).toBe(true);
+        expect(save?.colors).toBe("W");
+        expect(save?.allow_banned).toBe(true);
     });
 
     it("reads an empty size field as the format's own rule", () => {
         const save = ruleZeroSave(deckHeader({ deck_size: 60 }), ruleZeroForm({ deckSize: "" }));
-        expect(save.rules?.deck_size).toBeNull();
-        expect(save.colors).toBeUndefined();
+        expect(save?.deck_size).toBeNull();
+        expect(save?.colors).toBeNull();
     });
 
     it("keeps a size the deck already carries out of the request", () => {
-        expect(ruleZeroSave(deckHeader({ deck_size: 60 }), ruleZeroForm({ deckSize: "60" }))).toStrictEqual({});
+        expect(ruleZeroSave(deckHeader({ deck_size: 60 }), ruleZeroForm({ deckSize: "60" }))).toBeNull();
     });
 });
 

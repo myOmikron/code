@@ -95,12 +95,12 @@ export function DeckRuleZeroDialog({ open, deck, colors, formatSize, onClose, on
     }, [seed, touched]);
 
     /**
-     * Writes the halves of the form that moved, and nothing else
+     * Writes the form in one request when anything in it moved
      */
     async function save() {
         setBusy(true);
         try {
-            const change = ruleZeroSave(deck, {
+            const request = ruleZeroSave(deck, {
                 follow,
                 colors: picked,
                 extraCommanders,
@@ -108,8 +108,7 @@ export function DeckRuleZeroDialog({ open, deck, colors, formatSize, onClose, on
                 banned,
                 deckSize,
             });
-            if (change.colors !== undefined) await Api.decks.setColors(deck.uuid, change.colors);
-            if (change.rules !== undefined) await Api.decks.setRuleZero(deck.uuid, change.rules);
+            if (request !== null) await Api.decks.setRuleZero(deck.uuid, request);
             notify.success(t("toast.rule-zero-saved"));
             onClose();
             await onSaved();
