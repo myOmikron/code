@@ -20,7 +20,7 @@ import { Fragment, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import type { DeckPointEntryResponse, DeckPointResponse } from "src/api/generated";
-import { CheckpointBadge, DeckChangeBody, useSettingWords } from "src/components/deck-history-list";
+import { CheckpointBadge, DeckChangeBody, settingsFields, useFieldWords } from "src/components/deck-history-list";
 import { useDeckLabels, ZONE_ORDER } from "src/components/deck-labels";
 import { formatDateTime } from "src/utils/format";
 
@@ -101,7 +101,14 @@ export function DeckPointView({ deckUuid, point }: DeckPointViewProps) {
     );
 }
 
-/** The longest name of a Deck checkpoint, in bytes, as the server bounds it */
+/**
+ * The longest name of a Deck checkpoint, in bytes, as the server bounds it
+ *
+ * The one copy of the server's `CHECKPOINT_LENGTH` (services/mtg, Deck history
+ * module) in the frontend. The OpenAPI spec states it as the `maxLength` of
+ * `MaxStr_64`, but the generated client carries no schema constraints, so it
+ * cannot be read from there.
+ */
 const CHECKPOINT_BYTES = 64;
 
 /**
@@ -206,22 +213,12 @@ type PointSettingsProps = {
  */
 function PointSettings({ point }: PointSettingsProps) {
     const [t] = useTranslation("deck");
-    const labels = useDeckLabels();
-    const { colors, agreement } = useSettingWords();
+    const words = useFieldWords();
 
-    const settings = point.settings;
-    const none = t("label.history-value-none");
-    const rows: Array<[string, string]> = [
-        [t("label.history-field-name"), settings.name],
-        [t("label.history-field-description"), settings.description ?? none],
-        [t("label.history-field-format"), labels.format(settings.format)],
-        [t("label.history-field-colors"), colors(settings.allowed_color_identity)],
-        [t("label.history-field-bracket"), settings.bracket?.toString() ?? none],
-        [t("label.history-field-allow-extra-commanders"), agreement(settings.allow_extra_commanders)],
-        [t("label.history-field-allow-duplicates"), agreement(settings.allow_duplicates)],
-        [t("label.history-field-allow-banned"), agreement(settings.allow_banned)],
-        [t("label.history-field-deck-size"), settings.deck_size?.toString() ?? t("label.history-value-format-size")],
-    ];
+    const rows = settingsFields(point.settings).map((field): [string, string] => {
+        const [term, , value] = words(field);
+        return [term, value];
+    });
 
     return (
         <section className={"flex flex-col gap-2"}>

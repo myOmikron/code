@@ -4,7 +4,13 @@ import { Badge, Button, Strong, Text, TextLink } from "components";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
-import type { DeckChangeResponse, DeckEntryChangeResponse, FieldDifference } from "src/api/generated";
+import type {
+    DeckChangeResponse,
+    DeckEntryChangeResponse,
+    DeckHistoryResponse,
+    DeckSettingsResponse,
+    FieldDifference,
+} from "src/api/generated";
 import { useDeckLabels } from "src/components/deck-labels";
 import { formatDateTime } from "src/utils/format";
 
@@ -14,6 +20,8 @@ import { formatDateTime } from "src/utils/format";
 export type DeckHistoryListProps = {
     /** The deck whose Deck history is shown */
     deckUuid: string;
+    /** The newest page of the Deck history, as the route loaded it */
+    firstPage: DeckHistoryResponse;
 };
 
 /**
@@ -21,27 +29,19 @@ export type DeckHistoryListProps = {
  *
  * @returns the list
  */
-export function DeckHistoryList({ deckUuid }: DeckHistoryListProps) {
+export function DeckHistoryList({ deckUuid, firstPage }: DeckHistoryListProps) {
     const [t] = useTranslation("deck");
 
-    const [changes, setChanges] = useState<Array<DeckChangeResponse> | null>(null);
-    const [cursor, setCursor] = useState<string | null>(null);
+    const [older, setOlder] = useState<Array<DeckChangeResponse>>([]);
+    const [cursor, setCursor] = useState<string | null>(firstPage.next_cursor ?? null);
     const [loadingMore, setLoadingMore] = useState(false);
 
     useEffect(() => {
-        let current = true;
-        Api.decks
-            .history(deckUuid)
-            .then((page) => {
-                if (!current) return;
-                setChanges(page.changes);
-                setCursor(page.next_cursor ?? null);
-            })
-            .catch(() => undefined);
-        return () => {
-            current = false;
-        };
-    }, [deckUuid]);
+        setOlder([]);
+        setCursor(firstPage.next_cursor ?? null);
+    }, [firstPage]);
+
+    const changes = [...firstPage.changes, ...older];
 
     /**
      * Appends the page after the last loaded Deck change
@@ -51,7 +51,7 @@ export function DeckHistoryList({ deckUuid }: DeckHistoryListProps) {
         setLoadingMore(true);
         try {
             const page = await Api.decks.history(deckUuid, cursor);
-            setChanges((held) => [...(held ?? []), ...page.changes]);
+            setOlder((held) => [...held, ...page.changes]);
             setCursor(page.next_cursor ?? null);
         } catch {
             return;
@@ -59,8 +59,6 @@ export function DeckHistoryList({ deckUuid }: DeckHistoryListProps) {
             setLoadingMore(false);
         }
     }
-
-    if (changes === null) return <Text>{t("label.history-loading")}</Text>;
 
     return (
         <div className={"flex flex-col gap-6"}>
@@ -199,26 +197,11 @@ export function DeckChangeBody({ change, referenced }: DeckChangeBodyProps) {
             case "Quantity":
                 return <EntryLines entries={change.entries} />;
             case "Move":
-                return (
-                    <Headed heading={t("label.history-move")}>
-                        <EntryLines entries={change.entries} />
-                    </Headed>
-                );
             case "Switch":
-                return (
-                    <Headed heading={t("label.history-switch")}>
-                        <EntryLines entries={change.entries} />
-                    </Headed>
-                );
             case "Swap":
-                return (
-                    <Headed heading={t("label.history-swap")}>
-                        <EntryLines entries={change.entries} />
-                    </Headed>
-                );
             case "Sourcing":
                 return (
-                    <Headed heading={t("label.history-sourcing")}>
+                    <Headed heading={t(ENTRY_HEADINGS[change.kind])}>
                         <EntryLines entries={change.entries} />
                     </Headed>
                 );
@@ -259,6 +242,14 @@ export function DeckChangeBody({ change, referenced }: DeckChangeBodyProps) {
 
     return body();
 }
+
+/** The heading of each kind of Deck change that lists its Deck entries under one */
+const ENTRY_HEADINGS = {
+    Move: "label.history-move",
+    Switch: "label.history-switch",
+    Swap: "label.history-swap",
+    Sourcing: "label.history-sourcing",
+} as const;
 
 /**
  * The properties for {@link Headed}
@@ -414,15 +405,28 @@ type FieldLineProps = {
  */
 function FieldLine({ field }: FieldLineProps) {
     const [t] = useTranslation("deck");
+    const words = useFieldWords();
+
+    const [name, before, after] = words(field);
+    return (
+        <li className={"flex flex-wrap items-baseline gap-2"}>
+            <Strong>{name}</Strong>
+            <Text className={"line-clamp-2 break-words"}>{t("label.history-field-change", { before, after })}</Text>
+        </li>
+    );
+}
+
+/**
+ * Words for recorded deck fields, the one place that names each field and says how its value reads
+ *
+ * @returns a function giving a field's name and both of its values, in words
+ */
+export function useFieldWords(): (field: FieldDifference) => [string, string, string] {
+    const [t] = useTranslation("deck");
     const labels = useDeckLabels();
     const { colors, agreement } = useSettingWords();
 
-    /**
-     * The field's name and both of its values, in words
-     *
-     * @returns name, before and after
-     */
-    function words(): [string, string, string] {
+    return (field) => {
         const none = t("label.history-value-none");
         switch (field.field) {
             case "Name":
@@ -456,15 +460,32 @@ function FieldLine({ field }: FieldLineProps) {
                     field.after?.toString() ?? t("label.history-value-format-size"),
                 ];
         }
-    }
+    };
+}
 
-    const [name, before, after] = words();
-    return (
-        <li className={"flex flex-wrap items-baseline gap-2"}>
-            <Strong>{name}</Strong>
-            <Text className={"line-clamp-2 break-words"}>{t("label.history-field-change", { before, after })}</Text>
-        </li>
-    );
+/**
+ * A deck's recorded fields at one point, each as a change that kept its value
+ *
+ * @param settings the recorded fields
+ *
+ * @returns one field difference per recorded field, before and after alike
+ */
+export function settingsFields(settings: DeckSettingsResponse): Array<FieldDifference> {
+    return [
+        { field: "Name", before: settings.name, after: settings.name },
+        { field: "Description", before: settings.description, after: settings.description },
+        { field: "Format", before: settings.format, after: settings.format },
+        { field: "Colors", before: settings.allowed_color_identity, after: settings.allowed_color_identity },
+        { field: "Bracket", before: settings.bracket, after: settings.bracket },
+        {
+            field: "AllowExtraCommanders",
+            before: settings.allow_extra_commanders,
+            after: settings.allow_extra_commanders,
+        },
+        { field: "AllowDuplicates", before: settings.allow_duplicates, after: settings.allow_duplicates },
+        { field: "AllowBanned", before: settings.allow_banned, after: settings.allow_banned },
+        { field: "DeckSize", before: settings.deck_size, after: settings.deck_size },
+    ];
 }
 
 /**
@@ -472,7 +493,7 @@ function FieldLine({ field }: FieldLineProps) {
  *
  * @returns one function per kind of value
  */
-export function useSettingWords() {
+function useSettingWords() {
     const [t] = useTranslation("deck");
     const labels = useDeckLabels();
 
