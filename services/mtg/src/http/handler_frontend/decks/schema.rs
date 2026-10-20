@@ -7,6 +7,7 @@ use serde::Serialize;
 use uuid::Uuid;
 
 use crate::http::handler_frontend::collections::schema::CollectionResponse;
+use crate::http::handler_frontend::decks::history::schema::DeckUndoResponse;
 use crate::models::card_attributes::CardCondition;
 use crate::models::card_attributes::CardFinish;
 use crate::models::card_attributes::CardRarity;
@@ -77,10 +78,9 @@ pub struct DeckResponse {
     pub created_at: SchemaDateTime,
     /// The folder the deck is filed in, `null` while it is on no shelf
     pub folder: Option<DeckFolderUuid>,
-    /// Whether the owner can undo a Deck change, always `false` for anyone else
-    pub can_undo: bool,
-    /// Whether the owner can redo an undone Deck change, always `false` for anyone else
-    pub can_redo: bool,
+    /// What undo and redo can do for the owner, never anything for anyone else
+    #[serde(flatten)]
+    pub undo: DeckUndoResponse,
 }
 
 /// What the catalog knows about a card the sourcing view shows
@@ -923,8 +923,7 @@ impl From<Deck> for DeckResponse {
             deck_size: deck.deck_size,
             folder: deck.folder,
             created_at: SchemaDateTime(deck.created_at),
-            can_undo: false,
-            can_redo: false,
+            undo: DeckUndoResponse::default(),
         }
     }
 }

@@ -14,6 +14,7 @@ use galvyn::rorm::fields::types::MaxStr;
 use tracing::warn;
 
 use crate::http::handler_frontend::collections::schema::CollectionResponse;
+use crate::http::handler_frontend::decks::history::schema::DeckUndoResponse;
 use crate::http::handler_frontend::decks::schema::AddDeckCardRequest;
 use crate::http::handler_frontend::decks::schema::AdvisorSettingsResponse;
 use crate::http::handler_frontend::decks::schema::BracketRulesResponse;
@@ -586,8 +587,7 @@ pub async fn get_deck(
     tx.commit().await?;
 
     Ok(ApiJson(DeckResponse {
-        can_undo: state.undo.is_some(),
-        can_redo: state.redo.is_some(),
+        undo: DeckUndoResponse::from(state),
         ..DeckResponse::from(deck)
     }))
 }

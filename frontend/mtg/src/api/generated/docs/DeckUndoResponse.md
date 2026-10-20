@@ -1,7 +1,7 @@
 
 # DeckUndoResponse
 
-What undo and redo can do after one of them
+What undo and redo can do
 
 ## Properties
 

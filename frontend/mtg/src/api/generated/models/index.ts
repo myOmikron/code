@@ -2517,13 +2517,13 @@ export interface DeckResponse {
      */
     bracket?: number | null;
     /**
-     * Whether the owner can redo an undone Deck change, always `false` for anyone else
+     * Whether there is an undone Deck change to redo
      * @type {boolean}
      * @memberof DeckResponse
      */
     can_redo: boolean;
     /**
-     * Whether the owner can undo a Deck change, always `false` for anyone else
+     * Whether there is a Deck change to undo
      * @type {boolean}
      * @memberof DeckResponse
      */
@@ -2806,7 +2806,7 @@ export interface DeckTargets {
     types?: { [key: string]: Corridor | undefined; };
 }
 /**
- * What undo and redo can do after one of them
+ * What undo and redo can do
  * @export
  * @interface DeckUndoResponse
  */
