@@ -13,9 +13,12 @@
 //! before and after.
 
 use std::collections::HashMap;
+use std::mem::Discriminant;
+use std::mem::discriminant;
 
 use galvyn::core::re_exports::schemars;
 use galvyn::core::re_exports::schemars::JsonSchema;
+use galvyn::core::re_exports::time::Duration;
 use galvyn::core::re_exports::time::OffsetDateTime;
 use galvyn::rorm;
 use galvyn::rorm::conditions::Condition;
@@ -77,11 +80,24 @@ pub enum DeckChangeKind {
     /// rule-zero exceptions or size
     Settings,
 }
+
+impl DeckChangeKind {
+    /// Whether it is a plain edit, which a quick successive one may join
+    fn is_plain_edit(self) -> bool {
+        matches!(self, Self::Edit | Self::Settings)
+    }
+}
+
 custom_db_enum! {
     enum: DeckChangeKind,
     variants: [Created, Introduced, Edit, Move, Switch, Swap, Import, Replace, Fill, Sourcing, Settings],
     decoder: DeckChangeKindDecoder,
 }
+
+/// How long a plain edit stays open for a quick successive one to join it
+///
+/// Each joining edit restarts it.
+const COALESCING_WINDOW: Duration = Duration::seconds(60);
 
 /// Wrapper for the primary key of a Deck change
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, JsonSchema, Hash, Eq, PartialEq)]
@@ -213,6 +229,31 @@ impl FieldDifference {
         ]
     }
 
+    /// Takes over the value a later change of the same field left it at
+    ///
+    /// A different field leaves it as it is.
+    fn take_after(&mut self, later: Self) {
+        match (self, later) {
+            (Self::Name { after, .. }, Self::Name { after: later, .. }) => *after = later,
+            (Self::Description { after, .. }, Self::Description { after: later, .. }) => {
+                *after = later
+            }
+            (Self::Format { after, .. }, Self::Format { after: later, .. }) => *after = later,
+            (Self::Colors { after, .. }, Self::Colors { after: later, .. }) => *after = later,
+            (Self::Bracket { after, .. }, Self::Bracket { after: later, .. })
+            | (Self::DeckSize { after, .. }, Self::DeckSize { after: later, .. }) => *after = later,
+            (
+                Self::AllowExtraCommanders { after, .. },
+                Self::AllowExtraCommanders { after: later, .. },
+            )
+            | (Self::AllowDuplicates { after, .. }, Self::AllowDuplicates { after: later, .. })
+            | (Self::AllowBanned { after, .. }, Self::AllowBanned { after: later, .. }) => {
+                *after = later
+            }
+            _ => {}
+        }
+    }
+
     /// Whether the field ended where it started
     fn is_settled(&self) -> bool {
         match self {
@@ -276,6 +317,47 @@ impl DeckDifference {
                 after,
             }),
         }
+    }
+
+    /// Notes a change of one deck field
+    ///
+    /// Noting a field twice keeps the first value before and the last after.
+    pub fn field(&mut self, field: FieldDifference) {
+        match self
+            .fields
+            .iter_mut()
+            .find(|noted| discriminant(*noted) == discriminant(&field))
+        {
+            Some(noted) => noted.take_after(field),
+            None => self.fields.push(field),
+        }
+    }
+
+    /// The one Deck entry or deck field it touches, `None` for more or less
+    fn subject(&self) -> Option<Subject> {
+        match (self.entries.as_slice(), self.fields.as_slice()) {
+            ([entry], []) => Some(Subject::Entry(entry.key())),
+            ([], [field]) => Some(Subject::Field(discriminant(field))),
+            _ => None,
+        }
+    }
+
+    /// Whether a later difference touches the very Deck entry or deck field
+    /// this one touches, and nothing else
+    fn touches_the_same(&self, later: &Self) -> bool {
+        self.subject()
+            .is_some_and(|subject| later.subject() == Some(subject))
+    }
+
+    /// This difference followed by a later one, as one
+    fn then(mut self, later: Self) -> Self {
+        for entry in later.entries {
+            self.entry(entry.key(), entry.before, entry.after);
+        }
+        for field in later.fields {
+            self.field(field);
+        }
+        self
     }
 
     /// The difference between two lists of a deck's Deck entries
@@ -363,6 +445,15 @@ impl DeckDifference {
     }
 }
 
+/// What a Deck change touching a single thing touches
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Subject {
+    /// One Deck entry, by its key
+    Entry(DeckEntryKey),
+    /// One deck field
+    Field(Discriminant<FieldDifference>),
+}
+
 /// A deck locked for an edit by its owner, until the transaction ends
 ///
 /// Only [`DeckHistory::lock`] hands one out, so a Deck change is only ever
@@ -381,7 +472,9 @@ impl DeckEdit {
 
     /// Append a Deck change to the deck's Deck history
     ///
-    /// A difference that changes nothing records nothing.
+    /// A difference that changes nothing records nothing. A quick successive
+    /// plain edit joins the latest Deck change instead, see [`Self::joins`];
+    /// should the two cancel out, the latest Deck change goes away.
     #[instrument(name = "DeckEdit::record", skip(tx, difference))]
     pub async fn record(
         &self,
@@ -393,7 +486,61 @@ impl DeckEdit {
         if difference.is_empty() {
             return Ok(());
         }
-        insert(tx, self.deck, kind, difference).await
+        if !kind.is_plain_edit() {
+            return insert(tx, self.deck, kind, difference).await;
+        }
+
+        let now = OffsetDateTime::now_utc();
+        match self.latest(tx).await? {
+            Some(latest) if Self::joins(&latest, kind, &difference, now) => {
+                let (uuid, .., earlier) = latest;
+                let joined = earlier.then(difference).settled();
+                if joined.is_empty() {
+                    rorm::delete(&mut *tx, DeckChangeModel)
+                        .condition(DeckChangeModel.uuid.equals(uuid.0))
+                        .await?;
+                } else {
+                    rorm::update(&mut *tx, DeckChangeModel)
+                        .set(DeckChangeModel.changed_at, now)
+                        .set(DeckChangeModel.difference, Json(joined))
+                        .condition(DeckChangeModel.uuid.equals(uuid.0))
+                        .await?;
+                }
+                Ok(())
+            }
+            _ => insert(tx, self.deck, kind, difference).await,
+        }
+    }
+
+    /// Whether a Deck change of `kind` made `now` joins the deck's latest one
+    ///
+    /// It does when both are plain edits of the same kind touching the very
+    /// same single Deck entry or deck field, and the latest is still inside
+    /// the [`COALESCING_WINDOW`].
+    fn joins(
+        latest: &StoredChange,
+        kind: DeckChangeKind,
+        difference: &DeckDifference,
+        now: OffsetDateTime,
+    ) -> bool {
+        let (_, changed_at, latest_kind, latest_difference) = latest;
+        *latest_kind == kind
+            && kind.is_plain_edit()
+            && now - *changed_at < COALESCING_WINDOW
+            && latest_difference.touches_the_same(difference)
+    }
+
+    /// The deck's latest Deck change
+    async fn latest(&self, tx: &mut Transaction) -> Result<Option<StoredChange>, rorm::Error> {
+        let rows = (&mut *tx)
+            .execute::<All>(
+                "SELECT uuid, changed_at, kind, difference FROM deck_change \
+                 WHERE deck = $1 ORDER BY uuid DESC LIMIT 1"
+                    .to_string(),
+                vec![Value::Uuid(self.deck.into_inner())],
+            )
+            .await?;
+        rows.first().map(decode_change).transpose()
     }
 }
 
@@ -674,7 +821,7 @@ async fn printing_names(
         .collect())
 }
 
-/// A stored Deck change as [`DeckHistory::page`] reads it
+/// A stored Deck change as it is read back
 type StoredChange = (
     DeckChangeUuid,
     OffsetDateTime,
@@ -682,7 +829,7 @@ type StoredChange = (
     DeckDifference,
 );
 
-/// Reads a Deck change from a row of [`DeckHistory::page`]
+/// Reads a stored Deck change from a row holding its columns
 fn decode_change(row: &Row) -> Result<StoredChange, rorm::Error> {
     let decode = |error: rorm::db::row::RowError<'_>| rorm::Error::RowError(error.into_owned());
     let kind: String = row.get("kind").map_err(decode)?;
