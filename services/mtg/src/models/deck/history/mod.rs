@@ -980,6 +980,34 @@ impl DeckHistory {
         })
     }
 
+    /// Lock a deck for reading its Deck history, if `owner` owns it
+    ///
+    /// The share lock waits for a Deck change being recorded and keeps the
+    /// next one from being recorded until the transaction ends, so every
+    /// later statement reads the Deck changes and the deck they describe as
+    /// one consistent state. Readers do not wait for each other.
+    #[instrument(name = "DeckHistory::lock_for_reading", skip(tx))]
+    pub async fn lock_for_reading(
+        tx: &mut Transaction,
+        deck: DeckUuid,
+        owner: AccountUuid,
+    ) -> Result<DeckAccess, rorm::Error> {
+        let rows = (&mut *tx)
+            .execute::<All>(
+                "SELECT uuid FROM deck WHERE uuid = $1 AND owner = $2 FOR SHARE".to_string(),
+                vec![
+                    Value::Uuid(deck.into_inner()),
+                    Value::Uuid(owner.into_inner()),
+                ],
+            )
+            .await?;
+        Ok(if rows.is_empty() {
+            DeckAccess::Denied
+        } else {
+            DeckAccess::Granted(())
+        })
+    }
+
     /// Lock a deck for an edit the service makes itself, whoever owns it
     ///
     /// For catalog maintenance rewriting Deck entries of every owner, like a
@@ -1169,7 +1197,8 @@ impl DeckHistory {
     /// One page of a deck's Deck history, newest first
     ///
     /// `after` continues from a previous page's `next_cursor`. The caller has
-    /// to have established that the account owns the deck.
+    /// to have taken the deck with [`Self::lock_for_reading`] or
+    /// [`Self::lock`].
     #[instrument(name = "DeckHistory::page", skip(tx))]
     pub async fn page(
         tx: &mut Transaction,
@@ -1224,8 +1253,8 @@ impl DeckHistory {
     /// A deck as it was right after one of its Deck changes
     ///
     /// Computed backwards from the deck as it is now. `None` when `change` is
-    /// not a Deck change of this deck. The caller has to have established
-    /// that the account owns the deck.
+    /// not a Deck change of this deck. The caller has to have taken the deck
+    /// with [`Self::lock_for_reading`] or [`Self::lock`].
     #[instrument(name = "DeckHistory::point", skip(tx))]
     pub async fn point(
         tx: &mut Transaction,
