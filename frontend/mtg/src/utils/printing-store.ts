@@ -113,6 +113,9 @@ export async function readPrintings(
                                 printing: {
                                     ...stored.printing,
                                     finishes: stored.printing.finishes ?? DEFAULT_FINISHES,
+                                    oracleId: stored.printing.oracleId ?? "",
+                                    power: stored.printing.power ?? null,
+                                    toughness: stored.printing.toughness ?? null,
                                 },
                                 // A record from before the back faces were
                                 // read cannot be filled in from here: the urls
@@ -121,7 +124,8 @@ export async function readPrintings(
                                 // record until they arrive.
                                 stale:
                                     now - stored.fetchedAt > PRICE_MAX_AGE_MS ||
-                                    !("backLargeImageUrl" in stored.printing),
+                                    !("backLargeImageUrl" in stored.printing) ||
+                                    !("oracleId" in stored.printing),
                             });
                         }
                     };

@@ -88,6 +88,51 @@ export type TokenSource = {
     backImage: string | null;
 };
 
+/** A token or emblem the deck makes, with the cards that make it */
+export type DeckToken = {
+    /** The printing to make it from */
+    token: Printing;
+    /** The full names of the deck's cards that make it */
+    sources: Array<string>;
+};
+
+/**
+ * Groups the tokens a deck's cards make.
+ *
+ * Two tokens are the same when their Scryfall `oracle_id` is: tokens sharing
+ * a name but not the oracle id (a 1/1 red and a 4/4 green Elemental) are listed
+ * apart, one token printed in two sets is listed once. Of one oracle id the
+ * first printing wins. Emblems follow the same rule. A printing without a
+ * known oracle id stands on its own.
+ *
+ * @param made each card that makes a token, paired with the token, in deck order
+ *
+ * @returns the distinct tokens in the order they were first made
+ */
+export function groupTokens(made: Array<{ source: string; token: Printing }>): Array<DeckToken> {
+    const grouped = new Map<string, DeckToken>();
+    for (const { source, token } of made) {
+        const key = token.oracleId || token.id;
+        const found = grouped.get(key);
+        if (found === undefined) grouped.set(key, { token, sources: [source] });
+        else if (!found.sources.includes(source)) found.sources.push(source);
+    }
+    return [...grouped.values()];
+}
+
+/**
+ * What a token is called in a list to pick from, with power and toughness
+ * for a creature, e.g. "Elemental 4/4"
+ *
+ * @param token the token
+ *
+ * @returns its caption
+ */
+export function tokenCaption(token: Printing): string {
+    if (token.power === null || token.toughness === null) return token.name;
+    return `${token.name} ${token.power}/${token.toughness}`;
+}
+
 /**
  * Shuffles in place with `Math.random`, which is all a test game needs
  *

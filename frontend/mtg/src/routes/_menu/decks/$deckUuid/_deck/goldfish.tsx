@@ -42,6 +42,7 @@ import { GoldfishZoneOverlay } from "src/components/goldfish-zone-overlay";
 import { QuietButton } from "src/components/quiet-button";
 import type {
     GoldfishCard as GoldfishCard,
+    DeckToken,
     GoldfishGame,
     GoldfishZone,
     LibraryEnd,
@@ -172,7 +173,7 @@ function RouteComponent() {
 
     const [game, setGame] = useState<GoldfishGame | null>(() => loadGame(deck.uuid));
     const [startingLife, setStartingLife] = useState(() => String(startingLifeFor(deck.format)));
-    const [deckTokens, setDeckTokens] = useState<Array<Printing> | null>(null);
+    const [deckTokens, setDeckTokens] = useState<Array<DeckToken> | null>(null);
     const [tokensOpen, setTokensOpen] = useState(false);
     const [countersOn, setCountersOn] = useState<GoldfishCard | null>(null);
     const [zoneOpen, setZoneOpen] = useState<GoldfishZone | null>(null);
