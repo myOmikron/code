@@ -7,17 +7,20 @@ import {
     DescriptionDetails,
     DescriptionList,
     DescriptionTerm,
+    Field,
     Heading,
+    Input,
+    Label,
     notify,
     Strong,
     Subheading,
     Text,
 } from "components";
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import type { DeckPointEntryResponse, DeckPointResponse } from "src/api/generated";
-import { DeckChangeBody, useSettingWords } from "src/components/deck-history-list";
+import { CheckpointBadge, DeckChangeBody, useSettingWords } from "src/components/deck-history-list";
 import { useDeckLabels, ZONE_ORDER } from "src/components/deck-labels";
 import { formatDateTime } from "src/utils/format";
 
@@ -76,7 +79,9 @@ export function DeckPointView({ deckUuid, point }: DeckPointViewProps) {
 
             <section className={"flex flex-col gap-2"}>
                 <Subheading>{t("heading.history-point-change")}</Subheading>
+                {point.change.checkpoint != null && <CheckpointBadge name={point.change.checkpoint} />}
                 <DeckChangeBody change={point.change} />
+                <CheckpointForm deckUuid={deckUuid} point={point} />
             </section>
 
             <PointSettings point={point} />
@@ -93,6 +98,96 @@ export function DeckPointView({ deckUuid, point }: DeckPointViewProps) {
                 confirmColor={"blue"}
             />
         </div>
+    );
+}
+
+/** The longest name of a Deck checkpoint, in bytes, as the server bounds it */
+const CHECKPOINT_BYTES = 64;
+
+/**
+ * The properties for {@link CheckpointForm}
+ */
+type CheckpointFormProps = {
+    /** The deck */
+    deckUuid: string;
+    /** The deck at the point whose Deck change gets named */
+    point: DeckPointResponse;
+};
+
+/**
+ * Names the point's Deck change with a Deck checkpoint, renames or removes it
+ *
+ * @returns the form
+ */
+function CheckpointForm({ deckUuid, point }: CheckpointFormProps) {
+    const [t] = useTranslation("deck");
+    const router = useRouter();
+
+    const saved = point.change.checkpoint ?? "";
+    const [name, setName] = useState(saved);
+    const [busy, setBusy] = useState(false);
+    useEffect(() => setName(saved), [saved]);
+
+    const trimmed = name.trim();
+    const fits = new TextEncoder().encode(trimmed).length <= CHECKPOINT_BYTES;
+
+    /**
+     * Saves the typed name as the Deck checkpoint
+     */
+    async function save() {
+        setBusy(true);
+        try {
+            await Api.decks.setCheckpoint(deckUuid, point.change.uuid, trimmed);
+            notify.success(t("toast.history-checkpoint-saved"));
+            await router.invalidate();
+        } finally {
+            setBusy(false);
+        }
+    }
+
+    /**
+     * Removes the Deck checkpoint
+     */
+    async function remove() {
+        setBusy(true);
+        try {
+            await Api.decks.removeCheckpoint(deckUuid, point.change.uuid);
+            notify.success(t("toast.history-checkpoint-removed"));
+            await router.invalidate();
+        } finally {
+            setBusy(false);
+        }
+    }
+
+    return (
+        <form
+            className={"flex flex-col gap-3 pt-2"}
+            onSubmit={(event) => {
+                event.preventDefault();
+                void save();
+            }}
+        >
+            <Field>
+                <Label>{t("label.history-checkpoint-name")}</Label>
+                <Input
+                    autoComplete={"off"}
+                    value={name}
+                    invalid={!fits}
+                    onChange={(event) => setName(event.target.value)}
+                />
+            </Field>
+            <Text>{t("description.history-checkpoint")}</Text>
+            <div className={"flex flex-wrap gap-2"}>
+                <Button type={"submit"} color={"blue"} disabled={busy || trimmed === "" || !fits || trimmed === saved}>
+                    {t("button.history-checkpoint-save")}
+                </Button>
+                {saved !== "" && (
+                    <Button type={"button"} outline={true} disabled={busy} onClick={() => void remove()}>
+                        {t("button.history-checkpoint-remove")}
+                    </Button>
+                )}
+            </div>
+        </form>
     );
 }
 

@@ -94,6 +94,7 @@ All URIs are relative to *http://localhost*
 | [**readDeckUrl**](DefaultApi.md#readdeckurloperation) | **POST** /api/frontend/v1/decks/import/url | Read a decklist off a link to another builder, or off one of our own links |
 | [**recoverAccount**](DefaultApi.md#recoveraccountoperation) | **POST** /api/frontend/v1/auth/recover | Send a fresh registration link to an account\&#39;s stored address |
 | [**redoDeckChange**](DefaultApi.md#redodeckchange) | **POST** /api/frontend/v1/decks/{deck}/history/redo | Apply the latest undone Deck change again |
+| [**removeDeckCheckpoint**](DefaultApi.md#removedeckcheckpoint) | **DELETE** /api/frontend/v1/decks/{deck}/history/{change}/checkpoint | Remove the Deck checkpoint of one of the deck\&#39;s Deck changes |
 | [**renameAccount**](DefaultApi.md#renameaccountoperation) | **PUT** /api/frontend/v1/accounts/me/username | Rename the logged-in account |
 | [**renamePasskey**](DefaultApi.md#renamepasskeyoperation) | **PUT** /api/frontend/v1/accounts/passkeys/{uuid} | Rename one of the logged-in account\&#39;s passkeys |
 | [**resetDeck**](DefaultApi.md#resetdeck) | **POST** /api/frontend/v1/decks/{deck}/history/{change}/reset | Bring the deck back to how it was right after one of its Deck changes |
@@ -106,6 +107,7 @@ All URIs are relative to *http://localhost*
 | [**searchPublicDecks**](DefaultApi.md#searchpublicdecks) | **GET** /api/frontend/v1/explore/decks | Search the decks their owners put on show |
 | [**setDeckAdvisorSettings**](DefaultApi.md#setdeckadvisorsettings) | **PUT** /api/frontend/v1/decks/{deck}/advisor-settings | Replace this deck\&#39;s advisor settings |
 | [**setDeckBracket**](DefaultApi.md#setdeckbracketoperation) | **PUT** /api/frontend/v1/decks/{deck}/bracket | Say which Commander bracket the deck is built to |
+| [**setDeckCheckpoint**](DefaultApi.md#setdeckcheckpointoperation) | **PUT** /api/frontend/v1/decks/{deck}/history/{change}/checkpoint | Name one of the deck\&#39;s Deck changes with a Deck checkpoint, or rename its |
 | [**setDeckColors**](DefaultApi.md#setdeckcolorsoperation) | **PUT** /api/frontend/v1/decks/{deck}/colors | Overrule which colours the deck may play |
 | [**setDeckFolder**](DefaultApi.md#setdeckfolderoperation) | **POST** /api/frontend/v1/decks/{deck}/folder | File a deck into one of the account\&#39;s folders |
 | [**setDeckRuleZero**](DefaultApi.md#setdeckrulezerooperation) | **PUT** /api/frontend/v1/decks/{deck}/rule-zero | Record the house rules the deck is played under |
@@ -6504,6 +6506,79 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## removeDeckCheckpoint
+
+> any removeDeckCheckpoint(deck, change)
+
+Remove the Deck checkpoint of one of the deck\&#39;s Deck changes
+
+Remove the Deck checkpoint of one of the deck\&#39;s Deck changes  Only the owner removes. A Deck change without one stays as it is.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { RemoveDeckCheckpointRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    deck: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string
+    change: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies RemoveDeckCheckpointRequest;
+
+  try {
+    const data = await api.removeDeckCheckpoint(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **deck** | `string` |  | [Defaults to `undefined`] |
+| **change** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+**any**
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## renameAccount
 
 > RenameAccount200Response renameAccount(RenameAccountRequest)
@@ -7357,6 +7432,82 @@ example().catch(console.error);
 |------------- | ------------- | ------------- | -------------|
 | **deck** | `string` |  | [Defaults to `undefined`] |
 | **SetDeckBracketRequest** | [SetDeckBracketRequest](SetDeckBracketRequest.md) |  | [Optional] |
+
+### Return type
+
+**any**
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## setDeckCheckpoint
+
+> any setDeckCheckpoint(deck, change, SetDeckCheckpointRequest)
+
+Name one of the deck\&#39;s Deck changes with a Deck checkpoint, or rename its
+
+Name one of the deck\&#39;s Deck changes with a Deck checkpoint, or rename its Deck checkpoint  Only the owner names. A Deck change carries at most one Deck checkpoint, so naming a named one renames it.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { SetDeckCheckpointOperationRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    deck: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string
+    change: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // SetDeckCheckpointRequest (optional)
+    SetDeckCheckpointRequest: ...,
+  } satisfies SetDeckCheckpointOperationRequest;
+
+  try {
+    const data = await api.setDeckCheckpoint(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **deck** | `string` |  | [Defaults to `undefined`] |
+| **change** | `string` |  | [Defaults to `undefined`] |
+| **SetDeckCheckpointRequest** | [SetDeckCheckpointRequest](SetDeckCheckpointRequest.md) |  | [Optional] |
 
 ### Return type
 

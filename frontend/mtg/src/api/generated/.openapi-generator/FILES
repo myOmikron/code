@@ -195,6 +195,7 @@ docs/SetAdvisorSettingsRequest.md
 docs/SetBucketResponse.md
 docs/SetCollectionVisibilityRequest.md
 docs/SetDeckBracketRequest.md
+docs/SetDeckCheckpointRequest.md
 docs/SetDeckColorsRequest.md
 docs/SetDeckFolderRequest.md
 docs/SetDeckRuleZeroRequest.md

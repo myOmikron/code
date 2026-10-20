@@ -231,6 +231,10 @@ export const Api = {
         redo: async (deck: UUID) => handleError(defaultApi.redoDeckChange({ deck })),
         point: async (deck: UUID, change: UUID) => handleError(defaultApi.getDeckPoint({ deck, change })),
         reset: async (deck: UUID, change: UUID) => handleError(defaultApi.resetDeck({ deck, change })),
+        setCheckpoint: async (deck: UUID, change: UUID, name: string) =>
+            handleError(defaultApi.setDeckCheckpoint({ deck, change, SetDeckCheckpointRequest: { name } })),
+        removeCheckpoint: async (deck: UUID, change: UUID) =>
+            handleError(defaultApi.removeDeckCheckpoint({ deck, change })),
         setVisibility: async (uuid: UUID, visibility: Visibility) =>
             handleError(defaultApi.setVisibilityDeck({ deck: uuid, SetDeckVisibilityRequest: { visibility } })),
         rotateShareToken: async (uuid: UUID) => handleError(defaultApi.rotateDeckShareToken({ deck: uuid })),

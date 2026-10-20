@@ -1,11 +1,13 @@
 use galvyn::core::re_exports::schemars;
 use galvyn::core::re_exports::schemars::JsonSchema;
 use galvyn::core::stuff::schema::SchemaDateTime;
+use galvyn::rorm::fields::types::MaxStr;
 use serde::Deserialize;
 use serde::Serialize;
 use uuid::Uuid;
 
 use crate::models::deck::DeckZone;
+use crate::models::deck::history::CHECKPOINT_LENGTH;
 use crate::models::deck::history::ChangedEntry;
 use crate::models::deck::history::DeckChange;
 use crate::models::deck::history::DeckChangeKind;
@@ -72,6 +74,15 @@ pub struct DeckChangeResponse {
     pub reference: Option<DeckChangeUuid>,
     /// Whether an undo took it back and no redo applied it again since
     pub undone: bool,
+    /// The Deck checkpoint the owner named it with, `None` when unnamed
+    pub checkpoint: Option<String>,
+}
+
+/// The name of a Deck checkpoint
+#[derive(Debug, Clone, Deserialize, JsonSchema)]
+pub struct SetDeckCheckpointRequest {
+    /// The name, never blank; surrounding whitespace is dropped
+    pub name: MaxStr<CHECKPOINT_LENGTH>,
 }
 
 /// How many copies one Deck entry held before and after a Deck change
@@ -107,6 +118,7 @@ impl From<DeckChange> for DeckChangeResponse {
             fields: value.fields,
             reference: value.reference,
             undone: value.undone,
+            checkpoint: value.checkpoint,
         }
     }
 }

@@ -13,4 +13,6 @@ pub fn initialize_routes() -> GalvynRouter {
         .handler(handler::redo_deck_change)
         .handler(handler::get_deck_point)
         .handler(handler::reset_deck)
+        .handler(handler::set_deck_checkpoint)
+        .handler(handler::remove_deck_checkpoint)
 }
