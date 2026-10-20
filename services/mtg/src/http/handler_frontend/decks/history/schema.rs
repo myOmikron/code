@@ -41,14 +41,13 @@ pub struct DeckHistoryResponse {
     pub changes: Vec<DeckChangeResponse>,
     /// Pass as `after` for the next page, `None` on the last one
     pub next_cursor: Option<DeckChangeUuid>,
-    /// Whether there is a Deck change to undo
-    pub can_undo: bool,
-    /// Whether there is an undone Deck change to redo
-    pub can_redo: bool,
+    /// What undo and redo can do now
+    #[serde(flatten)]
+    pub undo: DeckUndoResponse,
 }
 
-/// What undo and redo can do after one of them
-#[derive(Debug, Clone, Serialize, JsonSchema)]
+/// What undo and redo can do
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, JsonSchema)]
 pub struct DeckUndoResponse {
     /// Whether there is a Deck change to undo
     pub can_undo: bool,

@@ -56,8 +56,7 @@ pub async fn get_deck_history(
             .map(DeckChangeResponse::from)
             .collect(),
         next_cursor: page.next_cursor,
-        can_undo: state.undo.is_some(),
-        can_redo: state.redo.is_some(),
+        undo: DeckUndoResponse::from(state),
     }))
 }
 

@@ -11770,11 +11770,11 @@
                         "format": "int16"
                     },
                     "can_redo": {
-                        "description": "Whether the owner can redo an undone Deck change, always `false` for anyone else",
+                        "description": "Whether there is an undone Deck change to redo",
                         "type": "boolean"
                     },
                     "can_undo": {
-                        "description": "Whether the owner can undo a Deck change, always `false` for anyone else",
+                        "description": "Whether there is a Deck change to undo",
                         "type": "boolean"
                     },
                     "created_at": {
@@ -12099,7 +12099,7 @@
                 }
             },
             "DeckUndoResponse": {
-                "description": "What undo and redo can do after one of them",
+                "description": "What undo and redo can do",
                 "type": "object",
                 "properties": {
                     "can_redo": {

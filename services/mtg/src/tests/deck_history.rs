@@ -678,7 +678,10 @@ fn adding_a_card_records_one_deck_change() {
         fixture
             .add(json!({ "printing": printing, "quantity": 1, "zone": "Main" }))
             .await;
-        assert_eq!(fixture.kinds().await, vec!["Quantity", "Quantity", "Created"]);
+        assert_eq!(
+            fixture.kinds().await,
+            vec!["Quantity", "Quantity", "Created"]
+        );
         assert_eq!(fixture.latest().await, vec![("Main".to_string(), 2, 3)]);
     });
 }
@@ -693,7 +696,10 @@ fn changing_an_entrys_quantity_records_one_deck_change() {
         fixture.age_latest().await;
 
         fixture.patch(&entry, json!({ "quantity": 1 })).await;
-        assert_eq!(fixture.kinds().await, vec!["Quantity", "Quantity", "Created"]);
+        assert_eq!(
+            fixture.kinds().await,
+            vec!["Quantity", "Quantity", "Created"]
+        );
         assert_eq!(fixture.latest().await, vec![("Side".to_string(), 3, 1)]);
         fixture.age_latest().await;
 
@@ -714,7 +720,10 @@ fn removing_an_entry_records_one_deck_change() {
 
         fixture.remove(&entry).await;
 
-        assert_eq!(fixture.kinds().await, vec!["Quantity", "Quantity", "Created"]);
+        assert_eq!(
+            fixture.kinds().await,
+            vec!["Quantity", "Quantity", "Created"]
+        );
         assert_eq!(fixture.latest().await, vec![("Main".to_string(), 4, 0)]);
     });
 }
@@ -749,7 +758,10 @@ fn the_deck_history_lists_newest_first_in_pages() {
         }
 
         assert_eq!(afters, vec![4, 3, 2, 1]);
-        assert_eq!(kinds, vec!["Quantity", "Quantity", "Quantity", "Quantity", "Created"]);
+        assert_eq!(
+            kinds,
+            vec!["Quantity", "Quantity", "Quantity", "Quantity", "Created"]
+        );
     });
 }
 
@@ -1096,7 +1108,9 @@ fn switching_printing_foil_or_proxy_records_one_switch_each() {
 
         assert_eq!(
             fixture.kinds().await,
-            vec!["Switch", "Switch", "Switch", "Quantity", "Quantity", "Created"]
+            vec![
+                "Switch", "Switch", "Switch", "Quantity", "Quantity", "Created"
+            ]
         );
         let history = fixture.history("").await;
         let mut merged: Vec<(bool, i64, i64)> = history["changes"][0]["entries"]
@@ -1567,7 +1581,10 @@ fn sourcing_another_printing_for_an_entry_records_one_sourcing_change() {
             )
             .await;
 
-        assert_eq!(fixture.kinds().await, vec!["Sourcing", "Quantity", "Created"]);
+        assert_eq!(
+            fixture.kinds().await,
+            vec!["Sourcing", "Quantity", "Created"]
+        );
         let history = fixture.history("").await;
         let mut split: Vec<(bool, bool, i64, i64)> = history["changes"][0]["entries"]
             .as_array()
@@ -1604,7 +1621,10 @@ fn filling_a_proxy_entry_records_one_sourcing_change() {
             .send_json(Method::POST, "sourcing/fill", json!({ "slot": proxy }))
             .await;
 
-        assert_eq!(fixture.kinds().await, vec!["Sourcing", "Quantity", "Created"]);
+        assert_eq!(
+            fixture.kinds().await,
+            vec!["Sourcing", "Quantity", "Created"]
+        );
         let history = fixture.history("").await;
         let mut flags: Vec<(bool, i64, i64)> = history["changes"][0]["entries"]
             .as_array()
@@ -1844,7 +1864,9 @@ fn quick_edits_of_different_entries_or_fields_stay_apart() {
 
         assert_eq!(
             fixture.kinds().await,
-            vec!["Settings", "Settings", "Quantity", "Quantity", "Quantity", "Created"]
+            vec![
+                "Settings", "Settings", "Quantity", "Quantity", "Quantity", "Created"
+            ]
         );
     });
 }
@@ -1870,7 +1892,9 @@ fn an_edit_after_the_window_stays_apart() {
 
         assert_eq!(
             fixture.kinds().await,
-            vec!["Quantity", "Quantity", "Settings", "Settings", "Quantity", "Created"]
+            vec![
+                "Quantity", "Quantity", "Settings", "Settings", "Quantity", "Created"
+            ]
         );
         assert_eq!(fixture.latest().await, vec![("Main".to_string(), 2, 3)]);
     });
@@ -1890,7 +1914,10 @@ fn the_window_counts_from_the_first_of_the_joined_edits() {
 
         fixture.patch(&entry, json!({ "quantity": 3 })).await;
 
-        assert_eq!(fixture.kinds().await, vec!["Quantity", "Quantity", "Created"]);
+        assert_eq!(
+            fixture.kinds().await,
+            vec!["Quantity", "Quantity", "Created"]
+        );
         assert_eq!(fixture.latest().await, vec![("Main".to_string(), 2, 3)]);
     });
 }
@@ -2580,7 +2607,8 @@ fn a_reset_can_be_undone_and_redone() {
         assert_eq!(
             fixture.kinds().await,
             vec![
-                "Undo", "Undo", "Redo", "Undo", "Reset", "Settings", "Quantity", "Quantity", "Created"
+                "Undo", "Undo", "Redo", "Undo", "Reset", "Settings", "Quantity", "Quantity",
+                "Created"
             ]
         );
     });
@@ -2803,7 +2831,10 @@ fn the_owner_names_renames_and_removes_a_deck_checkpoint() {
 
         fixture.remove_checkpoint(&named).await.ok_json();
         assert_eq!(fixture.checkpoints().await, vec![Value::Null; 3]);
-        assert_eq!(fixture.kinds().await, vec!["Quantity", "Quantity", "Created"]);
+        assert_eq!(
+            fixture.kinds().await,
+            vec!["Quantity", "Quantity", "Created"]
+        );
     });
 }
 
@@ -2824,7 +2855,10 @@ fn an_edit_right_after_naming_the_latest_deck_change_appends_a_new_one() {
         fixture.patch(&entry, json!({ "quantity": 2 })).await;
         fixture.patch(&entry, json!({ "quantity": 0 })).await;
 
-        assert_eq!(fixture.kinds().await, vec!["Quantity", "Quantity", "Created"]);
+        assert_eq!(
+            fixture.kinds().await,
+            vec!["Quantity", "Quantity", "Created"]
+        );
         assert_eq!(
             fixture.checkpoints().await,
             vec![Value::Null, json!("Before FNM"), Value::Null]
