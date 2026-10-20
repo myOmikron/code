@@ -8,7 +8,7 @@
  */
 
 import type { DeckCardResponse, DeckTagResponse } from "src/api/generated";
-import { primaryType } from "src/utils/card-types";
+import { isSnowSource, primaryType } from "src/utils/card-types";
 import { MANA_CURVE_CAP, UNTAGGED } from "src/utils/deck-stats";
 import { atLeast, exactly } from "src/utils/hypergeometric";
 
@@ -23,6 +23,12 @@ const WORST_LIMIT = 8;
 
 /** The colours, in the order they are written */
 const COLOR_LETTERS = ["W", "U", "B", "R", "G"];
+
+/** The key Snow pips and Snow sources are counted under, Scryfall's symbol for them */
+const SNOW = "S";
+
+/** What a cost can ask for: the colours, and a Snow source behind them */
+const REQUIREMENT_LETTERS = [...COLOR_LETTERS, SNOW];
 
 /** The fewest lands a hand is kept on */
 const KEEP_LOW = 2;
@@ -138,6 +144,7 @@ export function deckOdds(
     const deckSize = library.reduce((sum, card) => sum + card.quantity, 0);
 
     let lands = 0;
+    let snowPips = false;
     const sources = new Map<string, number>();
     const manaPools = new Map<string, Pool>();
     const tagPools = new Map<string, Pool>();
@@ -149,6 +156,10 @@ export function deckOdds(
         for (const color of card.produced_mana) {
             if (COLOR_LETTERS.includes(color)) sources.set(color, (sources.get(color) ?? 0) + slot.quantity);
         }
+        if (isSnowSource(card.type_line, card.produced_mana)) {
+            sources.set(SNOW, (sources.get(SNOW) ?? 0) + slot.quantity);
+        }
+        if (colorRequirements(card.mana_cost).has(SNOW)) snowPips = true;
 
         // The mana split mirrors the curve, which is about spells: a land has a
         // mana value of zero and would sit among the free spells without saying
@@ -184,7 +195,9 @@ export function deckOdds(
     const opening: OpeningHand = {
         deckSize,
         lands,
-        colors: colors.map((color) => ({
+        // Snow is no colour the deck plays, so it is only asked about where a
+        // cost asks for it.
+        colors: (snowPips ? [...colors, SNOW] : colors).map((color) => ({
             key: color,
             chance: atLeast(deckSize, sources.get(color) ?? 0, HAND, 1),
         })),
@@ -384,7 +397,8 @@ export function afterFreeMulligan(first: HandOutcome): HandOutcome {
  *
  * Hybrid symbols are left out rather than guessed at: `{W/U}` is satisfied by
  * either colour, so counting it against both would invent a requirement the
- * card does not have.
+ * card does not have. A Snow pip is no colour, but it asks for a Snow source,
+ * and is counted under `S` beside the colours.
  *
  * @param manaCost the cost as Scryfall spells it
  *
@@ -397,7 +411,7 @@ export function colorRequirements(manaCost: string): Map<string, number> {
         const inside = symbol[1]?.toUpperCase() ?? "";
         // Only the plain single-colour symbols. Anything with a slash is a
         // choice, and a choice is not a requirement.
-        if (inside.includes("/") || !COLOR_LETTERS.includes(inside)) continue;
+        if (inside.includes("/") || !REQUIREMENT_LETTERS.includes(inside)) continue;
         wanted.set(inside, (wanted.get(inside) ?? 0) + 1);
     }
 

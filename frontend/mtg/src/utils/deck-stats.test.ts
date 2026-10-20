@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { DeckCardResponse, DeckTagResponse } from "src/api/generated";
+import { isSnowSource } from "src/utils/card-types";
 import { deckStats } from "src/utils/deck-stats";
 
 const RAMP: DeckTagResponse = { uuid: "tag-ramp", name: "Ramp", color: "lime", icon: "ramp", deck: null };
@@ -20,6 +21,7 @@ const WINCON: DeckTagResponse = {
  * @param card.cost its mana cost, as Scryfall spells it
  * @param card.manaValue what that cost adds up to
  * @param card.identity its colour identity
+ * @param card.produces the mana it makes, none by default
  * @param tags the tags on it
  * @param zone which zone it sits in, the main deck by default
  * @param proxy whether the slot is a stand-in, `false` by default
@@ -28,7 +30,7 @@ const WINCON: DeckTagResponse = {
  */
 function slot(
     uuid: string,
-    card: { type: string; cost: string; manaValue: number; identity: string },
+    card: { type: string; cost: string; manaValue: number; identity: string; produces?: Array<string> },
     tags: Array<string>,
     zone: DeckCardResponse["zone"] = "Main",
     proxy: boolean = false,
@@ -47,7 +49,7 @@ function slot(
             mana_cost: card.cost,
             mana_value: card.manaValue,
             color_identity: card.identity,
-            produced_mana: [],
+            produced_mana: card.produces ?? [],
             rarity: "Common",
             set_code: "tst",
             price_eur_cents: 100,
@@ -104,6 +106,73 @@ describe("deckStats splits", () => {
 
     it("offers the undivided view as a single layer", () => {
         expect(stats.manaCurveSplit.segments.all).toStrictEqual(["all"]);
+    });
+});
+
+describe("deckStats and snow", () => {
+    const SNOW = [
+        slot("blizzard-brawl", { type: "Snow Sorcery", cost: "{G}{S}", manaValue: 2, identity: "G" }, [RAMP.uuid]),
+        slot(
+            "snow-forest",
+            { type: "Basic Snow Land — Forest", cost: "", manaValue: 0, identity: "G", produces: ["G"] },
+            [],
+        ),
+        slot("forest", { type: "Basic Land — Forest", cost: "", manaValue: 0, identity: "G", produces: ["G"] }, []),
+    ];
+
+    it("counts Snow pips against Snow sources, a Snow-Covered Forest being a green source as well", () => {
+        const stats = deckStats(SNOW, ["G"], [RAMP]);
+
+        expect(stats.pips).toStrictEqual([
+            { key: "G", cards: 1 },
+            { key: "S", cards: 1 },
+        ]);
+        expect(stats.manaSources).toStrictEqual([
+            { key: "G", cards: 2 },
+            { key: "S", cards: 1 },
+        ]);
+    });
+
+    it("splits the Snow pips by tag like any colour", () => {
+        const stats = deckStats(SNOW, ["G"], [RAMP]);
+        const snow = stats.pipsSplit.bars.tags.find((bucket) => bucket.key === "S");
+
+        expect(snow?.segments.find((segment) => segment.key === RAMP.uuid)?.cards).toBe(1);
+        expect(stats.tagStats.find((tag) => tag.key === RAMP.uuid)?.pips).toStrictEqual([
+            { key: "G", cards: 1 },
+            { key: "S", cards: 1 },
+        ]);
+    });
+
+    it("shows Snow sources without a Snow pip, but draws no Snow bar for the pips", () => {
+        const stats = deckStats(SNOW.slice(1), ["G"]);
+
+        expect(stats.manaSources.find((bucket) => bucket.key === "S")?.cards).toBe(1);
+        expect(stats.pipsSplit.bars.all.map((bucket) => bucket.key)).toStrictEqual(["G"]);
+    });
+
+    it("leaves Snow out of a deck that has none", () => {
+        const stats = deckStats(CARDS, ["U", "G"]);
+
+        expect(stats.pips.map((bucket) => bucket.key)).toStrictEqual(["U", "G"]);
+        expect(stats.manaSources.map((bucket) => bucket.key)).toStrictEqual(["U", "G"]);
+    });
+});
+
+describe("isSnowSource", () => {
+    it("reads the supertype on any face of a card that makes mana", () => {
+        expect(isSnowSource("Basic Snow Land — Forest", ["G"])).toBe(true);
+        expect(isSnowSource("Instant // Snow Land — Island", ["U"])).toBe(true);
+        expect(isSnowSource("Snow Artifact", ["C"])).toBe(true);
+    });
+
+    it("knows a snow card that makes no mana is no source", () => {
+        expect(isSnowSource("Snow Creature — Troll Warrior", [])).toBe(false);
+    });
+
+    it("ignores the word anywhere but the supertypes", () => {
+        expect(isSnowSource("Land — Snowfield", ["W"])).toBe(false);
+        expect(isSnowSource("Basic Land — Forest", ["G"])).toBe(false);
     });
 });
 

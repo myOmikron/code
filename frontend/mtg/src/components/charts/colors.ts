@@ -28,6 +28,7 @@ export const MAGIC_COLORS: Record<string, string> = {
     R: "#e2564b",
     G: "#3faa6d",
     C: "#9aa4b2",
+    S: "#7dd3fc",
     multicolor: "#c8a02c",
     colorless: "#9aa4b2",
 };
