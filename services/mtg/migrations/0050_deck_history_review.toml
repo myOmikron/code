@@ -1,8 +1,28 @@
 [Migration]
-Hash = "2672506059817554839"
+Hash = "7674010164042957324"
 Initial = false
 Dependency = 49
 Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "deck_change"
+
+[Migration.Operations.Field]
+Name = "redoable"
+Type = "boolean"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "default_value"
+Value = false
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/deck/history/db.rs"
+Line = 73
+Column = 9
 
 [[Migration.Operations]]
 Type = "RawSQL"
@@ -42,4 +62,51 @@ SELECT 1;
 """
 Postgres = """
 UPDATE deck_change SET kind = 'Quantity' WHERE kind = 'Edit';
+"""
+
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+UPDATE deck_change t SET redoable = true
+WHERE t.undone AND EXISTS (
+    SELECT 1 FROM deck_change step
+    WHERE step.reference = t.uuid AND step.kind = 'Undo' AND step.uuid > (
+        SELECT p.uuid FROM deck_change p
+        WHERE p.deck = t.deck AND p.kind <> 'Undo' AND p.kind <> 'Redo'
+        ORDER BY p.uuid DESC LIMIT 1
+    )
+);
+"""
+
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+CREATE INDEX deck_change_undoable ON deck_change (deck, uuid) WHERE NOT undone AND kind <> 'Undo' AND kind <> 'Redo';
+"""
+
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+CREATE INDEX deck_change_redoable ON deck_change (deck, uuid) WHERE redoable;
 """

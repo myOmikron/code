@@ -24,6 +24,7 @@ use galvyn::rorm;
 use galvyn::rorm::conditions::Condition;
 use galvyn::rorm::conditions::DynamicCollection;
 use galvyn::rorm::db::Executor;
+use galvyn::rorm::db::executor::AffectedRows;
 use galvyn::rorm::db::executor::All;
 use galvyn::rorm::db::row::Row;
 use galvyn::rorm::db::sql::value::Value;
@@ -833,6 +834,7 @@ impl DeckEdit {
         wanted.fields = FieldDifference::all(&current, &rewound.settings);
 
         let applied = self.apply(&mut *tx, &wanted.settled()).await?;
+        discard_redo(&mut *tx, self.deck).await?;
         insert_referring(&mut *tx, self.deck, DeckChangeKind::Reset, applied, point).await?;
         Ok(true)
     }
@@ -860,7 +862,8 @@ impl DeckEdit {
         Ok(affected > 0)
     }
 
-    /// Record an undo or redo of `target` and mark `target` as undone or not
+    /// Record an undo or redo of `target` and mark `target` as undone and
+    /// redoable, or neither
     ///
     /// Recorded even when it changed nothing, so the undo stack stays whole.
     async fn step(
@@ -874,6 +877,7 @@ impl DeckEdit {
         insert_referring(&mut *tx, self.deck, kind, applied, target).await?;
         rorm::update(&mut *tx, DeckChangeModel)
             .set(DeckChangeModel.undone, undone)
+            .set(DeckChangeModel.redoable, undone)
             .condition(DeckChangeModel.uuid.equals(target.0))
             .await?;
         Ok(())
@@ -1136,31 +1140,27 @@ impl DeckHistory {
     ///
     /// The Deck changes that are not undone, except undos and redos, form the
     /// undo stack: an undo takes back the latest of them unless it is the
-    /// deck's first. A redo applies again the earliest Deck change undone
-    /// since the latest Deck change that is neither an undo nor a redo; that
-    /// one discarded every undo before it. The caller has to have established
+    /// deck's first. A redo applies again the earliest Deck change still
+    /// redoable: undone since the latest Deck change that is neither an undo
+    /// nor a redo, which discarded every undo before it. Each read touches
+    /// only the row it returns, through the partial indexes
+    /// `deck_change_undoable` and `deck_change_redoable`, whose predicates
+    /// the statements repeat verbatim. The caller has to have established
     /// that the account owns the deck.
     #[instrument(name = "DeckHistory::undo_state", skip(tx))]
     pub async fn undo_state(
         tx: &mut Transaction,
         deck: DeckUuid,
     ) -> Result<UndoState, rorm::Error> {
-        let steps = || {
-            vec![
-                Value::Uuid(deck.into_inner()),
-                Value::String(DeckChangeKind::Undo.as_str()),
-                Value::String(DeckChangeKind::Redo.as_str()),
-            ]
-        };
         let decode = |error: rorm::db::row::RowError<'_>| rorm::Error::RowError(error.into_owned());
 
         let undo = (&mut *tx)
             .execute::<All>(
                 "SELECT uuid, kind FROM deck_change \
-                 WHERE deck = $1 AND NOT undone AND kind <> $2 AND kind <> $3 \
+                 WHERE deck = $1 AND NOT undone AND kind <> 'Undo' AND kind <> 'Redo' \
                  ORDER BY uuid DESC LIMIT 1"
                     .to_string(),
-                steps(),
+                vec![Value::Uuid(deck.into_inner())],
             )
             .await?;
         let undo = match undo.first() {
@@ -1176,20 +1176,15 @@ impl DeckHistory {
 
         let redo = (&mut *tx)
             .execute::<All>(
-                "SELECT step.reference FROM deck_change step \
-                 JOIN deck_change target ON target.uuid = step.reference \
-                 WHERE step.deck = $1 AND step.kind = $2 AND target.undone AND step.uuid > ( \
-                     SELECT uuid FROM deck_change \
-                     WHERE deck = $1 AND kind <> $2 AND kind <> $3 \
-                     ORDER BY uuid DESC LIMIT 1 \
-                 ) \
-                 ORDER BY step.reference LIMIT 1"
+                "SELECT uuid FROM deck_change \
+                 WHERE deck = $1 AND redoable \
+                 ORDER BY uuid LIMIT 1"
                     .to_string(),
-                steps(),
+                vec![Value::Uuid(deck.into_inner())],
             )
             .await?;
         let redo = match redo.first() {
-            Some(row) => Some(DeckChangeUuid(row.get("reference").map_err(decode)?)),
+            Some(row) => Some(DeckChangeUuid(row.get("uuid").map_err(decode)?)),
             None => None,
         };
 
@@ -1371,12 +1366,15 @@ async fn rewind(
 }
 
 /// Append a Deck change, timestamped now
+///
+/// Never an undo or redo, so it discards every pending redo.
 async fn insert(
     tx: &mut Transaction,
     deck: DeckUuid,
     kind: DeckChangeKind,
     difference: DeckDifference,
 ) -> Result<(), rorm::Error> {
+    discard_redo(&mut *tx, deck).await?;
     rorm::insert(&mut *tx, DeckChangeModel)
         .return_nothing()
         .single(&DeckChangeInsertPatch {
@@ -1387,6 +1385,20 @@ async fn insert(
             difference: Json(difference),
         })
         .await
+}
+
+/// Make the deck's undone Deck changes no longer redoable
+///
+/// For a new Deck change that is no undo or redo. Touches only the
+/// redoable rows, through the partial index `deck_change_redoable`.
+async fn discard_redo(tx: &mut Transaction, deck: DeckUuid) -> Result<(), rorm::Error> {
+    (&mut *tx)
+        .execute::<AffectedRows>(
+            "UPDATE deck_change SET redoable = false WHERE deck = $1 AND redoable".to_string(),
+            vec![Value::Uuid(deck.into_inner())],
+        )
+        .await?;
+    Ok(())
 }
 
 /// Append a Deck change referring to an earlier one, timestamped now
