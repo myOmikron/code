@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
 import type { DeckCardResponse, DeckZone } from "src/api/generated";
+import type { Printing } from "src/utils/scryfall";
 import {
     attachCard,
     attachmentsOf,
     changeCounter,
     detachCard,
     copyCard,
+    groupTokens,
+    tokenCaption,
     createToken,
     draw,
     inZone,
@@ -316,5 +319,114 @@ describe("isLand", () => {
         expect(isLand({ ...base, ...rest, typeLine: "Basic Land — Forest" })).toBe(true);
         expect(isLand({ ...base, ...rest, typeLine: "Creature — Elf // Land" })).toBe(false);
         expect(isLand({ ...base, ...rest, typeLine: "Legendary Creature — Landfall" })).toBe(false);
+    });
+});
+
+/**
+ * A token printing with only what grouping reads
+ *
+ * @param id the printing
+ * @param oracleId the token it is a printing of
+ * @param name what it is called
+ *
+ * @returns the printing
+ */
+function token(id: string, oracleId: string, name: string): Printing {
+    return {
+        id,
+        oracleId,
+        name,
+        setName: "",
+        setCode: "",
+        collectorNumber: "",
+        imageUrl: null,
+        largeImageUrl: null,
+        backImageUrl: null,
+        backLargeImageUrl: null,
+        manaCost: "",
+        typeLine: `Token Creature — ${name}`,
+        oracleText: "",
+        power: null,
+        toughness: null,
+        rarity: "common",
+        scryfallUrl: "",
+        colorIdentity: [],
+        manaValue: 0,
+        releasedAt: "",
+        artist: "",
+        legalities: {},
+        keywords: [],
+        reserved: false,
+        faces: [],
+        priceEur: null,
+        priceEurFoil: null,
+        finishes: ["nonfoil"],
+    };
+}
+
+describe("groupTokens", () => {
+    it("lists different tokens sharing a name separately", () => {
+        const red = token("print-red", "oracle-red", "Elemental");
+        const green = token("print-green", "oracle-green", "Elemental");
+
+        const grouped = groupTokens([
+            { source: "Young Pyromancer", token: red },
+            { source: "Avenger of Zendikar", token: green },
+        ]);
+
+        expect(grouped).toEqual([
+            { token: red, sources: ["Young Pyromancer"] },
+            { token: green, sources: ["Avenger of Zendikar"] },
+        ]);
+    });
+
+    it("lists one token printed in two sets once, with both makers", () => {
+        const older = token("print-m19", "oracle-treasure", "Treasure");
+        const newer = token("print-ltr", "oracle-treasure", "Treasure");
+
+        const grouped = groupTokens([
+            { source: "Dockside Extortionist", token: older },
+            { source: "Smothering Tithe", token: newer },
+        ]);
+
+        expect(grouped).toEqual([{ token: older, sources: ["Dockside Extortionist", "Smothering Tithe"] }]);
+    });
+
+    it("names a card the deck holds several times once", () => {
+        const treasure = token("print-treasure", "oracle-treasure", "Treasure");
+
+        const grouped = groupTokens([
+            { source: "Treasure Map // Treasure Cove", token: treasure },
+            { source: "Treasure Map // Treasure Cove", token: treasure },
+        ]);
+
+        expect(grouped).toEqual([{ token: treasure, sources: ["Treasure Map // Treasure Cove"] }]);
+    });
+
+    it("keeps tokens apart whose oracle id is not known yet", () => {
+        const goblin = token("print-goblin", "", "Goblin");
+        const soldier = token("print-soldier", "", "Soldier");
+
+        const grouped = groupTokens([
+            { source: "Krenko, Mob Boss", token: goblin },
+            { source: "Raise the Alarm", token: soldier },
+        ]);
+
+        expect(grouped).toEqual([
+            { token: goblin, sources: ["Krenko, Mob Boss"] },
+            { token: soldier, sources: ["Raise the Alarm"] },
+        ]);
+    });
+});
+
+describe("tokenCaption", () => {
+    it("adds power and toughness to a creature token", () => {
+        const elemental = { ...token("print-elemental", "oracle-elemental", "Elemental"), power: "4", toughness: "4" };
+
+        expect(tokenCaption(elemental)).toBe("Elemental 4/4");
+    });
+
+    it("keeps the name of a token without power and toughness", () => {
+        expect(tokenCaption(token("print-treasure", "oracle-treasure", "Treasure"))).toBe("Treasure");
     });
 });

@@ -115,6 +115,7 @@
         "tapped": "Tapped",
         "token": "Token",
         "token-search": "Search tokens",
+        "token-sources": "from {{cards}}",
         "turn": "Turn"
     }
 }

@@ -74,8 +74,11 @@ export function provisionalPrinting(id: string, card: ListedCard): Printing {
 
         // Not in the listing. Every one of these is guarded by the dialog, so
         // the card simply shows less until the real printing lands.
+        oracleId: "",
         manaCost: "",
         oracleText: "",
+        power: null,
+        toughness: null,
         scryfallUrl: "",
         releasedAt: "",
         artist: "",

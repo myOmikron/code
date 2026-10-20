@@ -115,6 +115,7 @@
         "tapped": "Getappt",
         "token": "Token",
         "token-search": "Token suchen",
+        "token-sources": "von {{cards}}",
         "turn": "Zug"
     }
 }

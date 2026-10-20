@@ -13,7 +13,8 @@ import {
 } from "components";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { TokenSource } from "src/utils/goldfish";
+import type { DeckToken, TokenSource } from "src/utils/goldfish";
+import { tokenCaption } from "src/utils/goldfish";
 import type { Printing } from "src/utils/scryfall";
 import { searchPrintings } from "src/utils/scryfall";
 
@@ -27,7 +28,7 @@ export type GoldfishTokenDialogProps = {
     /** Whether the dialog is open */
     open: boolean;
     /** The tokens the deck's cards make, `null` while they are still being looked up */
-    deckTokens: Array<Printing> | null;
+    deckTokens: Array<DeckToken> | null;
     /** Puts tokens onto the battlefield */
     onCreate: (token: TokenSource, count: number) => void;
     /** Closes the dialog */
@@ -105,39 +106,51 @@ export function GoldfishTokenDialog({ open, deckTokens, onCreate, onClose }: Gol
     /**
      * A grid of tokens to pick from
      *
-     * @param printings the tokens
+     * @param tokens the tokens, the deck's own with the cards that make them, search results without
      *
      * @returns the grid
      */
-    function grid(printings: Array<Printing>) {
+    function grid(tokens: Array<DeckToken>) {
         return (
             <div className={"grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5"}>
-                {printings.map((printing) => (
-                    <button
-                        key={printing.id}
-                        type={"button"}
-                        title={printing.name}
-                        onClick={() => create(printing)}
-                        className={
-                            "group flex flex-col gap-1 rounded-lg p-1 text-left outline-none hover:bg-lime-400/15 focus-visible:ring-2 focus-visible:ring-lime-500 dark:hover:bg-lime-400/15"
-                        }
-                    >
-                        <div className={"aspect-5/7 w-full overflow-hidden rounded-[4.5%/3.2%] bg-zinc-800"}>
-                            {printing.imageUrl !== null ? (
-                                <img src={printing.imageUrl} alt={printing.name} className={"size-full object-cover"} />
-                            ) : (
-                                <div
-                                    className={
-                                        "flex size-full items-center justify-center p-1 text-center text-xs text-white"
-                                    }
-                                >
-                                    {printing.name}
-                                </div>
+                {tokens.map(({ token: printing, sources }) => {
+                    const caption = tokenCaption(printing);
+                    const madeBy =
+                        sources.length === 0 ? null : t("label.token-sources", { cards: sources.join(", ") });
+                    return (
+                        <button
+                            key={printing.id}
+                            type={"button"}
+                            title={madeBy === null ? caption : `${caption}\n${madeBy}`}
+                            onClick={() => create(printing)}
+                            className={
+                                "group flex flex-col gap-1 rounded-lg p-1 text-left outline-none hover:bg-lime-400/15 focus-visible:ring-2 focus-visible:ring-lime-500 dark:hover:bg-lime-400/15"
+                            }
+                        >
+                            <div className={"aspect-5/7 w-full overflow-hidden rounded-[4.5%/3.2%] bg-zinc-800"}>
+                                {printing.imageUrl !== null ? (
+                                    <img
+                                        src={printing.imageUrl}
+                                        alt={printing.name}
+                                        className={"size-full object-cover"}
+                                    />
+                                ) : (
+                                    <div
+                                        className={
+                                            "flex size-full items-center justify-center p-1 text-center text-xs text-white"
+                                        }
+                                    >
+                                        {printing.name}
+                                    </div>
+                                )}
+                            </div>
+                            <span className={"truncate text-xs text-zinc-700 dark:text-zinc-300"}>{caption}</span>
+                            {madeBy !== null && (
+                                <span className={"truncate text-xs text-zinc-500 dark:text-zinc-400"}>{madeBy}</span>
                             )}
-                        </div>
-                        <span className={"truncate text-xs text-zinc-700 dark:text-zinc-300"}>{printing.name}</span>
-                    </button>
-                ))}
+                        </button>
+                    );
+                })}
             </div>
         );
     }
@@ -178,7 +191,7 @@ export function GoldfishTokenDialog({ open, deckTokens, onCreate, onClose }: Gol
                             {results.length === 0 && !searching ? (
                                 <Text>{t("description.no-results")}</Text>
                             ) : (
-                                grid(results)
+                                grid(results.map((token) => ({ token, sources: [] })))
                             )}
                         </div>
                     ) : (

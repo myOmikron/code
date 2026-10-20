@@ -10,6 +10,8 @@
  * @see https://scryfall.com/docs/api/cards/collection
  */
 
+import type { DeckToken } from "src/utils/goldfish";
+import { groupTokens } from "src/utils/goldfish";
 import { editDistanceWithin, normalizeName } from "src/utils/name-index";
 import { readPrintings, writePrintings } from "src/utils/printing-store";
 
@@ -34,6 +36,8 @@ export const QUERY_SYNTAX = /[:<>=()]|(^|\s)-/;
 export type Printing = {
     /** Scryfall's id of this printing */
     id: string;
+    /** Scryfall's id of the card itself, shared by all its printings, empty when not known yet */
+    oracleId: string;
     /** The card's name */
     name: string;
     /** Full set name, e.g. "Modern Masters 2015" */
@@ -62,6 +66,10 @@ export type Printing = {
     typeLine: string;
     /** Rules text, empty when the card has none */
     oracleText: string;
+    /** Power, `null` for a card without one */
+    power: string | null;
+    /** Toughness, `null` for a card without one */
+    toughness: string | null;
     /** Rarity as Scryfall spells it: common, uncommon, rare, special, mythic, bonus */
     rarity: string;
     /** The card's page on scryfall.com */
@@ -174,6 +182,7 @@ const CACHE = new Map<string, Printing>();
  */
 type ScryfallCard = {
     id: string;
+    oracle_id?: string;
     name: string;
     set_name: string;
     set: string;
@@ -181,6 +190,8 @@ type ScryfallCard = {
     mana_cost?: string;
     type_line?: string;
     oracle_text?: string;
+    power?: string;
+    toughness?: string;
     rarity?: string;
     scryfall_uri?: string;
     color_identity?: string[];
@@ -192,10 +203,13 @@ type ScryfallCard = {
     reserved?: boolean;
     image_uris?: { small?: string; normal?: string; large?: string };
     card_faces?: Array<{
+        oracle_id?: string;
         name?: string;
         mana_cost?: string;
         type_line?: string;
         oracle_text?: string;
+        power?: string;
+        toughness?: string;
         image_uris?: { small?: string; normal?: string; large?: string };
     }>;
     prices?: { eur: string | null; eur_foil?: string | null };
@@ -203,22 +217,23 @@ type ScryfallCard = {
     all_parts?: Array<{ id: string; name?: string; type_line?: string; component?: string }>;
 };
 
-/** The parts of a card already asked about, by printing id, token printing ids only */
-const PARTS = new Map<string, string[]>();
+/** A card already asked about, by printing id: its full name and its token printing ids */
+const PARTS = new Map<string, { name: string; tokens: string[] }>();
 
 /**
  * The tokens and emblems the given cards make, as Scryfall lists them.
  *
  * Scryfall names every related object on a card, and among them the tokens it
  * creates. The token printings themselves are then resolved like any other
- * card, so they arrive with artwork. One token can be referenced under several
- * printings; the first named wins.
+ * card, so they arrive with artwork, and grouped by {@link groupTokens}. A
+ * token cached without its oracle id is fetched again first, since the
+ * grouping needs it.
  *
  * @param ids the printing ids of the cards
  *
- * @returns the tokens, one per name, in the order the cards named them
+ * @returns the tokens with the cards that make them, in the order the cards named them
  */
-export async function relatedTokens(ids: string[]): Promise<Printing[]> {
+export async function relatedTokens(ids: string[]): Promise<DeckToken[]> {
     const wanted = [...new Set(ids)];
     const missing = wanted.filter((id) => !PARTS.has(id));
 
@@ -243,26 +258,32 @@ export async function relatedTokens(ids: string[]): Promise<Printing[]> {
         }
         const body = (await response.json()) as { data?: ScryfallCard[] };
         for (const card of body.data ?? []) {
-            const parts = (card.all_parts ?? [])
+            const tokens = (card.all_parts ?? [])
                 .filter((part) => part.id !== card.id && /\b(Token|Emblem)\b/.test(part.type_line ?? ""))
                 .map((part) => part.id);
-            PARTS.set(card.id, parts);
+            PARTS.set(card.id, { name: card.name, tokens });
         }
-        for (const id of batch) if (!PARTS.has(id)) PARTS.set(id, []);
+        for (const id of batch) if (!PARTS.has(id)) PARTS.set(id, { name: "", tokens: [] });
     }
 
-    const tokenIds = [...new Set(wanted.flatMap((id) => PARTS.get(id) ?? []))];
-    if (tokenIds.length === 0) return [];
-    const printings = await resolvePrintings(tokenIds);
-    const seen = new Set<string>();
-    const tokens: Printing[] = [];
-    for (const id of tokenIds) {
-        const printing = printings.get(id);
-        if (printing === undefined || seen.has(printing.name)) continue;
-        seen.add(printing.name);
-        tokens.push(printing);
+    const made = wanted.flatMap((id) => {
+        const card = PARTS.get(id);
+        return (card?.tokens ?? []).map((token) => ({ source: card?.name ?? "", token }));
+    });
+    if (made.length === 0) return [];
+    const tokenIds = made.map(({ token }) => token);
+    let printings = await resolvePrintings(tokenIds);
+    const outdated = [...printings.values()].filter((printing) => printing.oracleId === "").map(({ id }) => id);
+    if (outdated.length > 0) {
+        await fetchPrintings(outdated);
+        printings = cachedPrintings(tokenIds);
     }
-    return tokens;
+    return groupTokens(
+        made.flatMap(({ source, token }) => {
+            const printing = printings.get(token);
+            return printing === undefined ? [] : [{ source, token: printing }];
+        }),
+    );
 }
 
 /**
@@ -481,6 +502,7 @@ function toPrinting(card: ScryfallCard): Printing {
     const face = card.card_faces?.[0];
     const printing: Printing = {
         id: card.id,
+        oracleId: card.oracle_id ?? face?.oracle_id ?? "",
         name: card.name,
         setName: card.set_name,
         setCode: card.set.toUpperCase(),
@@ -492,6 +514,8 @@ function toPrinting(card: ScryfallCard): Printing {
         manaCost: card.mana_cost ?? face?.mana_cost ?? "",
         typeLine: card.type_line ?? face?.type_line ?? "",
         oracleText: card.oracle_text ?? face?.oracle_text ?? "",
+        power: card.power ?? face?.power ?? null,
+        toughness: card.toughness ?? face?.toughness ?? null,
         rarity: card.rarity ?? "",
         faces: (card.card_faces ?? []).map((entry) => ({
             name: entry.name ?? "",
