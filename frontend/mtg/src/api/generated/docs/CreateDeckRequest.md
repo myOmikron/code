@@ -7,6 +7,7 @@ Request to create a deck
 
 Name | Type
 ------------ | -------------
+`colors` | string
 `description` | string
 `format` | string
 `name` | string

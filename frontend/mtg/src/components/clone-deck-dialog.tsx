@@ -78,6 +78,7 @@ export function CloneDeckDialog({
                     description: description ?? null,
                     format,
                     visibility: Visibility.Public,
+                    colors: colors ?? null,
                 });
 
                 if (cards.cards.length > 0) {
@@ -91,8 +92,6 @@ export function CloneDeckDialog({
                         })),
                     });
                 }
-
-                if (colors != null) await Api.decks.setColors(deck.uuid, colors);
 
                 form.reset();
                 onCloned(deck);

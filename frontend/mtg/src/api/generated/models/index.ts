@@ -1638,6 +1638,14 @@ export interface CreateDeckFolderRequest {
  */
 export interface CreateDeckRequest {
     /**
+     * The colours as the letters `WUBRG`, `null` or left out to follow the commander
+     * 
+     * Lets a clone take over its original's colours in its created Deck change instead of a Deck change of its own.
+     * @type {string}
+     * @memberof CreateDeckRequest
+     */
+    colors?: string | null;
+    /**
      * Optional description
      * @type {string}
      * @memberof CreateDeckRequest

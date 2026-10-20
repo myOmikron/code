@@ -418,6 +418,13 @@ pub struct CreateDeckRequest {
     pub format: MaxStr<32>,
     /// Who may see the deck
     pub visibility: Visibility,
+    /// The colours as the letters `WUBRG`, `null` or left out to follow the
+    /// commander
+    ///
+    /// Lets a clone take over its original's colours in its created Deck
+    /// change instead of a Deck change of its own.
+    #[serde(default)]
+    pub colors: Option<MaxStr<8>>,
 }
 
 /// Request to rename a deck, change its description or its format

@@ -199,6 +199,8 @@ pub struct DeckInsert {
     pub format: MaxStr<32>,
     /// Who may see the deck
     pub visibility: Visibility,
+    /// The colours the deck may play, `None` for whatever the commander allows
+    pub allowed_color_identity: Option<MaxStr<8>>,
 }
 
 /// Outcome of an operation that only a deck's owner may perform
@@ -331,7 +333,7 @@ impl Deck {
                     Visibility::Unlisted => Some(generate_share_token()),
                     Visibility::Private | Visibility::Public => None,
                 },
-                allowed_color_identity: None,
+                allowed_color_identity: insert.allowed_color_identity,
                 bracket: None,
                 // A new deck is played by the format's rules until a table says
                 // otherwise.

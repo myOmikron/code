@@ -1281,10 +1281,12 @@ fn a_clone_starts_its_own_deck_history() {
                     "description": null,
                     "format": "modern",
                     "visibility": "Private",
+                    "colors": "WU",
                 }),
             )
             .await
             .ok_json();
+        assert_eq!(body["allowed_color_identity"], "WU");
         let mut clone = Fixture {
             owner: original.owner,
             deck: body["uuid"].as_str().expect("deck uuid").to_string(),
@@ -1293,6 +1295,18 @@ fn a_clone_starts_its_own_deck_history() {
 
         assert_eq!(clone.kinds().await, vec!["Import", "Created"]);
         assert_eq!(clone.latest().await, vec![("Side".to_string(), 0, 3)]);
+        let history = clone.history("").await;
+        let created = history["changes"][1]["fields"]
+            .as_array()
+            .expect("field list")
+            .iter()
+            .find(|field| field["field"] == "Colors")
+            .expect("the colours")
+            .clone();
+        assert_eq!(
+            created,
+            json!({ "field": "Colors", "before": "WU", "after": "WU" })
+        );
     });
 }
 

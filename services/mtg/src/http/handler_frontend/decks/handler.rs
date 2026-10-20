@@ -545,6 +545,7 @@ pub async fn create_deck(
         description,
         format,
         visibility,
+        colors,
     }): ApiJson<CreateDeckRequest>,
 ) -> ApiResult<ApiJson<DeckResponse>> {
     let mut tx = Database::global().start_transaction().await?;
@@ -557,6 +558,7 @@ pub async fn create_deck(
             description,
             format,
             visibility,
+            allowed_color_identity: colors,
         },
     )
     .await?;
