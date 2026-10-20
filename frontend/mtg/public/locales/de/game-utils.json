@@ -6,24 +6,25 @@
         "fewer-copies": "Eine Kopie von {{name}} weniger",
         "flip-card": "{{name}} umdrehen",
         "more-copies": "Eine Kopie von {{name}} mehr",
-        "rebook-offer_one": "Letzter Treffer an {{player}}: 1 Leben. Als Commander-Schaden buchen?",
-        "rebook-offer_other": "Letzter Treffer an {{player}}: {{count}} Leben. Als Commander-Schaden buchen?",
         "next-art": "Nächstes Bild für {{name}}",
         "previous-art": "Vorheriges Bild für {{name}}",
+        "rebook-offer_one": "Letzter Treffer an {{player}}: 1 Leben. Als Commander-Schaden buchen?",
+        "rebook-offer_other": "Letzter Treffer an {{player}}: {{count}} Leben. Als Commander-Schaden buchen?",
         "starting-life-presets": "Übliche Startleben"
     },
     "button": {
         "add-cards": "Karten hinzufügen",
         "back-to-life": "Zurück zum Lebenszähler",
         "back-to-tools": "Zurück zu den Game-Tools",
+        "back-to-tournament": "Turnier",
         "change-commander-damage": "Commander-Schaden von {{opponent}} an {{player}} um {{amount}} ändern",
         "change-life": "Leben von {{player}} um {{amount}} ändern",
         "clear-list": "Liste leeren",
         "commander-damage": "Commander-Schaden an {{player}}",
         "confirm-reset": "Zurücksetzen",
         "copy-list": "Liste kopieren",
-        "download-xml": "XML herunterladen",
         "dismiss-rebook": "War kein Commander-Schaden",
+        "download-xml": "XML herunterladen",
         "exit-fullscreen": "Vollbild verlassen",
         "fullscreen": "Vollbild",
         "load-deck": "Übernehmen",
@@ -37,8 +38,7 @@
         "reset_one": "Zurücksetzen",
         "reset_other": "Alle zurücksetzen",
         "settings": "Einstellungen",
-        "start": "Lifetracker starten",
-        "back-to-tournament": "Turnier"
+        "start": "Lifetracker starten"
     },
     "description": {
         "add-cards": "Suche Karten oder übernimm ein ganzes Deck. Die Bilder werden automatisch gesucht.",
@@ -84,8 +84,8 @@
         "proxy-printer": "Proxy-Drucker",
         "reset-game": "Neue Partie starten?",
         "settings": "Lifetracker einstellen",
-        "table-in-round": "Tisch {{table}} · Runde {{round}}",
-        "table": "Tisch {{table}}"
+        "table": "Tisch {{table}}",
+        "table-in-round": "Tisch {{table}} · Runde {{round}}"
     },
     "label": {
         "arrangement": "Anordnung",

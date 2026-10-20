@@ -8,7 +8,7 @@ import { InlineError } from "src/components/inline-error";
 import { useAccount } from "src/context/account";
 import i18n from "src/i18n";
 import { isFormError } from "src/utils/error";
-import { addTournamentGuest } from "src/utils/tournament-guest";
+import { addTournamentGuest, removeTournamentGuest } from "src/utils/tournament-guest";
 
 export const Route = createFileRoute("/_menu/join/claim/$token")({
     loader: async ({ params }) => {
@@ -76,6 +76,7 @@ function RouteComponent() {
                 setActionError(t("error.claim-invalid"));
                 return;
             }
+            removeTournamentGuest(response.tournament);
             notify.success(t("toast.seat-claimed"));
             openTournament(response.tournament);
         } finally {

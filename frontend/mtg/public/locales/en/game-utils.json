@@ -16,14 +16,15 @@
         "add-cards": "Add cards",
         "back-to-life": "Back to the life total",
         "back-to-tools": "Back to the game tools",
+        "back-to-tournament": "Tournament",
         "change-commander-damage": "Change {{player}}'s commander damage from {{opponent}} by {{amount}}",
         "change-life": "Change {{player}}'s life by {{amount}}",
         "clear-list": "Clear list",
         "commander-damage": "Commander damage dealt to {{player}}",
         "confirm-reset": "Reset",
         "copy-list": "Copy list",
-        "download-xml": "Download XML",
         "dismiss-rebook": "That was not commander damage",
+        "download-xml": "Download XML",
         "exit-fullscreen": "Leave fullscreen",
         "fullscreen": "Fullscreen",
         "load-deck": "Add",
@@ -37,8 +38,7 @@
         "reset_one": "Reset",
         "reset_other": "Reset all",
         "settings": "Settings",
-        "start": "Start life tracker",
-        "back-to-tournament": "Tournament"
+        "start": "Start life tracker"
     },
     "description": {
         "add-cards": "Search for cards or add a whole deck. Their art is searched for automatically.",
@@ -84,8 +84,8 @@
         "proxy-printer": "Proxy printer",
         "reset-game": "Start a new game?",
         "settings": "Set up life tracker",
-        "table-in-round": "Table {{table}} · Round {{round}}",
-        "table": "Table {{table}}"
+        "table": "Table {{table}}",
+        "table-in-round": "Table {{table}} · Round {{round}}"
     },
     "label": {
         "arrangement": "Arrangement",

@@ -4,6 +4,7 @@ import { Badge, Button, EmptyState, Tab, TabLayout, TabMenu } from "components";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import { ResponseError } from "src/api/generated";
+import { TournamentGuestUpgradeBanner } from "src/components/tournament-guest-upgrade-banner";
 import { tournamentStatusColor, tournamentStatusLabelKey } from "src/components/tournament-join-code";
 import { formatDateTime } from "src/utils/format";
 import i18n from "src/i18n";
@@ -108,6 +109,7 @@ function RouteComponent() {
                     </TabMenu>
                 }
             >
+                <TournamentGuestUpgradeBanner tournamentUuid={tournamentUuid} participantUuid={viewer.participant} />
                 <Outlet />
             </TabLayout>
         </div>
