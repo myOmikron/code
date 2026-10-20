@@ -460,8 +460,14 @@ pub struct SetDeckBracketRequest {
 }
 
 /// Request to record the house rules a deck is played under
+///
+/// The whole Rule 0 form, colours included, so saving it is one Deck change.
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct SetDeckRuleZeroRequest {
+    /// The colours as the letters `WUBRG`, `null` or left out to follow the
+    /// commander
+    #[serde(default)]
+    pub colors: Option<MaxStr<8>>,
     /// Whether the table agreed to more than the format's commanders
     pub allow_extra_commanders: bool,
     /// Whether the table agreed to multiple copies of a card

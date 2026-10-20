@@ -3469,8 +3469,8 @@
         },
         "/api/frontend/v1/decks/{deck}/rule-zero": {
             "put": {
-                "summary": "Record the house rules the deck is played under",
-                "description": "Record the house rules the deck is played under\n\nBeyond a deck size that would hold no cards, nothing is checked: what a\ntable agreed to is a claim its builder makes, and the client says where the\nclaim and the cards disagree.",
+                "summary": "Record the house rules the deck is played under, colours included",
+                "description": "Record the house rules the deck is played under, colours included\n\nBeyond a deck size that would hold no cards, nothing is checked: what a\ntable agreed to is a claim its builder makes, and the client says where the\nclaim and the cards disagree.",
                 "operationId": "set_deck_rule_zero",
                 "parameters": [
                     {
@@ -15448,7 +15448,7 @@
                 }
             },
             "SetDeckRuleZeroRequest": {
-                "description": "Request to record the house rules a deck is played under",
+                "description": "Request to record the house rules a deck is played under\n\nThe whole Rule 0 form, colours included, so saving it is one Deck change.",
                 "type": "object",
                 "properties": {
                     "allow_banned": {
@@ -15462,6 +15462,15 @@
                     "allow_extra_commanders": {
                         "description": "Whether the table agreed to more than the format's commanders",
                         "type": "boolean"
+                    },
+                    "colors": {
+                        "nullable": true,
+                        "description": "The colours as the letters `WUBRG`, `null` or left out to follow the commander",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_8"
+                            }
+                        ]
                     },
                     "deck_size": {
                         "nullable": true,

@@ -689,7 +689,7 @@ pub async fn set_deck_bracket(
     Ok(ApiJson(()))
 }
 
-/// Record the house rules the deck is played under
+/// Record the house rules the deck is played under, colours included
 ///
 /// Beyond a deck size that would hold no cards, nothing is checked: what a
 /// table agreed to is a claim its builder makes, and the client says where the
@@ -708,6 +708,9 @@ pub async fn set_deck_rule_zero(
 
     let edit = granted(DeckHistory::lock(&mut tx, deck_uuid, account.uuid).await?)?;
     let before = locked_deck(&mut tx, &edit, account.uuid).await?;
+    granted(
+        Deck::set_allowed_color_identity(&mut tx, account.uuid, deck_uuid, request.colors).await?,
+    )?;
     granted(
         Deck::set_rule_zero(
             &mut tx,

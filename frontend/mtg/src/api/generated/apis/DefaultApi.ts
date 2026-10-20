@@ -5982,8 +5982,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Record the house rules the deck is played under  Beyond a deck size that would hold no cards, nothing is checked: what a table agreed to is a claim its builder makes, and the client says where the claim and the cards disagree.
-     * Record the house rules the deck is played under
+     * Record the house rules the deck is played under, colours included  Beyond a deck size that would hold no cards, nothing is checked: what a table agreed to is a claim its builder makes, and the client says where the claim and the cards disagree.
+     * Record the house rules the deck is played under, colours included
      */
     async setDeckRuleZeroRaw(requestParameters: SetDeckRuleZeroOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
         const requestOptions = await this.setDeckRuleZeroRequestOpts(requestParameters);
@@ -5997,8 +5997,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Record the house rules the deck is played under  Beyond a deck size that would hold no cards, nothing is checked: what a table agreed to is a claim its builder makes, and the client says where the claim and the cards disagree.
-     * Record the house rules the deck is played under
+     * Record the house rules the deck is played under, colours included  Beyond a deck size that would hold no cards, nothing is checked: what a table agreed to is a claim its builder makes, and the client says where the claim and the cards disagree.
+     * Record the house rules the deck is played under, colours included
      */
     async setDeckRuleZero(requestParameters: SetDeckRuleZeroOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
         const response = await this.setDeckRuleZeroRaw(requestParameters, initOverrides);

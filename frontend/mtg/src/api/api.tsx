@@ -245,8 +245,9 @@ export const Api = {
         // Which Commander bracket the deck claims to be, `null` for unsaid.
         setBracket: async (uuid: UUID, bracket: number | null) =>
             handleError(defaultApi.setDeckBracket({ deck: uuid, SetDeckBracketRequest: { bracket } })),
-        // What the table agreed to play this deck under. All four at once:
-        // they are one conversation, and the dialog edits them as one form.
+        // What the table agreed to play this deck under, colours included. All
+        // at once: they are one conversation, the dialog edits them as one
+        // form, and the Deck history records them as one Deck change.
         setRuleZero: async (uuid: UUID, rules: SetDeckRuleZeroRequest) =>
             handleError(defaultApi.setDeckRuleZero({ deck: uuid, SetDeckRuleZeroRequest: rules })),
         // Everything the advisor knows about this deck for this reader: which

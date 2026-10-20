@@ -5854,6 +5854,8 @@ export interface SetDeckFolderRequest {
 }
 /**
  * Request to record the house rules a deck is played under
+ * 
+ * The whole Rule 0 form, colours included, so saving it is one Deck change.
  * @export
  * @interface SetDeckRuleZeroRequest
  */
@@ -5876,6 +5878,12 @@ export interface SetDeckRuleZeroRequest {
      * @memberof SetDeckRuleZeroRequest
      */
     allow_extra_commanders: boolean;
+    /**
+     * The colours as the letters `WUBRG`, `null` or left out to follow the commander
+     * @type {string}
+     * @memberof SetDeckRuleZeroRequest
+     */
+    colors?: string | null;
     /**
      * How many cards the deck is built to, `null` for the format's rule
      * @type {number}

@@ -110,7 +110,7 @@ All URIs are relative to *http://localhost*
 | [**setDeckCheckpoint**](DefaultApi.md#setdeckcheckpointoperation) | **PUT** /api/frontend/v1/decks/{deck}/history/{change}/checkpoint | Name one of the deck\&#39;s Deck changes with a Deck checkpoint, or rename its |
 | [**setDeckColors**](DefaultApi.md#setdeckcolorsoperation) | **PUT** /api/frontend/v1/decks/{deck}/colors | Overrule which colours the deck may play |
 | [**setDeckFolder**](DefaultApi.md#setdeckfolderoperation) | **POST** /api/frontend/v1/decks/{deck}/folder | File a deck into one of the account\&#39;s folders |
-| [**setDeckRuleZero**](DefaultApi.md#setdeckrulezerooperation) | **PUT** /api/frontend/v1/decks/{deck}/rule-zero | Record the house rules the deck is played under |
+| [**setDeckRuleZero**](DefaultApi.md#setdeckrulezerooperation) | **PUT** /api/frontend/v1/decks/{deck}/rule-zero | Record the house rules the deck is played under, colours included |
 | [**setVisibilityCollection**](DefaultApi.md#setvisibilitycollection) | **POST** /api/frontend/v1/collections/{collection} | Change who may see a collection |
 | [**setVisibilityDeck**](DefaultApi.md#setvisibilitydeck) | **POST** /api/frontend/v1/decks/{deck} | Change who may see a deck |
 | [**signup**](DefaultApi.md#signupoperation) | **POST** /api/frontend/v1/auth/signup | Sign up for a new account |
@@ -7684,9 +7684,9 @@ No authorization required
 
 > any setDeckRuleZero(deck, SetDeckRuleZeroRequest)
 
-Record the house rules the deck is played under
+Record the house rules the deck is played under, colours included
 
-Record the house rules the deck is played under  Beyond a deck size that would hold no cards, nothing is checked: what a table agreed to is a claim its builder makes, and the client says where the claim and the cards disagree.
+Record the house rules the deck is played under, colours included  Beyond a deck size that would hold no cards, nothing is checked: what a table agreed to is a claim its builder makes, and the client says where the claim and the cards disagree.
 
 ### Example
 
