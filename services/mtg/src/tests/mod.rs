@@ -2,6 +2,7 @@
 
 mod admin;
 mod admin_log;
+mod bracket_flags;
 mod deletion;
 pub mod harness;
 mod lock;

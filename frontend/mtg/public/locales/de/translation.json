@@ -91,6 +91,7 @@
     },
     "toast": {
         "account-locked": "Dein Konto ist gesperrt.",
+        "bracket-detected": "Bracket {{number}} aus den Karten übernommen",
         "logged-out": "Abgemeldet",
         "session-expired": "Sitzung abgelaufen, bitte erneut anmelden",
         "share-link-copied": "Link kopiert",

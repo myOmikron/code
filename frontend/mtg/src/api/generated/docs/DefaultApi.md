@@ -53,6 +53,7 @@ All URIs are relative to *http://localhost*
 | [**getAllGlobalTags**](DefaultApi.md#getallglobaltags) | **GET** /api/frontend/v1/tags | Every tag the account keeps for all of its decks and collections |
 | [**getAllScannerSessions**](DefaultApi.md#getallscannersessions) | **GET** /api/frontend/v1/scanner-sessions | List every scanner session and its current staging count |
 | [**getAllWatchLists**](DefaultApi.md#getallwatchlists) | **GET** /api/frontend/v1/watch-lists | Every watch list the account keeps |
+| [**getBracketFlags**](DefaultApi.md#getbracketflags) | **POST** /api/frontend/v1/printings/bracket-flags | Which Commander bracket rules the given printings count towards |
 | [**getCollection**](DefaultApi.md#getcollection) | **GET** /api/frontend/v1/collections/{collection} | Fetch a single collection |
 | [**getCollectionStatistics**](DefaultApi.md#getcollectionstatistics) | **GET** /api/frontend/v1/collections/{collection}/statistics |  |
 | [**getDeck**](DefaultApi.md#getdeck) | **GET** /api/frontend/v1/decks/{deck} | Fetch a single deck |
@@ -3555,6 +3556,76 @@ No authorization required
 ### HTTP request headers
 
 - **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## getBracketFlags
+
+> BracketFlagsResponse getBracketFlags(BracketFlagsRequest)
+
+Which Commander bracket rules the given printings count towards
+
+Which Commander bracket rules the given printings count towards  What a card would do to a deck\&#39;s Bracket claim, asked before it is added.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { GetBracketFlagsRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // BracketFlagsRequest (optional)
+    BracketFlagsRequest: ...,
+  } satisfies GetBracketFlagsRequest;
+
+  try {
+    const data = await api.getBracketFlags(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **BracketFlagsRequest** | [BracketFlagsRequest](BracketFlagsRequest.md) |  | [Optional] |
+
+### Return type
+
+[**BracketFlagsResponse**](BracketFlagsResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
 - **Accept**: `application/json`
 
 

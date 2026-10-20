@@ -1,5 +1,6 @@
 import { CheckIcon, Squares2X2Icon, ViewColumnsIcon } from "@heroicons/react/20/solid";
 import { Badge, Dialog, DialogBody, DialogTitle, Listbox, ListboxLabel, ListboxOption, Strong, Text } from "components";
+import type { ReactNode } from "react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { DeckZone } from "src/api/generated";
@@ -47,6 +48,10 @@ export type AddCardsDialogProps = {
     graphIdentity?: Array<string>;
     /** Clears a name search once its card is picked — right for singleton decks */
     clearNameSearches?: boolean;
+    /** Hears the hits whenever they change, for a caller that marks them */
+    onResults?: (printings: Array<Printing>) => void;
+    /** What a caller draws on a hit's artwork */
+    markOf?: (printing: Printing) => ReactNode;
 };
 
 /**
@@ -73,6 +78,8 @@ export function AddCardsDialog({
     graph = false,
     graphIdentity,
     clearNameSearches = false,
+    onResults,
+    markOf,
 }: AddCardsDialogProps) {
     const [t] = useTranslation("deck");
     const labels = useDeckLabels();
@@ -148,6 +155,8 @@ export function AddCardsDialog({
             <DialogBody className={"!mt-3"}>
                 <div className={"flex flex-col gap-4"}>
                     <CardSearchPanel
+                        onResults={onResults}
+                        markOf={markOf}
                         unique={"cards"}
                         twoColumns={twoColumns}
                         stickySearch={true}

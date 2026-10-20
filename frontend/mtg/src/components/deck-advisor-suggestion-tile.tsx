@@ -9,7 +9,9 @@ import { CardOverlayAction } from "src/components/card-overlay-action";
 import { CardThumbnail } from "src/components/card-thumbnail";
 import { ManaCost } from "src/components/mana-cost";
 import { RadarGlyph } from "src/components/charts/radar-glyph";
+import { BracketBreakMark } from "src/components/bracket-break-mark";
 import { GameChangerMarker } from "src/components/game-changer-marker";
+import type { BracketRuleCheck } from "src/utils/deck-rules";
 import { formatCurrency } from "src/utils/format";
 import { Printing } from "src/utils/scryfall";
 import { sayWhy } from "src/utils/advisor-phrase";
@@ -55,6 +57,10 @@ export type DeckAdvisorSuggestionTileProps = {
      * cannot happen and the exit shoves the surviving tiles around.
      */
     ref?: Ref<HTMLLIElement>;
+    /** The rules of the deck's Bracket claim adding the card would break */
+    breaks?: Array<BracketRuleCheck>;
+    /** The bracket the deck claims, `null` when it claims none */
+    bracket?: number | null;
 };
 
 /**
@@ -126,6 +132,8 @@ export const DeckAdvisorSuggestionTile = memo(function DeckAdvisorSuggestionTile
     onIgnore,
     busy,
     ref,
+    breaks,
+    bracket,
 }: DeckAdvisorSuggestionTileProps) {
     const [t] = useTranslation("advisor");
 
@@ -183,6 +191,11 @@ export const DeckAdvisorSuggestionTile = memo(function DeckAdvisorSuggestionTile
                     }
                 />
                 {suggestion.game_changer === true && <GameChangerMarker variant={"overlay"} />}
+                {bracket != null && breaks !== undefined && (
+                    <span className={"absolute bottom-2 left-2 z-10"}>
+                        <BracketBreakMark breaks={breaks} bracket={bracket} />
+                    </span>
+                )}
                 {/* The add, at the size of the decision it makes.
                     Centred and revealed with the scrim where there is a
                     pointer to reveal it; parked in the corner and always on

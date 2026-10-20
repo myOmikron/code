@@ -25,6 +25,7 @@ import type {
     DeckZone,
 } from "src/api/generated";
 import { AddCardsDialog } from "src/components/add-cards-dialog";
+import { BracketBreakMark } from "src/components/bracket-break-mark";
 import type { SearchConstraint } from "src/components/card-search-panel";
 import { CardDetailDialog } from "src/components/card-detail-dialog";
 import { DeckCardGrid } from "src/components/deck-card-grid";
@@ -46,7 +47,9 @@ import type { DeckTileSize, DeckView } from "src/components/deck-view-controls";
 import { DECK_GROUPINGS, DECK_SORTS, groupDeck } from "src/utils/deck-grouping";
 import { useCollapsedGroups } from "src/utils/use-collapsed-groups";
 import type { DeckGrouping, DeckSort } from "src/utils/deck-grouping";
-import { checkDeck, deckRuleZero, detectedBracket, playedBracket } from "src/utils/deck-rules";
+import { checkDeck, deckRuleZero, detectedBracket } from "src/utils/deck-rules";
+import { useBracketClaim } from "src/utils/use-bracket-claim";
+import { useBracketMarks } from "src/utils/use-bracket-marks";
 import { DeckReplaceDialog } from "src/components/deck-replace-dialog";
 import { advisorDeck, bracketSpeed, playedNames } from "src/utils/deck-advisor";
 import { useDeckCombos } from "src/utils/use-deck-combos";
@@ -258,8 +261,10 @@ function RouteComponent() {
         () => checkDeck(deck, resolved, rules, claimed, completeCombos),
         [deck, resolved, rules, claimed, completeCombos],
     );
-    const plays = playedBracket(legality, offered);
     const detected = detectedBracket(legality, offered);
+    const [hits, setHits] = useState<Array<Printing>>([]);
+    const candidates = useMemo(() => hits.map((printing) => ({ name: printing.name, printing: printing.id })), [hits]);
+    const marks = useBracketMarks(legality, zone === "Main" || zone === "Commander" ? claimed : undefined, candidates);
     const groups = useMemo(() => groupDeck(shown, grouping, sort, tags), [shown, grouping, sort, tags]);
     const collapsedGroups = useCollapsedGroups(deckUuid);
     // What the card search is held to: a deck is built inside its format and
@@ -432,42 +437,14 @@ function RouteComponent() {
         go({ sort: next === "name" ? undefined : next });
     }
 
-    // The claim follows the cards on its own, in two situations.
-    //
-    // A deck that claims nothing — every imported deck, until now — is claimed
-    // at what it reads as, but only once the deck is worth reading: a list
-    // still being pasted in matches every bracket's rules simply by being
-    // empty, and claiming Core for a deck of four cards would be a guess
-    // dressed up as a fact. The combo answer has to be in for the same reason.
-    //
-    // A deck that claims a bracket it provably plays above is re-labelled
-    // rather than left warning forever. Only upward — the detection can prove
-    // a deck plays over a bracket, never that it plays under one, and a claim
-    // deliberately set high must not be argued down by an incomplete read.
-    // Both writes are remembered rather than repeated: the effect re-runs
-    // whenever the combo answer or the card count moves, and `deck.bracket`
-    // only catches up once the save has been invalidated back in — a window
-    // wide enough for a second POST and a second toast about the same claim.
-    const claimedFor = useRef<string | null>(null);
-    useEffect(() => {
-        if (claimedFor.current === deckUuid) return;
-
-        if (deck.bracket == null) {
-            const full = target !== null && legality.cards >= target;
-            if (!full || detected === null || legality.combos === null) return;
-            claimedFor.current = deckUuid;
-            void saveBracket(detected, t("toast.bracket-detected", { number: detected }));
-            return;
-        }
-        if (plays === null || plays <= deck.bracket) return;
-        claimedFor.current = deckUuid;
-        void saveBracket(plays, t("toast.bracket-raised", { number: plays }));
-    }, [plays, detected, legality.cards, legality.combos, target, deck.bracket, deckUuid]);
-
-    // A claim written for one deck says nothing about the next one.
-    useEffect(() => {
-        claimedFor.current = null;
-    }, [deckUuid]);
+    useBracketClaim(
+        deckUuid,
+        deck.bracket ?? null,
+        legality.cards,
+        target,
+        legality.combos === null ? null : detected,
+        (bracket) => void saveBracket(bracket, tg("toast.bracket-detected", { number: bracket })),
+    );
 
     // A filter about one deck's remarks means nothing on another deck.
     useEffect(() => {
@@ -1172,6 +1149,12 @@ function RouteComponent() {
                     await add(printing);
                 }}
                 onRemove={subtract}
+                onResults={setHits}
+                markOf={(printing) =>
+                    claimed === undefined ? null : (
+                        <BracketBreakMark breaks={marks(printing.name)} bracket={claimed.number} />
+                    )
+                }
                 onClose={() => setAdding(false)}
                 // The graph's corpus is commander-legal; its filters follow the
                 // advisor and stay commander-only for now. That cut is made on
@@ -1315,6 +1298,8 @@ function RouteComponent() {
                     deck={advisor}
                     speed={bracketSpeed(deck.bracket)}
                     onReplaced={() => void router.invalidate()}
+                    counts={legality}
+                    claim={replacing.zone === "Main" || replacing.zone === "Commander" ? claimed : undefined}
                 />
             )}
 

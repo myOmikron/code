@@ -235,6 +235,13 @@ fn mana_value_of(cost: &str) -> f64 {
     total
 }
 
+/// Reads one Scryfall card object into a printing, for tests that need catalog rows
+#[cfg(test)]
+pub(crate) fn printing_from_json(json: &str) -> Printing {
+    let card: ScryfallCard = serde_json::from_str(json).expect("the card object should parse");
+    to_printing(card, &archon::Banlist::default()).expect("the card should file")
+}
+
 /// Turns a Scryfall card into a catalog row
 ///
 /// # Arguments

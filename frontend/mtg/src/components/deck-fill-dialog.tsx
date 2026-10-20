@@ -4,7 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import { GraphApi } from "src/api/graph";
+import { BracketRulesResponse } from "src/api/generated";
 import { FillResult } from "src/api/graph-generated";
+import { BracketBreakMark } from "src/components/bracket-break-mark";
 import { DeckAdvisorNotes } from "src/components/deck-advisor-notes";
 import { DeckAdvisorNotesDisclosure } from "src/components/deck-advisor-notes-disclosure";
 import { FillCoverage } from "src/components/fill-coverage";
@@ -13,8 +15,10 @@ import { InlineError } from "src/components/inline-error";
 import { ManaCost } from "src/components/mana-cost";
 import { say } from "src/utils/advisor-phrase";
 import { AdvisorDeck } from "src/utils/deck-advisor";
+import { BracketCounts } from "src/utils/deck-rules";
 import { DeckTargets, bucketRanges, curvePoints, typeRanges } from "src/utils/deck-targets";
 import { ThemePrefs } from "src/utils/deck-theme-prefs";
+import { useBracketFillMarks } from "src/utils/use-bracket-marks";
 import { useSuggestionCards } from "src/utils/use-suggestion-cards";
 
 /**
@@ -41,6 +45,10 @@ export type DeckFillDialogProps = {
     targets: DeckTargets;
     /** Called after the fill landed in the deck */
     onFilled: () => void;
+    /** What the deck holds, as the bracket rules count it */
+    counts: BracketCounts;
+    /** What the deck's claimed bracket asks, `undefined` when it claims none */
+    claim: BracketRulesResponse | undefined;
 };
 
 /** What the dialog knows right now */
@@ -72,6 +80,8 @@ export function DeckFillDialog({
     poolQuery,
     targets,
     onFilled,
+    counts,
+    claim,
 }: DeckFillDialogProps) {
     const [t] = useTranslation("advisor");
     const [fill, setFill] = useState<FillState>({ state: "solving" });
@@ -100,6 +110,8 @@ export function DeckFillDialog({
     // place, or one whose lookup failed, leaving Accept disabled forever;
     // `accept()` already tolerates filing the subset that did resolve.
     const placed = chosen.filter((card) => cards.has(card.name)).length;
+    const candidates = useMemo(() => [...cards].map(([name, printing]) => ({ name, printing: printing.id })), [cards]);
+    const marks = useBracketFillMarks(counts, claim, candidates);
 
     useEffect(() => {
         // Turndowns are scoped to one visit: the dialog is mounted for the
@@ -281,6 +293,12 @@ export function DeckFillDialog({
                                                     <span className={"truncate"}>{card.name}</span>
                                                     {printing !== undefined && printing.manaCost !== "" && (
                                                         <ManaCost value={printing.manaCost} className={"text-xs"} />
+                                                    )}
+                                                    {claim !== undefined && (
+                                                        <BracketBreakMark
+                                                            breaks={marks.get(card.name) ?? []}
+                                                            bracket={claim.number}
+                                                        />
                                                     )}
                                                 </span>
                                                 {printing !== undefined && (

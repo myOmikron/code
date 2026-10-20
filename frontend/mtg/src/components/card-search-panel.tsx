@@ -78,6 +78,10 @@ export type CardSearchPanelProps = {
     countOf?: (printing: Printing) => number;
     /** Files one more copy of a hit */
     onAdd?: (printing: Printing) => void;
+    /** Hears the hits whenever they change, for a caller that marks them */
+    onResults?: (printings: Array<Printing>) => void;
+    /** What a caller draws on a hit's artwork, e.g. that it breaks the deck's bracket */
+    markOf?: (printing: Printing) => ReactNode;
     /** Takes one copy of a hit back out */
     onRemove?: (printing: Printing) => void;
     /** Whether a card comes back once or once per print run */
@@ -141,6 +145,8 @@ export function CardSearchPanel({
     constraints = [],
     countOf,
     onAdd,
+    onResults,
+    markOf,
     onRemove,
     unique = "prints",
     twoColumns = false,
@@ -209,6 +215,10 @@ export function CardSearchPanel({
     // The results can all be turned over, so their second sides are fetched
     // with the list rather than on the tap that asks for one.
     usePreloadImages(shown.map((printing) => printing.backLargeImageUrl ?? printing.backImageUrl));
+
+    useEffect(() => {
+        onResults?.(results);
+    }, [results]);
 
     useEffect(() => {
         pageRequest.current?.abort();
@@ -614,6 +624,9 @@ export function CardSearchPanel({
                                             onFlip={() => toggle(printing.id)}
                                             position={"top-right"}
                                         />
+                                    )}
+                                    {markOf !== undefined && (
+                                        <span className={"absolute bottom-2 left-2"}>{markOf(printing)}</span>
                                     )}
                                 </div>
 

@@ -364,6 +364,40 @@ function roleViolation(slot: DeckCardResponse, bans: RoleBansResponse, commander
 }
 
 /**
+ * Count what the bracket rules read in a deck
+ *
+ * @param cards its slots
+ * @param combos the complete combos the graph found, `null` while unanswered
+ *
+ * @returns the counts
+ */
+export function countBracket(
+    cards: Array<DeckCardResponse>,
+    combos: Array<Array<string>> | null = null,
+): BracketCounts {
+    const counted = cards.filter((card) => card.zone === "Main" || card.zone === "Commander");
+    // Deduped per oracle card rather than per printing: a deck can hold two
+    // printings of the same Game Changer, and the bracket counts the card
+    // once, not the copies.
+    const gameChangers = uniqueNames(counted.filter((card) => card.card?.game_changer === true));
+    // Same counting rule as the Game Changers above, and the same source:
+    // both are catalog flags, so the band never reads rules text itself.
+    const named = (flag: "mass_land_denial" | "extra_turns") =>
+        uniqueNames(counted.filter((card) => card.card?.[flag] === true));
+    const extraTurns = named("extra_turns");
+    return {
+        gameChangers,
+        massLandDenial: named("mass_land_denial"),
+        extraTurns,
+        // Two extra-turn cards are the whole read: the second is cast on the
+        // turn the first handed over. What this misses on purpose is written
+        // down on {@link BracketCounts.chainsExtraTurns}.
+        chainsExtraTurns: extraTurns.length > 1,
+        combos,
+    };
+}
+
+/**
  * Check a deck against its format
  *
  * @param deck the deck
@@ -386,25 +420,7 @@ export function checkDeck(
     const sideboard = cards.filter((card) => card.zone === "Side");
 
     const cardCount = counted.reduce((sum, card) => sum + card.quantity, 0);
-    // Deduped per oracle card rather than per printing: a deck can hold two
-    // printings of the same Game Changer, and the bracket counts the card
-    // once, not the copies.
-    const gameChangers = uniqueNames(counted.filter((card) => card.card?.game_changer === true));
-    // Same counting rule as the Game Changers above, and the same source:
-    // both are catalog flags, so the band never reads rules text itself.
-    const named = (flag: "mass_land_denial" | "extra_turns") =>
-        uniqueNames(counted.filter((card) => card.card?.[flag] === true));
-    const extraTurns = named("extra_turns");
-    const counts: BracketCounts = {
-        gameChangers,
-        massLandDenial: named("mass_land_denial"),
-        extraTurns,
-        // Two extra-turn cards are the whole read: the second is cast on the
-        // turn the first handed over. What this misses on purpose is written
-        // down on {@link BracketCounts.chainsExtraTurns}.
-        chainsExtraTurns: extraTurns.length > 1,
-        combos,
-    };
+    const counts = countBracket(cards, combos);
     const overruled = deck.allowed_color_identity != null;
     const allowedColors = overruled ? letters(deck.allowed_color_identity ?? "") : commanderColors(commanders);
     const ruleZero = deckRuleZero(deck);
@@ -832,6 +848,96 @@ export function checkBracket(counts: BracketCounts, rules: BracketRulesResponse)
                   ),
               ]),
     ];
+}
+
+/**
+ * The counts of a deck one card has left
+ *
+ * @param counts what the deck holds
+ * @param name the card going out
+ *
+ * @returns the counts without it
+ */
+export function withoutCard(counts: BracketCounts, name: string): BracketCounts {
+    const extraTurns = counts.extraTurns.filter((entry) => entry !== name);
+    return {
+        gameChangers: counts.gameChangers.filter((entry) => entry !== name),
+        massLandDenial: counts.massLandDenial.filter((entry) => entry !== name),
+        extraTurns,
+        chainsExtraTurns: extraTurns.length > 1,
+        combos: counts.combos?.filter((combo) => !combo.includes(name)) ?? null,
+    };
+}
+
+/** A card that is about to go into a deck, as the bracket rules read it */
+export type BracketCandidate = {
+    /** The card's name */
+    name: string;
+    /** Whether Wizards lists the card as a Game Changer */
+    gameChanger: boolean;
+    /** Whether the card denies lands en masse */
+    massLandDenial: boolean;
+    /** Whether the card takes extra turns */
+    extraTurns: boolean;
+};
+
+/**
+ * The rules of a claimed bracket that adding cards would break.
+ *
+ * A rule is broken by a card that falls under it when adding the cards raises
+ * how much of the deck the rule forbids: the third Game Changer in a bracket
+ * that seats three breaks nothing, the fourth does. The candidates go in
+ * together, so a fill that brings two Game Changers is read as one step.
+ * A card the deck already plays adds nothing. Combos are left out, the
+ * graph only names them once the cards are in.
+ *
+ * @param counts what the deck holds now
+ * @param rules what the claimed bracket asks
+ * @param candidates the cards to add
+ *
+ * @returns per candidate name, the rules it breaks, read after the add; a
+ *   candidate that breaks none is absent
+ */
+export function bracketBreaks(
+    counts: BracketCounts,
+    rules: BracketRulesResponse,
+    candidates: Array<BracketCandidate>,
+): Map<string, Array<BracketRuleCheck>> {
+    const grow = (names: Array<string>, flagged: Array<BracketCandidate>) =>
+        [...new Set([...names, ...flagged.map((card) => card.name)])].sort((left, right) => left.localeCompare(right));
+    const extraTurns = grow(
+        counts.extraTurns,
+        candidates.filter((card) => card.extraTurns),
+    );
+    const after: BracketCounts = {
+        gameChangers: grow(
+            counts.gameChangers,
+            candidates.filter((card) => card.gameChanger),
+        ),
+        massLandDenial: grow(
+            counts.massLandDenial,
+            candidates.filter((card) => card.massLandDenial),
+        ),
+        extraTurns,
+        chainsExtraTurns: extraTurns.length > 1,
+        combos: counts.combos,
+    };
+
+    const before = new Map(checkBracket(counts, rules).map((check) => [check.kind, check.breaking]));
+    const worse = checkBracket(after, rules).filter((check) => check.breaking > (before.get(check.kind) ?? 0));
+
+    const breaks = new Map<string, Array<BracketRuleCheck>>();
+    for (const card of candidates) {
+        const falls: Record<BracketRuleCheck["kind"], boolean> = {
+            "game-changers": card.gameChanger && !counts.gameChangers.includes(card.name),
+            "mass-land-denial": card.massLandDenial && !counts.massLandDenial.includes(card.name),
+            "extra-turns": card.extraTurns && !counts.extraTurns.includes(card.name),
+            combos: false,
+        };
+        const broken = worse.filter((check) => falls[check.kind]);
+        if (broken.length > 0) breaks.set(card.name, broken);
+    }
+    return breaks;
 }
 
 /**

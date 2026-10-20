@@ -6143,6 +6143,64 @@
                 }
             }
         },
+        "/api/frontend/v1/printings/bracket-flags": {
+            "post": {
+                "summary": "Which Commander bracket rules the given printings count towards",
+                "description": "Which Commander bracket rules the given printings count towards\n\nWhat a card would do to a deck's Bracket claim, asked before it is added.",
+                "operationId": "get_bracket_flags",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/BracketFlagsRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/BracketFlagsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/frontend/v1/printings/{printing}/price-history": {
             "get": {
                 "summary": "What a card has cost over time",
@@ -9310,6 +9368,68 @@
                 },
                 "required": [
                     "trace_id"
+                ]
+            },
+            "BracketFlagsEntryResponse": {
+                "description": "Which Commander bracket rules one printing counts towards",
+                "type": "object",
+                "properties": {
+                    "extra_turns": {
+                        "description": "Whether the card takes extra turns",
+                        "type": "boolean"
+                    },
+                    "game_changer": {
+                        "description": "Whether Wizards lists the card as a Game Changer",
+                        "type": "boolean"
+                    },
+                    "id": {
+                        "description": "Scryfall's id of the printing",
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "mass_land_denial": {
+                        "description": "Whether the card denies lands en masse",
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "extra_turns",
+                    "game_changer",
+                    "id",
+                    "mass_land_denial"
+                ]
+            },
+            "BracketFlagsRequest": {
+                "description": "Printings to read the bracket flags of",
+                "type": "object",
+                "properties": {
+                    "printings": {
+                        "description": "Scryfall's ids of the printings",
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                },
+                "required": [
+                    "printings"
+                ]
+            },
+            "BracketFlagsResponse": {
+                "description": "The printings asked about that count towards a bracket rule",
+                "type": "object",
+                "properties": {
+                    "printings": {
+                        "description": "One per flagged printing; a printing that is missing counts towards none",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/BracketFlagsEntryResponse"
+                        }
+                    }
+                },
+                "required": [
+                    "printings"
                 ]
             },
             "BracketRulesResponse": {

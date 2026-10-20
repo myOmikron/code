@@ -1,6 +1,7 @@
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
 import clsx from "clsx";
 import { useState } from "react";
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { DeckAdvisorAddRow } from "src/components/deck-advisor-add-row";
 import { Printing } from "src/utils/scryfall";
@@ -52,6 +53,8 @@ export type DeckAdvisorOfferListProps = {
     onSwap: (add: SwapAdd) => void;
     /** Whether a card is already moving, which holds every row's actions */
     busy: boolean;
+    /** Drawn beside an offer's name, given the card going in and the one going out */
+    markOf?: (name: string, cut: string) => ReactNode;
 };
 
 /**
@@ -77,6 +80,7 @@ export function DeckAdvisorOfferList({
     onIgnore,
     onSwap,
     busy,
+    markOf,
 }: DeckAdvisorOfferListProps) {
     const [t] = useTranslation("advisor");
     const [open, setOpen] = useState(false);
@@ -101,6 +105,7 @@ export function DeckAdvisorOfferList({
                             onIgnore={() => onIgnore(add)}
                             onSwap={() => onSwap(add)}
                             busy={busy}
+                            mark={markOf?.(add.name, replaces)}
                         />
                     </div>
                 ))}

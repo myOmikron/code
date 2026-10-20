@@ -56,6 +56,14 @@ _Avoid_: snow mana symbol, snow colour
 A card with the Snow supertype that produces mana. Everything it produces is snow mana, in whatever colour it makes, so a Snow-Covered Forest is a green source and a Snow source at once. Effects that count the snow mana spent on a cost are not part of it.
 _Avoid_: snow land, snow colour
 
+**Bracket claim**:
+The Commander bracket a deck says it is built to. The owner sets and changes it; the only time it is set without them is when a deck that claims none first reaches its full size, and then it is claimed at what its cards read as. It is never changed because of the cards once it is set.
+_Avoid_: detected bracket, power level
+
+**Played bracket**:
+The lowest Commander bracket whose rules a deck's cards keep. Read from the cards, never written down. A Played bracket above the Bracket claim is a warning, not a correction.
+_Avoid_: actual bracket, real bracket
+
 ## Relationships
 
 - An **Account** has exactly one **Role**, and at most one **Lock** at a time
