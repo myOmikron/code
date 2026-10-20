@@ -8,6 +8,7 @@
         "cancel": "Cancel",
         "delete-account": "Delete account",
         "remove-passkey": "Remove",
+        "rename-account": "Rename",
         "rename-passkey": "Rename"
     },
     "description": {
@@ -17,6 +18,7 @@
         "cardmarket-language": "Cardmarket shows only offers in the language your card is printed in. A German card then leads to German offers.",
         "cardmarket-region": "Which country page of Cardmarket the link opens. Changes the language of the page itself, not the offers.",
         "cardmarket-seller-country": "Cardmarket shows only offers from sellers in this country. Saves cross-border postage.",
+        "current-username": "You log in as {{username}}. Others see your profile and decks under this name.",
         "delete-account": "Deletes your account along with its passkeys, collections, watch lists and every deck that is not public. Public decklists stay readable, with nobody named as their builder.",
         "delete-account-confirm": "There is no way back. Your account, your passkeys, your collections, your watch lists and every deck you kept to yourself are gone afterwards.",
         "delete-account-decks": "Your public decklists stay reachable under their links. Nobody is named as their builder afterwards.",
@@ -25,6 +27,7 @@
         "passkeys": "These devices can sign you in. Add a passkey per device — if you lose one, the others still get you in.",
         "proxy-fade": "Cards marked as proxies are drawn washed out in the deck, so a stand-in never passes for the real card at a glance.",
         "remove-passkey": "You will no longer be able to sign in with \"{{label}}\". The only way back is to add the device again.",
+        "rename-account": "Your old name is free for others right away, and links to your old profile stop working. Links to your decks and your passkeys keep working. From then on, log in with the new name.",
         "rename-passkey": "Only you see this name. It tells your devices apart in this list.",
         "theme": "“Match system” follows your device's setting and changes along with it."
     },
@@ -49,9 +52,11 @@
         "passkeys": "Passkeys",
         "profile": "Profile",
         "remove-passkey": "Remove passkey?",
+        "rename-account": "Change username",
         "rename-passkey": "Rename passkey",
         "security": "Security",
-        "settings": "Settings"
+        "settings": "Settings",
+        "username": "Username"
     },
     "label": {
         "added-on": "Added on {{date}}",
@@ -78,6 +83,7 @@
     "toast": {
         "account-deleted": "Account deleted",
         "account-not-deleted": "The account was not deleted",
+        "account-renamed": "You are now {{username}}.",
         "deleting-account": "Deleting account…",
         "foil-tilt-denied": "This needs access to the motion sensors. You can allow it again in your browser's settings.",
         "foil-tilt-silent": "Your browser is not reporting any motion. Brave blocks the sensors by default: allow them under Settings → Site settings → Motion sensors. They are also unavailable over http rather than https.",

@@ -8,6 +8,7 @@
         "cancel": "Abbrechen",
         "delete-account": "Konto löschen",
         "remove-passkey": "Entfernen",
+        "rename-account": "Umbenennen",
         "rename-passkey": "Umbenennen"
     },
     "description": {
@@ -17,6 +18,7 @@
         "cardmarket-language": "Cardmarket zeigt nur Angebote in der Sprache, in der deine Karte gedruckt ist. Eine deutsche Karte führt dann zu deutschen Angeboten.",
         "cardmarket-region": "Auf welcher Länderseite von Cardmarket der Link öffnet. Ändert die Sprache der Seite selbst, nicht die Angebote.",
         "cardmarket-seller-country": "Cardmarket zeigt nur Angebote von Verkäufern aus diesem Land. Spart Auslandsporto.",
+        "current-username": "Du meldest dich als {{username}} an. Unter diesem Namen sehen andere dein Profil und deine Decks.",
         "delete-account": "Löscht dein Konto samt Passkeys, Sammlungen, Merklisten und allen Decks, die nicht öffentlich sind. Öffentliche Decklisten bleiben abrufbar, ohne dich als Ersteller.",
         "delete-account-confirm": "Das lässt sich nicht rückgängig machen. Dein Konto, deine Passkeys, deine Sammlungen, deine Merklisten und alle nicht öffentlichen Decks sind danach weg.",
         "delete-account-decks": "Deine öffentlichen Decklisten bleiben unter ihren Links erreichbar. Als Ersteller steht dort danach niemand mehr.",
@@ -25,6 +27,7 @@
         "passkeys": "Mit diesen Geräten kannst du dich anmelden. Lege für jedes Gerät einen eigenen Passkey an — geht eines verloren, kommst du mit den anderen weiterhin rein.",
         "proxy-fade": "Als Proxy markierte Karten werden im Deck ausgewaschen gezeichnet, damit ein Platzhalter nicht auf den ersten Blick als echte Karte durchgeht.",
         "remove-passkey": "Mit \"{{label}}\" kannst du dich danach nicht mehr anmelden. Das lässt sich nur rückgängig machen, indem du das Gerät neu hinzufügst.",
+        "rename-account": "Dein alter Name ist danach sofort für andere frei, und Links auf dein altes Profil funktionieren nicht mehr. Links auf deine Decks und deine Passkeys bleiben gültig. Melde dich ab dann mit dem neuen Namen an.",
         "rename-passkey": "Den Namen siehst nur du. Er hilft dir, deine Geräte in dieser Liste auseinanderzuhalten.",
         "theme": "„Wie das System“ folgt der Einstellung deines Geräts und wechselt mit ihr mit."
     },
@@ -49,9 +52,11 @@
         "passkeys": "Passkeys",
         "profile": "Profil",
         "remove-passkey": "Passkey entfernen?",
+        "rename-account": "Benutzernamen ändern",
         "rename-passkey": "Passkey umbenennen",
         "security": "Sicherheit",
-        "settings": "Einstellungen"
+        "settings": "Einstellungen",
+        "username": "Benutzername"
     },
     "label": {
         "added-on": "Hinzugefügt am {{date}}",
@@ -78,6 +83,7 @@
     "toast": {
         "account-deleted": "Konto gelöscht",
         "account-not-deleted": "Konto konnte nicht gelöscht werden",
+        "account-renamed": "Du heißt jetzt {{username}}.",
         "deleting-account": "Konto wird gelöscht …",
         "foil-tilt-denied": "Ohne Zugriff auf die Bewegungssensoren geht das nicht. Der Zugriff lässt sich in den Einstellungen des Browsers wieder erlauben.",
         "foil-tilt-silent": "Dein Browser liefert keine Bewegungsdaten. Brave blockiert die Sensoren standardmäßig: unter Einstellungen → Website-Einstellungen → Bewegungssensoren erlauben. Über http statt https gibt es sie ebenfalls nicht.",

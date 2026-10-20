@@ -21,6 +21,7 @@ import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import { useAccount } from "src/context/account";
 import { DeleteAccountDialog } from "src/components/delete-account-dialog";
+import { RenameAccountDialog } from "src/components/rename-account-dialog";
 import { RenamePasskeyDialog } from "src/components/rename-passkey-dialog";
 import { InlineError } from "src/components/inline-error";
 import type { SimplePasskey } from "src/api/generated";
@@ -33,7 +34,8 @@ export const Route = createFileRoute("/_menu/profile/_profile/security")({
 });
 
 /**
- * Passkey management: which devices can sign in, adding one, renaming one, removing one.
+ * The account's username and passkeys: renaming the account, and which devices can sign in,
+ * adding, renaming and removing one.
  *
  * @returns the page
  */
@@ -47,6 +49,7 @@ function RouteComponent() {
     const [confirming, setConfirming] = useState<SimplePasskey | null>(null);
     const [renaming, setRenaming] = useState<SimplePasskey | null>(null);
     const [deleting, setDeleting] = useState(false);
+    const [renamingAccount, setRenamingAccount] = useState(false);
 
     const refresh = useCallback(async () => {
         setPasskeys((await Api.accounts.passkeys.list()).passkeys);
@@ -149,6 +152,17 @@ function RouteComponent() {
     return (
         <div className={"flex flex-col gap-6"}>
             <div className={"flex flex-col gap-2"}>
+                <Subheading>{t("heading.username")}</Subheading>
+                <Text>{t("description.current-username", { username: me.account?.username ?? "" })}</Text>
+            </div>
+            <Button outline={true} className={"self-start"} onClick={() => setRenamingAccount(true)}>
+                <PencilIcon />
+                {t("button.rename-account")}
+            </Button>
+
+            <Divider />
+
+            <div className={"flex flex-col gap-2"}>
                 <Subheading>{t("heading.passkeys")}</Subheading>
                 <Text>{t("description.passkeys")}</Text>
             </div>
@@ -219,6 +233,15 @@ function RouteComponent() {
                 onDeleted={async () => {
                     await me.refresh();
                     await navigate({ to: "/" });
+                }}
+            />
+
+            <RenameAccountDialog
+                open={renamingAccount}
+                username={me.account?.username ?? ""}
+                onClose={() => setRenamingAccount(false)}
+                onRenamed={async () => {
+                    await me.refresh();
                 }}
             />
 

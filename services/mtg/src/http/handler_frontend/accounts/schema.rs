@@ -9,6 +9,7 @@ use crate::http::handler_frontend::auth::schema::WebauthnJson;
 use crate::models::account::AccountPasskeyUuid;
 use crate::models::account::AccountUuid;
 use crate::models::account::Role;
+use crate::models::account::Username;
 
 /// The account the current session belongs to
 #[derive(Serialize, JsonSchema)]
@@ -92,6 +93,31 @@ pub struct DeleteAccountRequest {
 pub struct DeleteAccountErrors {
     /// The typed username is not the one the session belongs to
     pub username_mismatch: bool,
+}
+
+/// Request to rename the logged-in account
+#[derive(Deserialize, JsonSchema)]
+pub struct RenameAccountRequest {
+    /// The new username, held to the same rules as at signup
+    pub username: Username,
+}
+
+/// The renamed account, and what its passkeys' authenticators need to show the new name
+#[derive(Serialize, JsonSchema)]
+pub struct RenameAccountResponse {
+    /// The new username, spelled the way it was requested
+    pub username: String,
+    /// The `rpId` to pass to `PublicKeyCredential.signalCurrentUserDetails`
+    pub rp_id: String,
+    /// The base64url `userId` to pass to `PublicKeyCredential.signalCurrentUserDetails`
+    pub user_id: String,
+}
+
+/// Why an account could not be renamed
+#[derive(Default, Serialize, JsonSchema)]
+pub struct RenameAccountErrors {
+    /// Another account goes by this username already, case ignored
+    pub username_taken: bool,
 }
 
 /// Why a passkey could not be deleted

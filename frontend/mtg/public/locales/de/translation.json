@@ -41,10 +41,15 @@
         "install-ios-share": "Tippe unten in der Leiste auf „Teilen“.",
         "share-link-none": "Das ist noch nicht über einen Link freigegeben. Mit einem Link sieht jeder, der ihn hat, den Inhalt.",
         "share-link-replaces-public": "Es ist derzeit öffentlich. Ein Link stellt es auf „Über Link“ um, es steht dann nicht mehr in deinem öffentlichen Profil.",
-        "share-link-rotate": "Ein neuer Link macht den alten sofort ungültig. Zurückziehen setzt die Sammlung auf privat."
+        "share-link-rotate": "Ein neuer Link macht den alten sofort ungültig. Zurückziehen setzt die Sammlung auf privat.",
+        "username": "Wird öffentlich angezeigt. 3 bis 32 Zeichen; erlaubt sind Buchstaben, Ziffern, Unterstrich, Bindestrich und Punkt, das erste Zeichen muss ein Buchstabe oder eine Ziffer sein."
     },
     "error": {
-        "index-not-ready": "Der Referenzindex ist noch nicht bereit."
+        "index-not-ready": "Der Referenzindex ist noch nicht bereit.",
+        "username-charset": "Erlaubt sind nur Buchstaben, Ziffern, Unterstrich, Bindestrich und Punkt.",
+        "username-length": "Der Benutzername muss 3 bis 32 Zeichen lang sein.",
+        "username-start": "Das erste Zeichen muss ein Buchstabe oder eine Ziffer sein.",
+        "username-taken": "Dieser Benutzername ist schon vergeben. Wähle einen anderen."
     },
     "heading": {
         "delete-session": "Ablage löschen",
@@ -80,6 +85,7 @@
         "share-link": "Link",
         "signed": "Signiert",
         "staged-cards": "Gescannte Karten",
+        "username": "Benutzername",
         "version": "Version {{version}}",
         "version-warning": "Frühe Version {{version}} – Fehler und Datenverlust sind noch möglich."
     },

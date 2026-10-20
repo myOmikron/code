@@ -18,6 +18,7 @@ pub fn initialize_routes() -> GalvynRouter {
         )
         .merge(
             GalvynRouter::new()
+                .handler(handler::rename_account)
                 .handler(handler::list_passkeys)
                 .handler(handler::start_add_passkey)
                 .handler(handler::finish_add_passkey)

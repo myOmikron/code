@@ -98,6 +98,8 @@ import type {
     ReadDeckUrlRequest,
     ReadDeckUrlResponse,
     RecoverAccountRequest,
+    RenameAccount200Response,
+    RenameAccountRequest,
     RenamePasskeyRequest,
     ResolvePrintingsRequest,
     ResolvePrintingsResponse,
@@ -490,6 +492,10 @@ export interface ReadDeckUrlOperationRequest {
 
 export interface RecoverAccountOperationRequest {
     RecoverAccountRequest?: RecoverAccountRequest;
+}
+
+export interface RenameAccountOperationRequest {
+    RenameAccountRequest?: RenameAccountRequest;
 }
 
 export interface RenamePasskeyOperationRequest {
@@ -4854,6 +4860,48 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async recoverAccount(requestParameters: RecoverAccountOperationRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
         const response = await this.recoverAccountRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for renameAccount without sending the request
+     */
+    async renameAccountRequestOpts(requestParameters: RenameAccountOperationRequest): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/accounts/me/username`;
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['RenameAccountRequest'],
+        };
+    }
+
+    /**
+     * Rename the logged-in account  The old username is free for anybody right away, and its profile link stops working. The session stays: it belongs to the account\'s identity, not its name.
+     * Rename the logged-in account
+     */
+    async renameAccountRaw(requestParameters: RenameAccountOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<RenameAccount200Response>> {
+        const requestOptions = await this.renameAccountRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Rename the logged-in account  The old username is free for anybody right away, and its profile link stops working. The session stays: it belongs to the account\'s identity, not its name.
+     * Rename the logged-in account
+     */
+    async renameAccount(requestParameters: RenameAccountOperationRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<RenameAccount200Response> {
+        const response = await this.renameAccountRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

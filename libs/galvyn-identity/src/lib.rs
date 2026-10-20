@@ -46,6 +46,8 @@ pub use self::passkey::Passkey;
 #[cfg(feature = "passkey")]
 pub use self::passkey::PasskeySetup;
 #[cfg(feature = "passkey")]
+pub use self::passkey::PasskeyUser;
+#[cfg(feature = "passkey")]
 pub use self::passkey::PasskeyUuid;
 #[cfg(feature = "passkey")]
 pub use self::passkey::RemovalRefused;

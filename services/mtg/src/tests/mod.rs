@@ -6,5 +6,6 @@ mod deletion;
 pub mod harness;
 mod lock;
 mod passkeys;
+mod rename;
 mod statistics;
 mod syncs;

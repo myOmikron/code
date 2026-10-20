@@ -2939,6 +2939,27 @@ export interface FormErrorResponseForRegistrationErrors {
 /**
  * The response that is sent in a case of an error the caller should present his user
  * @export
+ * @interface FormErrorResponseForRenameAccountErrors
+ */
+export interface FormErrorResponseForRenameAccountErrors {
+    /**
+     * The actual error struct
+     * @type {RenameAccountErrors}
+     * @memberof FormErrorResponseForRenameAccountErrors
+     */
+    error: RenameAccountErrors;
+    /**
+     * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
+     * @type {ErrorConstant}
+     * @memberof FormErrorResponseForRenameAccountErrors
+     */
+    result: ErrorConstant;
+}
+
+
+/**
+ * The response that is sent in a case of an error the caller should present his user
+ * @export
  * @interface FormErrorResponseForRenamePasskeyErrors
  */
 export interface FormErrorResponseForRenamePasskeyErrors {
@@ -4443,6 +4464,63 @@ export interface RegistrationErrors {
      * @memberof RegistrationErrors
      */
     token_used: boolean;
+}
+/**
+ * @type RenameAccount200Response
+ * 
+ * @export
+ */
+export type RenameAccount200Response = FormErrorResponseForRenameAccountErrors | RenameAccountResponse;
+/**
+ * Why an account could not be renamed
+ * @export
+ * @interface RenameAccountErrors
+ */
+export interface RenameAccountErrors {
+    /**
+     * Another account goes by this username already, case ignored
+     * @type {boolean}
+     * @memberof RenameAccountErrors
+     */
+    username_taken: boolean;
+}
+/**
+ * Request to rename the logged-in account
+ * @export
+ * @interface RenameAccountRequest
+ */
+export interface RenameAccountRequest {
+    /**
+     * The new username, held to the same rules as at signup
+     * @type {any}
+     * @memberof RenameAccountRequest
+     */
+    username: any;
+}
+/**
+ * The renamed account, and what its passkeys' authenticators need to show the new name
+ * @export
+ * @interface RenameAccountResponse
+ */
+export interface RenameAccountResponse {
+    /**
+     * The `rpId` to pass to `PublicKeyCredential.signalCurrentUserDetails`
+     * @type {string}
+     * @memberof RenameAccountResponse
+     */
+    rp_id: string;
+    /**
+     * The base64url `userId` to pass to `PublicKeyCredential.signalCurrentUserDetails`
+     * @type {string}
+     * @memberof RenameAccountResponse
+     */
+    user_id: string;
+    /**
+     * The new username, spelled the way it was requested
+     * @type {string}
+     * @memberof RenameAccountResponse
+     */
+    username: string;
 }
 /**
  * Why a passkey could not be renamed

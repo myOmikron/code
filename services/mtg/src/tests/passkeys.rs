@@ -19,7 +19,7 @@ use crate::tests::harness::create_account;
 use crate::tests::harness::run;
 
 /// Enrolls a passkey labelled `label` for `account`
-async fn enroll(account: &TestAccount, label: &str) {
+pub(super) async fn enroll(account: &TestAccount, label: &str) {
     let mut tx = Database::global()
         .start_transaction()
         .await

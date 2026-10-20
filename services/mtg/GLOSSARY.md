@@ -13,7 +13,7 @@ What an Account may do beyond managing its own things. Either **Member** (the de
 _Avoid_: permission, group
 
 **Admin**:
-An Account with the Admin Role. Sees the admin dashboard and manages other Accounts, Admins included, but never Locks, deletes or demotes itself.
+An Account with the Admin Role. Sees the admin dashboard and manages other Accounts, Admins included, but never Locks, deletes, demotes or Renames itself through the admin dashboard; it Renames itself like any Account.
 _Avoid_: superuser, staff, moderator
 
 **Lock**:
@@ -21,7 +21,7 @@ An Admin's block on an Account: its Login and Registration link Enrollment are r
 _Avoid_: ban, suspension, disable
 
 **Admin log**:
-The record of what Admins did to Accounts: Lock, unlock, Role change and Deletion, each with the acting Admin (none for a Role change through the `set-role` cli, named `cli`), the affected Account's username, when, and the reason given; a Deletion also records whether it was full. Names both Accounts by their username at the time, so it outlives the Accounts it names.
+The record of what Admins did to Accounts: Lock, unlock, Role change, Deletion and Rename, each with the acting Admin (none for a Role change through the `set-role` cli, named `cli`), the affected Account's username, when, and the reason given; a Deletion also records whether it was full, a Rename the new username. Names both Accounts by their username at the time, so it outlives the Accounts it names.
 _Avoid_: audit log, history
 
 **Tombstone**:
@@ -31,6 +31,10 @@ _Avoid_: ghost account, deleted user
 **Deletion**:
 Removing an Account with everything it owns. By default its public decks go to the Tombstone; a **full Deletion** takes them too. An Account deletes itself, or an Admin deletes it after typing its username.
 _Avoid_: removal, purge
+
+**Rename**:
+Changing an Account's username, by the Account itself or by an Admin. The old username is free for anyone at once, and links to the old profile stop working; deck links and sessions are unaffected. No limit on how often. A locked Account cannot Rename itself, but an Admin can Rename it. An Admin's Rename carries a **Rename reason** (required, seen only by Admins) and mails the Account its new username, since Login and recovery both need it; a Rename by the Account itself is not recorded anywhere.
+_Avoid_: display name, nickname
 
 **Sync run**:
 One attempt of the catalog sync or the price guide sync: when it started, how long it took, its outcome (new file read, unchanged, failed) and the error if it failed. Kept for 90 days.
@@ -47,7 +51,7 @@ _Avoid_: active session
 ## Relationships
 
 - An **Account** has exactly one **Role**, and at most one **Lock** at a time
-- Every **Lock**, unlock, **Role** change and **Deletion** by an **Admin** or the cli writes one **Admin log** entry
+- Every **Lock**, unlock, **Role** change, **Deletion** and **Rename** by an **Admin** or the cli writes one **Admin log** entry
 - A **Deletion** hands the Account's public decks to the **Tombstone**, unless it is a full Deletion
 - A **Statistics snapshot** never counts the **Tombstone**
 

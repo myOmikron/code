@@ -135,3 +135,41 @@ export async function authenticatePasskey(options: unknown): Promise<unknown> {
     const { publicKey } = options as WebauthnOptions;
     return await startAuthentication({ optionsJSON: publicKey });
 }
+
+/**
+ * What `PublicKeyCredential.signalCurrentUserDetails` takes, as far as it is not in every TypeScript lib yet
+ */
+type CurrentUserDetails = {
+    /** The relying party id the passkeys were registered for */
+    rpId: string;
+    /** The base64url user handle of the passkeys */
+    userId: string;
+    /** The name the authenticators show */
+    name: string;
+    /** The display name the authenticators show */
+    displayName: string;
+};
+
+/**
+ * Tell the authenticators holding the account's passkeys about its new username
+ *
+ * Best effort through the WebAuthn Signal API: a browser or password manager
+ * without it keeps showing the old name, which changes nothing about logging in.
+ *
+ * @param rpId the relying party id the backend answered the rename with
+ * @param userId the base64url user handle the backend answered the rename with
+ * @param username the new username
+ */
+export async function signalUsername(rpId: string, userId: string, username: string): Promise<void> {
+    const signal = (
+        globalThis.PublicKeyCredential as
+            | { signalCurrentUserDetails?: (details: CurrentUserDetails) => Promise<void> }
+            | undefined
+    )?.signalCurrentUserDetails;
+    if (signal === undefined) return;
+    try {
+        await signal.call(PublicKeyCredential, { rpId, userId, name: username, displayName: username });
+    } catch (error) {
+        console.warn("Signalling the new username failed", error);
+    }
+}

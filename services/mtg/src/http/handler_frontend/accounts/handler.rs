@@ -26,6 +26,9 @@ use crate::http::handler_frontend::accounts::schema::FinishAddPasskeyRequest;
 use crate::http::handler_frontend::accounts::schema::ListPasskeysResponse;
 use crate::http::handler_frontend::accounts::schema::MeErrors;
 use crate::http::handler_frontend::accounts::schema::MeResponse;
+use crate::http::handler_frontend::accounts::schema::RenameAccountErrors;
+use crate::http::handler_frontend::accounts::schema::RenameAccountRequest;
+use crate::http::handler_frontend::accounts::schema::RenameAccountResponse;
 use crate::http::handler_frontend::accounts::schema::RenamePasskeyErrors;
 use crate::http::handler_frontend::accounts::schema::RenamePasskeyRequest;
 use crate::http::handler_frontend::accounts::schema::SimplePasskey;
@@ -59,6 +62,32 @@ pub async fn me(session: Session, identity: Identity) -> ApiResult<ApiJson<MeRes
         uuid: account.uuid,
         username: account.username.as_str().to_string(),
         role: account.role,
+    }))
+}
+
+/// Rename the logged-in account
+///
+/// The old username is free for anybody right away, and its profile link stops
+/// working. The session stays: it belongs to the account's identity, not its name.
+#[put("/me/username")]
+pub async fn rename_account(
+    account: Account,
+    ApiJson(request): ApiJson<RenameAccountRequest>,
+) -> ApiResult<ApiJson<RenameAccountResponse>, RenameAccountErrors> {
+    let mut tx = Database::global().start_transaction().await?;
+    if !Account::rename(&mut tx, account.uuid, request.username.clone()).await? {
+        tx.rollback().await?;
+        let mut errors = FormErrors::<RenameAccountErrors>::new();
+        errors.username_taken = true;
+        return errors.fail();
+    }
+    tx.commit().await?;
+
+    let passkey_user = IdentityModule::global().passkey_user(account.identity);
+    Ok(ApiJson(RenameAccountResponse {
+        username: request.username.as_str().to_string(),
+        rp_id: passkey_user.rp_id,
+        user_id: passkey_user.user_id,
     }))
 }
 
