@@ -45,6 +45,7 @@ use crate::http::handler_frontend::decks::schema::SetDeckColorsRequest;
 use crate::http::handler_frontend::decks::schema::SetDeckFolderRequest;
 use crate::http::handler_frontend::decks::schema::SetDeckRuleZeroRequest;
 use crate::http::handler_frontend::decks::schema::SetDeckVisibilityRequest;
+use crate::http::handler_frontend::decks::schema::SwapDeckCardRequest;
 use crate::http::handler_frontend::decks::schema::TakeDeckCardsRequest;
 use crate::http::handler_frontend::decks::schema::UpdateDeckCardRequest;
 use crate::http::handler_frontend::decks::schema::UpdateDeckRequest;
@@ -1110,6 +1111,65 @@ pub async fn update_deck_card(
     tx.commit().await?;
 
     Ok(ApiJson(()))
+}
+
+/// Give up copies of a Deck entry for another card in the same zone
+///
+/// Both halves happen in one transaction: the entry loses the copies, which
+/// removes it when none are left, and the incoming card joins an alike Deck
+/// entry or opens its own. A swap that cannot happen as a whole changes
+/// nothing. The answer is the Deck entry the incoming card sits in.
+#[post("/{deck}/cards/{card}/swap")]
+pub async fn swap_deck_card(
+    account: Account,
+    Path((deck_uuid, card_uuid)): Path<(DeckUuid, DeckCardUuid)>,
+    ApiJson(SwapDeckCardRequest {
+        quantity,
+        printing,
+        foil,
+        proxy,
+    }): ApiJson<SwapDeckCardRequest>,
+) -> ApiResult<ApiJson<DeckCardResponse>> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    granted(Deck::may_administer(&mut tx, deck_uuid, account.uuid).await?)?;
+
+    let going = DeckCard::get(&mut tx, deck_uuid, card_uuid)
+        .await?
+        .ok_or_else(denied)?;
+    if quantity < 1 {
+        return Err(ApiError::bad_request("A swap moves at least one copy"));
+    }
+    if quantity > going.quantity {
+        return Err(ApiError::bad_request(
+            "The Deck entry holds fewer copies than the swap gives up",
+        ));
+    }
+    let coming = DeckCardInsert {
+        printing,
+        quantity,
+        zone: going.zone,
+        foil: foil.unwrap_or(false),
+        proxy: proxy.unwrap_or(false),
+    };
+    if coming.key() == going.key() {
+        return Err(ApiError::bad_request("A card is not swapped for itself"));
+    }
+
+    let card = DeckCard::swap(&mut tx, going, coming).await?;
+
+    tx.commit().await?;
+
+    Ok(ApiJson(DeckCardResponse {
+        uuid: card.uuid,
+        printing: card.printing,
+        quantity: card.quantity,
+        zone: card.zone,
+        foil: card.foil,
+        proxy: card.proxy,
+        card: None,
+        tags: Vec::new(),
+    }))
 }
 
 /// Take a card out of a deck

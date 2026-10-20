@@ -179,12 +179,7 @@ export function DeckReplaceDialog({
         if (card === null || printing === undefined) return;
         setBusy(true);
         try {
-            await Api.decks.cards.add(deckUuid, { printing: printing.id, quantity: 1, zone: card.zone });
-            if (card.quantity > 1) {
-                await Api.decks.cards.update(deckUuid, card.uuid, { quantity: card.quantity - 1 });
-            } else {
-                await Api.decks.cards.delete(deckUuid, card.uuid);
-            }
+            await Api.decks.cards.swap(deckUuid, card.uuid, { printing: printing.id, quantity: 1 });
             notify.success(t("toast.card-replaced", { name: card.card?.name ?? "", replacement: name }));
             onReplaced();
             onClose();

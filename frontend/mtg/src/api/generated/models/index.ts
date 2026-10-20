@@ -5922,6 +5922,37 @@ export interface StatBucketResponse {
      */
     key: string;
 }
+/**
+ * Copies of a Deck entry to give up for another card in the same zone
+ * @export
+ * @interface SwapDeckCardRequest
+ */
+export interface SwapDeckCardRequest {
+    /**
+     * Whether the incoming copies are the foil ones, `null` for the ordinary ones
+     * @type {boolean}
+     * @memberof SwapDeckCardRequest
+     */
+    foil?: boolean | null;
+    /**
+     * Scryfall's id of the printing coming in
+     * @type {string}
+     * @memberof SwapDeckCardRequest
+     */
+    printing: string;
+    /**
+     * Whether the incoming copies are stand-ins rather than the real cards, `null` for the ordinary ones
+     * @type {boolean}
+     * @memberof SwapDeckCardRequest
+     */
+    proxy?: boolean | null;
+    /**
+     * How many copies leave the entry and how many of the other card come in
+     * @type {number}
+     * @memberof SwapDeckCardRequest
+     */
+    quantity: number;
+}
 
 /**
  * What a Sync run came to

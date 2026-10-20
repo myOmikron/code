@@ -506,8 +506,6 @@
         "card-swapped": "Swapped {{out}} for {{in}}",
         "cards-filled": "Added {{amount}} cards to the deck",
         "cut-not-in-deck": "That card is not in the main deck.",
-        "setup-saved": "Settings saved",
-        "swap-failed": "Swap cancelled — the deck is unchanged.",
-        "swap-stranded": "Swap failed — {{name}} is now an extra copy in the deck and needs removing by hand."
+        "setup-saved": "Settings saved"
     }
 }

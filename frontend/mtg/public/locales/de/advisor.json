@@ -506,8 +506,6 @@
         "card-swapped": "{{out}} gegen {{in}} getauscht",
         "cards-filled": "{{amount}} Karten ins Deck gelegt",
         "cut-not-in-deck": "Die Karte liegt nicht im Hauptdeck.",
-        "setup-saved": "Einstellungen gespeichert",
-        "swap-failed": "Tausch abgebrochen — das Deck ist unverändert.",
-        "swap-stranded": "Tausch fehlgeschlagen — {{name}} liegt jetzt zusätzlich im Deck und muss von Hand entfernt werden."
+        "setup-saved": "Einstellungen gespeichert"
     }
 }

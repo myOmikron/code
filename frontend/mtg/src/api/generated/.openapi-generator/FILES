@@ -206,6 +206,7 @@ docs/StartRegistration200Response.md
 docs/StartRegistrationRequest.md
 docs/StartRegistrationResponse.md
 docs/StatBucketResponse.md
+docs/SwapDeckCardRequest.md
 docs/SyncRunOutcome.md
 docs/TakeDeckCardsRequest.md
 docs/ThemePrefs.md
