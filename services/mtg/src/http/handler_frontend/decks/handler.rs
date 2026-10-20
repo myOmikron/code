@@ -9,6 +9,7 @@ use galvyn::patch;
 use galvyn::post;
 use galvyn::put;
 use galvyn::rorm::Database;
+use galvyn::rorm::db::transaction::Transaction;
 use galvyn::rorm::fields::types::MaxStr;
 use tracing::warn;
 
@@ -29,6 +30,7 @@ use crate::http::handler_frontend::decks::schema::FillDeckCollectionResponse;
 use crate::http::handler_frontend::decks::schema::FormatRulesResponse;
 use crate::http::handler_frontend::decks::schema::ImportDeckCardsRequest;
 use crate::http::handler_frontend::decks::schema::ImportDeckCardsResponse;
+use crate::http::handler_frontend::decks::schema::ImportOrigin;
 use crate::http::handler_frontend::decks::schema::ListDeckCardsResponse;
 use crate::http::handler_frontend::decks::schema::ListFormatsResponse;
 use crate::http::handler_frontend::decks::schema::ReadDeckCardResponse;
@@ -70,6 +72,7 @@ use crate::models::deck::advisor::AdvisorSettings;
 use crate::models::deck::drift::DeckDrift;
 use crate::models::deck::history::DeckChangeKind;
 use crate::models::deck::history::DeckDifference;
+use crate::models::deck::history::DeckEdit;
 use crate::models::deck::history::DeckHistory;
 use crate::models::deck::listing::DeckSummary;
 use crate::models::deck::listing::ListedSlot;
@@ -223,10 +226,7 @@ pub async fn take_deck_cards(
 ) -> ApiResult<ApiJson<()>> {
     let mut tx = Database::global().start_transaction().await?;
 
-    match Deck::may_administer(&mut tx, deck_uuid, account.uuid).await? {
-        DeckAccess::Granted(_) => {}
-        DeckAccess::Denied => return Err(ApiError::bad_request("Request was denied")),
-    }
+    let edit = granted(DeckHistory::lock(&mut tx, deck_uuid, account.uuid).await?)?;
     let Some(collection) = Deck::collection(&mut tx, deck_uuid).await? else {
         return Err(ApiError::bad_request("This deck keeps no collection"));
     };
@@ -259,10 +259,11 @@ pub async fn take_deck_cards(
     // for now says so, and is split when only part of it was covered.
     if let Some(slot) = slot {
         let foil = filed.finish != CardFinish::Nonfoil;
-        match DeckCard::point_at(&mut tx, deck_uuid, slot, filed.printing, foil, quantity).await? {
-            DeckAccess::Granted(_) => {}
-            DeckAccess::Denied => return Err(ApiError::bad_request("Request was denied")),
-        }
+        let difference = granted(
+            DeckCard::point_at(&mut tx, deck_uuid, slot, filed.printing, foil, quantity).await?,
+        )?;
+        edit.record(&mut tx, DeckChangeKind::Sourcing, difference)
+            .await?;
     }
 
     tx.commit().await?;
@@ -289,10 +290,7 @@ pub async fn fill_deck_collection(
 ) -> ApiResult<ApiJson<FillDeckCollectionResponse>> {
     let mut tx = Database::global().start_transaction().await?;
 
-    match Deck::may_administer(&mut tx, deck_uuid, account.uuid).await? {
-        DeckAccess::Granted(_) => {}
-        DeckAccess::Denied => return Err(ApiError::bad_request("Request was denied")),
-    }
+    let edit = granted(DeckHistory::lock(&mut tx, deck_uuid, account.uuid).await?)?;
     let Some(collection) = Deck::collection(&mut tx, deck_uuid).await? else {
         return Err(ApiError::bad_request("This deck keeps no collection"));
     };
@@ -324,16 +322,25 @@ pub async fn fill_deck_collection(
             if fill_all {
                 continue;
             }
-            DeckCard::update(
-                &mut tx,
-                deck_uuid,
-                slot.uuid,
-                DeckCardPatch {
-                    proxy: Some(false),
-                    ..Default::default()
-                },
-            )
-            .await?;
+            let entry = DeckCard::get(&mut tx, deck_uuid, slot.uuid)
+                .await?
+                .ok_or_else(denied)?;
+            let updated = granted(
+                DeckCard::update(
+                    &mut tx,
+                    deck_uuid,
+                    slot.uuid,
+                    DeckCardPatch {
+                        proxy: Some(false),
+                        ..Default::default()
+                    },
+                )
+                .await?,
+            )?;
+            let mut difference = DeckDifference::default();
+            difference.updated(&entry, entry.quantity, updated.as_ref());
+            edit.record(&mut tx, DeckChangeKind::Sourcing, difference)
+                .await?;
         }
 
         // Only what the deck is short of: a slot somebody already sourced out of
@@ -588,7 +595,10 @@ pub async fn update_deck(
 ) -> ApiResult<ApiJson<()>> {
     let mut tx = Database::global().start_transaction().await?;
 
+    let edit = granted(DeckHistory::lock(&mut tx, deck_uuid, account.uuid).await?)?;
+    let before = locked_deck(&mut tx, &edit, account.uuid).await?;
     granted(Deck::update(&mut tx, account.uuid, deck_uuid, name, description, format).await?)?;
+    record_settings(&mut tx, &edit, account.uuid, &before).await?;
 
     tx.commit().await?;
 
@@ -624,7 +634,10 @@ pub async fn set_deck_colors(
 ) -> ApiResult<ApiJson<()>> {
     let mut tx = Database::global().start_transaction().await?;
 
+    let edit = granted(DeckHistory::lock(&mut tx, deck_uuid, account.uuid).await?)?;
+    let before = locked_deck(&mut tx, &edit, account.uuid).await?;
     granted(Deck::set_allowed_color_identity(&mut tx, account.uuid, deck_uuid, colors).await?)?;
+    record_settings(&mut tx, &edit, account.uuid, &before).await?;
 
     tx.commit().await?;
 
@@ -650,14 +663,14 @@ pub async fn set_deck_bracket(
     // The brackets are Commander's, so nothing else may claim one. Taking a
     // claim back stays allowed whatever the format — that is how a deck that
     // was moved off Commander gets tidied up.
-    if bracket.is_some() {
-        let deck = Deck::get_visible(&mut tx, deck_uuid, Some(account.uuid)).await?;
-        if deck.is_some_and(|deck| !has_brackets(&deck.format)) {
-            return Err(ApiError::bad_request("This format has no brackets"));
-        }
+    let edit = granted(DeckHistory::lock(&mut tx, deck_uuid, account.uuid).await?)?;
+    let before = locked_deck(&mut tx, &edit, account.uuid).await?;
+    if bracket.is_some() && !has_brackets(&before.format) {
+        return Err(ApiError::bad_request("This format has no brackets"));
     }
 
     granted(Deck::set_bracket(&mut tx, account.uuid, deck_uuid, bracket).await?)?;
+    record_settings(&mut tx, &edit, account.uuid, &before).await?;
 
     tx.commit().await?;
 
@@ -681,6 +694,8 @@ pub async fn set_deck_rule_zero(
 
     let mut tx = Database::global().start_transaction().await?;
 
+    let edit = granted(DeckHistory::lock(&mut tx, deck_uuid, account.uuid).await?)?;
+    let before = locked_deck(&mut tx, &edit, account.uuid).await?;
     granted(
         Deck::set_rule_zero(
             &mut tx,
@@ -693,6 +708,7 @@ pub async fn set_deck_rule_zero(
         )
         .await?,
     )?;
+    record_settings(&mut tx, &edit, account.uuid, &before).await?;
 
     tx.commit().await?;
 
@@ -1021,11 +1037,24 @@ fn local_deck_response(deck: Deck, slots: Vec<ListedSlot>) -> ReadDeckUrlRespons
 pub async fn import_deck_cards(
     account: Account,
     Path(deck_uuid): Path<DeckUuid>,
-    ApiJson(ImportDeckCardsRequest { cards, replace }): ApiJson<ImportDeckCardsRequest>,
+    ApiJson(ImportDeckCardsRequest {
+        cards,
+        replace,
+        origin,
+    }): ApiJson<ImportDeckCardsRequest>,
 ) -> ApiResult<ApiJson<ImportDeckCardsResponse>> {
+    let kind = match (origin, replace) {
+        (ImportOrigin::Decklist, false) => DeckChangeKind::Import,
+        (ImportOrigin::Decklist, true) => DeckChangeKind::Replace,
+        (ImportOrigin::AdvisorFill, false) => DeckChangeKind::Fill,
+        (ImportOrigin::AdvisorFill, true) => {
+            return Err(ApiError::bad_request("An advisor fill never replaces"));
+        }
+    };
+
     let mut tx = Database::global().start_transaction().await?;
 
-    granted(Deck::may_administer(&mut tx, deck_uuid, account.uuid).await?)?;
+    let edit = granted(DeckHistory::lock(&mut tx, deck_uuid, account.uuid).await?)?;
 
     if cards.iter().any(|card| card.quantity < 1) {
         return Err(ApiError::bad_request("A slot holds at least one copy"));
@@ -1043,6 +1072,7 @@ pub async fn import_deck_cards(
         .collect();
     let added = inserts.len() as u32;
 
+    let before = DeckCard::get_all_in_deck(&mut tx, deck_uuid).await?;
     if replace {
         if !DeckCard::replace_all(&mut tx, deck_uuid, inserts).await? {
             return Err(denied());
@@ -1050,6 +1080,9 @@ pub async fn import_deck_cards(
     } else {
         DeckCard::add_many(&mut tx, deck_uuid, inserts).await?;
     }
+    let after = DeckCard::get_all_in_deck(&mut tx, deck_uuid).await?;
+    edit.record(&mut tx, kind, DeckDifference::between(&before, &after))
+        .await?;
 
     tx.commit().await?;
 
@@ -1094,19 +1127,14 @@ pub async fn update_deck_card(
         .await?,
     )?;
 
+    let kind = match &updated {
+        Some(updated) if updated.zone != entry.zone => DeckChangeKind::Move,
+        Some(updated) if updated.key() != entry.key() => DeckChangeKind::Switch,
+        _ => DeckChangeKind::Edit,
+    };
     let mut difference = DeckDifference::default();
-    match updated {
-        None => difference.entry(entry.key(), entry.quantity, 0),
-        Some(updated) if updated.key() == entry.key() => {
-            difference.entry(entry.key(), entry.quantity, updated.quantity)
-        }
-        Some(updated) => {
-            difference.entry(entry.key(), entry.quantity, 0);
-            difference.entry(updated.key(), updated.quantity - quantity, updated.quantity);
-        }
-    }
-    edit.record(&mut tx, DeckChangeKind::Edit, difference)
-        .await?;
+    difference.updated(&entry, quantity, updated.as_ref());
+    edit.record(&mut tx, kind, difference).await?;
 
     tx.commit().await?;
 
@@ -1132,7 +1160,7 @@ pub async fn swap_deck_card(
 ) -> ApiResult<ApiJson<DeckCardResponse>> {
     let mut tx = Database::global().start_transaction().await?;
 
-    granted(Deck::may_administer(&mut tx, deck_uuid, account.uuid).await?)?;
+    let edit = granted(DeckHistory::lock(&mut tx, deck_uuid, account.uuid).await?)?;
 
     let going = DeckCard::get(&mut tx, deck_uuid, card_uuid)
         .await?
@@ -1156,7 +1184,12 @@ pub async fn swap_deck_card(
         return Err(ApiError::bad_request("A card is not swapped for itself"));
     }
 
+    let mut difference = DeckDifference::default();
+    difference.entry(going.key(), going.quantity, going.quantity - quantity);
     let card = DeckCard::swap(&mut tx, going, coming).await?;
+    difference.entry(card.key(), card.quantity - quantity, card.quantity);
+    edit.record(&mut tx, DeckChangeKind::Swap, difference)
+        .await?;
 
     tx.commit().await?;
 
@@ -1308,6 +1341,30 @@ pub async fn unassign_deck_card_tag(
     tx.commit().await?;
 
     Ok(ApiJson(()))
+}
+
+/// The deck an edit holds the lock on, as it is now
+async fn locked_deck(tx: &mut Transaction, edit: &DeckEdit, owner: AccountUuid) -> ApiResult<Deck> {
+    Deck::get_visible(tx, edit.deck(), Some(owner))
+        .await?
+        .ok_or_else(denied)
+}
+
+/// Record what an edit of the deck's settings changed, against the deck before it
+async fn record_settings(
+    tx: &mut Transaction,
+    edit: &DeckEdit,
+    owner: AccountUuid,
+    before: &Deck,
+) -> ApiResult<()> {
+    let after = locked_deck(&mut *tx, edit, owner).await?;
+    edit.record(
+        tx,
+        DeckChangeKind::Settings,
+        DeckDifference::settings(before, &after),
+    )
+    .await?;
+    Ok(())
 }
 
 /// Turn a denied access into the one answer every refused request gets

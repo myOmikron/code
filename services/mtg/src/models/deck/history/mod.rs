@@ -25,6 +25,7 @@ use galvyn::rorm::db::sql::value::Value;
 use galvyn::rorm::db::transaction::Transaction;
 use galvyn::rorm::fields::types::ForeignModelByField;
 use galvyn::rorm::fields::types::Json;
+use galvyn::rorm::fields::types::MaxStr;
 use serde::Deserialize;
 use serde::Serialize;
 use service_bootstrap::custom_db_enum;
@@ -34,6 +35,7 @@ use uuid::Uuid;
 use crate::models::account::AccountUuid;
 use crate::models::deck::Deck;
 use crate::models::deck::DeckAccess;
+use crate::models::deck::DeckCard;
 use crate::models::deck::DeckEntryKey;
 use crate::models::deck::DeckUuid;
 use crate::models::deck::DeckZone;
@@ -50,12 +52,30 @@ pub enum DeckChangeKind {
     Created,
     /// The deck existed before Deck histories; its entries at that time
     Introduced,
-    /// A plain edit of Deck entries: copies added, taken away or moved
+    /// A plain edit of Deck entries: copies added or taken away
     Edit,
+    /// A Deck entry moved to another zone
+    Move,
+    /// A Deck entry switched to another printing, finish or proxy status
+    Switch,
+    /// Copies of a Deck entry given up for another card in the same zone
+    Swap,
+    /// A decklist added to the deck
+    Import,
+    /// A decklist that replaced the deck's Deck entries
+    Replace,
+    /// The advisor's suggestions added to the deck
+    Fill,
+    /// A Deck entry made to say what was sourced for it: another printing or
+    /// finish, or no longer a proxy
+    Sourcing,
+    /// Deck fields changed: name, description, format, colors, bracket,
+    /// rule-zero exceptions or size
+    Settings,
 }
 custom_db_enum! {
     enum: DeckChangeKind,
-    variants: [Created, Introduced, Edit],
+    variants: [Created, Introduced, Edit, Move, Switch, Swap, Import, Replace, Fill, Sourcing, Settings],
     decoder: DeckChangeKindDecoder,
 }
 
@@ -72,6 +92,136 @@ pub struct DeckDifference {
     /// The Deck entries it touched, at most one per key
     #[serde(default)]
     pub entries: Vec<EntryDifference>,
+    /// The deck fields it changed, at most one per field
+    #[serde(default)]
+    pub fields: Vec<FieldDifference>,
+}
+
+/// The value one deck field held before and after a Deck change
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "field")]
+pub enum FieldDifference {
+    /// The deck's name
+    Name {
+        /// The name before
+        before: MaxStr<255>,
+        /// The name after
+        after: MaxStr<255>,
+    },
+    /// The deck's description
+    Description {
+        /// The description before, `None` for none
+        before: Option<MaxStr<1024>>,
+        /// The description after, `None` for none
+        after: Option<MaxStr<1024>>,
+    },
+    /// The format the deck is built for
+    Format {
+        /// The format before
+        before: MaxStr<32>,
+        /// The format after
+        after: MaxStr<32>,
+    },
+    /// The colours the deck may play
+    Colors {
+        /// The colours before, `None` for whatever the commander allows
+        before: Option<MaxStr<8>>,
+        /// The colours after, `None` for whatever the commander allows
+        after: Option<MaxStr<8>>,
+    },
+    /// The Commander bracket the deck is built to
+    Bracket {
+        /// The bracket before, `None` when unset
+        before: Option<i16>,
+        /// The bracket after, `None` when unset
+        after: Option<i16>,
+    },
+    /// Whether the table agreed to more commanders than the format allows
+    AllowExtraCommanders {
+        /// The agreement before
+        before: bool,
+        /// The agreement after
+        after: bool,
+    },
+    /// Whether the table agreed to more copies of a card than the format allows
+    AllowDuplicates {
+        /// The agreement before
+        before: bool,
+        /// The agreement after
+        after: bool,
+    },
+    /// Whether the table agreed to cards the format bans
+    AllowBanned {
+        /// The agreement before
+        before: bool,
+        /// The agreement after
+        after: bool,
+    },
+    /// How many cards the deck is built to
+    DeckSize {
+        /// The size before, `None` for the format's rule
+        before: Option<i16>,
+        /// The size after, `None` for the format's rule
+        after: Option<i16>,
+    },
+}
+
+impl FieldDifference {
+    /// Every recorded deck field, from one deck to another state of it
+    fn all(before: &Deck, after: &Deck) -> Vec<Self> {
+        vec![
+            Self::Name {
+                before: before.name.clone(),
+                after: after.name.clone(),
+            },
+            Self::Description {
+                before: before.description.clone(),
+                after: after.description.clone(),
+            },
+            Self::Format {
+                before: before.format.clone(),
+                after: after.format.clone(),
+            },
+            Self::Colors {
+                before: before.allowed_color_identity.clone(),
+                after: after.allowed_color_identity.clone(),
+            },
+            Self::Bracket {
+                before: before.bracket,
+                after: after.bracket,
+            },
+            Self::AllowExtraCommanders {
+                before: before.allow_extra_commanders,
+                after: after.allow_extra_commanders,
+            },
+            Self::AllowDuplicates {
+                before: before.allow_duplicates,
+                after: after.allow_duplicates,
+            },
+            Self::AllowBanned {
+                before: before.allow_banned,
+                after: after.allow_banned,
+            },
+            Self::DeckSize {
+                before: before.deck_size,
+                after: after.deck_size,
+            },
+        ]
+    }
+
+    /// Whether the field ended where it started
+    fn is_settled(&self) -> bool {
+        match self {
+            Self::Name { before, after } => before == after,
+            Self::Description { before, after } => before == after,
+            Self::Format { before, after } => before == after,
+            Self::Colors { before, after } => before == after,
+            Self::Bracket { before, after } | Self::DeckSize { before, after } => before == after,
+            Self::AllowExtraCommanders { before, after }
+            | Self::AllowDuplicates { before, after }
+            | Self::AllowBanned { before, after } => before == after,
+        }
+    }
 }
 
 /// How many copies one Deck entry held before and after a Deck change
@@ -124,15 +274,77 @@ impl DeckDifference {
         }
     }
 
-    /// The difference without the entries that ended where they started
+    /// The difference between two lists of a deck's Deck entries
+    ///
+    /// For an operation rewriting many entries at once, like an import: read
+    /// the entries before and after it and hand both over.
+    pub fn between(before: &[DeckCard], after: &[DeckCard]) -> Self {
+        let mut quantities: HashMap<DeckEntryKey, (i32, i32)> = HashMap::new();
+        for entry in before {
+            quantities.entry(entry.key()).or_default().0 += entry.quantity;
+        }
+        for entry in after {
+            quantities.entry(entry.key()).or_default().1 += entry.quantity;
+        }
+        let mut entries: Vec<EntryDifference> = quantities
+            .into_iter()
+            .map(|(key, (before, after))| EntryDifference {
+                printing: key.printing,
+                zone: key.zone,
+                foil: key.foil,
+                proxy: key.proxy,
+                before,
+                after,
+            })
+            .collect();
+        entries.sort_by_key(|entry| (entry.printing, entry.zone.as_str(), entry.foil, entry.proxy));
+        Self {
+            entries,
+            fields: Vec::new(),
+        }
+    }
+
+    /// Notes a change of one Deck entry by [`DeckCard::update`]
+    ///
+    /// `entry` is the Deck entry before, `quantity` how many copies it holds
+    /// after the change and `updated` what the update answered: `None` for a
+    /// removed entry, else the entry the copies sit in now, which may be an
+    /// alike one they merged into.
+    pub fn updated(&mut self, entry: &DeckCard, quantity: i32, updated: Option<&DeckCard>) {
+        match updated {
+            None => self.entry(entry.key(), entry.quantity, 0),
+            Some(updated) if updated.key() == entry.key() => {
+                self.entry(entry.key(), entry.quantity, updated.quantity)
+            }
+            Some(updated) => {
+                self.entry(entry.key(), entry.quantity, 0);
+                self.entry(updated.key(), updated.quantity - quantity, updated.quantity);
+            }
+        }
+    }
+
+    /// The difference between two states of a deck's recorded fields
+    ///
+    /// Read the deck before and after an operation changing its settings and
+    /// hand both over; the fields that did not change drop out on record.
+    pub fn settings(before: &Deck, after: &Deck) -> Self {
+        Self {
+            entries: Vec::new(),
+            fields: FieldDifference::all(before, after),
+        }
+    }
+
+    /// The difference without the entries and fields that ended where they started
     fn settled(mut self) -> Self {
         self.entries.retain(|entry| entry.before != entry.after);
+        self.fields.retain(|field| !field.is_settled());
         self
     }
 
     /// Whether it changes nothing
     pub fn is_empty(&self) -> bool {
         self.entries.iter().all(|entry| entry.before == entry.after)
+            && self.fields.iter().all(FieldDifference::is_settled)
     }
 }
 
@@ -181,6 +393,8 @@ pub struct DeckChange {
     pub changed_at: OffsetDateTime,
     /// The Deck entries it touched
     pub entries: Vec<ChangedEntry>,
+    /// The deck fields it changed
+    pub fields: Vec<FieldDifference>,
 }
 
 /// One Deck entry a [`DeckChange`] touched, with the card's name
@@ -302,6 +516,7 @@ impl DeckHistory {
                         difference,
                     })
                     .collect(),
+                fields: difference.fields,
             })
             .collect();
         Ok(DeckHistoryPage {

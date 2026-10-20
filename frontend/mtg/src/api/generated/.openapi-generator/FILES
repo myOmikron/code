@@ -86,6 +86,16 @@ docs/DeletionMode.md
 docs/EntrySort.md
 docs/ErrorConstant.md
 docs/ExtraTurnRule.md
+docs/FieldDifference.md
+docs/FieldDifferenceOneOf.md
+docs/FieldDifferenceOneOf1.md
+docs/FieldDifferenceOneOf2.md
+docs/FieldDifferenceOneOf3.md
+docs/FieldDifferenceOneOf4.md
+docs/FieldDifferenceOneOf5.md
+docs/FieldDifferenceOneOf6.md
+docs/FieldDifferenceOneOf7.md
+docs/FieldDifferenceOneOf8.md
 docs/FileScannerSessionRequest.md
 docs/FileScannerSessionResponse.md
 docs/FillDeckCollectionRequest.md
@@ -111,6 +121,7 @@ docs/FormErrorResponseForStartLoginErrors.md
 docs/FormatRulesResponse.md
 docs/ImportDeckCardsRequest.md
 docs/ImportDeckCardsResponse.md
+docs/ImportOrigin.md
 docs/ListCardsResponse.md
 docs/ListCollectionEntriesResponse.md
 docs/ListDeckCardsResponse.md
