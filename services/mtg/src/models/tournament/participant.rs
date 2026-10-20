@@ -750,7 +750,7 @@ pub async fn check_in(
     Ok(TournamentAccess::Granted(CheckInOutcome::CheckedIn))
 }
 
-/// Drop a participant, self-service or by staff
+/// Drop a participant, self-service or by staff; before the start, the row goes entirely
 #[instrument(name = "drop", skip(tx, actor))]
 pub async fn drop(
     tx: &mut Transaction,
@@ -760,6 +760,19 @@ pub async fn drop(
 ) -> Result<TournamentAccess<()>, rorm::Error> {
     if !may_self_serve(&mut *tx, actor, tournament, participant).await? {
         return Ok(TournamentAccess::Denied);
+    }
+
+    let status = rorm::query(&mut *tx, TournamentModel.status)
+        .condition(TournamentModel.uuid.equals(tournament.into_inner()))
+        .optional()
+        .await?
+        .unwrap_or_else(|| unreachable!("may_self_serve already confirmed this tournament exists"));
+    match status {
+        TournamentStatus::Registration => return leave(tx, actor, tournament, participant).await,
+        TournamentStatus::Running => {}
+        TournamentStatus::Finished | TournamentStatus::Cancelled => {
+            return Ok(TournamentAccess::Denied);
+        }
     }
 
     // The last scored round; 0 still means "never played a round".
@@ -804,6 +817,53 @@ pub async fn drop(
         AuditAction::ParticipantDropped,
         Some(participant.into_inner()),
         None,
+    )
+    .await?;
+
+    Ok(TournamentAccess::Granted(()))
+}
+
+/// Drop before the start: delete the row, so the player may join again
+async fn leave(
+    tx: &mut Transaction,
+    actor: &TournamentActor,
+    tournament: TournamentUuid,
+    participant: TournamentParticipantUuid,
+) -> Result<TournamentAccess<()>, rorm::Error> {
+    let Some(display_name) = rorm::query(&mut *tx, TournamentParticipantModel.display_name)
+        .condition(rorm::and![
+            TournamentParticipantModel
+                .uuid
+                .equals(participant.into_inner()),
+            TournamentParticipantModel
+                .tournament
+                .equals(tournament.into_inner()),
+        ])
+        .optional()
+        .await?
+    else {
+        return Ok(TournamentAccess::Denied);
+    };
+
+    // No round exists before the start, so no seat cascades away with the row.
+    rorm::delete(&mut *tx, TournamentParticipantModel)
+        .condition(rorm::and![
+            TournamentParticipantModel
+                .uuid
+                .equals(participant.into_inner()),
+            TournamentParticipantModel
+                .tournament
+                .equals(tournament.into_inner()),
+        ])
+        .await?;
+
+    Tournament::audit(
+        &mut *tx,
+        tournament,
+        audit_actor(actor),
+        AuditAction::ParticipantDropped,
+        Some(participant.into_inner()),
+        Some(display_name.into_inner()),
     )
     .await?;
 

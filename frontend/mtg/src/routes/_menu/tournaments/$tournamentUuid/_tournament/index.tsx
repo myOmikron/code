@@ -7,7 +7,10 @@ import type {
     RoundResponse,
     TournamentParticipantResponse,
 } from "src/api/generated";
+import { Text } from "components";
 import { useRef } from "react";
+import { useTranslation } from "react-i18next";
+import { TournamentDropButton } from "src/components/tournament-drop-button";
 import { TournamentMyMatch } from "src/components/tournament-my-match";
 import { TournamentRoundPanel } from "src/components/tournament-round-panel";
 import { TournamentSetup } from "src/components/tournament-setup";
@@ -65,6 +68,7 @@ function RouteComponent() {
     const { tournament, viewer, participant_count, skewMs } = useLoaderData({
         from: "/_menu/tournaments/$tournamentUuid/_tournament",
     })!;
+    const [t] = useTranslation("tournament");
     const router = useRouter();
     const refresh = () => router.invalidate();
 
@@ -77,6 +81,8 @@ function RouteComponent() {
         busy: () => editing.current,
     });
     const playing = mine?.table != null && running;
+    const own = participants.find((participant) => participant.uuid === viewer.participant);
+    const dropped = own?.status === "Dropped" || own?.status === "Disqualified";
 
     if (!running && tournament.status !== "Finished") {
         return (
@@ -93,7 +99,8 @@ function RouteComponent() {
 
     return (
         <div className={"flex flex-col gap-4"}>
-            {mine !== null && running && (
+            {/* A drop keeps the seat they already had, but no pairing is coming for them. */}
+            {mine !== null && running && !(dropped && mine.table == null) && (
                 <TournamentMyMatch
                     tournamentUuid={tournamentUuid}
                     tournament={tournament}
@@ -118,6 +125,20 @@ function RouteComponent() {
                 }}
                 onChanged={refresh}
             />
+            {running && own !== undefined && !viewer.is_organizer && (
+                <div className={"flex justify-end"}>
+                    {dropped ? (
+                        <Text>{t("label.you-dropped")}</Text>
+                    ) : (
+                        <TournamentDropButton
+                            tournamentUuid={tournamentUuid}
+                            participant={own.uuid}
+                            started={true}
+                            onChanged={refresh}
+                        />
+                    )}
+                </div>
+            )}
         </div>
     );
 }

@@ -82,6 +82,7 @@ export function TournamentRoster({
 
     const [dialog, setDialog] = useState<ParticipantDialogMode | null>(null);
     const [removing, setRemoving] = useState<TournamentParticipantResponse | null>(null);
+    const [dropping, setDropping] = useState<TournamentParticipantResponse | null>(null);
     const [decklistFor, setDecklistFor] = useState<TournamentParticipantResponse | null>(null);
     const [claimQr, setClaimQr] = useState<TournamentParticipantResponse | null>(null);
     const [pinning, setPinning] = useState<TournamentParticipantResponse | null>(null);
@@ -122,13 +123,12 @@ export function TournamentRoster({
     }
 
     /**
-     * Drops a player from the event
-     *
-     * `drop` bypasses `handleError`, so a guest with a dead session gets a toast, not a login redirect.
+     * Drops a player from the event, after the confirmation was accepted
      *
      * @param participant the row to drop
      */
     async function drop(participant: TournamentParticipantResponse) {
+        setDropping(null);
         try {
             await Api.tournaments.participants.drop(tournamentUuid, participant.uuid);
             notify.success(t("toast.dropped"));
@@ -176,9 +176,11 @@ export function TournamentRoster({
      * @returns the row
      */
     function row(participant: TournamentParticipantResponse) {
-        const isOwn = viewer.participant === participant.uuid;
         const canCheckIn = participant.status === "Registered";
-        const canDrop = participant.status === "Registered" || participant.status === "CheckedIn";
+        // Before the start, removing the player is the same thing.
+        const canDrop =
+            tournament.status === "Running" &&
+            (participant.status === "Registered" || participant.status === "CheckedIn");
 
         return (
             <li
@@ -223,11 +225,6 @@ export function TournamentRoster({
                             <span className={"max-lg:sr-only"}>{t("button.check-in")}</span>
                         </Button>
                     )}
-                    {isOwn && !viewer.is_organizer && canDrop && (
-                        <Button outline={true} onClick={() => void drop(participant)}>
-                            {t("button.drop")}
-                        </Button>
-                    )}
                     {viewer.is_organizer && (
                         <Dropdown>
                             <DropdownButton
@@ -258,7 +255,7 @@ export function TournamentRoster({
                                     </DropdownItem>
                                 )}
                                 {canDrop && (
-                                    <DropdownItem onClick={() => void drop(participant)}>
+                                    <DropdownItem onClick={() => setDropping(participant)}>
                                         <XCircleIcon />
                                         <DropdownLabel>{t("button.drop")}</DropdownLabel>
                                     </DropdownItem>
@@ -388,6 +385,17 @@ export function TournamentRoster({
                 title={t("button.remove-player")}
                 description={t("description.confirm-remove-player", { name: removing?.display_name ?? "" })}
                 confirmLabel={t("button.remove-player")}
+            />
+
+            <ConfirmDialog
+                open={dropping !== null}
+                onClose={() => setDropping(null)}
+                onConfirm={async () => {
+                    if (dropping !== null) await drop(dropping);
+                }}
+                title={t("heading.drop-player")}
+                description={t("description.confirm-drop-player", { name: dropping?.display_name ?? "" })}
+                confirmLabel={t("button.drop")}
             />
 
             <DecklistDialog

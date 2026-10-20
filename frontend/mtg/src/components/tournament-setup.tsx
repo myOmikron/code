@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { TournamentParticipantResponse, TournamentResponse, TournamentViewerResponse } from "src/api/generated";
 import { DecklistDialog } from "src/components/decklist-dialog";
+import { TournamentDropButton } from "src/components/tournament-drop-button";
 import { TournamentJoinBar } from "src/components/tournament-join-code";
 import { TournamentNextStep } from "src/components/tournament-next-step";
 import { TournamentRoster, TournamentRosterList, decklistMatters } from "src/components/tournament-roster";
@@ -66,7 +67,21 @@ export function TournamentSetup({
                     onChanged={onChanged}
                 />
             ) : (
-                <TournamentSlots count={participantCount} max={tournament.max_participants} className={CARD} />
+                <div className={clsx(CARD, "flex flex-wrap items-center gap-3")}>
+                    <TournamentSlots
+                        count={participantCount}
+                        max={tournament.max_participants}
+                        className={"min-w-40 flex-1"}
+                    />
+                    {ownParticipant !== null && (
+                        <TournamentDropButton
+                            tournamentUuid={tournamentUuid}
+                            participant={ownParticipant.uuid}
+                            started={false}
+                            onChanged={onChanged}
+                        />
+                    )}
+                </div>
             )}
 
             {tournament.description != null && tournament.description !== "" && <Text>{tournament.description}</Text>}
