@@ -1642,17 +1642,25 @@ fn a_new_decks_first_deck_change_holds_its_settings() {
 impl Fixture {
     /// Makes the newest Deck change look older than the coalescing window
     async fn age_latest(&mut self) {
+        self.age_latest_by(120).await;
+    }
+
+    /// Makes the newest Deck change look `seconds` older
+    async fn age_latest_by(&mut self, seconds: i64) {
         let mut tx = Database::global()
             .start_transaction()
             .await
             .expect("start a transaction");
         (&mut tx)
             .execute::<All>(
-                "UPDATE deck_change SET changed_at = changed_at - INTERVAL '2 minutes' \
+                "UPDATE deck_change SET changed_at = changed_at - make_interval(secs => $2) \
                  WHERE uuid = (SELECT uuid FROM deck_change WHERE deck = $1 \
                  ORDER BY uuid DESC LIMIT 1)"
                     .to_string(),
-                vec![SqlValue::Uuid(self.deck.parse().expect("deck uuid"))],
+                vec![
+                    SqlValue::Uuid(self.deck.parse().expect("deck uuid")),
+                    SqlValue::F64(seconds as f64),
+                ],
             )
             .await
             .expect("backdate the newest Deck change");
@@ -1775,6 +1783,25 @@ fn an_edit_after_the_window_stays_apart() {
             fixture.kinds().await,
             vec!["Edit", "Edit", "Settings", "Settings", "Edit", "Created"]
         );
+        assert_eq!(fixture.latest().await, vec![("Main".to_string(), 2, 3)]);
+    });
+}
+
+#[test]
+fn the_window_counts_from_the_first_of_the_joined_edits() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        let entry = fixture
+            .add(json!({ "printing": Uuid::new_v4(), "quantity": 1, "zone": "Main" }))
+            .await;
+        fixture.age_latest_by(40).await;
+        fixture.patch(&entry, json!({ "quantity": 2 })).await;
+        assert_eq!(fixture.kinds().await, vec!["Edit", "Created"]);
+        fixture.age_latest_by(40).await;
+
+        fixture.patch(&entry, json!({ "quantity": 3 })).await;
+
+        assert_eq!(fixture.kinds().await, vec!["Edit", "Edit", "Created"]);
         assert_eq!(fixture.latest().await, vec![("Main".to_string(), 2, 3)]);
     });
 }
