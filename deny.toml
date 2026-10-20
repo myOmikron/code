@@ -7,6 +7,10 @@ ignore = [
     # rsa implementation vulnerable to Marvin attack, a side-channel timing attack; fix is included in rsa v0.10 (currently a release candidate)
     "RUSTSEC-2023-0071", # openidconnect depends on rsa
 
+    # webpki-roots 0.26.11 only re-exports the roots of webpki-roots 1.x, which is at the fixed 1.0.10;
+    # async-nats (latest 0.50) pins tokio-websockets 0.10, which still depends on 0.26
+    "RUSTSEC-2026-0381",
+
     # proc-macro-error2 is unmaintained
     # "RUSTSEC-2026-0173", # matrix-sdk depends on it
 ]
