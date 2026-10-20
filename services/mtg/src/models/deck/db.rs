@@ -192,7 +192,11 @@ pub struct DeckInsertPatch {
     pub folder: Option<ForeignModel<DeckFolderModel>>,
 }
 
-/// One card slot of a [`DeckModel`]
+/// One Deck entry of a [`DeckModel`]
+///
+/// A deck holds at most one per printing, zone, foil and proxy: the unique
+/// index `deckcard_entry` over those and `deck` is created by hand in migration
+/// 0046, since rorm declares no unique index across several columns.
 #[derive(Model, Debug)]
 #[rorm(rename = "deckcard")]
 pub struct DeckCardModel {

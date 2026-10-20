@@ -825,7 +825,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Put a card into a deck  Copies of a print already sitting in the zone (same finish) fold into that slot instead of opening a second row beside it. The answer is the slot\'s bookkeeping fields either way — catalog data and tags come from the list endpoint.
+     * Put a card into a deck  Copies joining an alike Deck entry (same printing, zone, finish and proxy status) raise its count instead of opening a second line beside it. The answer is the entry\'s bookkeeping fields either way; catalog data and tags come from the list endpoint.
      * Put a card into a deck
      */
     async addDeckCardRaw(requestParameters: AddDeckCardOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DeckCardResponse>> {
@@ -836,7 +836,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Put a card into a deck  Copies of a print already sitting in the zone (same finish) fold into that slot instead of opening a second row beside it. The answer is the slot\'s bookkeeping fields either way — catalog data and tags come from the list endpoint.
+     * Put a card into a deck  Copies joining an alike Deck entry (same printing, zone, finish and proxy status) raise its count instead of opening a second line beside it. The answer is the entry\'s bookkeeping fields either way; catalog data and tags come from the list endpoint.
      * Put a card into a deck
      */
     async addDeckCard(requestParameters: AddDeckCardOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DeckCardResponse> {
@@ -6346,8 +6346,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Change a slot: its count, its zone or the print it sleeves
-     * Change a slot: its count, its zone or the print it sleeves
+     * Change a Deck entry: its count, its zone or the print it sleeves  An entry made alike to another one merges into it, and a count of zero removes it.
+     * Change a Deck entry: its count, its zone or the print it sleeves
      */
     async updateDeckCardRaw(requestParameters: UpdateDeckCardOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
         const requestOptions = await this.updateDeckCardRequestOpts(requestParameters);
@@ -6361,8 +6361,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Change a slot: its count, its zone or the print it sleeves
-     * Change a slot: its count, its zone or the print it sleeves
+     * Change a Deck entry: its count, its zone or the print it sleeves  An entry made alike to another one merges into it, and a count of zero removes it.
+     * Change a Deck entry: its count, its zone or the print it sleeves
      */
     async updateDeckCard(requestParameters: UpdateDeckCardOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
         const response = await this.updateDeckCardRaw(requestParameters, initOverrides);

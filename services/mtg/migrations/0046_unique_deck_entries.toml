@@ -1,0 +1,123 @@
+[Migration]
+Hash = "4127705309816429461"
+Initial = false
+Dependency = 45
+Replaces = []
+
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+CREATE TEMPORARY TABLE deckcard_merge ON COMMIT DROP AS
+SELECT uuid AS duplicate, keeper, quantity
+FROM (
+    SELECT uuid,
+           quantity,
+           FIRST_VALUE(uuid) OVER (
+               PARTITION BY deck, printing, zone, foil, proxy
+               ORDER BY uuid
+           ) AS keeper
+    FROM deckcard
+) ranked
+WHERE uuid <> keeper;
+"""
+
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+UPDATE deckcard c
+SET quantity = c.quantity + m.copies
+FROM (
+    SELECT keeper, SUM(quantity) AS copies
+    FROM deckcard_merge
+    GROUP BY keeper
+) m
+WHERE c.uuid = m.keeper;
+"""
+
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+UPDATE deck_card_tag a
+SET deck_card = m.keeper
+FROM deckcard_merge m
+WHERE a.deck_card = m.duplicate;
+"""
+
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+DELETE FROM deck_card_tag a
+USING deck_card_tag b
+WHERE a.deck_card = b.deck_card
+  AND a.tag = b.tag
+  AND a.uuid > b.uuid
+  AND a.deck_card IN (SELECT keeper FROM deckcard_merge);
+"""
+
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+DELETE FROM deckcard
+WHERE uuid IN (SELECT duplicate FROM deckcard_merge);
+"""
+
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+DROP TABLE deckcard_merge;
+"""
+
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+CREATE UNIQUE INDEX deckcard_entry ON deckcard (deck, printing, zone, foil, proxy);
+"""

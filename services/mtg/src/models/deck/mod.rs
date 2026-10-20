@@ -6,6 +6,7 @@
 //! a legal deck is computed against the current card catalog, which lives in
 //! the client.
 
+use std::collections::HashMap;
 use std::str::FromStr;
 
 use galvyn::core::re_exports::schemars;
@@ -57,7 +58,7 @@ pub mod tag;
 const BULK_INSERT_CHUNK: usize = 4096;
 
 /// The zone a [`DeckCard`] sits in
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
 pub enum DeckZone {
     /// The main deck
     Main,
@@ -739,6 +740,23 @@ pub struct DeckCardPatch {
     pub proxy: Option<bool>,
 }
 
+/// What tells the Deck entries of one deck apart
+///
+/// A deck holds at most one Deck entry per key, which the database enforces.
+/// Every edit that would make two entries alike merges them instead, so a key
+/// names exactly one entry, which is what a Deck change identifies it by.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct DeckEntryKey {
+    /// Scryfall's id of the printing
+    pub printing: Uuid,
+    /// Which zone the entry sits in
+    pub zone: DeckZone,
+    /// Whether the copies are the foil ones
+    pub foil: bool,
+    /// Whether the copies are stand-ins rather than the real cards
+    pub proxy: bool,
+}
+
 /// One card slot to write into a [`Deck`]
 #[derive(Debug, Clone)]
 pub struct DeckCardInsert {
@@ -754,7 +772,29 @@ pub struct DeckCardInsert {
     pub proxy: bool,
 }
 
+impl DeckCardInsert {
+    /// The key the inserted Deck entry is told apart by
+    pub fn key(&self) -> DeckEntryKey {
+        DeckEntryKey {
+            printing: self.printing,
+            zone: self.zone,
+            foil: self.foil,
+            proxy: self.proxy,
+        }
+    }
+}
+
 impl DeckCard {
+    /// The key this Deck entry is told apart by
+    pub fn key(&self) -> DeckEntryKey {
+        DeckEntryKey {
+            printing: self.printing,
+            zone: self.zone,
+            foil: self.foil,
+            proxy: self.proxy,
+        }
+    }
+
     /// Fetch every card of a deck, in the order the slots were added
     ///
     /// Ordered by the primary key alone, which is v7 and therefore insertion
@@ -793,17 +833,76 @@ impl DeckCard {
         Ok(card.map(DeckCard::from))
     }
 
-    /// Put a card into a deck
+    /// The Deck entry of a deck with this key, `None` while it holds none
+    async fn find_alike(
+        tx: &mut Transaction,
+        deck: DeckUuid,
+        key: DeckEntryKey,
+    ) -> Result<Option<DeckCard>, rorm::Error> {
+        let card = rorm::query(&mut *tx, DeckCardModel)
+            .condition(rorm::and![
+                DeckCardModel.deck.equals(deck.0),
+                DeckCardModel.printing.equals(key.printing),
+                DeckCardModel.zone.equals(key.zone),
+                DeckCardModel.foil.equals(key.foil),
+                DeckCardModel.proxy.equals(key.proxy),
+            ])
+            .optional()
+            .await?;
+        Ok(card.map(DeckCard::from))
+    }
+
+    /// Set how many copies a Deck entry holds
+    async fn set_quantity(
+        tx: &mut Transaction,
+        uuid: DeckCardUuid,
+        quantity: i32,
+    ) -> Result<(), rorm::Error> {
+        rorm::update(&mut *tx, DeckCardModel)
+            .set(DeckCardModel.quantity, quantity)
+            .condition(DeckCardModel.uuid.equals(uuid.0))
+            .await?;
+        Ok(())
+    }
+
+    /// Fold a Deck entry into the alike one, which takes its copies and its tags
     ///
-    /// One row per slot, and no folding into an existing one: the same card can
-    /// legitimately sit in two zones, and which print is sleeved is the owner's
-    /// choice. Combining is the caller's decision.
+    /// `quantity` is how many copies `from` brings along. `from` is gone
+    /// afterwards; the returned entry is `onto` with both counts summed.
+    async fn merge_into(
+        tx: &mut Transaction,
+        from: DeckCardUuid,
+        quantity: i32,
+        onto: DeckCard,
+    ) -> Result<DeckCard, rorm::Error> {
+        let quantity = onto.quantity + quantity;
+        Self::set_quantity(&mut *tx, onto.uuid, quantity).await?;
+        DeckTag::copy_assignments(&mut *tx, from, onto.uuid).await?;
+        rorm::delete(&mut *tx, DeckCardModel)
+            .condition(DeckCardModel.uuid.equals(from.0))
+            .await?;
+        Ok(DeckCard { quantity, ..onto })
+    }
+
+    /// Put copies of a card into a deck
+    ///
+    /// When the deck already holds an alike Deck entry, the copies raise its
+    /// count instead of opening another one beside it. Only an exact match
+    /// folds: a different printing, zone, finish or proxy status is a Deck
+    /// entry of its own, so a real add never launders into a stack of
+    /// stand-ins, or the other way around.
     #[instrument(name = "DeckCard::add", skip(tx))]
     pub async fn add(
         tx: &mut Transaction,
         deck: DeckUuid,
         insert: DeckCardInsert,
     ) -> Result<DeckCard, rorm::Error> {
+        if let Some(alike) = Self::find_alike(&mut *tx, deck, insert.key()).await? {
+            let quantity = alike.quantity + insert.quantity;
+            Self::set_quantity(&mut *tx, alike.uuid, quantity).await?;
+            return Ok(DeckCard { quantity, ..alike });
+        }
+
         let card = rorm::insert(&mut *tx, DeckCardModel)
             .single(&DeckCardInsertPatch {
                 uuid: Uuid::now_v7(),
@@ -818,117 +917,82 @@ impl DeckCard {
         Ok(DeckCard::from(card))
     }
 
-    /// Put a card into a deck, folding it into the slot that already holds it
+    /// Change some of a Deck entry's fields, leaving the rest alone
     ///
-    /// Two rows of the same card in the same zone is never what was meant, so
-    /// when the deck already holds a slot with this printing, zone, finish and
-    /// proxy status, the copies raise that slot's count instead of opening
-    /// another row beside it. Only an exact match folds — which print is
-    /// sleeved is the owner's choice, and a different edition, finish or proxy
-    /// status stays its own slot; a real add must not silently launder into a
-    /// slot of stand-ins, or the other way around.
-    ///
-    /// A deck that already holds duplicates (from before folding existed)
-    /// folds into the oldest of them; the others are left alone.
-    #[instrument(name = "DeckCard::add_folded", skip(tx))]
-    pub async fn add_folded(
-        tx: &mut Transaction,
-        deck: DeckUuid,
-        insert: DeckCardInsert,
-    ) -> Result<DeckCard, rorm::Error> {
-        let existing = rorm::query(&mut *tx, DeckCardModel)
-            .condition(rorm::and![
-                DeckCardModel.deck.equals(deck.0),
-                DeckCardModel.printing.equals(insert.printing),
-                DeckCardModel.zone.equals(insert.zone),
-                DeckCardModel.foil.equals(insert.foil),
-                DeckCardModel.proxy.equals(insert.proxy),
-            ])
-            .order_asc(DeckCardModel.uuid)
-            .all()
-            .await?
-            .into_iter()
-            .next()
-            .map(DeckCard::from);
-
-        if let Some(slot) = existing {
-            let updated = Self::update(
-                &mut *tx,
-                deck,
-                slot.uuid,
-                DeckCardPatch {
-                    quantity: Some(slot.quantity + insert.quantity),
-                    ..Default::default()
-                },
-            )
-            .await?;
-            if let DeckAccess::Granted(card) = updated {
-                return Ok(card);
-            }
-        }
-
-        Self::add(tx, deck, insert).await
-    }
-
-    /// Change some of a slot's fields, leaving the rest alone
-    ///
-    /// The slot keeps its identity, which is the whole point of editing a deck
+    /// The entry keeps its identity, which is the whole point of editing a deck
     /// card by card rather than rewriting the list: a later link back to the
     /// collection entry a card came from hangs off this uuid.
+    ///
+    /// Two exceptions. A change that makes the entry alike to another one folds
+    /// it into that one, which keeps its uuid, takes the copies and gains the
+    /// tags. A quantity below one removes the entry; the result is `None` then.
     #[instrument(name = "DeckCard::update", skip(tx))]
     pub async fn update(
         tx: &mut Transaction,
         deck: DeckUuid,
         uuid: DeckCardUuid,
         patch: DeckCardPatch,
-    ) -> Result<DeckAccess<DeckCard>, rorm::Error> {
-        let builder = rorm::update(&mut *tx, DeckCardModel)
-            .begin_dyn_set()
-            .set_if(DeckCardModel.printing, patch.printing)
-            .set_if(DeckCardModel.quantity, patch.quantity)
-            .set_if(DeckCardModel.zone, patch.zone)
-            .set_if(DeckCardModel.foil, patch.foil)
-            .set_if(DeckCardModel.proxy, patch.proxy);
-
-        let Ok(builder) = builder.finish_dyn_set() else {
-            return Ok(match Self::get(&mut *tx, deck, uuid).await? {
-                Some(card) => DeckAccess::Granted(card),
-                None => DeckAccess::Denied,
-            });
+    ) -> Result<DeckAccess<Option<DeckCard>>, rorm::Error> {
+        let Some(entry) = Self::get(&mut *tx, deck, uuid).await? else {
+            return Ok(DeckAccess::Denied);
         };
 
-        let affected = builder
-            .condition(rorm::and![
-                DeckCardModel.uuid.equals(uuid.0),
-                DeckCardModel.deck.equals(deck.0),
-            ])
-            .await?;
-        if affected == 0 {
-            return Ok(DeckAccess::Denied);
+        let quantity = patch.quantity.unwrap_or(entry.quantity);
+        if quantity < 1 {
+            Self::delete(&mut *tx, deck, uuid).await?;
+            return Ok(DeckAccess::Granted(None));
         }
 
-        Ok(match Self::get(&mut *tx, deck, uuid).await? {
-            Some(card) => DeckAccess::Granted(card),
-            None => DeckAccess::Denied,
-        })
+        let key = DeckEntryKey {
+            printing: patch.printing.unwrap_or(entry.printing),
+            zone: patch.zone.unwrap_or(entry.zone),
+            foil: patch.foil.unwrap_or(entry.foil),
+            proxy: patch.proxy.unwrap_or(entry.proxy),
+        };
+        if key != entry.key()
+            && let Some(alike) = Self::find_alike(&mut *tx, deck, key).await?
+        {
+            let merged = Self::merge_into(&mut *tx, uuid, quantity, alike).await?;
+            return Ok(DeckAccess::Granted(Some(merged)));
+        }
+
+        rorm::update(&mut *tx, DeckCardModel)
+            .set(DeckCardModel.printing, key.printing)
+            .set(DeckCardModel.quantity, quantity)
+            .set(DeckCardModel.zone, key.zone)
+            .set(DeckCardModel.foil, key.foil)
+            .set(DeckCardModel.proxy, key.proxy)
+            .condition(DeckCardModel.uuid.equals(uuid.0))
+            .await?;
+        Ok(DeckAccess::Granted(Some(DeckCard {
+            uuid,
+            deck,
+            printing: key.printing,
+            quantity,
+            zone: key.zone,
+            foil: key.foil,
+            proxy: key.proxy,
+        })))
     }
 
-    /// Point a slot at the printing that is really sleeved up in it
+    /// Point a Deck entry at the printing that is really sleeved up in it
     ///
     /// Sourcing a card in another edition than the list names makes the list
-    /// wrong, so the list follows: the slot takes the printing that arrived.
-    /// When only part of the slot was covered, it is split, because two editions
-    /// of a card are two piles of cardboard and one row cannot honestly stand
-    /// for both. The new row inherits the old one's tags — they say what the
-    /// card is for in this deck, which a different artwork does not change.
+    /// wrong, so the list follows: the entry takes the printing that arrived.
+    /// When only part of the entry was covered, it is split, because two editions
+    /// of a card are two piles of cardboard and one entry cannot honestly stand
+    /// for both. The split-off copies inherit the old entry's tags, since they
+    /// say what the card is for in this deck, which a different artwork does
+    /// not change. Either way, copies that end up alike to another Deck entry
+    /// merge into it.
     ///
-    /// Filing real cardboard also clears a proxy flag — this is how "I found a
+    /// Filing real cardboard also clears a proxy flag: this is how "I found a
     /// copy" turns a stand-in back into the genuine article, covered or split
-    /// the same way as a printing change. A slot already pointed at this exact
+    /// the same way as a printing change. An entry already pointed at this exact
     /// printing and finish still needs to run through when it is proxied, so a
     /// proxy of the very printing later acquired clears too.
     ///
-    /// Does nothing when the slot already says what arrived and is not proxied.
+    /// Does nothing when the entry already says what arrived and is not proxied.
     #[instrument(name = "DeckCard::point_at", skip(tx))]
     pub async fn point_at(
         tx: &mut Transaction,
@@ -937,16 +1001,16 @@ impl DeckCard {
         printing: Uuid,
         foil: bool,
         quantity: i32,
-    ) -> Result<DeckAccess<DeckCard>, rorm::Error> {
+    ) -> Result<DeckAccess, rorm::Error> {
         let Some(slot) = Self::get(&mut *tx, deck, uuid).await? else {
             return Ok(DeckAccess::Denied);
         };
         if slot.printing == printing && slot.foil == foil && !slot.proxy {
-            return Ok(DeckAccess::Granted(slot));
+            return Ok(DeckAccess::Granted(()));
         }
 
         if quantity >= slot.quantity {
-            return Self::update(
+            Self::update(
                 &mut *tx,
                 deck,
                 uuid,
@@ -957,20 +1021,11 @@ impl DeckCard {
                     ..Default::default()
                 },
             )
-            .await;
+            .await?;
+            return Ok(DeckAccess::Granted(()));
         }
 
-        Self::update(
-            &mut *tx,
-            deck,
-            uuid,
-            DeckCardPatch {
-                quantity: Some(slot.quantity - quantity),
-                ..Default::default()
-            },
-        )
-        .await?;
-
+        Self::set_quantity(&mut *tx, uuid, slot.quantity - quantity).await?;
         let created = Self::add(
             &mut *tx,
             deck,
@@ -985,7 +1040,7 @@ impl DeckCard {
         .await?;
         DeckTag::copy_assignments(&mut *tx, uuid, created.uuid).await?;
 
-        Ok(DeckAccess::Granted(created))
+        Ok(DeckAccess::Granted(()))
     }
 
     /// Take a card out of a deck
@@ -1006,10 +1061,10 @@ impl DeckCard {
 
     /// Replace a deck's card list wholesale
     ///
-    /// For importing a decklist, not for editing: every slot is deleted and
-    /// written again, so the uuids change and anything hanging off them is
-    /// lost. Editing goes through [`DeckCard::add_folded`], [`DeckCard::update`]
-    /// and [`DeckCard::delete`].
+    /// For importing a decklist, not for editing: every Deck entry is deleted
+    /// and written again, so the uuids change and anything hanging off them is
+    /// lost. Editing goes through [`DeckCard::add`], [`DeckCard::update`] and
+    /// [`DeckCard::delete`].
     ///
     /// Returns `false` if the deck does not exist.
     #[instrument(name = "DeckCard::replace_all", skip(tx, cards))]
@@ -1037,52 +1092,96 @@ impl DeckCard {
 
     /// Put a whole decklist into a deck at once
     ///
-    /// What an import writes. One statement per chunk rather than one per card:
-    /// a pasted decklist is a hundred rows, and a round trip each turns pasting
-    /// into waiting.
+    /// What an import writes. Cards the list names twice are summed, and cards
+    /// the deck already holds an alike Deck entry of raise its count, the same
+    /// way [`DeckCard::add`] folds them. The new entries go in one statement per
+    /// chunk rather than one per card: a pasted decklist is a hundred rows, and
+    /// a round trip each turns pasting into waiting.
     #[instrument(name = "DeckCard::add_many", skip(tx, cards))]
     pub async fn add_many(
         tx: &mut Transaction,
         deck: DeckUuid,
         cards: Vec<DeckCardInsert>,
-    ) -> Result<Vec<DeckCardUuid>, rorm::Error> {
-        let patches: Vec<_> = cards
+    ) -> Result<(), rorm::Error> {
+        let mut wanted: Vec<DeckCardInsert> = Vec::with_capacity(cards.len());
+        let mut positions: HashMap<DeckEntryKey, usize> = HashMap::new();
+        for card in cards {
+            match positions.get(&card.key()) {
+                Some(&position) => wanted[position].quantity += card.quantity,
+                None => {
+                    positions.insert(card.key(), wanted.len());
+                    wanted.push(card);
+                }
+            }
+        }
+
+        let held: HashMap<DeckEntryKey, DeckCard> = Self::get_all_in_deck(&mut *tx, deck)
+            .await?
             .into_iter()
-            .map(|card| DeckCardInsertPatch {
-                uuid: Uuid::now_v7(),
-                deck: ForeignModelByField(deck.0),
-                printing: card.printing,
-                quantity: card.quantity,
-                zone: card.zone,
-                foil: card.foil,
-                proxy: card.proxy,
-            })
+            .map(|entry| (entry.key(), entry))
             .collect();
-        let uuids = patches
-            .iter()
-            .map(|patch| DeckCardUuid(patch.uuid))
-            .collect();
+
+        let mut patches = Vec::new();
+        for card in wanted {
+            match held.get(&card.key()) {
+                Some(entry) => {
+                    Self::set_quantity(&mut *tx, entry.uuid, entry.quantity + card.quantity)
+                        .await?;
+                }
+                None => patches.push(DeckCardInsertPatch {
+                    uuid: Uuid::now_v7(),
+                    deck: ForeignModelByField(deck.0),
+                    printing: card.printing,
+                    quantity: card.quantity,
+                    zone: card.zone,
+                    foil: card.foil,
+                    proxy: card.proxy,
+                }),
+            }
+        }
 
         for chunk in patches.chunks(BULK_INSERT_CHUNK) {
             rorm::insert(&mut *tx, DeckCardModel).bulk(chunk).await?;
         }
 
-        Ok(uuids)
+        Ok(())
     }
 
     /// Repoint every deck card of a merged Scryfall printing at its replacement
     ///
-    /// See [`crate::models::collection::CollectionEntry::apply_printing_merge`].
+    /// A Deck entry that becomes alike to one already holding the replacement
+    /// merges into it. See
+    /// [`crate::models::collection::CollectionEntry::apply_printing_merge`].
     #[instrument(name = "DeckCard::apply_printing_merge", skip(tx))]
     pub async fn apply_printing_merge(
         tx: &mut Transaction,
         old_printing: Uuid,
         new_printing: Uuid,
     ) -> Result<u64, rorm::Error> {
-        let affected = rorm::update(&mut *tx, DeckCardModel)
-            .set(DeckCardModel.printing, new_printing)
+        let entries = rorm::query(&mut *tx, DeckCardModel)
             .condition(DeckCardModel.printing.equals(old_printing))
+            .all()
             .await?;
+        let affected = entries.len() as u64;
+
+        for entry in entries.into_iter().map(DeckCard::from) {
+            let key = DeckEntryKey {
+                printing: new_printing,
+                ..entry.key()
+            };
+            match Self::find_alike(&mut *tx, entry.deck, key).await? {
+                Some(alike) => {
+                    Self::merge_into(&mut *tx, entry.uuid, entry.quantity, alike).await?;
+                }
+                None => {
+                    rorm::update(&mut *tx, DeckCardModel)
+                        .set(DeckCardModel.printing, new_printing)
+                        .condition(DeckCardModel.uuid.equals(entry.uuid.0))
+                        .await?;
+                }
+            }
+        }
+
         rorm::update(&mut *tx, GlobalCardTagModel)
             .set(GlobalCardTagModel.printing, new_printing)
             .condition(GlobalCardTagModel.printing.equals(old_printing))
