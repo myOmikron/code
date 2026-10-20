@@ -11,6 +11,8 @@ Name | Type
 `entries` | [Array&lt;DeckEntryChangeResponse&gt;](DeckEntryChangeResponse.md)
 `fields` | [Array&lt;FieldDifference&gt;](FieldDifference.md)
 `kind` | [DeckChangeKind](DeckChangeKind.md)
+`reference` | string
+`undone` | boolean
 `uuid` | string
 
 

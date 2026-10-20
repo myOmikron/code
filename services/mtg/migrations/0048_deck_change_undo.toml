@@ -1,0 +1,47 @@
+[Migration]
+Hash = "4568129340117902492"
+Initial = false
+Dependency = 47
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "deck_change"
+
+[Migration.Operations.Field]
+Name = "reference"
+Type = "uuid"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "foreign_key"
+
+[Migration.Operations.Field.Annotations.Value]
+TableName = "deck_change"
+ColumnName = "uuid"
+OnDelete = "Cascade"
+OnUpdate = "Cascade"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/deck/history/db.rs"
+Line = 53
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "deck_change"
+
+[Migration.Operations.Field]
+Name = "undone"
+Type = "boolean"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "default_value"
+Value = false
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/deck/history/db.rs"
+Line = 61
+Column = 9

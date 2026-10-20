@@ -227,6 +227,8 @@ export const Api = {
         delete: async (uuid: UUID) => handleError(defaultApi.deleteDeck({ deck: uuid })),
         history: async (deck: UUID, after: UUID | null = null) =>
             handleError(defaultApi.getDeckHistory({ deck, after })),
+        undo: async (deck: UUID) => handleError(defaultApi.undoDeckChange({ deck })),
+        redo: async (deck: UUID) => handleError(defaultApi.redoDeckChange({ deck })),
         setVisibility: async (uuid: UUID, visibility: Visibility) =>
             handleError(defaultApi.setVisibilityDeck({ deck: uuid, SetDeckVisibilityRequest: { visibility } })),
         rotateShareToken: async (uuid: UUID) => handleError(defaultApi.rotateDeckShareToken({ deck: uuid })),

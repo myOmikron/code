@@ -930,6 +930,16 @@ function RouteComponent() {
     }
 
     /**
+     * Undoes or redoes a Deck change, then reads the deck back
+     *
+     * @param action undo or redo
+     */
+    async function step(action: (deck: string) => Promise<unknown>) {
+        await action(deckUuid);
+        await refresh();
+    }
+
+    /**
      * Writes which bracket the deck claims to be built to
      *
      * @param bracket the bracket, `null` to leave it unsaid
@@ -977,6 +987,10 @@ function RouteComponent() {
                 onClearFocus={() => setFocus(null)}
                 onManageTags={() => setManagingTags(true)}
                 onChangeBracket={(next) => void saveBracket(next)}
+                canUndo={deck.can_undo}
+                canRedo={deck.can_redo}
+                onUndo={() => void serial(() => step(Api.decks.undo))}
+                onRedo={() => void serial(() => step(Api.decks.redo))}
             />
 
             <div className={"flex items-start gap-6"}>

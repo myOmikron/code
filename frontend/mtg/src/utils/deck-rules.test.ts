@@ -101,6 +101,8 @@ function deckHeader(overrides: Partial<DeckResponse> = {}): DeckResponse {
         allow_banned: false,
         allow_duplicates: false,
         allow_extra_commanders: false,
+        can_redo: false,
+        can_undo: false,
         created_at: "2024-01-01T00:00:00Z",
         format: "commander",
         name: "Test deck",

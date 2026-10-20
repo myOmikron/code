@@ -7,5 +7,8 @@ pub mod schema;
 
 /// Initialize the Deck history routes, nested under a deck
 pub fn initialize_routes() -> GalvynRouter {
-    GalvynRouter::new().handler(handler::get_deck_history)
+    GalvynRouter::new()
+        .handler(handler::get_deck_history)
+        .handler(handler::undo_deck_change)
+        .handler(handler::redo_deck_change)
 }

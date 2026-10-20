@@ -7,6 +7,8 @@ One page of a Deck history, newest first
 
 Name | Type
 ------------ | -------------
+`can_redo` | boolean
+`can_undo` | boolean
 `changes` | [Array&lt;DeckChangeResponse&gt;](DeckChangeResponse.md)
 `next_cursor` | string
 

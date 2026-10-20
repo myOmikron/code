@@ -44,6 +44,21 @@ pub struct DeckChangeModel {
 
     /// What the Deck change did to the deck
     pub difference: Json<DeckDifference>,
+
+    /// The earlier Deck change an undo inverts or a redo reapplies
+    ///
+    /// `None` for every other kind. Points backwards only, so removing the
+    /// latest Deck change never leaves a dangling reference.
+    #[rorm(on_update = "Cascade", on_delete = "Cascade")]
+    pub reference: Option<ForeignModel<DeckChangeModel>>,
+
+    /// Whether an undo took this Deck change back and no redo reapplied it since
+    ///
+    /// Never set on an undo or redo itself. Derived from the undos and redos
+    /// referring to it, kept here so the undo stack is read without replaying
+    /// the Deck history.
+    #[rorm(default = false)]
+    pub undone: bool,
 }
 
 /// Insert patch for [`DeckChangeModel`]
@@ -60,4 +75,22 @@ pub struct DeckChangeInsertPatch {
     pub kind: DeckChangeKind,
     /// What the Deck change did to the deck
     pub difference: Json<DeckDifference>,
+}
+
+/// Insert patch for an undo or redo [`DeckChangeModel`], which refers to another
+#[derive(Patch)]
+#[rorm(model = "DeckChangeModel")]
+pub struct DeckChangeReferringInsertPatch {
+    /// Primary key
+    pub uuid: Uuid,
+    /// The deck whose Deck history this belongs to
+    pub deck: ForeignModel<DeckModel>,
+    /// When the Deck change happened
+    pub changed_at: OffsetDateTime,
+    /// What the owner did
+    pub kind: DeckChangeKind,
+    /// What the Deck change did to the deck
+    pub difference: Json<DeckDifference>,
+    /// The earlier Deck change it inverts or reapplies
+    pub reference: Option<ForeignModel<DeckChangeModel>>,
 }
