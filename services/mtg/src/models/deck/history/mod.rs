@@ -8,7 +8,9 @@
 //! A Deck change stores only its [`DeckDifference`], see
 //! `docs/adr/0001-deck-history-only-grows.md`. The difference of the first
 //! Deck change (created or introduced) is never applied backwards: the deck
-//! did not exist before it.
+//! did not exist before it. It holds the deck's state instead: its Deck
+//! entries from zero, and every recorded deck field with the same value
+//! before and after.
 
 use std::collections::HashMap;
 
@@ -40,6 +42,7 @@ use crate::models::deck::DeckEntryKey;
 use crate::models::deck::DeckUuid;
 use crate::models::deck::DeckZone;
 use crate::models::deck::db::DeckCardModel;
+use crate::models::deck::db::DeckModel;
 use crate::models::deck::history::db::DeckChangeInsertPatch;
 use crate::models::deck::history::db::DeckChangeModel;
 use crate::models::printing::db::PrintingModel;
@@ -324,6 +327,17 @@ impl DeckDifference {
         }
     }
 
+    /// A deck's state, as its first Deck change holds it
+    ///
+    /// `entries` are the deck's Deck entries, all from zero; every recorded
+    /// field is there with its value before and after.
+    fn state(deck: &Deck, entries: Self) -> Self {
+        Self {
+            entries: entries.entries,
+            fields: FieldDifference::all(deck, deck),
+        }
+    }
+
     /// The difference between two states of a deck's recorded fields
     ///
     /// Read the deck before and after an operation changing its settings and
@@ -454,17 +468,17 @@ impl DeckHistory {
             tx,
             deck.uuid,
             DeckChangeKind::Created,
-            DeckDifference::default(),
+            DeckDifference::state(deck, DeckDifference::default()),
         )
         .await
     }
 
-    /// Restart the Deck histories of decks with their current Deck entries
+    /// Restart the Deck histories of decks with their current state
     ///
     /// Each deck's Deck history is deleted and replaced by one
-    /// [`DeckChangeKind::Introduced`] Deck change holding its Deck entries, so
-    /// nothing is left of how and when they came to be. For decks handed to
-    /// the tombstone, whose builder is going away.
+    /// [`DeckChangeKind::Introduced`] Deck change holding its Deck entries and
+    /// deck fields, so nothing is left of how and when they came to be. For
+    /// decks handed to the tombstone, whose builder is going away.
     #[instrument(name = "DeckHistory::introduce", skip(tx, decks))]
     pub async fn introduce(tx: &mut Transaction, decks: &[DeckUuid]) -> Result<(), rorm::Error> {
         if decks.is_empty() {
@@ -517,15 +531,31 @@ impl DeckHistory {
             );
         }
 
+        let settings = rorm::query(&mut *tx, DeckModel)
+            .condition(DynamicCollection::or_unchecked(
+                decks
+                    .iter()
+                    .map(|deck| DeckModel.uuid.equals(deck.into_inner()).boxed())
+                    .collect(),
+            ))
+            .all()
+            .await?;
+
         let changed_at = OffsetDateTime::now_utc();
-        let patches: Vec<_> = decks
-            .iter()
+        let patches: Vec<_> = settings
+            .into_iter()
+            .map(Deck::from)
             .map(|deck| DeckChangeInsertPatch {
                 uuid: Uuid::now_v7(),
-                deck: ForeignModelByField(deck.into_inner()),
+                deck: ForeignModelByField(deck.uuid.into_inner()),
                 changed_at,
                 kind: DeckChangeKind::Introduced,
-                difference: Json(differences.remove(&deck.into_inner()).unwrap_or_default()),
+                difference: Json(DeckDifference::state(
+                    &deck,
+                    differences
+                        .remove(&deck.uuid.into_inner())
+                        .unwrap_or_default(),
+                )),
             })
             .collect();
         rorm::insert(&mut *tx, DeckChangeModel)
