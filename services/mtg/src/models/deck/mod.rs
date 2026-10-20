@@ -37,6 +37,7 @@ use crate::models::deck::db::DeckModel;
 use crate::models::deck::db::GlobalCardTagModel;
 use crate::models::deck::folder::DeckFolder;
 use crate::models::deck::folder::DeckFolderUuid;
+use crate::models::deck::history::DeckDifference;
 use crate::models::deck::tag::DeckTag;
 use crate::models::format::has_brackets;
 use crate::models::share::generate_share_token;
@@ -994,6 +995,7 @@ impl DeckCard {
     /// proxy of the very printing later acquired clears too.
     ///
     /// Does nothing when the entry already says what arrived and is not proxied.
+    /// Answers what it did to the Deck entries, for the Deck history.
     #[instrument(name = "DeckCard::point_at", skip(tx))]
     pub async fn point_at(
         tx: &mut Transaction,
@@ -1002,16 +1004,17 @@ impl DeckCard {
         printing: Uuid,
         foil: bool,
         quantity: i32,
-    ) -> Result<DeckAccess, rorm::Error> {
+    ) -> Result<DeckAccess<DeckDifference>, rorm::Error> {
         let Some(slot) = Self::get(&mut *tx, deck, uuid).await? else {
             return Ok(DeckAccess::Denied);
         };
+        let mut difference = DeckDifference::default();
         if slot.printing == printing && slot.foil == foil && !slot.proxy {
-            return Ok(DeckAccess::Granted(()));
+            return Ok(DeckAccess::Granted(difference));
         }
 
         if quantity >= slot.quantity {
-            Self::update(
+            let updated = Self::update(
                 &mut *tx,
                 deck,
                 uuid,
@@ -1023,10 +1026,14 @@ impl DeckCard {
                 },
             )
             .await?;
-            return Ok(DeckAccess::Granted(()));
+            if let DeckAccess::Granted(updated) = updated {
+                difference.updated(&slot, slot.quantity, updated.as_ref());
+            }
+            return Ok(DeckAccess::Granted(difference));
         }
 
         Self::set_quantity(&mut *tx, uuid, slot.quantity - quantity).await?;
+        difference.entry(slot.key(), slot.quantity, slot.quantity - quantity);
         let created = Self::add(
             &mut *tx,
             deck,
@@ -1040,8 +1047,9 @@ impl DeckCard {
         )
         .await?;
         DeckTag::copy_assignments(&mut *tx, uuid, created.uuid).await?;
+        difference.entry(created.key(), created.quantity - quantity, created.quantity);
 
-        Ok(DeckAccess::Granted(()))
+        Ok(DeckAccess::Granted(difference))
     }
 
     /// Take a card out of a deck

@@ -2025,9 +2025,41 @@ export const DeckChangeKind = {
     */
     Introduced: 'Introduced',
     /**
-    * A plain edit of Deck entries: copies added, taken away or moved
+    * A plain edit of Deck entries: copies added or taken away
     */
-    Edit: 'Edit'
+    Edit: 'Edit',
+    /**
+    * A Deck entry moved to another zone
+    */
+    Move: 'Move',
+    /**
+    * A Deck entry switched to another printing, finish or proxy status
+    */
+    Switch: 'Switch',
+    /**
+    * Copies of a Deck entry given up for another card in the same zone
+    */
+    Swap: 'Swap',
+    /**
+    * A decklist added to the deck
+    */
+    Import: 'Import',
+    /**
+    * A decklist that replaced the deck&#39;s Deck entries
+    */
+    Replace: 'Replace',
+    /**
+    * The advisor&#39;s suggestions added to the deck
+    */
+    Fill: 'Fill',
+    /**
+    * A Deck entry made to say what was sourced for it: another printing or finish, or no longer a proxy
+    */
+    Sourcing: 'Sourcing',
+    /**
+    * Deck fields changed: name, description, format, colors, bracket, rule-zero exceptions or size
+    */
+    Settings: 'Settings'
 } as const;
 export type DeckChangeKind = typeof DeckChangeKind[keyof typeof DeckChangeKind];
 
@@ -2049,6 +2081,12 @@ export interface DeckChangeResponse {
      * @memberof DeckChangeResponse
      */
     entries: Array<DeckEntryChangeResponse>;
+    /**
+     * The deck fields it changed
+     * @type {Array<FieldDifference>}
+     * @memberof DeckChangeResponse
+     */
+    fields: Array<FieldDifference>;
     /**
      * What the owner did
      * @type {DeckChangeKind}
@@ -2754,6 +2792,327 @@ export const ExtraTurnRule = {
 export type ExtraTurnRule = typeof ExtraTurnRule[keyof typeof ExtraTurnRule];
 
 /**
+ * @type FieldDifference
+ * The value one deck field held before and after a Deck change
+ * @export
+ */
+export type FieldDifference = FieldDifferenceOneOf | FieldDifferenceOneOf1 | FieldDifferenceOneOf2 | FieldDifferenceOneOf3 | FieldDifferenceOneOf4 | FieldDifferenceOneOf5 | FieldDifferenceOneOf6 | FieldDifferenceOneOf7 | FieldDifferenceOneOf8;
+/**
+ * The deck's name
+ * @export
+ * @interface FieldDifferenceOneOf
+ */
+export interface FieldDifferenceOneOf {
+    /**
+     * The name after
+     * @type {string}
+     * @memberof FieldDifferenceOneOf
+     */
+    after: string;
+    /**
+     * The name before
+     * @type {string}
+     * @memberof FieldDifferenceOneOf
+     */
+    before: string;
+    /**
+     * 
+     * @type {FieldDifferenceOneOfFieldEnum}
+     * @memberof FieldDifferenceOneOf
+     */
+    field: FieldDifferenceOneOfFieldEnum;
+}
+
+
+/**
+ * @export
+ */
+export const FieldDifferenceOneOfFieldEnum = {
+    Name: 'Name'
+} as const;
+export type FieldDifferenceOneOfFieldEnum = typeof FieldDifferenceOneOfFieldEnum[keyof typeof FieldDifferenceOneOfFieldEnum];
+
+/**
+ * The deck's description
+ * @export
+ * @interface FieldDifferenceOneOf1
+ */
+export interface FieldDifferenceOneOf1 {
+    /**
+     * The description after, `None` for none
+     * @type {string}
+     * @memberof FieldDifferenceOneOf1
+     */
+    after?: string | null;
+    /**
+     * The description before, `None` for none
+     * @type {string}
+     * @memberof FieldDifferenceOneOf1
+     */
+    before?: string | null;
+    /**
+     * 
+     * @type {FieldDifferenceOneOf1FieldEnum}
+     * @memberof FieldDifferenceOneOf1
+     */
+    field: FieldDifferenceOneOf1FieldEnum;
+}
+
+
+/**
+ * @export
+ */
+export const FieldDifferenceOneOf1FieldEnum = {
+    Description: 'Description'
+} as const;
+export type FieldDifferenceOneOf1FieldEnum = typeof FieldDifferenceOneOf1FieldEnum[keyof typeof FieldDifferenceOneOf1FieldEnum];
+
+/**
+ * The format the deck is built for
+ * @export
+ * @interface FieldDifferenceOneOf2
+ */
+export interface FieldDifferenceOneOf2 {
+    /**
+     * The format after
+     * @type {string}
+     * @memberof FieldDifferenceOneOf2
+     */
+    after: string;
+    /**
+     * The format before
+     * @type {string}
+     * @memberof FieldDifferenceOneOf2
+     */
+    before: string;
+    /**
+     * 
+     * @type {FieldDifferenceOneOf2FieldEnum}
+     * @memberof FieldDifferenceOneOf2
+     */
+    field: FieldDifferenceOneOf2FieldEnum;
+}
+
+
+/**
+ * @export
+ */
+export const FieldDifferenceOneOf2FieldEnum = {
+    Format: 'Format'
+} as const;
+export type FieldDifferenceOneOf2FieldEnum = typeof FieldDifferenceOneOf2FieldEnum[keyof typeof FieldDifferenceOneOf2FieldEnum];
+
+/**
+ * The colours the deck may play
+ * @export
+ * @interface FieldDifferenceOneOf3
+ */
+export interface FieldDifferenceOneOf3 {
+    /**
+     * The colours after, `None` for whatever the commander allows
+     * @type {string}
+     * @memberof FieldDifferenceOneOf3
+     */
+    after?: string | null;
+    /**
+     * The colours before, `None` for whatever the commander allows
+     * @type {string}
+     * @memberof FieldDifferenceOneOf3
+     */
+    before?: string | null;
+    /**
+     * 
+     * @type {FieldDifferenceOneOf3FieldEnum}
+     * @memberof FieldDifferenceOneOf3
+     */
+    field: FieldDifferenceOneOf3FieldEnum;
+}
+
+
+/**
+ * @export
+ */
+export const FieldDifferenceOneOf3FieldEnum = {
+    Colors: 'Colors'
+} as const;
+export type FieldDifferenceOneOf3FieldEnum = typeof FieldDifferenceOneOf3FieldEnum[keyof typeof FieldDifferenceOneOf3FieldEnum];
+
+/**
+ * The Commander bracket the deck is built to
+ * @export
+ * @interface FieldDifferenceOneOf4
+ */
+export interface FieldDifferenceOneOf4 {
+    /**
+     * The bracket after, `None` when unset
+     * @type {number}
+     * @memberof FieldDifferenceOneOf4
+     */
+    after?: number | null;
+    /**
+     * The bracket before, `None` when unset
+     * @type {number}
+     * @memberof FieldDifferenceOneOf4
+     */
+    before?: number | null;
+    /**
+     * 
+     * @type {FieldDifferenceOneOf4FieldEnum}
+     * @memberof FieldDifferenceOneOf4
+     */
+    field: FieldDifferenceOneOf4FieldEnum;
+}
+
+
+/**
+ * @export
+ */
+export const FieldDifferenceOneOf4FieldEnum = {
+    Bracket: 'Bracket'
+} as const;
+export type FieldDifferenceOneOf4FieldEnum = typeof FieldDifferenceOneOf4FieldEnum[keyof typeof FieldDifferenceOneOf4FieldEnum];
+
+/**
+ * Whether the table agreed to more commanders than the format allows
+ * @export
+ * @interface FieldDifferenceOneOf5
+ */
+export interface FieldDifferenceOneOf5 {
+    /**
+     * The agreement after
+     * @type {boolean}
+     * @memberof FieldDifferenceOneOf5
+     */
+    after: boolean;
+    /**
+     * The agreement before
+     * @type {boolean}
+     * @memberof FieldDifferenceOneOf5
+     */
+    before: boolean;
+    /**
+     * 
+     * @type {FieldDifferenceOneOf5FieldEnum}
+     * @memberof FieldDifferenceOneOf5
+     */
+    field: FieldDifferenceOneOf5FieldEnum;
+}
+
+
+/**
+ * @export
+ */
+export const FieldDifferenceOneOf5FieldEnum = {
+    AllowExtraCommanders: 'AllowExtraCommanders'
+} as const;
+export type FieldDifferenceOneOf5FieldEnum = typeof FieldDifferenceOneOf5FieldEnum[keyof typeof FieldDifferenceOneOf5FieldEnum];
+
+/**
+ * Whether the table agreed to more copies of a card than the format allows
+ * @export
+ * @interface FieldDifferenceOneOf6
+ */
+export interface FieldDifferenceOneOf6 {
+    /**
+     * The agreement after
+     * @type {boolean}
+     * @memberof FieldDifferenceOneOf6
+     */
+    after: boolean;
+    /**
+     * The agreement before
+     * @type {boolean}
+     * @memberof FieldDifferenceOneOf6
+     */
+    before: boolean;
+    /**
+     * 
+     * @type {FieldDifferenceOneOf6FieldEnum}
+     * @memberof FieldDifferenceOneOf6
+     */
+    field: FieldDifferenceOneOf6FieldEnum;
+}
+
+
+/**
+ * @export
+ */
+export const FieldDifferenceOneOf6FieldEnum = {
+    AllowDuplicates: 'AllowDuplicates'
+} as const;
+export type FieldDifferenceOneOf6FieldEnum = typeof FieldDifferenceOneOf6FieldEnum[keyof typeof FieldDifferenceOneOf6FieldEnum];
+
+/**
+ * Whether the table agreed to cards the format bans
+ * @export
+ * @interface FieldDifferenceOneOf7
+ */
+export interface FieldDifferenceOneOf7 {
+    /**
+     * The agreement after
+     * @type {boolean}
+     * @memberof FieldDifferenceOneOf7
+     */
+    after: boolean;
+    /**
+     * The agreement before
+     * @type {boolean}
+     * @memberof FieldDifferenceOneOf7
+     */
+    before: boolean;
+    /**
+     * 
+     * @type {FieldDifferenceOneOf7FieldEnum}
+     * @memberof FieldDifferenceOneOf7
+     */
+    field: FieldDifferenceOneOf7FieldEnum;
+}
+
+
+/**
+ * @export
+ */
+export const FieldDifferenceOneOf7FieldEnum = {
+    AllowBanned: 'AllowBanned'
+} as const;
+export type FieldDifferenceOneOf7FieldEnum = typeof FieldDifferenceOneOf7FieldEnum[keyof typeof FieldDifferenceOneOf7FieldEnum];
+
+/**
+ * How many cards the deck is built to
+ * @export
+ * @interface FieldDifferenceOneOf8
+ */
+export interface FieldDifferenceOneOf8 {
+    /**
+     * The size after, `None` for the format's rule
+     * @type {number}
+     * @memberof FieldDifferenceOneOf8
+     */
+    after?: number | null;
+    /**
+     * The size before, `None` for the format's rule
+     * @type {number}
+     * @memberof FieldDifferenceOneOf8
+     */
+    before?: number | null;
+    /**
+     * 
+     * @type {FieldDifferenceOneOf8FieldEnum}
+     * @memberof FieldDifferenceOneOf8
+     */
+    field: FieldDifferenceOneOf8FieldEnum;
+}
+
+
+/**
+ * @export
+ */
+export const FieldDifferenceOneOf8FieldEnum = {
+    DeckSize: 'DeckSize'
+} as const;
+export type FieldDifferenceOneOf8FieldEnum = typeof FieldDifferenceOneOf8FieldEnum[keyof typeof FieldDifferenceOneOf8FieldEnum];
+
+/**
  * File a session's staging area into a collection
  * @export
  * @interface FileScannerSessionRequest
@@ -3269,6 +3628,14 @@ export interface ImportDeckCardsRequest {
      */
     cards: Array<AddDeckCardRequest>;
     /**
+     * Where the list comes from, a pasted decklist unless said otherwise
+     * 
+     * Only tells the Deck history how to describe the import. An advisor fill always adds.
+     * @type {ImportOrigin}
+     * @memberof ImportDeckCardsRequest
+     */
+    origin?: ImportOrigin;
+    /**
      * Whether to throw away what is in the deck first
      * 
      * Replacing gives every slot a new id, so anything hanging off those ids is lost. That is right for "this decklist is the deck now" and wrong for everything else, which is why it is the caller's decision.
@@ -3277,6 +3644,8 @@ export interface ImportDeckCardsRequest {
      */
     replace: boolean;
 }
+
+
 /**
  * What an import wrote
  * @export
@@ -3290,6 +3659,23 @@ export interface ImportDeckCardsResponse {
      */
     added: number;
 }
+
+/**
+ * Where the cards of an import come from
+ * @export
+ */
+export const ImportOrigin = {
+    /**
+    * A decklist the owner pasted, linked or copied from another deck
+    */
+    Decklist: 'Decklist',
+    /**
+    * The cards the advisor suggested to fill the deck up with
+    */
+    AdvisorFill: 'AdvisorFill'
+} as const;
+export type ImportOrigin = typeof ImportOrigin[keyof typeof ImportOrigin];
+
 /**
  * One page of a collection
  * @export

@@ -784,6 +784,22 @@ pub struct ImportDeckCardsRequest {
     /// is lost. That is right for "this decklist is the deck now" and wrong for
     /// everything else, which is why it is the caller's decision.
     pub replace: bool,
+    /// Where the list comes from, a pasted decklist unless said otherwise
+    ///
+    /// Only tells the Deck history how to describe the import. An advisor
+    /// fill always adds.
+    #[serde(default)]
+    pub origin: ImportOrigin,
+}
+
+/// Where the cards of an import come from
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub enum ImportOrigin {
+    /// A decklist the owner pasted, linked or copied from another deck
+    #[default]
+    Decklist,
+    /// The cards the advisor suggested to fill the deck up with
+    AdvisorFill,
 }
 
 /// What an import wrote

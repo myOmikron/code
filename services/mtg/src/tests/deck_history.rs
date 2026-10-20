@@ -928,3 +928,680 @@ fn only_the_owner_swaps() {
         );
     });
 }
+
+#[test]
+fn moving_an_entry_records_one_move() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        let entry = fixture
+            .add(json!({ "printing": Uuid::new_v4(), "quantity": 2, "zone": "Main" }))
+            .await;
+
+        fixture.patch(&entry, json!({ "zone": "Side" })).await;
+
+        assert_eq!(fixture.kinds().await, vec!["Move", "Edit", "Created"]);
+        let mut latest = fixture.latest().await;
+        latest.sort();
+        assert_eq!(
+            latest,
+            vec![("Main".to_string(), 2, 0), ("Side".to_string(), 0, 2)]
+        );
+    });
+}
+
+#[test]
+fn a_move_merging_into_an_alike_entry_is_one_move() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        let printing = Uuid::new_v4();
+        let entry = fixture
+            .add(json!({ "printing": printing, "quantity": 2, "zone": "Main" }))
+            .await;
+        fixture
+            .add(json!({ "printing": printing, "quantity": 1, "zone": "Side" }))
+            .await;
+
+        fixture.patch(&entry, json!({ "zone": "Side" })).await;
+
+        assert_eq!(
+            fixture.kinds().await,
+            vec!["Move", "Edit", "Edit", "Created"]
+        );
+        let mut latest = fixture.latest().await;
+        latest.sort();
+        assert_eq!(
+            latest,
+            vec![("Main".to_string(), 2, 0), ("Side".to_string(), 1, 3)]
+        );
+    });
+}
+
+#[test]
+fn switching_printing_foil_or_proxy_records_one_switch_each() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        let printing = Uuid::new_v4();
+        let entry = fixture
+            .add(json!({ "printing": printing, "quantity": 2, "zone": "Main" }))
+            .await;
+        let other = Uuid::new_v4();
+        fixture
+            .add(json!({ "printing": other, "quantity": 1, "zone": "Main", "foil": true }))
+            .await;
+
+        fixture.patch(&entry, json!({ "foil": true })).await;
+        assert_eq!(fixture.kinds().await[0], "Switch");
+        fixture.patch(&entry, json!({ "proxy": true })).await;
+        assert_eq!(fixture.kinds().await[0], "Switch");
+        fixture
+            .patch(&entry, json!({ "printing": other, "proxy": false }))
+            .await;
+
+        assert_eq!(
+            fixture.kinds().await,
+            vec!["Switch", "Switch", "Switch", "Edit", "Edit", "Created"]
+        );
+        let history = fixture.history("").await;
+        let mut merged: Vec<(bool, i64, i64)> = history["changes"][0]["entries"]
+            .as_array()
+            .expect("entry list")
+            .iter()
+            .map(|entry| {
+                (
+                    entry["printing"] == json!(other),
+                    entry["before"].as_i64().expect("before"),
+                    entry["after"].as_i64().expect("after"),
+                )
+            })
+            .collect();
+        merged.sort();
+        assert_eq!(merged, vec![(false, 2, 0), (true, 1, 3)]);
+    });
+}
+
+#[test]
+fn a_swap_records_one_swap_with_both_cards() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        let going = Uuid::new_v4();
+        let coming = Uuid::new_v4();
+        let entry = fixture
+            .add(json!({ "printing": going, "quantity": 3, "zone": "Main" }))
+            .await;
+        fixture
+            .add(json!({ "printing": coming, "quantity": 1, "zone": "Main" }))
+            .await;
+
+        let response = fixture
+            .swap(&entry, json!({ "quantity": 2, "printing": coming }))
+            .await;
+        assert_eq!(response.status, StatusCode::OK, "{response:?}");
+
+        assert_eq!(
+            fixture.kinds().await,
+            vec!["Swap", "Edit", "Edit", "Created"]
+        );
+        let history = fixture.history("").await;
+        let mut swapped: Vec<(bool, i64, i64)> = history["changes"][0]["entries"]
+            .as_array()
+            .expect("entry list")
+            .iter()
+            .map(|entry| {
+                (
+                    entry["printing"] == json!(coming),
+                    entry["before"].as_i64().expect("before"),
+                    entry["after"].as_i64().expect("after"),
+                )
+            })
+            .collect();
+        swapped.sort();
+        assert_eq!(swapped, vec![(false, 3, 1), (true, 1, 3)]);
+    });
+}
+
+#[test]
+fn an_adding_import_records_one_import() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        let held = Uuid::new_v4();
+        fixture
+            .add(json!({ "printing": held, "quantity": 1, "zone": "Main" }))
+            .await;
+
+        fixture
+            .import(
+                json!([
+                    { "printing": held, "quantity": 2, "zone": "Main" },
+                    { "printing": Uuid::new_v4(), "quantity": 4, "zone": "Side" },
+                ]),
+                false,
+            )
+            .await;
+
+        assert_eq!(fixture.kinds().await, vec!["Import", "Edit", "Created"]);
+        let mut latest = fixture.latest().await;
+        latest.sort();
+        assert_eq!(
+            latest,
+            vec![("Main".to_string(), 1, 3), ("Side".to_string(), 0, 4)]
+        );
+    });
+}
+
+#[test]
+fn a_replacing_import_records_one_replace() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        let kept = Uuid::new_v4();
+        fixture
+            .import(
+                json!([
+                    { "printing": kept, "quantity": 2, "zone": "Main" },
+                    { "printing": Uuid::new_v4(), "quantity": 1, "zone": "Side" },
+                ]),
+                false,
+            )
+            .await;
+
+        fixture
+            .import(
+                json!([
+                    { "printing": kept, "quantity": 2, "zone": "Main" },
+                    { "printing": Uuid::new_v4(), "quantity": 3, "zone": "Maybe" },
+                ]),
+                true,
+            )
+            .await;
+
+        assert_eq!(fixture.kinds().await, vec!["Replace", "Import", "Created"]);
+        let mut latest = fixture.latest().await;
+        latest.sort();
+        assert_eq!(
+            latest,
+            vec![("Maybe".to_string(), 0, 3), ("Side".to_string(), 1, 0)]
+        );
+    });
+}
+
+#[test]
+fn an_advisor_fill_records_one_fill() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        let deck = fixture.deck.clone();
+
+        let body = fixture
+            .owner
+            .json(
+                Method::POST,
+                &api(&format!("decks/{deck}/cards/import")),
+                &json!({
+                    "cards": [{ "printing": Uuid::new_v4(), "quantity": 2, "zone": "Main" }],
+                    "replace": false,
+                    "origin": "AdvisorFill",
+                }),
+            )
+            .await
+            .ok_json();
+        assert_eq!(body["added"], 1);
+
+        assert_eq!(fixture.kinds().await, vec!["Fill", "Created"]);
+        assert_eq!(fixture.latest().await, vec![("Main".to_string(), 0, 2)]);
+    });
+}
+
+#[test]
+fn an_advisor_fill_never_replaces() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        let deck = fixture.deck.clone();
+
+        let response = fixture
+            .owner
+            .json(
+                Method::POST,
+                &api(&format!("decks/{deck}/cards/import")),
+                &json!({
+                    "cards": [{ "printing": Uuid::new_v4(), "quantity": 2, "zone": "Main" }],
+                    "replace": true,
+                    "origin": "AdvisorFill",
+                }),
+            )
+            .await;
+
+        assert_eq!(response.status, StatusCode::BAD_REQUEST, "{response:?}");
+        assert_eq!(fixture.kinds().await, vec!["Created"]);
+    });
+}
+
+#[test]
+fn a_clone_starts_its_own_deck_history() {
+    run(async {
+        let mut original = Fixture::new().await;
+        let printing = Uuid::new_v4();
+        let entry = original
+            .add(json!({ "printing": printing, "quantity": 3, "zone": "Main" }))
+            .await;
+        original.patch(&entry, json!({ "zone": "Side" })).await;
+        let cards = json!([{ "printing": printing, "quantity": 3, "zone": "Side" }]);
+
+        let body = original
+            .owner
+            .json(
+                Method::POST,
+                &api("decks"),
+                &json!({
+                    "name": "History (copy)",
+                    "description": null,
+                    "format": "modern",
+                    "visibility": "Private",
+                }),
+            )
+            .await
+            .ok_json();
+        let mut clone = Fixture {
+            owner: original.owner,
+            deck: body["uuid"].as_str().expect("deck uuid").to_string(),
+        };
+        clone.import(cards, false).await;
+
+        assert_eq!(clone.kinds().await, vec!["Import", "Created"]);
+        assert_eq!(clone.latest().await, vec![("Side".to_string(), 0, 3)]);
+    });
+}
+
+impl Fixture {
+    /// Sends a request to the deck itself or one of its settings
+    async fn send(&mut self, method: Method, path: &str, body: Value) {
+        let url = if path.is_empty() {
+            api(&format!("decks/{}", self.deck))
+        } else {
+            api(&format!("decks/{}/{path}", self.deck))
+        };
+        self.owner.json(method, &url, &body).await.ok_json();
+    }
+
+    /// The newest Deck change's deck fields as (field, before, after)
+    async fn latest_fields(&mut self) -> Vec<(String, Value, Value)> {
+        let history = self.history("").await;
+        history["changes"][0]["fields"]
+            .as_array()
+            .expect("field list")
+            .iter()
+            .map(|field| {
+                (
+                    field["field"].as_str().expect("field").to_string(),
+                    field["before"].clone(),
+                    field["after"].clone(),
+                )
+            })
+            .collect()
+    }
+}
+
+/// `(field, before, after)` as [`Fixture::latest_fields`] reads it
+fn field(name: &str, before: Value, after: Value) -> (String, Value, Value) {
+    (name.to_string(), before, after)
+}
+
+#[test]
+fn renaming_a_deck_records_one_settings_change() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+
+        fixture
+            .send(
+                Method::PUT,
+                "",
+                json!({ "name": "Renamed", "description": null, "format": "modern" }),
+            )
+            .await;
+
+        assert_eq!(fixture.kinds().await, vec!["Settings", "Created"]);
+        assert_eq!(
+            fixture.latest_fields().await,
+            vec![field("Name", json!("History"), json!("Renamed"))]
+        );
+        assert!(fixture.latest().await.is_empty());
+    });
+}
+
+#[test]
+fn saving_unchanged_deck_settings_records_nothing() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+
+        fixture
+            .send(
+                Method::PUT,
+                "",
+                json!({ "name": "History", "description": null, "format": "modern" }),
+            )
+            .await;
+        fixture
+            .send(Method::PUT, "colors", json!({ "colors": null }))
+            .await;
+
+        assert_eq!(fixture.kinds().await, vec!["Created"]);
+    });
+}
+
+#[test]
+fn each_recorded_deck_field_records_one_settings_change() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+
+        fixture
+            .send(
+                Method::PUT,
+                "",
+                json!({ "name": "History", "description": "Go wide", "format": "commander" }),
+            )
+            .await;
+        let mut fields = fixture.latest_fields().await;
+        fields.sort_by(|a, b| a.0.cmp(&b.0));
+        assert_eq!(
+            fields,
+            vec![
+                field("Description", Value::Null, json!("Go wide")),
+                field("Format", json!("modern"), json!("commander")),
+            ]
+        );
+
+        fixture
+            .send(Method::PUT, "colors", json!({ "colors": "WU" }))
+            .await;
+        assert_eq!(
+            fixture.latest_fields().await,
+            vec![field("Colors", Value::Null, json!("WU"))]
+        );
+
+        fixture
+            .send(Method::PUT, "bracket", json!({ "bracket": 3 }))
+            .await;
+        assert_eq!(
+            fixture.latest_fields().await,
+            vec![field("Bracket", Value::Null, json!(3))]
+        );
+
+        fixture
+            .send(
+                Method::PUT,
+                "rule-zero",
+                json!({
+                    "allow_extra_commanders": true,
+                    "allow_duplicates": false,
+                    "allow_banned": true,
+                    "deck_size": 60,
+                }),
+            )
+            .await;
+        let mut fields = fixture.latest_fields().await;
+        fields.sort_by(|a, b| a.0.cmp(&b.0));
+        assert_eq!(
+            fields,
+            vec![
+                field("AllowBanned", json!(false), json!(true)),
+                field("AllowExtraCommanders", json!(false), json!(true)),
+                field("DeckSize", Value::Null, json!(60)),
+            ]
+        );
+
+        assert_eq!(
+            fixture.kinds().await,
+            vec!["Settings", "Settings", "Settings", "Settings", "Created"]
+        );
+    });
+}
+
+#[test]
+fn a_format_change_clearing_the_bracket_records_both_in_one_change() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        fixture
+            .send(
+                Method::PUT,
+                "",
+                json!({ "name": "History", "description": null, "format": "commander" }),
+            )
+            .await;
+        fixture
+            .send(Method::PUT, "bracket", json!({ "bracket": 2 }))
+            .await;
+
+        fixture
+            .send(
+                Method::PUT,
+                "",
+                json!({ "name": "History", "description": null, "format": "pioneer" }),
+            )
+            .await;
+
+        assert_eq!(
+            fixture.kinds().await,
+            vec!["Settings", "Settings", "Settings", "Created"]
+        );
+        let mut fields = fixture.latest_fields().await;
+        fields.sort_by(|a, b| a.0.cmp(&b.0));
+        assert_eq!(
+            fields,
+            vec![
+                field("Bracket", json!(2), Value::Null),
+                field("Format", json!("commander"), json!("pioneer")),
+            ]
+        );
+    });
+}
+
+impl Fixture {
+    /// Sends a request to the deck and answers with its body
+    async fn send_json(&mut self, method: Method, path: &str, body: Value) -> Value {
+        let url = api(&format!("decks/{}/{path}", self.deck));
+        self.owner.json(method, &url, &body).await.ok_json()
+    }
+
+    /// A new collection of the owner holding one stack, answering the uuids of both
+    async fn stack(&mut self, printing: Uuid, quantity: i32, finish: &str) -> (String, String) {
+        let collection = self
+            .owner
+            .json(
+                Method::POST,
+                &api("collections"),
+                &json!({
+                    "name": "Binder",
+                    "description": "",
+                    "color": "red",
+                    "icon": "box",
+                    "visibility": "Private",
+                }),
+            )
+            .await
+            .ok_json();
+        let collection = collection["uuid"]
+            .as_str()
+            .expect("collection uuid")
+            .to_string();
+        self.owner
+            .json(
+                Method::POST,
+                &api(&format!("collections/{collection}/entries")),
+                &json!({ "entries": [{
+                    "printing": printing,
+                    "quantity": quantity,
+                    "condition": "NearMint",
+                    "finish": finish,
+                    "purchase_price_cents": null,
+                    "acquired_at": null,
+                }] }),
+            )
+            .await
+            .ok_json();
+        let entries = self
+            .owner
+            .get(&api(&format!("collections/{collection}/entries")))
+            .await
+            .ok_json();
+        let stack = entries["entries"][0]["uuid"]
+            .as_str()
+            .expect("stack uuid")
+            .to_string();
+        (collection, stack)
+    }
+}
+
+#[test]
+fn sourcing_another_printing_for_an_entry_records_one_sourcing_change() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        let listed = Uuid::new_v4();
+        let sourced = Uuid::new_v4();
+        let entry = fixture
+            .add(json!({ "printing": listed, "quantity": 3, "zone": "Main" }))
+            .await;
+        fixture
+            .send_json(Method::POST, "collection", json!(null))
+            .await;
+        let (_, stack) = fixture.stack(sourced, 1, "Foil").await;
+
+        fixture
+            .send_json(
+                Method::POST,
+                "sourcing/take",
+                json!({ "entry": stack, "quantity": 1, "slot": entry }),
+            )
+            .await;
+
+        assert_eq!(fixture.kinds().await, vec!["Sourcing", "Edit", "Created"]);
+        let history = fixture.history("").await;
+        let mut split: Vec<(bool, bool, i64, i64)> = history["changes"][0]["entries"]
+            .as_array()
+            .expect("entry list")
+            .iter()
+            .map(|entry| {
+                (
+                    entry["printing"] == json!(sourced),
+                    entry["foil"].as_bool().expect("foil"),
+                    entry["before"].as_i64().expect("before"),
+                    entry["after"].as_i64().expect("after"),
+                )
+            })
+            .collect();
+        split.sort();
+        assert_eq!(split, vec![(false, false, 3, 2), (true, true, 0, 1)]);
+    });
+}
+
+#[test]
+fn filling_a_proxy_entry_records_one_sourcing_change() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        let proxy = fixture
+            .add(
+                json!({ "printing": Uuid::new_v4(), "quantity": 2, "zone": "Main", "proxy": true }),
+            )
+            .await;
+        fixture
+            .send_json(Method::POST, "collection", json!(null))
+            .await;
+
+        fixture
+            .send_json(Method::POST, "sourcing/fill", json!({ "slot": proxy }))
+            .await;
+
+        assert_eq!(fixture.kinds().await, vec!["Sourcing", "Edit", "Created"]);
+        let history = fixture.history("").await;
+        let mut flags: Vec<(bool, i64, i64)> = history["changes"][0]["entries"]
+            .as_array()
+            .expect("entry list")
+            .iter()
+            .map(|entry| {
+                (
+                    entry["proxy"].as_bool().expect("proxy"),
+                    entry["before"].as_i64().expect("before"),
+                    entry["after"].as_i64().expect("after"),
+                )
+            })
+            .collect();
+        flags.sort();
+        assert_eq!(flags, vec![(false, 0, 2), (true, 2, 0)]);
+    });
+}
+
+#[test]
+fn tags_folder_visibility_sharing_advisor_settings_and_the_deck_collection_record_nothing() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        let printing = Uuid::new_v4();
+        let entry = fixture
+            .add(json!({ "printing": printing, "quantity": 2, "zone": "Main" }))
+            .await;
+        let before = fixture.kinds().await;
+
+        let tag = fixture.tag(&entry, "ramp").await;
+        fixture
+            .send_json(
+                Method::DELETE,
+                &format!("cards/{entry}/tags/{tag}"),
+                json!(null),
+            )
+            .await;
+        fixture
+            .send_json(
+                Method::PUT,
+                &format!("tags/{tag}"),
+                json!({ "name": "fixing", "color": "blue", "icon": "tag", "global": false }),
+            )
+            .await;
+        fixture
+            .send_json(Method::DELETE, &format!("tags/{tag}"), json!(null))
+            .await;
+
+        let folder = fixture
+            .owner
+            .json(Method::POST, &api("folders"), &json!({ "name": "Shelf" }))
+            .await
+            .ok_json();
+        fixture
+            .send_json(Method::POST, "folder", json!({ "folder": folder["uuid"] }))
+            .await;
+        fixture
+            .send(Method::POST, "", json!({ "visibility": "Unlisted" }))
+            .await;
+        fixture
+            .send_json(Method::POST, "share-token", json!({}))
+            .await;
+        let mut settings = fixture
+            .send_json(Method::GET, "advisor-settings", json!(null))
+            .await;
+        settings["setup_done"] = json!(true);
+        fixture
+            .send_json(Method::PUT, "advisor-settings", settings)
+            .await;
+
+        fixture
+            .send_json(Method::POST, "collection", json!(null))
+            .await;
+        let (binder, stack) = fixture.stack(printing, 2, "Nonfoil").await;
+        fixture
+            .send_json(
+                Method::POST,
+                "sourcing/take",
+                json!({ "entry": stack, "quantity": 1, "slot": entry }),
+            )
+            .await;
+        fixture
+            .send_json(Method::POST, "sourcing/fill", json!({ "slot": null }))
+            .await;
+        fixture
+            .send_json(
+                Method::POST,
+                "sourcing/return-all",
+                json!({ "target": binder }),
+            )
+            .await;
+        fixture
+            .send_json(Method::DELETE, "collection", json!(null))
+            .await;
+
+        assert_eq!(fixture.kinds().await, before);
+    });
+}

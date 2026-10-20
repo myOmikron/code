@@ -8,6 +8,7 @@ A decklist to write into a deck
 Name | Type
 ------------ | -------------
 `cards` | [Array&lt;AddDeckCardRequest&gt;](AddDeckCardRequest.md)
+`origin` | [ImportOrigin](ImportOrigin.md)
 `replace` | boolean
 
 

@@ -9,6 +9,7 @@ Name | Type
 ------------ | -------------
 `changed_at` | string
 `entries` | [Array&lt;DeckEntryChangeResponse&gt;](DeckEntryChangeResponse.md)
+`fields` | [Array&lt;FieldDifference&gt;](FieldDifference.md)
 `kind` | [DeckChangeKind](DeckChangeKind.md)
 `uuid` | string
 

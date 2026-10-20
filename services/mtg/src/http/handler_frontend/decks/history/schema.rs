@@ -10,6 +10,7 @@ use crate::models::deck::history::ChangedEntry;
 use crate::models::deck::history::DeckChange;
 use crate::models::deck::history::DeckChangeKind;
 use crate::models::deck::history::DeckChangeUuid;
+use crate::models::deck::history::FieldDifference;
 
 /// The page size of a Deck history for a client that does not ask for one
 fn default_limit() -> u32 {
@@ -47,6 +48,8 @@ pub struct DeckChangeResponse {
     pub changed_at: SchemaDateTime,
     /// The Deck entries it touched
     pub entries: Vec<DeckEntryChangeResponse>,
+    /// The deck fields it changed
+    pub fields: Vec<FieldDifference>,
 }
 
 /// How many copies one Deck entry held before and after a Deck change
@@ -79,6 +82,7 @@ impl From<DeckChange> for DeckChangeResponse {
                 .into_iter()
                 .map(DeckEntryChangeResponse::from)
                 .collect(),
+            fields: value.fields,
         }
     }
 }

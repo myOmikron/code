@@ -10782,10 +10782,66 @@
                         ]
                     },
                     {
-                        "description": "A plain edit of Deck entries: copies added, taken away or moved",
+                        "description": "A plain edit of Deck entries: copies added or taken away",
                         "type": "string",
                         "enum": [
                             "Edit"
+                        ]
+                    },
+                    {
+                        "description": "A Deck entry moved to another zone",
+                        "type": "string",
+                        "enum": [
+                            "Move"
+                        ]
+                    },
+                    {
+                        "description": "A Deck entry switched to another printing, finish or proxy status",
+                        "type": "string",
+                        "enum": [
+                            "Switch"
+                        ]
+                    },
+                    {
+                        "description": "Copies of a Deck entry given up for another card in the same zone",
+                        "type": "string",
+                        "enum": [
+                            "Swap"
+                        ]
+                    },
+                    {
+                        "description": "A decklist added to the deck",
+                        "type": "string",
+                        "enum": [
+                            "Import"
+                        ]
+                    },
+                    {
+                        "description": "A decklist that replaced the deck's Deck entries",
+                        "type": "string",
+                        "enum": [
+                            "Replace"
+                        ]
+                    },
+                    {
+                        "description": "The advisor's suggestions added to the deck",
+                        "type": "string",
+                        "enum": [
+                            "Fill"
+                        ]
+                    },
+                    {
+                        "description": "A Deck entry made to say what was sourced for it: another printing or finish, or no longer a proxy",
+                        "type": "string",
+                        "enum": [
+                            "Sourcing"
+                        ]
+                    },
+                    {
+                        "description": "Deck fields changed: name, description, format, colors, bracket, rule-zero exceptions or size",
+                        "type": "string",
+                        "enum": [
+                            "Settings"
                         ]
                     }
                 ]
@@ -10809,6 +10865,13 @@
                             "$ref": "#/components/schemas/DeckEntryChangeResponse"
                         }
                     },
+                    "fields": {
+                        "description": "The deck fields it changed",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/FieldDifference"
+                        }
+                    },
                     "kind": {
                         "description": "What the owner did",
                         "allOf": [
@@ -10829,6 +10892,7 @@
                 "required": [
                     "changed_at",
                     "entries",
+                    "fields",
                     "kind",
                     "uuid"
                 ]
@@ -11643,6 +11707,272 @@
                     }
                 ]
             },
+            "FieldDifference": {
+                "description": "The value one deck field held before and after a Deck change",
+                "oneOf": [
+                    {
+                        "description": "The deck's name",
+                        "type": "object",
+                        "properties": {
+                            "after": {
+                                "description": "The name after",
+                                "allOf": [
+                                    {
+                                        "$ref": "#/components/schemas/MaxStr_255"
+                                    }
+                                ]
+                            },
+                            "before": {
+                                "description": "The name before",
+                                "allOf": [
+                                    {
+                                        "$ref": "#/components/schemas/MaxStr_255"
+                                    }
+                                ]
+                            },
+                            "field": {
+                                "type": "string",
+                                "enum": [
+                                    "Name"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "after",
+                            "before",
+                            "field"
+                        ]
+                    },
+                    {
+                        "description": "The deck's description",
+                        "type": "object",
+                        "properties": {
+                            "after": {
+                                "nullable": true,
+                                "description": "The description after, `None` for none",
+                                "allOf": [
+                                    {
+                                        "$ref": "#/components/schemas/MaxStr_1024"
+                                    }
+                                ]
+                            },
+                            "before": {
+                                "nullable": true,
+                                "description": "The description before, `None` for none",
+                                "allOf": [
+                                    {
+                                        "$ref": "#/components/schemas/MaxStr_1024"
+                                    }
+                                ]
+                            },
+                            "field": {
+                                "type": "string",
+                                "enum": [
+                                    "Description"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "field"
+                        ]
+                    },
+                    {
+                        "description": "The format the deck is built for",
+                        "type": "object",
+                        "properties": {
+                            "after": {
+                                "description": "The format after",
+                                "allOf": [
+                                    {
+                                        "$ref": "#/components/schemas/MaxStr_32"
+                                    }
+                                ]
+                            },
+                            "before": {
+                                "description": "The format before",
+                                "allOf": [
+                                    {
+                                        "$ref": "#/components/schemas/MaxStr_32"
+                                    }
+                                ]
+                            },
+                            "field": {
+                                "type": "string",
+                                "enum": [
+                                    "Format"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "after",
+                            "before",
+                            "field"
+                        ]
+                    },
+                    {
+                        "description": "The colours the deck may play",
+                        "type": "object",
+                        "properties": {
+                            "after": {
+                                "nullable": true,
+                                "description": "The colours after, `None` for whatever the commander allows",
+                                "allOf": [
+                                    {
+                                        "$ref": "#/components/schemas/MaxStr_8"
+                                    }
+                                ]
+                            },
+                            "before": {
+                                "nullable": true,
+                                "description": "The colours before, `None` for whatever the commander allows",
+                                "allOf": [
+                                    {
+                                        "$ref": "#/components/schemas/MaxStr_8"
+                                    }
+                                ]
+                            },
+                            "field": {
+                                "type": "string",
+                                "enum": [
+                                    "Colors"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "field"
+                        ]
+                    },
+                    {
+                        "description": "The Commander bracket the deck is built to",
+                        "type": "object",
+                        "properties": {
+                            "after": {
+                                "nullable": true,
+                                "description": "The bracket after, `None` when unset",
+                                "type": "integer",
+                                "format": "int16"
+                            },
+                            "before": {
+                                "nullable": true,
+                                "description": "The bracket before, `None` when unset",
+                                "type": "integer",
+                                "format": "int16"
+                            },
+                            "field": {
+                                "type": "string",
+                                "enum": [
+                                    "Bracket"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "field"
+                        ]
+                    },
+                    {
+                        "description": "Whether the table agreed to more commanders than the format allows",
+                        "type": "object",
+                        "properties": {
+                            "after": {
+                                "description": "The agreement after",
+                                "type": "boolean"
+                            },
+                            "before": {
+                                "description": "The agreement before",
+                                "type": "boolean"
+                            },
+                            "field": {
+                                "type": "string",
+                                "enum": [
+                                    "AllowExtraCommanders"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "after",
+                            "before",
+                            "field"
+                        ]
+                    },
+                    {
+                        "description": "Whether the table agreed to more copies of a card than the format allows",
+                        "type": "object",
+                        "properties": {
+                            "after": {
+                                "description": "The agreement after",
+                                "type": "boolean"
+                            },
+                            "before": {
+                                "description": "The agreement before",
+                                "type": "boolean"
+                            },
+                            "field": {
+                                "type": "string",
+                                "enum": [
+                                    "AllowDuplicates"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "after",
+                            "before",
+                            "field"
+                        ]
+                    },
+                    {
+                        "description": "Whether the table agreed to cards the format bans",
+                        "type": "object",
+                        "properties": {
+                            "after": {
+                                "description": "The agreement after",
+                                "type": "boolean"
+                            },
+                            "before": {
+                                "description": "The agreement before",
+                                "type": "boolean"
+                            },
+                            "field": {
+                                "type": "string",
+                                "enum": [
+                                    "AllowBanned"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "after",
+                            "before",
+                            "field"
+                        ]
+                    },
+                    {
+                        "description": "How many cards the deck is built to",
+                        "type": "object",
+                        "properties": {
+                            "after": {
+                                "nullable": true,
+                                "description": "The size after, `None` for the format's rule",
+                                "type": "integer",
+                                "format": "int16"
+                            },
+                            "before": {
+                                "nullable": true,
+                                "description": "The size before, `None` for the format's rule",
+                                "type": "integer",
+                                "format": "int16"
+                            },
+                            "field": {
+                                "type": "string",
+                                "enum": [
+                                    "DeckSize"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "field"
+                        ]
+                    }
+                ]
+            },
             "FileScannerSessionRequest": {
                 "description": "File a session's staging area into a collection",
                 "type": "object",
@@ -12243,6 +12573,15 @@
                             "$ref": "#/components/schemas/AddDeckCardRequest"
                         }
                     },
+                    "origin": {
+                        "description": "Where the list comes from, a pasted decklist unless said otherwise\n\nOnly tells the Deck history how to describe the import. An advisor fill always adds.",
+                        "default": "Decklist",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ImportOrigin"
+                            }
+                        ]
+                    },
                     "replace": {
                         "description": "Whether to throw away what is in the deck first\n\nReplacing gives every slot a new id, so anything hanging off those ids is lost. That is right for \"this decklist is the deck now\" and wrong for everything else, which is why it is the caller's decision.",
                         "type": "boolean"
@@ -12266,6 +12605,25 @@
                 },
                 "required": [
                     "added"
+                ]
+            },
+            "ImportOrigin": {
+                "description": "Where the cards of an import come from",
+                "oneOf": [
+                    {
+                        "description": "A decklist the owner pasted, linked or copied from another deck",
+                        "type": "string",
+                        "enum": [
+                            "Decklist"
+                        ]
+                    },
+                    {
+                        "description": "The cards the advisor suggested to fill the deck up with",
+                        "type": "string",
+                        "enum": [
+                            "AdvisorFill"
+                        ]
+                    }
                 ]
             },
             "ListCardsResponse": {
