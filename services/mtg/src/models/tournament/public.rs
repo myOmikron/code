@@ -209,6 +209,7 @@ mod tests {
             checked_in_at: None,
             notes: None,
             registered_at: galvyn::core::re_exports::time::OffsetDateTime::UNIX_EPOCH,
+            fixed_table: None,
         }
     }
 

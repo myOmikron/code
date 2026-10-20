@@ -10,6 +10,7 @@ Name | Type
 `checked_in_at` | string
 `display_name` | string
 `entered_round` | number
+`fixed_table` | number
 `has_decklist` | boolean
 `is_guest` | boolean
 `notes` | string

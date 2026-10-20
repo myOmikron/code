@@ -72,6 +72,7 @@ import type {
     FormErrorResponseForFinishLoginErrors,
     FormErrorResponseForRegistrationErrors,
     FormErrorResponseForRoundLifecycleErrors,
+    FormErrorResponseForSetFixedTableErrors,
     FormErrorResponseForTournamentSettingsErrors,
     GetDecklistResponse,
     GetTournamentResponse,
@@ -143,6 +144,7 @@ import type {
     SetDeckRuleZeroRequest,
     SetDeckVisibilityRequest,
     SetDecklistRequest,
+    SetFixedTableRequest,
     SetMatchResult200Response,
     SetParticipantDecklist200Response,
     SetProfileVisibilityRequest,
@@ -750,6 +752,12 @@ export interface SetParticipantDecklistRequest {
     tournament: string;
     participant: string;
     SetDecklistRequest?: SetDecklistRequest;
+}
+
+export interface SetParticipantFixedTableRequest {
+    tournament: string;
+    participant: string;
+    SetFixedTableRequest?: SetFixedTableRequest;
 }
 
 export interface SetProfileVisibilityOperationRequest {
@@ -7511,6 +7519,64 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async setParticipantDecklist(requestParameters: SetParticipantDecklistRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SetParticipantDecklist200Response> {
         const response = await this.setParticipantDecklistRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for setParticipantFixedTable without sending the request
+     */
+    async setParticipantFixedTableRequestOpts(requestParameters: SetParticipantFixedTableRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tournament'] == null) {
+            throw new runtime.RequiredError(
+                'tournament',
+                'Required parameter "tournament" was null or undefined when calling setParticipantFixedTable().'
+            );
+        }
+
+        if (requestParameters['participant'] == null) {
+            throw new runtime.RequiredError(
+                'participant',
+                'Required parameter "participant" was null or undefined when calling setParticipantFixedTable().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/tournaments/{tournament}/participants/{participant}/fixed-table`;
+        urlPath = urlPath.replace('{tournament}', encodeURIComponent(String(requestParameters['tournament'])));
+        urlPath = urlPath.replace('{participant}', encodeURIComponent(String(requestParameters['participant'])));
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['SetFixedTableRequest'],
+        };
+    }
+
+    /**
+     * Pin a player to one table, or release them
+     * Pin a player to one table, or release them
+     */
+    async setParticipantFixedTableRaw(requestParameters: SetParticipantFixedTableRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FormErrorResponseForSetFixedTableErrors>> {
+        const requestOptions = await this.setParticipantFixedTableRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Pin a player to one table, or release them
+     * Pin a player to one table, or release them
+     */
+    async setParticipantFixedTable(requestParameters: SetParticipantFixedTableRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FormErrorResponseForSetFixedTableErrors> {
+        const response = await this.setParticipantFixedTableRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

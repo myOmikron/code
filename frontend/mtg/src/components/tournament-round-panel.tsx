@@ -27,6 +27,7 @@ import { TournamentPairingsEditor } from "src/components/tournament-pairings-edi
 import { TournamentPairingsTable } from "src/components/tournament-pairings-table";
 import { TournamentRoundClock } from "src/components/tournament-round-clock";
 import { isFormError } from "src/utils/error";
+import { movedPins } from "src/utils/pairing-edit";
 import { nextRoundKind } from "src/utils/tournament-format";
 import type { RoundClock } from "src/utils/round-clock";
 
@@ -233,8 +234,8 @@ export function TournamentRoundPanel({
         }
         // A pin the layout could not honour is worth saying out loud: the round is perfectly
         // valid, but somebody who cannot leave their table is not at the one they asked for.
-        for (const conflict of response.fixed_table_conflicts) {
-            notify.warning(t("toast.fixed-table-taken", { number: conflict.table_number }));
+        for (const pin of movedPins(response.tables, response.fixed_table_conflicts)) {
+            notify.warning(t("toast.fixed-table-taken", pin));
         }
         await onChanged();
     }

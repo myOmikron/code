@@ -78,6 +78,8 @@ pub struct TournamentParticipant {
     pub notes: Option<MaxStr<512>>,
     /// The point in time the player registered
     pub registered_at: OffsetDateTime,
+    /// The table they never leave, e.g. for a wheelchair
+    pub fixed_table: Option<i16>,
 }
 
 /// Outcome of [`register_account`] and [`register_guest`]
@@ -1080,8 +1082,104 @@ impl From<TournamentParticipantModel> for TournamentParticipant {
             checked_in_at: value.checked_in_at,
             notes: value.notes,
             registered_at: value.registered_at,
+            fixed_table: value.fixed_table,
         }
     }
+}
+
+/// Highest table number a pin may name
+pub const MAX_FIXED_TABLE: i16 = 999;
+
+/// Outcome of [`set_fixed_table`]
+#[derive(Debug, Clone)]
+pub enum FixedTableChange {
+    /// The pin was written
+    Changed,
+    /// Somebody else already holds that table
+    Taken(MaxStr<64>),
+    /// Not a table number
+    Invalid,
+}
+
+/// Pin a player to one table, or release them
+///
+/// The pairing engine numbers the table they land at after the pin; when two
+/// pinned players meet, the first in seat order keeps theirs.
+///
+/// @param tx the transaction to write in
+/// @param organizer_account who is asking
+/// @param tournament the participant belongs to
+/// @param participant whose pin
+/// @param table the table, `None` to release them
+///
+/// @returns whether the pin was written
+#[instrument(name = "participant::set_fixed_table", skip(tx))]
+pub async fn set_fixed_table(
+    tx: &mut Transaction,
+    organizer_account: AccountUuid,
+    tournament: TournamentUuid,
+    participant: TournamentParticipantUuid,
+    table: Option<i16>,
+) -> Result<TournamentAccess<FixedTableChange>, rorm::Error> {
+    if Tournament::role_of(&mut *tx, tournament, organizer_account)
+        .await?
+        .is_none()
+    {
+        return Ok(TournamentAccess::Denied);
+    }
+    let roster = rorm::query(
+        &mut *tx,
+        (
+            TournamentParticipantModel.uuid,
+            TournamentParticipantModel.display_name,
+            TournamentParticipantModel.fixed_table,
+        ),
+    )
+    .condition(
+        TournamentParticipantModel
+            .tournament
+            .equals(tournament.into_inner()),
+    )
+    .all()
+    .await?;
+    if !roster
+        .iter()
+        .any(|(uuid, _, _)| *uuid == participant.into_inner())
+    {
+        return Ok(TournamentAccess::Denied);
+    }
+    if table.is_some_and(|table| !(1..=MAX_FIXED_TABLE).contains(&table)) {
+        return Ok(TournamentAccess::Granted(FixedTableChange::Invalid));
+    }
+    // Probed rather than caught: a unique violation aborts the transaction.
+    if let Some((_, holder, _)) = roster.iter().find(|(uuid, _, pin)| {
+        *uuid != participant.into_inner() && table.is_some() && *pin == table
+    }) {
+        return Ok(TournamentAccess::Granted(FixedTableChange::Taken(
+            holder.clone(),
+        )));
+    }
+
+    rorm::update(&mut *tx, TournamentParticipantModel)
+        .set(TournamentParticipantModel.fixed_table, table)
+        .condition(
+            TournamentParticipantModel
+                .uuid
+                .equals(participant.into_inner()),
+        )
+        .await?;
+
+    Tournament::audit(
+        &mut *tx,
+        tournament,
+        Some(organizer_account),
+        AuditAction::ParticipantFixedTableChanged,
+        Some(participant.into_inner()),
+        None,
+    )
+    .await?;
+
+    Ok(TournamentAccess::Granted(FixedTableChange::Changed))
 }
 
 #[cfg(test)]

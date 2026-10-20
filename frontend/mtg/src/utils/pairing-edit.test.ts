@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { EditLayout } from "src/utils/pairing-edit";
-import { canMove, isRematch, move, movedPlayers, swap, toRequest } from "src/utils/pairing-edit";
+import { canMove, isRematch, move, movedPins, movedPlayers, swap, toRequest } from "src/utils/pairing-edit";
 
 /** A duel round: two tables, one of them reported, and a bye */
 const duels = (): EditLayout => ({
@@ -102,6 +102,32 @@ describe("toRequest", () => {
             ["anna", "ben"],
             ["clara", "david"],
             ["eva", "finn"],
+        ]);
+    });
+});
+
+describe("movedPins", () => {
+    it("names who moves and the table they sit at instead", () => {
+        const seat = (participant: string, display_name: string) => ({
+            participant,
+            display_name,
+            seat: 1,
+            games_won: 0,
+            dropped: false,
+        });
+        const tables = [
+            {
+                uuid: "m1",
+                table_number: 3,
+                status: "Unreported" as const,
+                is_bye: false,
+                is_draw: false,
+                games_drawn: 0,
+                seats: [seat("a", "Anna"), seat("b", "Ben")],
+            },
+        ];
+        expect(movedPins(tables, [{ participant: "b", table_number: 5 }])).toEqual([
+            { name: "Ben", table: 3, number: 5 },
         ]);
     });
 });

@@ -3,6 +3,7 @@ import {
     DocumentTextIcon,
     EllipsisHorizontalIcon,
     LockClosedIcon,
+    MapPinIcon,
     PencilSquareIcon,
     PlusIcon,
     QrCodeIcon,
@@ -30,6 +31,7 @@ import { DecklistPolicy } from "src/api/generated";
 import type { TournamentParticipantResponse, TournamentResponse, TournamentViewerResponse } from "src/api/generated";
 import { ClaimQrDialog } from "src/components/claim-qr-dialog";
 import { DecklistDialog } from "src/components/decklist-dialog";
+import { FixedTableDialog } from "src/components/fixed-table-dialog";
 import type { ParticipantDialogMode } from "src/components/participant-dialog";
 import { ParticipantDialog } from "src/components/participant-dialog";
 import { useAccount } from "src/context/account";
@@ -91,6 +93,7 @@ export function TournamentRoster({
     const [removing, setRemoving] = useState<TournamentParticipantResponse | null>(null);
     const [decklistFor, setDecklistFor] = useState<TournamentParticipantResponse | null>(null);
     const [claimQr, setClaimQr] = useState<TournamentParticipantResponse | null>(null);
+    const [pinning, setPinning] = useState<TournamentParticipantResponse | null>(null);
 
     const checkedIn = participants.filter((participant) => participant.status === "CheckedIn");
     const waiting = participants.filter((participant) => participant.status === "Registered");
@@ -195,6 +198,12 @@ export function TournamentRoster({
                         competing with the name. */}
                     <span className={"flex items-center gap-1.5 truncate text-xs text-zinc-500 dark:text-zinc-400"}>
                         <span>{participant.is_guest ? t("label.guest") : t("label.account")}</span>
+                        {participant.fixed_table != null && (
+                            <>
+                                <span aria-hidden={true}>·</span>
+                                <span>{t("label.fixed-table-meta", { number: participant.fixed_table })}</span>
+                            </>
+                        )}
                         {showsDecklist && (
                             <>
                                 <span aria-hidden={true}>·</span>
@@ -245,6 +254,10 @@ export function TournamentRoster({
                                         <DropdownLabel>{t("button.decklist")}</DropdownLabel>
                                     </DropdownItem>
                                 )}
+                                <DropdownItem onClick={() => setPinning(participant)}>
+                                    <MapPinIcon />
+                                    <DropdownLabel>{t("button.fixed-table")}</DropdownLabel>
+                                </DropdownItem>
                                 {participant.is_guest && (
                                     <DropdownItem onClick={() => setClaimQr(participant)}>
                                         <QrCodeIcon />
@@ -401,6 +414,13 @@ export function TournamentRoster({
                 canPickDeck={decklistFor?.uuid === viewer.participant && me.account !== null}
                 onClose={() => setDecklistFor(null)}
                 onChanged={() => void onChanged()}
+            />
+
+            <FixedTableDialog
+                tournamentUuid={tournamentUuid}
+                participant={pinning}
+                onClose={() => setPinning(null)}
+                onSaved={() => void onChanged()}
             />
 
             <ClaimQrDialog

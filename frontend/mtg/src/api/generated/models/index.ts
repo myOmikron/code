@@ -3008,6 +3008,27 @@ export interface FormErrorResponseForRoundLifecycleErrors {
 /**
  * The response that is sent in a case of an error the caller should present his user
  * @export
+ * @interface FormErrorResponseForSetFixedTableErrors
+ */
+export interface FormErrorResponseForSetFixedTableErrors {
+    /**
+     * The actual error struct
+     * @type {SetFixedTableErrors}
+     * @memberof FormErrorResponseForSetFixedTableErrors
+     */
+    error: SetFixedTableErrors;
+    /**
+     * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
+     * @type {ErrorConstant}
+     * @memberof FormErrorResponseForSetFixedTableErrors
+     */
+    result: ErrorConstant;
+}
+
+
+/**
+ * The response that is sent in a case of an error the caller should present his user
+ * @export
  * @interface FormErrorResponseForSetResultErrors
  */
 export interface FormErrorResponseForSetResultErrors {
@@ -6129,6 +6150,38 @@ export interface SetDecklistRequest {
     text?: string | null;
 }
 /**
+ * Why a pin was refused
+ * @export
+ * @interface SetFixedTableErrors
+ */
+export interface SetFixedTableErrors {
+    /**
+     * Not a table number between 1 and 999
+     * @type {boolean}
+     * @memberof SetFixedTableErrors
+     */
+    invalid_table: boolean;
+    /**
+     * Who already holds that table, if somebody does
+     * @type {string}
+     * @memberof SetFixedTableErrors
+     */
+    taken_by?: string | null;
+}
+/**
+ * Pin a player to one table
+ * @export
+ * @interface SetFixedTableRequest
+ */
+export interface SetFixedTableRequest {
+    /**
+     * The table, `null` to release them
+     * @type {number}
+     * @memberof SetFixedTableRequest
+     */
+    table?: number | null;
+}
+/**
  * @type SetMatchResult200Response
  * 
  * @export
@@ -7532,6 +7585,12 @@ export interface TournamentParticipantResponse {
      * @memberof TournamentParticipantResponse
      */
     entered_round: number;
+    /**
+     * The table they never leave; organizers only
+     * @type {number}
+     * @memberof TournamentParticipantResponse
+     */
+    fixed_table?: number | null;
     /**
      * Whether this player has a decklist on file
      * @type {boolean}

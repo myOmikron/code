@@ -948,6 +948,8 @@ pub struct TournamentParticipantResponse {
     pub notes: Option<MaxStr<512>>,
     /// Whether this player has a decklist on file
     pub has_decklist: bool,
+    /// The table they never leave; organizers only
+    pub fixed_table: Option<i16>,
 }
 
 impl TournamentParticipantResponse {
@@ -973,6 +975,7 @@ impl TournamentParticipantResponse {
             registered_at: SchemaDateTime(participant.registered_at),
             notes: is_organizer.then_some(participant.notes).flatten(),
             has_decklist,
+            fixed_table: is_organizer.then_some(participant.fixed_table).flatten(),
         }
     }
 }
@@ -1071,6 +1074,23 @@ pub struct UpdateTournamentParticipantRequest {
         deserialize_with = "crate::http::handler_frontend::collections::schema::double_option"
     )]
     pub notes: Option<Option<MaxStr<512>>>,
+}
+
+/// Pin a player to one table
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct SetFixedTableRequest {
+    /// The table, `null` to release them
+    #[serde(default)]
+    pub table: Option<i16>,
+}
+
+/// Why a pin was refused
+#[derive(Default, Serialize, JsonSchema)]
+pub struct SetFixedTableErrors {
+    /// Not a table number between 1 and 999
+    pub invalid_table: bool,
+    /// Who already holds that table, if somebody does
+    pub taken_by: Option<MaxStr<64>>,
 }
 
 /// One line of the organizer-only staff list

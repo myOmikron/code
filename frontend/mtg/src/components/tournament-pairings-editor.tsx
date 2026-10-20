@@ -14,6 +14,7 @@ import {
     isRematch,
     layoutFrom,
     move,
+    movedPins,
     movedPlayers,
     swap,
     toRequest,
@@ -125,8 +126,8 @@ export function TournamentPairingsEditor({
                 );
                 return;
             }
-            for (const conflict of response.fixed_table_conflicts) {
-                notify.warning(t("toast.fixed-table-taken", { number: conflict.table_number }));
+            for (const pin of movedPins(response.tables, response.fixed_table_conflicts)) {
+                notify.warning(t("toast.fixed-table-taken", pin));
             }
             await onDone(true);
         } finally {

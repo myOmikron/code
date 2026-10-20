@@ -1147,6 +1147,31 @@ mod tests {
     }
 
     #[test]
+    fn keeps_one_pin_when_two_pinned_players_meet() {
+        // Round one folds 1v3 and 2v4, so the two pinned players meet.
+        let mut people = field(4);
+        people[0].fixed_table = Some(3);
+        people[2].fixed_table = Some(5);
+        let pairing = pair(&snapshot(PairingKind::Swiss, 2, people)).expect("pairs");
+
+        let shared = pairing
+            .tables
+            .iter()
+            .find(|table| table.seats.contains(&Uuid::from_u128(1)))
+            .expect("their table");
+        assert!(shared.seats.contains(&Uuid::from_u128(3)));
+        assert_eq!(shared.number, 3);
+        assert_eq!(
+            pairing.warnings,
+            vec![PairingWarning::FixedTableTaken {
+                number: 5,
+                entrant: Uuid::from_u128(3)
+            }]
+        );
+        assert!(pairing.tables.iter().all(|table| table.number != 5));
+    }
+
+    #[test]
     fn does_not_let_a_bye_burn_a_table_number() {
         let mut people = field(5);
         people[4].fixed_table = Some(1);

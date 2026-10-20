@@ -137,6 +137,7 @@ All URIs are relative to *http://localhost*
 | [**setDeckRuleZero**](DefaultApi.md#setdeckrulezerooperation) | **PUT** /api/frontend/v1/decks/{deck}/rule-zero | Record the house rules the deck is played under |
 | [**setMatchResult**](DefaultApi.md#setmatchresult) | **PUT** /api/frontend/v1/tournaments/{tournament}/matches/{match}/result | Write a table\&#39;s result from the desk |
 | [**setParticipantDecklist**](DefaultApi.md#setparticipantdecklist) | **PUT** /api/frontend/v1/tournaments/{tournament}/participants/{participant}/decklist | Write, replace or clear a participant\&#39;s decklist — staff, or the |
+| [**setParticipantFixedTable**](DefaultApi.md#setparticipantfixedtable) | **PUT** /api/frontend/v1/tournaments/{tournament}/participants/{participant}/fixed-table | Pin a player to one table, or release them |
 | [**setProfileVisibility**](DefaultApi.md#setprofilevisibilityoperation) | **PUT** /api/frontend/v1/accounts/me/profile-visibility | Open or close the logged-in account\&#39;s public profile |
 | [**setTournamentRoundTimer**](DefaultApi.md#settournamentroundtimer) | **PUT** /api/frontend/v1/tournaments/{tournament}/rounds/{round}/timer | Start, pause, adjust or reset a round\&#39;s clock |
 | [**setTournamentStatus**](DefaultApi.md#settournamentstatusoperation) | **PUT** /api/frontend/v1/tournaments/{tournament}/status | Move a tournament to a new lifecycle status |
@@ -9613,6 +9614,82 @@ example().catch(console.error);
 ### Return type
 
 [**SetParticipantDecklist200Response**](SetParticipantDecklist200Response.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## setParticipantFixedTable
+
+> FormErrorResponseForSetFixedTableErrors setParticipantFixedTable(tournament, participant, SetFixedTableRequest)
+
+Pin a player to one table, or release them
+
+Pin a player to one table, or release them
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { SetParticipantFixedTableRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    tournament: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string
+    participant: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // SetFixedTableRequest (optional)
+    SetFixedTableRequest: ...,
+  } satisfies SetParticipantFixedTableRequest;
+
+  try {
+    const data = await api.setParticipantFixedTable(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **tournament** | `string` |  | [Defaults to `undefined`] |
+| **participant** | `string` |  | [Defaults to `undefined`] |
+| **SetFixedTableRequest** | [SetFixedTableRequest](SetFixedTableRequest.md) |  | [Optional] |
+
+### Return type
+
+[**FormErrorResponseForSetFixedTableErrors**](FormErrorResponseForSetFixedTableErrors.md)
 
 ### Authorization
 

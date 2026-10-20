@@ -204,3 +204,33 @@ export function isRematch(table: EditTable, meetings: Array<[string, string]>): 
 export function toRequest(layout: EditLayout): Array<Array<string>> {
     return layout.tables.filter((table) => table.seats.length > 0).map((table) => table.seats);
 }
+
+/** A pinned player who could not keep their table this round */
+export type MovedPin = {
+    /** Who */
+    name: string;
+    /** The table they sit at instead */
+    table: number;
+    /** The table they are pinned to */
+    number: number;
+};
+
+/**
+ * Names the pins a layout could not honour
+ *
+ * @param tables the round's tables
+ * @param conflicts the pins the server reported
+ *
+ * @returns who moves, and where to
+ */
+export function movedPins(
+    tables: Array<MatchTableResponse>,
+    conflicts: Array<{ participant: string; table_number: number }>,
+): Array<MovedPin> {
+    return conflicts.flatMap((conflict) => {
+        const table = tables.find((entry) => entry.seats.some((seat) => seat.participant === conflict.participant));
+        const seat = table?.seats.find((entry) => entry.participant === conflict.participant);
+        if (table === undefined || seat === undefined) return [];
+        return [{ name: seat.display_name, table: table.table_number, number: conflict.table_number }];
+    });
+}

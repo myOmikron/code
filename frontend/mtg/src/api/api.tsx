@@ -419,6 +419,14 @@ export const Api = {
             list: (uuid: UUID) => defaultApi.listTournamentParticipants({ tournament: uuid }),
             // Organizer-only since check-in became the desk's job, so it goes through
             // `handleError` like the rest of the management surface.
+            setFixedTable: async (uuid: UUID, participant: UUID, table: number | null) =>
+                handleError(
+                    defaultApi.setParticipantFixedTable({
+                        tournament: uuid,
+                        participant,
+                        SetFixedTableRequest: { table },
+                    }),
+                ),
             checkIn: async (uuid: UUID, participant: UUID) =>
                 handleError(defaultApi.checkInTournamentParticipant({ tournament: uuid, participant })),
             drop: (uuid: UUID, participant: UUID) =>

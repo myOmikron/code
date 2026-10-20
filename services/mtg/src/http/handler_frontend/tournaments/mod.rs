@@ -79,6 +79,7 @@ pub fn initialize_routes() -> GalvynRouter {
                 .handler(handler::search_tournament_players)
                 .handler(handler::add_tournament_participant)
                 .handler(handler::update_tournament_participant)
+                .handler(handler::set_participant_fixed_table)
                 .handler(handler::delete_tournament_participant)
                 .handler(handler::get_participant_claim_token)
                 .handler(handler::claim_tournament_participant)

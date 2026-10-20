@@ -103,6 +103,7 @@ docs/FormErrorResponseForPairRoundErrors.md
 docs/FormErrorResponseForRegistrationErrors.md
 docs/FormErrorResponseForReportResultErrors.md
 docs/FormErrorResponseForRoundLifecycleErrors.md
+docs/FormErrorResponseForSetFixedTableErrors.md
 docs/FormErrorResponseForSetResultErrors.md
 docs/FormErrorResponseForSignupErrors.md
 docs/FormErrorResponseForStartLoginErrors.md
@@ -218,6 +219,8 @@ docs/SetDeckFolderRequest.md
 docs/SetDeckRuleZeroRequest.md
 docs/SetDeckVisibilityRequest.md
 docs/SetDecklistRequest.md
+docs/SetFixedTableErrors.md
+docs/SetFixedTableRequest.md
 docs/SetMatchResult200Response.md
 docs/SetParticipantDecklist200Response.md
 docs/SetProfileVisibilityRequest.md

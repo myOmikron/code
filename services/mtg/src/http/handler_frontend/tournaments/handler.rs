@@ -79,6 +79,8 @@ use crate::http::handler_frontend::tournaments::schema::RoundResponse;
 use crate::http::handler_frontend::tournaments::schema::SearchPlayersRequest;
 use crate::http::handler_frontend::tournaments::schema::SearchPlayersResponse;
 use crate::http::handler_frontend::tournaments::schema::SetDecklistRequest;
+use crate::http::handler_frontend::tournaments::schema::SetFixedTableErrors;
+use crate::http::handler_frontend::tournaments::schema::SetFixedTableRequest;
 use crate::http::handler_frontend::tournaments::schema::SetResultErrors;
 use crate::http::handler_frontend::tournaments::schema::SetResultRequest;
 use crate::http::handler_frontend::tournaments::schema::SetTimerRequest;
@@ -125,6 +127,7 @@ use crate::models::tournament::pairing::PairOutcome;
 use crate::models::tournament::participant;
 use crate::models::tournament::participant::CheckInOutcome;
 use crate::models::tournament::participant::ClaimOutcome;
+use crate::models::tournament::participant::FixedTableChange;
 use crate::models::tournament::participant::RegistrationOutcome;
 use crate::models::tournament::public;
 use crate::models::tournament::reporting;
@@ -1548,6 +1551,46 @@ pub async fn update_tournament_participant(
         )
         .await?,
     )?;
+
+    tx.commit().await?;
+
+    Ok(ApiJson(()))
+}
+
+/// Pin a player to one table, or release them
+#[put("/{tournament}/participants/{participant}/fixed-table")]
+pub async fn set_participant_fixed_table(
+    account: Account,
+    Path((tournament_uuid, participant_uuid)): Path<(TournamentUuid, TournamentParticipantUuid)>,
+    ApiJson(SetFixedTableRequest { table }): ApiJson<SetFixedTableRequest>,
+) -> ApiResult<ApiJson<()>, SetFixedTableErrors> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    let change = match participant::set_fixed_table(
+        &mut tx,
+        account.uuid,
+        tournament_uuid,
+        participant_uuid,
+        table,
+    )
+    .await?
+    {
+        TournamentAccess::Granted(change) => change,
+        TournamentAccess::Denied => return Err(denied()),
+    };
+    match change {
+        FixedTableChange::Changed => {}
+        FixedTableChange::Taken(holder) => {
+            let mut errors = FormErrors::<SetFixedTableErrors>::new();
+            errors.taken_by = Some(holder);
+            return errors.fail();
+        }
+        FixedTableChange::Invalid => {
+            let mut errors = FormErrors::<SetFixedTableErrors>::new();
+            errors.invalid_table = true;
+            return errors.fail();
+        }
+    }
 
     tx.commit().await?;
 
