@@ -39,6 +39,7 @@ use crate::models::deck::DeckCard;
 use crate::models::deck::DeckEntryKey;
 use crate::models::deck::DeckUuid;
 use crate::models::deck::DeckZone;
+use crate::models::deck::db::DeckCardModel;
 use crate::models::deck::history::db::DeckChangeInsertPatch;
 use crate::models::deck::history::db::DeckChangeModel;
 use crate::models::printing::db::PrintingModel;
@@ -456,6 +457,81 @@ impl DeckHistory {
             DeckDifference::default(),
         )
         .await
+    }
+
+    /// Restart the Deck histories of decks with their current Deck entries
+    ///
+    /// Each deck's Deck history is deleted and replaced by one
+    /// [`DeckChangeKind::Introduced`] Deck change holding its Deck entries, so
+    /// nothing is left of how and when they came to be. For decks handed to
+    /// the tombstone, whose builder is going away.
+    #[instrument(name = "DeckHistory::introduce", skip(tx, decks))]
+    pub async fn introduce(tx: &mut Transaction, decks: &[DeckUuid]) -> Result<(), rorm::Error> {
+        if decks.is_empty() {
+            return Ok(());
+        }
+
+        rorm::delete(&mut *tx, DeckChangeModel)
+            .condition(DynamicCollection::or_unchecked(
+                decks
+                    .iter()
+                    .map(|deck| DeckChangeModel.deck.equals(deck.into_inner()).boxed())
+                    .collect(),
+            ))
+            .await?;
+
+        let entries = rorm::query(
+            &mut *tx,
+            (
+                DeckCardModel.deck,
+                DeckCardModel.printing,
+                DeckCardModel.zone,
+                DeckCardModel.foil,
+                DeckCardModel.proxy,
+                DeckCardModel.quantity,
+            ),
+        )
+        .condition(DynamicCollection::or_unchecked(
+            decks
+                .iter()
+                .map(|deck| DeckCardModel.deck.equals(deck.into_inner()).boxed())
+                .collect(),
+        ))
+        .order_asc(DeckCardModel.uuid)
+        .all()
+        .await?;
+        let mut differences: HashMap<Uuid, DeckDifference> = decks
+            .iter()
+            .map(|deck| (deck.into_inner(), DeckDifference::default()))
+            .collect();
+        for (deck, printing, zone, foil, proxy, quantity) in entries {
+            differences.entry(deck.0).or_default().entry(
+                DeckEntryKey {
+                    printing,
+                    zone,
+                    foil,
+                    proxy,
+                },
+                0,
+                quantity,
+            );
+        }
+
+        let changed_at = OffsetDateTime::now_utc();
+        let patches: Vec<_> = decks
+            .iter()
+            .map(|deck| DeckChangeInsertPatch {
+                uuid: Uuid::now_v7(),
+                deck: ForeignModelByField(deck.into_inner()),
+                changed_at,
+                kind: DeckChangeKind::Introduced,
+                difference: Json(differences.remove(&deck.into_inner()).unwrap_or_default()),
+            })
+            .collect();
+        rorm::insert(&mut *tx, DeckChangeModel)
+            .return_nothing()
+            .bulk(&patches)
+            .await
     }
 
     /// One page of a deck's Deck history, newest first

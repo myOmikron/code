@@ -1,11 +1,16 @@
 //! Deletion of an Account by an Admin, and the Admin log entry it leaves
 
+use galvyn::core::Module;
 use galvyn::core::re_exports::axum::http::Method;
 use galvyn::core::re_exports::axum::http::StatusCode;
+use galvyn::rorm::Database;
 use serde_json::Value;
 use serde_json::json;
+use uuid::Uuid;
 
 use crate::models::account::Role;
+use crate::models::deck::history::DeckChangeKind;
+use crate::models::deck::history::DeckHistory;
 use crate::tests::harness::TestAccount;
 use crate::tests::harness::TestClient;
 use crate::tests::harness::api;
@@ -81,6 +86,69 @@ fn a_tombstone_deletion_hands_public_decks_to_the_tombstone() {
             .ok_json();
         assert_eq!(deck["name"], "Shown");
         assert_eq!(deck["owner"], Value::Null);
+    });
+}
+
+#[test]
+fn a_public_deck_reaches_the_tombstone_with_only_its_current_state_as_deck_history() {
+    run(async {
+        let admin = create_account(Role::Admin).await;
+        let member = create_account(Role::Member).await;
+        let deck = public_deck(&member).await;
+        let mut owner = TestClient::logged_in(&member).await;
+        let [kept, raised] = [(); 2].map(|()| Uuid::new_v4());
+        let cards = api(&format!("decks/{deck}/cards"));
+        owner
+            .json(
+                Method::POST,
+                &cards,
+                &json!({ "printing": kept, "quantity": 1, "zone": "Side" }),
+            )
+            .await
+            .ok_json();
+        let entry = owner
+            .json(
+                Method::POST,
+                &cards,
+                &json!({ "printing": raised, "quantity": 2, "zone": "Main" }),
+            )
+            .await
+            .ok_json();
+        let entry = entry["uuid"].as_str().expect("entry uuid");
+        owner
+            .json(
+                Method::PATCH,
+                &api(&format!("decks/{deck}/cards/{entry}")),
+                &json!({ "quantity": 3 }),
+            )
+            .await
+            .ok_json();
+
+        let mut client = TestClient::logged_in(&admin).await;
+        delete(&mut client, &member, &member.username, "Tombstone").await;
+
+        let mut tx = Database::global()
+            .start_transaction()
+            .await
+            .expect("start a transaction");
+        let history = DeckHistory::page(&mut tx, deck.parse().expect("a uuid"), None, 100)
+            .await
+            .expect("read the deck history");
+        tx.commit().await.expect("commit");
+        let kinds: Vec<_> = history.changes.iter().map(|change| change.kind).collect();
+        assert_eq!(kinds, vec![DeckChangeKind::Introduced]);
+        let mut entries: Vec<_> = history.changes[0]
+            .entries
+            .iter()
+            .map(|entry| {
+                let difference = &entry.difference;
+                (difference.printing, difference.before, difference.after)
+            })
+            .collect();
+        entries.sort();
+        let mut expected = vec![(kept, 0, 1), (raised, 0, 3)];
+        expected.sort();
+        assert_eq!(entries, expected);
     });
 }
 

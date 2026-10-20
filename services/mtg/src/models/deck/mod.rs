@@ -38,6 +38,7 @@ use crate::models::deck::db::GlobalCardTagModel;
 use crate::models::deck::folder::DeckFolder;
 use crate::models::deck::folder::DeckFolderUuid;
 use crate::models::deck::history::DeckDifference;
+use crate::models::deck::history::DeckHistory;
 use crate::models::deck::tag::DeckTag;
 use crate::models::format::has_brackets;
 use crate::models::share::generate_share_token;
@@ -616,21 +617,39 @@ impl Deck {
     /// deck was never anybody else's to read, so it leaves with its owner.
     ///
     /// They land unfiled, since a folder belongs to the account going away and
-    /// the cascade is about to take it. Returns how many decks moved.
+    /// the cascade is about to take it. Their Deck histories do not come along,
+    /// see [`DeckHistory::introduce`]. Returns how many decks moved.
     #[instrument(name = "Deck::hand_over_public", skip(tx))]
     pub async fn hand_over_public(
         tx: &mut Transaction,
         owner: AccountUuid,
         new_owner: AccountUuid,
     ) -> Result<u64, rorm::Error> {
-        rorm::update(&mut *tx, DeckModel)
-            .set(DeckModel.owner, ForeignModelByField(new_owner.into_inner()))
-            .set(DeckModel.folder, None)
+        let decks: Vec<DeckUuid> = rorm::query(&mut *tx, (DeckModel.uuid,))
             .condition(rorm::and![
                 DeckModel.owner.equals(owner.into_inner()),
                 DeckModel.visibility.equals(Visibility::Public),
             ])
-            .await
+            .all()
+            .await?
+            .into_iter()
+            .map(|(uuid,)| DeckUuid(uuid))
+            .collect();
+
+        for chunk in decks.chunks(BULK_INSERT_CHUNK) {
+            rorm::update(&mut *tx, DeckModel)
+                .set(DeckModel.owner, ForeignModelByField(new_owner.into_inner()))
+                .set(DeckModel.folder, None)
+                .condition(DynamicCollection::or_unchecked(
+                    chunk
+                        .iter()
+                        .map(|deck| DeckModel.uuid.equals(deck.0).boxed())
+                        .collect(),
+                ))
+                .await?;
+            DeckHistory::introduce(&mut *tx, chunk).await?;
+        }
+        Ok(decks.len() as u64)
     }
 
     /// Delete a deck and, through the cascade, all its cards
