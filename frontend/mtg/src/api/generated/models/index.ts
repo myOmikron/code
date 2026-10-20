@@ -2088,6 +2088,12 @@ export interface DeckChangeResponse {
      */
     changed_at: string;
     /**
+     * The Deck checkpoint the owner named it with, `None` when unnamed
+     * @type {string}
+     * @memberof DeckChangeResponse
+     */
+    checkpoint?: string | null;
+    /**
      * The Deck entries it touched
      * @type {Array<DeckEntryChangeResponse>}
      * @memberof DeckChangeResponse
@@ -5802,6 +5808,19 @@ export interface SetDeckBracketRequest {
      * @memberof SetDeckBracketRequest
      */
     bracket?: number | null;
+}
+/**
+ * The name of a Deck checkpoint
+ * @export
+ * @interface SetDeckCheckpointRequest
+ */
+export interface SetDeckCheckpointRequest {
+    /**
+     * The name, never blank; surrounding whitespace is dropped
+     * @type {string}
+     * @memberof SetDeckCheckpointRequest
+     */
+    name: string;
 }
 /**
  * Request to overrule which colours a deck may play

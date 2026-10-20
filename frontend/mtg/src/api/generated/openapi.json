@@ -5535,6 +5535,151 @@
                 }
             }
         },
+        "/api/frontend/v1/decks/{deck}/history/{change}/checkpoint": {
+            "put": {
+                "summary": "Name one of the deck's Deck changes with a Deck checkpoint, or rename its",
+                "description": "Name one of the deck's Deck changes with a Deck checkpoint, or rename its\nDeck checkpoint\n\nOnly the owner names. A Deck change carries at most one Deck checkpoint,\nso naming a named one renames it.",
+                "operationId": "set_deck_checkpoint",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "deck",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/DeckUuid"
+                        },
+                        "style": "simple"
+                    },
+                    {
+                        "in": "path",
+                        "name": "change",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/DeckChangeUuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SetDeckCheckpointRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "nullable": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "summary": "Remove the Deck checkpoint of one of the deck's Deck changes",
+                "description": "Remove the Deck checkpoint of one of the deck's Deck changes\n\nOnly the owner removes. A Deck change without one stays as it is.",
+                "operationId": "remove_deck_checkpoint",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "deck",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/DeckUuid"
+                        },
+                        "style": "simple"
+                    },
+                    {
+                        "in": "path",
+                        "name": "change",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/DeckChangeUuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "nullable": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/frontend/v1/explore/decks": {
             "get": {
                 "summary": "Search the decks their owners put on show",
@@ -11141,6 +11286,11 @@
                             }
                         ]
                     },
+                    "checkpoint": {
+                        "nullable": true,
+                        "description": "The Deck checkpoint the owner named it with, `None` when unnamed",
+                        "type": "string"
+                    },
                     "entries": {
                         "description": "The Deck entries it touched",
                         "type": "array",
@@ -15238,6 +15388,23 @@
                         "format": "int16"
                     }
                 }
+            },
+            "SetDeckCheckpointRequest": {
+                "description": "The name of a Deck checkpoint",
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "description": "The name, never blank; surrounding whitespace is dropped",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_64"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "name"
+                ]
             },
             "SetDeckColorsRequest": {
                 "description": "Request to overrule which colours a deck may play",

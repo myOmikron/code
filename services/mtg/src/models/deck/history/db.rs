@@ -5,9 +5,11 @@ use galvyn::rorm::Model;
 use galvyn::rorm::Patch;
 use galvyn::rorm::fields::types::ForeignModel;
 use galvyn::rorm::fields::types::Json;
+use galvyn::rorm::fields::types::MaxStr;
 use uuid::Uuid;
 
 use crate::models::deck::db::DeckModel;
+use crate::models::deck::history::CHECKPOINT_LENGTH;
 use crate::models::deck::history::DeckChangeKind;
 use crate::models::deck::history::DeckDifference;
 
@@ -60,6 +62,11 @@ pub struct DeckChangeModel {
     /// the Deck history.
     #[rorm(default = false)]
     pub undone: bool,
+
+    /// The Deck checkpoint naming this Deck change, chosen by the owner
+    ///
+    /// One column, so a Deck change carries at most one Deck checkpoint.
+    pub checkpoint: Option<MaxStr<CHECKPOINT_LENGTH>>,
 }
 
 /// Insert patch for [`DeckChangeModel`]

@@ -1,0 +1,22 @@
+[Migration]
+Hash = "2672506059817554839"
+Initial = false
+Dependency = 48
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "deck_change"
+
+[Migration.Operations.Field]
+Name = "checkpoint"
+Type = "text"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "max_length"
+Value = 64
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/deck/history/db.rs"
+Line = 68
+Column = 9

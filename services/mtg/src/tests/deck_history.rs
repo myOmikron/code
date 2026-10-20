@@ -2594,3 +2594,162 @@ fn only_the_owner_reads_earlier_points_and_resets() {
         }
     });
 }
+
+impl Fixture {
+    /// Names a Deck change with a Deck checkpoint, or renames its Deck checkpoint
+    async fn name_checkpoint(&mut self, change: &str, name: &str) -> TestResponse {
+        let url = api(&format!("decks/{}/history/{change}/checkpoint", self.deck));
+        self.owner
+            .json(Method::PUT, &url, &json!({ "name": name }))
+            .await
+    }
+
+    /// Removes the Deck checkpoint of a Deck change
+    async fn remove_checkpoint(&mut self, change: &str) -> TestResponse {
+        let url = api(&format!("decks/{}/history/{change}/checkpoint", self.deck));
+        self.owner.json(Method::DELETE, &url, &json!(null)).await
+    }
+
+    /// The Deck checkpoints of the deck's Deck changes, newest first
+    async fn checkpoints(&mut self) -> Vec<Value> {
+        self.history("").await["changes"]
+            .as_array()
+            .expect("change list")
+            .iter()
+            .map(|change| change["checkpoint"].clone())
+            .collect()
+    }
+}
+
+#[test]
+fn the_owner_names_renames_and_removes_a_deck_checkpoint() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        fixture
+            .add(json!({ "printing": Uuid::new_v4(), "quantity": 4, "zone": "Main" }))
+            .await;
+        let named = fixture.newest().await;
+        fixture
+            .add(json!({ "printing": Uuid::new_v4(), "quantity": 1, "zone": "Side" }))
+            .await;
+        assert_eq!(fixture.checkpoints().await, vec![Value::Null; 3]);
+
+        fixture
+            .name_checkpoint(&named, "FNM 18.10.")
+            .await
+            .ok_json();
+        assert_eq!(
+            fixture.checkpoints().await,
+            vec![Value::Null, json!("FNM 18.10."), Value::Null]
+        );
+        let point = fixture.point(&named).await.ok_json();
+        assert_eq!(point["change"]["checkpoint"], "FNM 18.10.");
+
+        fixture
+            .name_checkpoint(&named, "FNM 25.10.")
+            .await
+            .ok_json();
+        assert_eq!(
+            fixture.checkpoints().await,
+            vec![Value::Null, json!("FNM 25.10."), Value::Null]
+        );
+
+        fixture.remove_checkpoint(&named).await.ok_json();
+        assert_eq!(fixture.checkpoints().await, vec![Value::Null; 3]);
+        assert_eq!(fixture.kinds().await, vec!["Edit", "Edit", "Created"]);
+    });
+}
+
+#[test]
+fn an_edit_right_after_naming_the_latest_deck_change_appends_a_new_one() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        let printing = Uuid::new_v4();
+        let entry = fixture
+            .add(json!({ "printing": printing, "quantity": 1, "zone": "Main" }))
+            .await;
+        let named = fixture.newest().await;
+        fixture
+            .name_checkpoint(&named, "Before FNM")
+            .await
+            .ok_json();
+
+        fixture.patch(&entry, json!({ "quantity": 2 })).await;
+        fixture.patch(&entry, json!({ "quantity": 0 })).await;
+
+        assert_eq!(fixture.kinds().await, vec!["Edit", "Edit", "Created"]);
+        assert_eq!(
+            fixture.checkpoints().await,
+            vec![Value::Null, json!("Before FNM"), Value::Null]
+        );
+        let (cards, _) = fixture.state_at(&named).await;
+        assert_eq!(cards, vec![(printing.to_string(), "Main".to_string(), 1)]);
+    });
+}
+
+#[test]
+fn a_deck_checkpoint_needs_a_name_that_fits() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        let created = fixture.newest().await;
+
+        for name in [String::new(), "   ".to_string(), "ä".repeat(33)] {
+            let response = fixture.name_checkpoint(&created, &name).await;
+            assert_eq!(response.status, StatusCode::BAD_REQUEST, "{name:?}");
+        }
+        fixture
+            .name_checkpoint(&created, &format!(" {} ", "ä".repeat(31)))
+            .await
+            .ok_json();
+
+        assert_eq!(fixture.checkpoints().await, vec![json!("ä".repeat(31))]);
+    });
+}
+
+#[test]
+fn only_the_owner_names_and_removes_deck_checkpoints() {
+    run(async {
+        let mut public = Fixture::with_visibility("Public").await;
+        let mut unlisted = Fixture::with_visibility("Unlisted").await;
+        let body = unlisted
+            .send_json(Method::POST, "share-token", json!({}))
+            .await;
+        let token = body["share_token"].as_str().expect("share token");
+        let mut points = Vec::new();
+        for fixture in [&mut public, &mut unlisted] {
+            let point = fixture.newest().await;
+            fixture.name_checkpoint(&point, "Mine").await.ok_json();
+            points.push(point);
+        }
+        let mut stranger = TestClient::logged_in(&create_account(Role::Member).await).await;
+        let mut visitor = TestClient::new();
+        visitor
+            .get(&api(&format!("explore/decks/{}", public.deck)))
+            .await
+            .ok_json();
+        visitor
+            .get(&api(&format!("shared/decks/{token}")))
+            .await
+            .ok_json();
+
+        for (deck, point) in [&public.deck, &unlisted.deck].into_iter().zip(&points) {
+            let url = api(&format!("decks/{deck}/history/{point}/checkpoint"));
+            for client in [&mut stranger, &mut visitor] {
+                let response = client
+                    .json(Method::PUT, &url, &json!({ "name": "Theirs" }))
+                    .await;
+                assert_ne!(response.status, StatusCode::OK, "{response:?}");
+                let response = client.json(Method::DELETE, &url, &json!(null)).await;
+                assert_ne!(response.status, StatusCode::OK, "{response:?}");
+            }
+        }
+        let foreign = points[1].clone();
+        let response = public.name_checkpoint(&foreign, "Theirs").await;
+        assert_eq!(response.status, StatusCode::BAD_REQUEST, "{response:?}");
+        let response = public.remove_checkpoint(&foreign).await;
+        assert_eq!(response.status, StatusCode::BAD_REQUEST, "{response:?}");
+        for fixture in [&mut public, &mut unlisted] {
+            assert_eq!(fixture.checkpoints().await, vec![json!("Mine")]);
+        }
+    });
+}

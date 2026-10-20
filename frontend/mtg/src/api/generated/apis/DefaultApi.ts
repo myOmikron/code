@@ -121,6 +121,7 @@ import type {
     SetAdvisorSettingsRequest,
     SetCollectionVisibilityRequest,
     SetDeckBracketRequest,
+    SetDeckCheckpointRequest,
     SetDeckColorsRequest,
     SetDeckFolderRequest,
     SetDeckRuleZeroRequest,
@@ -519,6 +520,11 @@ export interface RedoDeckChangeRequest {
     deck: string;
 }
 
+export interface RemoveDeckCheckpointRequest {
+    deck: string;
+    change: string;
+}
+
 export interface RenameAccountOperationRequest {
     RenameAccountRequest?: RenameAccountRequest;
 }
@@ -578,6 +584,12 @@ export interface SetDeckAdvisorSettingsRequest {
 export interface SetDeckBracketOperationRequest {
     deck: string;
     SetDeckBracketRequest?: SetDeckBracketRequest;
+}
+
+export interface SetDeckCheckpointOperationRequest {
+    deck: string;
+    change: string;
+    SetDeckCheckpointRequest?: SetDeckCheckpointRequest;
 }
 
 export interface SetDeckColorsOperationRequest {
@@ -5103,6 +5115,65 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for removeDeckCheckpoint without sending the request
+     */
+    async removeDeckCheckpointRequestOpts(requestParameters: RemoveDeckCheckpointRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['deck'] == null) {
+            throw new runtime.RequiredError(
+                'deck',
+                'Required parameter "deck" was null or undefined when calling removeDeckCheckpoint().'
+            );
+        }
+
+        if (requestParameters['change'] == null) {
+            throw new runtime.RequiredError(
+                'change',
+                'Required parameter "change" was null or undefined when calling removeDeckCheckpoint().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/decks/{deck}/history/{change}/checkpoint`;
+        urlPath = urlPath.replace('{deck}', encodeURIComponent(String(requestParameters['deck'])));
+        urlPath = urlPath.replace('{change}', encodeURIComponent(String(requestParameters['change'])));
+
+        return {
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Remove the Deck checkpoint of one of the deck\'s Deck changes  Only the owner removes. A Deck change without one stays as it is.
+     * Remove the Deck checkpoint of one of the deck\'s Deck changes
+     */
+    async removeDeckCheckpointRaw(requestParameters: RemoveDeckCheckpointRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
+        const requestOptions = await this.removeDeckCheckpointRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<any>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     * Remove the Deck checkpoint of one of the deck\'s Deck changes  Only the owner removes. A Deck change without one stays as it is.
+     * Remove the Deck checkpoint of one of the deck\'s Deck changes
+     */
+    async removeDeckCheckpoint(requestParameters: RemoveDeckCheckpointRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
+        const response = await this.removeDeckCheckpointRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for renameAccount without sending the request
      */
     async renameAccountRequestOpts(requestParameters: RenameAccountOperationRequest): Promise<runtime.RequestOpts> {
@@ -5707,6 +5778,68 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async setDeckBracket(requestParameters: SetDeckBracketOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
         const response = await this.setDeckBracketRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for setDeckCheckpoint without sending the request
+     */
+    async setDeckCheckpointRequestOpts(requestParameters: SetDeckCheckpointOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['deck'] == null) {
+            throw new runtime.RequiredError(
+                'deck',
+                'Required parameter "deck" was null or undefined when calling setDeckCheckpoint().'
+            );
+        }
+
+        if (requestParameters['change'] == null) {
+            throw new runtime.RequiredError(
+                'change',
+                'Required parameter "change" was null or undefined when calling setDeckCheckpoint().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/decks/{deck}/history/{change}/checkpoint`;
+        urlPath = urlPath.replace('{deck}', encodeURIComponent(String(requestParameters['deck'])));
+        urlPath = urlPath.replace('{change}', encodeURIComponent(String(requestParameters['change'])));
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['SetDeckCheckpointRequest'],
+        };
+    }
+
+    /**
+     * Name one of the deck\'s Deck changes with a Deck checkpoint, or rename its Deck checkpoint  Only the owner names. A Deck change carries at most one Deck checkpoint, so naming a named one renames it.
+     * Name one of the deck\'s Deck changes with a Deck checkpoint, or rename its
+     */
+    async setDeckCheckpointRaw(requestParameters: SetDeckCheckpointOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
+        const requestOptions = await this.setDeckCheckpointRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<any>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     * Name one of the deck\'s Deck changes with a Deck checkpoint, or rename its Deck checkpoint  Only the owner names. A Deck change carries at most one Deck checkpoint, so naming a named one renames it.
+     * Name one of the deck\'s Deck changes with a Deck checkpoint, or rename its
+     */
+    async setDeckCheckpoint(requestParameters: SetDeckCheckpointOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
+        const response = await this.setDeckCheckpointRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

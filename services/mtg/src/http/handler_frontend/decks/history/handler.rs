@@ -4,9 +4,12 @@ use galvyn::core::re_exports::axum::extract::Query;
 use galvyn::core::stuff::api_error::ApiError;
 use galvyn::core::stuff::api_error::ApiResult;
 use galvyn::core::stuff::api_json::ApiJson;
+use galvyn::delete;
 use galvyn::get;
 use galvyn::post;
+use galvyn::put;
 use galvyn::rorm::Database;
+use galvyn::rorm::fields::types::MaxStr;
 
 use crate::http::handler_frontend::decks::handler::granted;
 use crate::http::handler_frontend::decks::history::schema::DeckChangeResponse;
@@ -14,6 +17,7 @@ use crate::http::handler_frontend::decks::history::schema::DeckHistoryResponse;
 use crate::http::handler_frontend::decks::history::schema::DeckPointResponse;
 use crate::http::handler_frontend::decks::history::schema::DeckUndoResponse;
 use crate::http::handler_frontend::decks::history::schema::GetDeckHistoryQuery;
+use crate::http::handler_frontend::decks::history::schema::SetDeckCheckpointRequest;
 use crate::models::account::Account;
 use crate::models::deck::Deck;
 use crate::models::deck::DeckUuid;
@@ -143,4 +147,56 @@ pub async fn reset_deck(
     tx.commit().await?;
 
     Ok(ApiJson(DeckUndoResponse::from(state)))
+}
+
+/// Name one of the deck's Deck changes with a Deck checkpoint, or rename its
+/// Deck checkpoint
+///
+/// Only the owner names. A Deck change carries at most one Deck checkpoint,
+/// so naming a named one renames it.
+#[put("/{deck}/history/{change}/checkpoint")]
+pub async fn set_deck_checkpoint(
+    account: Account,
+    Path((deck_uuid, change)): Path<(DeckUuid, DeckChangeUuid)>,
+    ApiJson(request): ApiJson<SetDeckCheckpointRequest>,
+) -> ApiResult<ApiJson<()>> {
+    let name = request.name.trim();
+    if name.is_empty() {
+        return Err(ApiError::bad_request("A Deck checkpoint needs a name"));
+    }
+    let name = MaxStr::new(name.to_owned())
+        .map_err(|_| ApiError::bad_request("A Deck checkpoint name is too long"))?;
+
+    let mut tx = Database::global().start_transaction().await?;
+
+    let edit = granted(DeckHistory::lock(&mut tx, deck_uuid, account.uuid).await?)?;
+    if !edit.name_checkpoint(&mut tx, change, Some(name)).await? {
+        tx.rollback().await?;
+        return Err(ApiError::bad_request("No such Deck change"));
+    }
+
+    tx.commit().await?;
+
+    Ok(ApiJson(()))
+}
+
+/// Remove the Deck checkpoint of one of the deck's Deck changes
+///
+/// Only the owner removes. A Deck change without one stays as it is.
+#[delete("/{deck}/history/{change}/checkpoint")]
+pub async fn remove_deck_checkpoint(
+    account: Account,
+    Path((deck_uuid, change)): Path<(DeckUuid, DeckChangeUuid)>,
+) -> ApiResult<ApiJson<()>> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    let edit = granted(DeckHistory::lock(&mut tx, deck_uuid, account.uuid).await?)?;
+    if !edit.name_checkpoint(&mut tx, change, None).await? {
+        tx.rollback().await?;
+        return Err(ApiError::bad_request("No such Deck change"));
+    }
+
+    tx.commit().await?;
+
+    Ok(ApiJson(()))
 }

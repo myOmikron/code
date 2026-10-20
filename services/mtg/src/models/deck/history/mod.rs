@@ -54,6 +54,9 @@ use crate::models::printing::db::PrintingModel;
 
 pub(in crate::models) mod db;
 
+/// The longest name of a Deck checkpoint, in bytes
+pub const CHECKPOINT_LENGTH: usize = 64;
+
 /// What the owner did in a Deck change
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub enum DeckChangeKind {
@@ -641,7 +644,7 @@ impl DeckEdit {
     ///
     /// It does when both are plain edits of the same kind touching the very
     /// same single Deck entry or deck field, and the latest is still inside
-    /// the [`COALESCING_WINDOW`].
+    /// the [`COALESCING_WINDOW`] and carries no Deck checkpoint.
     fn joins(
         latest: &StoredChange,
         kind: DeckChangeKind,
@@ -651,6 +654,7 @@ impl DeckEdit {
         latest.kind == kind
             && kind.is_plain_edit()
             && now - latest.changed_at < COALESCING_WINDOW
+            && latest.checkpoint.is_none()
             && latest.difference.touches_the_same(difference)
     }
 
@@ -658,7 +662,8 @@ impl DeckEdit {
     async fn latest(&self, tx: &mut Transaction) -> Result<Option<StoredChange>, rorm::Error> {
         let rows = (&mut *tx)
             .execute::<All>(
-                "SELECT uuid, changed_at, kind, difference, reference, undone FROM deck_change \
+                "SELECT uuid, changed_at, kind, difference, reference, undone, checkpoint \
+                 FROM deck_change \
                  WHERE deck = $1 ORDER BY uuid DESC LIMIT 1"
                     .to_string(),
                 vec![Value::Uuid(self.deck.into_inner())],
@@ -830,6 +835,29 @@ impl DeckEdit {
         Ok(true)
     }
 
+    /// Name one of the deck's Deck changes with a Deck checkpoint, rename
+    /// its Deck checkpoint, or remove it with `None`
+    ///
+    /// The Deck change stays as it is; once named, no later edit joins it.
+    /// Answers `false` and changes nothing when `change` is not a Deck change
+    /// of this deck.
+    #[instrument(name = "DeckEdit::name_checkpoint", skip(tx))]
+    pub async fn name_checkpoint(
+        &self,
+        tx: &mut Transaction,
+        change: DeckChangeUuid,
+        checkpoint: Option<MaxStr<CHECKPOINT_LENGTH>>,
+    ) -> Result<bool, rorm::Error> {
+        let affected = rorm::update(&mut *tx, DeckChangeModel)
+            .set(DeckChangeModel.checkpoint, checkpoint)
+            .condition(rorm::and![
+                DeckChangeModel.uuid.equals(change.0),
+                DeckChangeModel.deck.equals(self.deck.into_inner()),
+            ])
+            .await?;
+        Ok(affected > 0)
+    }
+
     /// Record an undo or redo of `target` and mark `target` as undone or not
     ///
     /// Recorded even when it changed nothing, so the undo stack stays whole.
@@ -877,6 +905,8 @@ pub struct DeckChange {
     pub reference: Option<DeckChangeUuid>,
     /// Whether an undo took it back and no redo applied it again since
     pub undone: bool,
+    /// The Deck checkpoint the owner named it with
+    pub checkpoint: Option<String>,
 }
 
 /// A deck as it was right after one of its Deck changes
@@ -1136,7 +1166,8 @@ impl DeckHistory {
         }
         values.push(Value::I64(i64::from(limit) + 1));
         let statement = format!(
-            "SELECT uuid, changed_at, kind, difference, reference, undone FROM deck_change \
+            "SELECT uuid, changed_at, kind, difference, reference, undone, checkpoint \
+             FROM deck_change \
              WHERE {condition} ORDER BY uuid DESC LIMIT ${}",
             values.len()
         );
@@ -1251,7 +1282,8 @@ async fn rewind(
 ) -> Result<Option<Rewound>, rorm::Error> {
     let rows = (&mut *tx)
         .execute::<All>(
-            "SELECT uuid, changed_at, kind, difference, reference, undone FROM deck_change \
+            "SELECT uuid, changed_at, kind, difference, reference, undone, checkpoint \
+             FROM deck_change \
              WHERE deck = $1 AND uuid >= $2 ORDER BY uuid DESC"
                 .to_string(),
             vec![Value::Uuid(deck.into_inner()), Value::Uuid(point.0)],
@@ -1367,6 +1399,8 @@ struct StoredChange {
     reference: Option<DeckChangeUuid>,
     /// Whether it is undone
     undone: bool,
+    /// The Deck checkpoint naming it
+    checkpoint: Option<String>,
 }
 
 impl StoredChange {
@@ -1388,6 +1422,7 @@ impl StoredChange {
             fields: self.difference.fields,
             reference: self.reference,
             undone: self.undone,
+            checkpoint: self.checkpoint,
         }
     }
 }
@@ -1406,6 +1441,7 @@ fn decode_change(row: &Row) -> Result<StoredChange, rorm::Error> {
         difference: decode_difference(&difference),
         reference: reference.map(DeckChangeUuid),
         undone: row.get("undone").map_err(decode)?,
+        checkpoint: row.get("checkpoint").map_err(decode)?,
     })
 }
 

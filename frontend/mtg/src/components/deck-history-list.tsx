@@ -1,3 +1,4 @@
+import { BookmarkIcon } from "@heroicons/react/16/solid";
 import clsx from "clsx";
 import { Badge, Button, Strong, Text, TextLink } from "components";
 import { useEffect, useState } from "react";
@@ -105,7 +106,13 @@ function DeckChangeRow({ deckUuid, change, referenced }: DeckChangeRowProps) {
     const [t] = useTranslation("deck");
 
     return (
-        <li className={"flex flex-col gap-1 py-3 sm:flex-row sm:gap-6"}>
+        <li
+            className={clsx(
+                "flex flex-col gap-1 py-3 sm:flex-row sm:gap-6",
+                change.checkpoint != null &&
+                    "-mx-3 rounded-lg bg-blue-50 px-3 ring-1 ring-blue-600/20 dark:bg-blue-950/40 dark:ring-blue-400/30",
+            )}
+        >
             <Text className={"shrink-0 tabular-nums sm:w-40"}>
                 <TextLink href={"/decks/$deckUuid/history/$changeUuid"} params={{ deckUuid, changeUuid: change.uuid }}>
                     {formatDateTime(change.changed_at)}
@@ -113,6 +120,7 @@ function DeckChangeRow({ deckUuid, change, referenced }: DeckChangeRowProps) {
                 </TextLink>
             </Text>
             <div className={clsx("flex min-w-0 flex-col gap-1", change.undone && "opacity-60")}>
+                {change.checkpoint != null && <CheckpointBadge name={change.checkpoint} />}
                 {change.undone && (
                     <span>
                         <Badge color={"zinc"}>{t("label.history-undone")}</Badge>
@@ -121,6 +129,32 @@ function DeckChangeRow({ deckUuid, change, referenced }: DeckChangeRowProps) {
                 <DeckChangeBody change={change} referenced={referenced} />
             </div>
         </li>
+    );
+}
+
+/**
+ * The properties for {@link CheckpointBadge}
+ */
+export type CheckpointBadgeProps = {
+    /** The Deck checkpoint's name */
+    name: string;
+};
+
+/**
+ * The Deck checkpoint naming a Deck change
+ *
+ * @returns the badge
+ */
+export function CheckpointBadge({ name }: CheckpointBadgeProps) {
+    const [t] = useTranslation("deck");
+
+    return (
+        <span>
+            <Badge color={"blue"}>
+                <BookmarkIcon className={"size-3.5"} aria-label={t("accessibility.history-checkpoint")} />
+                <span className={"break-all"}>{name}</span>
+            </Badge>
+        </span>
     );
 }
 
