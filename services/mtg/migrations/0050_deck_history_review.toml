@@ -1,0 +1,32 @@
+[Migration]
+Hash = "2672506059817554839"
+Initial = false
+Dependency = 49
+Replaces = []
+
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+UPDATE deck_change c
+SET difference = convert_to(jsonb_set(convert_from(c.difference, 'UTF8')::jsonb, '{fields}', jsonb_build_array(
+    jsonb_build_object('field', 'Name', 'before', d.name, 'after', d.name),
+    jsonb_build_object('field', 'Description', 'before', d.description, 'after', d.description),
+    jsonb_build_object('field', 'Format', 'before', d.format, 'after', d.format),
+    jsonb_build_object('field', 'Colors', 'before', d.allowed_color_identity, 'after', d.allowed_color_identity),
+    jsonb_build_object('field', 'Bracket', 'before', d.bracket, 'after', d.bracket),
+    jsonb_build_object('field', 'AllowExtraCommanders', 'before', d.allow_extra_commanders, 'after', d.allow_extra_commanders),
+    jsonb_build_object('field', 'AllowDuplicates', 'before', d.allow_duplicates, 'after', d.allow_duplicates),
+    jsonb_build_object('field', 'AllowBanned', 'before', d.allow_banned, 'after', d.allow_banned),
+    jsonb_build_object('field', 'DeckSize', 'before', d.deck_size, 'after', d.deck_size)
+))::text, 'UTF8')
+FROM deck d
+WHERE d.uuid = c.deck AND c.kind = 'Introduced'
+    AND jsonb_array_length(COALESCE(convert_from(c.difference, 'UTF8')::jsonb -> 'fields', '[]'::jsonb)) = 0;
+"""

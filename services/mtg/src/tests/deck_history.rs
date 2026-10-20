@@ -638,6 +638,25 @@ fn the_migration_introduces_existing_decks_with_their_entries() {
         assert_eq!(unused.changes.len(), 1, "{unused:?}");
         assert_eq!(unused.changes[0].kind, DeckChangeKind::Introduced);
         assert!(unused.changes[0].entries.is_empty());
+        let fields: Vec<Value> = page.changes[0]
+            .fields
+            .iter()
+            .map(|field| serde_json::to_value(field).expect("a field as json"))
+            .collect();
+        assert_eq!(
+            fields,
+            vec![
+                json!({ "field": "Name", "before": "Old", "after": "Old" }),
+                json!({ "field": "Description", "before": null, "after": null }),
+                json!({ "field": "Format", "before": "modern", "after": "modern" }),
+                json!({ "field": "Colors", "before": null, "after": null }),
+                json!({ "field": "Bracket", "before": null, "after": null }),
+                json!({ "field": "AllowExtraCommanders", "before": false, "after": false }),
+                json!({ "field": "AllowDuplicates", "before": false, "after": false }),
+                json!({ "field": "AllowBanned", "before": false, "after": false }),
+                json!({ "field": "DeckSize", "before": null, "after": null }),
+            ]
+        );
 
         db.close().await;
     });
