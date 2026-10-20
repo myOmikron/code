@@ -45,6 +45,7 @@ pub fn initialize_routes() -> GalvynRouter {
                 .handler(handler::list_tournament_rounds)
                 .handler(handler::list_round_tables)
                 .handler(handler::get_tournament_standings)
+                .handler(handler::get_my_tournament_match)
                 .handler(handler::report_match_result)
                 .handler(handler::drop_tournament_participant)
                 .handler(handler::get_participant_decklist)

@@ -713,6 +713,38 @@ pub struct ListMeetingsResponse {
     pub meetings: Vec<MeetingResponse>,
 }
 
+/// One seat's report about its own table
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct MatchReportResponse {
+    /// Who reported
+    pub reporter: TournamentParticipantUuid,
+    /// Who they say won, `null` for a draw
+    pub winner: Option<TournamentParticipantUuid>,
+    /// Whether they say it was drawn
+    pub draw: bool,
+    /// Games the winner took
+    pub winner_games: i16,
+    /// Games the loser took
+    pub loser_games: i16,
+    /// Games inside the match that were themselves drawn
+    pub games_drawn: i16,
+}
+
+/// The viewer's own table in the round the room is on
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct MyMatchResponse {
+    /// The viewer's participant row, if they have one
+    pub participant: Option<TournamentParticipantUuid>,
+    /// The round the room is on
+    pub round: Option<RoundResponse>,
+    /// Their table in it, once paired
+    pub table: Option<MatchTableResponse>,
+    /// What the seats at that table have reported
+    pub reports: Vec<MatchReportResponse>,
+    /// The server's clock, for the round timer
+    pub server_time: SchemaDateTime,
+}
+
 /// What one seat says happened at their table
 ///
 /// The game counts are the winner's and the loser's, not one per seat: a pod is

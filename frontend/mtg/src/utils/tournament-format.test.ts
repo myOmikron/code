@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { RoundKind } from "src/api/generated";
-import { formatKind, nextRoundKind, podSizeFor, pointsFor, recommendedRounds } from "src/utils/tournament-format";
+import {
+    formatKind,
+    nextRoundKind,
+    podSizeFor,
+    pointsFor,
+    recommendedRounds,
+    startingLifeFor,
+} from "src/utils/tournament-format";
 
 describe("pointsFor", () => {
     it("scores a table of two by the Magic Tournament Rules", () => {
@@ -112,5 +119,15 @@ describe("nextRoundKind", () => {
     it("gives a constructed event scored rounds from the start", () => {
         expect(nextRoundKind("modern", [])).toBe(RoundKind.Swiss);
         expect(nextRoundKind("commander", [swiss, swiss])).toBe(RoundKind.Swiss);
+    });
+});
+
+describe("startingLifeFor", () => {
+    it("starts commander pods on forty and everything unknown on twenty", () => {
+        expect(startingLifeFor("commander")).toBe(40);
+        expect(startingLifeFor("paupercommander")).toBe(30);
+        expect(startingLifeFor("brawl")).toBe(25);
+        expect(startingLifeFor("modern")).toBe(20);
+        expect(startingLifeFor("draft")).toBe(20);
     });
 });

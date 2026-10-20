@@ -31,7 +31,14 @@ import {
 } from "components";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Api } from "src/api/api";
+import { ResponseError } from "src/api/generated";
 import { LifeTile } from "src/components/life-tile";
+import { TournamentRoundClock } from "src/components/tournament-round-clock";
+import i18n from "src/i18n";
+import type { RoundClock } from "src/utils/round-clock";
+import { clockSkew } from "src/utils/round-clock";
+import { startingLifeFor } from "src/utils/tournament-format";
 import type { LifeTrackerSettings, Table } from "src/utils/life-tracker";
 import { hapticConfirm } from "src/utils/haptics";
 import { useFullscreen } from "src/utils/use-fullscreen";
@@ -53,6 +60,7 @@ import {
     resizeCommanderDamage,
     saveLifeTrackerGame,
     saveLifeTrackerSettings,
+    seatFromBottom,
     seatingFor,
     trackHit,
     withHit,
@@ -61,7 +69,73 @@ import {
 /** How long a run of taps stays readable after the last one */
 const DELTA_LINGER = 3000;
 
+/** What the address may say about this page */
+type LifeTrackerSearch = {
+    /** The tournament whose current table to seat */
+    tournament?: string;
+};
+
+/** A tournament table the tracker was opened for */
+type MatchTable = {
+    /** The tournament, for the way back */
+    tournamentUuid: string;
+    /** The match, so its game is stored apart from any other */
+    key: string;
+    /** Everybody at the table, in seat order */
+    names: Array<string>;
+    /** Which of them holds this device */
+    me: number;
+    /** What the format starts everybody on */
+    startingLife: number;
+    /** The number on the table */
+    tableNumber: number;
+    /** The round's number, absent for an unscored round */
+    roundNumber: number | null;
+    /** The round clock, absent once the round is closed */
+    clock: RoundClock | null;
+    /** How far this device's clock is ahead of the server's */
+    skewMs: number;
+};
+
 export const Route = createFileRoute("/_menu/game-utils/life-tracker")({
+    validateSearch: (search: Record<string, unknown>): LifeTrackerSearch =>
+        typeof search.tournament === "string" ? { tournament: search.tournament } : {},
+    loaderDeps: ({ search }) => ({ tournament: search.tournament }),
+    loader: async ({ deps }): Promise<MatchTable | null> => {
+        if (deps.tournament === undefined) return null;
+        await i18n.loadNamespaces("tournament");
+        try {
+            const [details, mine] = await Promise.all([
+                Api.tournaments.get(deps.tournament),
+                Api.tournaments.rounds.myMatch(deps.tournament),
+            ]);
+            const table = mine.table;
+            if (table == null || table.is_bye || mine.round == null) return null;
+            const round = mine.round;
+            return {
+                tournamentUuid: deps.tournament,
+                key: table.uuid,
+                names: table.seats.map((seat) => seat.display_name),
+                me: table.seats.findIndex((seat) => seat.participant === mine.participant),
+                startingLife: startingLifeFor(details.tournament.format),
+                tableNumber: table.table_number,
+                roundNumber: round.number ?? null,
+                clock:
+                    round.status === "Complete"
+                        ? null
+                        : {
+                              endsAt: round.timer.ends_at ?? null,
+                              pausedAt: round.timer.paused_at ?? null,
+                              lengthSeconds: round.timer.length_seconds,
+                          },
+                skewMs: clockSkew(mine.server_time, Date.now()),
+            };
+        } catch (error) {
+            // A table the viewer cannot reach opens the plain counter instead.
+            if (error instanceof ResponseError) return null;
+            throw error;
+        }
+    },
     component: RouteComponent,
 });
 
@@ -73,14 +147,20 @@ export const Route = createFileRoute("/_menu/game-utils/life-tracker")({
 function RouteComponent() {
     const [t] = useTranslation("game-utils");
     const [tg] = useTranslation();
-    const [settings, setSettings] = useState(loadLifeTrackerSettings);
+    const match = Route.useLoaderData();
+    // A tournament table brings its own pod and is never written over the device's own setup.
+    const [settings, setSettings] = useState<LifeTrackerSettings>(() =>
+        match === null
+            ? loadLifeTrackerSettings()
+            : { ...loadLifeTrackerSettings(), playerCount: match.names.length, startingLife: match.startingLife },
+    );
     // A game in progress is picked back up rather than started over. The setup
     // dialog still opens on top of it, so a table that was in the middle of one
     // taps start and carries on, and a table that was not sets its pod up over
     // totals nobody is looking at yet.
-    const [table, setTable] = useState<Table>(() => loadLifeTrackerGame(settings) ?? freshTable(settings));
+    const [table, setTable] = useState<Table>(() => loadLifeTrackerGame(settings, match?.key) ?? freshTable(settings));
     const [typedLife, setTypedLife] = useState(() => String(settings.startingLife));
-    const [configuring, setConfiguring] = useState(true);
+    const [configuring, setConfiguring] = useState(match === null);
     const [resetting, setResetting] = useState(false);
     const timers = useRef(new Map<number, number>());
 
@@ -90,7 +170,7 @@ function RouteComponent() {
     // rarely a decision — a deploy activates the new service worker and the app
     // reloads itself, and a tablet drops a backgrounded tab whenever it wants
     // the memory. Neither asks, and no table can reconstruct four totals.
-    useEffect(() => saveLifeTrackerGame(table), [table]);
+    useEffect(() => saveLifeTrackerGame(table, match?.key), [table, match?.key]);
     const fullscreen = useFullscreen(true);
     // Both unconditional: a counter lying on the table is watched rather than
     // touched, and it has no up. A setting for either was only ever a way to
@@ -103,6 +183,8 @@ function RouteComponent() {
     const orientation = useTableOrientation();
 
     const seating = seatingFor(settings.playerCount, settings.arrangement, orientation);
+    // Fixed once, so the names stay with their totals when the device is turned.
+    const [names] = useState(() => (match === null ? null : seatFromBottom(match.names, match.me, seating.seats)));
 
     /**
      * Records a change to the setup on this device
@@ -112,7 +194,7 @@ function RouteComponent() {
     function change(next: Partial<LifeTrackerSettings>) {
         setSettings((current) => {
             const changed = { ...current, ...next };
-            saveLifeTrackerSettings(changed);
+            if (match === null) saveLifeTrackerSettings(changed);
             return changed;
         });
     }
@@ -293,12 +375,33 @@ function RouteComponent() {
         >
             <header className={"flex shrink-0 items-center justify-between gap-2"}>
                 <div className={"flex min-w-0 items-center gap-2"}>
-                    <Button plain={true} href={"/game-utils"} aria-label={t("button.back-to-tools")}>
-                        <ArrowLeftIcon />
-                    </Button>
-                    <Heading className={"truncate"}>{t("heading.life-counter")}</Heading>
+                    {match === null ? (
+                        <Button plain={true} href={"/game-utils"} aria-label={t("button.back-to-tools")}>
+                            <ArrowLeftIcon />
+                        </Button>
+                    ) : (
+                        <Button
+                            plain={true}
+                            href={"/tournaments/$tournamentUuid"}
+                            params={{ tournamentUuid: match.tournamentUuid }}
+                            aria-label={t("button.back-to-tournament")}
+                        >
+                            <ArrowLeftIcon />
+                        </Button>
+                    )}
+                    {/* On a phone the clock is worth more than the table's name. */}
+                    <Heading className={clsx("truncate", match?.clock != null && "max-sm:sr-only")}>
+                        {match === null
+                            ? t("heading.life-counter")
+                            : match.roundNumber === null
+                              ? t("heading.table", { table: match.tableNumber })
+                              : t("heading.table-in-round", { table: match.tableNumber, round: match.roundNumber })}
+                    </Heading>
                 </div>
                 <div className={"flex shrink-0 items-center gap-2"}>
+                    {match?.clock != null && (
+                        <TournamentRoundClock clock={match.clock} skewMs={match.skewMs} canControl={false} />
+                    )}
                     {fullscreen.supported && (
                         <Button
                             outline={true}
@@ -337,6 +440,7 @@ function RouteComponent() {
                     <LifeTile
                         key={index}
                         number={index + 1}
+                        name={names?.[index]}
                         life={total}
                         delta={table.deltas[index]}
                         damage={table.damage[index]}
@@ -355,16 +459,18 @@ function RouteComponent() {
                 <DialogTitle>{t("heading.settings")}</DialogTitle>
                 <DialogBody>
                     <div className={"flex flex-col gap-5"}>
-                        <Field>
-                            <Label>{t("label.players")}</Label>
-                            <Listbox value={settings.playerCount} onChange={changePlayerCount}>
-                                {PLAYER_COUNTS.map((count) => (
-                                    <ListboxOption key={count} value={count}>
-                                        <ListboxLabel>{count}</ListboxLabel>
-                                    </ListboxOption>
-                                ))}
-                            </Listbox>
-                        </Field>
+                        {match === null && (
+                            <Field>
+                                <Label>{t("label.players")}</Label>
+                                <Listbox value={settings.playerCount} onChange={changePlayerCount}>
+                                    {PLAYER_COUNTS.map((count) => (
+                                        <ListboxOption key={count} value={count}>
+                                            <ListboxLabel>{count}</ListboxLabel>
+                                        </ListboxOption>
+                                    ))}
+                                </Listbox>
+                            </Field>
+                        )}
                         <div className={"flex flex-col gap-2"}>
                             <Field>
                                 <Label>{t("label.starting-life")}</Label>

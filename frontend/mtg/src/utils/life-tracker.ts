@@ -542,6 +542,8 @@ type StoredGame = {
     damage: Array<Array<number>>;
     /** Unix timestamp in milliseconds of the last change */
     at: number;
+    /** The tournament table it was counted for, absent for a casual game */
+    key?: string;
 };
 
 /**
@@ -574,18 +576,20 @@ export function freshTable(settings: LifeTrackerSettings): Table {
  * one total per seat however the two came apart.
  *
  * @param settings the pod this device is set up for
+ * @param key the tournament table being counted, absent for a casual game
  *
  * @returns the game to carry on with, or `null` when there is none worth
- *   resuming: no stored table, one that does not read as a table, or one old
- *   enough that the game it belongs to is over
+ *   resuming: no stored table, one that does not read as a table, one counted
+ *   for a different table, or one old enough that the game it belongs to is over
  */
-export function loadLifeTrackerGame(settings: LifeTrackerSettings): Table | null {
+export function loadLifeTrackerGame(settings: LifeTrackerSettings, key?: string): Table | null {
     try {
         const raw = localStorage.getItem(GAME_STORAGE_KEY);
         if (raw === null) return null;
         const stored = JSON.parse(raw) as Partial<StoredGame>;
 
         if (typeof stored.at !== "number" || Date.now() - stored.at > GAME_MAX_AGE) return null;
+        if (stored.key !== key) return null;
 
         const life = stored.life;
         if (!isTotals(life) || !isDamage(stored.damage, life.length)) return null;
@@ -612,10 +616,11 @@ export function loadLifeTrackerGame(settings: LifeTrackerSettings): Table | null
  * Writes the table, tolerating unavailable browser storage
  *
  * @param table what the pod is on now
+ * @param key the tournament table being counted, absent for a casual game
  */
-export function saveLifeTrackerGame(table: Table): void {
+export function saveLifeTrackerGame(table: Table, key?: string): void {
     try {
-        const stored: StoredGame = { life: table.life, damage: table.damage, at: Date.now() };
+        const stored: StoredGame = { life: table.life, damage: table.damage, at: Date.now(), key };
         localStorage.setItem(GAME_STORAGE_KEY, JSON.stringify(stored));
     } catch {
         // The game still runs out of state; it just will not survive a reload.
@@ -655,4 +660,22 @@ function isDamage(value: unknown, playerCount: number): value is Array<Array<num
                 row.every((taken) => Number.isInteger(taken) && taken >= 0),
         )
     );
+}
+
+/**
+ * Rotates a table's seat order so one player gets the tile nearest the device's owner
+ *
+ * Turn order stays clockwise; only where it starts moves.
+ *
+ * @param names everybody at the table, in seat order
+ * @param me which of them holds the device
+ * @param seats the seating the tiles are laid out in
+ *
+ * @returns one name per tile
+ */
+export function seatFromBottom(names: Array<string>, me: number, seats: Array<SeatPlacement>): Array<string> {
+    const bottom = seats.findIndex((placement) => placement.seat === "bottom");
+    if (bottom < 0 || me < 0 || seats.length !== names.length) return names;
+    const count = names.length;
+    return Array.from({ length: count }, (_, tile) => names[(tile - bottom + me + count) % count]);
 }

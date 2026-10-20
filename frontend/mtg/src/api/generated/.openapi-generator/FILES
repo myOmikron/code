@@ -148,6 +148,7 @@ docs/LookUpClaimToken200Response.md
 docs/LookUpJoinCode200Response.md
 docs/MailLanguage.md
 docs/MarkedCard.md
+docs/MatchReportResponse.md
 docs/MatchSeatResponse.md
 docs/MatchStatus.md
 docs/MatchTableResponse.md
@@ -159,6 +160,7 @@ docs/MpcFillCardbacksResponse.md
 docs/MpcFillImageResponse.md
 docs/MpcFillSearchRequest.md
 docs/MpcFillSearchResponse.md
+docs/MyMatchResponse.md
 docs/NewCollectionEntry.md
 docs/OldestPrintingResponse.md
 docs/OnLoanResponse.md

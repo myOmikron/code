@@ -37,7 +37,8 @@
         "reset_one": "Reset",
         "reset_other": "Reset all",
         "settings": "Settings",
-        "start": "Start life tracker"
+        "start": "Start life tracker",
+        "back-to-tournament": "Tournament"
     },
     "description": {
         "add-cards": "Search for cards or add a whole deck. Their art is searched for automatically.",
@@ -82,7 +83,9 @@
         "print-list": "Print list",
         "proxy-printer": "Proxy printer",
         "reset-game": "Start a new game?",
-        "settings": "Set up life tracker"
+        "settings": "Set up life tracker",
+        "table-in-round": "Table {{table}} · Round {{round}}",
+        "table": "Table {{table}}"
     },
     "label": {
         "arrangement": "Arrangement",

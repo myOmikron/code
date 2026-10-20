@@ -38,6 +38,10 @@ use crate::models::tournament::db::TournamentResultReportInsertPatch;
 use crate::models::tournament::db::TournamentResultReportModel;
 use crate::models::tournament::db::TournamentRoundModel;
 use crate::models::tournament::db::TournamentSeatModel;
+use crate::models::tournament::pairing;
+use crate::models::tournament::pairing::MatchTable;
+use crate::models::tournament::round;
+use crate::models::tournament::round::Round;
 use crate::tournament::reporting::Claim;
 use crate::tournament::reporting::MatchInput;
 use crate::tournament::reporting::MatchState;
@@ -93,6 +97,102 @@ pub enum ResultChange {
     NotEditable,
     /// Neither a winner nor a draw, or a winner who is not at the table
     InvalidOutcome,
+}
+
+/// The viewer's own table in the round the room is on
+#[derive(Debug, Clone)]
+pub struct MyMatch {
+    /// The viewer's participant row, if they have one
+    pub participant: Option<TournamentParticipantUuid>,
+    /// The round the room is on
+    pub round: Option<Round>,
+    /// Their table in it, once paired
+    pub table: Option<MatchTable>,
+    /// What each seat at that table has reported
+    pub claims: Vec<SeatClaim>,
+}
+
+/// One seat's report, as the viewer's own table shows it
+#[derive(Debug, Clone)]
+pub struct SeatClaim {
+    /// Who reported
+    pub by: TournamentParticipantUuid,
+    /// Who they say won, `None` for a draw
+    pub winner: Option<TournamentParticipantUuid>,
+    /// Whether they say it was drawn
+    pub draw: bool,
+    /// Games the winner took
+    pub winner_games: i16,
+    /// Games the loser took
+    pub loser_games: i16,
+    /// Games inside the match that were themselves drawn
+    pub games_drawn: i16,
+}
+
+/// Find the viewer's own table in the current round
+///
+/// @param tx the transaction to read in
+/// @param actor who is asking
+/// @param tournament which tournament
+///
+/// @returns their table and what has been said about it
+#[instrument(name = "reporting::my_match", skip(tx, actor))]
+pub async fn my_match(
+    tx: &mut Transaction,
+    actor: &TournamentActor,
+    tournament: TournamentUuid,
+) -> Result<TournamentAccess<MyMatch>, rorm::Error> {
+    if Tournament::get_for_viewer(&mut *tx, actor, tournament)
+        .await?
+        .is_none()
+    {
+        return Ok(TournamentAccess::Denied);
+    }
+    let mine = own_seats(&mut *tx, actor, tournament).await?;
+    let round = round::current(&mut *tx, tournament).await?;
+
+    let table = match (&round, mine.is_empty()) {
+        (Some(round), false) => pairing::tables(&mut *tx, tournament, round.uuid)
+            .await?
+            .into_iter()
+            .find(|table| {
+                table
+                    .seats
+                    .iter()
+                    .any(|seat| mine.contains(&seat.participant.0))
+            }),
+        _ => None,
+    };
+    let participant = match &table {
+        Some(table) => table
+            .seats
+            .iter()
+            .find(|seat| mine.contains(&seat.participant.0))
+            .map(|seat| seat.participant),
+        None => mine.first().copied().map(TournamentParticipantUuid),
+    };
+    let claims = match &table {
+        Some(table) if !table.is_bye => claims_on(&mut *tx, table.uuid)
+            .await?
+            .into_iter()
+            .map(|claim| SeatClaim {
+                by: TournamentParticipantUuid(claim.by),
+                winner: claim.outcome.winner.map(TournamentParticipantUuid),
+                draw: claim.outcome.draw,
+                winner_games: claim.outcome.winner_games,
+                loser_games: claim.outcome.loser_games,
+                games_drawn: claim.outcome.games_drawn,
+            })
+            .collect(),
+        _ => Vec::new(),
+    };
+
+    Ok(TournamentAccess::Granted(MyMatch {
+        participant,
+        round,
+        table,
+        claims,
+    }))
 }
 
 /// How an actor relates to one table, seat before staff

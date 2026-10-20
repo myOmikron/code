@@ -66,6 +66,7 @@ All URIs are relative to *http://localhost*
 | [**getDeckFormats**](DefaultApi.md#getdeckformats) | **GET** /api/frontend/v1/decks/formats | What the offered formats ask of a deck |
 | [**getDeckSourcing**](DefaultApi.md#getdecksourcing) | **GET** /api/frontend/v1/decks/{deck}/sourcing | What the deck asks for, what is in it, and where the rest could come from |
 | [**getMpcfillCardbacks**](DefaultApi.md#getmpcfillcardbacks) | **GET** /api/frontend/v1/mpcfill/cardbacks | The card backs MPCFill offers |
+| [**getMyTournamentMatch**](DefaultApi.md#getmytournamentmatch) | **GET** /api/frontend/v1/tournaments/{tournament}/my-match | The viewer\&#39;s own table in the round the room is on |
 | [**getParticipantClaimToken**](DefaultApi.md#getparticipantclaimtoken) | **GET** /api/frontend/v1/tournaments/{tournament}/participants/{participant}/claim-token | Hand a guest row\&#39;s live claim token to staff, e.g. to render as a QR code |
 | [**getParticipantDecklist**](DefaultApi.md#getparticipantdecklist) | **GET** /api/frontend/v1/tournaments/{tournament}/participants/{participant}/decklist | Read a participant\&#39;s decklist — staff, or the participant themself |
 | [**getPriceHistory**](DefaultApi.md#getpricehistory) | **GET** /api/frontend/v1/printings/{printing}/price-history | What a card has cost over time |
@@ -4501,6 +4502,76 @@ This endpoint does not need any parameter.
 ### Return type
 
 [**MpcFillCardbacksResponse**](MpcFillCardbacksResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## getMyTournamentMatch
+
+> MyMatchResponse getMyTournamentMatch(tournament)
+
+The viewer\&#39;s own table in the round the room is on
+
+The viewer\&#39;s own table in the round the room is on  In the actor block, because the phone asking is usually a guest\&#39;s.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { GetMyTournamentMatchRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    tournament: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies GetMyTournamentMatchRequest;
+
+  try {
+    const data = await api.getMyTournamentMatch(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **tournament** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**MyMatchResponse**](MyMatchResponse.md)
 
 ### Authorization
 

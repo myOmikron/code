@@ -162,3 +162,24 @@ export function nextRoundKind(format: string, rounds: ReadonlyArray<{ kind: Roun
     if (isLimitedFormat(format) && !has(RoundKind.Deckbuilding)) return RoundKind.Deckbuilding;
     return RoundKind.Swiss;
 }
+
+/** Starting life where a format departs from twenty */
+const STARTING_LIFE: Record<string, number> = {
+    commander: 40,
+    predh: 40,
+    paupercommander: 30,
+    brawl: 25,
+    standardbrawl: 25,
+    competitivebrawl: 25,
+};
+
+/**
+ * What everybody at a table of this format starts on
+ *
+ * @param slug the format
+ *
+ * @returns the starting life total
+ */
+export function startingLifeFor(slug: string): number {
+    return STARTING_LIFE[slug] ?? 20;
+}

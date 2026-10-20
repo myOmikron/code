@@ -1,8 +1,14 @@
 import { createFileRoute, useLoaderData, useRouter } from "@tanstack/react-router";
 import { Api } from "src/api/api";
 import { ResponseError } from "src/api/generated";
-import type { MatchTableResponse, RoundResponse, TournamentParticipantResponse } from "src/api/generated";
+import type {
+    MatchTableResponse,
+    MyMatchResponse,
+    RoundResponse,
+    TournamentParticipantResponse,
+} from "src/api/generated";
 import { useRef } from "react";
+import { TournamentMyMatch } from "src/components/tournament-my-match";
 import { TournamentRoundPanel } from "src/components/tournament-round-panel";
 import { TournamentSetup } from "src/components/tournament-setup";
 import { PULSE_INTERVALS, useTournamentPulse } from "src/utils/use-tournament-pulse";
@@ -39,7 +45,16 @@ export const Route = createFileRoute("/_menu/tournaments/$tournamentUuid/_tourna
             deps.round === undefined ? rounds.at(-1) : rounds.find((round) => round.sequence === deps.round);
         const tables: Array<MatchTableResponse> =
             shown === undefined ? [] : (await Api.tournaments.rounds.tables(params.tournamentUuid, shown.uuid)).tables;
-        return { participants, rounds, shown: shown ?? null, tables };
+        // Only for the current round: an earlier one is opened to look something up, not to play.
+        let mine: MyMatchResponse | null = null;
+        if (shown !== undefined && shown.uuid === rounds.at(-1)?.uuid) {
+            try {
+                mine = await Api.tournaments.rounds.myMatch(params.tournamentUuid);
+            } catch (error) {
+                if (!(error instanceof ResponseError)) throw error;
+            }
+        }
+        return { participants, rounds, shown: shown ?? null, tables, mine };
     },
     component: RouteComponent,
 });
@@ -57,7 +72,7 @@ export const Route = createFileRoute("/_menu/tournaments/$tournamentUuid/_tourna
  */
 function RouteComponent() {
     const { tournamentUuid } = Route.useParams();
-    const { participants, rounds, shown, tables } = Route.useLoaderData();
+    const { participants, rounds, shown, tables, mine } = Route.useLoaderData();
     // Non-null: the layout only ever renders `<Outlet />` — reaching this tab at all — once its
     // own loader resolved a tournament; a `null` there renders the layout's own empty state
     // instead, and this component never mounts.
@@ -75,6 +90,7 @@ function RouteComponent() {
         enabled: running && latest,
         busy: () => editing.current,
     });
+    const playing = mine?.table != null && running;
 
     if (!running && tournament.status !== "Finished") {
         return (
@@ -90,6 +106,17 @@ function RouteComponent() {
     }
 
     return (
+        <div className={"flex flex-col gap-4"}>
+            {mine !== null && running && (
+                <TournamentMyMatch
+                    tournamentUuid={tournamentUuid}
+                    tournament={tournament}
+                    match={mine}
+                    skewMs={skewMs}
+                    showClock={!viewer.is_organizer}
+                    onChanged={() => router.invalidate()}
+                />
+            )}
             <TournamentRoundPanel
                 tournamentUuid={tournamentUuid}
                 tournament={tournament}
@@ -99,10 +126,12 @@ function RouteComponent() {
                 tables={tables}
                 skewMs={skewMs}
                 participants={participants}
+                collapseTables={playing && !viewer.is_organizer}
                 onEditingChange={(next) => {
                     editing.current = next;
                 }}
                 onChanged={() => router.invalidate()}
             />
+        </div>
     );
 }

@@ -2,6 +2,7 @@ import {
     ArrowPathIcon,
     ArrowsRightLeftIcon,
     CheckCircleIcon,
+    ChevronRightIcon,
     PlayIcon,
     PlusIcon,
     TrashIcon,
@@ -79,6 +80,8 @@ export type TournamentRoundPanelProps = {
     skewMs: number;
     /** The roster, for the desk's pairing editor */
     participants: Array<TournamentParticipantResponse>;
+    /** Folds the tables away, for a player whose own table is shown above */
+    collapseTables?: boolean;
     /** Called while the desk is editing, so a refresh does not land on it */
     onEditingChange?: (editing: boolean) => void;
     /** Called after anything changed */
@@ -103,12 +106,14 @@ export function TournamentRoundPanel({
     tables,
     skewMs,
     participants,
+    collapseTables = false,
     onEditingChange,
     onChanged,
 }: TournamentRoundPanelProps) {
     const [t] = useTranslation("tournament");
     const [confirmingComplete, setConfirmingComplete] = useState(false);
     const [editing, setEditing] = useState(false);
+    const [tablesOpen, setTablesOpen] = useState(false);
 
     /**
      * Opens or closes the desk's pairing editor
@@ -281,38 +286,47 @@ export function TournamentRoundPanel({
                 </nav>
             )}
 
-            <div
-                className={
-                    "flex flex-wrap items-center gap-x-6 gap-y-4 rounded-(--radius-card) bg-(--surface-card) px-5 py-4 shadow-(--shadow-card-sm) ring-1 ring-zinc-950/5 dark:ring-white/10"
-                }
-            >
-                <div className={"flex min-w-0 flex-col gap-1"}>
-                    <span className={"text-xs font-semibold tracking-wider text-zinc-500 uppercase dark:text-zinc-400"}>
-                        {tournament.planned_rounds != null && round.number != null
-                            ? t("label.round-of", { number: round.number, total: tournament.planned_rounds })
-                            : t("heading.rounds")}
-                    </span>
-                    <span className={"text-2xl/8 font-semibold text-zinc-950 dark:text-white"}>
-                        {roundTitle(round, t)}
-                    </span>
-                </div>
+            {/* A player's own card above already carries the round and its clock. */}
+            {!collapseTables && (
+                <div
+                    className={
+                        "flex flex-wrap items-center gap-x-6 gap-y-4 rounded-(--radius-card) bg-(--surface-card) px-5 py-4 shadow-(--shadow-card-sm) ring-1 ring-zinc-950/5 dark:ring-white/10"
+                    }
+                >
+                    <div className={"flex min-w-0 flex-col gap-1"}>
+                        <span
+                            className={
+                                "text-xs font-semibold tracking-wider text-zinc-500 uppercase dark:text-zinc-400"
+                            }
+                        >
+                            {tournament.planned_rounds != null && round.number != null
+                                ? t("label.round-of", { number: round.number, total: tournament.planned_rounds })
+                                : t("heading.rounds")}
+                        </span>
+                        <span className={"text-2xl/8 font-semibold text-zinc-950 dark:text-white"}>
+                            {roundTitle(round, t)}
+                        </span>
+                    </div>
 
-                <Badge color={round.status === "Complete" ? "zinc" : round.status === "Running" ? "emerald" : "sky"}>
-                    {t(`label.round-status-${round.status.toLowerCase()}`)}
-                </Badge>
+                    <Badge
+                        color={round.status === "Complete" ? "zinc" : round.status === "Running" ? "emerald" : "sky"}
+                    >
+                        {t(`label.round-status-${round.status.toLowerCase()}`)}
+                    </Badge>
 
-                <div className={"ms-auto flex flex-wrap items-center gap-3"}>
-                    <TournamentRoundClock
-                        clock={clock}
-                        skewMs={skewMs}
-                        canControl={staff && latest && round.status === "Running"}
-                        onStart={() => void timer(TimerActionRequest.Start)}
-                        onPause={() => void timer(TimerActionRequest.Pause)}
-                        onResume={() => void timer(TimerActionRequest.Resume)}
-                        onAdjust={(seconds) => void timer(TimerActionRequest.Adjust, seconds)}
-                    />
+                    <div className={"ms-auto flex flex-wrap items-center gap-3"}>
+                        <TournamentRoundClock
+                            clock={clock}
+                            skewMs={skewMs}
+                            canControl={staff && latest && round.status === "Running"}
+                            onStart={() => void timer(TimerActionRequest.Start)}
+                            onPause={() => void timer(TimerActionRequest.Pause)}
+                            onResume={() => void timer(TimerActionRequest.Resume)}
+                            onAdjust={(seconds) => void timer(TimerActionRequest.Adjust, seconds)}
+                        />
+                    </div>
                 </div>
-            </div>
+            )}
 
             {/* A deckbuilding stage has no tables at all — it is a clock and a room full of people
                 opening boosters — so it says what is happening rather than "no pairings yet". */}
@@ -340,6 +354,18 @@ export function TournamentRoundPanel({
                         if (saved) await onChanged();
                     }}
                 />
+            ) : collapseTables && !tablesOpen ? (
+                <button
+                    type={"button"}
+                    aria-expanded={false}
+                    onClick={() => setTablesOpen(true)}
+                    className={
+                        "flex items-center justify-between rounded-(--radius-card) bg-(--surface-card) px-4 py-3 text-sm font-medium text-zinc-700 shadow-(--shadow-card-sm) ring-1 ring-zinc-950/5 dark:text-zinc-200 dark:ring-white/10"
+                    }
+                >
+                    {t("heading.all-tables")}
+                    <ChevronRightIcon className={"size-4"} aria-hidden={true} />
+                </button>
             ) : (
                 <div className={"flex flex-col gap-3"}>
                     {staff && latest && round.status !== "Complete" && (

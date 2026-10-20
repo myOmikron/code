@@ -4089,6 +4089,49 @@ export interface MarkedCard {
     oracle_id: string;
 }
 /**
+ * One seat's report about its own table
+ * @export
+ * @interface MatchReportResponse
+ */
+export interface MatchReportResponse {
+    /**
+     * Whether they say it was drawn
+     * @type {boolean}
+     * @memberof MatchReportResponse
+     */
+    draw: boolean;
+    /**
+     * Games inside the match that were themselves drawn
+     * @type {number}
+     * @memberof MatchReportResponse
+     */
+    games_drawn: number;
+    /**
+     * Games the loser took
+     * @type {number}
+     * @memberof MatchReportResponse
+     */
+    loser_games: number;
+    /**
+     * Who reported
+     * @type {string}
+     * @memberof MatchReportResponse
+     */
+    reporter: string;
+    /**
+     * Who they say won, `null` for a draw
+     * @type {string}
+     * @memberof MatchReportResponse
+     */
+    winner?: string | null;
+    /**
+     * Games the winner took
+     * @type {number}
+     * @memberof MatchReportResponse
+     */
+    winner_games: number;
+}
+/**
  * One seat at one table
  * @export
  * @interface MatchSeatResponse
@@ -4392,6 +4435,43 @@ export interface MpcFillSearchResponse {
      * @memberof MpcFillSearchResponse
      */
     results: Array<MpcFillArtResponse>;
+}
+/**
+ * The viewer's own table in the round the room is on
+ * @export
+ * @interface MyMatchResponse
+ */
+export interface MyMatchResponse {
+    /**
+     * The viewer's participant row, if they have one
+     * @type {string}
+     * @memberof MyMatchResponse
+     */
+    participant?: string | null;
+    /**
+     * What the seats at that table have reported
+     * @type {Array<MatchReportResponse>}
+     * @memberof MyMatchResponse
+     */
+    reports: Array<MatchReportResponse>;
+    /**
+     * The round the room is on
+     * @type {RoundResponse}
+     * @memberof MyMatchResponse
+     */
+    round?: RoundResponse | null;
+    /**
+     * The server's clock, for the round timer
+     * @type {string}
+     * @memberof MyMatchResponse
+     */
+    server_time: string;
+    /**
+     * Their table in it, once paired
+     * @type {MatchTableResponse}
+     * @memberof MyMatchResponse
+     */
+    table?: MatchTableResponse | null;
 }
 /**
  * A stack to file into a collection

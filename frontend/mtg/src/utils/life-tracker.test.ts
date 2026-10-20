@@ -13,6 +13,7 @@ import {
     rebookableHit,
     resizeCommanderDamage,
     saveLifeTrackerGame,
+    seatFromBottom,
     saveLifeTrackerSettings,
     seatingFor,
     trackHit,
@@ -327,6 +328,16 @@ describe("resuming a game", () => {
         expect(loadLifeTrackerGame(POD)).toEqual({ life: [33, 40, 19, 40], damage, deltas: {}, hits: {} });
     });
 
+    it("keeps a tournament table's game apart from a casual one", () => {
+        vi.stubGlobal("localStorage", storage(new Map()));
+
+        saveLifeTrackerGame({ life: [17, 20], damage: emptyCommanderDamage(2), deltas: {}, hits: {} }, "table-4");
+
+        expect(loadLifeTrackerGame(POD)).toBeNull();
+        expect(loadLifeTrackerGame({ ...POD, playerCount: 2 }, "table-5")).toBeNull();
+        expect(loadLifeTrackerGame({ ...POD, playerCount: 2 }, "table-4")?.life).toEqual([17, 20]);
+    });
+
     it("starts fresh when nothing was left behind", () => {
         vi.stubGlobal("localStorage", storage(new Map()));
 
@@ -545,5 +556,20 @@ describe("ups, that was commander damage", () => {
         vi.stubGlobal("localStorage", storage(values));
 
         expect(loadLifeTrackerSettings().rebook).toBe(true);
+    });
+});
+
+describe("seatFromBottom", () => {
+    it("puts the device's owner on the bottom tile and keeps turn order", () => {
+        const pod = seatingFor(4, "sides", "landscape").seats;
+        const tiles = seatFromBottom(["lena", "mo", "me", "kai"], 2, pod);
+        const bottom = pod.findIndex((placement) => placement.seat === "bottom");
+
+        expect(tiles[bottom]).toBe("me");
+        expect(tiles[(bottom + 1) % 4]).toBe("kai");
+    });
+
+    it("seats a duel with the owner at the bottom", () => {
+        expect(seatFromBottom(["me", "lena"], 0, seatingFor(2, "sides", "landscape").seats)).toEqual(["lena", "me"]);
     });
 });

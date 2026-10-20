@@ -37,7 +37,8 @@
         "reset_one": "Zurücksetzen",
         "reset_other": "Alle zurücksetzen",
         "settings": "Einstellungen",
-        "start": "Lifetracker starten"
+        "start": "Lifetracker starten",
+        "back-to-tournament": "Turnier"
     },
     "description": {
         "add-cards": "Suche Karten oder übernimm ein ganzes Deck. Die Bilder werden automatisch gesucht.",
@@ -82,7 +83,9 @@
         "print-list": "Druckliste",
         "proxy-printer": "Proxy-Drucker",
         "reset-game": "Neue Partie starten?",
-        "settings": "Lifetracker einstellen"
+        "settings": "Lifetracker einstellen",
+        "table-in-round": "Tisch {{table}} · Runde {{round}}",
+        "table": "Tisch {{table}}"
     },
     "label": {
         "arrangement": "Anordnung",

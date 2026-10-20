@@ -332,6 +332,8 @@ export const Api = {
         rounds: {
             state: (uuid: UUID) => defaultApi.getTournamentState({ tournament: uuid }),
             list: (uuid: UUID) => defaultApi.listTournamentRounds({ tournament: uuid }),
+            // Bypasses `handleError`: a guest's phone polls its own table.
+            myMatch: (uuid: UUID) => defaultApi.getMyTournamentMatch({ tournament: uuid }),
             // Bypasses `handleError` for the same reason: a guest's phone polls its own table.
             tables: (uuid: UUID, round: UUID) => defaultApi.listRoundTables({ tournament: uuid, round }),
             // One call for the first pairing and every re-pair after it. The server refuses once a

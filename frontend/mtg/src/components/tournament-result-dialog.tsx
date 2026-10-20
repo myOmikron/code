@@ -165,7 +165,7 @@ export function TournamentResultDialog({
                                 >
                                     {t("label.games-won")}
                                 </span>
-                                <Counter
+                                <GameCounter
                                     value={wins[seat.participant] ?? 0}
                                     options={winCounts}
                                     label={(count) => t("accessibility.games-won", { name: seat.display_name, count })}
@@ -199,7 +199,7 @@ export function TournamentResultDialog({
                         >
                             {t("label.draws")}
                         </span>
-                        <Counter
+                        <GameCounter
                             value={draws}
                             options={drawCounts}
                             label={(count) => t("accessibility.games-drawn", { count })}
@@ -229,9 +229,9 @@ export function TournamentResultDialog({
 }
 
 /**
- * The properties for {@link Counter}
+ * The properties for {@link GameCounter}
  */
-type CounterProps = {
+export type GameCounterProps = {
     /** The chosen count */
     value: number;
     /** Every count that can be chosen */
@@ -251,7 +251,7 @@ type CounterProps = {
  *
  * @returns the row
  */
-function Counter({ value, options, label, onChange }: CounterProps) {
+export function GameCounter({ value, options, label, onChange }: GameCounterProps) {
     return (
         <span
             className={

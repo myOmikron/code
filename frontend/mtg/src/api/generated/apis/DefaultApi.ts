@@ -110,6 +110,7 @@ import type {
     MpcFillCardbacksResponse,
     MpcFillSearchRequest,
     MpcFillSearchResponse,
+    MyMatchResponse,
     PairTournamentRound200Response,
     PriceHistoryResponse,
     PrintingLanguagesResponse,
@@ -426,6 +427,10 @@ export interface GetDeckCollectionDriftRequest {
 
 export interface GetDeckSourcingRequest {
     deck: string;
+}
+
+export interface GetMyTournamentMatchRequest {
+    tournament: string;
 }
 
 export interface GetParticipantClaimTokenRequest {
@@ -3924,6 +3929,53 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async getMpcfillCardbacks(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MpcFillCardbacksResponse> {
         const response = await this.getMpcfillCardbacksRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for getMyTournamentMatch without sending the request
+     */
+    async getMyTournamentMatchRequestOpts(requestParameters: GetMyTournamentMatchRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tournament'] == null) {
+            throw new runtime.RequiredError(
+                'tournament',
+                'Required parameter "tournament" was null or undefined when calling getMyTournamentMatch().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/tournaments/{tournament}/my-match`;
+        urlPath = urlPath.replace('{tournament}', encodeURIComponent(String(requestParameters['tournament'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * The viewer\'s own table in the round the room is on  In the actor block, because the phone asking is usually a guest\'s.
+     * The viewer\'s own table in the round the room is on
+     */
+    async getMyTournamentMatchRaw(requestParameters: GetMyTournamentMatchRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MyMatchResponse>> {
+        const requestOptions = await this.getMyTournamentMatchRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * The viewer\'s own table in the round the room is on  In the actor block, because the phone asking is usually a guest\'s.
+     * The viewer\'s own table in the round the room is on
+     */
+    async getMyTournamentMatch(requestParameters: GetMyTournamentMatchRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MyMatchResponse> {
+        const response = await this.getMyTournamentMatchRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

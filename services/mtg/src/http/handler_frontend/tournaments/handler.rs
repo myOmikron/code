@@ -64,8 +64,10 @@ use crate::http::handler_frontend::tournaments::schema::ListTournamentParticipan
 use crate::http::handler_frontend::tournaments::schema::ListTournamentVenuesResponse;
 use crate::http::handler_frontend::tournaments::schema::ListTournamentsResponse;
 use crate::http::handler_frontend::tournaments::schema::MAX_TOURNAMENT_AUDIT_LIMIT;
+use crate::http::handler_frontend::tournaments::schema::MatchReportResponse;
 use crate::http::handler_frontend::tournaments::schema::MatchTableResponse;
 use crate::http::handler_frontend::tournaments::schema::MeetingResponse;
+use crate::http::handler_frontend::tournaments::schema::MyMatchResponse;
 use crate::http::handler_frontend::tournaments::schema::PLAYER_SEARCH_LIMIT;
 use crate::http::handler_frontend::tournaments::schema::PairRoundErrors;
 use crate::http::handler_frontend::tournaments::schema::PairRoundResponse;
@@ -1223,6 +1225,46 @@ pub async fn list_round_meetings(
             .into_iter()
             .map(|(a, b)| MeetingResponse { a, b })
             .collect(),
+    }))
+}
+
+/// The viewer's own table in the round the room is on
+///
+/// In the actor block, because the phone asking is usually a guest's.
+#[get("/{tournament}/my-match")]
+pub async fn get_my_tournament_match(
+    actor: TournamentActor,
+    Path(tournament_uuid): Path<TournamentUuid>,
+) -> ApiResult<ApiJson<MyMatchResponse>> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    let found = match reporting::my_match(&mut tx, &actor, tournament_uuid).await? {
+        TournamentAccess::Granted(found) => found,
+        TournamentAccess::Denied => return Err(denied()),
+    };
+
+    tx.commit().await?;
+
+    let now = OffsetDateTime::now_utc();
+    Ok(ApiJson(MyMatchResponse {
+        participant: found.participant,
+        round: found
+            .round
+            .map(|round| RoundResponse::from_round(round, now)),
+        table: found.table.map(MatchTableResponse::from),
+        reports: found
+            .claims
+            .into_iter()
+            .map(|claim| MatchReportResponse {
+                reporter: claim.by,
+                winner: claim.winner,
+                draw: claim.draw,
+                winner_games: claim.winner_games,
+                loser_games: claim.loser_games,
+                games_drawn: claim.games_drawn,
+            })
+            .collect(),
+        server_time: SchemaDateTime(now),
     }))
 }
 
