@@ -271,7 +271,7 @@ function colorName(t: Translate, letter: string): string {
         case "multicolor":
             return t("label.color-multicolor");
         case "S":
-            return t("label.color-snow");
+            return t("label.snow");
         default:
             return t("label.color-colorless");
     }

@@ -9,7 +9,7 @@
 
 import type { DeckCardResponse, DeckTagResponse } from "src/api/generated";
 import { isSnowSource, primaryType } from "src/utils/card-types";
-import { MANA_CURVE_CAP, UNTAGGED } from "src/utils/deck-stats";
+import { MANA_CURVE_CAP, SNOW, UNTAGGED } from "src/utils/deck-stats";
 import { atLeast, exactly } from "src/utils/hypergeometric";
 
 /** How many cards an opening hand holds */
@@ -23,9 +23,6 @@ const WORST_LIMIT = 8;
 
 /** The colours, in the order they are written */
 const COLOR_LETTERS = ["W", "U", "B", "R", "G"];
-
-/** The key Snow pips and Snow sources are counted under, Scryfall's symbol for them */
-const SNOW = "S";
 
 /** What a cost can ask for: the colours, and a Snow source behind them */
 const REQUIREMENT_LETTERS = [...COLOR_LETTERS, SNOW];
@@ -144,7 +141,7 @@ export function deckOdds(
     const deckSize = library.reduce((sum, card) => sum + card.quantity, 0);
 
     let lands = 0;
-    let snowPips = false;
+    let hasSnowPips = false;
     const sources = new Map<string, number>();
     const manaPools = new Map<string, Pool>();
     const tagPools = new Map<string, Pool>();
@@ -159,7 +156,7 @@ export function deckOdds(
         if (isSnowSource(card.type_line, card.produced_mana)) {
             sources.set(SNOW, (sources.get(SNOW) ?? 0) + slot.quantity);
         }
-        if (colorRequirements(card.mana_cost).has(SNOW)) snowPips = true;
+        if (colorRequirements(card.mana_cost).has(SNOW)) hasSnowPips = true;
 
         // The mana split mirrors the curve, which is about spells: a land has a
         // mana value of zero and would sit among the free spells without saying
@@ -195,9 +192,7 @@ export function deckOdds(
     const opening: OpeningHand = {
         deckSize,
         lands,
-        // Snow is no colour the deck plays, so it is only asked about where a
-        // cost asks for it.
-        colors: (snowPips ? [...colors, SNOW] : colors).map((color) => ({
+        colors: (hasSnowPips ? [...colors, SNOW] : colors).map((color) => ({
             key: color,
             chance: atLeast(deckSize, sources.get(color) ?? 0, HAND, 1),
         })),
