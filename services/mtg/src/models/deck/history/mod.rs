@@ -64,8 +64,8 @@ pub enum DeckChangeKind {
     Created,
     /// The deck existed before Deck histories; its entries at that time
     Introduced,
-    /// A plain edit of Deck entries: copies added or taken away
-    Edit,
+    /// Copies of a Deck entry added or taken away
+    Quantity,
     /// A Deck entry moved to another zone
     Move,
     /// A Deck entry switched to another printing, finish or proxy status
@@ -93,19 +93,20 @@ pub enum DeckChangeKind {
 }
 
 impl DeckChangeKind {
-    /// Whether it is a plain edit, which a quick successive one may join
-    fn is_plain_edit(self) -> bool {
-        matches!(self, Self::Edit | Self::Settings)
+    /// Whether a quick successive Deck change of the same kind may join it
+    fn coalesces(self) -> bool {
+        matches!(self, Self::Quantity | Self::Settings)
     }
 }
 
 custom_db_enum! {
     enum: DeckChangeKind,
-    variants: [Created, Introduced, Edit, Move, Switch, Swap, Import, Replace, Fill, Sourcing, Settings, Undo, Redo, Reset],
+    variants: [Created, Introduced, Quantity, Move, Switch, Swap, Import, Replace, Fill, Sourcing, Settings, Undo, Redo, Reset],
     decoder: DeckChangeKindDecoder,
 }
 
-/// How long a plain edit stays open for a quick successive one to join it
+/// How long a Deck change that coalesces stays open for a quick successive
+/// one to join it
 ///
 /// Counted from when the joined Deck change started: a joining edit neither
 /// restarts it nor moves the Deck change's time.
@@ -602,8 +603,9 @@ impl DeckEdit {
     /// Append a Deck change to the deck's Deck history
     ///
     /// A difference that changes nothing records nothing. A quick successive
-    /// plain edit joins the latest Deck change instead, see [`Self::joins`];
-    /// should the two cancel out, the latest Deck change goes away.
+    /// Deck change of a kind that coalesces joins the latest one instead, see
+    /// [`Self::joins`]; should the two cancel out, the latest Deck change goes
+    /// away.
     #[instrument(name = "DeckEdit::record", skip(tx, difference))]
     pub async fn record(
         &self,
@@ -615,7 +617,7 @@ impl DeckEdit {
         if difference.is_empty() {
             return Ok(());
         }
-        if !kind.is_plain_edit() {
+        if !kind.coalesces() {
             return insert(tx, self.deck, kind, difference).await;
         }
 
@@ -642,9 +644,9 @@ impl DeckEdit {
 
     /// Whether a Deck change of `kind` made `now` joins the deck's latest one
     ///
-    /// It does when both are plain edits of the same kind touching the very
-    /// same single Deck entry or deck field, and the latest is still inside
-    /// the [`COALESCING_WINDOW`] and carries no Deck checkpoint.
+    /// It does when both are of the same kind, one that coalesces, touching
+    /// the very same single Deck entry or deck field, and the latest is still
+    /// inside the [`COALESCING_WINDOW`] and carries no Deck checkpoint.
     fn joins(
         latest: &StoredChange,
         kind: DeckChangeKind,
@@ -652,7 +654,7 @@ impl DeckEdit {
         now: OffsetDateTime,
     ) -> bool {
         latest.kind == kind
-            && kind.is_plain_edit()
+            && kind.coalesces()
             && now - latest.changed_at < COALESCING_WINDOW
             && latest.checkpoint.is_none()
             && latest.difference.touches_the_same(difference)
