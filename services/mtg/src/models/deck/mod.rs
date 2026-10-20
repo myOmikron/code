@@ -37,6 +37,7 @@ use crate::models::deck::db::DeckModel;
 use crate::models::deck::db::GlobalCardTagModel;
 use crate::models::deck::folder::DeckFolder;
 use crate::models::deck::folder::DeckFolderUuid;
+use crate::models::deck::history::DeckChangeKind;
 use crate::models::deck::history::DeckDifference;
 use crate::models::deck::history::DeckHistory;
 use crate::models::deck::tag::DeckTag;
@@ -1200,7 +1201,8 @@ impl DeckCard {
     /// Repoint every deck card of a merged Scryfall printing at its replacement
     ///
     /// A Deck entry that becomes alike to one already holding the replacement
-    /// merges into it. See
+    /// merges into it. Each deck touched records one
+    /// [`DeckChangeKind::Switch`] under its lock. See
     /// [`crate::models::collection::CollectionEntry::apply_printing_merge`].
     #[instrument(name = "DeckCard::apply_printing_merge", skip(tx))]
     pub async fn apply_printing_merge(
@@ -1208,28 +1210,54 @@ impl DeckCard {
         old_printing: Uuid,
         new_printing: Uuid,
     ) -> Result<u64, rorm::Error> {
-        let entries = rorm::query(&mut *tx, DeckCardModel)
+        let mut decks: Vec<DeckUuid> = rorm::query(&mut *tx, DeckCardModel.deck)
             .condition(DeckCardModel.printing.equals(old_printing))
             .all()
-            .await?;
-        let affected = entries.len() as u64;
+            .await?
+            .into_iter()
+            .map(DeckUuid::new_from_field)
+            .collect();
+        decks.sort_unstable_by_key(|deck| deck.0);
+        decks.dedup();
 
-        for entry in entries.into_iter().map(DeckCard::from) {
-            let key = DeckEntryKey {
-                printing: new_printing,
-                ..entry.key()
+        let mut affected = 0;
+        for deck in decks {
+            let Some(edit) = DeckHistory::lock_for_service(&mut *tx, deck).await? else {
+                continue;
             };
-            match Self::find_alike(&mut *tx, entry.deck, key).await? {
-                Some(alike) => {
-                    Self::merge_into(&mut *tx, entry.uuid, entry.quantity, alike).await?;
-                }
-                None => {
-                    rorm::update(&mut *tx, DeckCardModel)
-                        .set(DeckCardModel.printing, new_printing)
-                        .condition(DeckCardModel.uuid.equals(entry.uuid.0))
-                        .await?;
+            let entries = rorm::query(&mut *tx, DeckCardModel)
+                .condition(rorm::and![
+                    DeckCardModel.deck.equals(deck.0),
+                    DeckCardModel.printing.equals(old_printing),
+                ])
+                .all()
+                .await?;
+            let mut difference = DeckDifference::default();
+            for entry in entries.into_iter().map(DeckCard::from) {
+                affected += 1;
+                let key = DeckEntryKey {
+                    printing: new_printing,
+                    ..entry.key()
+                };
+                difference.entry(entry.key(), entry.quantity, 0);
+                match Self::find_alike(&mut *tx, deck, key).await? {
+                    Some(alike) => {
+                        let before = alike.quantity;
+                        let merged =
+                            Self::merge_into(&mut *tx, entry.uuid, entry.quantity, alike).await?;
+                        difference.entry(key, before, merged.quantity);
+                    }
+                    None => {
+                        rorm::update(&mut *tx, DeckCardModel)
+                            .set(DeckCardModel.printing, new_printing)
+                            .condition(DeckCardModel.uuid.equals(entry.uuid.0))
+                            .await?;
+                        difference.entry(key, 0, entry.quantity);
+                    }
                 }
             }
+            edit.record(&mut *tx, DeckChangeKind::Switch, difference)
+                .await?;
         }
 
         rorm::update(&mut *tx, GlobalCardTagModel)
