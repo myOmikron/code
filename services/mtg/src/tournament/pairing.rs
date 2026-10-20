@@ -294,10 +294,13 @@ pub fn validate_manual(
             errors.push(ManualPairingError::NotSeated(entrant.id));
         }
     }
+    let mut byes = 0;
     for (index, seats) in tables.iter().enumerate() {
+        let bye = snapshot.pod_size == 2 && seats.len() == 1;
+        byes += usize::from(bye);
         let allowed = seats.len() == snapshot.pod_size
             || (snapshot.pod_size > 2 && seats.len() == snapshot.pod_size - 1)
-            || (snapshot.pod_size == 2 && seats.len() == 1);
+            || (bye && byes == 1);
         if !allowed {
             errors.push(ManualPairingError::WrongPodSize {
                 number: (index + 1) as i16,
@@ -1208,6 +1211,25 @@ mod tests {
             errors
                 .iter()
                 .all(|error| matches!(error, ManualPairingError::WrongPodSize { seated: 2, .. }))
+        );
+    }
+
+    #[test]
+    fn refuses_a_second_bye_in_a_hand_arranged_duel_round() {
+        let snap = snapshot(PairingKind::Swiss, 2, field(4));
+        let tables = vec![
+            vec![Uuid::from_u128(1), Uuid::from_u128(2)],
+            vec![Uuid::from_u128(3)],
+            vec![Uuid::from_u128(4)],
+        ];
+        let errors = validate_manual(&snap, &tables).expect_err("invalid");
+
+        assert_eq!(
+            errors,
+            vec![ManualPairingError::WrongPodSize {
+                number: 3,
+                seated: 1
+            }]
         );
     }
 

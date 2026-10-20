@@ -2,6 +2,7 @@ import { createFileRoute, useLoaderData, useRouter } from "@tanstack/react-route
 import { Api } from "src/api/api";
 import { ResponseError } from "src/api/generated";
 import type { MatchTableResponse, RoundResponse, TournamentParticipantResponse } from "src/api/generated";
+import { useRef } from "react";
 import { TournamentRoundPanel } from "src/components/tournament-round-panel";
 import { TournamentSetup } from "src/components/tournament-setup";
 import { PULSE_INTERVALS, useTournamentPulse } from "src/utils/use-tournament-pulse";
@@ -67,10 +68,12 @@ function RouteComponent() {
 
     const running = tournament.status === "Running";
     const latest = shown !== null && shown.uuid === rounds.at(-1)?.uuid;
+    const editing = useRef(false);
     // A round in the past does not change under anybody, so it is not polled.
     useTournamentPulse({
         interval: viewer.is_organizer ? PULSE_INTERVALS.staff : PULSE_INTERVALS.player,
         enabled: running && latest,
+        busy: () => editing.current,
     });
 
     if (!running && tournament.status !== "Finished") {
@@ -87,15 +90,19 @@ function RouteComponent() {
     }
 
     return (
-        <TournamentRoundPanel
-            tournamentUuid={tournamentUuid}
-            tournament={tournament}
-            viewer={viewer}
-            rounds={rounds}
-            round={shown}
-            tables={tables}
-            skewMs={skewMs}
-            onChanged={() => router.invalidate()}
-        />
+            <TournamentRoundPanel
+                tournamentUuid={tournamentUuid}
+                tournament={tournament}
+                viewer={viewer}
+                rounds={rounds}
+                round={shown}
+                tables={tables}
+                skewMs={skewMs}
+                participants={participants}
+                onEditingChange={(next) => {
+                    editing.current = next;
+                }}
+                onChanged={() => router.invalidate()}
+            />
     );
 }

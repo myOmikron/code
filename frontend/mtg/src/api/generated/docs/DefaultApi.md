@@ -11,6 +11,7 @@ All URIs are relative to *http://localhost*
 | [**addTournamentOrganizer**](DefaultApi.md#addtournamentorganizeroperation) | **POST** /api/frontend/v1/tournaments/{tournament}/organizers | Add an account as staff — owner only |
 | [**addTournamentParticipant**](DefaultApi.md#addtournamentparticipantoperation) | **POST** /api/frontend/v1/tournaments/{tournament}/participants | Walk a guest into the roster by name |
 | [**addWatchListEntry**](DefaultApi.md#addwatchlistentryoperation) | **POST** /api/frontend/v1/watch-lists/{list}/entries | Put a card on a watch list |
+| [**arrangeTournamentRound**](DefaultApi.md#arrangetournamentround) | **PUT** /api/frontend/v1/tournaments/{tournament}/rounds/{round}/pairings | Rewrite a round\&#39;s tables from a layout arranged at the desk |
 | [**assignCollectionEntryTag**](DefaultApi.md#assigncollectionentrytag) | **POST** /api/frontend/v1/collections/{collection}/entries/{entry}/tags/{tag} | Put a card-wide tag on a stack |
 | [**assignDeckCardTag**](DefaultApi.md#assigndeckcardtag) | **POST** /api/frontend/v1/decks/{deck}/cards/{card}/tags/{tag} | Put a tag on a card |
 | [**attachDeckCollection**](DefaultApi.md#attachdeckcollection) | **POST** /api/frontend/v1/decks/{deck}/collection | Start keeping the cards that are physically in this deck |
@@ -93,6 +94,7 @@ All URIs are relative to *http://localhost*
 | [**listPasskeys**](DefaultApi.md#listpasskeys) | **GET** /api/frontend/v1/accounts/passkeys | List the passkeys of the logged-in account |
 | [**listPublicCollectionCards**](DefaultApi.md#listpubliccollectioncards) | **GET** /api/frontend/v1/explore/collections/{collection}/cards | List a page of a public collection\&#39;s cards, sorted and filtered |
 | [**listPublicDeckCards**](DefaultApi.md#listpublicdeckcards) | **GET** /api/frontend/v1/explore/decks/{deck}/cards | Every card of a public deck, with the catalog data and the tags on it |
+| [**listRoundMeetings**](DefaultApi.md#listroundmeetings) | **GET** /api/frontend/v1/tournaments/{tournament}/rounds/{round}/meetings | Who has already played whom before this round |
 | [**listRoundTables**](DefaultApi.md#listroundtables) | **GET** /api/frontend/v1/tournaments/{tournament}/rounds/{round}/tables | Every table of one round |
 | [**listSharedCollectionCards**](DefaultApi.md#listsharedcollectioncards) | **GET** /api/frontend/v1/shared/collections/{token}/cards | List a page of a shared collection\&#39;s cards, sorted and filtered |
 | [**listSharedDeckCards**](DefaultApi.md#listshareddeckcards) | **GET** /api/frontend/v1/shared/decks/{token}/cards | Every card of a shared deck, with the catalog data and the tags on it |
@@ -655,6 +657,82 @@ example().catch(console.error);
 ### Return type
 
 **any**
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## arrangeTournamentRound
+
+> ArrangeTournamentRound200Response arrangeTournamentRound(tournament, round, ArrangePairingsRequest)
+
+Rewrite a round\&#39;s tables from a layout arranged at the desk
+
+Rewrite a round\&#39;s tables from a layout arranged at the desk
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { ArrangeTournamentRoundRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    tournament: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string
+    round: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // ArrangePairingsRequest (optional)
+    ArrangePairingsRequest: ...,
+  } satisfies ArrangeTournamentRoundRequest;
+
+  try {
+    const data = await api.arrangeTournamentRound(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **tournament** | `string` |  | [Defaults to `undefined`] |
+| **round** | `string` |  | [Defaults to `undefined`] |
+| **ArrangePairingsRequest** | [ArrangePairingsRequest](ArrangePairingsRequest.md) |  | [Optional] |
+
+### Return type
+
+[**ArrangeTournamentRound200Response**](ArrangeTournamentRound200Response.md)
 
 ### Authorization
 
@@ -6442,6 +6520,79 @@ example().catch(console.error);
 ### Return type
 
 [**ListDeckCardsResponse**](ListDeckCardsResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## listRoundMeetings
+
+> ListMeetingsResponse listRoundMeetings(tournament, round)
+
+Who has already played whom before this round
+
+Who has already played whom before this round
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { ListRoundMeetingsRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    tournament: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string
+    round: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies ListRoundMeetingsRequest;
+
+  try {
+    const data = await api.listRoundMeetings(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **tournament** | `string` |  | [Defaults to `undefined`] |
+| **round** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**ListMeetingsResponse**](ListMeetingsResponse.md)
 
 ### Authorization
 

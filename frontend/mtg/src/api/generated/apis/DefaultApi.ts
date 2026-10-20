@@ -23,6 +23,8 @@ import type {
     AddWatchListEntryRequest,
     AdvisorSettingsResponse,
     ApiErrorResponse,
+    ArrangePairingsRequest,
+    ArrangeTournamentRound200Response,
     CardCondition,
     CardFinish,
     CardRarity,
@@ -85,6 +87,7 @@ import type {
     ListDeckFoldersResponse,
     ListFormatsResponse,
     ListGlobalTagsResponse,
+    ListMeetingsResponse,
     ListOnLoanResponse,
     ListPasskeysResponse,
     ListRoundsResponse,
@@ -213,6 +216,12 @@ export interface AddTournamentParticipantOperationRequest {
 export interface AddWatchListEntryOperationRequest {
     list: string;
     AddWatchListEntryRequest?: AddWatchListEntryRequest;
+}
+
+export interface ArrangeTournamentRoundRequest {
+    tournament: string;
+    round: string;
+    ArrangePairingsRequest?: ArrangePairingsRequest;
 }
 
 export interface AssignCollectionEntryTagRequest {
@@ -546,6 +555,11 @@ export interface ListPublicCollectionCardsRequest {
 
 export interface ListPublicDeckCardsRequest {
     deck: string;
+}
+
+export interface ListRoundMeetingsRequest {
+    tournament: string;
+    round: string;
 }
 
 export interface ListRoundTablesRequest {
@@ -1247,6 +1261,64 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async addWatchListEntry(requestParameters: AddWatchListEntryOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
         const response = await this.addWatchListEntryRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for arrangeTournamentRound without sending the request
+     */
+    async arrangeTournamentRoundRequestOpts(requestParameters: ArrangeTournamentRoundRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tournament'] == null) {
+            throw new runtime.RequiredError(
+                'tournament',
+                'Required parameter "tournament" was null or undefined when calling arrangeTournamentRound().'
+            );
+        }
+
+        if (requestParameters['round'] == null) {
+            throw new runtime.RequiredError(
+                'round',
+                'Required parameter "round" was null or undefined when calling arrangeTournamentRound().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/tournaments/{tournament}/rounds/{round}/pairings`;
+        urlPath = urlPath.replace('{tournament}', encodeURIComponent(String(requestParameters['tournament'])));
+        urlPath = urlPath.replace('{round}', encodeURIComponent(String(requestParameters['round'])));
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['ArrangePairingsRequest'],
+        };
+    }
+
+    /**
+     * Rewrite a round\'s tables from a layout arranged at the desk
+     * Rewrite a round\'s tables from a layout arranged at the desk
+     */
+    async arrangeTournamentRoundRaw(requestParameters: ArrangeTournamentRoundRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ArrangeTournamentRound200Response>> {
+        const requestOptions = await this.arrangeTournamentRoundRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Rewrite a round\'s tables from a layout arranged at the desk
+     * Rewrite a round\'s tables from a layout arranged at the desk
+     */
+    async arrangeTournamentRound(requestParameters: ArrangeTournamentRoundRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ArrangeTournamentRound200Response> {
+        const response = await this.arrangeTournamentRoundRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -5257,6 +5329,61 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async listPublicDeckCards(requestParameters: ListPublicDeckCardsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListDeckCardsResponse> {
         const response = await this.listPublicDeckCardsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for listRoundMeetings without sending the request
+     */
+    async listRoundMeetingsRequestOpts(requestParameters: ListRoundMeetingsRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tournament'] == null) {
+            throw new runtime.RequiredError(
+                'tournament',
+                'Required parameter "tournament" was null or undefined when calling listRoundMeetings().'
+            );
+        }
+
+        if (requestParameters['round'] == null) {
+            throw new runtime.RequiredError(
+                'round',
+                'Required parameter "round" was null or undefined when calling listRoundMeetings().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/tournaments/{tournament}/rounds/{round}/meetings`;
+        urlPath = urlPath.replace('{tournament}', encodeURIComponent(String(requestParameters['tournament'])));
+        urlPath = urlPath.replace('{round}', encodeURIComponent(String(requestParameters['round'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Who has already played whom before this round
+     * Who has already played whom before this round
+     */
+    async listRoundMeetingsRaw(requestParameters: ListRoundMeetingsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListMeetingsResponse>> {
+        const requestOptions = await this.listRoundMeetingsRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Who has already played whom before this round
+     * Who has already played whom before this round
+     */
+    async listRoundMeetings(requestParameters: ListRoundMeetingsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListMeetingsResponse> {
+        const response = await this.listRoundMeetingsRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

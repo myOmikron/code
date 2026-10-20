@@ -11,6 +11,8 @@
 //! fresh round in a second. A staged preview turns that into an error at the
 //! exact moment an organizer wants to print.
 
+use std::collections::HashSet;
+
 use galvyn::core::re_exports::time::OffsetDateTime;
 use galvyn::rorm;
 use galvyn::rorm::db::transaction::Transaction;
@@ -41,10 +43,12 @@ use crate::models::tournament::db::TournamentSeatModel;
 use crate::models::tournament::round;
 use crate::tournament::pairing::Entrant;
 use crate::tournament::pairing::EntrantId;
+use crate::tournament::pairing::ManualPairingError;
 use crate::tournament::pairing::PairingError;
 use crate::tournament::pairing::PairingKind;
 use crate::tournament::pairing::PairingSnapshot;
 use crate::tournament::pairing::PairingWarning;
+use crate::tournament::pairing::Table;
 
 /// One seat at one table
 #[derive(Debug, Clone)]
@@ -323,42 +327,7 @@ pub async fn pair(
 
     let now = OffsetDateTime::now_utc();
     for table in &layout.tables {
-        let uuid = Uuid::now_v7();
-        // A bye is decided the moment it is dealt: nobody plays it, so there is
-        // nothing for anyone to report and no reason to leave it open.
-        let winner = table
-            .is_bye
-            .then(|| table.seats.first().copied())
-            .flatten()
-            .map(ForeignModelByField);
-        rorm::insert(&mut *tx, TournamentMatchModel)
-            .single(&TournamentMatchInsertPatch {
-                uuid,
-                round: ForeignModelByField(round.into_inner()),
-                tournament: ForeignModelByField(tournament.0),
-                table_number: table.number,
-                status: if table.is_bye {
-                    MatchStatus::Confirmed
-                } else {
-                    MatchStatus::Unreported
-                },
-                is_bye: table.is_bye,
-                winner_participant: winner,
-                result_recorded_at: table.is_bye.then_some(now),
-            })
-            .await?;
-
-        for (index, participant) in table.seats.iter().enumerate() {
-            rorm::insert(&mut *tx, TournamentSeatModel)
-                .single(&TournamentSeatInsertPatch {
-                    uuid: Uuid::now_v7(),
-                    tournament_match: ForeignModelByField(uuid),
-                    tournament: ForeignModelByField(tournament.0),
-                    participant: ForeignModelByField(*participant),
-                    seat: i16::try_from(index + 1).unwrap_or(i16::MAX),
-                })
-                .await?;
-        }
+        insert_table(&mut *tx, tournament, round, table, now).await?;
     }
 
     // A fresh seed every time, so the button an organizer presses when a layout
@@ -403,6 +372,286 @@ pub async fn pair(
             })
             .collect(),
     }))
+}
+
+/// Outcome of [`arrange`]
+#[derive(Debug, Clone)]
+pub enum ArrangeOutcome {
+    /// The layout was written
+    Arranged {
+        /// The tables, in table-number order
+        tables: Vec<MatchTable>,
+        /// Pins the layout could not honour
+        warnings: Vec<FixedTablePin>,
+    },
+    /// The round is closed, unpaired, or a deckbuilding stage
+    NotPairable,
+    /// The edit would move somebody at a table that already has a result
+    ResultsReported(Vec<i16>),
+    /// The layout does not seat a valid round
+    Invalid(Vec<ManualPairingError>),
+}
+
+/// Replace a round's tables with a layout arranged at the desk
+///
+/// Tables whose seats did not change keep their row, so a reported table
+/// elsewhere in the room survives the edit.
+///
+/// @param tx the transaction to write in
+/// @param account who is asking
+/// @param tournament the round belongs to
+/// @param round which round
+/// @param layout who sits where, table by table, in seat order
+///
+/// @returns the tables, or why the layout was refused
+#[instrument(name = "pairing::arrange", skip(tx, layout))]
+pub async fn arrange(
+    tx: &mut Transaction,
+    account: AccountUuid,
+    tournament: TournamentUuid,
+    round: TournamentRoundUuid,
+    layout: Vec<Vec<Uuid>>,
+) -> Result<TournamentAccess<ArrangeOutcome>, rorm::Error> {
+    let Some((_, event)) = Tournament::get_as_organizer(&mut *tx, account, tournament)
+        .await?
+        .granted()
+    else {
+        return Ok(TournamentAccess::Denied);
+    };
+    let Some(found) = round::one(&mut *tx, tournament, round).await? else {
+        return Ok(TournamentAccess::Denied);
+    };
+    if found.status == RoundStatus::Complete || found.kind == RoundKind::Deckbuilding {
+        return Ok(TournamentAccess::Granted(ArrangeOutcome::NotPairable));
+    }
+    let existing = tables(&mut *tx, tournament, round).await?;
+    if existing.is_empty() {
+        return Ok(TournamentAccess::Granted(ArrangeOutcome::NotPairable));
+    }
+
+    // Anyone checked in, plus whoever already sits here — a player who dropped
+    // after the pairing keeps their seat until the desk moves them.
+    let roster = rorm::query(
+        &mut *tx,
+        (
+            TournamentParticipantModel.uuid,
+            TournamentParticipantModel.status,
+            TournamentParticipantModel.fixed_table,
+        ),
+    )
+    .condition(TournamentParticipantModel.tournament.equals(tournament.0))
+    .all()
+    .await?;
+    let seated_now: HashSet<Uuid> = existing
+        .iter()
+        .flat_map(|table| table.seats.iter().map(|seat| seat.participant.0))
+        .collect();
+    let in_layout: HashSet<Uuid> = layout.iter().flatten().copied().collect();
+    let entrants = roster
+        .into_iter()
+        .filter(|(uuid, status, _)| {
+            (*status == ParticipantStatus::CheckedIn || seated_now.contains(uuid))
+                && in_layout.contains(uuid)
+        })
+        .map(|(id, _, fixed_table)| Entrant {
+            id,
+            match_points: 0,
+            had_bye: false,
+            small_pod_rounds: 0,
+            fixed_table,
+        })
+        .collect();
+
+    let snapshot = PairingSnapshot {
+        kind: match found.kind {
+            RoundKind::Draft => PairingKind::Draft,
+            _ => PairingKind::Swiss,
+        },
+        pod_size: usize::try_from(found.pod_size.unwrap_or(event.pod_size)).unwrap_or(2),
+        entrants,
+        history: Vec::new(),
+        seed: 0,
+    };
+    let arranged = match crate::tournament::pairing::validate_manual(&snapshot, &layout) {
+        Ok(arranged) => arranged,
+        Err(errors) => return Ok(TournamentAccess::Granted(ArrangeOutcome::Invalid(errors))),
+    };
+
+    let seats_of = |table: &MatchTable| -> Vec<Uuid> {
+        table.seats.iter().map(|seat| seat.participant.0).collect()
+    };
+    let mut kept: Vec<(TournamentMatchUuid, i16)> = Vec::new();
+    let mut fresh = Vec::new();
+    let mut unclaimed: Vec<&MatchTable> = existing.iter().collect();
+    for table in &arranged.tables {
+        match unclaimed
+            .iter()
+            .position(|old| old.is_bye == table.is_bye && seats_of(old) == table.seats)
+        {
+            Some(index) => kept.push((unclaimed.remove(index).uuid, table.number)),
+            None => fresh.push(table),
+        }
+    }
+
+    let reported: Vec<i16> = unclaimed
+        .iter()
+        .filter(|old| !old.is_bye && old.status != MatchStatus::Unreported)
+        .map(|old| old.table_number)
+        .collect();
+    if !reported.is_empty() {
+        return Ok(TournamentAccess::Granted(ArrangeOutcome::ResultsReported(
+            reported,
+        )));
+    }
+
+    let warnings = arranged
+        .warnings
+        .into_iter()
+        .map(|warning| match warning {
+            PairingWarning::FixedTableTaken { number, entrant } => FixedTablePin {
+                table_number: number,
+                participant: TournamentParticipantUuid(entrant),
+            },
+        })
+        .collect();
+    if fresh.is_empty() && unclaimed.is_empty() {
+        return Ok(TournamentAccess::Granted(ArrangeOutcome::Arranged {
+            tables: existing,
+            warnings,
+        }));
+    }
+
+    for old in &unclaimed {
+        rorm::delete(&mut *tx, TournamentSeatModel)
+            .condition(TournamentSeatModel.tournament_match.equals(old.uuid.0))
+            .await?;
+        rorm::delete(&mut *tx, TournamentMatchModel)
+            .condition(TournamentMatchModel.uuid.equals(old.uuid.0))
+            .await?;
+    }
+    // Two passes, because `(round, table_number)` is unique and two kept tables
+    // may trade numbers.
+    for (index, (uuid, _)) in kept.iter().enumerate() {
+        rorm::update(&mut *tx, TournamentMatchModel)
+            .set(
+                TournamentMatchModel.table_number,
+                -1 - i16::try_from(index).unwrap_or(i16::MAX - 1),
+            )
+            .condition(TournamentMatchModel.uuid.equals(uuid.0))
+            .await?;
+    }
+    for (uuid, number) in &kept {
+        rorm::update(&mut *tx, TournamentMatchModel)
+            .set(TournamentMatchModel.table_number, *number)
+            .condition(TournamentMatchModel.uuid.equals(uuid.0))
+            .await?;
+    }
+    let now = OffsetDateTime::now_utc();
+    for table in fresh {
+        insert_table(&mut *tx, tournament, round, table, now).await?;
+    }
+
+    Tournament::audit(
+        &mut *tx,
+        tournament,
+        Some(account),
+        AuditAction::SeatsSwapped,
+        Some(round.into_inner()),
+        None,
+    )
+    .await?;
+
+    Ok(TournamentAccess::Granted(ArrangeOutcome::Arranged {
+        tables: tables(&mut *tx, tournament, round).await?,
+        warnings,
+    }))
+}
+
+/// Who has already played whom before this round, for the desk's rematch flags
+///
+/// @param tx the transaction to read in
+/// @param account who is asking
+/// @param tournament the round belongs to
+/// @param round the round being edited, left out of its own history
+///
+/// @returns one unordered pair per meeting
+#[instrument(name = "pairing::meetings", skip(tx))]
+pub async fn meetings(
+    tx: &mut Transaction,
+    account: AccountUuid,
+    tournament: TournamentUuid,
+    round: TournamentRoundUuid,
+) -> Result<
+    TournamentAccess<Vec<(TournamentParticipantUuid, TournamentParticipantUuid)>>,
+    rorm::Error,
+> {
+    if Tournament::role_of(&mut *tx, tournament, account)
+        .await?
+        .is_none()
+        || round::one(&mut *tx, tournament, round).await?.is_none()
+    {
+        return Ok(TournamentAccess::Denied);
+    }
+    Ok(TournamentAccess::Granted(
+        history(&mut *tx, tournament, round)
+            .await?
+            .met
+            .into_iter()
+            .map(|(a, b)| (TournamentParticipantUuid(a), TournamentParticipantUuid(b)))
+            .collect(),
+    ))
+}
+
+/// Write one table and its seats
+///
+/// @param tx the transaction to write in
+/// @param tournament the table belongs to
+/// @param round which round
+/// @param table who sits there
+/// @param now when a bye counts as settled
+async fn insert_table(
+    tx: &mut Transaction,
+    tournament: TournamentUuid,
+    round: TournamentRoundUuid,
+    table: &Table,
+    now: OffsetDateTime,
+) -> Result<(), rorm::Error> {
+    let uuid = Uuid::now_v7();
+    // A bye is decided the moment it is dealt: nobody plays it.
+    let winner = table
+        .is_bye
+        .then(|| table.seats.first().copied())
+        .flatten()
+        .map(ForeignModelByField);
+    rorm::insert(&mut *tx, TournamentMatchModel)
+        .single(&TournamentMatchInsertPatch {
+            uuid,
+            round: ForeignModelByField(round.into_inner()),
+            tournament: ForeignModelByField(tournament.0),
+            table_number: table.number,
+            status: if table.is_bye {
+                MatchStatus::Confirmed
+            } else {
+                MatchStatus::Unreported
+            },
+            is_bye: table.is_bye,
+            winner_participant: winner,
+            result_recorded_at: table.is_bye.then_some(now),
+        })
+        .await?;
+
+    for (index, participant) in table.seats.iter().enumerate() {
+        rorm::insert(&mut *tx, TournamentSeatModel)
+            .single(&TournamentSeatInsertPatch {
+                uuid: Uuid::now_v7(),
+                tournament_match: ForeignModelByField(uuid),
+                tournament: ForeignModelByField(tournament.0),
+                participant: ForeignModelByField(*participant),
+                seat: i16::try_from(index + 1).unwrap_or(i16::MAX),
+            })
+            .await?;
+    }
+    Ok(())
 }
 
 /// Build the field this round pairs from

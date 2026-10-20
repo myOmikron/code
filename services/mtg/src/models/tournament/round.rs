@@ -114,6 +114,8 @@ pub enum RoundChange {
     NotEditable,
     /// Tables are still without a result; `force` would have gone through
     Outstanding(Vec<i16>),
+    /// A round that seats people has no tables yet
+    NotPaired,
 }
 
 /// How far the room has got through its scoring rounds
@@ -358,6 +360,15 @@ pub async fn start(
     };
     if found.status != RoundStatus::Pairing {
         return Ok(TournamentAccess::Granted(RoundChange::NotEditable));
+    }
+    if found.kind != RoundKind::Deckbuilding
+        && rorm::query(&mut *tx, TournamentMatchModel.uuid)
+            .condition(TournamentMatchModel.round.equals(round.into_inner()))
+            .all()
+            .await?
+            .is_empty()
+    {
+        return Ok(TournamentAccess::Granted(RoundChange::NotPaired));
     }
 
     let now = OffsetDateTime::now_utc();

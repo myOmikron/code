@@ -339,6 +339,17 @@ export const Api = {
             // anything, so the client never has to decide which of the two it is asking for.
             pair: async (uuid: UUID, round: UUID) =>
                 handleError(defaultApi.pairTournamentRound({ tournament: uuid, round })),
+            // The desk's hand edit: the whole layout, of which only changed tables are rewritten.
+            arrange: async (uuid: UUID, round: UUID, tables: Array<Array<UUID>>) =>
+                handleError(
+                    defaultApi.arrangeTournamentRound({
+                        tournament: uuid,
+                        round,
+                        ArrangePairingsRequest: { tables },
+                    }),
+                ),
+            meetings: async (uuid: UUID, round: UUID) =>
+                handleError(defaultApi.listRoundMeetings({ tournament: uuid, round })),
             create: async (uuid: UUID, req: CreateRoundRequest) =>
                 handleError(defaultApi.createTournamentRound({ tournament: uuid, CreateRoundRequest: req })),
             start: async (uuid: UUID, round: UUID) =>

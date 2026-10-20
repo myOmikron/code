@@ -353,6 +353,50 @@ export interface ApiErrorResponse {
      */
     trace_id: string;
 }
+/**
+ * Why a hand-arranged layout was refused
+ * @export
+ * @interface ArrangePairingsErrors
+ */
+export interface ArrangePairingsErrors {
+    /**
+     * Somebody is seated twice or not in this round, or a table has the wrong size
+     * @type {boolean}
+     * @memberof ArrangePairingsErrors
+     */
+    invalid_layout: boolean;
+    /**
+     * The round is closed, unpaired, or a deckbuilding stage
+     * @type {boolean}
+     * @memberof ArrangePairingsErrors
+     */
+    not_pairable: boolean;
+    /**
+     * Tables the edit would change that already carry a result
+     * @type {Array<number>}
+     * @memberof ArrangePairingsErrors
+     */
+    reported_tables: Array<number>;
+}
+/**
+ * A layout arranged at the desk
+ * @export
+ * @interface ArrangePairingsRequest
+ */
+export interface ArrangePairingsRequest {
+    /**
+     * Who sits where, table by table, in seat order; a single seat at a duel is the bye
+     * @type {Array<Array<string>>}
+     * @memberof ArrangePairingsRequest
+     */
+    tables: Array<Array<string>>;
+}
+/**
+ * @type ArrangeTournamentRound200Response
+ * 
+ * @export
+ */
+export type ArrangeTournamentRound200Response = FormErrorResponseForArrangePairingsErrors | PairRoundResponse;
 
 /**
  * What happened, as recorded in a tournament's audit log
@@ -2670,6 +2714,27 @@ export interface FormErrorResponseForAddPasskeyErrors {
 /**
  * The response that is sent in a case of an error the caller should present his user
  * @export
+ * @interface FormErrorResponseForArrangePairingsErrors
+ */
+export interface FormErrorResponseForArrangePairingsErrors {
+    /**
+     * The actual error struct
+     * @type {ArrangePairingsErrors}
+     * @memberof FormErrorResponseForArrangePairingsErrors
+     */
+    error: ArrangePairingsErrors;
+    /**
+     * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
+     * @type {ErrorConstant}
+     * @memberof FormErrorResponseForArrangePairingsErrors
+     */
+    result: ErrorConstant;
+}
+
+
+/**
+ * The response that is sent in a case of an error the caller should present his user
+ * @export
  * @interface FormErrorResponseForCheckInErrors
  */
 export interface FormErrorResponseForCheckInErrors {
@@ -3542,6 +3607,19 @@ export interface ListGlobalTagsResponse {
     tags: Array<DeckTagResponse>;
 }
 /**
+ * Every earlier meeting, for the desk's rematch flags
+ * @export
+ * @interface ListMeetingsResponse
+ */
+export interface ListMeetingsResponse {
+    /**
+     * One entry per meeting
+     * @type {Array<MeetingResponse>}
+     * @memberof ListMeetingsResponse
+     */
+    meetings: Array<MeetingResponse>;
+}
+/**
  * What a collection has lent out to decks
  * @export
  * @interface ListOnLoanResponse
@@ -4161,6 +4239,25 @@ export interface MeResponse {
      * @memberof MeResponse
      */
     uuid: string;
+}
+/**
+ * Two players who already met earlier in the event
+ * @export
+ * @interface MeetingResponse
+ */
+export interface MeetingResponse {
+    /**
+     * One of them
+     * @type {string}
+     * @memberof MeetingResponse
+     */
+    a: string;
+    /**
+     * The other
+     * @type {string}
+     * @memberof MeetingResponse
+     */
+    b: string;
 }
 /**
  * Request to combine stacks of the same cards into one
@@ -5490,6 +5587,12 @@ export interface RoundLifecycleErrors {
      * @memberof RoundLifecycleErrors
      */
     not_editable: boolean;
+    /**
+     * The round seats people and has not been paired yet
+     * @type {boolean}
+     * @memberof RoundLifecycleErrors
+     */
+    not_paired: boolean;
 }
 /**
  * One round, as every surface reads it

@@ -12,6 +12,9 @@ docs/AddTournamentParticipantRequest.md
 docs/AddWatchListEntryRequest.md
 docs/AdvisorSettingsResponse.md
 docs/ApiErrorResponse.md
+docs/ArrangePairingsErrors.md
+docs/ArrangePairingsRequest.md
+docs/ArrangeTournamentRound200Response.md
 docs/AuditAction.md
 docs/BracketRulesResponse.md
 docs/CardCondition.md
@@ -86,6 +89,7 @@ docs/FixedTableConflict.md
 docs/FormErrorResponseForAddOrganizerErrors.md
 docs/FormErrorResponseForAddParticipantErrors.md
 docs/FormErrorResponseForAddPasskeyErrors.md
+docs/FormErrorResponseForArrangePairingsErrors.md
 docs/FormErrorResponseForCheckInErrors.md
 docs/FormErrorResponseForClaimErrors.md
 docs/FormErrorResponseForCompleteRoundErrors.md
@@ -122,6 +126,7 @@ docs/ListDeckCardsResponse.md
 docs/ListDeckFoldersResponse.md
 docs/ListFormatsResponse.md
 docs/ListGlobalTagsResponse.md
+docs/ListMeetingsResponse.md
 docs/ListOnLoanResponse.md
 docs/ListPasskeysResponse.md
 docs/ListRoundsResponse.md
@@ -147,6 +152,7 @@ docs/MatchSeatResponse.md
 docs/MatchStatus.md
 docs/MatchTableResponse.md
 docs/MeResponse.md
+docs/MeetingResponse.md
 docs/MergeCollectionEntriesRequest.md
 docs/MpcFillArtResponse.md
 docs/MpcFillCardbacksResponse.md

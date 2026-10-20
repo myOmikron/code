@@ -515,6 +515,8 @@ pub struct CreateRoundErrors {
 pub struct RoundLifecycleErrors {
     /// The round is not in a state that allows this
     pub not_editable: bool,
+    /// The round seats people and has not been paired yet
+    pub not_paired: bool,
 }
 
 /// Why closing a round was refused
@@ -673,6 +675,42 @@ pub struct PairRoundErrors {
     /// The field divides into neither full pods nor pods one smaller — five
     /// players at a pod size of four, say. The remedy is a different pod size.
     pub impossible_pods: bool,
+}
+
+/// A layout arranged at the desk
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct ArrangePairingsRequest {
+    /// Who sits where, table by table, in seat order; a single seat at a duel
+    /// is the bye
+    pub tables: Vec<Vec<TournamentParticipantUuid>>,
+}
+
+/// Why a hand-arranged layout was refused
+#[derive(Default, Serialize, JsonSchema)]
+pub struct ArrangePairingsErrors {
+    /// The round is closed, unpaired, or a deckbuilding stage
+    pub not_pairable: bool,
+    /// Tables the edit would change that already carry a result
+    pub reported_tables: Vec<i16>,
+    /// Somebody is seated twice or not in this round, or a table has the
+    /// wrong size
+    pub invalid_layout: bool,
+}
+
+/// Two players who already met earlier in the event
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct MeetingResponse {
+    /// One of them
+    pub a: TournamentParticipantUuid,
+    /// The other
+    pub b: TournamentParticipantUuid,
+}
+
+/// Every earlier meeting, for the desk's rematch flags
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct ListMeetingsResponse {
+    /// One entry per meeting
+    pub meetings: Vec<MeetingResponse>,
 }
 
 /// What one seat says happened at their table

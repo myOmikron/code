@@ -37,6 +37,8 @@ use crate::http::handler_frontend::tournaments::schema::AddOrganizerErrors;
 use crate::http::handler_frontend::tournaments::schema::AddParticipantErrors;
 use crate::http::handler_frontend::tournaments::schema::AddTournamentOrganizerRequest;
 use crate::http::handler_frontend::tournaments::schema::AddTournamentParticipantRequest;
+use crate::http::handler_frontend::tournaments::schema::ArrangePairingsErrors;
+use crate::http::handler_frontend::tournaments::schema::ArrangePairingsRequest;
 use crate::http::handler_frontend::tournaments::schema::CheckInErrors;
 use crate::http::handler_frontend::tournaments::schema::ClaimErrors;
 use crate::http::handler_frontend::tournaments::schema::ClaimParticipantRequest;
@@ -52,6 +54,7 @@ use crate::http::handler_frontend::tournaments::schema::DecklistResponse;
 use crate::http::handler_frontend::tournaments::schema::FixedTableConflict;
 use crate::http::handler_frontend::tournaments::schema::GetDecklistResponse;
 use crate::http::handler_frontend::tournaments::schema::GetTournamentResponse;
+use crate::http::handler_frontend::tournaments::schema::ListMeetingsResponse;
 use crate::http::handler_frontend::tournaments::schema::ListRoundsResponse;
 use crate::http::handler_frontend::tournaments::schema::ListTablesResponse;
 use crate::http::handler_frontend::tournaments::schema::ListTournamentAuditQuery;
@@ -62,6 +65,7 @@ use crate::http::handler_frontend::tournaments::schema::ListTournamentVenuesResp
 use crate::http::handler_frontend::tournaments::schema::ListTournamentsResponse;
 use crate::http::handler_frontend::tournaments::schema::MAX_TOURNAMENT_AUDIT_LIMIT;
 use crate::http::handler_frontend::tournaments::schema::MatchTableResponse;
+use crate::http::handler_frontend::tournaments::schema::MeetingResponse;
 use crate::http::handler_frontend::tournaments::schema::PLAYER_SEARCH_LIMIT;
 use crate::http::handler_frontend::tournaments::schema::PairRoundErrors;
 use crate::http::handler_frontend::tournaments::schema::PairRoundResponse;
@@ -114,6 +118,7 @@ use crate::models::tournament::decklist::DecklistChange;
 use crate::models::tournament::decklist::DecklistSource;
 use crate::models::tournament::listing;
 use crate::models::tournament::pairing;
+use crate::models::tournament::pairing::ArrangeOutcome;
 use crate::models::tournament::pairing::PairOutcome;
 use crate::models::tournament::participant;
 use crate::models::tournament::participant::CheckInOutcome;
@@ -931,6 +936,11 @@ pub async fn complete_tournament_round(
             errors.not_editable = true;
             return errors.fail();
         }
+        RoundChange::NotPaired => {
+            let mut errors = FormErrors::<CompleteRoundErrors>::new();
+            errors.not_editable = true;
+            return errors.fail();
+        }
         RoundChange::Outstanding(_) => {
             let mut errors = FormErrors::<CompleteRoundErrors>::new();
             errors.outstanding_tables = true;
@@ -956,7 +966,7 @@ pub async fn delete_tournament_round(
 
     match round::delete(&mut tx, account.uuid, tournament_uuid, round_uuid).await? {
         TournamentAccess::Granted(RoundChange::Changed(_) | RoundChange::NotEditable) => {}
-        TournamentAccess::Granted(RoundChange::Outstanding(_)) => {
+        TournamentAccess::Granted(RoundChange::Outstanding(_) | RoundChange::NotPaired) => {
             let mut errors = FormErrors::<RoundLifecycleErrors>::new();
             errors.not_editable = true;
             return errors.fail();
@@ -1016,6 +1026,11 @@ fn round_or_refusal(change: RoundChange) -> ApiResult<Round, RoundLifecycleError
         RoundChange::NotEditable | RoundChange::Outstanding(_) => {
             let mut errors = FormErrors::<RoundLifecycleErrors>::new();
             errors.not_editable = true;
+            errors.fail()
+        }
+        RoundChange::NotPaired => {
+            let mut errors = FormErrors::<RoundLifecycleErrors>::new();
+            errors.not_paired = true;
             errors.fail()
         }
     }
@@ -1132,6 +1147,81 @@ pub async fn pair_tournament_round(
                 table_number: pin.table_number,
                 participant: pin.participant,
             })
+            .collect(),
+    }))
+}
+
+/// Rewrite a round's tables from a layout arranged at the desk
+#[put("/{tournament}/rounds/{round}/pairings")]
+pub async fn arrange_tournament_round(
+    account: Account,
+    Path((tournament_uuid, round_uuid)): Path<(TournamentUuid, TournamentRoundUuid)>,
+    ApiJson(ArrangePairingsRequest { tables }): ApiJson<ArrangePairingsRequest>,
+) -> ApiResult<ApiJson<PairRoundResponse>, ArrangePairingsErrors> {
+    let layout = tables
+        .into_iter()
+        .map(|table| table.into_iter().map(|seat| seat.into_inner()).collect())
+        .collect();
+
+    let mut tx = Database::global().start_transaction().await?;
+
+    let outcome =
+        match pairing::arrange(&mut tx, account.uuid, tournament_uuid, round_uuid, layout).await? {
+            TournamentAccess::Granted(outcome) => outcome,
+            TournamentAccess::Denied => return Err(denied()),
+        };
+    let (tables, warnings) = match outcome {
+        ArrangeOutcome::Arranged { tables, warnings } => (tables, warnings),
+        ArrangeOutcome::NotPairable => {
+            let mut errors = FormErrors::<ArrangePairingsErrors>::new();
+            errors.not_pairable = true;
+            return errors.fail();
+        }
+        ArrangeOutcome::ResultsReported(numbers) => {
+            let mut errors = FormErrors::<ArrangePairingsErrors>::new();
+            errors.reported_tables = numbers;
+            return errors.fail();
+        }
+        ArrangeOutcome::Invalid(_) => {
+            let mut errors = FormErrors::<ArrangePairingsErrors>::new();
+            errors.invalid_layout = true;
+            return errors.fail();
+        }
+    };
+
+    tx.commit().await?;
+
+    Ok(ApiJson(PairRoundResponse {
+        tables: tables.into_iter().map(MatchTableResponse::from).collect(),
+        fixed_table_conflicts: warnings
+            .into_iter()
+            .map(|pin| FixedTableConflict {
+                table_number: pin.table_number,
+                participant: pin.participant,
+            })
+            .collect(),
+    }))
+}
+
+/// Who has already played whom before this round
+#[get("/{tournament}/rounds/{round}/meetings")]
+pub async fn list_round_meetings(
+    account: Account,
+    Path((tournament_uuid, round_uuid)): Path<(TournamentUuid, TournamentRoundUuid)>,
+) -> ApiResult<ApiJson<ListMeetingsResponse>> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    let met = match pairing::meetings(&mut tx, account.uuid, tournament_uuid, round_uuid).await? {
+        TournamentAccess::Granted(met) => met,
+        TournamentAccess::Denied => return Err(denied()),
+    };
+
+    tx.commit().await?;
+
+    Ok(ApiJson(ListMeetingsResponse {
+        meetings: met
+            .into_iter()
+            .map(|(a, b)| MeetingResponse { a, b })
             .collect(),
     }))
 }

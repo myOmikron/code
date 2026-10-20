@@ -1,5 +1,6 @@
 import {
     ArrowPathIcon,
+    ArrowsRightLeftIcon,
     CheckCircleIcon,
     PlayIcon,
     PlusIcon,
@@ -17,9 +18,11 @@ import { RoundKind, TimerActionRequest } from "src/api/generated";
 import type {
     MatchTableResponse,
     RoundResponse,
+    TournamentParticipantResponse,
     TournamentResponse,
     TournamentViewerResponse,
 } from "src/api/generated";
+import { TournamentPairingsEditor } from "src/components/tournament-pairings-editor";
 import { TournamentPairingsTable } from "src/components/tournament-pairings-table";
 import { TournamentRoundClock } from "src/components/tournament-round-clock";
 import { isFormError } from "src/utils/error";
@@ -74,6 +77,10 @@ export type TournamentRoundPanelProps = {
     tables: Array<MatchTableResponse>;
     /** How far this device's clock is ahead of the server's */
     skewMs: number;
+    /** The roster, for the desk's pairing editor */
+    participants: Array<TournamentParticipantResponse>;
+    /** Called while the desk is editing, so a refresh does not land on it */
+    onEditingChange?: (editing: boolean) => void;
     /** Called after anything changed */
     onChanged: () => void | Promise<void>;
 };
@@ -95,10 +102,23 @@ export function TournamentRoundPanel({
     round,
     tables,
     skewMs,
+    participants,
+    onEditingChange,
     onChanged,
 }: TournamentRoundPanelProps) {
     const [t] = useTranslation("tournament");
     const [confirmingComplete, setConfirmingComplete] = useState(false);
+    const [editing, setEditing] = useState(false);
+
+    /**
+     * Opens or closes the desk's pairing editor
+     *
+     * @param next whether it is open
+     */
+    function edit(next: boolean) {
+        setEditing(next);
+        onEditingChange?.(next);
+    }
 
     const staff = viewer.is_organizer;
     // Only the newest round moves: an earlier one is history, opened to correct a result. Its
@@ -141,7 +161,11 @@ export function TournamentRoundPanel({
      */
     async function startRound() {
         if (round === null) return;
-        await Api.tournaments.rounds.start(tournamentUuid, round.uuid);
+        const response = await Api.tournaments.rounds.start(tournamentUuid, round.uuid);
+        if (isFormError(response)) {
+            notify.error(response.error.not_paired ? t("error.not-paired") : t("error.round-refused"));
+            return;
+        }
         await onChanged();
     }
 
@@ -304,16 +328,32 @@ export function TournamentRoundPanel({
                     title={t("heading.no-pairings")}
                     description={staff ? t("description.no-pairings") : t("description.no-pairings-player")}
                 />
+            ) : editing ? (
+                <TournamentPairingsEditor
+                    tournamentUuid={tournamentUuid}
+                    round={round}
+                    tables={tables}
+                    podSize={round.pod_size ?? tournament.pod_size}
+                    participants={participants}
+                    onDone={async (saved) => {
+                        edit(false);
+                        if (saved) await onChanged();
+                    }}
+                />
             ) : (
                 <div className={"flex flex-col gap-3"}>
                     {staff && latest && round.status !== "Complete" && (
-                        <div className={"flex justify-end"}>
+                        <div className={"flex justify-end gap-2"}>
                             {/* Re-pairing keeps the round and its clock and replaces only the
                                 tables, so an organizer who does not like a layout loses nothing by
                                 asking for another one. */}
                             <Button plain={true} onClick={() => void pairRound()}>
                                 <ArrowPathIcon />
                                 {t("button.repair")}
+                            </Button>
+                            <Button outline={true} onClick={() => edit(true)}>
+                                <ArrowsRightLeftIcon />
+                                {t("button.edit-pairings")}
                             </Button>
                         </div>
                     )}
@@ -328,7 +368,7 @@ export function TournamentRoundPanel({
                 </div>
             )}
 
-            {staff && latest && (
+            {staff && latest && !editing && (
                 <div className={"flex flex-wrap items-center justify-end gap-2"}>
                     {round.status === "Pairing" && (
                         <>
