@@ -57,13 +57,14 @@ import { Route as MenuDecksDeckUuidDeckIndexRouteImport } from './routes/_menu/d
 import { Route as MenuDecksDeckUuidDeckAdvisorRouteImport } from './routes/_menu/decks/$deckUuid/_deck/advisor'
 import { Route as MenuDecksDeckUuidDeckCardsRouteImport } from './routes/_menu/decks/$deckUuid/_deck/cards'
 import { Route as MenuDecksDeckUuidDeckGoldfishRouteImport } from './routes/_menu/decks/$deckUuid/_deck/goldfish'
-import { Route as MenuDecksDeckUuidDeckHistoryRouteImport } from './routes/_menu/decks/$deckUuid/_deck/history'
 import { Route as MenuDecksDeckUuidDeckSourcingRouteImport } from './routes/_menu/decks/$deckUuid/_deck/sourcing'
 import { Route as MenuDecksDeckUuidDeckStatisticsRouteImport } from './routes/_menu/decks/$deckUuid/_deck/statistics'
 import { Route as MenuGlobalCollectionsCollectionUuidCollectionRouteImport } from './routes/_menu/global/collections/$collectionUuid/_collection'
 import { Route as MenuGlobalDecksDeckUuidDeckRouteImport } from './routes/_menu/global/decks/$deckUuid/_deck'
 import { Route as MenuSharedCollectionsTokenSharedRouteImport } from './routes/_menu/shared/collections/$token/_shared'
 import { Route as MenuSharedDecksTokenSharedRouteImport } from './routes/_menu/shared/decks/$token/_shared'
+import { Route as MenuDecksDeckUuidDeckHistoryIndexRouteImport } from './routes/_menu/decks/$deckUuid/_deck/history/index'
+import { Route as MenuDecksDeckUuidDeckHistoryChangeUuidRouteImport } from './routes/_menu/decks/$deckUuid/_deck/history/$changeUuid'
 import { Route as MenuGlobalCollectionsCollectionUuidCollectionIndexRouteImport } from './routes/_menu/global/collections/$collectionUuid/_collection/index'
 import { Route as MenuGlobalCollectionsCollectionUuidCollectionCardsRouteImport } from './routes/_menu/global/collections/$collectionUuid/_collection/cards'
 import { Route as MenuGlobalCollectionsCollectionUuidCollectionStatisticsRouteImport } from './routes/_menu/global/collections/$collectionUuid/_collection/statistics'
@@ -333,12 +334,6 @@ const MenuDecksDeckUuidDeckGoldfishRoute =
     path: '/goldfish',
     getParentRoute: () => MenuDecksDeckUuidDeckRoute,
   } as any)
-const MenuDecksDeckUuidDeckHistoryRoute =
-  MenuDecksDeckUuidDeckHistoryRouteImport.update({
-    id: '/history',
-    path: '/history',
-    getParentRoute: () => MenuDecksDeckUuidDeckRoute,
-  } as any)
 const MenuDecksDeckUuidDeckSourcingRoute =
   MenuDecksDeckUuidDeckSourcingRouteImport.update({
     id: '/sourcing',
@@ -374,6 +369,18 @@ const MenuSharedDecksTokenSharedRoute =
     id: '/shared/decks/$token/_shared',
     path: '/shared/decks/$token',
     getParentRoute: () => MenuRoute,
+  } as any)
+const MenuDecksDeckUuidDeckHistoryIndexRoute =
+  MenuDecksDeckUuidDeckHistoryIndexRouteImport.update({
+    id: '/history/',
+    path: '/history/',
+    getParentRoute: () => MenuDecksDeckUuidDeckRoute,
+  } as any)
+const MenuDecksDeckUuidDeckHistoryChangeUuidRoute =
+  MenuDecksDeckUuidDeckHistoryChangeUuidRouteImport.update({
+    id: '/history/$changeUuid',
+    path: '/history/$changeUuid',
+    getParentRoute: () => MenuDecksDeckUuidDeckRoute,
   } as any)
 const MenuGlobalCollectionsCollectionUuidCollectionIndexRoute =
   MenuGlobalCollectionsCollectionUuidCollectionIndexRouteImport.update({
@@ -491,7 +498,6 @@ export interface FileRoutesByFullPath {
   '/decks/$deckUuid/advisor': typeof MenuDecksDeckUuidDeckAdvisorRoute
   '/decks/$deckUuid/cards': typeof MenuDecksDeckUuidDeckCardsRoute
   '/decks/$deckUuid/goldfish': typeof MenuDecksDeckUuidDeckGoldfishRoute
-  '/decks/$deckUuid/history': typeof MenuDecksDeckUuidDeckHistoryRoute
   '/decks/$deckUuid/sourcing': typeof MenuDecksDeckUuidDeckSourcingRoute
   '/decks/$deckUuid/statistics': typeof MenuDecksDeckUuidDeckStatisticsRoute
   '/global/collections/$collectionUuid': typeof MenuGlobalCollectionsCollectionUuidCollectionRouteWithChildren
@@ -501,6 +507,7 @@ export interface FileRoutesByFullPath {
   '/scan/live/': typeof CollectScanScanLiveIndexRoute
   '/collections/$collectionUuid/': typeof MenuCollectionsCollectionUuidCollectionIndexRoute
   '/decks/$deckUuid/': typeof MenuDecksDeckUuidDeckIndexRoute
+  '/decks/$deckUuid/history/$changeUuid': typeof MenuDecksDeckUuidDeckHistoryChangeUuidRoute
   '/global/collections/$collectionUuid/cards': typeof MenuGlobalCollectionsCollectionUuidCollectionCardsRoute
   '/global/collections/$collectionUuid/statistics': typeof MenuGlobalCollectionsCollectionUuidCollectionStatisticsRoute
   '/global/decks/$deckUuid/cards': typeof MenuGlobalDecksDeckUuidDeckCardsRoute
@@ -509,6 +516,7 @@ export interface FileRoutesByFullPath {
   '/shared/collections/$token/statistics': typeof MenuSharedCollectionsTokenSharedStatisticsRoute
   '/shared/decks/$token/cards': typeof MenuSharedDecksTokenSharedCardsRoute
   '/shared/decks/$token/statistics': typeof MenuSharedDecksTokenSharedStatisticsRoute
+  '/decks/$deckUuid/history/': typeof MenuDecksDeckUuidDeckHistoryIndexRoute
   '/global/collections/$collectionUuid/': typeof MenuGlobalCollectionsCollectionUuidCollectionIndexRoute
   '/global/decks/$deckUuid/': typeof MenuGlobalDecksDeckUuidDeckIndexRoute
   '/shared/collections/$token/': typeof MenuSharedCollectionsTokenSharedIndexRoute
@@ -552,12 +560,12 @@ export interface FileRoutesByTo {
   '/decks/$deckUuid/advisor': typeof MenuDecksDeckUuidDeckAdvisorRoute
   '/decks/$deckUuid/cards': typeof MenuDecksDeckUuidDeckCardsRoute
   '/decks/$deckUuid/goldfish': typeof MenuDecksDeckUuidDeckGoldfishRoute
-  '/decks/$deckUuid/history': typeof MenuDecksDeckUuidDeckHistoryRoute
   '/decks/$deckUuid/sourcing': typeof MenuDecksDeckUuidDeckSourcingRoute
   '/decks/$deckUuid/statistics': typeof MenuDecksDeckUuidDeckStatisticsRoute
   '/scan/live': typeof CollectScanScanLiveIndexRoute
   '/collections/$collectionUuid': typeof MenuCollectionsCollectionUuidCollectionIndexRoute
   '/decks/$deckUuid': typeof MenuDecksDeckUuidDeckIndexRoute
+  '/decks/$deckUuid/history/$changeUuid': typeof MenuDecksDeckUuidDeckHistoryChangeUuidRoute
   '/global/collections/$collectionUuid/cards': typeof MenuGlobalCollectionsCollectionUuidCollectionCardsRoute
   '/global/collections/$collectionUuid/statistics': typeof MenuGlobalCollectionsCollectionUuidCollectionStatisticsRoute
   '/global/decks/$deckUuid/cards': typeof MenuGlobalDecksDeckUuidDeckCardsRoute
@@ -566,6 +574,7 @@ export interface FileRoutesByTo {
   '/shared/collections/$token/statistics': typeof MenuSharedCollectionsTokenSharedStatisticsRoute
   '/shared/decks/$token/cards': typeof MenuSharedDecksTokenSharedCardsRoute
   '/shared/decks/$token/statistics': typeof MenuSharedDecksTokenSharedStatisticsRoute
+  '/decks/$deckUuid/history': typeof MenuDecksDeckUuidDeckHistoryIndexRoute
   '/global/collections/$collectionUuid': typeof MenuGlobalCollectionsCollectionUuidCollectionIndexRoute
   '/global/decks/$deckUuid': typeof MenuGlobalDecksDeckUuidDeckIndexRoute
   '/shared/collections/$token': typeof MenuSharedCollectionsTokenSharedIndexRoute
@@ -618,7 +627,6 @@ export interface FileRoutesById {
   '/_menu/decks/$deckUuid/_deck/advisor': typeof MenuDecksDeckUuidDeckAdvisorRoute
   '/_menu/decks/$deckUuid/_deck/cards': typeof MenuDecksDeckUuidDeckCardsRoute
   '/_menu/decks/$deckUuid/_deck/goldfish': typeof MenuDecksDeckUuidDeckGoldfishRoute
-  '/_menu/decks/$deckUuid/_deck/history': typeof MenuDecksDeckUuidDeckHistoryRoute
   '/_menu/decks/$deckUuid/_deck/sourcing': typeof MenuDecksDeckUuidDeckSourcingRoute
   '/_menu/decks/$deckUuid/_deck/statistics': typeof MenuDecksDeckUuidDeckStatisticsRoute
   '/_menu/global/collections/$collectionUuid/_collection': typeof MenuGlobalCollectionsCollectionUuidCollectionRouteWithChildren
@@ -628,6 +636,7 @@ export interface FileRoutesById {
   '/_collect/_scan/scan/live/': typeof CollectScanScanLiveIndexRoute
   '/_menu/collections/$collectionUuid/_collection/': typeof MenuCollectionsCollectionUuidCollectionIndexRoute
   '/_menu/decks/$deckUuid/_deck/': typeof MenuDecksDeckUuidDeckIndexRoute
+  '/_menu/decks/$deckUuid/_deck/history/$changeUuid': typeof MenuDecksDeckUuidDeckHistoryChangeUuidRoute
   '/_menu/global/collections/$collectionUuid/_collection/cards': typeof MenuGlobalCollectionsCollectionUuidCollectionCardsRoute
   '/_menu/global/collections/$collectionUuid/_collection/statistics': typeof MenuGlobalCollectionsCollectionUuidCollectionStatisticsRoute
   '/_menu/global/decks/$deckUuid/_deck/cards': typeof MenuGlobalDecksDeckUuidDeckCardsRoute
@@ -636,6 +645,7 @@ export interface FileRoutesById {
   '/_menu/shared/collections/$token/_shared/statistics': typeof MenuSharedCollectionsTokenSharedStatisticsRoute
   '/_menu/shared/decks/$token/_shared/cards': typeof MenuSharedDecksTokenSharedCardsRoute
   '/_menu/shared/decks/$token/_shared/statistics': typeof MenuSharedDecksTokenSharedStatisticsRoute
+  '/_menu/decks/$deckUuid/_deck/history/': typeof MenuDecksDeckUuidDeckHistoryIndexRoute
   '/_menu/global/collections/$collectionUuid/_collection/': typeof MenuGlobalCollectionsCollectionUuidCollectionIndexRoute
   '/_menu/global/decks/$deckUuid/_deck/': typeof MenuGlobalDecksDeckUuidDeckIndexRoute
   '/_menu/shared/collections/$token/_shared/': typeof MenuSharedCollectionsTokenSharedIndexRoute
@@ -686,7 +696,6 @@ export interface FileRouteTypes {
     | '/decks/$deckUuid/advisor'
     | '/decks/$deckUuid/cards'
     | '/decks/$deckUuid/goldfish'
-    | '/decks/$deckUuid/history'
     | '/decks/$deckUuid/sourcing'
     | '/decks/$deckUuid/statistics'
     | '/global/collections/$collectionUuid'
@@ -696,6 +705,7 @@ export interface FileRouteTypes {
     | '/scan/live/'
     | '/collections/$collectionUuid/'
     | '/decks/$deckUuid/'
+    | '/decks/$deckUuid/history/$changeUuid'
     | '/global/collections/$collectionUuid/cards'
     | '/global/collections/$collectionUuid/statistics'
     | '/global/decks/$deckUuid/cards'
@@ -704,6 +714,7 @@ export interface FileRouteTypes {
     | '/shared/collections/$token/statistics'
     | '/shared/decks/$token/cards'
     | '/shared/decks/$token/statistics'
+    | '/decks/$deckUuid/history/'
     | '/global/collections/$collectionUuid/'
     | '/global/decks/$deckUuid/'
     | '/shared/collections/$token/'
@@ -747,12 +758,12 @@ export interface FileRouteTypes {
     | '/decks/$deckUuid/advisor'
     | '/decks/$deckUuid/cards'
     | '/decks/$deckUuid/goldfish'
-    | '/decks/$deckUuid/history'
     | '/decks/$deckUuid/sourcing'
     | '/decks/$deckUuid/statistics'
     | '/scan/live'
     | '/collections/$collectionUuid'
     | '/decks/$deckUuid'
+    | '/decks/$deckUuid/history/$changeUuid'
     | '/global/collections/$collectionUuid/cards'
     | '/global/collections/$collectionUuid/statistics'
     | '/global/decks/$deckUuid/cards'
@@ -761,6 +772,7 @@ export interface FileRouteTypes {
     | '/shared/collections/$token/statistics'
     | '/shared/decks/$token/cards'
     | '/shared/decks/$token/statistics'
+    | '/decks/$deckUuid/history'
     | '/global/collections/$collectionUuid'
     | '/global/decks/$deckUuid'
     | '/shared/collections/$token'
@@ -812,7 +824,6 @@ export interface FileRouteTypes {
     | '/_menu/decks/$deckUuid/_deck/advisor'
     | '/_menu/decks/$deckUuid/_deck/cards'
     | '/_menu/decks/$deckUuid/_deck/goldfish'
-    | '/_menu/decks/$deckUuid/_deck/history'
     | '/_menu/decks/$deckUuid/_deck/sourcing'
     | '/_menu/decks/$deckUuid/_deck/statistics'
     | '/_menu/global/collections/$collectionUuid/_collection'
@@ -822,6 +833,7 @@ export interface FileRouteTypes {
     | '/_collect/_scan/scan/live/'
     | '/_menu/collections/$collectionUuid/_collection/'
     | '/_menu/decks/$deckUuid/_deck/'
+    | '/_menu/decks/$deckUuid/_deck/history/$changeUuid'
     | '/_menu/global/collections/$collectionUuid/_collection/cards'
     | '/_menu/global/collections/$collectionUuid/_collection/statistics'
     | '/_menu/global/decks/$deckUuid/_deck/cards'
@@ -830,6 +842,7 @@ export interface FileRouteTypes {
     | '/_menu/shared/collections/$token/_shared/statistics'
     | '/_menu/shared/decks/$token/_shared/cards'
     | '/_menu/shared/decks/$token/_shared/statistics'
+    | '/_menu/decks/$deckUuid/_deck/history/'
     | '/_menu/global/collections/$collectionUuid/_collection/'
     | '/_menu/global/decks/$deckUuid/_deck/'
     | '/_menu/shared/collections/$token/_shared/'
@@ -1179,13 +1192,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MenuDecksDeckUuidDeckGoldfishRouteImport
       parentRoute: typeof MenuDecksDeckUuidDeckRoute
     }
-    '/_menu/decks/$deckUuid/_deck/history': {
-      id: '/_menu/decks/$deckUuid/_deck/history'
-      path: '/history'
-      fullPath: '/decks/$deckUuid/history'
-      preLoaderRoute: typeof MenuDecksDeckUuidDeckHistoryRouteImport
-      parentRoute: typeof MenuDecksDeckUuidDeckRoute
-    }
     '/_menu/decks/$deckUuid/_deck/sourcing': {
       id: '/_menu/decks/$deckUuid/_deck/sourcing'
       path: '/sourcing'
@@ -1227,6 +1233,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/shared/decks/$token'
       preLoaderRoute: typeof MenuSharedDecksTokenSharedRouteImport
       parentRoute: typeof MenuRoute
+    }
+    '/_menu/decks/$deckUuid/_deck/history/': {
+      id: '/_menu/decks/$deckUuid/_deck/history/'
+      path: '/history'
+      fullPath: '/decks/$deckUuid/history/'
+      preLoaderRoute: typeof MenuDecksDeckUuidDeckHistoryIndexRouteImport
+      parentRoute: typeof MenuDecksDeckUuidDeckRoute
+    }
+    '/_menu/decks/$deckUuid/_deck/history/$changeUuid': {
+      id: '/_menu/decks/$deckUuid/_deck/history/$changeUuid'
+      path: '/history/$changeUuid'
+      fullPath: '/decks/$deckUuid/history/$changeUuid'
+      preLoaderRoute: typeof MenuDecksDeckUuidDeckHistoryChangeUuidRouteImport
+      parentRoute: typeof MenuDecksDeckUuidDeckRoute
     }
     '/_menu/global/collections/$collectionUuid/_collection/': {
       id: '/_menu/global/collections/$collectionUuid/_collection/'
@@ -1439,20 +1459,24 @@ interface MenuDecksDeckUuidDeckRouteChildren {
   MenuDecksDeckUuidDeckAdvisorRoute: typeof MenuDecksDeckUuidDeckAdvisorRoute
   MenuDecksDeckUuidDeckCardsRoute: typeof MenuDecksDeckUuidDeckCardsRoute
   MenuDecksDeckUuidDeckGoldfishRoute: typeof MenuDecksDeckUuidDeckGoldfishRoute
-  MenuDecksDeckUuidDeckHistoryRoute: typeof MenuDecksDeckUuidDeckHistoryRoute
   MenuDecksDeckUuidDeckSourcingRoute: typeof MenuDecksDeckUuidDeckSourcingRoute
   MenuDecksDeckUuidDeckStatisticsRoute: typeof MenuDecksDeckUuidDeckStatisticsRoute
   MenuDecksDeckUuidDeckIndexRoute: typeof MenuDecksDeckUuidDeckIndexRoute
+  MenuDecksDeckUuidDeckHistoryChangeUuidRoute: typeof MenuDecksDeckUuidDeckHistoryChangeUuidRoute
+  MenuDecksDeckUuidDeckHistoryIndexRoute: typeof MenuDecksDeckUuidDeckHistoryIndexRoute
 }
 
 const MenuDecksDeckUuidDeckRouteChildren: MenuDecksDeckUuidDeckRouteChildren = {
   MenuDecksDeckUuidDeckAdvisorRoute: MenuDecksDeckUuidDeckAdvisorRoute,
   MenuDecksDeckUuidDeckCardsRoute: MenuDecksDeckUuidDeckCardsRoute,
   MenuDecksDeckUuidDeckGoldfishRoute: MenuDecksDeckUuidDeckGoldfishRoute,
-  MenuDecksDeckUuidDeckHistoryRoute: MenuDecksDeckUuidDeckHistoryRoute,
   MenuDecksDeckUuidDeckSourcingRoute: MenuDecksDeckUuidDeckSourcingRoute,
   MenuDecksDeckUuidDeckStatisticsRoute: MenuDecksDeckUuidDeckStatisticsRoute,
   MenuDecksDeckUuidDeckIndexRoute: MenuDecksDeckUuidDeckIndexRoute,
+  MenuDecksDeckUuidDeckHistoryChangeUuidRoute:
+    MenuDecksDeckUuidDeckHistoryChangeUuidRoute,
+  MenuDecksDeckUuidDeckHistoryIndexRoute:
+    MenuDecksDeckUuidDeckHistoryIndexRoute,
 }
 
 const MenuDecksDeckUuidDeckRouteWithChildren =

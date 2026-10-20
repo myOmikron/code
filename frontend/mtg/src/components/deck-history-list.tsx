@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { Badge, Button, Strong, Text } from "components";
+import { Badge, Button, Strong, Text, TextLink } from "components";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
@@ -67,6 +67,7 @@ export function DeckHistoryList({ deckUuid }: DeckHistoryListProps) {
                 {changes.map((change) => (
                     <DeckChangeRow
                         key={change.uuid}
+                        deckUuid={deckUuid}
                         change={change}
                         referenced={changes.find((other) => other.uuid === change.reference)}
                     />
@@ -87,18 +88,58 @@ export function DeckHistoryList({ deckUuid }: DeckHistoryListProps) {
  * The properties for {@link DeckChangeRow}
  */
 type DeckChangeRowProps = {
+    /** The deck the Deck change belongs to */
+    deckUuid: string;
     /** The Deck change */
     change: DeckChangeResponse;
-    /** The Deck change an undo or redo refers to, when it is loaded */
+    /** The Deck change an undo, redo or reset refers to, when it is loaded */
     referenced?: DeckChangeResponse;
 };
 
 /**
- * One Deck change in deck-building terms, with when it happened
+ * One Deck change in deck-building terms, with when it happened as a link to the deck at that point
  *
  * @returns the row
  */
-function DeckChangeRow({ change, referenced }: DeckChangeRowProps) {
+function DeckChangeRow({ deckUuid, change, referenced }: DeckChangeRowProps) {
+    const [t] = useTranslation("deck");
+
+    return (
+        <li className={"flex flex-col gap-1 py-3 sm:flex-row sm:gap-6"}>
+            <Text className={"shrink-0 tabular-nums sm:w-40"}>
+                <TextLink href={"/decks/$deckUuid/history/$changeUuid"} params={{ deckUuid, changeUuid: change.uuid }}>
+                    {formatDateTime(change.changed_at)}
+                    <span className={"sr-only"}>{t("accessibility.history-view-point")}</span>
+                </TextLink>
+            </Text>
+            <div className={clsx("flex min-w-0 flex-col gap-1", change.undone && "opacity-60")}>
+                {change.undone && (
+                    <span>
+                        <Badge color={"zinc"}>{t("label.history-undone")}</Badge>
+                    </span>
+                )}
+                <DeckChangeBody change={change} referenced={referenced} />
+            </div>
+        </li>
+    );
+}
+
+/**
+ * The properties for {@link DeckChangeBody}
+ */
+export type DeckChangeBodyProps = {
+    /** The Deck change */
+    change: DeckChangeResponse;
+    /** The Deck change an undo, redo or reset refers to, when it is loaded */
+    referenced?: DeckChangeResponse;
+};
+
+/**
+ * What one Deck change did, in deck-building terms
+ *
+ * @returns the lines
+ */
+export function DeckChangeBody({ change, referenced }: DeckChangeBodyProps) {
     const [t] = useTranslation("deck");
 
     const added = change.entries.reduce((sum, entry) => sum + Math.max(entry.after - entry.before, 0), 0);
@@ -166,22 +207,23 @@ function DeckChangeRow({ change, referenced }: DeckChangeRowProps) {
                         <FieldLines fields={change.fields} />
                     </Headed>
                 );
+            case "Reset":
+                return (
+                    <Headed heading={t("label.history-reset")}>
+                        {referenced !== undefined && (
+                            <Text>{t("label.history-reset-to", { date: formatDateTime(referenced.changed_at) })}</Text>
+                        )}
+                        <Collapsed
+                            heading={t("label.history-reset-summary", { added, removed })}
+                            entries={change.entries}
+                            fields={change.fields}
+                        />
+                    </Headed>
+                );
         }
     }
 
-    return (
-        <li className={"flex flex-col gap-1 py-3 sm:flex-row sm:gap-6"}>
-            <Text className={"shrink-0 tabular-nums sm:w-40"}>{formatDateTime(change.changed_at)}</Text>
-            <div className={clsx("flex min-w-0 flex-col gap-1", change.undone && "opacity-60")}>
-                {change.undone && (
-                    <span>
-                        <Badge color={"zinc"}>{t("label.history-undone")}</Badge>
-                    </span>
-                )}
-                {body()}
-            </div>
-        </li>
-    );
+    return body();
 }
 
 /**
@@ -216,6 +258,8 @@ type CollapsedProps = {
     heading: string;
     /** The Deck entries it touched */
     entries: Array<DeckEntryChangeResponse>;
+    /** The deck fields it changed, if any */
+    fields?: Array<FieldDifference>;
 };
 
 /**
@@ -223,7 +267,7 @@ type CollapsedProps = {
  *
  * @returns the block
  */
-function Collapsed({ heading, entries }: CollapsedProps) {
+function Collapsed({ heading, entries, fields = [] }: CollapsedProps) {
     const [t] = useTranslation("deck");
 
     return (
@@ -231,8 +275,9 @@ function Collapsed({ heading, entries }: CollapsedProps) {
             <summary className={"cursor-pointer"}>
                 <Strong>{heading}</Strong> <Text className={"inline"}>{t("label.history-show-entries")}</Text>
             </summary>
-            <div className={"pt-1"}>
+            <div className={"flex flex-col gap-1 pt-1"}>
                 <EntryLines entries={entries} />
+                <FieldLines fields={fields} />
             </div>
         </details>
     );
@@ -336,30 +381,7 @@ type FieldLineProps = {
 function FieldLine({ field }: FieldLineProps) {
     const [t] = useTranslation("deck");
     const labels = useDeckLabels();
-
-    /**
-     * The colours a deck may play, in words
-     *
-     * @param colors the colour letters, `null` for the commander's
-     *
-     * @returns the words
-     */
-    function colors(colors: string | null | undefined) {
-        if (colors === null || colors === undefined) return t("label.history-value-commander-colors");
-        if (colors === "") return labels.color("");
-        return Array.from(colors, (letter) => labels.color(letter)).join(", ");
-    }
-
-    /**
-     * Whether the table agreed to something, in words
-     *
-     * @param allowed the agreement
-     *
-     * @returns the words
-     */
-    function agreement(allowed: boolean) {
-        return allowed ? t("label.history-value-allowed") : t("label.history-value-not-allowed");
-    }
+    const { colors, agreement } = useSettingWords();
 
     /**
      * The field's name and both of its values, in words
@@ -409,4 +431,38 @@ function FieldLine({ field }: FieldLineProps) {
             <Text className={"line-clamp-2 break-words"}>{t("label.history-field-change", { before, after })}</Text>
         </li>
     );
+}
+
+/**
+ * Words for the values of recorded deck fields that are no plain text
+ *
+ * @returns one function per kind of value
+ */
+export function useSettingWords() {
+    const [t] = useTranslation("deck");
+    const labels = useDeckLabels();
+
+    return {
+        /**
+         * The colours a deck may play, in words
+         *
+         * @param colors the colour letters, `null` for the commander's
+         *
+         * @returns the words
+         */
+        colors: (colors: string | null | undefined): string => {
+            if (colors === null || colors === undefined) return t("label.history-value-commander-colors");
+            if (colors === "") return labels.color("");
+            return Array.from(colors, (letter) => labels.color(letter)).join(", ");
+        },
+        /**
+         * Whether the table agreed to something, in words
+         *
+         * @param allowed the agreement
+         *
+         * @returns the words
+         */
+        agreement: (allowed: boolean): string =>
+            allowed ? t("label.history-value-allowed") : t("label.history-value-not-allowed"),
+    };
 }

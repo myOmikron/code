@@ -2067,7 +2067,11 @@ export const DeckChangeKind = {
     /**
     * An undone Deck change applied again
     */
-    Redo: 'Redo'
+    Redo: 'Redo',
+    /**
+    * The deck brought back to an earlier point of its Deck history
+    */
+    Reset: 'Reset'
 } as const;
 export type DeckChangeKind = typeof DeckChangeKind[keyof typeof DeckChangeKind];
 
@@ -2102,7 +2106,7 @@ export interface DeckChangeResponse {
      */
     kind: DeckChangeKind;
     /**
-     * The Deck change an undo takes back or a redo applies again, `None` for any other kind
+     * The Deck change an undo takes back, a redo applies again or a reset returns to, `None` for any other kind
      * @type {string}
      * @memberof DeckChangeResponse
      */
@@ -2401,6 +2405,76 @@ export interface DeckOverviewResponse {
     price_eur_cents: number;
 }
 /**
+ * One Deck entry a deck held at an earlier point
+ * @export
+ * @interface DeckPointEntryResponse
+ */
+export interface DeckPointEntryResponse {
+    /**
+     * Whether the copies were the foil ones
+     * @type {boolean}
+     * @memberof DeckPointEntryResponse
+     */
+    foil: boolean;
+    /**
+     * The card's printed name, `None` while the catalog does not know the printing
+     * @type {string}
+     * @memberof DeckPointEntryResponse
+     */
+    name?: string | null;
+    /**
+     * Scryfall's id of the printing
+     * @type {string}
+     * @memberof DeckPointEntryResponse
+     */
+    printing: string;
+    /**
+     * Whether the copies were stand-ins rather than the real cards
+     * @type {boolean}
+     * @memberof DeckPointEntryResponse
+     */
+    proxy: boolean;
+    /**
+     * How many copies it held
+     * @type {number}
+     * @memberof DeckPointEntryResponse
+     */
+    quantity: number;
+    /**
+     * Which zone the entry sat in
+     * @type {DeckZone}
+     * @memberof DeckPointEntryResponse
+     */
+    zone: DeckZone;
+}
+
+
+/**
+ * A deck as it was right after one of its Deck changes, read-only
+ * @export
+ * @interface DeckPointResponse
+ */
+export interface DeckPointResponse {
+    /**
+     * The Deck change
+     * @type {DeckChangeResponse}
+     * @memberof DeckPointResponse
+     */
+    change: DeckChangeResponse;
+    /**
+     * The Deck entries the deck held then
+     * @type {Array<DeckPointEntryResponse>}
+     * @memberof DeckPointResponse
+     */
+    entries: Array<DeckPointEntryResponse>;
+    /**
+     * The recorded deck fields as they were then
+     * @type {DeckSettingsResponse}
+     * @memberof DeckPointResponse
+     */
+    settings: DeckSettingsResponse;
+}
+/**
  * A deck as its owner sees it
  * @export
  * @interface DeckResponse
@@ -2507,6 +2581,67 @@ export interface DeckResponse {
 }
 
 
+/**
+ * The recorded deck fields at an earlier point
+ * @export
+ * @interface DeckSettingsResponse
+ */
+export interface DeckSettingsResponse {
+    /**
+     * Whether the table agreed to cards the format bans
+     * @type {boolean}
+     * @memberof DeckSettingsResponse
+     */
+    allow_banned: boolean;
+    /**
+     * Whether the table agreed to more copies of a card than the format allows
+     * @type {boolean}
+     * @memberof DeckSettingsResponse
+     */
+    allow_duplicates: boolean;
+    /**
+     * Whether the table agreed to more commanders than the format allows
+     * @type {boolean}
+     * @memberof DeckSettingsResponse
+     */
+    allow_extra_commanders: boolean;
+    /**
+     * The colours the deck could play, `None` for whatever the commander allows
+     * @type {string}
+     * @memberof DeckSettingsResponse
+     */
+    allowed_color_identity?: string | null;
+    /**
+     * The Commander bracket the deck was built to, `None` when unset
+     * @type {number}
+     * @memberof DeckSettingsResponse
+     */
+    bracket?: number | null;
+    /**
+     * How many cards the deck was built to, `None` for the format's rule
+     * @type {number}
+     * @memberof DeckSettingsResponse
+     */
+    deck_size?: number | null;
+    /**
+     * The deck's description, `None` for none
+     * @type {string}
+     * @memberof DeckSettingsResponse
+     */
+    description?: string | null;
+    /**
+     * The format the deck was built for
+     * @type {string}
+     * @memberof DeckSettingsResponse
+     */
+    format: string;
+    /**
+     * The deck's name
+     * @type {string}
+     * @memberof DeckSettingsResponse
+     */
+    name: string;
+}
 /**
  * @type DeckSize
  * How many cards a deck holds

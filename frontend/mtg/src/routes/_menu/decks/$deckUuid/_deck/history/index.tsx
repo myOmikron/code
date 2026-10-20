@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { DeckHistoryList } from "src/components/deck-history-list";
 
-export const Route = createFileRoute("/_menu/decks/$deckUuid/_deck/history")({
+export const Route = createFileRoute("/_menu/decks/$deckUuid/_deck/history/")({
     component: RouteComponent,
 });
 

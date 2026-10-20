@@ -2257,3 +2257,340 @@ fn only_the_owner_undoes_and_redoes() {
         }
     });
 }
+
+impl Fixture {
+    /// The uuid of the deck's newest Deck change
+    async fn newest(&mut self) -> String {
+        self.history("").await["changes"][0]["uuid"]
+            .as_str()
+            .expect("change uuid")
+            .to_string()
+    }
+
+    /// Reads the deck at an earlier point of its Deck history
+    async fn point(&mut self, change: &str) -> TestResponse {
+        self.owner
+            .get(&api(&format!("decks/{}/history/{change}", self.deck)))
+            .await
+    }
+
+    /// The deck at an earlier point, shaped like [`Fixture::state`]
+    async fn state_at(&mut self, change: &str) -> (Vec<(String, String, i64)>, Value) {
+        let point = self.point(change).await.ok_json();
+        assert_eq!(point["change"]["uuid"], change);
+        let settings = &point["settings"];
+        let fields = json!([
+            settings["name"],
+            settings["description"],
+            settings["format"],
+            settings["allowed_color_identity"],
+            settings["bracket"],
+            settings["allow_extra_commanders"],
+            settings["allow_duplicates"],
+            settings["allow_banned"],
+            settings["deck_size"],
+        ]);
+        (
+            lines(point["entries"].as_array().expect("entry list")),
+            fields,
+        )
+    }
+
+    /// Resets the deck to an earlier point of its Deck history
+    async fn reset(&mut self, change: &str) -> TestResponse {
+        let url = api(&format!("decks/{}/history/{change}/reset", self.deck));
+        self.owner.json(Method::POST, &url, &json!(null)).await
+    }
+}
+
+#[test]
+fn an_earlier_point_shows_the_deck_as_it_was_then() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        let printing = Uuid::new_v4();
+        let other = Uuid::new_v4();
+        let mut points = vec![(fixture.newest().await, fixture.state().await)];
+
+        let entry = fixture
+            .add(json!({ "printing": printing, "quantity": 3, "zone": "Main" }))
+            .await;
+        points.push((fixture.newest().await, fixture.state().await));
+        fixture
+            .send(
+                Method::PUT,
+                "",
+                json!({ "name": "Renamed", "description": "Go wide", "format": "commander" }),
+            )
+            .await;
+        fixture
+            .send(Method::PUT, "bracket", json!({ "bracket": 3 }))
+            .await;
+        points.push((fixture.newest().await, fixture.state().await));
+        fixture.patch(&entry, json!({ "zone": "Side" })).await;
+        points.push((fixture.newest().await, fixture.state().await));
+        fixture
+            .import(
+                json!([{ "printing": other, "quantity": 4, "zone": "Main" }]),
+                true,
+            )
+            .await;
+        points.push((fixture.newest().await, fixture.state().await));
+        fixture.undo().await.ok_json();
+        points.push((fixture.newest().await, fixture.state().await));
+        fixture
+            .send(
+                Method::PUT,
+                "rule-zero",
+                json!({
+                    "allow_extra_commanders": true,
+                    "allow_duplicates": true,
+                    "allow_banned": false,
+                    "deck_size": 99,
+                }),
+            )
+            .await;
+
+        for (change, state) in &points {
+            assert_eq!(&fixture.state_at(change).await, state, "at {change}");
+        }
+        let newest = fixture.newest().await;
+        let now = fixture.state().await;
+        assert_eq!(fixture.state_at(&newest).await, now);
+    });
+}
+
+#[test]
+fn resetting_restores_an_earlier_point_and_keeps_the_later_deck_changes() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        let printing = Uuid::new_v4();
+        let other = Uuid::new_v4();
+        let entry = fixture
+            .add(json!({ "printing": printing, "quantity": 2, "zone": "Main" }))
+            .await;
+        let point = fixture.newest().await;
+        let then = fixture.state().await;
+        fixture.patch(&entry, json!({ "zone": "Side" })).await;
+        fixture
+            .add(json!({ "printing": other, "quantity": 1, "zone": "Commander" }))
+            .await;
+        fixture
+            .send(
+                Method::PUT,
+                "",
+                json!({ "name": "Renamed", "description": "Later", "format": "commander" }),
+            )
+            .await;
+        fixture
+            .send(Method::PUT, "bracket", json!({ "bracket": 2 }))
+            .await;
+
+        fixture.reset(&point).await.ok_json();
+
+        assert_eq!(fixture.state().await, then);
+        assert_eq!(
+            fixture.kinds().await,
+            vec![
+                "Reset", "Settings", "Settings", "Edit", "Move", "Edit", "Created"
+            ]
+        );
+        let history = fixture.history("").await;
+        assert_eq!(history["changes"][0]["reference"], point.as_str());
+        assert_eq!(fixture.offers().await, (true, false));
+    });
+}
+
+#[test]
+fn a_reset_can_be_undone_and_redone() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        let printing = Uuid::new_v4();
+        let entry = fixture
+            .add(json!({ "printing": printing, "quantity": 2, "zone": "Main" }))
+            .await;
+        let point = fixture.newest().await;
+        let then = fixture.state().await;
+        fixture.age_latest().await;
+        fixture.patch(&entry, json!({ "quantity": 4 })).await;
+        fixture
+            .send(Method::PUT, "colors", json!({ "colors": "WU" }))
+            .await;
+        let before = fixture.state().await;
+
+        fixture.reset(&point).await.ok_json();
+        fixture.undo().await.ok_json();
+
+        assert_eq!(fixture.state().await, before);
+        assert_eq!(fixture.offers().await, (true, true));
+        fixture.redo().await.ok_json();
+        assert_eq!(fixture.state().await, then);
+        fixture.undo().await.ok_json();
+        fixture.undo().await.ok_json();
+        assert_eq!(
+            fixture.state().await.0,
+            vec![(printing.to_string(), "Main".to_string(), 4)]
+        );
+        assert_eq!(
+            fixture.kinds().await,
+            vec![
+                "Undo", "Undo", "Redo", "Undo", "Reset", "Settings", "Edit", "Edit", "Created"
+            ]
+        );
+    });
+}
+
+#[test]
+fn a_reset_makes_redo_impossible() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        fixture
+            .add(json!({ "printing": Uuid::new_v4(), "quantity": 1, "zone": "Main" }))
+            .await;
+        let point = fixture.newest().await;
+        fixture
+            .add(json!({ "printing": Uuid::new_v4(), "quantity": 1, "zone": "Side" }))
+            .await;
+        fixture
+            .add(json!({ "printing": Uuid::new_v4(), "quantity": 1, "zone": "Maybe" }))
+            .await;
+        fixture.undo().await.ok_json();
+        assert_eq!(fixture.offers().await, (true, true));
+
+        fixture.reset(&point).await.ok_json();
+
+        assert_eq!(fixture.offers().await, (true, false));
+        let response = fixture.redo().await;
+        assert_eq!(response.status, StatusCode::BAD_REQUEST, "{response:?}");
+        assert_eq!(fixture.entries().await.len(), 1);
+    });
+}
+
+#[test]
+fn resetting_to_the_decks_creation_empties_it() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        let created = fixture.newest().await;
+        let empty = fixture.state().await;
+        fixture
+            .add(json!({ "printing": Uuid::new_v4(), "quantity": 3, "zone": "Main" }))
+            .await;
+        fixture
+            .send(
+                Method::PUT,
+                "rule-zero",
+                json!({
+                    "allow_extra_commanders": false,
+                    "allow_duplicates": true,
+                    "allow_banned": false,
+                    "deck_size": 40,
+                }),
+            )
+            .await;
+
+        fixture.reset(&created).await.ok_json();
+
+        assert_eq!(fixture.state().await, empty);
+        assert!(fixture.entries().await.is_empty());
+    });
+}
+
+#[test]
+fn a_reset_leaves_the_deck_collection_alone_and_restores_entries_untagged() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        let gone = Uuid::new_v4();
+        let kept = Uuid::new_v4();
+        let removed = fixture
+            .add(json!({ "printing": gone, "quantity": 2, "zone": "Main" }))
+            .await;
+        fixture.tag(&removed, "Ramp").await;
+        let stays = fixture
+            .add(json!({ "printing": kept, "quantity": 1, "zone": "Side" }))
+            .await;
+        let hate = fixture.tag(&stays, "Hate").await;
+        let point = fixture.newest().await;
+        let collection = fixture
+            .send_json(Method::POST, "collection", json!(null))
+            .await;
+        let url = api(&format!(
+            "collections/{}/entries",
+            collection["uuid"].as_str().expect("collection uuid")
+        ));
+        let (_, stack) = fixture.stack(kept, 1, "Foil").await;
+        fixture
+            .send_json(
+                Method::POST,
+                "sourcing/take",
+                json!({ "entry": stack, "quantity": 1 }),
+            )
+            .await;
+        fixture.remove(&removed).await;
+        let filed = fixture.owner.get(&url).await.ok_json();
+
+        fixture.reset(&point).await.ok_json();
+
+        assert_eq!(fixture.owner.get(&url).await.ok_json(), filed);
+        assert_eq!(filed["entries"].as_array().expect("entries").len(), 1);
+        let entries = fixture.entries().await;
+        let find = |printing: Uuid| {
+            entries
+                .iter()
+                .find(|entry| entry["printing"] == json!(printing))
+                .unwrap_or_else(|| panic!("{printing}: {entries:?}"))
+        };
+        assert!(tags(find(gone)).is_empty());
+        assert_eq!(find(gone)["quantity"], 2);
+        assert_eq!(tags(find(kept)), vec![hate]);
+        assert_eq!(entries.len(), 2, "{entries:?}");
+    });
+}
+
+#[test]
+fn only_the_owner_reads_earlier_points_and_resets() {
+    run(async {
+        let mut public = Fixture::with_visibility("Public").await;
+        let mut unlisted = Fixture::with_visibility("Unlisted").await;
+        let body = unlisted
+            .send_json(Method::POST, "share-token", json!({}))
+            .await;
+        let token = body["share_token"].as_str().expect("share token");
+        let mut points = Vec::new();
+        for fixture in [&mut public, &mut unlisted] {
+            let point = fixture.newest().await;
+            fixture
+                .add(json!({ "printing": Uuid::new_v4(), "quantity": 1, "zone": "Main" }))
+                .await;
+            points.push(point);
+        }
+        let mut stranger = TestClient::logged_in(&create_account(Role::Member).await).await;
+        let mut visitor = TestClient::new();
+        visitor
+            .get(&api(&format!("explore/decks/{}", public.deck)))
+            .await
+            .ok_json();
+        visitor
+            .get(&api(&format!("shared/decks/{token}")))
+            .await
+            .ok_json();
+
+        for (deck, point) in [&public.deck, &unlisted.deck].into_iter().zip(&points) {
+            let read = api(&format!("decks/{deck}/history/{point}"));
+            let reset = api(&format!("decks/{deck}/history/{point}/reset"));
+            for client in [&mut stranger, &mut visitor] {
+                let response = client.get(&read).await;
+                assert_ne!(response.status, StatusCode::OK, "{response:?}");
+                let response = client.json(Method::POST, &reset, &json!(null)).await;
+                assert_ne!(response.status, StatusCode::OK, "{response:?}");
+            }
+        }
+        let foreign = points[1].clone();
+        let response = public.point(&foreign).await;
+        assert_eq!(response.status, StatusCode::BAD_REQUEST, "{response:?}");
+        let response = public.reset(&foreign).await;
+        assert_eq!(response.status, StatusCode::BAD_REQUEST, "{response:?}");
+        for fixture in [&mut public, &mut unlisted] {
+            assert_eq!(fixture.entries().await.len(), 1);
+            assert_eq!(fixture.kinds().await, vec!["Edit", "Created"]);
+        }
+    });
+}
