@@ -82,7 +82,7 @@ export function CloneDeckDialog({
 
                 if (cards.cards.length > 0) {
                     await Api.decks.cards.import(deck.uuid, {
-                        replace: false,
+                        mode: "Add",
                         cards: cards.cards.map((card) => ({
                             printing: card.printing,
                             quantity: card.quantity,

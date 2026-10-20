@@ -75,7 +75,7 @@ export async function importRows(
 
     const { added } = await Api.decks.cards.import(deckUuid, {
         cards: merged(cards),
-        replace: options.replace ?? false,
+        mode: options.replace === true ? "Replace" : "Add",
     });
     const filed = options.intoCollection === true ? await fileIntoCollection(deckUuid) : 0;
     return { added, copies, unmatched, filed };

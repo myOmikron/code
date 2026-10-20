@@ -3832,21 +3832,11 @@ export interface ImportDeckCardsRequest {
      */
     cards: Array<AddDeckCardRequest>;
     /**
-     * Where the list comes from, a pasted decklist unless said otherwise
-     * 
-     * Only tells the Deck history how to describe the import. An advisor fill always adds.
-     * @type {ImportOrigin}
+     * Whether the cards add to the deck, replace it or fill it up for the advisor
+     * @type {ImportMode}
      * @memberof ImportDeckCardsRequest
      */
-    origin?: ImportOrigin;
-    /**
-     * Whether to throw away what is in the deck first
-     * 
-     * Replacing gives every slot a new id, so anything hanging off those ids is lost. That is right for "this decklist is the deck now" and wrong for everything else, which is why it is the caller's decision.
-     * @type {boolean}
-     * @memberof ImportDeckCardsRequest
-     */
-    replace: boolean;
+    mode: ImportMode;
 }
 
 
@@ -3865,20 +3855,26 @@ export interface ImportDeckCardsResponse {
 }
 
 /**
- * Where the cards of an import come from
+ * How an import writes its cards into a deck
  * @export
  */
-export const ImportOrigin = {
+export const ImportMode = {
     /**
-    * A decklist the owner pasted, linked or copied from another deck
+    * A decklist the owner pasted, linked or copied from another deck, added to what is there
     */
-    Decklist: 'Decklist',
+    Add: 'Add',
     /**
-    * The cards the advisor suggested to fill the deck up with
+    * A decklist that throws away what is in the deck first
+
+Gives every slot a new id, so anything hanging off those ids is lost. That is right for &quot;this decklist is the deck now&quot; and wrong for everything else, which is why it is the caller&#39;s decision.
     */
-    AdvisorFill: 'AdvisorFill'
+    Replace: 'Replace',
+    /**
+    * The cards the advisor suggested to fill the deck up with, added to what is there
+    */
+    Fill: 'Fill'
 } as const;
-export type ImportOrigin = typeof ImportOrigin[keyof typeof ImportOrigin];
+export type ImportMode = typeof ImportMode[keyof typeof ImportMode];
 
 /**
  * One page of a collection

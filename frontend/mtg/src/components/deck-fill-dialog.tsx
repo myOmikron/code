@@ -181,8 +181,7 @@ export function DeckFillDialog({
         try {
             await Api.decks.cards.import(deckUuid, {
                 cards: printings.map((printing) => ({ printing: printing.id, quantity: 1, zone: "Main" })),
-                replace: false,
-                origin: "AdvisorFill",
+                mode: "Fill",
             });
 
             // Read before `onClose()`: the dialog's exit animation moves these

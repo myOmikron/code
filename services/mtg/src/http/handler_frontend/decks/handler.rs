@@ -31,7 +31,7 @@ use crate::http::handler_frontend::decks::schema::FillDeckCollectionResponse;
 use crate::http::handler_frontend::decks::schema::FormatRulesResponse;
 use crate::http::handler_frontend::decks::schema::ImportDeckCardsRequest;
 use crate::http::handler_frontend::decks::schema::ImportDeckCardsResponse;
-use crate::http::handler_frontend::decks::schema::ImportOrigin;
+use crate::http::handler_frontend::decks::schema::ImportMode;
 use crate::http::handler_frontend::decks::schema::ListDeckCardsResponse;
 use crate::http::handler_frontend::decks::schema::ListFormatsResponse;
 use crate::http::handler_frontend::decks::schema::ReadDeckCardResponse;
@@ -1047,19 +1047,12 @@ fn local_deck_response(deck: Deck, slots: Vec<ListedSlot>) -> ReadDeckUrlRespons
 pub async fn import_deck_cards(
     account: Account,
     Path(deck_uuid): Path<DeckUuid>,
-    ApiJson(ImportDeckCardsRequest {
-        cards,
-        replace,
-        origin,
-    }): ApiJson<ImportDeckCardsRequest>,
+    ApiJson(ImportDeckCardsRequest { cards, mode }): ApiJson<ImportDeckCardsRequest>,
 ) -> ApiResult<ApiJson<ImportDeckCardsResponse>> {
-    let kind = match (origin, replace) {
-        (ImportOrigin::Decklist, false) => DeckChangeKind::Import,
-        (ImportOrigin::Decklist, true) => DeckChangeKind::Replace,
-        (ImportOrigin::AdvisorFill, false) => DeckChangeKind::Fill,
-        (ImportOrigin::AdvisorFill, true) => {
-            return Err(ApiError::bad_request("An advisor fill never replaces"));
-        }
+    let kind = match mode {
+        ImportMode::Add => DeckChangeKind::Import,
+        ImportMode::Replace => DeckChangeKind::Replace,
+        ImportMode::Fill => DeckChangeKind::Fill,
     };
 
     let mut tx = Database::global().start_transaction().await?;
@@ -1083,7 +1076,7 @@ pub async fn import_deck_cards(
     let added = inserts.len() as u32;
 
     let before = DeckCard::get_all_in_deck(&mut tx, deck_uuid).await?;
-    if replace {
+    if mode == ImportMode::Replace {
         if !DeckCard::replace_all(&mut tx, deck_uuid, inserts).await? {
             return Err(denied());
         }

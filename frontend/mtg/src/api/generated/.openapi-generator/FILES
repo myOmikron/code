@@ -125,7 +125,7 @@ docs/FormErrorResponseForStartLoginErrors.md
 docs/FormatRulesResponse.md
 docs/ImportDeckCardsRequest.md
 docs/ImportDeckCardsResponse.md
-docs/ImportOrigin.md
+docs/ImportMode.md
 docs/ListCardsResponse.md
 docs/ListCollectionEntriesResponse.md
 docs/ListDeckCardsResponse.md
