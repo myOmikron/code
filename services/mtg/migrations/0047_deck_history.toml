@@ -1,0 +1,112 @@
+[Migration]
+Hash = "14601418268253918553"
+Initial = false
+Dependency = 46
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateModel"
+Name = "deck_change"
+
+[[Migration.Operations.Fields]]
+Name = "uuid"
+Type = "uuid"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "primary_key"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/deck/history/db.rs"
+Line = 26
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "changed_at"
+Type = "datetime"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/deck/history/db.rs"
+Line = 40
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "kind"
+Type = "text"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 255
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/deck/history/db.rs"
+Line = 43
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "difference"
+Type = "binary"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/deck/history/db.rs"
+Line = 46
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "deck_change"
+
+[Migration.Operations.Field]
+Name = "deck"
+Type = "uuid"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "foreign_key"
+
+[Migration.Operations.Field.Annotations.Value]
+TableName = "deck"
+ColumnName = "uuid"
+OnDelete = "Cascade"
+OnUpdate = "Cascade"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/deck/history/db.rs"
+Line = 37
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateIndex"
+Model = "deck_change"
+
+[Migration.Operations.Index]
+Name = "deck_change_deck"
+Columns = [
+    "deck",
+    "uuid",
+]
+
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+INSERT INTO deck_change (uuid, deck, changed_at, kind, difference)
+SELECT uuidv7(), d.uuid, now(), 'Introduced', convert_to(json_build_object('entries', COALESCE((SELECT json_agg(json_build_object('printing', c.printing, 'zone', c.zone, 'foil', c.foil, 'proxy', c.proxy, 'before', 0, 'after', c.quantity) ORDER BY c.uuid) FROM deckcard c WHERE c.deck = d.uuid), '[]'::json))::text, 'UTF8')
+FROM deck d;
+"""

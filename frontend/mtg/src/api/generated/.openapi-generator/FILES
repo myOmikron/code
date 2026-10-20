@@ -60,11 +60,15 @@ docs/CreateScannerSessionRequest.md
 docs/CreateWatchListRequest.md
 docs/DeckCardCatalogResponse.md
 docs/DeckCardResponse.md
+docs/DeckChangeKind.md
+docs/DeckChangeResponse.md
 docs/DeckCommanderResponse.md
 docs/DeckDriftResponse.md
 docs/DeckDriftRowResponse.md
+docs/DeckEntryChangeResponse.md
 docs/DeckFolderKind.md
 docs/DeckFolderResponse.md
+docs/DeckHistoryResponse.md
 docs/DeckOverviewResponse.md
 docs/DeckResponse.md
 docs/DeckSize.md

@@ -47,6 +47,7 @@ pub(in crate::models) mod db;
 pub mod discovery;
 pub mod drift;
 pub mod folder;
+pub mod history;
 pub mod listing;
 pub mod sourcing;
 pub mod tag;

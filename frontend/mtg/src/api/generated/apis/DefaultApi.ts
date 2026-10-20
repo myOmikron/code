@@ -48,6 +48,7 @@ import type {
     DeckCardResponse,
     DeckDriftResponse,
     DeckFolderResponse,
+    DeckHistoryResponse,
     DeckOverviewResponse,
     DeckResponse,
     DeckSourcingResponse,
@@ -361,6 +362,12 @@ export interface GetDeckAdvisorSettingsRequest {
 
 export interface GetDeckCollectionDriftRequest {
     deck: string;
+}
+
+export interface GetDeckHistoryRequest {
+    deck: string;
+    after?: string | null;
+    limit?: number;
 }
 
 export interface GetDeckSourcingRequest {
@@ -3364,6 +3371,61 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async getDeckFormats(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListFormatsResponse> {
         const response = await this.getDeckFormatsRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for getDeckHistory without sending the request
+     */
+    async getDeckHistoryRequestOpts(requestParameters: GetDeckHistoryRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['deck'] == null) {
+            throw new runtime.RequiredError(
+                'deck',
+                'Required parameter "deck" was null or undefined when calling getDeckHistory().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['after'] != null) {
+            queryParameters['after'] = requestParameters['after'];
+        }
+
+        if (requestParameters['limit'] != null) {
+            queryParameters['limit'] = requestParameters['limit'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/decks/{deck}/history`;
+        urlPath = urlPath.replace('{deck}', encodeURIComponent(String(requestParameters['deck'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * A deck\'s Deck history, newest first  Only the owner reads it, whoever else may see the deck itself.
+     * A deck\'s Deck history, newest first
+     */
+    async getDeckHistoryRaw(requestParameters: GetDeckHistoryRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DeckHistoryResponse>> {
+        const requestOptions = await this.getDeckHistoryRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * A deck\'s Deck history, newest first  Only the owner reads it, whoever else may see the deck itself.
+     * A deck\'s Deck history, newest first
+     */
+    async getDeckHistory(requestParameters: GetDeckHistoryRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DeckHistoryResponse> {
+        const response = await this.getDeckHistoryRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

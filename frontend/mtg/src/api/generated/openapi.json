@@ -5107,6 +5107,94 @@
                 }
             }
         },
+        "/api/frontend/v1/decks/{deck}/history": {
+            "get": {
+                "summary": "A deck's Deck history, newest first",
+                "description": "A deck's Deck history, newest first\n\nOnly the owner reads it, whoever else may see the deck itself.",
+                "operationId": "get_deck_history",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "deck",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Deck`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    },
+                    {
+                        "in": "query",
+                        "name": "after",
+                        "schema": {
+                            "nullable": true,
+                            "description": "Continue after this Deck change, from a previous page's `next_cursor`",
+                            "allOf": [
+                                {
+                                    "$ref": "#/components/schemas/DeckChangeUuid"
+                                }
+                            ]
+                        },
+                        "style": "form"
+                    },
+                    {
+                        "in": "query",
+                        "name": "limit",
+                        "schema": {
+                            "description": "How many Deck changes to return, capped server-side",
+                            "default": 50,
+                            "type": "integer",
+                            "minimum": 0,
+                            "format": "uint32"
+                        },
+                        "style": "form"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DeckHistoryResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/frontend/v1/explore/decks": {
             "get": {
                 "summary": "Search the decks their owners put on show",
@@ -10598,6 +10686,80 @@
                 "type": "string",
                 "format": "uuid"
             },
+            "DeckChangeKind": {
+                "description": "What the owner did in a Deck change",
+                "oneOf": [
+                    {
+                        "description": "The deck was created, empty",
+                        "type": "string",
+                        "enum": [
+                            "Created"
+                        ]
+                    },
+                    {
+                        "description": "The deck existed before Deck histories; its entries at that time",
+                        "type": "string",
+                        "enum": [
+                            "Introduced"
+                        ]
+                    },
+                    {
+                        "description": "A plain edit of Deck entries: copies added, taken away or moved",
+                        "type": "string",
+                        "enum": [
+                            "Edit"
+                        ]
+                    }
+                ]
+            },
+            "DeckChangeResponse": {
+                "description": "One Deck change",
+                "type": "object",
+                "properties": {
+                    "changed_at": {
+                        "description": "When it happened",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDateTime"
+                            }
+                        ]
+                    },
+                    "entries": {
+                        "description": "The Deck entries it touched",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/DeckEntryChangeResponse"
+                        }
+                    },
+                    "kind": {
+                        "description": "What the owner did",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DeckChangeKind"
+                            }
+                        ]
+                    },
+                    "uuid": {
+                        "description": "Primary key",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DeckChangeUuid"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "changed_at",
+                    "entries",
+                    "kind",
+                    "uuid"
+                ]
+            },
+            "DeckChangeUuid": {
+                "description": "Wrapper for the primary key of a Deck change",
+                "type": "string",
+                "format": "uuid"
+            },
             "DeckCommanderResponse": {
                 "description": "One commander at the head of a deck",
                 "type": "object",
@@ -10719,6 +10881,56 @@
                     "quantity"
                 ]
             },
+            "DeckEntryChangeResponse": {
+                "description": "How many copies one Deck entry held before and after a Deck change",
+                "type": "object",
+                "properties": {
+                    "after": {
+                        "description": "How many copies it holds after, zero for an entry that is gone",
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "before": {
+                        "description": "How many copies it held before, zero for an entry that came into being",
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "foil": {
+                        "description": "Whether the copies are the foil ones",
+                        "type": "boolean"
+                    },
+                    "name": {
+                        "nullable": true,
+                        "description": "The card's printed name, `None` while the catalog does not know the printing",
+                        "type": "string"
+                    },
+                    "printing": {
+                        "description": "Scryfall's id of the printing",
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "proxy": {
+                        "description": "Whether the copies are stand-ins rather than the real cards",
+                        "type": "boolean"
+                    },
+                    "zone": {
+                        "description": "Which zone the entry sits in",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DeckZone"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "after",
+                    "before",
+                    "foil",
+                    "printing",
+                    "proxy",
+                    "zone"
+                ]
+            },
             "DeckFolderKind": {
                 "description": "Which of an account's folders a folder is",
                 "oneOf": [
@@ -10786,6 +10998,31 @@
                 "description": "Wrapper for the primary key of the [`DeckFolder`] model. To have better distinguishable types.",
                 "type": "string",
                 "format": "uuid"
+            },
+            "DeckHistoryResponse": {
+                "description": "One page of a Deck history, newest first",
+                "type": "object",
+                "properties": {
+                    "changes": {
+                        "description": "The Deck changes",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/DeckChangeResponse"
+                        }
+                    },
+                    "next_cursor": {
+                        "nullable": true,
+                        "description": "Pass as `after` for the next page, `None` on the last one",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DeckChangeUuid"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "changes"
+                ]
             },
             "DeckOverviewResponse": {
                 "description": "A deck as the list of decks shows it",

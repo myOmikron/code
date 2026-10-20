@@ -2010,6 +2010,60 @@ export interface DeckCardResponse {
 }
 
 
+
+/**
+ * What the owner did in a Deck change
+ * @export
+ */
+export const DeckChangeKind = {
+    /**
+    * The deck was created, empty
+    */
+    Created: 'Created',
+    /**
+    * The deck existed before Deck histories; its entries at that time
+    */
+    Introduced: 'Introduced',
+    /**
+    * A plain edit of Deck entries: copies added, taken away or moved
+    */
+    Edit: 'Edit'
+} as const;
+export type DeckChangeKind = typeof DeckChangeKind[keyof typeof DeckChangeKind];
+
+/**
+ * One Deck change
+ * @export
+ * @interface DeckChangeResponse
+ */
+export interface DeckChangeResponse {
+    /**
+     * When it happened
+     * @type {string}
+     * @memberof DeckChangeResponse
+     */
+    changed_at: string;
+    /**
+     * The Deck entries it touched
+     * @type {Array<DeckEntryChangeResponse>}
+     * @memberof DeckChangeResponse
+     */
+    entries: Array<DeckEntryChangeResponse>;
+    /**
+     * What the owner did
+     * @type {DeckChangeKind}
+     * @memberof DeckChangeResponse
+     */
+    kind: DeckChangeKind;
+    /**
+     * Primary key
+     * @type {string}
+     * @memberof DeckChangeResponse
+     */
+    uuid: string;
+}
+
+
 /**
  * One commander at the head of a deck
  * @export
@@ -2123,6 +2177,57 @@ export interface DeckDriftRowResponse {
      */
     wanted?: SourcedPrintingResponse | null;
 }
+/**
+ * How many copies one Deck entry held before and after a Deck change
+ * @export
+ * @interface DeckEntryChangeResponse
+ */
+export interface DeckEntryChangeResponse {
+    /**
+     * How many copies it holds after, zero for an entry that is gone
+     * @type {number}
+     * @memberof DeckEntryChangeResponse
+     */
+    after: number;
+    /**
+     * How many copies it held before, zero for an entry that came into being
+     * @type {number}
+     * @memberof DeckEntryChangeResponse
+     */
+    before: number;
+    /**
+     * Whether the copies are the foil ones
+     * @type {boolean}
+     * @memberof DeckEntryChangeResponse
+     */
+    foil: boolean;
+    /**
+     * The card's printed name, `None` while the catalog does not know the printing
+     * @type {string}
+     * @memberof DeckEntryChangeResponse
+     */
+    name?: string | null;
+    /**
+     * Scryfall's id of the printing
+     * @type {string}
+     * @memberof DeckEntryChangeResponse
+     */
+    printing: string;
+    /**
+     * Whether the copies are stand-ins rather than the real cards
+     * @type {boolean}
+     * @memberof DeckEntryChangeResponse
+     */
+    proxy: boolean;
+    /**
+     * Which zone the entry sits in
+     * @type {DeckZone}
+     * @memberof DeckEntryChangeResponse
+     */
+    zone: DeckZone;
+}
+
+
 
 /**
  * Which of an account's folders a folder is
@@ -2175,6 +2280,25 @@ export interface DeckFolderResponse {
 }
 
 
+/**
+ * One page of a Deck history, newest first
+ * @export
+ * @interface DeckHistoryResponse
+ */
+export interface DeckHistoryResponse {
+    /**
+     * The Deck changes
+     * @type {Array<DeckChangeResponse>}
+     * @memberof DeckHistoryResponse
+     */
+    changes: Array<DeckChangeResponse>;
+    /**
+     * Pass as `after` for the next page, `None` on the last one
+     * @type {string}
+     * @memberof DeckHistoryResponse
+     */
+    next_cursor?: string | null;
+}
 /**
  * A deck as the list of decks shows it
  * @export
