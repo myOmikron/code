@@ -350,6 +350,9 @@ function RouteComponent() {
             ...Object.fromEntries(tags.slice(0, 9).map((tag, index) => [String(index + 1), () => void quickTag(tag)])),
             a: () => setAdding(true),
             "mod+f": openDeckSearch,
+            "mod+z": undoChange,
+            "mod+y": redoChange,
+            "mod+shift+z": redoChange,
             v: () => setChoosing("view"),
             g: () => setChoosing("group"),
             t: () => setManagingTags(true),
@@ -929,6 +932,16 @@ function RouteComponent() {
         setSourcing(await Api.decks.sourcing.read(deckUuid));
     }
 
+    /** Takes back the latest Deck change, if there is one */
+    function undoChange() {
+        if (deck.can_undo) void serial(() => step(Api.decks.undo));
+    }
+
+    /** Applies the latest undone Deck change again, if there is one */
+    function redoChange() {
+        if (deck.can_redo) void serial(() => step(Api.decks.redo));
+    }
+
     /**
      * Undoes or redoes a Deck change, then reads the deck back
      *
@@ -989,8 +1002,8 @@ function RouteComponent() {
                 onChangeBracket={(next) => void saveBracket(next)}
                 canUndo={deck.can_undo}
                 canRedo={deck.can_redo}
-                onUndo={() => void serial(() => step(Api.decks.undo))}
-                onRedo={() => void serial(() => step(Api.decks.redo))}
+                onUndo={undoChange}
+                onRedo={redoChange}
             />
 
             <div className={"flex items-start gap-6"}>

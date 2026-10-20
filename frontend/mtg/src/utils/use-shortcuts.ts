@@ -4,16 +4,20 @@
  * Written here rather than pulled in: the app's dependencies are pinned in the
  * workspace catalog, and a keydown listener that ignores text fields is small.
  * Ordinary keys are written as themselves; platform find-style chords use the
- * `mod+` prefix, which accepts Control on Windows/Linux and Command on macOS.
+ * `mod+` prefix, which accepts Control on Windows/Linux and Command on macOS,
+ * and `mod+shift+` for the same chord with Shift held.
  */
 
 import { useEffect } from "react";
 
-/** What a key does, keyed by the key itself or a chord such as `mod+f` */
+/** What a key does, keyed by the key itself or a chord such as `mod+f` or `mod+shift+z` */
 export type Shortcuts = Record<string, () => void>;
 
 /** What answers to `Enter` and `Space` on its own */
 const INTERACTIVE = "a[href],button,summary,[role='button'],[role='link'],[role='menuitem'],[role='option']";
+
+/** The chords a text field answers itself, as its own undo and redo */
+const EDITING = new Set(["z", "y"]);
 
 /** What steers itself with the keyboard while it is open */
 const NAVIGATED = "[role='listbox'],[role='menu'],[role='combobox'],[role='tablist']";
@@ -24,7 +28,8 @@ const NAVIGATED = "[role='listbox'],[role='menu'],[role='combobox'],[role='tabli
  * Plain keys pressed while typing are left alone: a search field is where most
  * of the building happens, and swallowing the `a` of "Arcane" would be worse
  * than having no shortcuts at all. Registered `mod+` chords remain available
- * in fields so they can return focus to a page's search.
+ * in fields so they can return focus to a page's search — except undo and
+ * redo, which take back the typing rather than the page's last change.
  *
  * Two more things keep their keys: `Enter` and `Space` belong to whatever is
  * focused, so a page that binds `Enter` does not stop a focused button or link
@@ -51,13 +56,18 @@ export function useShortcuts(shortcuts: Shortcuts, enabled = true, insideDialogs
 
             const key = event.key.toLowerCase();
             const modified = event.ctrlKey || event.metaKey;
-            const handler = modified ? shortcuts[`mod+${key}`] : (shortcuts[event.key] ?? shortcuts[key]);
+            const handler = modified
+                ? ((event.shiftKey ? shortcuts[`mod+shift+${key}`] : undefined) ?? shortcuts[`mod+${key}`])
+                : (shortcuts[event.key] ?? shortcuts[key]);
             if (handler === undefined) return;
 
             const target = event.target;
-            if (!modified && target instanceof HTMLElement) {
+            if (target instanceof HTMLElement) {
                 const tag = target.tagName;
-                if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || target.isContentEditable) return;
+                const field = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || target.isContentEditable;
+                if (field && (!modified || EDITING.has(key))) return;
+            }
+            if (!modified && target instanceof HTMLElement) {
                 if ((key === "enter" || key === " ") && target.closest(INTERACTIVE) !== null) return;
                 if (target.closest(NAVIGATED) !== null) return;
                 if (!insideDialogs && target.closest("[role='dialog'],[role='alertdialog']") !== null) return;

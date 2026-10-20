@@ -375,6 +375,8 @@ function shortcutsFor(
             { keys: "P", description: t("button.change-printing") },
             { keys: "F", description: t("button.use-foil") },
             { keys: "X", description: t("button.mark-proxy") },
+            { keys: "Ctrl/⌘ Z", description: tg("button.undo") },
+            { keys: "Ctrl/⌘ Y", description: tg("button.redo") },
             { keys: "?", description: t("heading.shortcuts") },
         ];
     }
