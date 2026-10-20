@@ -64,12 +64,30 @@ _Avoid_: detected bracket, power level
 The lowest Commander bracket whose rules a deck's cards keep. Read from the cards, never written down. A Played bracket above the Bracket claim is a warning, not a correction.
 _Avoid_: actual bracket, real bracket
 
+**Deck entry**:
+One line of a deck: a printing in a zone, foil or not, proxy or not, with a quantity of at least one. A deck holds at most one Deck entry per printing, zone, foil and proxy; an edit that makes two alike merges them, and an entry whose quantity drops to zero is gone.
+_Avoid_: slot, deck card, line
+
+**Deck change**:
+One step in a deck's Deck history: what the owner did to its Deck entries or to its name, description, format, colors, bracket, rule-zero exceptions or size. Tags, folder, visibility, sharing and the deck's collection are not part of it. An import, a fill, a swap or a move between zones is one Deck change. Changes to the same Deck entry, or to the same field, made in quick succession become one Deck change, unless a Deck checkpoint names it. Creating the deck is its first Deck change; a deck that existed before Deck histories begins with its state at that time. Undo, redo and resetting to an earlier point are Deck changes of their own, so the Deck history only ever grows.
+_Avoid_: revision, edit, version
+
+**Deck history**:
+The ordered Deck changes of one deck, seen only by its owner. Any earlier point in it can be viewed and the deck reset to it. Kept as long as the deck exists; dropped when the deck is deleted or handed to the Tombstone.
+_Avoid_: history (alone), changelog, log
+
+**Deck checkpoint**:
+A name the owner gives one Deck change, e.g. "FNM 18.10.", to find that point in the Deck history again. At most one per Deck change; it can be renamed and removed.
+_Avoid_: snapshot, tag, version, milestone
+
 ## Relationships
 
 - An **Account** has exactly one **Role**, and at most one **Lock** at a time
 - Every **Lock**, unlock, **Role** change, **Deletion** and **Rename** by an **Admin** or the cli writes one **Admin log** entry
 - A **Deletion** hands the Account's public decks to the **Tombstone**, unless it is a full Deletion
 - A **Statistics snapshot** never counts the **Tombstone**
+- A deck has exactly one **Deck history**; handing the deck to the **Tombstone** empties it
+- Undoing or resetting a **Deck change** restores **Deck entries** without their card tags, and never moves cards of the deck's collection
 
 ## Flagged ambiguities
 
