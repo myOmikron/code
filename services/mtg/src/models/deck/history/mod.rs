@@ -980,6 +980,25 @@ impl DeckHistory {
         })
     }
 
+    /// Lock a deck for an edit the service makes itself, whoever owns it
+    ///
+    /// For catalog maintenance rewriting Deck entries of every owner, like a
+    /// Scryfall printing merge. `None` when there is no such deck. Lock several
+    /// decks in the order of their ids, so two such edits never deadlock.
+    #[instrument(name = "DeckHistory::lock_for_service", skip(tx))]
+    pub async fn lock_for_service(
+        tx: &mut Transaction,
+        deck: DeckUuid,
+    ) -> Result<Option<DeckEdit>, rorm::Error> {
+        let rows = (&mut *tx)
+            .execute::<All>(
+                "SELECT uuid FROM deck WHERE uuid = $1 FOR NO KEY UPDATE".to_string(),
+                vec![Value::Uuid(deck.into_inner())],
+            )
+            .await?;
+        Ok((!rows.is_empty()).then_some(DeckEdit { deck }))
+    }
+
     /// Start the Deck history of a deck just created
     #[instrument(name = "DeckHistory::record_created", skip(tx, deck))]
     pub async fn record_created(tx: &mut Transaction, deck: &Deck) -> Result<(), rorm::Error> {

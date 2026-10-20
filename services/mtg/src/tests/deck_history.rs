@@ -13,6 +13,7 @@ use serde_json::json;
 use uuid::Uuid;
 
 use crate::models::account::Role;
+use crate::models::deck::DeckCard;
 use crate::models::deck::DeckUuid;
 use crate::models::deck::history::DeckChangeKind;
 use crate::models::deck::history::DeckHistory;
@@ -934,6 +935,68 @@ fn only_the_owner_swaps() {
             lines(&fixture.entries().await),
             vec![(going.to_string(), "Main".to_string(), 1)]
         );
+    });
+}
+
+#[test]
+fn a_scryfall_printing_merge_records_one_switch_per_deck() {
+    run(async {
+        let (merged, kept) = (Uuid::new_v4(), Uuid::new_v4());
+        let mut alone = Fixture::new().await;
+        alone
+            .add(json!({ "printing": merged, "quantity": 2, "zone": "Main" }))
+            .await;
+        let mut alike = Fixture::new().await;
+        alike
+            .add(json!({ "printing": merged, "quantity": 2, "zone": "Side" }))
+            .await;
+        alike
+            .add(json!({ "printing": kept, "quantity": 1, "zone": "Side" }))
+            .await;
+
+        let mut tx = Database::global()
+            .start_transaction()
+            .await
+            .expect("start a transaction");
+        let repointed = DeckCard::apply_printing_merge(&mut tx, merged, kept)
+            .await
+            .expect("apply the printing merge");
+        tx.commit().await.expect("commit");
+
+        assert_eq!(repointed, 2);
+        for (fixture, expected) in [
+            (
+                &mut alone,
+                vec![(merged, "Main", 2, 0), (kept, "Main", 0, 2)],
+            ),
+            (
+                &mut alike,
+                vec![(merged, "Side", 2, 0), (kept, "Side", 1, 3)],
+            ),
+        ] {
+            let history = fixture.history("").await;
+            let latest = &history["changes"][0];
+            assert_eq!(latest["kind"], "Switch", "{history}");
+            let mut entries: Vec<(Uuid, String, i64, i64)> = latest["entries"]
+                .as_array()
+                .expect("entry list")
+                .iter()
+                .map(|entry| {
+                    (
+                        entry["printing"].as_str().expect("printing").parse().expect("uuid"),
+                        entry["zone"].as_str().expect("zone").to_string(),
+                        entry["before"].as_i64().expect("before"),
+                        entry["after"].as_i64().expect("after"),
+                    )
+                })
+                .collect();
+            entries.sort_by_key(|entry| entry.0 != merged);
+            let expected: Vec<(Uuid, String, i64, i64)> = expected
+                .into_iter()
+                .map(|(printing, zone, before, after)| (printing, zone.to_string(), before, after))
+                .collect();
+            assert_eq!(entries, expected);
+        }
     });
 }
 
