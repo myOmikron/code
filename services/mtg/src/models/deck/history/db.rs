@@ -63,6 +63,15 @@ pub struct DeckChangeModel {
     #[rorm(default = false)]
     pub undone: bool,
 
+    /// Whether a redo may apply this undone Deck change again
+    ///
+    /// Set by its undo, cleared by its redo and by every later Deck change
+    /// that is no undo or redo, which discards the undos before it. Kept so
+    /// the redo target is read from a partial index instead of the trail of
+    /// undos and redos.
+    #[rorm(default = false)]
+    pub redoable: bool,
+
     /// The Deck checkpoint naming this Deck change, chosen by the owner
     ///
     /// One column, so a Deck change carries at most one Deck checkpoint.
