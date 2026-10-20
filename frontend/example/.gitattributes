@@ -1,2 +1,1 @@
-src/api/generated/** -diff linguist-generated
 src/routeTree.gen.ts -diff linguist-generated
