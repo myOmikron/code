@@ -1,14 +1,11 @@
 import { MagnifyingGlassIcon } from "@heroicons/react/20/solid";
-import clsx from "clsx";
 import { AnimatePresence, motion } from "motion/react";
 import { Input, InputGroup, Text } from "components";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { MenuAt } from "src/components/context-menu";
-import { CONTEXT_MENU_TARGET, contextMenuTrigger } from "src/components/context-menu";
-import { FoilFrame } from "src/components/foil-frame";
+import { GoldfishZoneCard } from "src/components/goldfish-zone-card";
 import type { GoldfishCard, GoldfishZone } from "src/utils/goldfish";
-import { pointerCard } from "src/utils/use-pointer-card";
 
 /**
  * The properties for {@link GoldfishZoneGrid}
@@ -79,70 +76,25 @@ export function GoldfishZoneGrid({
             ) : (
                 <ul className={"grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7"}>
                     <AnimatePresence mode={"popLayout"}>
-                        {shown.map((card, index) => {
-                            const image = card.flipped ? card.backImage : card.image;
-                            return (
-                                <motion.li
-                                    key={card.id}
-                                    layout={true}
-                                    initial={{ opacity: 0, scale: 0.8 }}
-                                    animate={{ opacity: 1, scale: 1 }}
-                                    exit={{ opacity: 0, scale: 0.8 }}
-                                    transition={{ type: "spring", stiffness: 420, damping: 34 }}
-                                >
-                                    <button
-                                        type={"button"}
-                                        onClick={() => (onPick ?? onZoom)(card)}
-                                        onMouseEnter={() => onHover(card)}
-                                        onMouseLeave={() => onHover(null)}
-                                        title={card.name}
-                                        {...pointerCard(card.id)}
-                                        {...contextMenuTrigger((at) => onOpenMenu(card, at))}
-                                        className={clsx(
-                                            CONTEXT_MENU_TARGET,
-                                            "group flex w-full flex-col gap-1 rounded-lg p-1 text-left transition outline-none",
-                                            "hover:bg-lime-400/15 focus-visible:ring-2 focus-visible:ring-lime-500",
-                                            menued === card.id && "bg-blue-500/20 ring-2 ring-blue-400",
-                                        )}
-                                    >
-                                        <FoilFrame
-                                            finish={card.finish}
-                                            compact={true}
-                                            image={image}
-                                            className={clsx(
-                                                "relative aspect-5/7 w-full rounded-[4.5%/3.2%] bg-zinc-800 shadow-md ring-1 ring-black/40 transition group-hover:-translate-y-1",
-                                                card.token && "ring-2 ring-amber-400/80",
-                                            )}
-                                        >
-                                            {image !== null ? (
-                                                <img
-                                                    src={image}
-                                                    alt={card.name}
-                                                    draggable={false}
-                                                    className={"size-full object-cover"}
-                                                />
-                                            ) : (
-                                                <div
-                                                    className={
-                                                        "flex size-full items-center justify-center p-1 text-center text-xs text-white"
-                                                    }
-                                                >
-                                                    {card.name}
-                                                </div>
-                                            )}
-                                        </FoilFrame>
-                                        <span className={"flex items-baseline justify-between gap-1"}>
-                                            <span className={"truncate text-xs text-white/80"}>{card.name}</span>
-                                            {zone === "library" && (
-                                                <span className={"shrink-0 text-[10px] text-white/50 tabular-nums"}>
-                                                    #{index + 1}
-                                                </span>
-                                            )}
-                                        </span>
-                                    </button>
-                                </motion.li>
-                            );
-                        })}
+                        {shown.map((card, index) => (
+                            <motion.li
+                                key={card.id}
+                                layout={true}
+                                initial={{ opacity: 0, scale: 0.8 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.8 }}
+                                transition={{ type: "spring", stiffness: 420, damping: 34 }}
+                            >
+                                <GoldfishZoneCard
+                                    card={card}
+                                    position={zone === "library" ? index + 1 : null}
+                                    menued={menued === card.id}
+                                    onClick={() => (onPick ?? onZoom)(card)}
+                                    onOpenMenu={(at) => onOpenMenu(card, at)}
+                                    onHover={(hovering) => onHover(hovering ? card : null)}
+                                />
+                            </motion.li>
+                        ))}
                     </AnimatePresence>
                 </ul>
             )}

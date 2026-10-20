@@ -10,6 +10,7 @@ import {
     ForwardIcon,
     HandRaisedIcon,
     MagnifyingGlassIcon,
+    QueueListIcon,
     RectangleStackIcon,
     SparklesIcon,
     XMarkIcon,
@@ -60,10 +61,13 @@ import {
     isLand,
     loadGame,
     moveCard,
+    moveZone,
     mulligan,
     newGame,
     nextTurn,
+    reorderLibraryTop,
     saveGame,
+    shuffleIntoLibrary,
     shuffleLibrary,
     startingLifeFor,
     toggleFlipped,
@@ -97,6 +101,14 @@ const TABLE_CARD: Record<CardSize, string> = {
 
 /** How many moves can be taken back */
 const HISTORY_LIMIT = 100;
+
+/** What a move takes back: the game, and how many top cards were being looked at */
+type Snapshot = {
+    /** The game before the move */
+    game: GoldfishGame;
+    /** How many top cards of the library lay face up, `null` for none */
+    looking: number | null;
+};
 
 /** How wide a card in hand is drawn, per size */
 const HAND_CARD: Record<CardSize, string> = {
@@ -181,15 +193,20 @@ function RouteComponent() {
     const [size, setSize] = useState<CardSize>(loadSize);
     const menu = useContextMenu<GoldfishCard>();
     const [libraryMenuAt, setLibraryMenuAt] = useState<MenuAt | null>(null);
+    const [graveyardMenuAt, setGraveyardMenuAt] = useState<MenuAt | null>(null);
     const [drawing, setDrawing] = useState(false);
+    const [choosingLook, setChoosingLook] = useState(false);
+    const [looking, setLooking] = useState<number | null>(null);
     const [over, setOver] = useState<GoldfishZone | null>(null);
     const [shakes, setShakes] = useState(0);
-    const [history, setHistory] = useState<Array<GoldfishGame>>([]);
+    const [history, setHistory] = useState<Array<Snapshot>>([]);
     const [casting, setCasting] = useState<GoldfishCard | null>(null);
     const [attaching, setAttaching] = useState<GoldfishCard | null>(null);
     const [confirming, setConfirming] = useState<"restart" | "end" | null>(null);
     const latest = useRef(game);
     latest.current = game;
+    const lookingNow = useRef(looking);
+    lookingNow.current = looking;
     const mobile = useMediaQuery("(max-width: 1023px), (pointer: coarse) and (max-height: 600px)");
     const orientation = useTableOrientation();
     const fullscreen = useFullscreen(true);
@@ -224,7 +241,8 @@ function RouteComponent() {
         const next = step(current);
         if (next === current) return;
         latest.current = next;
-        setHistory((past) => [...past.slice(-(HISTORY_LIMIT - 1)), current]);
+        const snapshot = { game: current, looking: lookingNow.current };
+        setHistory((past) => [...past.slice(-(HISTORY_LIMIT - 1)), snapshot]);
         setGame(next);
     }
 
@@ -249,8 +267,9 @@ function RouteComponent() {
         const past = history[history.length - 1];
         if (past === undefined) return;
         setHistory((entries) => entries.slice(0, -1));
-        latest.current = past;
-        setGame(past);
+        latest.current = past.game;
+        setGame(past.game);
+        setLooking(past.looking);
     }
 
     /**
@@ -295,8 +314,13 @@ function RouteComponent() {
      * @param end which end of the library
      */
     function move(card: GoldfishCard, zone: GoldfishZone, end?: LibraryEnd) {
+        const position =
+            latest.current === null ? -1 : inZone(latest.current, "library").findIndex((entry) => entry.id === card.id);
+        const lookedAt = looking !== null && position !== -1 && position < looking;
+        const backOnTop = zone === "library" && end !== "bottom";
         apply((current) => moveCard(current, card.id, zone, end));
         if (zoneOpen === "hand") setZoneOpen(null);
+        if (lookedAt && !backOnTop) setLooking(looking - 1);
     }
 
     /**
@@ -305,6 +329,19 @@ function RouteComponent() {
     function shuffle() {
         apply((current) => shuffleLibrary(current));
         setShakes((count) => count + 1);
+        setLooking(null);
+    }
+
+    /**
+     * Turns the top cards of the library face up, to be put back in any order
+     *
+     * @param count how many
+     */
+    function lookAtTop(count: number) {
+        const current = latest.current;
+        if (current === null) return;
+        setZoneOpen(null);
+        setLooking(Math.min(count, inZone(current, "library").length));
     }
 
     /**
@@ -440,6 +477,7 @@ function RouteComponent() {
             },
             escape: () => {
                 setZoneOpen(null);
+                setLooking(null);
                 setAttaching(null);
             },
             a: () => {
@@ -635,6 +673,8 @@ function RouteComponent() {
         );
     }
 
+    const lookedAt = looking === null ? [] : library.slice(0, looking);
+
     const zoneCards =
         zoneOpen === null
             ? []
@@ -652,6 +692,7 @@ function RouteComponent() {
      * @param zone the zone
      */
     function showZone(zone: GoldfishZone) {
+        setLooking(null);
         setZoneOpen((current) => (current === zone ? null : zone));
     }
 
@@ -876,6 +917,7 @@ function RouteComponent() {
                                                 cards={graveyard}
                                                 hint={t("description.open-zone")}
                                                 onClick={() => showZone("graveyard")}
+                                                onOpenMenu={setGraveyardMenuAt}
                                                 className={mobile ? "w-10" : undefined}
                                                 compact={mobile}
                                             />
@@ -912,6 +954,20 @@ function RouteComponent() {
                                             onShuffle={shuffle}
                                             onClose={() => setZoneOpen(null)}
                                             fullscreen={mobile && zoneOpen === "hand"}
+                                        />
+                                    )}
+                                    {looking !== null && (
+                                        <GoldfishZoneOverlay
+                                            key={"look"}
+                                            zone={"library"}
+                                            cards={lookedAt}
+                                            menued={menu.open?.item.id ?? null}
+                                            onZoom={setZoomed}
+                                            onOpenMenu={menu.openAt}
+                                            onHover={(card) => setHovered(card?.id ?? null)}
+                                            onShuffle={shuffle}
+                                            onReorder={(ids) => apply((current) => reorderLibraryTop(current, ids))}
+                                            onClose={() => setLooking(null)}
                                         />
                                     )}
                                 </AnimatePresence>
@@ -1084,6 +1140,16 @@ function RouteComponent() {
                                         },
                                     },
                                     {
+                                        key: "look-top",
+                                        label: t("button.look-top"),
+                                        icon: <QueueListIcon />,
+                                        disabled: library.length === 0,
+                                        onSelect: () => {
+                                            setChoosingLook(true);
+                                            setLibraryMenuAt(null);
+                                        },
+                                    },
+                                    {
                                         key: "mill",
                                         label: t("button.mill-top"),
                                         icon: <FireIcon />,
@@ -1130,6 +1196,40 @@ function RouteComponent() {
                             },
                         ]}
                         onClose={() => setLibraryMenuAt(null)}
+                    />
+                    <ContextMenu
+                        title={zoneLabel("graveyard")}
+                        at={graveyardMenuAt}
+                        sections={[
+                            {
+                                key: "graveyard",
+                                items: [
+                                    {
+                                        key: "exile-all",
+                                        label: t("button.exile-all"),
+                                        icon: <SparklesIcon />,
+                                        disabled: graveyard.length === 0,
+                                        onSelect: () => {
+                                            apply((current) => moveZone(current, "graveyard", "exile"));
+                                            setGraveyardMenuAt(null);
+                                        },
+                                    },
+                                    {
+                                        key: "shuffle-into-library",
+                                        label: t("button.shuffle-into-library"),
+                                        icon: <ArrowsRightLeftIcon />,
+                                        disabled: graveyard.length === 0,
+                                        onSelect: () => {
+                                            apply((current) => shuffleIntoLibrary(current, "graveyard"));
+                                            setShakes((count) => count + 1);
+                                            setLooking(null);
+                                            setGraveyardMenuAt(null);
+                                        },
+                                    },
+                                ],
+                            },
+                        ]}
+                        onClose={() => setGraveyardMenuAt(null)}
                     />
                     <GoldfishCardMenu
                         control={menu}
@@ -1180,8 +1280,15 @@ function RouteComponent() {
                     <GoldfishDrawDialog
                         open={drawing}
                         available={library.length}
-                        onDraw={(count) => apply((current) => draw(current, count))}
+                        onChoose={(count) => apply((current) => draw(current, count))}
                         onClose={() => setDrawing(false)}
+                    />
+                    <GoldfishDrawDialog
+                        open={choosingLook}
+                        purpose={"look"}
+                        available={library.length}
+                        onChoose={lookAtTop}
+                        onClose={() => setChoosingLook(false)}
                     />
                 </div>
             </LayoutGroup>
