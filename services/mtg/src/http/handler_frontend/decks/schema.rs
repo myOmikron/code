@@ -782,28 +782,25 @@ pub struct SwapDeckCardRequest {
 pub struct ImportDeckCardsRequest {
     /// The cards to put in
     pub cards: Vec<AddDeckCardRequest>,
-    /// Whether to throw away what is in the deck first
-    ///
-    /// Replacing gives every slot a new id, so anything hanging off those ids
-    /// is lost. That is right for "this decklist is the deck now" and wrong for
-    /// everything else, which is why it is the caller's decision.
-    pub replace: bool,
-    /// Where the list comes from, a pasted decklist unless said otherwise
-    ///
-    /// Only tells the Deck history how to describe the import. An advisor
-    /// fill always adds.
-    #[serde(default)]
-    pub origin: ImportOrigin,
+    /// Whether the cards add to the deck, replace it or fill it up for the advisor
+    pub mode: ImportMode,
 }
 
-/// Where the cards of an import come from
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
-pub enum ImportOrigin {
-    /// A decklist the owner pasted, linked or copied from another deck
-    #[default]
-    Decklist,
-    /// The cards the advisor suggested to fill the deck up with
-    AdvisorFill,
+/// How an import writes its cards into a deck
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub enum ImportMode {
+    /// A decklist the owner pasted, linked or copied from another deck, added
+    /// to what is there
+    Add,
+    /// A decklist that throws away what is in the deck first
+    ///
+    /// Gives every slot a new id, so anything hanging off those ids is lost.
+    /// That is right for "this decklist is the deck now" and wrong for
+    /// everything else, which is why it is the caller's decision.
+    Replace,
+    /// The cards the advisor suggested to fill the deck up with, added to
+    /// what is there
+    Fill,
 }
 
 /// What an import wrote

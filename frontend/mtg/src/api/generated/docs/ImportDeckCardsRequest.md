@@ -8,8 +8,7 @@ A decklist to write into a deck
 Name | Type
 ------------ | -------------
 `cards` | [Array&lt;AddDeckCardRequest&gt;](AddDeckCardRequest.md)
-`origin` | [ImportOrigin](ImportOrigin.md)
-`replace` | boolean
+`mode` | [ImportMode](ImportMode.md)
 
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)

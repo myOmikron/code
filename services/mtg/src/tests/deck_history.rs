@@ -83,11 +83,12 @@ impl Fixture {
 
     /// Imports a decklist, adding to or replacing what is there
     async fn import(&mut self, cards: Value, replace: bool) {
+        let mode = if replace { "Replace" } else { "Add" };
         self.owner
             .json(
                 Method::POST,
                 &api(&format!("decks/{}/cards/import", self.deck)),
-                &json!({ "cards": cards, "replace": replace }),
+                &json!({ "cards": cards, "mode": mode }),
             )
             .await
             .ok_json();
@@ -1247,8 +1248,7 @@ fn an_advisor_fill_records_one_fill() {
                 &api(&format!("decks/{deck}/cards/import")),
                 &json!({
                     "cards": [{ "printing": Uuid::new_v4(), "quantity": 2, "zone": "Main" }],
-                    "replace": false,
-                    "origin": "AdvisorFill",
+                    "mode": "Fill",
                 }),
             )
             .await
@@ -1257,30 +1257,6 @@ fn an_advisor_fill_records_one_fill() {
 
         assert_eq!(fixture.kinds().await, vec!["Fill", "Created"]);
         assert_eq!(fixture.latest().await, vec![("Main".to_string(), 0, 2)]);
-    });
-}
-
-#[test]
-fn an_advisor_fill_never_replaces() {
-    run(async {
-        let mut fixture = Fixture::new().await;
-        let deck = fixture.deck.clone();
-
-        let response = fixture
-            .owner
-            .json(
-                Method::POST,
-                &api(&format!("decks/{deck}/cards/import")),
-                &json!({
-                    "cards": [{ "printing": Uuid::new_v4(), "quantity": 2, "zone": "Main" }],
-                    "replace": true,
-                    "origin": "AdvisorFill",
-                }),
-            )
-            .await;
-
-        assert_eq!(response.status, StatusCode::BAD_REQUEST, "{response:?}");
-        assert_eq!(fixture.kinds().await, vec!["Created"]);
     });
 }
 
