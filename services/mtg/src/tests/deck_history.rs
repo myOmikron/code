@@ -671,14 +671,14 @@ fn adding_a_card_records_one_deck_change() {
         fixture
             .add(json!({ "printing": printing, "quantity": 2, "zone": "Main" }))
             .await;
-        assert_eq!(fixture.kinds().await, vec!["Edit", "Created"]);
+        assert_eq!(fixture.kinds().await, vec!["Quantity", "Created"]);
         assert_eq!(fixture.latest().await, vec![("Main".to_string(), 0, 2)]);
         fixture.age_latest().await;
 
         fixture
             .add(json!({ "printing": printing, "quantity": 1, "zone": "Main" }))
             .await;
-        assert_eq!(fixture.kinds().await, vec!["Edit", "Edit", "Created"]);
+        assert_eq!(fixture.kinds().await, vec!["Quantity", "Quantity", "Created"]);
         assert_eq!(fixture.latest().await, vec![("Main".to_string(), 2, 3)]);
     });
 }
@@ -693,7 +693,7 @@ fn changing_an_entrys_quantity_records_one_deck_change() {
         fixture.age_latest().await;
 
         fixture.patch(&entry, json!({ "quantity": 1 })).await;
-        assert_eq!(fixture.kinds().await, vec!["Edit", "Edit", "Created"]);
+        assert_eq!(fixture.kinds().await, vec!["Quantity", "Quantity", "Created"]);
         assert_eq!(fixture.latest().await, vec![("Side".to_string(), 3, 1)]);
         fixture.age_latest().await;
 
@@ -714,7 +714,7 @@ fn removing_an_entry_records_one_deck_change() {
 
         fixture.remove(&entry).await;
 
-        assert_eq!(fixture.kinds().await, vec!["Edit", "Edit", "Created"]);
+        assert_eq!(fixture.kinds().await, vec!["Quantity", "Quantity", "Created"]);
         assert_eq!(fixture.latest().await, vec![("Main".to_string(), 4, 0)]);
     });
 }
@@ -749,7 +749,7 @@ fn the_deck_history_lists_newest_first_in_pages() {
         }
 
         assert_eq!(afters, vec![4, 3, 2, 1]);
-        assert_eq!(kinds, vec!["Edit", "Edit", "Edit", "Edit", "Created"]);
+        assert_eq!(kinds, vec!["Quantity", "Quantity", "Quantity", "Quantity", "Created"]);
     });
 }
 
@@ -1036,7 +1036,7 @@ fn moving_an_entry_records_one_move() {
 
         fixture.patch(&entry, json!({ "zone": "Side" })).await;
 
-        assert_eq!(fixture.kinds().await, vec!["Move", "Edit", "Created"]);
+        assert_eq!(fixture.kinds().await, vec!["Move", "Quantity", "Created"]);
         let mut latest = fixture.latest().await;
         latest.sort();
         assert_eq!(
@@ -1062,7 +1062,7 @@ fn a_move_merging_into_an_alike_entry_is_one_move() {
 
         assert_eq!(
             fixture.kinds().await,
-            vec!["Move", "Edit", "Edit", "Created"]
+            vec!["Move", "Quantity", "Quantity", "Created"]
         );
         let mut latest = fixture.latest().await;
         latest.sort();
@@ -1096,7 +1096,7 @@ fn switching_printing_foil_or_proxy_records_one_switch_each() {
 
         assert_eq!(
             fixture.kinds().await,
-            vec!["Switch", "Switch", "Switch", "Edit", "Edit", "Created"]
+            vec!["Switch", "Switch", "Switch", "Quantity", "Quantity", "Created"]
         );
         let history = fixture.history("").await;
         let mut merged: Vec<(bool, i64, i64)> = history["changes"][0]["entries"]
@@ -1136,7 +1136,7 @@ fn a_swap_records_one_swap_with_both_cards() {
 
         assert_eq!(
             fixture.kinds().await,
-            vec!["Swap", "Edit", "Edit", "Created"]
+            vec!["Swap", "Quantity", "Quantity", "Created"]
         );
         let history = fixture.history("").await;
         let mut swapped: Vec<(bool, i64, i64)> = history["changes"][0]["entries"]
@@ -1175,7 +1175,7 @@ fn an_adding_import_records_one_import() {
             )
             .await;
 
-        assert_eq!(fixture.kinds().await, vec!["Import", "Edit", "Created"]);
+        assert_eq!(fixture.kinds().await, vec!["Import", "Quantity", "Created"]);
         let mut latest = fixture.latest().await;
         latest.sort();
         assert_eq!(
@@ -1567,7 +1567,7 @@ fn sourcing_another_printing_for_an_entry_records_one_sourcing_change() {
             )
             .await;
 
-        assert_eq!(fixture.kinds().await, vec!["Sourcing", "Edit", "Created"]);
+        assert_eq!(fixture.kinds().await, vec!["Sourcing", "Quantity", "Created"]);
         let history = fixture.history("").await;
         let mut split: Vec<(bool, bool, i64, i64)> = history["changes"][0]["entries"]
             .as_array()
@@ -1604,7 +1604,7 @@ fn filling_a_proxy_entry_records_one_sourcing_change() {
             .send_json(Method::POST, "sourcing/fill", json!({ "slot": proxy }))
             .await;
 
-        assert_eq!(fixture.kinds().await, vec!["Sourcing", "Edit", "Created"]);
+        assert_eq!(fixture.kinds().await, vec!["Sourcing", "Quantity", "Created"]);
         let history = fixture.history("").await;
         let mut flags: Vec<(bool, i64, i64)> = history["changes"][0]["entries"]
             .as_array()
@@ -1771,7 +1771,7 @@ fn quick_additions_to_one_entry_become_one_deck_change() {
             .add(json!({ "printing": printing, "quantity": 1, "zone": "Main" }))
             .await;
 
-        assert_eq!(fixture.kinds().await, vec!["Edit", "Created"]);
+        assert_eq!(fixture.kinds().await, vec!["Quantity", "Created"]);
         assert_eq!(fixture.latest().await, vec![("Main".to_string(), 0, 3)]);
     });
 }
@@ -1812,7 +1812,7 @@ fn adding_and_taking_away_a_copy_quickly_leaves_no_deck_change() {
         fixture.patch(&entry, json!({ "quantity": 3 })).await;
         fixture.patch(&entry, json!({ "quantity": 2 })).await;
 
-        assert_eq!(fixture.kinds().await, vec!["Edit", "Created"]);
+        assert_eq!(fixture.kinds().await, vec!["Quantity", "Created"]);
         assert_eq!(fixture.latest().await, vec![("Main".to_string(), 0, 2)]);
     });
 }
@@ -1844,7 +1844,7 @@ fn quick_edits_of_different_entries_or_fields_stay_apart() {
 
         assert_eq!(
             fixture.kinds().await,
-            vec!["Settings", "Settings", "Edit", "Edit", "Edit", "Created"]
+            vec!["Settings", "Settings", "Quantity", "Quantity", "Quantity", "Created"]
         );
     });
 }
@@ -1870,7 +1870,7 @@ fn an_edit_after_the_window_stays_apart() {
 
         assert_eq!(
             fixture.kinds().await,
-            vec!["Edit", "Edit", "Settings", "Settings", "Edit", "Created"]
+            vec!["Quantity", "Quantity", "Settings", "Settings", "Quantity", "Created"]
         );
         assert_eq!(fixture.latest().await, vec![("Main".to_string(), 2, 3)]);
     });
@@ -1885,12 +1885,12 @@ fn the_window_counts_from_the_first_of_the_joined_edits() {
             .await;
         fixture.age_latest_by(40).await;
         fixture.patch(&entry, json!({ "quantity": 2 })).await;
-        assert_eq!(fixture.kinds().await, vec!["Edit", "Created"]);
+        assert_eq!(fixture.kinds().await, vec!["Quantity", "Created"]);
         fixture.age_latest_by(40).await;
 
         fixture.patch(&entry, json!({ "quantity": 3 })).await;
 
-        assert_eq!(fixture.kinds().await, vec!["Edit", "Edit", "Created"]);
+        assert_eq!(fixture.kinds().await, vec!["Quantity", "Quantity", "Created"]);
         assert_eq!(fixture.latest().await, vec![("Main".to_string(), 2, 3)]);
     });
 }
@@ -1909,7 +1909,7 @@ fn moves_never_join_quick_edits() {
 
         assert_eq!(
             fixture.kinds().await,
-            vec!["Edit", "Move", "Move", "Edit", "Created"]
+            vec!["Quantity", "Move", "Move", "Quantity", "Created"]
         );
     });
 }
@@ -1932,7 +1932,7 @@ fn imports_never_join_quick_edits() {
 
         assert_eq!(
             fixture.kinds().await,
-            vec!["Edit", "Import", "Import", "Edit", "Created"]
+            vec!["Quantity", "Import", "Import", "Quantity", "Created"]
         );
     });
 }
@@ -1958,7 +1958,7 @@ fn swaps_never_join_quick_edits() {
 
         assert_eq!(
             fixture.kinds().await,
-            vec!["Edit", "Edit", "Swap", "Edit", "Created"]
+            vec!["Quantity", "Quantity", "Swap", "Quantity", "Created"]
         );
     });
 }
@@ -1998,7 +1998,7 @@ fn undoing_an_added_card_takes_it_out_again() {
         fixture.undo().await.ok_json();
 
         assert!(fixture.entries().await.is_empty());
-        assert_eq!(fixture.kinds().await, vec!["Undo", "Edit", "Created"]);
+        assert_eq!(fixture.kinds().await, vec!["Undo", "Quantity", "Created"]);
         assert_eq!(fixture.undone().await, vec![false, true, false]);
         assert_eq!(fixture.latest().await, vec![("Main".to_string(), 2, 0)]);
         let history = fixture.history("").await;
@@ -2152,7 +2152,7 @@ fn a_new_edit_after_undoing_makes_redo_impossible() {
         assert_eq!(response.status, StatusCode::BAD_REQUEST, "{response:?}");
         assert_eq!(
             fixture.kinds().await,
-            vec!["Edit", "Undo", "Edit", "Edit", "Created"]
+            vec!["Quantity", "Undo", "Quantity", "Quantity", "Created"]
         );
     });
 }
@@ -2171,7 +2171,7 @@ fn undo_stops_at_the_decks_creation() {
 
         assert_eq!(response.status, StatusCode::BAD_REQUEST, "{response:?}");
         assert_eq!(fixture.offers().await, (false, true));
-        assert_eq!(fixture.kinds().await, vec!["Undo", "Edit", "Created"]);
+        assert_eq!(fixture.kinds().await, vec!["Undo", "Quantity", "Created"]);
     });
 }
 
@@ -2234,7 +2234,7 @@ fn undo_after_undo_and_redo_takes_back_the_redone_change() {
         assert_eq!(
             fixture.kinds().await,
             vec![
-                "Redo", "Redo", "Undo", "Redo", "Undo", "Undo", "Edit", "Edit", "Created"
+                "Redo", "Redo", "Undo", "Redo", "Undo", "Undo", "Quantity", "Quantity", "Created"
             ]
         );
         assert!(fixture.undone().await.iter().all(|undone| !undone));
@@ -2368,7 +2368,7 @@ fn only_the_owner_undoes_and_redoes() {
             assert_eq!(fixture.entries().await.len(), 1);
             assert_eq!(
                 fixture.kinds().await,
-                vec!["Undo", "Edit", "Edit", "Created"]
+                vec!["Undo", "Quantity", "Quantity", "Created"]
             );
         }
     });
@@ -2502,7 +2502,7 @@ fn reading_the_deck_history_waits_for_a_deck_change_being_recorded() {
 
         tx.commit().await.expect("commit");
         assert_eq!(fixture.point(&change).await.status, StatusCode::OK);
-        assert_eq!(fixture.kinds().await, vec!["Edit", "Created"]);
+        assert_eq!(fixture.kinds().await, vec!["Quantity", "Created"]);
     });
 }
 
@@ -2538,7 +2538,7 @@ fn resetting_restores_an_earlier_point_and_keeps_the_later_deck_changes() {
         assert_eq!(
             fixture.kinds().await,
             vec![
-                "Reset", "Settings", "Settings", "Edit", "Move", "Edit", "Created"
+                "Reset", "Settings", "Settings", "Quantity", "Move", "Quantity", "Created"
             ]
         );
         let history = fixture.history("").await;
@@ -2580,7 +2580,7 @@ fn a_reset_can_be_undone_and_redone() {
         assert_eq!(
             fixture.kinds().await,
             vec![
-                "Undo", "Undo", "Redo", "Undo", "Reset", "Settings", "Edit", "Edit", "Created"
+                "Undo", "Undo", "Redo", "Undo", "Reset", "Settings", "Quantity", "Quantity", "Created"
             ]
         );
     });
@@ -2737,7 +2737,7 @@ fn only_the_owner_reads_earlier_points_and_resets() {
         assert_eq!(response.status, StatusCode::BAD_REQUEST, "{response:?}");
         for fixture in [&mut public, &mut unlisted] {
             assert_eq!(fixture.entries().await.len(), 1);
-            assert_eq!(fixture.kinds().await, vec!["Edit", "Created"]);
+            assert_eq!(fixture.kinds().await, vec!["Quantity", "Created"]);
         }
     });
 }
@@ -2803,7 +2803,7 @@ fn the_owner_names_renames_and_removes_a_deck_checkpoint() {
 
         fixture.remove_checkpoint(&named).await.ok_json();
         assert_eq!(fixture.checkpoints().await, vec![Value::Null; 3]);
-        assert_eq!(fixture.kinds().await, vec!["Edit", "Edit", "Created"]);
+        assert_eq!(fixture.kinds().await, vec!["Quantity", "Quantity", "Created"]);
     });
 }
 
@@ -2824,7 +2824,7 @@ fn an_edit_right_after_naming_the_latest_deck_change_appends_a_new_one() {
         fixture.patch(&entry, json!({ "quantity": 2 })).await;
         fixture.patch(&entry, json!({ "quantity": 0 })).await;
 
-        assert_eq!(fixture.kinds().await, vec!["Edit", "Edit", "Created"]);
+        assert_eq!(fixture.kinds().await, vec!["Quantity", "Quantity", "Created"]);
         assert_eq!(
             fixture.checkpoints().await,
             vec![Value::Null, json!("Before FNM"), Value::Null]

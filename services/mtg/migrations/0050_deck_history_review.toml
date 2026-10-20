@@ -30,3 +30,16 @@ FROM deck d
 WHERE d.uuid = c.deck AND c.kind = 'Introduced'
     AND jsonb_array_length(COALESCE(convert_from(c.difference, 'UTF8')::jsonb -> 'fields', '[]'::jsonb)) = 0;
 """
+
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+UPDATE deck_change SET kind = 'Quantity' WHERE kind = 'Edit';
+"""

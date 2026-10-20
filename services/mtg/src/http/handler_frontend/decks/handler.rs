@@ -896,7 +896,7 @@ pub async fn add_deck_card(
     .await?;
     let mut difference = DeckDifference::default();
     difference.entry(card.key(), card.quantity - quantity, card.quantity);
-    edit.record(&mut tx, DeckChangeKind::Edit, difference)
+    edit.record(&mut tx, DeckChangeKind::Quantity, difference)
         .await?;
 
     tx.commit().await?;
@@ -1140,7 +1140,7 @@ pub async fn update_deck_card(
     let kind = match &updated {
         Some(updated) if updated.zone != entry.zone => DeckChangeKind::Move,
         Some(updated) if updated.key() != entry.key() => DeckChangeKind::Switch,
-        _ => DeckChangeKind::Edit,
+        _ => DeckChangeKind::Quantity,
     };
     let mut difference = DeckDifference::default();
     difference.updated(&entry, quantity, updated.as_ref());
@@ -1231,7 +1231,7 @@ pub async fn delete_deck_card(
 
     let mut difference = DeckDifference::default();
     difference.entry(entry.key(), entry.quantity, 0);
-    edit.record(&mut tx, DeckChangeKind::Edit, difference)
+    edit.record(&mut tx, DeckChangeKind::Quantity, difference)
         .await?;
 
     tx.commit().await?;

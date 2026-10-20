@@ -11189,10 +11189,10 @@
                         ]
                     },
                     {
-                        "description": "A plain edit of Deck entries: copies added or taken away",
+                        "description": "Copies of a Deck entry added or taken away",
                         "type": "string",
                         "enum": [
-                            "Edit"
+                            "Quantity"
                         ]
                     },
                     {

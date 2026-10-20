@@ -196,7 +196,7 @@ export function DeckChangeBody({ change, referenced }: DeckChangeBodyProps) {
                         })}
                     </Strong>
                 );
-            case "Edit":
+            case "Quantity":
                 return <EntryLines entries={change.entries} />;
             case "Move":
                 return (

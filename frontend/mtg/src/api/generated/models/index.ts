@@ -2025,9 +2025,9 @@ export const DeckChangeKind = {
     */
     Introduced: 'Introduced',
     /**
-    * A plain edit of Deck entries: copies added or taken away
+    * Copies of a Deck entry added or taken away
     */
-    Edit: 'Edit',
+    Quantity: 'Quantity',
     /**
     * A Deck entry moved to another zone
     */
