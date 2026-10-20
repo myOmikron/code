@@ -10,9 +10,7 @@ import { isFormError } from "src/utils/error";
 /** A draw rather than somebody's win */
 const DRAW = "draw";
 
-/**
- * The properties for {@link TournamentReportDialog}
- */
+/** The properties for {@link TournamentReportDialog} */
 export type TournamentReportDialogProps = {
     /** The tournament the table belongs to */
     tournamentUuid: string;
@@ -31,7 +29,7 @@ export type TournamentReportDialogProps = {
 };
 
 /**
- * A player reporting their own table: who won, and in a duel the game score.
+ * A player reporting their own table: who won, and in a duel the game score
  *
  * @returns the dialog
  */
@@ -127,9 +125,24 @@ export function TournamentReportDialog({
     const winner = pick !== null && pick !== DRAW ? pick : null;
     const loser =
         winner === null ? null : (table.seats.find((seat) => seat.participant !== winner)?.participant ?? null);
+    // A win asks for the loser's games; a draw for how many games each side won.
+    const score =
+        loser !== null
+            ? {
+                  label: nameOf(loser),
+                  value: loserGames,
+                  optionLabel: (count: number) => t("accessibility.games-won", { name: nameOf(loser), count }),
+                  onChange: setLoserGames,
+              }
+            : {
+                  label: t("label.games-won"),
+                  value: winnerGames,
+                  optionLabel: (count: number) => t("accessibility.games-drawn", { count }),
+                  onChange: setWinnerGames,
+              };
 
     return (
-        <Dialog open={table !== null} onClose={onClose} size={"sm"}>
+        <Dialog open={true} onClose={onClose} size={"sm"}>
             <DialogTitle>{t("heading.report-result")}</DialogTitle>
             <DialogBody>
                 <div className={"flex flex-col gap-6"}>
@@ -153,32 +166,19 @@ export function TournamentReportDialog({
                         ))}
                     </div>
 
-                    {scored &&
-                        (loser !== null ? (
-                            <div className={"flex flex-wrap items-center justify-between gap-3"}>
-                                <span className={"text-base/6 text-zinc-950 sm:text-sm/6 dark:text-white"}>
-                                    {nameOf(loser)}
-                                </span>
-                                <GameCounter
-                                    value={loserGames}
-                                    options={Array.from({ length: need }, (_, index) => index)}
-                                    label={(count) => t("accessibility.games-won", { name: nameOf(loser), count })}
-                                    onChange={setLoserGames}
-                                />
-                            </div>
-                        ) : (
-                            <div className={"flex flex-wrap items-center justify-between gap-3"}>
-                                <span className={"text-base/6 text-zinc-950 sm:text-sm/6 dark:text-white"}>
-                                    {t("label.games-won")}
-                                </span>
-                                <GameCounter
-                                    value={winnerGames}
-                                    options={Array.from({ length: need }, (_, index) => index)}
-                                    label={(count) => t("accessibility.games-drawn", { count })}
-                                    onChange={setWinnerGames}
-                                />
-                            </div>
-                        ))}
+                    {scored && (
+                        <div className={"flex flex-wrap items-center justify-between gap-3"}>
+                            <span className={"text-base/6 text-zinc-950 sm:text-sm/6 dark:text-white"}>
+                                {score.label}
+                            </span>
+                            <GameCounter
+                                value={score.value}
+                                options={Array.from({ length: need }, (_, index) => index)}
+                                label={score.optionLabel}
+                                onChange={score.onChange}
+                            />
+                        </div>
+                    )}
                 </div>
             </DialogBody>
             <DialogActions>

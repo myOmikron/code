@@ -16,36 +16,12 @@ import {
 /** What a held life button is worth per step */
 const HOLD_STEP = 10;
 
-// Why every size below carries two ceilings, `@min-[22rem]` being the second:
-//
-// A tile sizes its type off its own box (`cqh`/`cqw`), which is what keeps a
-// total inside a tile a phone splits four ways. The `rem` term in each `min()`
-// is the ceiling on top of that, and on a phone it never comes into play — a
-// quarter of a 200px tile is small enough on its own.
-//
-// On a tablet it was the only thing that did: a 530px tile has room for a
-// ~130px total, and the ceiling held it at 96px. From the tile width where that
-// stops making sense, the whole scale therefore doubles its ceiling and the
-// geometry decides again. Nothing overflows for it — the `cqh`/`cqw` terms are
-// unchanged, and on anything smaller they are still the ones that bind.
-//
-// The threshold is the tile's own reading width, not the window's: a pod of six
-// on a tablet gets narrow tiles and keeps the tighter scale, and a duel on a
-// phone in landscape gets a wide one and is welcome to the looser.
-//
-// With the ceiling out of the way it is the width term that holds the total, and
-// what sets it is the room between the two buttons: three digits have to fit
-// there, which is what makes it a share of the tile rather than a size. The
-// buttons therefore give up four points of that share on a tile this wide —
-// where 23% is still a thumb's worth — and the total takes the width.
+// Type sizes follow the tile (`cqh`/`cqw`) under a `rem` ceiling; tiles at least `22rem` wide
+// double that ceiling and give the buttons a smaller share, so a tablet's total can grow.
 
 /**
- * The player's own frame, laid over the tile.
- *
- * A quarter turn swaps the two sides, so the turned frames are sized in the
- * tile's container units and rotated around their centre: the frame ends up
- * covering the tile exactly, and everything inside it is laid out (and
- * clipped) in reading order rather than sticking out of the tile.
+ * The player's frame, laid over the tile; quarter-turned frames swap their sides in container
+ * units so they still cover the tile exactly
  */
 const FRAME: Record<Seat, string> = {
     top: "inset-0 rotate-180",
@@ -54,9 +30,7 @@ const FRAME: Record<Seat, string> = {
     right: "top-1/2 left-1/2 h-[100cqw] w-[100cqh] -translate-x-1/2 -translate-y-1/2 -rotate-90",
 };
 
-/**
- * The properties for {@link LifeTile}
- */
+/** The properties for {@link LifeTile} */
 export type LifeTileProps = {
     /** Which player this is, counted from one */
     number: number;
@@ -78,29 +52,17 @@ export type LifeTileProps = {
     onChange: (amount: number) => void;
     /** Books commander damage from one opponent, which costs the same life */
     onDamage: (opponent: number, amount: number) => void;
-    /**
-     * The hit they took that no commander has been charged for, where the mode
-     * that offers to rebook it is on
-     */
+    /** The hit no commander has been charged for yet, when rebooking is on */
     hit: LooseHit | undefined;
     /** Charges that hit to one opponent's commander; the life is already gone */
     onRebook: (opponent: number, amount: number) => void;
 };
 
 /**
- * One player's life total, turned towards their seat.
+ * One player's life total, turned towards their seat
  *
- * The strip along the near edge carries what the other commanders have put on
- * them and opens the same tile onto those counters, so a player never reaches
- * across the table to record a hit.
- *
- * A marker on that strip is a chip in the dealing commander's own colour rather
- * than a number with a dot beside it: the strip is read at arm's length across
- * a table, and a marker that has to be leaned in for is one nobody keeps up to
- * date.
- *
- * A player counting on their own is left with the counter alone: no strip and no
- * name, since neither has anything to point at.
+ * The strip along the near edge shows commander damage as chips in the dealer's colour and opens
+ * the tile onto those counters. A solo player gets neither strip nor name.
  *
  * @returns the tile
  */
@@ -120,10 +82,7 @@ export function LifeTile({
 }: LifeTileProps) {
     const [t] = useTranslation("game-utils");
     const [tracking, setTracking] = useState(false);
-    // Snapshotted when the drawer opens rather than read as it renders: the
-    // offer is a statement about the moment the shield was tapped, and it has
-    // to stand still while it is being read, even though the hit behind it goes
-    // stale a heartbeat later.
+    // Snapshotted when the drawer opens, so it holds still while the hit behind it goes stale.
     const [offer, setOffer] = useState<number | undefined>(undefined);
     const expiry = useRef<number | undefined>(undefined);
 
@@ -131,10 +90,6 @@ export function LifeTile({
     const player = name ?? t("label.player", { number });
     const hint = t("label.hold-step", { amount: HOLD_STEP });
     const out = isEliminated(life, damage);
-    // A player counting on their own has nobody to book commander damage
-    // against, so the strip along the near edge would open on an empty panel.
-    // The name goes with it: there is no other tile to tell this one from, and
-    // what is left is the total on the whole screen.
     const alone = opponents.length === 0;
 
     /**
@@ -147,10 +102,7 @@ export function LifeTile({
     }
 
     /**
-     * Opens or closes the drawer, arming the offer on the way in.
-     *
-     * Only the way in arms it: a drawer that is already open was not opened on
-     * the back of anything.
+     * Opens or closes the drawer, arming the offer on the way in
      */
     function toggleTracking() {
         dropOffer();
@@ -182,9 +134,6 @@ export function LifeTile({
                             opponents={opponents}
                             offer={offer}
                             onChange={(opponent, amount) => {
-                                // Counting a column by hand answers the offer:
-                                // whatever the player is booking now, they are
-                                // booking it themselves.
                                 dropOffer();
                                 onDamage(opponent, amount);
                             }}
@@ -197,33 +146,7 @@ export function LifeTile({
                         />
                     ) : (
                         <>
-                            <CounterButton
-                                amount={-1}
-                                hold={-HOLD_STEP}
-                                label={t("button.change-life", { player, amount: "-1" })}
-                                title={hint}
-                                className={
-                                    "shrink-0 grow-0 basis-[27%] gap-[1cqh] text-white/90 @min-[22rem]:basis-[23%]"
-                                }
-                                onChange={onChange}
-                            >
-                                <span
-                                    aria-hidden={true}
-                                    className={
-                                        "text-[min(45cqh,13cqw,3.5rem)] leading-none @min-[22rem]:text-[min(45cqh,13cqw,7rem)]"
-                                    }
-                                >
-                                    {"−"}
-                                </span>
-                                <span
-                                    aria-hidden={true}
-                                    className={
-                                        "hidden text-[min(10cqh,3cqw,0.7rem)] font-semibold tracking-wide text-white/55 @min-[22rem]:block"
-                                    }
-                                >
-                                    {hint}
-                                </span>
-                            </CounterButton>
+                            <LifeStep sign={-1} player={player} hint={hint} onChange={onChange} />
                             <div
                                 className={
                                     "flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center gap-[1cqh] overflow-hidden"
@@ -257,33 +180,7 @@ export function LifeTile({
                                     {delta ?? 0}
                                 </span>
                             </div>
-                            <CounterButton
-                                amount={1}
-                                hold={HOLD_STEP}
-                                label={t("button.change-life", { player, amount: "+1" })}
-                                title={hint}
-                                className={
-                                    "shrink-0 grow-0 basis-[27%] gap-[1cqh] text-white/90 @min-[22rem]:basis-[23%]"
-                                }
-                                onChange={onChange}
-                            >
-                                <span
-                                    aria-hidden={true}
-                                    className={
-                                        "text-[min(45cqh,13cqw,3.5rem)] leading-none @min-[22rem]:text-[min(45cqh,13cqw,7rem)]"
-                                    }
-                                >
-                                    {"+"}
-                                </span>
-                                <span
-                                    aria-hidden={true}
-                                    className={
-                                        "hidden text-[min(10cqh,3cqw,0.7rem)] font-semibold tracking-wide text-white/55 @min-[22rem]:block"
-                                    }
-                                >
-                                    {hint}
-                                </span>
-                            </CounterButton>
+                            <LifeStep sign={1} player={player} hint={hint} onChange={onChange} />
                         </>
                     )}
                 </div>
@@ -327,5 +224,52 @@ export function LifeTile({
                 )}
             </div>
         </article>
+    );
+}
+
+/** The properties for {@link LifeStep} */
+type LifeStepProps = {
+    /** Whether the button adds or takes life */
+    sign: 1 | -1;
+    /** The player's name, for the accessible label */
+    player: string;
+    /** What holding the button does */
+    hint: string;
+    /** Adds to the total */
+    onChange: (amount: number) => void;
+};
+
+/**
+ * The minus or plus beside a total; holding it steps by {@link HOLD_STEP}
+ *
+ * @returns the button
+ */
+function LifeStep({ sign, player, hint, onChange }: LifeStepProps) {
+    const [t] = useTranslation("game-utils");
+
+    return (
+        <CounterButton
+            amount={sign}
+            hold={sign * HOLD_STEP}
+            label={t("button.change-life", { player, amount: sign < 0 ? "-1" : "+1" })}
+            title={hint}
+            className={"shrink-0 grow-0 basis-[27%] gap-[1cqh] text-white/90 @min-[22rem]:basis-[23%]"}
+            onChange={onChange}
+        >
+            <span
+                aria-hidden={true}
+                className={"text-[min(45cqh,13cqw,3.5rem)] leading-none @min-[22rem]:text-[min(45cqh,13cqw,7rem)]"}
+            >
+                {sign < 0 ? "−" : "+"}
+            </span>
+            <span
+                aria-hidden={true}
+                className={
+                    "hidden text-[min(10cqh,3cqw,0.7rem)] font-semibold tracking-wide text-white/55 @min-[22rem]:block"
+                }
+            >
+                {hint}
+            </span>
+        </CounterButton>
     );
 }

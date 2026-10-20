@@ -28,17 +28,17 @@ import { decklistMatters } from "src/components/tournament-roster";
 import { handleFormError, isFormError } from "src/utils/error";
 
 /**
- * What the dialog is open on: a fresh player, or an existing row being renamed/annotated
+ * What the dialog is open on: adding a player, or editing an existing row
  */
 export type ParticipantDialogMode = { kind: "add" } | { kind: "edit"; participant: TournamentParticipantResponse };
 
-/** Which of the two doors an add is going through */
+/** Whether an add creates a guest row or looks up an account */
 type AddMode = "guest" | "account";
 
-/** How long the search field sits still before the lookup goes out, in milliseconds */
+/** Account search debounce, in milliseconds */
 const SEARCH_DEBOUNCE = 250;
 
-/** Shortest needle worth a round trip */
+/** Shortest account search query that is sent */
 const SEARCH_MIN_LENGTH = 2;
 
 /**
@@ -58,17 +58,9 @@ export type ParticipantDialogProps = {
 };
 
 /**
- * Dialog for an organizer to put somebody on the roster, or to rename an existing row and
- * annotate it.
+ * Dialog for an organizer to add a player (as guest or by account) or edit an existing row
  *
- * Two doors into the roster. **Als Gast** types a name, which is the desk's usual move and leaves
- * a row the player can claim later by QR. **Mit Konto** looks an account up by username, for the
- * player whose phone is dead or who has no reception — that row belongs to their account from the
- * start, so it carries their history and needs no claiming.
- *
- * Notes are organizer-only and only ever exist on an existing row, so that field is edit-only. A
- * decklist is the opposite: it may be typed in when the row is created, and only where the event
- * asks for one at all — see {@link decklistMatters}.
+ * Notes are edit-only; a decklist can only be entered on add, and only if {@link decklistMatters}.
  *
  * @returns the dialog
  */
@@ -95,8 +87,6 @@ export function ParticipantDialog({ tournamentUuid, tournament, mode, onClose, o
             onSubmitAsync: async ({ value }) => {
                 if (mode === null) return;
 
-                const decklistText = value.decklistText.trim() === "" ? undefined : value.decklistText;
-
                 if (mode.kind === "edit") {
                     await Api.tournaments.participants.update(tournamentUuid, mode.participant.uuid, {
                         display_name: value.displayName,
@@ -108,9 +98,9 @@ export function ParticipantDialog({ tournamentUuid, tournament, mode, onClose, o
                 }
 
                 const added = await Api.tournaments.participants.add(tournamentUuid, {
-                    account: addMode === "account" ? (selected?.uuid ?? undefined) : undefined,
+                    account: addMode === "account" ? selected?.uuid : undefined,
                     display_name: addMode === "account" ? undefined : value.displayName,
-                    decklist_text: decklistText,
+                    decklist_text: value.decklistText.trim() === "" ? undefined : value.decklistText,
                 });
                 if (isFormError(added))
                     return handleFormError(added.error, {
@@ -126,19 +116,16 @@ export function ParticipantDialog({ tournamentUuid, tournament, mode, onClose, o
         },
     });
 
-    // The dialog stays mounted, so the form has to be pointed at whatever it is opened on:
-    // `defaultValues` is read once, at mount.
+    // The dialog stays mounted and `defaultValues` is only read at mount.
     useEffect(() => {
         form.reset(initial());
         setAddMode("guest");
         setQuery("");
         setResults([]);
         setSelected(null);
-        // Deliberately not keyed on `form`, which is rebuilt on every render.
+        // `form` is rebuilt on every render, so it stays out of the deps.
     }, [mode]);
 
-    // Debounced so typing a username is one lookup rather than one per keystroke. The timer is
-    // cleared on every change, so only the last pause actually asks.
     useEffect(() => {
         if (mode?.kind !== "add" || addMode !== "account") return;
         if (query.trim().length < SEARCH_MIN_LENGTH) {
@@ -152,27 +139,6 @@ export function ParticipantDialog({ tournamentUuid, tournament, mode, onClose, o
         }, SEARCH_DEBOUNCE);
         return () => clearTimeout(timer);
     }, [query, addMode, mode, tournamentUuid]);
-
-    const decklistField = asksForDecklist && (
-        <form.Field name={"decklistText"}>
-            {(fieldApi) => (
-                <Field>
-                    <Label>{t("label.decklist-text")}</Label>
-                    <Textarea
-                        rows={6}
-                        maxLength={16384}
-                        className={"font-mono"}
-                        invalid={fieldApi.state.meta.errors.length > 0}
-                        value={fieldApi.state.value}
-                        onChange={(event) => fieldApi.handleChange(event.target.value)}
-                    />
-                    {fieldApi.state.meta.errors.map((error) => (
-                        <ErrorMessage key={String(error)}>{String(error)}</ErrorMessage>
-                    ))}
-                </Field>
-            )}
-        </form.Field>
-    );
 
     return (
         <Dialog open={mode !== null} onClose={onClose}>
@@ -268,7 +234,26 @@ export function ParticipantDialog({ tournamentUuid, tournament, mode, onClose, o
                             </form.Field>
                         )}
 
-                        {mode?.kind === "add" && decklistField}
+                        {mode?.kind === "add" && asksForDecklist && (
+                            <form.Field name={"decklistText"}>
+                                {(fieldApi) => (
+                                    <Field>
+                                        <Label>{t("label.decklist-text")}</Label>
+                                        <Textarea
+                                            rows={6}
+                                            maxLength={16384}
+                                            className={"font-mono"}
+                                            invalid={fieldApi.state.meta.errors.length > 0}
+                                            value={fieldApi.state.value}
+                                            onChange={(event) => fieldApi.handleChange(event.target.value)}
+                                        />
+                                        {fieldApi.state.meta.errors.map((error) => (
+                                            <ErrorMessage key={String(error)}>{String(error)}</ErrorMessage>
+                                        ))}
+                                    </Field>
+                                )}
+                            </form.Field>
+                        )}
 
                         {mode?.kind === "edit" && (
                             <form.Field name={"notes"}>

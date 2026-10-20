@@ -292,23 +292,13 @@ export const Api = {
             delete: async (deck: UUID, tag: UUID) => handleError(defaultApi.deleteDeckTag({ deck, tag })),
         },
     },
-    // The events an account runs or plays in, plus the guest rows a phone
-    // holds no account for — identity here is `TournamentActor`, not always
-    // an `Account`. `list`/`get`, the roster read, self-service check-in/drop,
-    // and the decklist read/write under `participants.decklist` bypass
-    // `handleError`: a guest whose session lapsed gets the same 401 a
-    // stranger would, and running that through `handleError` would fire
-    // `SESSION_STORE.expired()` and send a guest into a login flow they
-    // cannot complete — a lock or a rejected deck link is likewise a message
-    // the caller renders itself. See the `join` block below for the same
-    // reasoning on the surface that gets a guest here in the first place.
+    // Guests use these too. Calls a guest's phone makes bypass `handleError`, whose 401 handling
+    // would send a guest into a login flow they cannot complete.
     tournaments: {
         list: () => defaultApi.listTournaments(),
         get: (uuid: UUID) => defaultApi.getTournament({ tournament: uuid }),
         create: async (req: CreateTournamentRequest) =>
             handleError(defaultApi.createTournament({ CreateTournamentRequest: req })),
-        // One `TournamentSettingsRequest` for both create and update — see
-        // the type's own doc comment for why.
         update: async (uuid: UUID, req: TournamentSettingsRequest) =>
             handleError(defaultApi.updateTournament({ tournament: uuid, TournamentSettingsRequest: req })),
         delete: async (uuid: UUID) => handleError(defaultApi.deleteTournament({ tournament: uuid })),
@@ -321,27 +311,19 @@ export const Api = {
                     SetTournamentVisibilityRequest: { visibility },
                 }),
             ),
-        // Bypasses `handleError` for the same reason the roster does: this is what a player's
-        // phone refreshes between rounds, and a lapsed session must not become a login redirect
-        // they cannot complete from the table they are sitting at.
+        // Bypasses `handleError`: polled by guests.
         standings: (uuid: UUID) => defaultApi.getTournamentStandings({ tournament: uuid }),
         rotateJoinCode: async (uuid: UUID) => handleError(defaultApi.rotateTournamentJoinCode({ tournament: uuid })),
-        // The rounds a tournament has played, is playing, or is about to. `state` and `list`
-        // bypass `handleError` for the same reason `participants.list` does: a guest's phone polls
-        // them, and a lapsed session must not turn into a login redirect they cannot complete.
         rounds: {
+            // `state`, `list`, `myMatch` and `tables` bypass `handleError`: polled by guests.
             state: (uuid: UUID) => defaultApi.getTournamentState({ tournament: uuid }),
             list: (uuid: UUID) => defaultApi.listTournamentRounds({ tournament: uuid }),
-            // Bypasses `handleError`: a guest's phone polls its own table.
             myMatch: (uuid: UUID) => defaultApi.getMyTournamentMatch({ tournament: uuid }),
-            // Bypasses `handleError` for the same reason: a guest's phone polls its own table.
             tables: (uuid: UUID, round: UUID) => defaultApi.listRoundTables({ tournament: uuid, round }),
-            // One call for the first pairing and every re-pair after it. The server refuses once a
-            // table has been reported, which is the only state where replacing a layout loses
-            // anything, so the client never has to decide which of the two it is asking for.
+            // First pairing and re-pair alike; refused once a table is reported.
             pair: async (uuid: UUID, round: UUID) =>
                 handleError(defaultApi.pairTournamentRound({ tournament: uuid, round })),
-            // The desk's hand edit: the whole layout, of which only changed tables are rewritten.
+            // The whole layout; only changed tables are rewritten.
             arrange: async (uuid: UUID, round: UUID, tables: Array<Array<UUID>>) =>
                 handleError(
                     defaultApi.arrangeTournamentRound({
@@ -366,8 +348,6 @@ export const Api = {
                 ),
             delete: async (uuid: UUID, round: UUID) =>
                 handleError(defaultApi.deleteTournamentRound({ tournament: uuid, round })),
-            // One call for the whole clock: the server owns the arithmetic, so the client only
-            // ever says which verb the desk pressed.
             timer: async (uuid: UUID, round: UUID, action: TimerActionRequest, seconds?: number) =>
                 handleError(
                     defaultApi.setTournamentRoundTimer({
@@ -377,9 +357,7 @@ export const Api = {
                     }),
                 ),
         },
-        // What happened at one table. `report` is a player's own claim about their own match and
-        // goes through `handleError` like the rest — it is a deliberate tap, not a poll, so a
-        // lapsed session should say so rather than fail quietly.
+        // `report` is a player's tap rather than a poll, so it goes through `handleError`.
         matches: {
             report: async (uuid: UUID, match: UUID, req: ReportResultRequest) =>
                 handleError(defaultApi.reportMatchResult({ tournament: uuid, match: match, ReportResultRequest: req })),
@@ -389,22 +367,16 @@ export const Api = {
                 handleError(defaultApi.clearMatchResult({ tournament: uuid, match: match })),
         },
         revokeJoinCode: async (uuid: UUID) => handleError(defaultApi.revokeTournamentJoinCode({ tournament: uuid })),
-        // The organizer's own book of places, filled implicitly: saving a tournament with a
-        // venue writes it here, so there is nothing to create by hand — only to read back and,
-        // occasionally, to prune.
+        // Filled by saving a tournament with a venue; there is no create.
         venues: {
             list: async () => handleError(defaultApi.listTournamentVenues()),
             delete: async (uuid: UUID) => handleError(defaultApi.deleteTournamentVenue({ venue: uuid })),
         },
-        // Tournament-wide, staff-only — never per row. Goes through `handleError` like the rest
-        // of the management surface: only an organizer's own session can reach either button.
         decklists: {
             lock: async (uuid: UUID) => handleError(defaultApi.lockTournamentDecklists({ tournament: uuid })),
             unlock: async (uuid: UUID) => handleError(defaultApi.unlockTournamentDecklists({ tournament: uuid })),
         },
-        // The staff list. Owner-only to add/remove; any role may read it —
-        // this is the one place a participant's username is ever shown,
-        // never on the roster itself.
+        // Owner-only to add/remove, readable by any staff role.
         organizers: {
             list: async (uuid: UUID) => handleError(defaultApi.listTournamentOrganizers({ tournament: uuid })),
             add: async (uuid: UUID, req: AddTournamentOrganizerRequest) =>
@@ -415,10 +387,8 @@ export const Api = {
                 handleError(defaultApi.removeTournamentOrganizer({ tournament: uuid, account })),
         },
         participants: {
-            // Bypasses `handleError`, same reasoning as `list`/`get` above.
+            // `list`, `drop` and `decklist` bypass `handleError`: guests use them.
             list: (uuid: UUID) => defaultApi.listTournamentParticipants({ tournament: uuid }),
-            // Organizer-only since check-in became the desk's job, so it goes through
-            // `handleError` like the rest of the management surface.
             setFixedTable: async (uuid: UUID, participant: UUID, table: number | null) =>
                 handleError(
                     defaultApi.setParticipantFixedTable({
@@ -431,28 +401,18 @@ export const Api = {
                 handleError(defaultApi.checkInTournamentParticipant({ tournament: uuid, participant })),
             drop: (uuid: UUID, participant: UUID) =>
                 defaultApi.dropTournamentParticipant({ tournament: uuid, participant }),
-            // Organizer-only, two doors into the same roster: a walk-in by name, or an
-            // account the organizer looked up because that player's phone is dead. The claim
-            // token `register_guest` mints for a guest row is not surfaced here — the roster's
-            // own claim-QR dialog hands it out. `decklistText` types a list in for them
-            // directly — an organizer never links a Planarium deck on somebody else's behalf.
+            // A walk-in by name or a looked-up account; the claim token comes from `claimToken`.
             add: async (uuid: UUID, req: AddTournamentParticipantRequest) =>
                 handleError(
                     defaultApi.addTournamentParticipant({ tournament: uuid, AddTournamentParticipantRequest: req }),
                 ),
-            // Organizer-only lookup for that second door. Answers at most ten accounts and
-            // says which of them are already on this roster.
+            // At most ten accounts, flagged when already on the roster.
             search: async (uuid: UUID, q: string) =>
                 handleError(defaultApi.searchTournamentPlayers({ tournament: uuid, q })),
-            // The secret behind a walk-in's claim QR — organizer-only, so it goes through
-            // `handleError` like the rest of the management surface. `claim_token: null` means
-            // the row already belongs to an account and there is nothing to hand out.
+            // `claim_token: null` once the row belongs to an account.
             claimToken: async (uuid: UUID, participant: UUID) =>
                 handleError(defaultApi.getParticipantClaimToken({ tournament: uuid, participant })),
-            // A participant's own decklist: read by its owner or by staff, written by whichever
-            // of them `may_edit` says can right now. Bypasses `handleError` like `list`/`checkIn`
-            // above — a lock, a stale guest session, or a rejected deck link are all things the
-            // decklist dialog renders itself, not the app's error screen.
+            // Locks and rejected deck links are rendered by the decklist dialog itself.
             decklist: {
                 get: (uuid: UUID, participant: UUID) =>
                     defaultApi.getParticipantDecklist({ tournament: uuid, participant }),
@@ -470,44 +430,30 @@ export const Api = {
             remove: async (uuid: UUID, participant: UUID) =>
                 handleError(defaultApi.deleteTournamentParticipant({ tournament: uuid, participant })),
         },
-        // Attaches the caller's account to a guest row by its one-time claim
-        // token — the other half of `join.asGuest` below.
+        // Attaches the caller's account to a guest row by its one-time claim token.
         claim: async (claimToken: string) =>
             handleError(
                 defaultApi.claimTournamentParticipant({ ClaimParticipantRequest: { claim_token: claimToken } }),
             ),
-        // The auto-claim effect on the tournaments list runs in the
-        // background on page load — a flaky connection there must neither
-        // replace the page with the error screen nor burn the stored token,
-        // so it bypasses `handleError` and the caller keeps the token on a
-        // thrown (transient) failure.
+        // The background auto-claim: bypasses `handleError`, and the caller keeps the token on a throw.
         claimQuietly: (claimToken: string) =>
             defaultApi.claimTournamentParticipant({ ClaimParticipantRequest: { claim_token: claimToken } }),
         audit: async (uuid: UUID, limit?: number) =>
             handleError(defaultApi.listTournamentAudit({ tournament: uuid, limit })),
     },
-    // Joining a tournament by its typed code. Reachable with no session at
-    // all — a phone reading a whiteboard has neither a cookie nor an account
-    // yet — so every one of these bypasses `handleError`: an unknown code, a
-    // closed event, or a guest 401 mid-flow are the normal ways this fails,
-    // and the join page renders each one itself rather than the app
-    // replacing itself with the error screen or a login redirect a guest
-    // cannot complete.
+    // Reachable without a session, so none of these go through `handleError`: the join page
+    // renders an unknown code, a closed event or a guest 401 itself.
     join: {
         lookup: (code: string) => defaultApi.lookUpJoinCode({ code }),
-        // `decklistText` pastes a list directly — a guest never links a Planarium deck.
         asGuest: (code: string, displayName: string, decklistText?: string) =>
             defaultApi.joinTournamentAsGuest({
                 code,
                 GuestJoinRequest: { display_name: displayName, decklist_text: decklistText },
             }),
-        // `decklist.deck` and `decklist.text` are mutually exclusive, same as the wire request —
-        // the caller picks at most one.
-        // What a scanned claim QR names, before its holder has committed to anything, and the
-        // call that points this device's guest session back at that row. Neither consumes the
-        // token — only an account's `tournaments.claim` retires it for good.
+        // Neither consumes the token; only `tournaments.claim` does.
         claimLookup: (token: string) => defaultApi.lookUpClaimToken({ token }),
         reattach: (token: string) => defaultApi.reattachClaimToken({ token }),
+        // At most one of `decklist.deck` and `decklist.text`.
         asAccount: (code: string, displayName?: string, decklist?: { deck?: UUID; text?: string }) =>
             defaultApi.joinTournamentByCode({
                 code,

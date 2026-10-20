@@ -18,18 +18,14 @@ export const Route = createFileRoute("/_menu/tournaments/$tournamentUuid/_tourna
 });
 
 /**
- * The roster, once the event is under way.
- *
- * It keeps the join bar rather than leaving it behind on the setup screen: somebody always turns
- * up after the first round has been paired, and the desk needs the code and the add-player button
- * in the same place to seat them.
+ * The roster once the event is under way, with the join bar for late arrivals
  *
  * @returns the page
  */
 function RouteComponent() {
     const { tournamentUuid } = Route.useParams();
     const { participants } = Route.useLoaderData();
-    // Non-null for the same reason the sibling index route gives.
+    // Non-null: the layout renders no tabs when its loader returned `null`.
     const { tournament, viewer, participant_count } = useLoaderData({
         from: "/_menu/tournaments/$tournamentUuid/_tournament",
     })!;

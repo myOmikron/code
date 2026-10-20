@@ -1,9 +1,9 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
-import { EmptyState } from "components";
 import { QRCodeSVG } from "qrcode.react";
 import { useTranslation } from "react-i18next";
 import { formatName } from "src/utils/format-label";
 import { Api } from "src/api/api";
+import { DisplayNotFound } from "src/components/display-not-found";
 import { displayJoinCode } from "src/components/tournament-join-code";
 import { TournamentSlots } from "src/components/tournament-slots";
 import i18n from "src/i18n";
@@ -13,27 +13,25 @@ import { formatDateTime } from "src/utils/format";
 export const Route = createFileRoute("/display/$code")({
     loader: async ({ params }) => {
         await i18n.loadNamespaces("tournament");
-        // A retired or mistyped code comes back as the typed `unknown_code` refusal, HTTP 200 —
-        // the same answer the join screen gets, and nothing to show on a wall.
+        // An unknown code is a typed refusal (HTTP 200), not a thrown error.
         const lookup = await Api.join.lookup(params.code);
         if (isFormError(lookup)) throw notFound();
         return lookup;
     },
     component: RouteComponent,
-    notFoundComponent: NotFound,
+    notFoundComponent: DisplayNotFound,
 });
 
+/** The uppercase label of a fact row */
+const FACT_LABEL = "w-28 shrink-0 text-xs font-semibold tracking-widest text-zinc-500 uppercase dark:text-zinc-400";
+
+/** The value of a fact row */
+const FACT_VALUE = "text-[clamp(1rem,1.8vw,1.5rem)] font-medium text-zinc-950 dark:text-white";
+
 /**
- * The screen that goes on the beamer: where you are, and how you get in.
+ * The beamer screen: tournament facts, fill level and the join QR
  *
- * Outside `_menu` on purpose — no sidebar, no navigation, nothing to click. It resolves through
- * the join code rather than the tournament's uuid, so the machine driving the projector needs no
- * login and no session: whoever can read the code off the screen could have typed it anyway. The
- * flip side is that revoking or rotating the code retires this address too, which is the right
- * behaviour for a screen whose whole content is that code.
- *
- * Deliberately nameless. Who has registered is the desk's business, and a roster on a wall is the
- * one place it would be readable by the whole room.
+ * Keyed by join code so the projector needs no session; deliberately shows no player names.
  *
  * @returns the screen
  */
@@ -62,33 +60,13 @@ function RouteComponent() {
                     <dl className={"flex flex-col gap-2"}>
                         {tournament.starts_at != null && (
                             <div className={"flex items-baseline gap-4"}>
-                                <dt
-                                    className={
-                                        "w-28 shrink-0 text-xs font-semibold tracking-widest text-zinc-500 uppercase dark:text-zinc-400"
-                                    }
-                                >
-                                    {t("label.starts-at")}
-                                </dt>
-                                <dd
-                                    className={
-                                        "text-[clamp(1rem,1.8vw,1.5rem)] font-medium text-zinc-950 dark:text-white"
-                                    }
-                                >
-                                    {formatDateTime(tournament.starts_at)}
-                                </dd>
+                                <dt className={FACT_LABEL}>{t("label.starts-at")}</dt>
+                                <dd className={FACT_VALUE}>{formatDateTime(tournament.starts_at)}</dd>
                             </div>
                         )}
                         <div className={"flex items-baseline gap-4"}>
-                            <dt
-                                className={
-                                    "w-28 shrink-0 text-xs font-semibold tracking-widest text-zinc-500 uppercase dark:text-zinc-400"
-                                }
-                            >
-                                {t("label.format")}
-                            </dt>
-                            <dd className={"text-[clamp(1rem,1.8vw,1.5rem)] font-medium text-zinc-950 dark:text-white"}>
-                                {formatName(tg, tournament.format)}
-                            </dd>
+                            <dt className={FACT_LABEL}>{t("label.format")}</dt>
+                            <dd className={FACT_VALUE}>{formatName(tg, tournament.format)}</dd>
                         </div>
                     </dl>
                     <TournamentSlots
@@ -100,8 +78,7 @@ function RouteComponent() {
                 </div>
 
                 <div className={"flex flex-col items-center gap-[2vmin]"}>
-                    {/* White backing plate: a QR rendered straight onto the dark theme's ground
-                        does not scan, and this one is read from across a room. */}
+                    {/* White plate: a QR on the dark theme's ground does not scan. */}
                     <div className={"rounded-xl bg-white p-3"}>
                         <QRCodeSVG value={joinUrl} size={220} className={"h-auto w-[min(32vmin,17rem)]"} />
                     </div>
@@ -117,21 +94,6 @@ function RouteComponent() {
                     </span>
                 </div>
             </div>
-        </div>
-    );
-}
-
-/**
- * What a retired code shows: the same dead end a typed one gets, with nothing to act on.
- *
- * @returns the empty state
- */
-function NotFound() {
-    const [t] = useTranslation("tournament");
-
-    return (
-        <div className={"flex min-h-svh items-center justify-center bg-(--surface-page) p-8"}>
-            <EmptyState title={t("error.unknown-code")} />
         </div>
     );
 }

@@ -31,9 +31,7 @@ export const Route = createFileRoute("/_menu/tournaments/")({
         try {
             return await Api.tournaments.list();
         } catch (error) {
-            // An anonymous visitor with no account and no guest session gets the same opaque
-            // 401 an unauthorized account would — the normal case for landing here fresh, and
-            // exactly why this route is usable without one: an empty roster, not the error screen.
+            // A visitor with no session gets a 401; show an empty list, not the error screen.
             if (error instanceof ResponseError && error.response.status === 401) return { tournaments: [] };
             throw error;
         }
@@ -42,11 +40,7 @@ export const Route = createFileRoute("/_menu/tournaments/")({
 });
 
 /**
- * Every event an account owns, co-organizes or plays in — or, for a guest, every event this
- * device's stored participant rows belong to.
- *
- * Usable logged out: a visitor with nothing but a code on a whiteboard can join without ever
- * making an account, which is the entire point of guests being first class.
+ * The viewer's tournaments: an account's own events, or a guest device's stored rows
  *
  * @returns the page
  */
@@ -58,16 +52,11 @@ function RouteComponent() {
     const me = useAccount();
     const [creating, setCreating] = useState(false);
 
-    // Once signed in, any guest row this device holds a claim token for gets attached to the
-    // account automatically — the whole reason the token was kept locally in the first place.
-    // Logged out for good (not just still checking), the same stored tokens instead re-attach the
-    // guest session itself: a phone that cleared its cookies still has the token and lands back on
-    // its own row without an account or a second registration.
+    // Stored guest claim tokens are claimed for the account once signed in, or used to reattach
+    // the guest session when logged out.
     useEffect(() => {
         const stored = listTournamentGuests();
         if (stored.length === 0) return;
-        // Still resolving the session: an account might yet turn up, and reattaching first would
-        // be wasted work the claim branch below is about to make moot anyway.
         if (me.account === null && me.loading) return;
 
         let cancelled = false;
@@ -78,12 +67,10 @@ function RouteComponent() {
                     try {
                         const response = await Api.tournaments.claimQuietly(entry.claimToken);
                         if (!isFormError(response)) claimed = true;
-                        // Definitive answer either way — claimed for good, or the token was
-                        // invalid/already used and holding onto it would only retry forever.
+                        // Claimed or refused, the answer is final either way.
                         removeTournamentGuest(entry.tournamentUuid);
                     } catch (error) {
-                        // A transient failure (dead wifi, server restart) is the one case the
-                        // token must survive: the next visit simply retries the claim.
+                        // Transient failure: keep the token and retry on the next visit.
                         console.error(error);
                     }
                 }
@@ -94,13 +81,8 @@ function RouteComponent() {
                 return;
             }
 
-            // Logged out for sure. `Api.join.reattach` never consumes the token (see its comment
-            // in `api.tsx`), so a successful entry is kept: the session it just restored can lapse
-            // again, and the same token is what restores it next time. A typed refusal is the
-            // opposite — the only way a token stops resolving is somebody claiming the row for an
-            // account, which is permanent, so that entry is dropped rather than retried on every
-            // visit for the life of the device. Never routed through `handleError` either way: a
-            // guest with no session must not be bounced into a login it cannot complete.
+            // Reattach never consumes the token, so it is kept on success; a refusal means the row
+            // was claimed for an account, which is permanent.
             let reattached = false;
             for (const entry of stored) {
                 try {
@@ -108,7 +90,7 @@ function RouteComponent() {
                     if (isFormError(response)) removeTournamentGuest(entry.tournamentUuid);
                     else reattached = true;
                 } catch (error) {
-                    // Transient failure — the next visit simply retries, same reasoning as above.
+                    // Transient failure: retry on the next visit.
                     console.error(error);
                 }
             }

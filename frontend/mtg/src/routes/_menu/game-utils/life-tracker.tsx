@@ -37,7 +37,7 @@ import { LifeTile } from "src/components/life-tile";
 import { TournamentRoundClock } from "src/components/tournament-round-clock";
 import i18n from "src/i18n";
 import type { RoundClock } from "src/utils/round-clock";
-import { clockSkew } from "src/utils/round-clock";
+import { clockSkew, roundClockOf } from "src/utils/round-clock";
 import { startingLifeFor } from "src/utils/tournament-format";
 import type { LifeTrackerSettings, Table } from "src/utils/life-tracker";
 import { hapticConfirm } from "src/utils/haptics";
@@ -103,15 +103,15 @@ export const Route = createFileRoute("/_menu/game-utils/life-tracker")({
     loaderDeps: ({ search }) => ({ tournament: search.tournament }),
     loader: async ({ deps }): Promise<MatchTable | null> => {
         if (deps.tournament === undefined) return null;
+        // The round clock renders from the tournament namespace.
         await i18n.loadNamespaces("tournament");
         try {
             const [details, mine] = await Promise.all([
                 Api.tournaments.get(deps.tournament),
                 Api.tournaments.rounds.myMatch(deps.tournament),
             ]);
-            const table = mine.table;
-            if (table == null || table.is_bye || mine.round == null) return null;
-            const round = mine.round;
+            const { table, round } = mine;
+            if (table == null || table.is_bye || round == null) return null;
             return {
                 tournamentUuid: deps.tournament,
                 key: table.uuid,
@@ -120,18 +120,10 @@ export const Route = createFileRoute("/_menu/game-utils/life-tracker")({
                 startingLife: startingLifeFor(details.tournament.format),
                 tableNumber: table.table_number,
                 roundNumber: round.number ?? null,
-                clock:
-                    round.status === "Complete"
-                        ? null
-                        : {
-                              endsAt: round.timer.ends_at ?? null,
-                              pausedAt: round.timer.paused_at ?? null,
-                              lengthSeconds: round.timer.length_seconds,
-                          },
+                clock: roundClockOf(round),
                 skewMs: clockSkew(mine.server_time, Date.now()),
             };
         } catch (error) {
-            // A table the viewer cannot reach opens the plain counter instead.
             if (error instanceof ResponseError) return null;
             throw error;
         }
@@ -148,16 +140,12 @@ function RouteComponent() {
     const [t] = useTranslation("game-utils");
     const [tg] = useTranslation();
     const match = Route.useLoaderData();
-    // A tournament table brings its own pod and is never written over the device's own setup.
+    // A tournament table brings its own pod and never overwrites the device's setup.
     const [settings, setSettings] = useState<LifeTrackerSettings>(() =>
         match === null
             ? loadLifeTrackerSettings()
             : { ...loadLifeTrackerSettings(), playerCount: match.names.length, startingLife: match.startingLife },
     );
-    // A game in progress is picked back up rather than started over. The setup
-    // dialog still opens on top of it, so a table that was in the middle of one
-    // taps start and carries on, and a table that was not sets its pod up over
-    // totals nobody is looking at yet.
     const [table, setTable] = useState<Table>(() => loadLifeTrackerGame(settings, match?.key) ?? freshTable(settings));
     const [typedLife, setTypedLife] = useState(() => String(settings.startingLife));
     const [configuring, setConfiguring] = useState(match === null);
@@ -166,24 +154,15 @@ function RouteComponent() {
 
     useEffect(() => () => timers.current.forEach((timer) => window.clearTimeout(timer)), []);
 
-    // Every change goes to storage as it happens: what ends a game here is
-    // rarely a decision — a deploy activates the new service worker and the app
-    // reloads itself, and a tablet drops a backgrounded tab whenever it wants
-    // the memory. Neither asks, and no table can reconstruct four totals.
+    // Saved on every change: service worker updates and tab discards reload without asking.
     useEffect(() => saveLifeTrackerGame(table, match?.key), [table, match?.key]);
     const fullscreen = useFullscreen(true);
-    // Both unconditional: a counter lying on the table is watched rather than
-    // touched, and it has no up. A setting for either was only ever a way to
-    // switch off the thing that makes the page usable at all.
     useWakeLock();
     useOrientationLock();
-    // Which way round the screen lies decides how the pod is seated, so the
-    // tiles follow a device being turned, for as long as the lock above has not
-    // pinned it.
     const orientation = useTableOrientation();
 
     const seating = seatingFor(settings.playerCount, settings.arrangement, orientation);
-    // Fixed once, so the names stay with their totals when the device is turned.
+    // Fixed once so names stay with their totals when the device turns.
     const [names] = useState(() => (match === null ? null : seatFromBottom(match.names, match.me, seating.seats)));
 
     /**
@@ -278,18 +257,13 @@ function RouteComponent() {
             ...current,
             life: current.life.map((total, player) => (player === index ? total + amount : total)),
             deltas: { ...current.deltas, [index]: (current.deltas[index] ?? 0) + amount },
-            // Only taps on the tile itself leave a hit for the drawer to offer:
-            // this is the exact mistake the offer exists to undo.
             hits: withHit(current.hits, index, trackHit(current.hits[index], amount, now)),
         }));
         fadeDelta(index);
     }
 
     /**
-     * Books commander damage, which costs the player the same life.
-     *
-     * Nothing goes below nothing: taking a hit back off a player at zero damage
-     * leaves both the damage and their total alone.
+     * Books commander damage, which costs the player the same life; a tally never goes below zero
      *
      * @param index which player took it
      * @param opponent whose commander dealt it
@@ -308,8 +282,6 @@ function RouteComponent() {
                     player === index ? row.map((value, other) => (other === opponent ? next : value)) : row,
                 ),
                 deltas: { ...current.deltas, [index]: (current.deltas[index] ?? 0) + dealt },
-                // Damage counted in the drawer already has a commander against
-                // it, so it is not a hit anyone can be asked about.
                 hits: withHit(current.hits, index, undefined),
             };
         });
@@ -317,11 +289,7 @@ function RouteComponent() {
     }
 
     /**
-     * Charges a hit a player already took to one commander after the fact.
-     *
-     * The life went the moment they tapped their tile; all that is missing is
-     * whose commander it came off. So this only writes the tally, and writing
-     * it a second time is what booking it in the drawer normally does.
+     * Charges a hit a player already took to one commander; the life is already gone
      *
      * @param index which player took it
      * @param opponent whose commander dealt it
@@ -347,11 +315,7 @@ function RouteComponent() {
     }
 
     /**
-     * Puts everyone back on the starting total for a fresh game
-     *
-     * Only ever reached through the confirmation: the button sits in the same
-     * header the whole game is played under, and a mistap in the middle of a
-     * game would throw away a table nobody can reconstruct.
+     * Puts everyone back on the starting total for a fresh game, after confirmation
      */
     function reset() {
         hapticConfirm();
@@ -389,7 +353,6 @@ function RouteComponent() {
                             <ArrowLeftIcon />
                         </Button>
                     )}
-                    {/* On a phone the clock is worth more than the table's name. */}
                     <Heading className={clsx("truncate", match?.clock != null && "max-sm:sr-only")}>
                         {match === null
                             ? t("heading.life-counter")
@@ -526,9 +489,7 @@ function RouteComponent() {
                     </div>
                 </DialogBody>
                 <DialogActions>
-                    {/* The screen is taken here rather than on the way in:
-                        browsers only grant fullscreen to a trusted tap, and
-                        this is the tap that starts the game. */}
+                    {/* Fullscreen needs a user gesture, so it is requested on this tap. */}
                     <PrimaryButton onClick={start}>{t("button.start")}</PrimaryButton>
                 </DialogActions>
             </Dialog>

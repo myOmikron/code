@@ -1,11 +1,8 @@
 /**
- * The round clock, as a pure reading rather than a ticking number
- *
- * Nothing here counts down. A clock is a function of when it ends, what the time is now and how
- * wrong this device's own clock is — which is what makes backgrounding, a sleeping phone, a
- * restored tab and a mid-round reload all correct without a line of code for any of them. The
- * only moving part is the component that asks again once a second.
+ * The round clock as a pure reading of its deadline, the device's time and the skew to the server.
  */
+
+import type { RoundResponse } from "src/api/generated";
 
 /** The three fields a round carries for its clock, as the API sends them */
 export type RoundClock = {
@@ -30,10 +27,26 @@ export type ClockReading = {
 };
 
 /**
- * Read a clock
+ * A round's clock, or `null` once the round is closed
  *
- * Overtime is deliberately allowed to go negative rather than clamping at zero: a judge needs to
- * know the round is four minutes over, not merely that it is finished.
+ * A closed round's timer still holds a deadline, which would otherwise read as a clock running
+ * into overtime.
+ *
+ * @param round the round
+ *
+ * @returns the clock fields
+ */
+export function roundClockOf(round: Pick<RoundResponse, "status" | "timer">): RoundClock | null {
+    if (round.status === "Complete") return null;
+    return {
+        endsAt: round.timer.ends_at ?? null,
+        pausedAt: round.timer.paused_at ?? null,
+        lengthSeconds: round.timer.length_seconds,
+    };
+}
+
+/**
+ * Reads a clock; overtime goes negative rather than clamping at zero
  *
  * @param clock the round's three fields
  * @param nowMs this device's own clock, in milliseconds
@@ -47,8 +60,6 @@ export function readClock(clock: RoundClock, nowMs: number, skewMs: number): Clo
     }
 
     const endsAt = Date.parse(clock.endsAt);
-    // A paused clock is measured against the moment it stopped, so it holds still however long
-    // the desk leaves it.
     const reference = clock.pausedAt === null ? nowMs - skewMs : Date.parse(clock.pausedAt);
     const seconds = Math.round((endsAt - reference) / 1000);
 
@@ -62,9 +73,6 @@ export function readClock(clock: RoundClock, nowMs: number, skewMs: number): Clo
 
 /**
  * A count of seconds as a clock face
- *
- * Not in `format.ts`, which is `Intl` work: `mm:ss` is a clock face rather than a locale format,
- * and it belongs beside the thing that produces the seconds.
  *
  * @param seconds how many seconds, possibly negative
  *
@@ -84,9 +92,7 @@ export function formatDuration(seconds: number): string {
 /**
  * How far this device's clock is ahead of the server's
  *
- * The whole round trip is charged to skew, which biases the estimate by at most half the latency —
- * under a fifth of a second in a shop, and invisible on a face that only shows seconds. Building
- * anything cleverer here would be solving a problem nobody has.
+ * The whole round trip is charged to skew; the error is at most half the latency.
  *
  * @param serverTime what the server said the time was
  * @param receivedAtMs this device's clock when the answer arrived
@@ -98,11 +104,7 @@ export function clockSkew(serverTime: string, receivedAtMs: number): number {
 }
 
 /**
- * Fold a fresh skew sample into the running estimate
- *
- * Raw samples jitter by a few hundred milliseconds, which is enough to make the displayed second
- * skip or repeat. Weighting the history heavily keeps the face steady while still following a
- * device whose clock is actually drifting.
+ * Folds a fresh skew sample into the running estimate, damping jitter so the face does not skip
  *
  * @param previous the estimate so far, `null` for the first sample
  * @param sample the fresh sample

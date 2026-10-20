@@ -28,26 +28,17 @@ import { TournamentPairingsTable } from "src/components/tournament-pairings-tabl
 import { TournamentRoundClock } from "src/components/tournament-round-clock";
 import { isFormError } from "src/utils/error";
 import { movedPins } from "src/utils/pairing-edit";
+import { roundClockOf } from "src/utils/round-clock";
 import { nextRoundKind } from "src/utils/tournament-format";
-import type { RoundClock } from "src/utils/round-clock";
 
-/**
- * How long a round of each kind runs for by default, in minutes
- *
- * A scored round takes the event's own setting. The other two are conventions rather than
- * settings: a draft takes about as long as a round of play, and deckbuilding is the half hour the
- * Magic Tournament Rules give a sealed pool.
- */
+/** How long the unscored rounds run, in minutes; scored rounds use the event's setting */
 const PRE_ROUND_MINUTES: Record<string, number> = {
     [RoundKind.Draft]: 50,
     [RoundKind.Deckbuilding]: 30,
 };
 
 /**
- * What a round of this kind is called
- *
- * A scored round is "Runde 3"; the other two are named rather than numbered, which is the whole
- * point of them not carrying a number.
+ * What a round is called: its number for a scored round, its kind otherwise
  *
  * @param round the round
  * @param t the `tournament` namespace translator
@@ -55,15 +46,11 @@ const PRE_ROUND_MINUTES: Record<string, number> = {
  * @returns the heading
  */
 export function roundTitle(round: RoundResponse, t: TFunction<"tournament">): string {
-    if (round.number !== null && round.number !== undefined) {
-        return t("heading.round-number", { number: round.number });
-    }
+    if (round.number != null) return t("heading.round-number", { number: round.number });
     return round.kind === RoundKind.Draft ? t("heading.draft") : t("heading.deckbuilding");
 }
 
-/**
- * The properties for {@link TournamentRoundPanel}
- */
+/** The properties for {@link TournamentRoundPanel} */
 export type TournamentRoundPanelProps = {
     /** The tournament being run */
     tournamentUuid: string;
@@ -90,11 +77,8 @@ export type TournamentRoundPanelProps = {
 };
 
 /**
- * The screen a tournament is run from once it starts: which round the room is on, and its clock.
- *
- * Pairings and results land on top of this in the next milestone; what it already owns is the part
- * every round needs regardless — adding the round, handing it to the room, running its clock and
- * closing it.
+ * The screen a tournament is run from once it starts: the round rail, the shown round with its
+ * clock and tables, and the desk's round lifecycle
  *
  * @returns the round screen
  */
@@ -127,28 +111,15 @@ export function TournamentRoundPanel({
     }
 
     const staff = viewer.is_organizer;
-    // Only the newest round moves: an earlier one is history, opened to correct a result. Its
-    // clock, its pairing and its lifecycle buttons stay put.
-    const latest = round !== null && round.uuid === rounds.at(-1)?.uuid;
-    const playedRounds = rounds.filter((entry) => entry.number !== null && entry.number !== undefined).length;
-    // What comes next is the format's decision, not a question for the desk: a
-    // draft opens with the draft, sealed with deckbuilding, everything else
-    // with round one.
+    const newest = rounds.at(-1)?.uuid;
+    // Earlier rounds are only opened to correct a result; their clock and lifecycle stay put.
+    const latest = round !== null && round.uuid === newest;
+    const playedRounds = rounds.filter((entry) => entry.number != null).length;
     const kind = nextRoundKind(tournament.format, rounds);
-
-    // A closed round has no clock. Its timer columns still hold a deadline, and read as a live
-    // clock they would count on into overtime for ever — on every round the rail can open.
-    const clock: RoundClock | null =
-        round === null || round.status === "Complete"
-            ? null
-            : {
-                  endsAt: round.timer.ends_at ?? null,
-                  pausedAt: round.timer.paused_at ?? null,
-                  lengthSeconds: round.timer.length_seconds,
-              };
+    const clock = round === null ? null : roundClockOf(round);
 
     /**
-     * Adds a round of the chosen kind
+     * Adds the round the format calls for next
      */
     async function addRound() {
         const response = await Api.tournaments.rounds.create(tournamentUuid, {
@@ -211,10 +182,7 @@ export function TournamentRoundPanel({
     }
 
     /**
-     * Pair the round, replacing whatever it already held
-     *
-     * One call for both the first pairing and every re-pair: the server refuses once a table has
-     * been reported, which is the only state where replacing a layout would lose something.
+     * Pairs the round, replacing any earlier pairing; the server refuses once a table is reported
      */
     async function pairRound() {
         if (round === null) return;
@@ -232,13 +200,13 @@ export function TournamentRoundPanel({
             );
             return;
         }
-        // A pin the layout could not honour is worth saying out loud: the round is perfectly
-        // valid, but somebody who cannot leave their table is not at the one they asked for.
         for (const pin of movedPins(response.tables, response.fixed_table_conflicts)) {
             notify.warning(t("toast.fixed-table-taken", pin));
         }
         await onChanged();
     }
+
+    const addButton = <AddRound kind={kind} nextNumber={playedRounds + 1} onAdd={addRound} />;
 
     if (round === null) {
         return (
@@ -247,7 +215,7 @@ export function TournamentRoundPanel({
                     icon={<PlayIcon />}
                     title={t("heading.no-rounds")}
                     description={staff ? t("description.no-rounds") : t("description.no-rounds-player")}
-                    action={staff ? <AddRound kind={kind} nextNumber={playedRounds + 1} onAdd={addRound} /> : undefined}
+                    action={staff ? addButton : undefined}
                 />
             </div>
         );
@@ -255,9 +223,7 @@ export function TournamentRoundPanel({
 
     return (
         <div className={"flex flex-col gap-4"}>
-            {/* Every round as a chip, the shown one pressed. This is "go back a round": one
-                tap, always visible, and the address it sets is a plain search param so the
-                current round keeps the address an organizer bookmarked. */}
+            {/* The newest round keeps the bare address, so a bookmark always shows the current one. */}
             {rounds.length > 1 && (
                 <nav aria-label={t("accessibility.round-rail")} className={"flex flex-wrap gap-1.5"}>
                     {rounds.map((entry) => {
@@ -267,11 +233,8 @@ export function TournamentRoundPanel({
                                 key={entry.uuid}
                                 to={"/tournaments/$tournamentUuid"}
                                 params={{ tournamentUuid }}
-                                search={entry.uuid === rounds.at(-1)?.uuid ? {} : { round: entry.sequence }}
-                                // Every chip shares one path and differs only in its search, so
-                                // "active" has to compare the search exactly — otherwise the
-                                // newest round's chip, whose search is empty, counts as active
-                                // everywhere.
+                                search={entry.uuid === newest ? {} : { round: entry.sequence }}
+                                // Otherwise the newest chip, with an empty search, is active everywhere.
                                 activeOptions={{ exact: true, includeSearch: true }}
                                 className={clsx(
                                     "rounded-(--radius-pill) px-3 py-1 text-sm font-medium transition-colors",
@@ -287,7 +250,6 @@ export function TournamentRoundPanel({
                 </nav>
             )}
 
-            {/* A player's own card above already carries the round and its clock. */}
             {!collapseTables && (
                 <div
                     className={
@@ -329,8 +291,6 @@ export function TournamentRoundPanel({
                 </div>
             )}
 
-            {/* A deckbuilding stage has no tables at all — it is a clock and a room full of people
-                opening boosters — so it says what is happening rather than "no pairings yet". */}
             {round.kind === RoundKind.Deckbuilding ? (
                 <EmptyState
                     icon={<PlayIcon />}
@@ -371,9 +331,6 @@ export function TournamentRoundPanel({
                 <div className={"flex flex-col gap-3"}>
                     {staff && latest && round.status !== "Complete" && (
                         <div className={"flex justify-end gap-2"}>
-                            {/* Re-pairing keeps the round and its clock and replaces only the
-                                tables, so an organizer who does not like a layout loses nothing by
-                                asking for another one. */}
                             <Button plain={true} onClick={() => void pairRound()}>
                                 <ArrowPathIcon />
                                 {t("button.repair")}
@@ -403,10 +360,7 @@ export function TournamentRoundPanel({
                                 <TrashIcon />
                                 {t("button.discard-round")}
                             </Button>
-                            {/* One primary button, and it is whatever comes next: pair first,
-                                then start. Two clicks in the same spot set a round up, and a
-                                round can no longer be started over an empty room by mistake.
-                                A deckbuilding stage has nothing to pair, so it starts at once. */}
+                            {/* Pair first, then start, in the same spot; deckbuilding has nothing to pair. */}
                             {round.kind !== RoundKind.Deckbuilding && tables.length === 0 ? (
                                 <Button onClick={() => void pairRound()}>
                                     <UserGroupIcon />
@@ -426,9 +380,7 @@ export function TournamentRoundPanel({
                             {t("button.finish-round")}
                         </Button>
                     )}
-                    {round.status === "Complete" && (
-                        <AddRound kind={kind} nextNumber={playedRounds + 1} onAdd={addRound} />
-                    )}
+                    {round.status === "Complete" && addButton}
                 </div>
             )}
 
@@ -445,9 +397,7 @@ export function TournamentRoundPanel({
     );
 }
 
-/**
- * The properties for {@link AddRound}
- */
+/** The properties for {@link AddRound} */
 type AddRoundProps = {
     /** The kind of round the format calls for next */
     kind: RoundKind;
@@ -458,11 +408,7 @@ type AddRoundProps = {
 };
 
 /**
- * The one button that adds whatever comes next.
- *
- * Named for what it adds — *Draft anlegen*, *Deckbau anlegen*, *Runde 3 anlegen* — so the desk
- * reads what is about to happen rather than trusting that the right thing will. There is no
- * picker: where an event is in its own sequence is not a choice.
+ * The button that adds the next round, named for what it adds
  *
  * @returns the button
  */

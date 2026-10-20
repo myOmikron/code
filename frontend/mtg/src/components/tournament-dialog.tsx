@@ -1,4 +1,4 @@
-import { ChevronRightIcon, GlobeAltIcon, LinkIcon, LockClosedIcon } from "@heroicons/react/20/solid";
+import { ChevronRightIcon } from "@heroicons/react/20/solid";
 import {
     Button,
     Combobox,
@@ -42,6 +42,7 @@ import type {
 } from "src/api/generated";
 import { InlineError } from "src/components/inline-error";
 import { TournamentFormatPicker } from "src/components/tournament-format-picker";
+import { TournamentVisibilityOptions } from "src/components/tournament-visibility-options";
 import type { ValidationErrors } from "src/utils/error";
 import { handleFormError, isFormError } from "src/utils/error";
 import { DEFAULT_CONSTRUCTED_FORMAT, podSizeFor, pointsFor, recommendedRounds } from "src/utils/tournament-format";
@@ -49,13 +50,8 @@ import { DEFAULT_CONSTRUCTED_FORMAT, podSizeFor, pointsFor, recommendedRounds } 
 /**
  * The format catalog, fetched once and shared by every dialog instance
  *
- * `Api.decks.formats()` is account-only and goes through `handleError` — safe here since only an
- * account can ever open this dialog — but nothing about the catalog changes between openings, so
- * the promise itself doubles as the cache instead of refetching each time.
- *
- * Deliberately not loaded from the `/tournaments` list route's loader: that page is reachable
- * logged out, and a 401 through `handleError` would send a guest into a login redirect they
- * cannot complete.
+ * Not loaded in the `/tournaments` route loader: that page is reachable logged out, and this
+ * account-only call's 401 would send a guest into a login redirect.
  */
 let formatsPromise: Promise<Array<FormatRulesResponse>> | null = null;
 
@@ -68,9 +64,7 @@ function loadFormats(): Promise<Array<FormatRulesResponse>> {
     formatsPromise ??= Api.decks.formats().then(
         (response) => response.formats,
         (error: unknown) => {
-            // A failed fetch must not be the cached answer: the next opening retries. The error
-            // itself was already reported through `handleError`, so it is rethrown and swallowed
-            // by the effect below rather than surfacing twice.
+            // Not cached, so the next opening retries; `handleError` already reported it.
             formatsPromise = null;
             throw error;
         },
@@ -86,36 +80,22 @@ export type TournamentDialogProps = {
     open: boolean;
     /** The tournament to edit, or `null` to build a new one */
     tournament: TournamentResponse | null;
-    /**
-     * How many people are on the roster, for the round recommendation
-     *
-     * Absent while building a new tournament — there is nobody to count yet, and the start
-     * confirmation makes the same recommendation later, when there is.
-     */
+    /** How many people are on the roster, for the round recommendation; absent for a new one */
     participantCount?: number;
     /** Called when the dialog should close without having saved anything */
     onClose: () => void;
-    /**
-     * Called after the tournament was saved
-     *
-     * Carries the tournament when it was just created, `null` when an existing one was edited.
-     */
+    /** Called after saving, with the created tournament or `null` after an edit */
     onSaved: (created: TournamentResponse | null) => void;
 };
 
-/** A pod of four's scoring — what {@link DEFAULT_CONSTRUCTED_FORMAT}, Commander, seats */
+/** Scoring for a pod of four, the pod size of {@link DEFAULT_CONSTRUCTED_FORMAT} (Commander) */
 const DEFAULT_POINTS = pointsFor(4);
 
 /**
- * What a fresh form starts on, before an existing tournament overrides it
+ * What a fresh form starts on
  *
- * Several of these have no field any more and are sent as they stand: Swiss pairing, guest names
- * shown, and no self-service late entry — a player who turns up late is added by an organizer,
- * which the backend allows regardless of `allowLateEntry`. Whether such a player's missed rounds
- * count as losses is that organizer's call at the time, not a rule set up front, so
- * `lateEntryAsLosses` is off and unasked too. The four match points are asked again, but still
- * default from the table: {@link DEFAULT_CONSTRUCTED_FORMAT} is Commander, so a pod of four's
- * `pointsFor` is the starting point here, the same as `podSize` follows commander's own pod size.
+ * `pairingSystem`, `guestNamesPublic`, `allowLateEntry` and `lateEntryAsLosses` have no field and
+ * are always sent as they stand here.
  */
 const DEFAULTS = {
     name: "",
@@ -160,6 +140,28 @@ function toLocalInputValue(iso: string): string {
 }
 
 /**
+ * Sends a blank text field as `null`
+ *
+ * @param value the field's value
+ *
+ * @returns the value, or `null` when it is blank
+ */
+function nullIfBlank(value: string): string | null {
+    return value.trim() === "" ? null : value;
+}
+
+/**
+ * Sends a blank number field as `null` ("no limit", "undecided") rather than zero
+ *
+ * @param value the field's value
+ *
+ * @returns the number, or `null` when it is blank
+ */
+function numberOrNull(value: string): number | null {
+    return value.trim() === "" ? null : Number(value);
+}
+
+/**
  * What the dialog's fields start on for a given tournament, or the blank defaults for a new one
  *
  * @param tournament the tournament to edit, `null` to build a new one
@@ -196,18 +198,9 @@ function initialValues(tournament: TournamentResponse | null) {
 }
 
 /**
- * Maps every field of {@link TournamentSettingsErrors} onto the form field or form-level message
- * that should carry it.
+ * Maps {@link TournamentSettingsErrors} onto form fields or the form-level message
  *
- * `invalid_points` names no single field — the request carries four — so it lands on the form as
- * a whole; `settings_locked` is likewise a whole-request refusal, worded the same as the
- * standing banner shown while the event is running. `invalid_pod_size` has no field either: the
- * pod size follows from the format (see `podSizeFor`) and is never shown, so a refusal of it
- * can only mean the derivation and the backend disagree.
- *
- * The two refusals that name a value inside the advanced section also open it. Round length
- * carries a field message, and a message on a collapsed input is no message at all; the four
- * point values carry only a form-level one, which says what is wrong but not where to fix it.
+ * Refusals that name a value inside the advanced section also open it, so the message is visible.
  *
  * @param t the `tournament` namespace translator
  * @param revealAdvanced opens the advanced section, for refusals that name a value inside it
@@ -253,23 +246,19 @@ function settingsErrorHandlers(
 }
 
 /**
- * Dialog for starting a tournament or changing its settings.
+ * Dialog for creating a tournament or changing its settings
  *
- * Visibility is only offered while building a new one: an existing tournament's visibility has
- * its own standalone control on the settings tab, next to the status and join-code controls it
- * shares a page with.
+ * Visibility is only asked on create; an existing tournament changes it on the settings tab.
  *
  * @returns the dialog
  */
 export function TournamentDialog({ open, tournament, participantCount, onClose, onSaved }: TournamentDialogProps) {
     const [t] = useTranslation("tournament");
-    const [advancedOpen, setAdvancedOpen] = useState(false);
     const [tg] = useTranslation();
+    const [advancedOpen, setAdvancedOpen] = useState(false);
     const [formats, setFormats] = useState<Array<FormatRulesResponse>>([]);
     const [venues, setVenues] = useState<Array<TournamentVenueResponse>>([]);
 
-    // Fetched on open rather than up front: nothing else on this dialog needs the account-only
-    // catalog, and a visitor who never opens it never has to ask for it.
     useEffect(() => {
         if (!open) return;
         let cancelled = false;
@@ -278,7 +267,7 @@ export function TournamentDialog({ open, tournament, participantCount, onClose, 
                 if (!cancelled) setFormats(loaded);
             },
             () => {
-                // Reported by `handleError` already; the picker simply stays disabled.
+                // Reported by `handleError`; the picker stays disabled.
             },
         );
         return () => {
@@ -286,9 +275,7 @@ export function TournamentDialog({ open, tournament, participantCount, onClose, 
         };
     }, [open]);
 
-    // Not cached like `loadFormats` above: the format catalog never changes, but the account's own
-    // venue book grows every time this very dialog saves a new place, so the same session opening
-    // it twice must see its own first save.
+    // Not cached: saving this dialog can add a venue.
     useEffect(() => {
         if (!open) return;
         let cancelled = false;
@@ -297,7 +284,7 @@ export function TournamentDialog({ open, tournament, participantCount, onClose, 
                 if (!cancelled) setVenues(loaded.venues);
             },
             () => {
-                // Reported by `handleError` already; the picker simply stays empty.
+                // Reported by `handleError`; the picker stays empty.
             },
         );
         return () => {
@@ -311,7 +298,7 @@ export function TournamentDialog({ open, tournament, participantCount, onClose, 
             onSubmitAsync: async ({ value }) => {
                 const settings: TournamentSettingsRequest = {
                     name: value.name,
-                    description: value.description.trim() === "" ? null : value.description,
+                    description: nullIfBlank(value.description),
                     format: value.format,
                     pod_size: value.podSize,
                     games_per_match: value.gamesPerMatch,
@@ -324,52 +311,46 @@ export function TournamentDialog({ open, tournament, participantCount, onClose, 
                     points_loss: value.pointsLoss,
                     points_bye: value.pointsBye,
                     round_minutes: value.roundMinutes,
-                    // An empty field is "no limit", not zero — the only way to say that.
-                    max_participants: value.maxParticipants.trim() === "" ? null : Number(value.maxParticipants),
-                    // An empty field means "not decided yet", not zero rounds.
-                    planned_rounds: value.plannedRounds.trim() === "" ? null : Number(value.plannedRounds),
+                    max_participants: numberOrNull(value.maxParticipants),
+                    planned_rounds: numberOrNull(value.plannedRounds),
                     allow_late_entry: value.allowLateEntry,
                     late_entry_as_losses: value.lateEntryAsLosses,
-                    venue: value.venue.trim() === "" ? null : value.venue,
-                    venue_address: value.venueAddress.trim() === "" ? null : value.venueAddress,
-                    venue_instructions: value.venueInstructions.trim() === "" ? null : value.venueInstructions,
+                    venue: nullIfBlank(value.venue),
+                    venue_address: nullIfBlank(value.venueAddress),
+                    venue_instructions: nullIfBlank(value.venueInstructions),
                     starts_at: value.startsAt === "" ? null : new Date(value.startsAt).toISOString(),
                 };
 
+                const errorHandlers = settingsErrorHandlers(t, () => setAdvancedOpen(true));
+
                 if (tournament === null) {
                     const created = await Api.tournaments.create({ settings, visibility: value.visibility });
-                    if (isFormError(created))
-                        return handleFormError(
-                            created.error,
-                            settingsErrorHandlers(t, () => setAdvancedOpen(true)),
-                        );
+                    if (isFormError(created)) return handleFormError(created.error, errorHandlers);
                     form.reset();
                     onSaved(created);
                     return;
                 }
 
                 const updated = await Api.tournaments.update(tournament.uuid, settings);
-                if (isFormError(updated))
-                    return handleFormError(
-                        updated.error,
-                        settingsErrorHandlers(t, () => setAdvancedOpen(true)),
-                    );
+                if (isFormError(updated)) return handleFormError(updated.error, errorHandlers);
                 form.reset();
                 onSaved(null);
             },
         },
     });
 
-    // The dialog stays mounted, so the form has to be pointed at whatever it is opened on:
-    // `defaultValues` is read once, at mount.
+    // The dialog stays mounted and `defaultValues` is only read at mount.
     useEffect(() => {
         form.reset(initialValues(tournament));
-        // Deliberately not keyed on `form`, which is rebuilt on every render.
+        // `form` is rebuilt on every render, so it stays out of the deps.
     }, [tournament, open]);
 
-    // `handleFormError` is the only writer of `errorMap.onSubmit` here, so its `ValidationErrors`
-    // shape is known even where the form library's own inference does not carry it through.
-    const formError = (form.state.errorMap.onSubmit as ValidationErrors | undefined)?.form;
+    const pointFields = [
+        ["pointsWin", t("label.points-win")],
+        ["pointsDraw", t("label.points-draw")],
+        ["pointsLoss", t("label.points-loss")],
+        ["pointsBye", t("label.points-bye")],
+    ] as const;
 
     return (
         <Dialog open={open} onClose={onClose} size={"xl"}>
@@ -423,15 +404,7 @@ export function TournamentDialog({ open, tournament, participantCount, onClose, 
                                             errors={fieldApi.state.meta.errors.map(String)}
                                             onChange={(slug) => {
                                                 fieldApi.handleChange(slug);
-                                                // Who sits at a table follows from the format
-                                                // and is not asked for: a pod of four plays one
-                                                // game, a table of two starts on best of three —
-                                                // unless the event already exists, in which case
-                                                // it keeps the best-of it had. Match points follow
-                                                // the same table for the same reason, but only for
-                                                // a new event: an existing one keeps whatever
-                                                // scoring its organizer already set, even across a
-                                                // format change.
+                                                // Only a new event takes the default best-of and points.
                                                 const podSize = podSizeFor(slug);
                                                 form.setFieldValue("podSize", podSize);
                                                 if (podSize > 2) form.setFieldValue("gamesPerMatch", 1);
@@ -444,8 +417,6 @@ export function TournamentDialog({ open, tournament, participantCount, onClose, 
                                                     form.setFieldValue("pointsBye", points.bye);
                                                 }
                                             }}
-                                            // A pod plays a single game, so best-of is only a
-                                            // question at a table of two.
                                             aside={
                                                 oneOnOne && (
                                                     <form.Field name={"gamesPerMatch"}>
@@ -487,27 +458,7 @@ export function TournamentDialog({ open, tournament, participantCount, onClose, 
                                     <Field>
                                         <Label>{t("label.visibility")}</Label>
                                         <Listbox value={fieldApi.state.value} onChange={fieldApi.handleChange}>
-                                            <ListboxOption value={Visibility.Private}>
-                                                <LockClosedIcon />
-                                                <ListboxLabel>{t("label.visibility-private")}</ListboxLabel>
-                                                <ListboxDescription>
-                                                    {t("description.visibility-private")}
-                                                </ListboxDescription>
-                                            </ListboxOption>
-                                            <ListboxOption value={Visibility.Unlisted}>
-                                                <LinkIcon />
-                                                <ListboxLabel>{t("label.visibility-unlisted")}</ListboxLabel>
-                                                <ListboxDescription>
-                                                    {t("description.visibility-unlisted")}
-                                                </ListboxDescription>
-                                            </ListboxOption>
-                                            <ListboxOption value={Visibility.Public}>
-                                                <GlobeAltIcon />
-                                                <ListboxLabel>{t("label.visibility-public")}</ListboxLabel>
-                                                <ListboxDescription>
-                                                    {t("description.visibility-public")}
-                                                </ListboxDescription>
-                                            </ListboxOption>
+                                            <TournamentVisibilityOptions />
                                         </Listbox>
                                     </Field>
                                 )}
@@ -609,10 +560,7 @@ export function TournamentDialog({ open, tournament, participantCount, onClose, 
                                                 <Field>
                                                     <Label>{t("label.venue")}</Label>
                                                     {venues.length > 0 && (
-                                                        // A picker over the account's own book, not the bound
-                                                        // control itself: it only ever fills the plain `Input`
-                                                        // below on a pick and otherwise stays blank, so nothing
-                                                        // it does can clobber whatever the organizer is typing.
+                                                        // Unbound and always blank: a pick only fills the inputs.
                                                         <Combobox<TournamentVenueResponse | null>
                                                             options={venues}
                                                             by={"uuid"}
@@ -779,73 +727,33 @@ export function TournamentDialog({ open, tournament, participantCount, onClose, 
                                         <Legend>{t("label.scoring")}</Legend>
                                         <Description>{t("description.scoring")}</Description>
                                         <div className={"mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4"}>
-                                            <form.Field name={"pointsWin"}>
-                                                {(fieldApi) => (
-                                                    <Field>
-                                                        <Label>{t("label.points-win")}</Label>
-                                                        <Input
-                                                            type={"number"}
-                                                            min={0}
-                                                            value={fieldApi.state.value}
-                                                            onChange={(event) =>
-                                                                fieldApi.handleChange(Number(event.target.value))
-                                                            }
-                                                        />
-                                                    </Field>
-                                                )}
-                                            </form.Field>
-                                            <form.Field name={"pointsDraw"}>
-                                                {(fieldApi) => (
-                                                    <Field>
-                                                        <Label>{t("label.points-draw")}</Label>
-                                                        <Input
-                                                            type={"number"}
-                                                            min={0}
-                                                            value={fieldApi.state.value}
-                                                            onChange={(event) =>
-                                                                fieldApi.handleChange(Number(event.target.value))
-                                                            }
-                                                        />
-                                                    </Field>
-                                                )}
-                                            </form.Field>
-                                            <form.Field name={"pointsLoss"}>
-                                                {(fieldApi) => (
-                                                    <Field>
-                                                        <Label>{t("label.points-loss")}</Label>
-                                                        <Input
-                                                            type={"number"}
-                                                            min={0}
-                                                            value={fieldApi.state.value}
-                                                            onChange={(event) =>
-                                                                fieldApi.handleChange(Number(event.target.value))
-                                                            }
-                                                        />
-                                                    </Field>
-                                                )}
-                                            </form.Field>
-                                            <form.Field name={"pointsBye"}>
-                                                {(fieldApi) => (
-                                                    <Field>
-                                                        <Label>{t("label.points-bye")}</Label>
-                                                        <Input
-                                                            type={"number"}
-                                                            min={0}
-                                                            value={fieldApi.state.value}
-                                                            onChange={(event) =>
-                                                                fieldApi.handleChange(Number(event.target.value))
-                                                            }
-                                                        />
-                                                    </Field>
-                                                )}
-                                            </form.Field>
+                                            {pointFields.map(([name, label]) => (
+                                                <form.Field key={name} name={name}>
+                                                    {(fieldApi) => (
+                                                        <Field>
+                                                            <Label>{label}</Label>
+                                                            <Input
+                                                                type={"number"}
+                                                                min={0}
+                                                                value={fieldApi.state.value}
+                                                                onChange={(event) =>
+                                                                    fieldApi.handleChange(Number(event.target.value))
+                                                                }
+                                                            />
+                                                        </Field>
+                                                    )}
+                                                </form.Field>
+                                            ))}
                                         </div>
                                     </Fieldset>
                                 </div>
                             )}
                         </div>
 
-                        {formError !== undefined && <InlineError>{formError}</InlineError>}
+                        {/* For `{ form, fields }`, TanStack Form stores the `form` value itself here. */}
+                        <form.Subscribe selector={(state) => state.errorMap.onSubmit}>
+                            {(error) => error != null && <InlineError>{String(error)}</InlineError>}
+                        </form.Subscribe>
                     </FieldGroup>
                 </DialogBody>
                 <DialogActions>

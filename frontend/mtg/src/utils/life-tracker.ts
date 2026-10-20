@@ -1,22 +1,8 @@
 /**
  * What the life tracker remembers about a table, and how it seats one.
  *
- * A seat is a direction, not a rotation class: a tile is drawn in the frame of
- * the player who reads it, so it turns itself and puts its buttons at the two
- * ends of that player's horizontal. That is what keeps the plus under the same
- * hand at every edge of the device, and, seen from above, keeps the buttons on
- * the long side of every tile.
- *
- * Which way a tile is turned follows the shape it was given: every tile reads
- * along its own longer side, so a wide tile is read across the screen and a
- * tall one along it. A screen lying in landscape therefore seats its players on
- * the top and bottom edges, and the same pod on a phone held upright seats them
- * left and right — the tables below are the two halves of that, one per
- * orientation.
- *
- * A player counting on their own is the exception to all of it: there is no
- * table to read the screen across, so the one tile is read upright, whichever
- * way round the device is and whatever shape that leaves it.
+ * A seat is the edge a tile is read from; every tile reads along its longer side, so the
+ * seatings differ per orientation. A solo tile is always read upright.
  */
 
 /** How the seats are spread across the screen */
@@ -25,17 +11,14 @@ export type LifeArrangement = "sides" | "cross";
 /** The seat counts on offer, from counting alone to a full commander pod */
 export const PLAYER_COUNTS = [1, 2, 3, 4, 5, 6] as const;
 
-/**
- * The usual starting totals, offered as shortcuts: constructed, two-headed
- * giant, commander, and the archenemy the rest of the pod is ganging up on
- */
+/** The usual starting totals, offered as shortcuts: constructed, two-headed giant, commander, archenemy */
 export const STARTING_LIFE_TOTALS = [20, 30, 40, 60] as const;
 
 /** What a starting total may be typed between */
 export const STARTING_LIFE_RANGE = { min: 1, max: 999 } as const;
 
 /**
- * Whether a game can be started on a total.
+ * Whether a game can be started on a total
  *
  * @param total what was typed or read back
  *
@@ -59,34 +42,13 @@ export const SOLO_PLAYER_COUNT = 1;
 /** How much commander damage from a single commander takes a player out */
 export const COMMANDER_DAMAGE_LETHAL = 21;
 
-/**
- * How long after a hit the drawer still opens on it.
- *
- * The window is a reaction time, not a grace period: it is how long it takes a
- * player to hit their tile, register that the swing came in over a commander,
- * and reach for the shield. Two and a half seconds covers the realisation and
- * the second tap without stretching to cover a player who opened the drawer for
- * an unrelated reason a beat later.
- */
+/** How long after a hit, in milliseconds, opening the drawer still offers to rebook it */
 export const REBOOK_REACTION = 2500;
 
-/**
- * How long the offer stands once the drawer is showing it.
- *
- * Longer than the window that armed it, because this is the part that is read
- * and acted on: the player still has to find the column of the commander that
- * hit them. The spindown around the amount counts this down, so the offer never
- * disappears out from under a thumb without warning.
- */
+/** How long the offer stands once the drawer shows it, in milliseconds */
 export const REBOOK_LINGER = 5000;
 
-/**
- * Life a player has lost that no commander has been charged for yet.
- *
- * Only taps on their own tile leave one. Damage booked in the drawer already
- * has a commander against it, and life gained is nobody's hit, so both clear
- * whatever was standing.
- */
+/** Life a player lost through taps on their tile that no commander has been charged for yet */
 export type LooseHit = {
     /** What the run of taps cost them, as a positive number */
     amount: number;
@@ -95,11 +57,9 @@ export type LooseHit = {
 };
 
 /**
- * Folds a life change into the hit a player is carrying.
+ * Folds a life change into the hit a player is carrying
  *
- * A run of taps counts as one hit for as long as the taps keep coming inside
- * {@link REBOOK_REACTION} of each other: three taps of one are the same swing
- * of three, and offering the whole run is what the player means by "that".
+ * Taps within {@link REBOOK_REACTION} of each other add up to one hit; any gain clears it.
  *
  * @param hit what they were carrying, if anything
  * @param amount what was just added to their total, negative for a hit
@@ -109,8 +69,6 @@ export type LooseHit = {
  *   rebook
  */
 export function trackHit(hit: LooseHit | undefined, amount: number, now: number): LooseHit | undefined {
-    // Life gained is a trigger, a lifelink swing or a slip being taken back —
-    // whatever came before it is no longer the thing the player is thinking of.
     if (amount >= 0) return undefined;
 
     const running = hit !== undefined && now - hit.at <= REBOOK_REACTION ? hit.amount : 0;
@@ -138,7 +96,7 @@ export function withHit(
 }
 
 /**
- * What a drawer opening now would offer to rebook.
+ * What a drawer opening now would offer to rebook
  *
  * @param hit what the player is carrying, if anything
  * @param now when the drawer was opened
@@ -162,10 +120,7 @@ export const SEAT_COLORS = [
 ] as const;
 
 /**
- * Whether a player is out of the game.
- *
- * The tracker only greys their tile out for it; nothing stops them counting
- * further, since a table often keeps a player around while a stack resolves.
+ * Whether a player is out of the game; the tile only greys out, counting goes on
  *
  * @param life what they are on
  * @param damage what every commander has put on them
@@ -178,7 +133,7 @@ export function isEliminated(life: number, damage: Array<number>): boolean {
 }
 
 /**
- * A table nobody has been hit on yet.
+ * A table nobody has been hit on yet
  *
  * @param playerCount how many are playing
  *
@@ -189,7 +144,7 @@ export function emptyCommanderDamage(playerCount: number): Array<Array<number>> 
 }
 
 /**
- * Seats more or fewer players without losing what the ones already seated took.
+ * Seats more or fewer players without losing what the ones already seated took
  *
  * @param current what has been dealt so far
  * @param playerCount how many are playing now
@@ -222,13 +177,7 @@ export type SeatPlacement = {
     seat: Seat;
     /** Where the tile sits on the table's grid */
     area: string;
-    /**
-     * The middle of that tile, which is where the player reading it sits.
-     *
-     * Read in seat order the centres wind clockwise around the table, which is
-     * what makes turn order a rotation of the seat numbers; {@link
-     * opponentOrder} leans on that, and a test walks these to keep it true.
-     */
+    /** The middle of the tile; in seat order these wind clockwise, which {@link opponentOrder} relies on */
     center: Spot;
 };
 
@@ -242,25 +191,14 @@ export type Seating = {
     seats: Array<SeatPlacement>;
 };
 
-/**
- * A player counting on their own: one tile, the whole screen.
- *
- * The only seating that the shape of the screen has no say in. A tile is turned
- * so that the player it belongs to can read it from where they sit, and someone
- * counting alone reads the device the way they are holding it — upright, on a
- * phone standing tall as much as on a tablet lying the long way round.
- */
+/** A player counting on their own: one upright tile, whatever the orientation */
 const SOLO: Seating = {
     grid: "grid-cols-1 grid-rows-1",
     flush: false,
     seats: [{ seat: "bottom", area: "col-start-1 row-start-1", center: { x: 0.5, y: 0.5 } }],
 };
 
-/**
- * Players one and three take the deep middle band and collide along its centre
- * line, read from the left and the right; two and four lie on the top and
- * bottom edges, across the short sides of the pair.
- */
+/** One player per edge: one and three read from the left and right, two and four from top and bottom */
 const CROSS: Seating = {
     grid: "grid-cols-2 grid-rows-[minmax(0,1fr)_minmax(0,2.4fr)_minmax(0,1fr)]",
     flush: true,
@@ -272,18 +210,7 @@ const CROSS: Seating = {
     ],
 };
 
-/**
- * The pod on a screen that is wider than it is tall: a laptop, or a tablet
- * lying the long way round.
- *
- * Every tile here is wider than it is tall, so every tile is read across the
- * screen and the players line up along its top and bottom edges. The seats run
- * clockwise from the top left, the way players are counted around a table.
- *
- * Five and six get a row of three rather than a column of two: three tiles
- * side by side on a wide screen are still wider than they are tall, where a
- * two-column grid three rows deep would squeeze them into letterbox slots.
- */
+/** The pods on a landscape screen: every tile is wide, so players sit on the top and bottom edges */
 const LANDSCAPE: Record<number, Seating> = {
     2: {
         grid: "grid-cols-1 grid-rows-2",
@@ -337,17 +264,7 @@ const LANDSCAPE: Record<number, Seating> = {
     },
 };
 
-/**
- * The same pods on a screen that is taller than it is wide: a phone or a tablet
- * held upright.
- *
- * The grid is the one the tiles were always laid out on; what changes is which
- * way they are read. A tile that is now taller than it is wide is read along
- * the screen instead of across it, and its player sits on the near long edge —
- * left for the left-hand column, right for the right-hand one. A tile that
- * still spans the full width stays a row read from the top or the bottom, which
- * is why two players facing each other across an upright phone keep doing so.
- */
+/** The pods on a portrait screen: tall tiles are read from their long edge, full-width ones from top or bottom */
 const PORTRAIT: Record<number, Seating> = {
     2: {
         grid: "grid-cols-1 grid-rows-2",
@@ -402,7 +319,7 @@ const PORTRAIT: Record<number, Seating> = {
 };
 
 /**
- * Lays a table out.
+ * Lays a table out
  *
  * @param playerCount how many are playing
  * @param arrangement how they sit around the device
@@ -412,9 +329,6 @@ const PORTRAIT: Record<number, Seating> = {
  *   sides for any pod it was not built for
  */
 export function seatingFor(playerCount: number, arrangement: LifeArrangement, orientation: TableOrientation): Seating {
-    // Neither of these follows the screen: the cross is a seating plan — one
-    // player per edge is what it means, whichever way round the device lies —
-    // and the solo table has nobody to be turned towards.
     if (playerCount === SOLO_PLAYER_COUNT) return SOLO;
     if (arrangement === "cross" && playerCount === CROSS_PLAYER_COUNT) return CROSS;
 
@@ -423,19 +337,9 @@ export function seatingFor(playerCount: number, arrangement: LifeArrangement, or
 }
 
 /**
- * The other players, in the order their turns come after this one.
+ * The other players, in the order their turns come after this one
  *
- * Commander damage is booked under an opponent's name, and the name a table
- * reaches for is a seat in turn order: the player on your left goes next, and
- * the rest follow them round. So the columns run clockwise from the seat that
- * is reading them, starting with the player on its left — the order everyone
- * at the table already has in their head, and the one they say out loud.
- *
- * Which makes it a rotation of the seat numbers, because the seats are
- * numbered clockwise to begin with: the player after you is the one on your
- * left, whichever edge of the device you are reading from. The seating tables
- * carry the centres that prove it, and a test walks them so that a seating
- * added later has to be laid out the same way round.
+ * A rotation of the seat numbers, since seats are numbered clockwise.
  *
  * @param seats the whole table, in seat order
  * @param player whose seat the table is read from, counted from zero
@@ -455,10 +359,7 @@ export type LifeTrackerSettings = {
     playerCount: number;
     /** How they sit around the device */
     arrangement: LifeArrangement;
-    /**
-     * Whether the drawer offers the hit a player has just taken as commander
-     * damage
-     */
+    /** Whether the drawer offers the hit a player has just taken as commander damage */
     rebook: boolean;
 };
 
@@ -473,7 +374,7 @@ export const DEFAULT_LIFE_TRACKER_SETTINGS: LifeTrackerSettings = {
 const STORAGE_KEY = "cardlens.life-tracker.v1";
 
 /**
- * Reads and validates the stored setup.
+ * Reads and validates the stored setup
  *
  * @returns valid settings with field-level defaults
  */
@@ -490,9 +391,7 @@ export function loadLifeTrackerSettings(): LifeTrackerSettings {
                 PLAYER_COUNTS.find((count) => count === stored.playerCount) ??
                 DEFAULT_LIFE_TRACKER_SETTINGS.playerCount,
             arrangement: stored.arrangement === "cross" ? "cross" : DEFAULT_LIFE_TRACKER_SETTINGS.arrangement,
-            // On unless it was turned off: anything that is not a stored `false`
-            // — a missing field on a setup from before the offer existed
-            // included — is a table that has never said no to it.
+            // Older setups have no field; only an explicit `false` turns it off.
             rebook: stored.rebook !== false,
         };
     } catch {
@@ -509,7 +408,7 @@ export function saveLifeTrackerSettings(settings: LifeTrackerSettings): void {
     try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
     } catch {
-        // State still keeps the choice for this tab when storage is unavailable.
+        // Storage unavailable: kept for this tab only.
     }
 }
 
@@ -527,13 +426,7 @@ export type Table = {
 
 const GAME_STORAGE_KEY = "cardlens.life-tracker.game.v1";
 
-/**
- * How long a table left standing is still the game being played.
- *
- * Nobody resumes yesterday's game, and a counter that silently opens on totals
- * from the last game night is worse than one that starts fresh. Long enough to
- * cover an evening of commander, including the break in the middle.
- */
+/** How long a stored game is still resumed: an evening, not until the next game night */
 const GAME_MAX_AGE = 12 * 60 * 60 * 1000;
 
 /** A stored table, plus when it was last counted on */
@@ -547,7 +440,7 @@ type StoredGame = {
 };
 
 /**
- * A table nobody has counted on yet.
+ * A table nobody has counted on yet
  *
  * @param settings the pod this device is set up for
  *
@@ -563,17 +456,7 @@ export function freshTable(settings: LifeTrackerSettings): Table {
 }
 
 /**
- * Reads back the game this device was in the middle of.
- *
- * The totals outlive the page because losing them is not recoverable: a table
- * cannot reconstruct what four players are on. The reload that takes them is
- * usually nobody's doing — a deploy activates the new service worker and the
- * app reloads itself, and a tablet drops a backgrounded tab whenever it wants
- * the memory back.
- *
- * The stored table is fitted to the pod the settings describe, the same way
- * seating more or fewer players does it, so the caller keeps its invariant of
- * one total per seat however the two came apart.
+ * Reads back the game this device was in the middle of, fitted to the pod the settings describe
  *
  * @param settings the pod this device is set up for
  * @param key the tournament table being counted, absent for a casual game
@@ -598,13 +481,8 @@ export function loadLifeTrackerGame(settings: LifeTrackerSettings, key?: string)
         return {
             life: Array.from({ length: playerCount }, (_, player) => life[player] ?? settings.startingLife),
             damage: resizeCommanderDamage(stored.damage, playerCount),
-            // Deliberately dropped: a delta is the run of taps still on screen,
-            // and the timeout that fades it did not survive the reload. Kept,
-            // it would sit next to a total for the rest of the game.
+            // Both are short-lived and their fade timers did not survive the reload.
             deltas: {},
-            // Dropped for the same reason and one of its own: a hit is only
-            // offerable for a couple of seconds, and nothing survives a reload
-            // that fast.
             hits: {},
         };
     } catch {
@@ -623,15 +501,12 @@ export function saveLifeTrackerGame(table: Table, key?: string): void {
         const stored: StoredGame = { life: table.life, damage: table.damage, at: Date.now(), key };
         localStorage.setItem(GAME_STORAGE_KEY, JSON.stringify(stored));
     } catch {
-        // The game still runs out of state; it just will not survive a reload.
+        // Storage unavailable: kept for this tab only.
     }
 }
 
 /**
- * Whether stored totals read as a seated pod.
- *
- * A total itself is not range-checked: it is whatever the table counted it down
- * to, which a game of commander regularly takes below zero.
+ * Whether stored totals read as a seated pod; totals may be negative
  *
  * @param value what was stored as everyone's total
  *
@@ -663,9 +538,7 @@ function isDamage(value: unknown, playerCount: number): value is Array<Array<num
 }
 
 /**
- * Rotates a table's seat order so one player gets the tile nearest the device's owner
- *
- * Turn order stays clockwise; only where it starts moves.
+ * Rotates a table's seat order so the device's owner gets the bottom tile, keeping turn order
  *
  * @param names everybody at the table, in seat order
  * @param me which of them holds the device

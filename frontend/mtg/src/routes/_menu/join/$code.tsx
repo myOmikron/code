@@ -9,13 +9,8 @@ import { isFormError } from "src/utils/error";
 
 export const Route = createFileRoute("/_menu/join/$code")({
     loader: async ({ params }) => {
-        // The card brings its own `tournament` namespace strings with it; this page's own copy
-        // (the heading, the unknown-code empty state) lives in `join` instead.
         await Promise.all([i18n.loadNamespaces("join"), i18n.loadNamespaces("tournament")]);
-        // `Api.join.lookup` bypasses `handleError` (see its comment in `api.tsx`) — an unknown or
-        // expired code answers as a form error, not a thrown one, and is the ordinary way this
-        // page fails to resolve, not something the router's error screen should own. A thrown
-        // failure here (network, 5xx) is the genuinely unexpected case and is left to rethrow.
+        // An unknown code is a typed refusal; anything thrown is unexpected and rethrown.
         const response = await Api.join.lookup(params.code);
         return { lookup: isFormError(response) ? null : response };
     },
@@ -23,15 +18,7 @@ export const Route = createFileRoute("/_menu/join/$code")({
 });
 
 /**
- * The deep-link door into a tournament: `{origin}/join/{code}`, opened from a QR code, a pasted
- * link, or the `/join` page's own scanner and typed field.
- *
- * A code that resolves renders the same {@link JoinCard} every other door into a tournament ends
- * up at — guest vs. account, already-joined, decklist policy and all. A code that does not is not
- * the app's error screen's business; it reads as a dead link, same shape as
- * `tournaments/$tournamentUuid/_tournament.tsx`'s own dead-link state.
- *
- * Reachable with no session at all, same as `/join` itself — no `<RequireAccount>`.
+ * The join deep link `/join/{code}`; reachable without a session
  *
  * @returns the page
  */

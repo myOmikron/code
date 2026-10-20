@@ -7,9 +7,7 @@ import type { MatchSeatResponse, MatchTableResponse } from "src/api/generated";
 import { TournamentResultCell } from "src/components/tournament-result-cell";
 import { TournamentResultDialog } from "src/components/tournament-result-dialog";
 
-/**
- * The properties for {@link TournamentPairingsTable}
- */
+/** The properties for {@link TournamentPairingsTable} */
 export type TournamentPairingsTableProps = {
     /** The round's tables, byes last */
     tables: Array<MatchTableResponse>;
@@ -26,18 +24,9 @@ export type TournamentPairingsTableProps = {
 };
 
 /**
- * Who is sitting where this round.
+ * Who is sitting where this round: a column per player for duels, one seat list per pod
  *
- * Two shapes, chosen by what is actually on the tables rather than by a
- * setting: a field of duels gets a column per player, because "who plays whom"
- * is the question, and pods get one column listing the seats in turn order,
- * because four names do not fit across a page and turn order is what a pod
- * needs to know.
- *
- * **No pagination.** An organizer scanning for the table that has not reported
- * wants one scroll and a browser find, not twelve rows and a next button. Below
- * the small breakpoint it becomes a list of cards rather than a four-column
- * side-scroller.
+ * Unpaginated on purpose; below the small breakpoint it is a list of cards.
  *
  * @returns the table
  */
@@ -50,18 +39,28 @@ export function TournamentPairingsTable({
     onChanged,
 }: TournamentPairingsTableProps) {
     const [t] = useTranslation("tournament");
-    // One dialog for the whole table rather than one per row: forty rows would otherwise mount
-    // forty dialogs to show at most one.
     const [editing, setEditing] = useState<MatchTableResponse | null>(null);
 
-    // A bye seats one and a duel seats two; anything wider is a pod.
     const duels = tables.every((table) => table.is_bye || table.seats.length <= 2);
 
-    /** Whether the viewer is sitting at this table */
+    /**
+     * Whether the viewer is sitting at this table
+     *
+     * @param table the table
+     *
+     * @returns whether it is theirs
+     */
     const own = (table: MatchTableResponse) =>
         ownParticipant != null && table.seats.some((seat) => seat.participant === ownParticipant);
 
-    /** One player, with whatever is worth saying about them beside the name */
+    /**
+     * One player, with their pin and drop beside the name
+     *
+     * @param seat the seat, absent for an empty one
+     * @param showSeat whether to print the seat number
+     *
+     * @returns the player
+     */
     const player = (seat: MatchSeatResponse | undefined, showSeat: boolean) => {
         if (seat === undefined) return <Text>—</Text>;
         return (
@@ -86,11 +85,8 @@ export function TournamentPairingsTable({
     };
 
     /**
-     * Whether a click anywhere on a table's line opens its result dialog.
-     *
-     * The cell's own button stays the keyboard and screen-reader way in; the
-     * line is the mouse's, because aiming at a small cell on the right of a
-     * wide row is a chore on every one of forty tables.
+     * Whether a click anywhere on a table's line opens its result dialog; the cell's button stays
+     * the keyboard way in
      *
      * @param table the table
      *
@@ -98,12 +94,24 @@ export function TournamentPairingsTable({
      */
     const openable = (table: MatchTableResponse) => canEdit && !table.is_bye;
 
-    /** What happened at a table, and the way in to saying so */
+    /**
+     * What happened at a table, and the way in to saying so
+     *
+     * @param table the table
+     *
+     * @returns the cell
+     */
     const result = (table: MatchTableResponse) => (
         <TournamentResultCell table={table} canEdit={canEdit} onEdit={() => setEditing(table)} />
     );
 
-    /** The number on the table, or that a bye is not one */
+    /**
+     * The number on the table, or a dash for the bye
+     *
+     * @param table the table
+     *
+     * @returns the number
+     */
     const number = (table: MatchTableResponse) =>
         table.is_bye ? (
             <span className={"text-zinc-500 dark:text-zinc-400"}>—</span>
@@ -113,7 +121,6 @@ export function TournamentPairingsTable({
 
     return (
         <>
-            {/* The page below the small breakpoint */}
             <ul className={"flex flex-col gap-2 sm:hidden"}>
                 {tables.map((table) => (
                     <li
@@ -144,8 +151,7 @@ export function TournamentPairingsTable({
                 ))}
             </ul>
 
-            {/* Wider than the standings, because a pod puts four names in one cell — but still
-                capped, or two duellists sit a screen apart from their own result. */}
+            {/* Capped so a duel's result stays near its names. */}
             <div className={"hidden max-w-5xl sm:block"}>
                 <Table dense={true} striped={true} className={"[--gutter:--spacing(3)]"}>
                     <TableHead>

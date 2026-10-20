@@ -31,7 +31,7 @@ export type FixedTableDialogProps = {
 };
 
 /**
- * Pins a player to one table, so the room comes to them
+ * Pins a player to one table
  *
  * @returns the dialog
  */
@@ -78,7 +78,7 @@ export function FixedTableDialog({ tournamentUuid, participant, onClose, onSaved
     const valid = typed.trim() !== "" && Number.isInteger(number) && number >= 1 && number <= 999;
 
     return (
-        <Dialog open={participant !== null} onClose={onClose} size={"sm"}>
+        <Dialog open={true} onClose={onClose} size={"sm"}>
             <DialogTitle>{t("heading.fixed-table", { name: participant.display_name })}</DialogTitle>
             <DialogBody>
                 <form
@@ -117,7 +117,7 @@ export function FixedTableDialog({ tournamentUuid, participant, onClose, onSaved
                     {tg("button.cancel")}
                 </Button>
                 <PrimaryButton type={"submit"} form={"fixed-table-form"} disabled={saving || !valid}>
-                    {t("button.save-pairings")}
+                    {t("button.save")}
                 </PrimaryButton>
             </DialogActions>
         </Dialog>

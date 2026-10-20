@@ -20,7 +20,7 @@ import {
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
-import type { DecklistErrors, DeckOverviewResponse, GetDecklistResponse } from "src/api/generated";
+import type { DecklistErrors, DeckOverviewResponse, GetDecklistResponse, SetDecklistRequest } from "src/api/generated";
 import { InlineError } from "src/components/inline-error";
 import type { ValidationErrors } from "src/utils/error";
 import { handleFormError, isFormError } from "src/utils/error";
@@ -43,16 +43,11 @@ export type DecklistDialogProps = {
     open: boolean;
     /** The tournament the participant belongs to */
     tournamentUuid: string;
-    /** The tournament's format — pre-filters the deck picker, same as the join dialog's */
+    /** The tournament's format, which pre-filters the deck picker */
     tournamentFormat: string;
     /** Whose decklist this is */
     participant: DecklistDialogParticipant;
-    /**
-     * Whether the viewer may link one of their own Planarium decks here — true only for an
-     * account editing its own row. Staff paste text for somebody else's row; they never link
-     * their own deck onto it (see `AddTournamentParticipantRequest`'s doc comment for the same
-     * rule at registration time).
-     */
+    /** Whether the viewer may link one of their own decks; only for an account on its own row */
     canPickDeck: boolean;
     /** Called when the dialog should close without any further action */
     onClose: () => void;
@@ -61,7 +56,7 @@ export type DecklistDialogProps = {
 };
 
 /**
- * How a {@link DecklistErrors} field turns into the one inline message this dialog shows.
+ * Maps {@link DecklistErrors} onto the dialog's inline message
  *
  * @param t the `tournament` namespace translator
  *
@@ -84,14 +79,9 @@ function decklistErrorHandlers(t: (key: string) => string): {
 }
 
 /**
- * View, edit or clear one participant's decklist.
+ * View, edit or clear one participant's decklist
  *
- * Opened both by staff (any row) and by a participant on their own row — from the roster's
- * "Decklist…" action and from the overview tab's "Your decklist" card respectively. Read and
- * write both bypass `handleError` (see `api.tsx`): a lock or a stale guest session both need to
- * render inline here, never the app's error screen. `get` only ever throws (no typed refusal on
- * the read side, see `GetDecklistResponse`); `set` may additionally come back `isFormError` —
- * both are handled locally, never left to escape to a global handler.
+ * The decklist calls bypass `handleError`, so every failure is shown inline here.
  *
  * @returns the dialog
  */
@@ -111,9 +101,6 @@ export function DecklistDialog({
     const [loadError, setLoadError] = useState<string | undefined>();
     const [response, setResponse] = useState<GetDecklistResponse | null>(null);
 
-    // How the edit controls are shown when `canPickDeck` — link one of the account's own decks,
-    // or paste text like everybody else does. Seeded from whatever is already on file once the
-    // load resolves.
     const [mode, setMode] = useState<"link" | "paste">("paste");
     const [text, setText] = useState("");
     const [deckUuid, setDeckUuid] = useState("");
@@ -124,8 +111,7 @@ export function DecklistDialog({
     const [saveError, setSaveError] = useState<string | undefined>();
     const [removing, setRemoving] = useState(false);
 
-    // The dialog stays mounted; every field starts fresh each time it opens, then the load below
-    // fills in whatever is actually on file for this participant.
+    // The dialog stays mounted, so reset everything on open.
     useEffect(() => {
         if (!open) return;
         setLoading(true);
@@ -165,9 +151,7 @@ export function DecklistDialog({
         };
     }, [open, tournamentUuid, participant.uuid, canPickDeck]);
 
-    // Only once linking is even possible — TRAP 2: `Api.decks.list()` 401s for a guest, and a
-    // staff member editing somebody else's row never gets to link their own deck onto it either
-    // (`canPickDeck` is already false there).
+    // Gated on `canPickDeck`: `Api.decks.list()` 401s for a guest and would redirect to login.
     useEffect(() => {
         if (!open || !canPickDeck) {
             setDecks([]);
@@ -179,7 +163,7 @@ export function DecklistDialog({
                 if (!cancelled) setDecks(loaded);
             },
             () => {
-                // Reported by `handleError` already; the picker simply stays empty.
+                // Reported by `handleError`; the picker stays empty.
             },
         );
         return () => {
@@ -187,69 +171,67 @@ export function DecklistDialog({
         };
     }, [open, canPickDeck]);
 
-    // Format-matched by default, same reasoning as the join dialog's picker.
     const filteredDecks = showAllFormats
         ? decks
         : decks.filter((overview) => overview.deck.format === tournamentFormat);
 
-    /** Writes the currently edited text or linked deck as this participant's decklist */
-    async function save() {
-        setSaving(true);
+    /**
+     * Writes the participant's decklist, showing any refusal or failure inline
+     *
+     * @param request the list to write, `{}` to clear it
+     *
+     * @returns the new state, or `null` when the write did not go through
+     */
+    async function writeDecklist(request: SetDecklistRequest): Promise<GetDecklistResponse | null> {
         setSaveError(undefined);
         try {
-            const result = await Api.tournaments.participants.decklist.set(
-                tournamentUuid,
-                participant.uuid,
-                canPickDeck && mode === "link"
-                    ? { deck: deckUuid === "" ? undefined : deckUuid }
-                    : { text: text.trim() === "" ? undefined : text.trim() },
-            );
+            const result = await Api.tournaments.participants.decklist.set(tournamentUuid, participant.uuid, request);
             if (isFormError(result)) {
                 setSaveError(handleFormError(result.error, decklistErrorHandlers(t)).form);
-                return;
+                return null;
             }
             setResponse(result);
-            setText(result.decklist?.text ?? "");
-            notify.success(t("toast.decklist-saved"));
-            onChanged();
+            return result;
         } catch (error) {
             console.error(error);
             setSaveError(t("error.action-failed"));
-        } finally {
-            setSaving(false);
+            return null;
         }
     }
 
-    /** Clears the decklist outright, after the confirmation dialog was accepted */
+    /** Writes the edited text or linked deck */
+    async function save() {
+        setSaving(true);
+        const result = await writeDecklist(
+            canPickDeck && mode === "link"
+                ? { deck: deckUuid === "" ? undefined : deckUuid }
+                : { text: text.trim() === "" ? undefined : text.trim() },
+        );
+        if (result !== null) {
+            setText(result.decklist?.text ?? "");
+            notify.success(t("toast.decklist-saved"));
+            onChanged();
+        }
+        setSaving(false);
+    }
+
+    /** Clears the decklist, after the confirmation was accepted */
     async function remove() {
-        setSaveError(undefined);
-        try {
-            const result = await Api.tournaments.participants.decklist.set(tournamentUuid, participant.uuid, {});
-            if (isFormError(result)) {
-                setSaveError(handleFormError(result.error, decklistErrorHandlers(t)).form);
-                return;
-            }
-            setResponse(result);
+        const result = await writeDecklist({});
+        if (result !== null) {
             setText("");
             setDeckUuid("");
             setMode("paste");
             notify.success(t("toast.decklist-removed"));
             onChanged();
-        } catch (error) {
-            console.error(error);
-            setSaveError(t("error.action-failed"));
-        } finally {
-            setRemoving(false);
         }
+        setRemoving(false);
     }
 
     const mayEdit = response?.may_edit ?? false;
 
-    // Save only ever writes a list. Clearing is `remove`'s job behind its confirmation, so an
-    // empty paste or "Kein Deck" must not reach the request as an implicit clear — and pasting
-    // back the very text a linked deck rendered would silently demote it to plain text,
-    // dropping the deck it came from. Re-saving the same *deck* stays allowed on purpose: that
-    // is how a player refreshes the list after editing the deck.
+    // Never an implicit clear (that is `remove`), and re-pasting a linked deck's own text would
+    // demote it to plain text. Re-saving the same deck is allowed: it refreshes the list.
     const canSave =
         canPickDeck && mode === "link"
             ? deckUuid !== ""

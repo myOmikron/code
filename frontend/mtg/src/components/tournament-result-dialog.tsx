@@ -18,9 +18,10 @@ import { Api } from "src/api/api";
 import type { MatchTableResponse } from "src/api/generated";
 import { isFormError } from "src/utils/error";
 
-/**
- * The properties for {@link TournamentResultDialog}
- */
+/** The label in front of a row of counts */
+const ROW_LABEL = "w-32 shrink-0 text-base/6 text-zinc-950 select-none sm:text-sm/6 dark:text-white";
+
+/** The properties for {@link TournamentResultDialog} */
 export type TournamentResultDialogProps = {
     /** The tournament the table belongs to */
     tournamentUuid: string;
@@ -35,17 +36,9 @@ export type TournamentResultDialogProps = {
 };
 
 /**
- * What happened at one table, entered by the desk.
+ * The desk entering one table's result as games won per seat, with an optional drop per player
  *
- * Games won per seat rather than a match score, because that is the number an organizer is told at
- * the table — "two one" — and because it is the only shape that works for a pod, where four seats
- * each have a count and one of them is the winner. The match result is derived from it: most games
- * wins, everybody level draws. An intentional draw is therefore just every seat on zero, which is
- * what an intentional draw is.
- *
- * Dropping rides along in the same dialog. A player who concedes and leaves says both things in
- * one breath at the table, and making an organizer report the match here and then hunt for the
- * player on another tab is how the drop gets forgotten.
+ * Most games wins and everybody level draws, so an intentional draw is every seat on zero.
  *
  * @returns the dialog
  */
@@ -63,8 +56,6 @@ export function TournamentResultDialog({
     const [dropping, setDropping] = useState<Record<string, boolean>>({});
     const [saving, setSaving] = useState(false);
 
-    // Opened on whatever the table already says, so editing a result starts from it rather than
-    // from zero and an organizer correcting one game score does not retype the other.
     useEffect(() => {
         if (table === null) return;
         setWins(Object.fromEntries(table.seats.map((seat) => [seat.participant, seat.games_won])));
@@ -74,9 +65,7 @@ export function TournamentResultDialog({
 
     if (table === null) return null;
 
-    // Games a seat can have *won*, which is not the match length: a best of
-    // three is decided at two, so offering a third is offering an impossible
-    // score. Draws are counted separately and can fill the whole match.
+    // A best of three is decided at two wins; draws can fill the whole match.
     const bestOf = Math.max(gamesPerMatch, 1);
     const winCounts = Array.from({ length: Math.ceil(bestOf / 2) + 1 }, (_, index) => index);
     const drawCounts = Array.from({ length: bestOf + 1 }, (_, index) => index);
@@ -113,7 +102,6 @@ export function TournamentResultDialog({
             }));
             const best = Math.max(...scores.map((score) => score.won));
             const leaders = scores.filter((score) => score.won === best);
-            // Everybody level is a draw, including everybody on nothing.
             const drawn = leaders.length !== 1;
             const winner = drawn ? undefined : leaders[0].participant;
             const loserGames = drawn
@@ -132,8 +120,7 @@ export function TournamentResultDialog({
                 return;
             }
 
-            // After the result, not before: a drop that failed must not leave a table unreported
-            // as well, and the result is the thing the round cannot close without.
+            // After the result, so a failed drop cannot leave the table unreported too.
             for (const seat of table.seats) {
                 if (!dropping[seat.participant] || seat.dropped) continue;
                 await Api.tournaments.participants.drop(tournamentUuid, seat.participant);
@@ -147,7 +134,7 @@ export function TournamentResultDialog({
     }
 
     return (
-        <Dialog open={table !== null} onClose={onClose}>
+        <Dialog open={true} onClose={onClose}>
             <DialogTitle>{t("heading.report-result")}</DialogTitle>
             <DialogBody>
                 <div className={"flex flex-col gap-6"}>
@@ -158,13 +145,7 @@ export function TournamentResultDialog({
                             </span>
 
                             <div className={"flex flex-wrap items-center gap-3"}>
-                                <span
-                                    className={
-                                        "w-32 shrink-0 text-base/6 text-zinc-950 select-none sm:text-sm/6 dark:text-white"
-                                    }
-                                >
-                                    {t("label.games-won")}
-                                </span>
+                                <span className={ROW_LABEL}>{t("label.games-won")}</span>
                                 <GameCounter
                                     value={wins[seat.participant] ?? 0}
                                     options={winCounts}
@@ -192,13 +173,7 @@ export function TournamentResultDialog({
                     ))}
 
                     <div className={"flex flex-wrap items-center gap-3"}>
-                        <span
-                            className={
-                                "w-32 shrink-0 text-base/6 text-zinc-950 select-none sm:text-sm/6 dark:text-white"
-                            }
-                        >
-                            {t("label.draws")}
-                        </span>
+                        <span className={ROW_LABEL}>{t("label.draws")}</span>
                         <GameCounter
                             value={draws}
                             options={drawCounts}
@@ -209,9 +184,7 @@ export function TournamentResultDialog({
                 </div>
             </DialogBody>
             <DialogActions>
-                {/* The undo sits beside the thing it undoes rather than as an icon on every row
-                    of the table. It drops back to whatever the players had agreed, not to
-                    nothing — which is why it is not simply "set every count to zero". */}
+                {/* Falls back to what the players reported, not to zero. */}
                 {table.status === "Confirmed" && (
                     <Button plain={true} disabled={saving} onClick={() => void clear()}>
                         {t("button.clear-result")}
@@ -228,9 +201,7 @@ export function TournamentResultDialog({
     );
 }
 
-/**
- * The properties for {@link GameCounter}
- */
+/** The properties for {@link GameCounter} */
 export type GameCounterProps = {
     /** The chosen count */
     value: number;
@@ -243,11 +214,7 @@ export type GameCounterProps = {
 };
 
 /**
- * A row of small counts, one of them pressed.
- *
- * A segmented row rather than a number input: a best-of-three has three possible answers and a
- * best-of-one has two, so every one of them fits on screen and picking is a single tap — on a
- * phone at a table, which is where this is used.
+ * A segmented row of small counts, one of them pressed
  *
  * @returns the row
  */

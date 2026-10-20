@@ -24,9 +24,7 @@ const MAX_BACKOFF = 4;
 /** How many failures in a row before the page admits it is out of date */
 const STALE_AFTER = 2;
 
-/**
- * The properties for {@link useTournamentPulse}
- */
+/** The options for {@link useTournamentPulse} */
 export type TournamentPulseOptions = {
     /** How often to look, in milliseconds — see {@link PULSE_INTERVALS} */
     interval: number;
@@ -36,33 +34,19 @@ export type TournamentPulseOptions = {
     busy?: () => boolean;
 };
 
-/**
- * What {@link useTournamentPulse} hands back
- */
+/** What {@link useTournamentPulse} hands back */
 export type TournamentPulse = {
-    /** Whether the last few attempts failed, or the browser says it is offline */
+    /** Whether the last few attempts failed */
     stale: boolean;
-    /** Look now, and restart the timer */
+    /** Looks now */
     refresh: () => Promise<void>;
 };
 
 /**
- * Keep a tournament page up to date while the room plays
+ * Keeps a tournament page up to date by re-running its loaders (`router.invalidate()`)
  *
- * Polls nothing of its own: it re-runs the route's loaders through
- * `router.invalidate()`, which is this app's one refresh idiom. A hook that fetched separately
- * would give the same page two sources of truth for the same rows — and the loader data is what
- * the components render.
- *
- * Three things make it behave in a shop rather than a lab:
- *
- * - **Jitter.** Forty phones that all started when the round did would otherwise arrive together,
- *   every time, forever.
- * - **Backoff, and silence.** A shop's wifi drops packets; a toast for every missed poll would be
- *   far worse than quietly showing stale data, so failures only surface as {@link TournamentPulse.stale}.
- * - **A busy guard.** A tick that lands while the desk is typing a result is *skipped*, not
- *   queued — queuing it would fire the refresh the instant they finish, which is the one moment it
- *   must not.
+ * Ticks are jittered so a room of phones does not poll in lockstep, back off while failing, and
+ * are skipped (not queued) while `busy` reports an edit in progress.
  *
  * @param options how often to look, and when not to
  * @param options.interval how often to look, in milliseconds
@@ -80,8 +64,6 @@ export function useTournamentPulse({ interval, enabled = true, busy }: Tournamen
 
     const refresh = useCallback(async () => {
         try {
-            // `forcePending: false` is the default and is the point: a pending state every few
-            // seconds would blank the table the desk is reading.
             await router.invalidate();
             failures.current = 0;
             setStale(false);
@@ -103,7 +85,6 @@ export function useTournamentPulse({ interval, enabled = true, busy }: Tournamen
         };
 
         const tick = () => {
-            // Skipped rather than deferred: see the note on the busy guard above.
             if (busyRef.current?.() === true) {
                 schedule();
                 return;
@@ -114,14 +95,8 @@ export function useTournamentPulse({ interval, enabled = true, busy }: Tournamen
         schedule();
 
         const onVisible = () => {
-            if (document.visibilityState !== "visible") {
-                // A backgrounded phone should cost nothing at all.
-                clearTimeout(timer);
-                return;
-            }
-            // Coming back is when the page is most out of date, so it catches up at once.
             clearTimeout(timer);
-            tick();
+            if (document.visibilityState === "visible") tick();
         };
         const onOnline = () => {
             failures.current = 0;

@@ -39,13 +39,9 @@ import { isFormError } from "src/utils/error";
 import { isLimitedFormat } from "src/utils/tournament-format";
 
 /**
- * Whether a decklist is worth a word on this event's roster
+ * Whether decklists matter for this event: not under {@link DecklistPolicy.Optional}, nor in limited
  *
- * Nothing to say under {@link DecklistPolicy.Optional} — the event asks for none — and nothing to
- * say in a limited event either, where the deck is built at the table and there is no list anybody
- * could have handed in beforehand.
- *
- * @param tournament the tournament whose roster is being drawn
+ * @param tournament the tournament
  *
  * @returns whether the decklist state belongs on a row
  */
@@ -70,12 +66,7 @@ export type TournamentRosterProps = {
 };
 
 /**
- * The roster in two columns: everyone confirmed present on the left, everyone still expected on
- * the right, and whoever left the event in a fold underneath.
- *
- * The right column is the one an organizer works — a player arrives, the organizer checks them in,
- * and the row crosses over. Check-in is the desk's to give (the backend refuses it to anybody but
- * staff), so a player looking at this page sees the same two columns without the buttons.
+ * The roster in two columns, checked in and awaiting check-in, with dropped players folded below
  *
  * @returns the roster
  */
@@ -109,8 +100,7 @@ export function TournamentRoster({
      */
     async function checkIn(participant: TournamentParticipantResponse) {
         const response = await Api.tournaments.participants.checkIn(tournamentUuid, participant.uuid);
-        // Under `DecklistPolicy.RequiredToCheckIn` a player with no list on file comes back as the
-        // typed `decklist_missing` refusal rather than throwing.
+        // The only typed refusal is `decklist_missing`.
         if (isFormError(response)) {
             notify.error(t("error.decklist-missing"));
             return;
@@ -131,8 +121,7 @@ export function TournamentRoster({
     /**
      * Drops a player from the event
      *
-     * `drop` bypasses `handleError` (see `api.tsx`) so a guest whose session died mid-event gets a
-     * toast instead of a login redirect they cannot complete.
+     * `drop` bypasses `handleError`, so a guest with a dead session gets a toast, not a login redirect.
      *
      * @param participant the row to drop
      */
@@ -159,7 +148,7 @@ export function TournamentRoster({
         await onChanged();
     }
 
-    /** Locks or unlocks every decklist in the tournament, tournament-wide — never per row */
+    /** Locks or unlocks every decklist in the tournament */
     async function toggleDecklistLock() {
         if (tournament.decklists_locked_at != null) {
             await Api.tournaments.decklists.unlock(tournamentUuid);
@@ -194,8 +183,6 @@ export function TournamentRoster({
                     <span className={"truncate text-sm font-medium text-zinc-950 dark:text-white"}>
                         {participant.display_name}
                     </span>
-                    {/* The two facts an organizer scans for, as one quiet line rather than badges
-                        competing with the name. */}
                     <span className={"flex items-center gap-1.5 truncate text-xs text-zinc-500 dark:text-zinc-400"}>
                         <span>{participant.is_guest ? t("label.guest") : t("label.account")}</span>
                         {participant.fixed_table != null && (
@@ -214,7 +201,7 @@ export function TournamentRoster({
                                             : "font-medium text-red-600 dark:text-red-400"
                                     }
                                 >
-                                    {t(participant.has_decklist ? "label.decklist-on-file" : "label.decklist-none")}
+                                    {participant.has_decklist ? t("label.decklist-on-file") : t("label.decklist-none")}
                                 </span>
                             </>
                         )}
@@ -246,8 +233,6 @@ export function TournamentRoster({
                                     <PencilSquareIcon />
                                     <DropdownLabel>{t("button.edit")}</DropdownLabel>
                                 </DropdownItem>
-                                {/* Same rule the row's meta line follows: a draft builds its deck
-                                    at the table, so there is no list to open. */}
                                 {showsDecklist && (
                                     <DropdownItem onClick={() => setDecklistFor(participant)}>
                                         <DocumentTextIcon />
@@ -333,11 +318,9 @@ export function TournamentRoster({
                 {viewer.may_manage && showsDecklist && (
                     <Button outline={true} onClick={() => void toggleDecklistLock()}>
                         <LockClosedIcon />
-                        {t(
-                            tournament.decklists_locked_at != null
-                                ? "button.unlock-decklists"
-                                : "button.lock-decklists",
-                        )}
+                        {tournament.decklists_locked_at != null
+                            ? t("button.unlock-decklists")
+                            : t("button.lock-decklists")}
                     </Button>
                 )}
                 {viewer.is_organizer && (
@@ -348,8 +331,6 @@ export function TournamentRoster({
                 )}
             </div>
 
-            {/* Two columns from `lg` up — a laptop and a tablet in landscape both clear it, and
-                below that they stack rather than squeezing a name into half a phone. */}
             <div className={"grid grid-cols-1 items-start gap-4 lg:grid-cols-2"}>
                 {column(t("heading.checked-in"), checkedIn)}
                 {column(
@@ -409,8 +390,7 @@ export function TournamentRoster({
                     uuid: decklistFor?.uuid ?? "",
                     display_name: decklistFor?.display_name ?? "",
                 }}
-                // Staff paste a list for somebody else's row; they only link their own deck on
-                // their own row.
+                // Staff only link their own deck on their own row.
                 canPickDeck={decklistFor?.uuid === viewer.participant && me.account !== null}
                 onClose={() => setDecklistFor(null)}
                 onChanged={() => void onChanged()}
@@ -442,12 +422,7 @@ export type TournamentRosterListProps = {
 };
 
 /**
- * The roster as a reader outside the desk sees it: names, in one column, and nothing else.
- *
- * Who is checked in is the organizer's working state — it says nothing to somebody reading the
- * event from outside, so the public surfaces get this instead of {@link TournamentRoster}'s two
- * columns. Whether any names appear at all is the tournament's own roster view to decide; by the
- * time a list reaches here, that decision is already made.
+ * The roster for non-staff readers: names only, no check-in state
  *
  * @returns the list
  */

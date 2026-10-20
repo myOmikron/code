@@ -192,9 +192,7 @@ describe("commander damage order", () => {
         expect(opponentOrder(seats, 4)).toEqual([5, 0, 1, 2, 3]);
     });
 
-    // The rotation above is only turn order because the seats are numbered
-    // clockwise around the table. Nothing in a seating table says so out loud,
-    // so this walks the tiles the players actually sit at and checks it.
+    // opponentOrder is only turn order if every seating is numbered clockwise.
     it("numbers every seating clockwise around the table", () => {
         for (const { seats } of everySeating()) {
             if (seats.length < 3) continue;
@@ -203,16 +201,13 @@ describe("commander damage order", () => {
                 x: seats.reduce((sum, { center }) => sum + center.x, 0) / seats.length,
                 y: seats.reduce((sum, { center }) => sum + center.y, 0) / seats.length,
             };
-            // Screen coordinates run y downwards, which turns the usual
-            // anticlockwise sweep of `atan2` into a clockwise one.
+            // y runs downwards, so atan2 sweeps clockwise here.
             const bearings = seats.map(({ center }) => Math.atan2(center.y - middle.y, center.x - middle.x));
             const steps = bearings.map((bearing, seat) => {
                 const step = bearings[(seat + 1) % bearings.length] - bearing;
                 return step <= 0 ? step + 2 * Math.PI : step;
             });
 
-            // Every step forward and the whole lap coming to one turn: the
-            // seats go round the table once, in order, and never double back.
             for (const step of steps) expect(step).toBeGreaterThan(0);
             expect(steps.reduce((lap, step) => lap + step, 0)).toBeCloseTo(2 * Math.PI);
         }

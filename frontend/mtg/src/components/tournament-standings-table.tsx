@@ -5,9 +5,10 @@ import type { StandingResponse, TiebreakerResponse } from "src/api/generated";
 import { TournamentTiebreakerHelp } from "src/components/tournament-tiebreaker-help";
 import { formatAveragePoints, formatPercent, formatRecord } from "src/utils/standings";
 
-/**
- * The properties for {@link TournamentStandingsTable}
- */
+/** A tiebreaker's column: its heading and how a row reads in it */
+type Column = { label: string; read: (row: StandingResponse) => string };
+
+/** The properties for {@link TournamentStandingsTable} */
 export type TournamentStandingsTableProps = {
     /** The rows, best first */
     standings: Array<StandingResponse>;
@@ -20,16 +21,9 @@ export type TournamentStandingsTableProps = {
 };
 
 /**
- * Where everybody stands.
+ * Where everybody stands, with a column for each tiebreaker the event applies
  *
- * The columns follow whatever tiebreakers the event actually applies rather than a fixed set:
- * duels are scored on opponents' match wins and game wins, pods on the player's own rate and their
- * opponents' points, and showing a column that decides nothing here would invite an argument about
- * a number that was never used.
- *
- * A shared place is printed on every row that holds it, muted after the first. Blanking the
- * repeats would read as a rendering bug, and a player looking for their own line should not have to
- * count upwards to find out what place they are in.
+ * A shared place is printed on every row that holds it, muted after the first.
  *
  * @returns the table
  */
@@ -41,51 +35,44 @@ export function TournamentStandingsTable({
 }: TournamentStandingsTableProps) {
     const [t] = useTranslation("tournament");
 
-    /** The column one tiebreaker earns, or nothing when another column already says it */
-    const column = (tiebreaker: TiebreakerResponse) => {
-        switch (tiebreaker) {
-            // Match points already have a column of their own.
-            case "MatchPoints":
-                return null;
-            case "MatchWinPercent":
-                return {
-                    key: tiebreaker,
-                    label: t("label.tiebreak-mw"),
-                    read: (row: StandingResponse) => formatPercent(row.match_win),
-                };
-            case "OpponentMatchWinPercent":
-                return {
-                    key: tiebreaker,
-                    label: t("label.tiebreak-omw"),
-                    read: (row: StandingResponse) => formatPercent(row.opponent_match_win),
-                };
-            case "GameWinPercent":
-                return {
-                    key: tiebreaker,
-                    label: t("label.tiebreak-gw"),
-                    read: (row: StandingResponse) => formatPercent(row.game_win),
-                };
-            case "OpponentGameWinPercent":
-                return {
-                    key: tiebreaker,
-                    label: t("label.tiebreak-ogw"),
-                    read: (row: StandingResponse) => formatPercent(row.opponent_game_win),
-                };
-            case "OpponentsAveragePoints":
-                return {
-                    key: tiebreaker,
-                    label: t("label.tiebreak-opp-points"),
-                    read: (row: StandingResponse) => formatAveragePoints(row.opponents_average_points),
-                };
-        }
+    // Match points already have a column of their own.
+    const byTiebreaker: Partial<Record<TiebreakerResponse, Column>> = {
+        MatchWinPercent: { label: t("label.tiebreak-mw"), read: (row) => formatPercent(row.match_win) },
+        OpponentMatchWinPercent: {
+            label: t("label.tiebreak-omw"),
+            read: (row) => formatPercent(row.opponent_match_win),
+        },
+        GameWinPercent: { label: t("label.tiebreak-gw"), read: (row) => formatPercent(row.game_win) },
+        OpponentGameWinPercent: {
+            label: t("label.tiebreak-ogw"),
+            read: (row) => formatPercent(row.opponent_game_win),
+        },
+        OpponentsAveragePoints: {
+            label: t("label.tiebreak-opp-points"),
+            read: (row) => formatAveragePoints(row.opponents_average_points),
+        },
     };
+    const columns = tiebreakers.flatMap((tiebreaker) => {
+        const column = byTiebreaker[tiebreaker];
+        return column === undefined ? [] : [{ key: tiebreaker, ...column }];
+    });
 
-    const columns = tiebreakers.map(column).filter((entry) => entry !== null);
-
-    /** Whether this row repeats the place above it */
+    /**
+     * Whether this row repeats the place above it
+     *
+     * @param index the row
+     *
+     * @returns whether the place is shared
+     */
     const shares = (index: number) => index > 0 && standings[index - 1].place === standings[index].place;
 
-    /** The player's name, with whatever is worth saying beside it */
+    /**
+     * The player's name, struck through once dropped
+     *
+     * @param row the row
+     *
+     * @returns the name
+     */
     const name = (row: StandingResponse) => (
         <span className={"flex flex-wrap items-center gap-2"}>
             <span className={clsx("text-zinc-950 dark:text-white", row.dropped && "line-through opacity-60")}>
@@ -97,8 +84,6 @@ export function TournamentStandingsTable({
 
     return (
         <div className={"flex flex-col gap-4"}>
-            {/* Said before anybody wonders: ranks move while tables are still out, and a reader
-                who does not know that thinks the table is unstable rather than incomplete. */}
             {outstandingTables > 0 && (
                 <Text className={"text-sm"}>{t("description.outstanding-tables", { count: outstandingTables })}</Text>
             )}
@@ -144,9 +129,7 @@ export function TournamentStandingsTable({
                 ))}
             </ul>
 
-            {/* Capped rather than stretched: seven short columns across a wide screen leaves a
-                hand's width of nothing between a name and its numbers, and the eye has to travel
-                it on every row. */}
+            {/* Capped so the numbers stay close to the names. */}
             <div className={"hidden max-w-4xl sm:block"}>
                 <Table dense={true} striped={true} className={"[--gutter:--spacing(3)]"}>
                     <TableHead>

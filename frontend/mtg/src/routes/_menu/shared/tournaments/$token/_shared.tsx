@@ -27,16 +27,9 @@ export const Route = createFileRoute("/_menu/shared/tournaments/$token/_shared")
 });
 
 /**
- * The chrome around a tournament somebody shared: its name, status, format, when and where.
+ * The read-only frame around a shared tournament: name, status, format and start time
  *
- * One page rather than two tabs, the same call the authed side made: how full the event is and
- * who is in it are one glance, not two.
- *
- * Read-only by construction, like the rest of this section: no join code, no decklists, no
- * organizer usernames and no actions anywhere under this layout. See `SharedTournamentResponse`'s
- * own doc comment for why it is a type of its own rather than a redacted `TournamentResponse`.
- *
- * @returns the tabbed frame around the current tab, or the dead-link empty state
+ * @returns the frame around the page, or the dead-link empty state
  */
 function RouteComponent() {
     const { tournament } = Route.useLoaderData();

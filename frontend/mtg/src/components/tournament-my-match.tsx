@@ -11,11 +11,12 @@ import { TournamentReportDialog } from "src/components/tournament-report-dialog"
 import { roundTitle } from "src/components/tournament-round-panel";
 import { TournamentRoundClock } from "src/components/tournament-round-clock";
 import { isFormError } from "src/utils/error";
-import type { RoundClock } from "src/utils/round-clock";
+import { roundClockOf } from "src/utils/round-clock";
 
-/**
- * The properties for {@link TournamentMyMatch}
- */
+/** What a result says, from a player's report or the table's settled result */
+type Claim = Pick<MatchReportResponse, "winner" | "draw" | "winner_games" | "loser_games">;
+
+/** The properties for {@link TournamentMyMatch} */
 export type TournamentMyMatchProps = {
     /** The tournament being played */
     tournamentUuid: string;
@@ -32,8 +33,7 @@ export type TournamentMyMatchProps = {
 };
 
 /**
- * The viewer's own table in the current round: where to sit, against whom, the clock, and the way
- * to report.
+ * The viewer's own table in the current round: where to sit, against whom, the clock, and reporting
  *
  * @returns the card, or nothing for a viewer who is not playing this round
  */
@@ -83,30 +83,22 @@ export function TournamentMyMatch({
     const mine = match.reports.find((report) => report.reporter === me);
     const theirs = match.reports.find((report) => report.reporter !== me);
     const open = round.status !== "Complete";
-    const clock: RoundClock | null = open
-        ? {
-              endsAt: round.timer.ends_at ?? null,
-              pausedAt: round.timer.paused_at ?? null,
-              lengthSeconds: round.timer.length_seconds,
-          }
-        : null;
+    const clock = roundClockOf(round);
 
     /**
-     * Says what a report claims, from the viewer's side of the table
+     * Says what a claim amounts to, from the viewer's side of the table
      *
-     * @param report the claim
+     * @param claim the claim
      *
      * @returns the phrase
      */
-    function describe(report: Pick<MatchReportResponse, "winner" | "draw" | "winner_games" | "loser_games">) {
-        if (report.draw) return t("label.draw");
-        if (duel) {
-            const score = `${report.winner_games}:${report.loser_games}`;
-            return report.winner === me
-                ? t("label.score-for-you", { score })
-                : t("label.score-for", { score, name: nameOf(report.winner) });
-        }
-        return report.winner === me ? t("label.you-won") : t("label.player-won", { name: nameOf(report.winner) });
+    function describe(claim: Claim) {
+        if (claim.draw) return t("label.draw");
+        const won = claim.winner === me;
+        const name = nameOf(claim.winner);
+        if (!duel) return won ? t("label.you-won") : t("label.player-won", { name });
+        const score = `${claim.winner_games}:${claim.loser_games}`;
+        return won ? t("label.score-for-you", { score }) : t("label.score-for", { score, name });
     }
 
     /**
@@ -134,7 +126,7 @@ export function TournamentMyMatch({
         }
     }
 
-    const change = (
+    const change = open && (
         <Button plain={true} onClick={() => setReporting(true)}>
             <PencilIcon />
             {t("button.change-report")}
@@ -145,21 +137,9 @@ export function TournamentMyMatch({
     if (round.status === "Pairing") {
         status = <Status tone={"info"} title={t("label.round-starts-soon")} />;
     } else if (table.status === "Confirmed") {
-        status = (
-            <Status
-                tone={"ok"}
-                title={t("label.result-confirmed", {
-                    result: describe({
-                        winner: table.winner,
-                        draw: table.is_draw,
-                        winner_games: Math.max(...table.seats.map((seat) => seat.games_won)),
-                        loser_games: Math.min(...table.seats.map((seat) => seat.games_won)),
-                    }),
-                })}
-            />
-        );
+        status = <Status tone={"ok"} title={t("label.result-confirmed", { result: describe(settledClaim(table)) })} />;
     } else if (table.status === "Disputed") {
-        status = <Status tone={"bad"} title={t("label.result-disputed")} actions={open && change} />;
+        status = <Status tone={"bad"} title={t("label.result-disputed")} actions={change} />;
     } else if (mine !== undefined) {
         status = (
             <Status
@@ -170,7 +150,7 @@ export function TournamentMyMatch({
                         ? t("label.waiting-for", { name: opponent.display_name })
                         : t("label.waiting-for-confirmation")
                 }
-                actions={open && change}
+                actions={change}
             />
         );
     } else if (theirs !== undefined) {
@@ -253,6 +233,23 @@ export function TournamentMyMatch({
             />
         </Card>
     );
+}
+
+/**
+ * Reads a settled table as a claim: its winner and the games won by the two extremes
+ *
+ * @param table the table
+ *
+ * @returns the claim
+ */
+function settledClaim(table: MatchTableResponse): Claim {
+    const games = table.seats.map((seat) => seat.games_won);
+    return {
+        winner: table.winner,
+        draw: table.is_draw,
+        winner_games: Math.max(...games),
+        loser_games: Math.min(...games),
+    };
 }
 
 /**

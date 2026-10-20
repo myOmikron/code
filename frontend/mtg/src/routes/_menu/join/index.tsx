@@ -14,10 +14,7 @@ const CODE_PATTERN = /^[A-Za-z0-9-]{4,8}$/;
 const JOIN_PATH_PATTERN = /^\/join\/([A-Za-z0-9-]{4,8})\/?$/;
 
 /**
- * Uppercases a typed or scanned code and drops the whitespace/dash a visitor (or the card's own
- * `XXX-XXX` display form) might have put in it — what the join calls and the route both want is
- * the bare code underneath. Pure and stateless, so `handleScan` below can be memoized against it
- * without going stale.
+ * Uppercases a typed or scanned code and strips whitespace and the display dash
  *
  * @param raw the code as typed or decoded
  *
@@ -28,9 +25,7 @@ function normalizeCode(raw: string): string {
 }
 
 /**
- * Reads a scanned QR payload: either a deep link (`{origin}/join/{code}`, any origin) or a bare
- * code drawn straight onto a whiteboard as a QR. Anything else is not a join code at all — the
- * scanner keeps looking rather than treating it as a wrong code.
+ * Reads a scanned QR payload: a `/join/{code}` deep link on any origin, or a bare code
  *
  * @param value the decoded text
  *
@@ -43,7 +38,7 @@ function extractCode(value: string): string | null {
         const match = JOIN_PATH_PATTERN.exec(url.pathname);
         if (match) return match[1];
     } catch {
-        // Not a URL at all — fall through to the bare-code check below.
+        // Not a URL; try it as a bare code.
     }
     return CODE_PATTERN.test(trimmed) ? trimmed : null;
 }
@@ -56,11 +51,7 @@ export const Route = createFileRoute("/_menu/join/")({
 });
 
 /**
- * The typed-code field and the in-app scanner — the two ways in besides opening the deep link
- * itself, side by side rather than one behind a fallback.
- *
- * Reachable with no session at all: a visitor with nothing but a code on a whiteboard is exactly
- * who this page exists for, so there is no `<RequireAccount>` here.
+ * Join by typing a code or scanning its QR; reachable without a session
  *
  * @returns the page
  */
@@ -69,55 +60,36 @@ function RouteComponent() {
     const navigate = useNavigate();
 
     const [code, setCode] = useState("");
-    // Scanning is a separate switch from the camera's own state: mounting `<QrScanner>` is what
-    // requests the camera (TRAP 3 — never on page load), and un-mounting it is what releases it,
-    // whether that is the visitor pressing "stop" or the camera having failed to open at all.
+    // Mounting `<QrScanner>` requests the camera, so it is only mounted on demand.
     const [scanning, setScanning] = useState(false);
-    // A bump remounts `<QrScanner>` with a fresh "done" flag and a fresh camera request, which is
-    // how the scanner keeps looking after a frame decodes to something that is not a join code.
+    // Bumped to remount the scanner, which resumes scanning after a non-join QR.
     const [scannerKey, setScannerKey] = useState(0);
     const [cameraNote, setCameraNote] = useState<"denied" | "unavailable" | null>(null);
 
-    /**
-     * Navigates to the deep-link page for a normalised code, if there is one to go to
-     *
-     * @param raw the code as typed or decoded, not yet normalised
-     */
-    function goToCode(raw: string) {
-        const normalized = normalizeCode(raw);
-        if (normalized === "") return;
-        void navigate({ to: "/join/$code", params: { code: normalized } });
-    }
-
-    // Memoized against only `navigate` (stable across renders) and the two pure module-scope
-    // helpers above: `<QrScanner>`'s scanning loop tears down and rebuilds whenever this prop's
-    // identity changes, so a fresh closure on every keystroke in the code field — the two boxes
-    // are on the same screen — would otherwise reset it mid-scan for no reason.
-    const handleScan = useCallback(
-        (value: string) => {
-            const code = extractCode(value);
-            if (code === null) {
-                // Not a join code — keep scanning rather than showing a dead end.
-                setScannerKey((key) => key + 1);
-                return;
-            }
-            const normalized = normalizeCode(code);
+    /** Opens the deep-link page for a typed or decoded code, if it is not blank */
+    const goToCode = useCallback(
+        (raw: string) => {
+            const normalized = normalizeCode(raw);
             if (normalized === "") return;
             void navigate({ to: "/join/$code", params: { code: normalized } });
         },
         [navigate],
     );
 
-    /**
-     * Tracks why the camera would not open, so the page can say which failure it was and stop
-     * offering a viewfinder that will never show anything.
-     *
-     * The hook tells four failures apart; this page has two things to say about them. A refused
-     * permission is the one the visitor can still fix from here, so it keeps its own note —
-     * an insecure origin, a device with no camera and one that would not open all land on the
-     * same "no camera, type the code instead" line, which is the only advice that helps for any
-     * of them anyway.
-     */
+    // Memoized: `<QrScanner>` restarts its scan loop whenever `onScan` changes identity.
+    const handleScan = useCallback(
+        (value: string) => {
+            const code = extractCode(value);
+            if (code === null) {
+                setScannerKey((key) => key + 1);
+                return;
+            }
+            goToCode(code);
+        },
+        [goToCode],
+    );
+
+    /** Stops scanning when the camera fails; only a denied permission gets its own note */
     const handleCameraError = useCallback((error: Camera["error"]) => {
         if (error === null) return;
         setCameraNote(error === "denied" ? "denied" : "unavailable");

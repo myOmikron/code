@@ -7,20 +7,16 @@ import { Api } from "src/api/api";
 import type { TournamentStatus } from "src/api/generated";
 
 /**
- * The one step forward a tournament can take from where it stands
- *
- * The lifecycle is a straight line — Registration, Running, Finished — with `Cancelled` as the
- * only branch off it, and that one lives in the settings tab where the rest of the irreversible
- * things are. So there is never a choice to offer here, only the next step or nothing.
+ * The one step forward a tournament can take (cancelling lives on the settings tab)
  */
 type NextStep = {
     /** The status the button moves the tournament to */
     to: TournamentStatus;
     /** The `tournament` namespace key naming the button */
     button: string;
-    /** The dialog's title key — every remaining step is worth confirming */
+    /** The confirmation dialog's title key */
     confirm: string;
-    /** What the dialog says the step costs */
+    /** The confirmation dialog's description key */
     confirmDescription: string;
     /** The icon on the button */
     icon: ReactNode;
@@ -61,10 +57,7 @@ function nextStep(status: TournamentStatus): NextStep | null {
 const NAMES_SHOWN = 5;
 
 /**
- * Names, read as a list, with a long tail folded into a count
- *
- * Ten people who never checked in is a paragraph nobody reads; five and "und 5 weitere" is a
- * sentence. The caller supplies the tail's wording so this stays free of the translator.
+ * Joins names into one line, folding everything past {@link NAMES_SHOWN} into a count
  *
  * @param names the names to read out
  * @param more renders the tail for the names that did not fit
@@ -85,7 +78,7 @@ export type TournamentNextStepProps = {
     tournamentUuid: string;
     /** Where it stands right now */
     status: TournamentStatus;
-    /** Whether the viewer may move it — a scorekeeper may not */
+    /** Whether the viewer may move it */
     mayManage: boolean;
     /** The names still waiting to be checked in, in roster order */
     awaiting: Array<string>;
@@ -94,19 +87,9 @@ export type TournamentNextStepProps = {
 };
 
 /**
- * The button that moves a tournament to its next stage, floating at the bottom of the page.
+ * Sticky button at the bottom of the page that moves a tournament to its next stage
  *
- * Sticky rather than parked at the end: an organizer works down the roster checking people in and
- * then starts the event, so the button has to still be there after a screen of scrolling. It
- * settles into the flow at the bottom of the page once there is nothing left to scroll.
- *
- * Renders nothing for a finished or cancelled event, and nothing for staff who may not manage —
- * an always-visible button that refuses is worse than no button.
- *
- * Deliberately silent on success. The app's toasts come up bottom-right, which is exactly where
- * this button sits, so a toast here would cover the one thing it is confirming — and there is
- * nothing left to confirm anyway: the status badge in the header changes and the button relabels
- * itself to the next step, or goes away.
+ * No success toast: toasts appear bottom-right, right on top of this button.
  *
  * @returns the floating action, or nothing
  */
@@ -133,9 +116,6 @@ export function TournamentNextStep({
 
     return (
         <>
-            {/* A scrim, not a bare floating button: the roster's own rows carry right-aligned
-                controls, and a solid button parked on top of one reads as a mis-click waiting to
-                happen. Content fades into the page's own ground under it instead. */}
             <div
                 className={
                     "sticky bottom-0 z-10 -mx-2 flex justify-end bg-gradient-to-t from-(--surface-page) from-60% to-transparent px-2 pt-10 pb-4"
@@ -155,8 +135,7 @@ export function TournamentNextStep({
                 description={t(step.confirmDescription)}
                 confirmLabel={t(step.button)}
             >
-                {/* Starting the event clears the check-in queue, so the people about to lose
-                    their place are named before the click rather than counted after it. */}
+                {/* Starting drops everyone not checked in, so name them. */}
                 {step.to === "Running" && awaiting.length > 0 && (
                     <div className={"mt-4 flex flex-col gap-1"}>
                         <Text className={"text-sm"}>

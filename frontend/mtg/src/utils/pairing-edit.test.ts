@@ -2,7 +2,11 @@ import { describe, expect, it } from "vitest";
 import type { EditLayout } from "src/utils/pairing-edit";
 import { canMove, isRematch, move, movedPins, movedPlayers, swap, toRequest } from "src/utils/pairing-edit";
 
-/** A duel round: two tables, one of them reported, and a bye */
+/**
+ * A duel round: three tables, the first one reported, a bye and an unseated player
+ *
+ * @returns the layout
+ */
 const duels = (): EditLayout => ({
     tables: [
         { key: "t1", number: 1, isBye: false, locked: true, seats: ["anna", "ben"] },
@@ -13,7 +17,11 @@ const duels = (): EditLayout => ({
     tray: ["jonas"],
 });
 
-/** A pod round: one full pod and two short ones */
+/**
+ * A pod round: one full pod and two short ones, the last reported
+ *
+ * @returns the layout
+ */
 const pods = (): EditLayout => ({
     tables: [
         { key: "p1", number: 1, isBye: false, locked: false, seats: ["a", "b", "c", "d"] },

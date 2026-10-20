@@ -15,17 +15,10 @@ const URGENT_SECONDS = 60;
 /** How much a single tap on the plus or minus is worth, in seconds */
 const NUDGE_SECONDS = 60;
 
-/**
- * How the clock is drawn
- *
- * `inline` sits in a toolbar beside other controls. `display` is the projector: no controls at
- * all, and as large as the room needs.
- */
+/** How the clock is drawn: `inline` in a toolbar, or `display` for the projector, without controls */
 export type RoundClockSize = "inline" | "display";
 
-/**
- * The properties for {@link TournamentRoundClock}
- */
+/** The properties for {@link TournamentRoundClock} */
 export type TournamentRoundClockProps = {
     /** The round's three clock fields, or `null` when there is no round */
     clock: RoundClock | null;
@@ -46,27 +39,10 @@ export type TournamentRoundClockProps = {
 };
 
 /**
- * The round clock: one control, with the minute either side of the face.
+ * The round clock: the face starts, pauses and resumes it, with a minute off or on either side
  *
- * The face is the button. Tapping it pauses a running clock and resumes a stopped one, which is
- * the whole interaction an organizer has with it, so it does not deserve a labelled button of its
- * own beside the digits — three buttons and a badge around a number was four things saying what
- * two can.
- *
- * **Two signals, two channels.** The digits carry time pressure — amber under five minutes, red
- * under one — and the ring carries whether the clock is running. That separation is the point: an
- * amber ring around neutral digits is a clock somebody stopped at twenty minutes, and amber digits
- * in a plain ring is a round four minutes from time. Colouring the digits for both made those two
- * states identical at a glance.
- *
- * Colour never fills a background: a clock that flashes for the last five minutes of every round
- * is unbearable in a room somebody has to sit in all evening. At zero the face stops counting and
- * calls time — "Time!" is what the room is listening for, and a negative number only invites the
- * question of what it means.
- *
- * The face is hidden from assistive technology and a sibling `role="timer"` carries the reading
- * instead, updated only as the round crosses its thresholds — a live region that announces every
- * second is unusable.
+ * The digits' colour carries time pressure and the ring whether the clock is paused. At zero the
+ * face calls time instead of counting into overtime.
  *
  * @returns the clock
  */
@@ -106,8 +82,7 @@ export function TournamentRoundClock({
         </span>
     );
 
-    // Announced at the thresholds only: a screen reader reading a ticking clock aloud every second
-    // makes the rest of the page unusable.
+    // Not a live region: a clock read aloud every second drowns out the page.
     const announced = !reading.started
         ? t("label.clock-not-started")
         : reading.over
@@ -119,8 +94,6 @@ export function TournamentRoundClock({
         </span>
     );
 
-    // Read-only: the projector, a player's phone, and a round still being set up — its clock only
-    // starts when the round is handed to the room, so there is nothing here to press yet.
     if (size === "display" || !canControl) {
         return (
             <div className={clsx("flex items-center", size === "display" ? "gap-6" : "gap-3")}>
@@ -131,7 +104,6 @@ export function TournamentRoundClock({
         );
     }
 
-    /** The one thing tapping the face does from where the clock stands */
     const toggle = !reading.started ? onStart : reading.paused ? onResume : onPause;
     const toggleLabel = !reading.started
         ? t("button.start-clock")
@@ -154,9 +126,7 @@ export function TournamentRoundClock({
                         : "ring-1 ring-zinc-950/10 dark:ring-white/15",
                 )}
             >
-                {/* Plain buttons, deliberately not the press-and-hold `CounterButton`: a repeat on
-                    hold is a way to silently add ten minutes to a round. Disabled before the round
-                    starts because adjusting a clock with no deadline is a no-op server-side. */}
+                {/* Not `CounterButton`: repeat-on-hold would silently add minutes. */}
                 <button
                     type={"button"}
                     disabled={!reading.started}

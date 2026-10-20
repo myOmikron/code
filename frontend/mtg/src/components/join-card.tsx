@@ -31,18 +31,13 @@ import { formatDateTime } from "src/utils/format";
 import { addTournamentGuest } from "src/utils/tournament-guest";
 
 /**
- * Every field {@link JoinErrors} can carry, mapped onto the one inline message the card shows.
- *
- * The lookup and both join calls share this exact error shape, so one map serves all three —
- * `handleFormError` requires every field to have a handler regardless of which call actually set
- * it, since a shared backend type carries fields no single endpoint can trigger. Exported
- * because the code lookup on the `/join` pages shares the same error shape.
+ * Maps {@link JoinErrors} onto the card's inline message
  *
  * @param t the `tournament` namespace translator
  *
  * @returns the handler map {@link handleFormError} wants
  */
-export function joinErrorHandlers(t: (key: string) => string): {
+function joinErrorHandlers(t: (key: string) => string): {
     [Key in keyof JoinErrors]: (errors: ValidationErrors) => void;
 } {
     return {
@@ -74,8 +69,7 @@ export function joinErrorHandlers(t: (key: string) => string): {
 }
 
 /**
- * The reminder shown under the preview card once a lookup resolves, `null` when the policy asks
- * nothing extra of a joining player.
+ * The decklist reminder for a joining player, `null` when the policy asks for nothing
  *
  * @param policy the tournament's decklist policy
  * @param t the `tournament` namespace translator
@@ -106,14 +100,7 @@ export type JoinCardProps = {
 };
 
 /**
- * Everything that happens once a join code has resolved: the preview of what it names, whether
- * the viewer already has a seat, and — if not — the form that gets them one.
- *
- * Split out of the former join-code dialog so the same card can back the `/join/$code` deep-link
- * page (see the tournament-play plan's Q4): every door into a tournament ends up rendering this
- * once a code resolves, so it owns the whole decision tree from here on — guest vs. account,
- * decklist required or not, and the two doors a logged-out visitor gets to sign in or sign up
- * without losing the code they came in on.
+ * A resolved join code: the tournament preview, and the join form unless the viewer is already in
  *
  * @returns the card
  */
@@ -126,28 +113,22 @@ export function JoinCard({ code, lookup, onJoined }: JoinCardProps) {
     const [joinError, setJoinError] = useState<string | undefined>();
     const [joining, setJoining] = useState(false);
 
-    // How an account hands in its list: link one of its own decks, or paste text like a guest
-    // does. Guests only ever paste — there is no toggle on their side.
+    // Only accounts can link a deck; guests always paste.
     const [decklistMode, setDecklistMode] = useState<"link" | "paste">("link");
     const [decks, setDecks] = useState<Array<DeckOverviewResponse>>([]);
     const [deckUuid, setDeckUuid] = useState("");
     const [showAllFormats, setShowAllFormats] = useState(false);
     const [decklistText, setDecklistText] = useState("");
 
-    // Whether the viewer already has a row on this roster, checked quietly against the real
-    // tournament (not the anonymous lookup, which never carries a viewer). Starts `true` so the
-    // form never flashes on screen before the answer is in.
+    // Starts `true` so the form does not flash before the membership check answers.
     const [checkingMembership, setCheckingMembership] = useState(true);
     const [alreadyIn, setAlreadyIn] = useState(false);
 
-    // Prefills the account's own username once the session check resolves.
     useEffect(() => {
         setDisplayName(me.account?.username ?? "");
     }, [me.account]);
 
-    // Only once there is an account to ask for — TRAP 2: `Api.decks.list()` 401s for a guest,
-    // and that 401 would run through `handleError` into a login redirect a guest cannot
-    // complete. A visitor never sees this request at all.
+    // Account-only: for a guest, the 401 would go through `handleError` into a login redirect.
     useEffect(() => {
         if (me.account === null) {
             setDecks([]);
@@ -159,7 +140,7 @@ export function JoinCard({ code, lookup, onJoined }: JoinCardProps) {
                 if (!cancelled) setDecks(loaded);
             },
             () => {
-                // Reported by `handleError` already; the picker simply stays empty.
+                // Reported by `handleError`; the picker stays empty.
             },
         );
         return () => {
@@ -167,10 +148,7 @@ export function JoinCard({ code, lookup, onJoined }: JoinCardProps) {
         };
     }, [me.account]);
 
-    // `Api.tournaments.get` bypasses `handleError` on purpose (see its comment in `api.tsx`): a
-    // stranger gets a 401, a private event a 400, and both are the ordinary way for most people
-    // reaching this card to fail the check, not something worth the app's error screen. Either
-    // one, like `participant` coming back `null`, just means "show the form".
+    // The lookup carries no viewer, so membership is checked against the tournament itself.
     useEffect(() => {
         let cancelled = false;
         setCheckingMembership(true);
@@ -180,7 +158,7 @@ export function JoinCard({ code, lookup, onJoined }: JoinCardProps) {
                 const response = await Api.tournaments.get(lookup.tournament);
                 if (!cancelled) setAlreadyIn(response.viewer.participant != null);
             } catch {
-                // Stranger (401) or private event (400) — not an error, just "not a member yet".
+                // A 401 (stranger) or 400 (private event) just means "not a member yet".
             } finally {
                 if (!cancelled) setCheckingMembership(false);
             }
@@ -190,17 +168,25 @@ export function JoinCard({ code, lookup, onJoined }: JoinCardProps) {
         };
     }, [lookup.tournament]);
 
-    // Format-matched by default — a Legacy deck offered for a Modern event is a mistake far more
-    // often than it is deliberate, but nothing stops the account from picking one anyway.
     const filteredDecks = showAllFormats ? decks : decks.filter((overview) => overview.deck.format === lookup.format);
 
-    const decklistProvided =
-        me.account === null
-            ? decklistText.trim() !== ""
-            : decklistMode === "link"
-              ? deckUuid !== ""
-              : decklistText.trim() !== "";
+    const linksDeck = me.account !== null && decklistMode === "link";
+    const decklistProvided = linksDeck ? deckUuid !== "" : decklistText.trim() !== "";
     const decklistRequired = lookup.decklist_policy === DecklistPolicy.RequiredToRegister;
+    const decklistHint = decklistPolicyHint(lookup.decklist_policy, t);
+
+    /**
+     * Shows a join refusal; `already_registered` means a row appeared since the membership check
+     *
+     * @param error the refusal
+     */
+    function handleRefusal(error: JoinErrors) {
+        if (error.already_registered) {
+            onJoined(lookup.tournament);
+            return;
+        }
+        setJoinError(handleFormError(error, joinErrorHandlers(t)).form);
+    }
 
     /** Joins under the signed-in account */
     async function joinAsAccount() {
@@ -219,14 +205,7 @@ export function JoinCard({ code, lookup, onJoined }: JoinCardProps) {
                       : { text: decklistText.trim() },
             );
             if (isFormError(response)) {
-                // The up-front membership check above missed it — a row appeared between that
-                // check and this click. Either way the viewer is in; there is nothing to show
-                // but the way to the tournament they already have.
-                if (response.error.already_registered) {
-                    onJoined(lookup.tournament);
-                    return;
-                }
-                setJoinError(handleFormError(response.error, joinErrorHandlers(t)).form);
+                handleRefusal(response.error);
                 return;
             }
             notify.success(t("toast.joined"));
@@ -254,11 +233,7 @@ export function JoinCard({ code, lookup, onJoined }: JoinCardProps) {
                 decklistText.trim() === "" ? undefined : decklistText.trim(),
             );
             if (isFormError(response)) {
-                if (response.error.already_registered) {
-                    onJoined(lookup.tournament);
-                    return;
-                }
-                setJoinError(handleFormError(response.error, joinErrorHandlers(t)).form);
+                handleRefusal(response.error);
                 return;
             }
             addTournamentGuest({
@@ -296,8 +271,6 @@ export function JoinCard({ code, lookup, onJoined }: JoinCardProps) {
             {lookup.starts_at != null && <Text>{formatDateTime(lookup.starts_at)}</Text>}
 
             {checkingMembership ? (
-                // `label.loading` rather than a new key — this is the same "still asking the
-                // server" moment as the account wait below, just for a different question.
                 <Text>{t("label.loading")}</Text>
             ) : alreadyIn ? (
                 <div className={"flex flex-col gap-3"}>
@@ -317,16 +290,12 @@ export function JoinCard({ code, lookup, onJoined }: JoinCardProps) {
                 <InlineError>{t("error.registration-closed")}</InlineError>
             ) : (
                 <div className={"flex flex-col gap-3"}>
-                    {decklistPolicyHint(lookup.decklist_policy, t) !== null && (
-                        // `Text`, not `Description` — this card is not always inside a `Field` or
-                        // a `Dialog` (the `/join/$code` page renders it directly on the page), and
-                        // Headless UI's `Description` throws outside both. `Text`'s default
-                        // styling is identical, so nothing changes on screen.
-                        <Text>{decklistPolicyHint(lookup.decklist_policy, t)}</Text>
+                    {decklistHint !== null && (
+                        // Not `Description`: Headless UI's throws outside a `Field` or `Dialog`.
+                        <Text>{decklistHint}</Text>
                     )}
                     {me.loading ? (
-                        // Never flash the guest form at an account still being resolved — a
-                        // logged-in account joins under its own name, not as a fresh guest.
+                        // Do not flash the guest form while the session is still resolving.
                         <Text>{t("label.loading")}</Text>
                     ) : (
                         <>

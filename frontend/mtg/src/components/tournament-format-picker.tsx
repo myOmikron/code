@@ -38,28 +38,15 @@ export type TournamentFormatPickerProps = {
     disabled?: boolean;
     /** What is wrong with the current pick, shown under the format */
     errors?: Array<string>;
-    /**
-     * A field that belongs to the format, laid out beside the second step
-     *
-     * The dialog puts best-of here while the format seats two: how long a match is follows from
-     * what is played, so it reads as part of the format rather than as a rule of its own.
-     */
+    /** A related field laid out beside the format select (the dialog's best-of) */
     aside?: ReactNode;
 };
 
 /**
- * The tournament dialog's format field, in two steps: constructed or limited first, then which
- * one of those.
+ * The tournament dialog's format field: constructed or limited first, then which format
  *
- * Two steps because they are two different questions. Limited is what an evening at the store
- * usually is, and Draft and Sealed are nowhere in the format catalog — the catalog lists what a
- * deck is built for in advance, and a limited deck is not. Putting them at the top of a list of
- * two dozen constructed formats would have hidden the one choice most organizers make first.
- *
- * The second step is a native select, not the anchored popover the rest of the form uses. Two
- * dozen entries are taller than the dialog, and an anchored list that tall floats over whatever
- * the dialog scrolls to while it is open; the browser's own menu handles a long list and a
- * scrolling parent on its own, and reads well on a phone.
+ * The second step is a native select: an anchored popover that tall floats over the scrolling
+ * dialog.
  *
  * @returns the fieldset
  */
@@ -133,7 +120,7 @@ export function TournamentFormatPicker({
 /**
  * What a limited format is called
  *
- * Spelled out per case like `deck-labels.ts` does, so the translation scanner sees the keys.
+ * One literal key per case, so the translation scanner sees them.
  *
  * @param t the tournament namespace's translate function
  * @param slug the format

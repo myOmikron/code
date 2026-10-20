@@ -19,7 +19,7 @@ import {
 import { QRCodeSVG } from "qrcode.react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
-import type { ParticipantStatus, TournamentStatus } from "src/api/generated";
+import type { TournamentStatus } from "src/api/generated";
 import { TournamentSlots } from "src/components/tournament-slots";
 
 /** How many characters of a join code sit before the display dash */
@@ -29,12 +29,7 @@ const CODE_SPLIT = 3;
 type BadgeColor = NonNullable<BadgeProps["color"]>;
 
 /**
- * The colour a tournament's lifecycle status reads best in
- *
- * Exported alongside the join-code card — every other tournament surface (the list, the layout
- * heading, the overview and settings tabs, the join lookup card) needs the same mapping, and this
- * is the smallest component file already reused by all of them; see `DeckTile`'s
- * `VISIBILITY_ICON`/`VISIBILITY_LABEL` for the same "bundle it with the nearest component" call.
+ * The badge colour for a tournament's lifecycle status
  *
  * @param status the tournament's status
  *
@@ -74,53 +69,7 @@ export function tournamentStatusLabelKey(status: TournamentStatus): string {
 }
 
 /**
- * The colour a participant's status reads best in
- *
- * Fixed by the plan, not a design choice made here: zinc Registered, sky CheckedIn, amber
- * Dropped, red Disqualified.
- *
- * @param status the participant's status
- *
- * @returns the badge colour
- */
-export function participantStatusColor(status: ParticipantStatus): BadgeColor {
-    switch (status) {
-        case "Registered":
-            return "zinc";
-        case "CheckedIn":
-            return "sky";
-        case "Dropped":
-            return "amber";
-        case "Disqualified":
-            return "red";
-    }
-}
-
-/**
- * The translation key naming a participant's status
- *
- * @param status the participant's status
- *
- * @returns the `tournament` namespace key
- */
-export function participantStatusLabelKey(status: ParticipantStatus): string {
-    switch (status) {
-        case "Registered":
-            return "label.player-registered";
-        case "CheckedIn":
-            return "label.player-checked-in";
-        case "Dropped":
-            return "label.player-dropped";
-        case "Disqualified":
-            return "label.player-disqualified";
-    }
-}
-
-/**
  * Splits a raw join code into its `XXX-XXX` display form
- *
- * Exported alongside the card — {@link JoinQrDialog} shows the same code in the same form, and
- * this is the one place that knows where the dash goes.
  *
  * @param code the raw, six character code
  *
@@ -134,10 +83,7 @@ export function displayJoinCode(code: string): string {
 const JOIN_BAR_LABEL = "text-xs font-semibold tracking-wider text-zinc-500 uppercase dark:text-zinc-400";
 
 /**
- * Puts the join link on the clipboard
- *
- * Spelled out rather than reusing `CopyButton`, which is icon-only: two identical clipboard icons
- * in one bar, one copying the code and one the link, told a reader nothing about which was which.
+ * Puts the join link on the clipboard (a labelled button, unlike the icon-only `CopyButton`)
  *
  * @param url the link to copy
  * @param message what to say once it is on the clipboard
@@ -159,24 +105,14 @@ export type TournamentJoinBarProps = {
     participantCount: number;
     /** How many fit, `null` for an event that turns nobody away */
     maxParticipants: number | null | undefined;
-    /** Whether the viewer may rotate or revoke it — a scorekeeper may see it, not touch it */
+    /** Whether the viewer may rotate or revoke the code */
     mayManage: boolean;
-    /** Called after a rotate or revoke went through, so the caller can reload the tournament */
+    /** Called after a rotate or revoke */
     onChanged: () => void | Promise<void>;
 };
 
 /**
- * The bar across the top of a tournament: the code people join by, the QR beside it, and how
- * full the room is.
- *
- * Three zones on one line — the join credentials, the count, and the actions — and the first two
- * are built as the same object: an uppercase label over a value on a shared baseline, so the two
- * eyebrows line up and the two values line up. The count is deliberately the `inline` variant of
- * {@link TournamentSlots}: a meter here would add a third row to one zone and only one, which is
- * what pulls a toolbar out of alignment.
- *
- * A code is minted with the tournament (see `Tournament::create`), so the empty state below is
- * only ever reached by revoking one — it keeps the bar's shape rather than collapsing it.
+ * The organizer's bar across a tournament: join code and QR, how full it is, and code actions
  *
  * @returns the bar
  */
@@ -190,10 +126,7 @@ export function TournamentJoinBar({
 }: TournamentJoinBarProps) {
     const [t] = useTranslation("tournament");
 
-    // Built client-side from the browser's own origin, not a server field or image endpoint:
-    // PUBLIC_ORIGIN is the only origin a passkey login can complete on (see the webauthn
-    // rp_origin), so whatever origin the organizer's browser is actually on *is* the canonical
-    // one to hand out as a deep link.
+    // The browser's own origin is PUBLIC_ORIGIN: passkey login only works there.
     const joinUrl = joinCode != null ? `${window.location.origin}/join/${joinCode}` : null;
 
     /** Mints a fresh join code, replacing the one in place */
@@ -217,9 +150,7 @@ export function TournamentJoinBar({
             }
         >
             <div className={"flex items-center gap-4"}>
-                {/* White backing plate: a QR rendered straight onto the dark theme's ground does
-                    not scan, see `invite-dialog.tsx`. The ring keeps it reading as a plate on the
-                    light theme, where white on white would have no edge at all. */}
+                {/* White plate: a QR on the dark theme's ground does not scan. */}
                 {joinUrl != null && (
                     <div className={"shrink-0 rounded-lg bg-white p-1.5 ring-1 ring-zinc-950/5"}>
                         <QRCodeSVG value={joinUrl} size={72} />
@@ -246,8 +177,6 @@ export function TournamentJoinBar({
                 </div>
             </div>
 
-            {/* Hairline between the two stats, dropped once they wrap onto separate lines — a
-                vertical rule between stacked blocks separates nothing. */}
             <div className={"hidden h-12 w-px self-center bg-zinc-950/10 sm:block dark:bg-white/10"} />
 
             <div className={"flex flex-col gap-1"}>

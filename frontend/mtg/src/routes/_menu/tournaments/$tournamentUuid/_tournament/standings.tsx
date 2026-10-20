@@ -12,17 +12,14 @@ export const Route = createFileRoute("/_menu/tournaments/$tournamentUuid/_tourna
 });
 
 /**
- * Where everybody stands.
- *
- * Polled more slowly than the round screen: standings move only when a table settles, and a rank
- * that reshuffles under somebody's finger is worse than one that is a few seconds old.
+ * Where everybody stands, polled more slowly than the round screen
  *
  * @returns the page
  */
 function RouteComponent() {
     const [t] = useTranslation("tournament");
     const { standings, tiebreakers, outstanding_tables } = Route.useLoaderData();
-    // Non-null for the same reason the sibling index route gives.
+    // Non-null: the layout renders its outlet only once it resolved a tournament.
     const { viewer } = useLoaderData({ from: "/_menu/tournaments/$tournamentUuid/_tournament" })!;
 
     useTournamentPulse({ interval: PULSE_INTERVALS.standings, enabled: true });

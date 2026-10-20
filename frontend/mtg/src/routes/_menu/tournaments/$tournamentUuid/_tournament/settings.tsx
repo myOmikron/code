@@ -1,4 +1,4 @@
-import { GlobeAltIcon, LinkIcon, LockClosedIcon, NoSymbolIcon, PencilSquareIcon } from "@heroicons/react/20/solid";
+import { LinkIcon, NoSymbolIcon, PencilSquareIcon } from "@heroicons/react/20/solid";
 import { createFileRoute, useLoaderData, useRouter } from "@tanstack/react-router";
 import {
     Badge,
@@ -9,9 +9,6 @@ import {
     DescriptionTerm,
     EmptyState,
     Listbox,
-    ListboxDescription,
-    ListboxLabel,
-    ListboxOption,
     Text,
     notify,
 } from "components";
@@ -19,11 +16,11 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { formatName } from "src/utils/format-label";
 import { Api } from "src/api/api";
-import { Visibility } from "src/api/generated";
-import type { PairingSystem, TournamentStatus } from "src/api/generated";
+import type { PairingSystem, TournamentStatus, Visibility } from "src/api/generated";
 import { ShareDialog } from "src/components/share-dialog";
 import { TournamentDialog } from "src/components/tournament-dialog";
 import { tournamentStatusColor, tournamentStatusLabelKey } from "src/components/tournament-join-code";
+import { TournamentVisibilityOptions } from "src/components/tournament-visibility-options";
 import { tournamentShareTarget } from "src/utils/share-targets";
 
 export const Route = createFileRoute("/_menu/tournaments/$tournamentUuid/_tournament/settings")({
@@ -47,11 +44,7 @@ function pairingLabelKey(system: PairingSystem): string {
 }
 
 /**
- * Whether a tournament can still be called off
- *
- * `Cancelled` is the one branch off the lifecycle's straight line, and the only status change this
- * tab still makes — moving an event *forward* is `TournamentNextStep`'s button on the tournament
- * screen, where an organizer is actually working when they decide to start.
+ * Whether a tournament can still be cancelled; moving it forward is `TournamentNextStep`'s job
  *
  * @param status the tournament's current status
  *
@@ -62,14 +55,13 @@ function mayCancel(status: TournamentStatus): boolean {
 }
 
 /**
- * The organizer-only settings tab: the editable form, the status and visibility controls, and the
- * join-code card.
+ * The organizer-only settings tab: settings summary, cancel, visibility and share link
  *
  * @returns the page, or an empty state for a viewer with no staff role
  */
 function RouteComponent() {
     const { tournamentUuid } = Route.useParams();
-    // Non-null: see the same assertion in `overview.tsx` — this tab never mounts on a `null`.
+    // Non-null: the layout renders no tabs when its loader returned `null`.
     const { tournament, viewer, participant_count } = useLoaderData({
         from: "/_menu/tournaments/$tournamentUuid/_tournament",
     })!;
@@ -167,21 +159,7 @@ function RouteComponent() {
                         value={tournament.visibility}
                         onChange={(visibility) => void setVisibility(visibility)}
                     >
-                        <ListboxOption value={Visibility.Private}>
-                            <LockClosedIcon />
-                            <ListboxLabel>{t("label.visibility-private")}</ListboxLabel>
-                            <ListboxDescription>{t("description.visibility-private")}</ListboxDescription>
-                        </ListboxOption>
-                        <ListboxOption value={Visibility.Unlisted}>
-                            <LinkIcon />
-                            <ListboxLabel>{t("label.visibility-unlisted")}</ListboxLabel>
-                            <ListboxDescription>{t("description.visibility-unlisted")}</ListboxDescription>
-                        </ListboxOption>
-                        <ListboxOption value={Visibility.Public}>
-                            <GlobeAltIcon />
-                            <ListboxLabel>{t("label.visibility-public")}</ListboxLabel>
-                            <ListboxDescription>{t("description.visibility-public")}</ListboxDescription>
-                        </ListboxOption>
+                        <TournamentVisibilityOptions />
                     </Listbox>
                     {viewer.may_manage && (
                         <Button outline={true} onClick={() => setSharing(true)}>

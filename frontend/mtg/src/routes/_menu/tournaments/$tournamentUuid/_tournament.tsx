@@ -13,22 +13,15 @@ export const Route = createFileRoute("/_menu/tournaments/$tournamentUuid/_tourna
     loader: async ({ params }) => {
         await i18n.loadNamespaces("tournament");
         try {
-            // Both in one trip: the tab strip needs the round list to know what to call the first
-            // tab, and the round screen under it needs the same rows.
             const [details, rounds] = await Promise.all([
                 Api.tournaments.get(params.tournamentUuid),
                 Api.tournaments.rounds.list(params.tournamentUuid),
             ]);
-            // The whole round trip is charged to skew, which biases the estimate by at most half
-            // the latency — invisible on a face that only shows seconds.
+            // Biased by at most half the round trip, which a seconds display hides.
             const skewMs = clockSkew(rounds.server_time, Date.now());
-            // Tables are the round screen's own to load: which round is shown is a search
-            // param on that route, and the layout only needs the list for the tab label.
             return { ...details, rounds: rounds.rounds, skewMs };
         } catch (error) {
-            // A guest whose session died, or a stranger on a private event, gets a plain 400
-            // (denied) or 401 (no actor identity at all) — either way there is nothing here for
-            // them, and that is not the app's error screen's business to report.
+            // 400 (denied) or 401 (no session): show the dead-link state, not the error screen.
             if (error instanceof ResponseError) return null;
             throw error;
         }
@@ -37,12 +30,7 @@ export const Route = createFileRoute("/_menu/tournaments/$tournamentUuid/_tourna
 });
 
 /**
- * The chrome around one tournament: its name, its status, and the two tabs under it — the event
- * itself, and the settings behind it.
- *
- * No `<RequireAccount>` here — guests are exactly who this section exists for. Identity comes
- * from the `TournamentActor` the backend resolved when answering `get_tournament`; a viewer who
- * failed that resolves to `null` above and sees the dead-link state instead of a tab at all.
+ * The frame around one tournament: name, status and tabs; reachable by guests
  *
  * @returns the tabbed frame around the current tab, or an empty state for a tournament the viewer
  * cannot reach
@@ -79,10 +67,6 @@ function RouteComponent() {
             <TabLayout
                 heading={tournament.name}
                 headingDescription={
-                    // The facts the overview tab used to hold a `DescriptionList` for, as one
-                    // line of context. The venue is not among them: with an address, directions
-                    // and a maps button it is three lines tall, and a heading is no place for it
-                    // — the page below carries it instead.
                     <span className={"flex flex-wrap items-center gap-x-2 gap-y-1 text-sm"}>
                         <Badge color={tournamentStatusColor(tournament.status)}>
                             {t(tournamentStatusLabelKey(tournament.status))}
@@ -97,15 +81,12 @@ function RouteComponent() {
                 }
                 tabs={
                     <TabMenu>
-                        {/* Exact matching, or the settings tab leaves this one lit beside it —
-                            `/tournaments/$id` is a prefix of every route under it. */}
+                        {/* Exact, since this path is a prefix of every other tab's. */}
                         <Tab
                             href={"/tournaments/$tournamentUuid"}
                             params={{ tournamentUuid }}
                             activeOptions={{ exact: true }}
                         >
-                            {/* The same tab, renamed by what the event is doing: before it starts
-                                this is the sign-up sheet, and afterwards it is the round. */}
                             {started ? currentRoundLabel : t("heading.tournament")}
                         </Tab>
                         {started && (
@@ -118,9 +99,7 @@ function RouteComponent() {
                                 {t("heading.players")}
                             </Tab>
                         )}
-                        {/* Hidden rather than disabled: a scorekeeper or a player has no use for
-                            a tab whose page immediately tells them to go away. Direct navigation
-                            still reaches it — `settings.tsx` renders its own empty state then. */}
+                        {/* Direct navigation still works; `settings.tsx` shows an empty state then. */}
                         {viewer.is_organizer && (
                             <Tab href={"/tournaments/$tournamentUuid/settings"} params={{ tournamentUuid }}>
                                 {t("heading.settings")}

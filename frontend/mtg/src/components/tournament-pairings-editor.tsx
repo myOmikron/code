@@ -20,9 +20,7 @@ import {
     toRequest,
 } from "src/utils/pairing-edit";
 
-/**
- * The properties for {@link TournamentPairingsEditor}
- */
+/** The properties for {@link TournamentPairingsEditor} */
 export type TournamentPairingsEditorProps = {
     /** The tournament being run */
     tournamentUuid: string;
@@ -40,7 +38,7 @@ export type TournamentPairingsEditorProps = {
 
 /**
  * The desk's hand edit of a round: tap two players to swap them, or a player and a free seat to
- * move them. Tables with a result are locked.
+ * move them; tables with a result are locked
  *
  * @returns the editor
  */
@@ -259,7 +257,7 @@ export function TournamentPairingsEditor({
                     {t("button.discard-changes")}
                 </Button>
                 <PrimaryButton disabled={saving || moved.size === 0} onClick={() => void save()}>
-                    {t("button.save-pairings")}
+                    {t("button.save")}
                 </PrimaryButton>
             </div>
         </div>

@@ -1,10 +1,4 @@
-/**
- * The fixed point every standings percentage is carried in: 10 000 is 100 %.
- *
- * Deliberately the same precision the table renders at. A percentage shown to two decimals *is*
- * one basis point, so two rows whose numbers look equal are equal — a reader checking the sheet by
- * hand never finds a tie broken by a digit that was not on screen.
- */
+/** The fixed point standings percentages are carried in (10 000 is 100 %), the precision shown */
 export const PERCENT_ONE = 10_000;
 
 /**
@@ -21,7 +15,7 @@ export function formatPercent(basisPoints: number): string {
 }
 
 /**
- * The opponents' average match points, which is a point count rather than a percentage
+ * The opponents' average match points, a point count rather than a percentage
  *
  * @param basisPoints the value, in the same fixed point as everything else
  *
@@ -34,7 +28,7 @@ export function formatAveragePoints(basisPoints: number): string {
 }
 
 /**
- * A win–loss–draw record, the way a pairings sheet writes one
+ * A win–loss–draw record
  *
  * @param wins matches won
  * @param losses matches lost

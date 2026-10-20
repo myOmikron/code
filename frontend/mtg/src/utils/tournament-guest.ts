@@ -1,8 +1,6 @@
-//! Persistence of the guest rows this device has joined tournaments as.
-//!
-//! A guest row has no account behind it — the claim token is this device's only proof it is the
-//! one that joined. Keeping it lets the roster page reopen without re-typing a code, and lets an
-//! account signed in later claim the row automatically (see the `/tournaments` list page).
+/**
+ * The guest rows this device joined tournaments as; the claim token is the device's only proof.
+ */
 
 const STORAGE_KEY = "planarium.tournamentGuests.v1";
 
@@ -57,15 +55,12 @@ function save(entries: Array<StoredTournamentGuest>): void {
     try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
     } catch {
-        // storage unavailable (private mode) — the entry simply does not persist
+        // Storage unavailable: the entry is not kept.
     }
 }
 
 /**
- * Remembers a freshly joined guest row on this device
- *
- * Replaces any existing entry for the same tournament: a device holds at most one guest row per
- * event, and the newest join is the one worth keeping.
+ * Remembers a freshly joined guest row, replacing any earlier one for the same tournament
  *
  * @param entry what to remember
  */
@@ -75,7 +70,7 @@ export function addTournamentGuest(entry: StoredTournamentGuest): void {
 }
 
 /**
- * Forgets a guest row, e.g. once its account claim went through (or its token turned out stale)
+ * Forgets a guest row, e.g. once its claim went through or its token turned out stale
  *
  * @param tournamentUuid the tournament whose entry should be dropped
  */
