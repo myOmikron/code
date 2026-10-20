@@ -90,7 +90,7 @@ export type DeckStats = {
     manaCurveSplit: SplitChart;
     /** Copies whose colour identity contains each colour, keyed `W U B R G` */
     colorIdentity: Array<Bucket>;
-    /** Coloured mana symbols across all costs, weighted by copies, Snow pips as `S` */
+    /** Coloured mana symbols across all costs, weighted by copies, Snow pips as `S`; keyed like {@link manaSources} */
     pips: Array<Bucket>;
     /** The same symbols, broken up by each split */
     pipsSplit: SplitChart;
@@ -124,7 +124,7 @@ const TOP_LIMIT = 10;
 const COLOR_LETTERS = ["W", "U", "B", "R", "G"];
 
 /** The key Snow pips and Snow sources are counted under, Scryfall's symbol for them */
-const SNOW = "S";
+export const SNOW = "S";
 
 /** What {@link countPips} counts, in the order it answers */
 const PIP_LETTERS = [...COLOR_LETTERS, SNOW];
@@ -263,12 +263,9 @@ export function deckStats(
     // at four has nothing to say with three empty bars after it.
     const curveKeys = curveBuckets(manaCurve);
     const tagOrder = [...tags.map((tag) => tag.uuid), UNTAGGED];
-    // Snow is no colour the deck plays, so it only gets a bar where it has
-    // something to say. Pips and sources are read side by side, though: a deck
-    // with Snow sources and no Snow pip still shows that it has them.
-    const snowPips = (pips.get(SNOW) ?? 0) > 0;
-    const pipKeys = snowPips ? [...shown, SNOW] : shown;
-    const sourceKeys = snowPips || (manaSources.get(SNOW) ?? 0) > 0 ? [...shown, SNOW] : shown;
+    const hasSnowPips = (pips.get(SNOW) ?? 0) > 0;
+    const pipKeys = hasSnowPips ? [...shown, SNOW] : shown;
+    const sideBySideKeys = hasSnowPips || (manaSources.get(SNOW) ?? 0) > 0 ? [...shown, SNOW] : shown;
 
     return {
         totalCards,
@@ -281,9 +278,9 @@ export function deckStats(
         manaCurve: fixed(manaCurve, curveKeys),
         manaCurveSplit: chartOf(curveSplit, curveKeys, tagOrder),
         colorIdentity: fixed(colorIdentity, shown),
-        pips: fixed(pips, sourceKeys),
+        pips: fixed(pips, sideBySideKeys),
         pipsSplit: chartOf(pipSplit, pipKeys, tagOrder),
-        manaSources: fixed(manaSources, sourceKeys),
+        manaSources: fixed(manaSources, sideBySideKeys),
         types: sorted(types),
         rarities: sorted(rarities),
         tagStats: tagOrder
