@@ -1,5 +1,7 @@
 //! The Deck history and the Deck entries it is kept for
 
+use std::time::Duration;
+
 use galvyn::core::Module;
 use galvyn::core::re_exports::axum::http::Method;
 use galvyn::core::re_exports::axum::http::StatusCode;
@@ -10,6 +12,7 @@ use galvyn::rorm::db::executor::All;
 use galvyn::rorm::db::sql::value::Value as SqlValue;
 use serde_json::Value;
 use serde_json::json;
+use tokio::time::timeout;
 use uuid::Uuid;
 
 use crate::models::account::Role;
@@ -983,7 +986,11 @@ fn a_scryfall_printing_merge_records_one_switch_per_deck() {
                 .iter()
                 .map(|entry| {
                     (
-                        entry["printing"].as_str().expect("printing").parse().expect("uuid"),
+                        entry["printing"]
+                            .as_str()
+                            .expect("printing")
+                            .parse()
+                            .expect("uuid"),
                         entry["zone"].as_str().expect("zone").to_string(),
                         entry["before"].as_i64().expect("before"),
                         entry["after"].as_i64().expect("after"),
@@ -2446,6 +2453,37 @@ fn an_earlier_point_shows_the_deck_as_it_was_then() {
         let newest = fixture.newest().await;
         let now = fixture.state().await;
         assert_eq!(fixture.state_at(&newest).await, now);
+    });
+}
+
+#[test]
+fn reading_the_deck_history_waits_for_a_deck_change_being_recorded() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        fixture
+            .add(json!({ "printing": Uuid::new_v4(), "quantity": 2, "zone": "Main" }))
+            .await;
+        let change = fixture.newest().await;
+        let deck = deck_uuid(fixture.deck.parse().expect("deck uuid"));
+
+        let mut tx = Database::global()
+            .start_transaction()
+            .await
+            .expect("start a transaction");
+        let _locked = DeckHistory::lock_for_service(&mut tx, deck)
+            .await
+            .expect("lock the deck")
+            .expect("the deck");
+        let wait = Duration::from_millis(300);
+
+        let point = timeout(wait, fixture.point(&change)).await;
+        assert!(point.is_err(), "the point view did not wait");
+        let history = timeout(wait, fixture.history("")).await;
+        assert!(history.is_err(), "the history list did not wait");
+
+        tx.commit().await.expect("commit");
+        assert_eq!(fixture.point(&change).await.status, StatusCode::OK);
+        assert_eq!(fixture.kinds().await, vec!["Edit", "Created"]);
     });
 }
 

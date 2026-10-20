@@ -19,7 +19,6 @@ use crate::http::handler_frontend::decks::history::schema::DeckUndoResponse;
 use crate::http::handler_frontend::decks::history::schema::GetDeckHistoryQuery;
 use crate::http::handler_frontend::decks::history::schema::SetDeckCheckpointRequest;
 use crate::models::account::Account;
-use crate::models::deck::Deck;
 use crate::models::deck::DeckUuid;
 use crate::models::deck::history::DeckChangeUuid;
 use crate::models::deck::history::DeckHistory;
@@ -38,7 +37,7 @@ pub async fn get_deck_history(
 ) -> ApiResult<ApiJson<DeckHistoryResponse>> {
     let mut tx = Database::global().start_transaction().await?;
 
-    granted(Deck::may_administer(&mut tx, deck_uuid, account.uuid).await?)?;
+    granted(DeckHistory::lock_for_reading(&mut tx, deck_uuid, account.uuid).await?)?;
     let state = DeckHistory::undo_state(&mut tx, deck_uuid).await?;
     let page = DeckHistory::page(
         &mut tx,
@@ -117,7 +116,7 @@ pub async fn get_deck_point(
 ) -> ApiResult<ApiJson<DeckPointResponse>> {
     let mut tx = Database::global().start_transaction().await?;
 
-    granted(Deck::may_administer(&mut tx, deck_uuid, account.uuid).await?)?;
+    granted(DeckHistory::lock_for_reading(&mut tx, deck_uuid, account.uuid).await?)?;
     let point = DeckHistory::point(&mut tx, deck_uuid, change).await?;
 
     tx.commit().await?;
