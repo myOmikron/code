@@ -1046,19 +1046,6 @@ impl Tournament {
             status,
             TournamentStatus::Finished | TournamentStatus::Cancelled
         );
-        // A tournament drafted weeks ahead carries a code minted at creation,
-        // which may well have run out before anyone could use it. Opening
-        // registration is the moment that code starts mattering, so its expiry
-        // is recomputed from the start time the event has by now. The code
-        // itself is untouched: an organizer may already have printed it.
-        let expires_at = if clears_join_code {
-            Some(None)
-        } else if matches!(status, TournamentStatus::Registration) && tournament.join_code.is_some()
-        {
-            Some(Some(join_code_expiry(tournament.starts_at)))
-        } else {
-            None
-        };
 
         let builder = rorm::update(&mut *tx, TournamentModel)
             .begin_dyn_set()
@@ -1071,7 +1058,10 @@ impl Tournament {
                 TournamentModel.join_code,
                 clears_join_code.then_some(None::<MaxStr<8>>),
             )
-            .set_if(TournamentModel.join_code_expires_at, expires_at);
+            .set_if(
+                TournamentModel.join_code_expires_at,
+                clears_join_code.then_some(None),
+            );
 
         let Ok(builder) = builder.finish_dyn_set() else {
             unreachable!("the status itself is always set above")

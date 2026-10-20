@@ -421,12 +421,6 @@ pub struct ListRoundsResponse {
 pub struct TournamentStateResponse {
     /// The server's own reading of the time, for clock skew
     pub server_time: SchemaDateTime,
-    /// Changes exactly when something a client renders changed
-    ///
-    /// A hex string, not an integer: a 64-bit counter crosses JavaScript's
-    /// safe-integer range and would compare equal for unequal states on the
-    /// one platform that consumes it.
-    pub revision: MaxStr<32>,
     /// Where the event stands
     pub status: TournamentStatus,
     /// The round the room is on
@@ -489,7 +483,7 @@ pub struct CompleteRoundRequest {
 pub struct SetTimerRequest {
     /// What the desk did
     pub action: TimerActionRequest,
-    /// Seconds to add, for `Adjust`; the new length, for `Reset`
+    /// Seconds to add, for `Adjust`; the new length, for `Reset` (`None` keeps the current one)
     #[serde(default)]
     pub seconds: Option<i32>,
 }
@@ -986,6 +980,13 @@ pub struct SetFixedTableErrors {
     pub taken_by: Option<MaxStr<64>>,
 }
 
+/// Why [`super::handler::delete_tournament_participant`] was refused
+#[derive(Default, Serialize, JsonSchema)]
+pub struct RemoveParticipantErrors {
+    /// They have been paired at a table; drop them instead
+    pub already_paired: bool,
+}
+
 /// One line of the organizer-only staff list
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct TournamentOrganizerResponse {
@@ -1175,8 +1176,9 @@ pub struct DecklistErrors {
     pub locked: bool,
     /// The deck does not exist, is not the caller's, or is empty
     pub unknown_deck: bool,
-    /// The pasted text was blank once trimmed, or both `deck` and `text` were
-    /// given in the same request
+    /// The deck renders to a longer list than a decklist may hold
+    pub deck_too_long: bool,
+    /// The pasted text was blank, or both `deck` and `text` were given
     pub invalid_decklist: bool,
 }
 

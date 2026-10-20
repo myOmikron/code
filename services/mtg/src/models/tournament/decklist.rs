@@ -44,7 +44,7 @@ pub struct Decklist {
     /// The Planarium deck the text was rendered from, if any — provenance only
     pub deck: Option<DeckUuid>,
     /// The list itself
-    pub text: MaxStr<16384>,
+    pub text: MaxStr<MAX_DECKLIST_CHARS>,
     /// When it was last written
     pub updated_at: OffsetDateTime,
 }
@@ -55,7 +55,7 @@ pub enum DecklistSource {
     /// Rendered from a Planarium deck — the caller's `deck_owner` must own it
     Deck(DeckUuid),
     /// Pasted text, trimmed and checked non-blank by [`write`]
-    Text(MaxStr<16384>),
+    Text(MaxStr<MAX_DECKLIST_CHARS>),
 }
 
 /// Outcome of [`set`]/[`write`]
@@ -71,6 +71,8 @@ pub enum DecklistChange {
     UnknownDeck,
     /// The named deck rendered to nothing playable
     EmptyDeck,
+    /// The named deck renders longer than a decklist may be
+    TooLong,
     /// The pasted text was blank once trimmed
     Invalid,
 }
@@ -191,11 +193,13 @@ pub(crate) async fn write(
                 return Ok(DecklistChange::UnknownDeck);
             }
 
-            let Some(rendered) = render_deck(&mut *tx, deck_uuid).await? else {
+            let rendered = render_deck(&mut *tx, deck_uuid).await?;
+            if rendered.is_empty() {
                 return Ok(DecklistChange::EmptyDeck);
+            }
+            let Ok(text) = MaxStr::new(rendered) else {
+                return Ok(DecklistChange::TooLong);
             };
-            let text = MaxStr::new(rendered)
-                .unwrap_or_else(|_| unreachable!("render_deck already bounds its output"));
             (
                 text,
                 Some(deck_uuid),
@@ -300,14 +304,14 @@ pub async fn exists(
 
 /// Render a deck into decklist text, empty if nothing in it is playable
 #[instrument(name = "decklist::render_deck", skip(tx))]
-async fn render_deck(tx: &mut Transaction, deck: DeckUuid) -> Result<Option<String>, rorm::Error> {
+async fn render_deck(tx: &mut Transaction, deck: DeckUuid) -> Result<String, rorm::Error> {
     let playable: Vec<_> = DeckCard::get_all_in_deck(&mut *tx, deck)
         .await?
         .into_iter()
         .filter(|card| card.zone != DeckZone::Maybe)
         .collect();
     if playable.is_empty() {
-        return Ok(None);
+        return Ok(String::new());
     }
 
     let printing_ids: HashSet<Uuid> = playable.iter().map(|card| card.printing).collect();
@@ -369,20 +373,7 @@ async fn render_deck(tx: &mut Transaction, deck: DeckUuid) -> Result<Option<Stri
         },
     ];
 
-    let rendered = render(&sections);
-    if rendered.is_empty() {
-        return Ok(None);
-    }
-    if rendered.len() > MAX_DECKLIST_CHARS {
-        warn!(
-            deck = %deck.into_inner(),
-            len = rendered.len(),
-            "decklist render: exceeds the maximum decklist length, dropping",
-        );
-        return Ok(None);
-    }
-
-    Ok(Some(rendered))
+    Ok(render(&sections))
 }
 
 impl From<TournamentDecklistModel> for Decklist {

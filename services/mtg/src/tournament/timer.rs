@@ -18,8 +18,8 @@ pub enum TimerAction {
     },
     /// Take a new length and go back to not started
     Reset {
-        /// The new length, in seconds
-        length_seconds: i32,
+        /// The new length in seconds, `None` to keep the current one
+        length_seconds: Option<i32>,
     },
 }
 
@@ -115,7 +115,7 @@ pub fn apply(timer: &Timer, action: TimerAction, now: OffsetDateTime) -> Timer {
             }
         }
         TimerAction::Reset { length_seconds } => Timer {
-            length_seconds: length_seconds.max(0),
+            length_seconds: length_seconds.unwrap_or(timer.length_seconds).max(0),
             ends_at: None,
             paused_at: None,
         },
@@ -235,7 +235,7 @@ mod tests {
         let reset = apply(
             &running,
             TimerAction::Reset {
-                length_seconds: 1800,
+                length_seconds: Some(1800),
             },
             t0() + time_span(100),
         );
@@ -243,6 +243,20 @@ mod tests {
         assert_eq!(reset.paused_at, None);
         assert_eq!(state(&reset, t0()), TimerState::Idle);
         assert_eq!(remaining_seconds(&reset, t0()), 1800);
+    }
+
+    #[test]
+    fn resetting_without_a_length_keeps_the_old_one() {
+        let running = apply(&idle(3000), TimerAction::Start, t0());
+        let reset = apply(
+            &running,
+            TimerAction::Reset {
+                length_seconds: None,
+            },
+            t0() + time_span(100),
+        );
+        assert_eq!(reset.length_seconds, 3000);
+        assert_eq!(state(&reset, t0()), TimerState::Idle);
     }
 
     #[test]

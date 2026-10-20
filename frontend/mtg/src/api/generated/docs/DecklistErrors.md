@@ -7,6 +7,7 @@ Why [`super::handler::set_participant_decklist`] was refused
 
 Name | Type
 ------------ | -------------
+`deck_too_long` | boolean
 `invalid_decklist` | boolean
 `locked` | boolean
 `unknown_deck` | boolean

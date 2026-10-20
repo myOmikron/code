@@ -2757,7 +2757,7 @@ No authorization required
 
 ## deleteTournamentParticipant
 
-> any deleteTournamentParticipant(tournament, participant)
+> FormErrorResponseForRemoveParticipantErrors deleteTournamentParticipant(tournament, participant)
 
 Remove a participant outright
 
@@ -2805,7 +2805,7 @@ example().catch(console.error);
 
 ### Return type
 
-**any**
+[**FormErrorResponseForRemoveParticipantErrors**](FormErrorResponseForRemoveParticipantErrors.md)
 
 ### Authorization
 

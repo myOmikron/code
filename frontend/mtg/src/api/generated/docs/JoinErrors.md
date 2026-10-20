@@ -8,6 +8,7 @@ Why a join attempt was refused
 Name | Type
 ------------ | -------------
 `already_registered` | boolean
+`deck_too_long` | boolean
 `decklist_missing` | boolean
 `empty_name` | boolean
 `invalid_decklist` | boolean

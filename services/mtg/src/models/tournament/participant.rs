@@ -26,6 +26,7 @@ use crate::models::tournament::TournamentUuid;
 use crate::models::tournament::db::TournamentModel;
 use crate::models::tournament::db::TournamentParticipantInsertPatch;
 use crate::models::tournament::db::TournamentParticipantModel;
+use crate::models::tournament::db::TournamentSeatModel;
 use crate::models::tournament::decklist;
 use crate::models::tournament::decklist::SelfServe;
 use crate::models::tournament::is_unique_violation;
@@ -89,11 +90,16 @@ pub enum ClaimOutcome {
     AlreadyRegistered,
 }
 
-/// Mint a fresh guest claim token
-///
-/// Same minting as [`crate::models::account::RegistrationToken::create`]: 43
-/// alphanumeric characters, which cannot overflow the 64-character column, so
-/// the fallible constructor can never actually fail.
+/// Outcome of [`remove`]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RemoveOutcome {
+    /// The row is gone
+    Removed,
+    /// They have been paired at a table, so removing them would rewrite it; drop them instead
+    AlreadyPaired,
+}
+
+/// Mint a fresh guest claim token (43 alphanumeric characters)
 fn generate_claim_token() -> MaxStr<64> {
     MaxStr::new(Alphanumeric.sample_string(&mut rand::rng(), 43))
         .unwrap_or_else(|_| unreachable!("43 alphanumeric chars fit into 64"))
@@ -804,14 +810,14 @@ pub async fn drop(
     Ok(TournamentAccess::Granted(()))
 }
 
-/// Remove a participant outright, keeping their name in the audit entry
+/// Remove a participant who was never paired, keeping their name in the audit entry
 #[instrument(name = "remove", skip(tx))]
 pub async fn remove(
     tx: &mut Transaction,
     organizer_account: AccountUuid,
     tournament: TournamentUuid,
     participant: TournamentParticipantUuid,
-) -> Result<TournamentAccess<()>, rorm::Error> {
+) -> Result<TournamentAccess<RemoveOutcome>, rorm::Error> {
     if Tournament::role_of(&mut *tx, tournament, organizer_account)
         .await?
         .is_none()
@@ -834,6 +840,20 @@ pub async fn remove(
         return Ok(TournamentAccess::Denied);
     };
     let display_name = row.display_name.into_inner();
+
+    // Seats cascade on delete, which would take the opponents' results with them.
+    let paired = rorm::query(&mut *tx, TournamentSeatModel.uuid)
+        .condition(
+            TournamentSeatModel
+                .participant
+                .equals(participant.into_inner()),
+        )
+        .optional()
+        .await?
+        .is_some();
+    if paired {
+        return Ok(TournamentAccess::Granted(RemoveOutcome::AlreadyPaired));
+    }
 
     let affected = rorm::delete(&mut *tx, TournamentParticipantModel)
         .condition(rorm::and![
@@ -859,7 +879,7 @@ pub async fn remove(
     )
     .await?;
 
-    Ok(TournamentAccess::Granted(()))
+    Ok(TournamentAccess::Granted(RemoveOutcome::Removed))
 }
 
 impl From<TournamentParticipantModel> for TournamentParticipant {

@@ -414,7 +414,7 @@ pub async fn delete(
     )
     .await?;
 
-    Ok(TournamentAccess::Granted(RoundChange::NotEditable))
+    Ok(TournamentAccess::Granted(RoundChange::Changed(found)))
 }
 
 /// Start, pause, adjust or reset a round's clock
@@ -487,16 +487,17 @@ async fn reported_tables(
     tx: &mut Transaction,
     round: TournamentRoundUuid,
 ) -> Result<usize, rorm::Error> {
-    let statuses = rorm::query(&mut *tx, TournamentMatchModel.status)
-        .condition(TournamentMatchModel.round.equals(round.into_inner()))
-        .all()
-        .await?;
-    Ok(statuses
+    let tables = rorm::query(
+        &mut *tx,
+        (TournamentMatchModel.status, TournamentMatchModel.is_bye),
+    )
+    .condition(TournamentMatchModel.round.equals(round.into_inner()))
+    .all()
+    .await?;
+    // Byes are written `Confirmed`, but nobody reported them.
+    Ok(tables
         .into_iter()
-        // A bye is confirmed the moment it is written, so it says nothing
-        // about whether anybody has played — counting it would make a round
-        // with an odd field impossible to re-pair.
-        .filter(|status| *status != MatchStatus::Unreported)
+        .filter(|(status, is_bye)| !is_bye && *status != MatchStatus::Unreported)
         .count())
 }
 

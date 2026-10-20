@@ -149,7 +149,7 @@ pub async fn join_tournament_as_guest(
                 errors.invalid_decklist = true;
                 return errors.fail();
             }
-            DecklistChange::UnknownDeck | DecklistChange::EmptyDeck => {
+            DecklistChange::UnknownDeck | DecklistChange::EmptyDeck | DecklistChange::TooLong => {
                 unreachable!("a guest join never sources a deck")
             }
             DecklistChange::Locked => {
@@ -304,6 +304,11 @@ pub async fn join_tournament_by_code(
             DecklistChange::UnknownDeck | DecklistChange::EmptyDeck => {
                 let mut errors = FormErrors::<JoinErrors>::new();
                 errors.unknown_deck = true;
+                return errors.fail();
+            }
+            DecklistChange::TooLong => {
+                let mut errors = FormErrors::<JoinErrors>::new();
+                errors.deck_too_long = true;
                 return errors.fail();
             }
             DecklistChange::Invalid => {

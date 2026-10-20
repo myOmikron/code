@@ -111,10 +111,13 @@ export function TournamentRoster({
 
     /** Checks in everybody still waiting, one call per row */
     async function checkInEveryone() {
+        let missing = 0;
         for (const participant of waiting) {
-            await Api.tournaments.participants.checkIn(tournamentUuid, participant.uuid);
+            const response = await Api.tournaments.participants.checkIn(tournamentUuid, participant.uuid);
+            if (isFormError(response)) missing += 1;
         }
-        notify.success(t("toast.checked-in"));
+        if (missing > 0) notify.error(t("error.decklists-missing", { count: missing }));
+        if (missing < waiting.length) notify.success(t("toast.checked-in"));
         await onChanged();
     }
 
@@ -143,7 +146,12 @@ export function TournamentRoster({
      */
     async function remove(participant: TournamentParticipantResponse) {
         setRemoving(null);
-        await Api.tournaments.participants.remove(tournamentUuid, participant.uuid);
+        const response = await Api.tournaments.participants.remove(tournamentUuid, participant.uuid);
+        // The only typed refusal is `already_paired`.
+        if (isFormError(response)) {
+            notify.error(t("error.already-paired"));
+            return;
+        }
         notify.success(t("toast.player-removed"));
         await onChanged();
     }

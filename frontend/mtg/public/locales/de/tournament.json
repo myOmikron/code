@@ -1,5 +1,7 @@
 {
     "accessibility": {
+        "clock-five-minutes": "Noch 5 Minuten",
+        "clock-one-minute": "Noch 1 Minute",
         "copy-claim-link": "Platz-Link kopieren",
         "copy-join-code": "Beitrittscode kopieren",
         "edit-result": "Ergebnis für Tisch {{number}} ändern",
@@ -108,7 +110,7 @@
         "settings-locked": "Das Turnier läuft — Struktur und Wertung sind eingefroren.",
         "share-link": "Wer den Link hat, sieht das Turnier und, falls freigegeben, die Spielerliste.",
         "share-link-dead": "Die Turnierleitung hat ihn zurückgezogen oder ersetzt.",
-        "tiebreak-floor": "Jede Gegnerquote hat eine Untergrenze: 33 % im Duell, 1 / Siegpunkte im Pod.",
+        "tiebreak-floor": "Quoten haben eine Untergrenze: 33 % im Duell, 1 / Siegpunkte für Gegner im Pod.",
         "tiebreak-gw": "Anteil der Spielpunkte, die dieser Spieler holen konnte.",
         "tiebreak-mw": "Anteil der Punkte, die dieser Spieler holen konnte.",
         "tiebreak-ogw": "Durchschnitt der Spielquoten aller Gegner.",
@@ -122,9 +124,14 @@
     },
     "error": {
         "action-failed": "Aktion fehlgeschlagen. Bitte aktualisieren und erneut versuchen.",
+        "already-paired": "Wurde schon gepaart – stattdessen austragen.",
         "already-registered": "Du bist bereits angemeldet",
+        "deck-too-long": "Das Deck ist zu lang für eine Deckliste.",
         "decklist-locked": "Decklisten sind für dieses Turnier gesperrt",
         "decklist-missing": "Für dieses Turnier ist eine Deckliste erforderlich",
+        "decklists-missing_one": "{{count}} Spieler ohne Deckliste nicht eingecheckt.",
+        "decklists-missing_other": "{{count}} Spieler ohne Deckliste nicht eingecheckt.",
+        "drop-failed": "{{name}} konnte nicht ausgetragen werden.",
         "empty-name": "Bitte gib einen Namen an",
         "impossible-pods": "Das Feld lässt sich nicht in Tische dieser Größe teilen. Ändere die Tischgröße.",
         "invalid-decklist": "Die Deckliste darf nicht leer sein",

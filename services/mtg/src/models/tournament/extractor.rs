@@ -16,6 +16,9 @@ use crate::models::tournament::TournamentParticipantUuid;
 /// Session key holding the participant uuids a guest has joined as (one per event)
 pub const GUEST_SESSION_KEY: &str = "tournament_guests";
 
+/// How many guest seats one session remembers; the oldest is forgotten first
+const MAX_GUEST_SEATS: usize = 32;
+
 impl TournamentActor {
     /// Append a freshly joined guest participant to the session
     pub async fn remember_guest<E>(
@@ -27,7 +30,11 @@ impl TournamentActor {
             .await
             .map_err(ApiError::map_server_error("Failed to read from session"))?
             .unwrap_or_default();
+        guests.retain(|guest| *guest != participant.into_inner());
         guests.push(participant.into_inner());
+        if guests.len() > MAX_GUEST_SEATS {
+            guests.drain(..guests.len() - MAX_GUEST_SEATS);
+        }
         session
             .insert(GUEST_SESSION_KEY, guests)
             .await

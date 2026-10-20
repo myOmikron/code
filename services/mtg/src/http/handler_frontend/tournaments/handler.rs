@@ -1,9 +1,6 @@
 //! Handlers of the tournament endpoints
 
 use std::collections::HashMap;
-use std::collections::hash_map::DefaultHasher;
-use std::hash::Hash;
-use std::hash::Hasher;
 
 use galvyn::core::Module;
 use galvyn::core::re_exports::axum::extract::Path;
@@ -62,6 +59,7 @@ use crate::http::handler_frontend::tournaments::schema::PLAYER_SEARCH_LIMIT;
 use crate::http::handler_frontend::tournaments::schema::PairRoundErrors;
 use crate::http::handler_frontend::tournaments::schema::PairRoundResponse;
 use crate::http::handler_frontend::tournaments::schema::PlayerSearchResultResponse;
+use crate::http::handler_frontend::tournaments::schema::RemoveParticipantErrors;
 use crate::http::handler_frontend::tournaments::schema::ReportResultErrors;
 use crate::http::handler_frontend::tournaments::schema::ReportResultRequest;
 use crate::http::handler_frontend::tournaments::schema::RoundLifecycleErrors;
@@ -119,6 +117,7 @@ use crate::models::tournament::participant::CheckInOutcome;
 use crate::models::tournament::participant::ClaimOutcome;
 use crate::models::tournament::participant::FixedTableChange;
 use crate::models::tournament::participant::RegistrationOutcome;
+use crate::models::tournament::participant::RemoveOutcome;
 use crate::models::tournament::public;
 use crate::models::tournament::reporting;
 use crate::models::tournament::reporting::ReportClaim;
@@ -301,6 +300,11 @@ pub async fn set_participant_decklist(
         DecklistChange::UnknownDeck | DecklistChange::EmptyDeck => {
             let mut errors = FormErrors::<DecklistErrors>::new();
             errors.unknown_deck = true;
+            return errors.fail();
+        }
+        DecklistChange::TooLong => {
+            let mut errors = FormErrors::<DecklistErrors>::new();
+            errors.deck_too_long = true;
             return errors.fail();
         }
         DecklistChange::Invalid => {
@@ -685,7 +689,7 @@ pub async fn add_tournament_participant(
             DecklistChange::Cleared => {
                 unreachable!("a text source is never `Cleared`")
             }
-            DecklistChange::UnknownDeck | DecklistChange::EmptyDeck => {
+            DecklistChange::UnknownDeck | DecklistChange::EmptyDeck | DecklistChange::TooLong => {
                 unreachable!("a walk-in's decklist is always pasted text, never a linked deck")
             }
             DecklistChange::Locked => {
@@ -725,10 +729,8 @@ pub async fn get_tournament_state(
     tx.commit().await?;
 
     let now = OffsetDateTime::now_utc();
-    let revision = state_revision(&with_viewer.tournament, round.as_ref(), outstanding);
     Ok(ApiJson(TournamentStateResponse {
         server_time: SchemaDateTime(now),
-        revision,
         status: with_viewer.tournament.status,
         round: round.map(|round| RoundResponse::from_round(round, now)),
         planned_rounds: with_viewer.tournament.planned_rounds,
@@ -886,8 +888,10 @@ pub async fn delete_tournament_round(
     let mut tx = Database::global().start_transaction().await?;
 
     match round::delete(&mut tx, account.uuid, tournament_uuid, round_uuid).await? {
-        TournamentAccess::Granted(RoundChange::Changed(_) | RoundChange::NotEditable) => {}
-        TournamentAccess::Granted(RoundChange::Outstanding(_) | RoundChange::NotPaired) => {
+        TournamentAccess::Granted(RoundChange::Changed(_)) => {}
+        TournamentAccess::Granted(
+            RoundChange::NotEditable | RoundChange::Outstanding(_) | RoundChange::NotPaired,
+        ) => {
             let mut errors = FormErrors::<RoundLifecycleErrors>::new();
             errors.not_editable = true;
             return errors.fail();
@@ -915,7 +919,7 @@ pub async fn set_tournament_round_timer(
             delta_seconds: seconds.unwrap_or_default(),
         },
         TimerActionRequest::Reset => TimerAction::Reset {
-            length_seconds: seconds.unwrap_or_default(),
+            length_seconds: seconds,
         },
     };
 
@@ -951,38 +955,6 @@ fn round_or_refusal(change: RoundChange) -> ApiResult<Round, RoundLifecycleError
             errors.fail()
         }
     }
-}
-
-/// A short digest of everything a polling client would re-render for
-///
-/// Changes exactly when one of those things changes and never otherwise, so a
-/// client can skip the expensive reads on an unchanged revision. Hex rather
-/// than a number for the reason [`TournamentStateResponse::revision`] gives.
-///
-/// @param tournament the event
-/// @param round the round the room is on
-/// @param outstanding how many tables have no confirmed result
-///
-/// @returns the digest
-fn state_revision(tournament: &Tournament, round: Option<&Round>, outstanding: i64) -> MaxStr<32> {
-    let mut hasher = DefaultHasher::new();
-    format!("{:?}", tournament.status).hash(&mut hasher);
-    tournament.planned_rounds.hash(&mut hasher);
-    if let Some(round) = round {
-        round.uuid.into_inner().hash(&mut hasher);
-        format!("{:?}", round.status).hash(&mut hasher);
-        round
-            .timer_ends_at
-            .map(|at| at.unix_timestamp())
-            .hash(&mut hasher);
-        round
-            .timer_paused_at
-            .map(|at| at.unix_timestamp())
-            .hash(&mut hasher);
-    }
-    outstanding.hash(&mut hasher);
-    MaxStr::new(format!("{:016x}", hasher.finish()))
-        .unwrap_or_else(|_| unreachable!("sixteen hex digits fit in thirty-two characters"))
 }
 
 /// Every table of one round
@@ -1475,10 +1447,19 @@ pub async fn set_participant_fixed_table(
 pub async fn delete_tournament_participant(
     account: Account,
     Path((tournament_uuid, participant_uuid)): Path<(TournamentUuid, TournamentParticipantUuid)>,
-) -> ApiResult<ApiJson<()>> {
+) -> ApiResult<ApiJson<()>, RemoveParticipantErrors> {
     let mut tx = Database::global().start_transaction().await?;
 
-    granted(participant::remove(&mut tx, account.uuid, tournament_uuid, participant_uuid).await?)?;
+    match granted(
+        participant::remove(&mut tx, account.uuid, tournament_uuid, participant_uuid).await?,
+    )? {
+        RemoveOutcome::Removed => {}
+        RemoveOutcome::AlreadyPaired => {
+            let mut errors = FormErrors::<RemoveParticipantErrors>::new();
+            errors.already_paired = true;
+            return errors.fail();
+        }
+    }
 
     tx.commit().await?;
 

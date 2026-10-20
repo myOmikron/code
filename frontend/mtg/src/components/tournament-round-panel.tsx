@@ -315,40 +315,48 @@ export function TournamentRoundPanel({
                         if (saved) await onChanged();
                     }}
                 />
-            ) : collapseTables && !tablesOpen ? (
-                <button
-                    type={"button"}
-                    aria-expanded={false}
-                    onClick={() => setTablesOpen(true)}
-                    className={
-                        "flex items-center justify-between rounded-(--radius-card) bg-(--surface-card) px-4 py-3 text-sm font-medium text-zinc-700 shadow-(--shadow-card-sm) ring-1 ring-zinc-950/5 dark:text-zinc-200 dark:ring-white/10"
-                    }
-                >
-                    {t("heading.all-tables")}
-                    <ChevronRightIcon className={"size-4"} aria-hidden={true} />
-                </button>
             ) : (
                 <div className={"flex flex-col gap-3"}>
-                    {staff && latest && round.status !== "Complete" && (
-                        <div className={"flex justify-end gap-2"}>
-                            <Button plain={true} onClick={() => void pairRound()}>
-                                <ArrowPathIcon />
-                                {t("button.repair")}
-                            </Button>
-                            <Button outline={true} onClick={() => edit(true)}>
-                                <ArrowsRightLeftIcon />
-                                {t("button.edit-pairings")}
-                            </Button>
-                        </div>
+                    {collapseTables && (
+                        <button
+                            type={"button"}
+                            aria-expanded={tablesOpen}
+                            onClick={() => setTablesOpen((open) => !open)}
+                            className={
+                                "flex items-center justify-between rounded-(--radius-card) bg-(--surface-card) px-4 py-3 text-sm font-medium text-zinc-700 shadow-(--shadow-card-sm) ring-1 ring-zinc-950/5 dark:text-zinc-200 dark:ring-white/10"
+                            }
+                        >
+                            {t("heading.all-tables")}
+                            <ChevronRightIcon
+                                className={clsx("size-4 transition-transform", tablesOpen && "rotate-90")}
+                                aria-hidden={true}
+                            />
+                        </button>
                     )}
-                    <TournamentPairingsTable
-                        tables={tables}
-                        ownParticipant={viewer.participant}
-                        tournamentUuid={tournamentUuid}
-                        gamesPerMatch={tournament.games_per_match}
-                        canEdit={staff}
-                        onChanged={onChanged}
-                    />
+                    {(!collapseTables || tablesOpen) && (
+                        <>
+                            {staff && latest && round.status !== "Complete" && (
+                                <div className={"flex justify-end gap-2"}>
+                                    <Button plain={true} onClick={() => void pairRound()}>
+                                        <ArrowPathIcon />
+                                        {t("button.repair")}
+                                    </Button>
+                                    <Button outline={true} onClick={() => edit(true)}>
+                                        <ArrowsRightLeftIcon />
+                                        {t("button.edit-pairings")}
+                                    </Button>
+                                </div>
+                            )}
+                            <TournamentPairingsTable
+                                tables={tables}
+                                ownParticipant={viewer.participant}
+                                tournamentUuid={tournamentUuid}
+                                gamesPerMatch={tournament.games_per_match}
+                                canEdit={staff}
+                                onChanged={onChanged}
+                            />
+                        </>
+                    )}
                 </div>
             )}
 

@@ -2272,7 +2272,13 @@ export type DeckZone = typeof DeckZone[keyof typeof DeckZone];
  */
 export interface DecklistErrors {
     /**
-     * The pasted text was blank once trimmed, or both `deck` and `text` were given in the same request
+     * The deck renders to a longer list than a decklist may hold
+     * @type {boolean}
+     * @memberof DecklistErrors
+     */
+    deck_too_long: boolean;
+    /**
+     * The pasted text was blank, or both `deck` and `text` were given
      * @type {boolean}
      * @memberof DecklistErrors
      */
@@ -2952,6 +2958,27 @@ export interface FormErrorResponseForRegistrationErrors {
 /**
  * The response that is sent in a case of an error the caller should present his user
  * @export
+ * @interface FormErrorResponseForRemoveParticipantErrors
+ */
+export interface FormErrorResponseForRemoveParticipantErrors {
+    /**
+     * The actual error struct
+     * @type {RemoveParticipantErrors}
+     * @memberof FormErrorResponseForRemoveParticipantErrors
+     */
+    error: RemoveParticipantErrors;
+    /**
+     * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
+     * @type {ErrorConstant}
+     * @memberof FormErrorResponseForRemoveParticipantErrors
+     */
+    result: ErrorConstant;
+}
+
+
+/**
+ * The response that is sent in a case of an error the caller should present his user
+ * @export
  * @interface FormErrorResponseForReportResultErrors
  */
 export interface FormErrorResponseForReportResultErrors {
@@ -3292,6 +3319,12 @@ export interface JoinErrors {
      */
     already_registered: boolean;
     /**
+     * The deck renders to a longer list than a decklist may hold
+     * @type {boolean}
+     * @memberof JoinErrors
+     */
+    deck_too_long: boolean;
+    /**
      * The tournament requires a decklist to register and none was given
      * @type {boolean}
      * @memberof JoinErrors
@@ -3304,7 +3337,7 @@ export interface JoinErrors {
      */
     empty_name: boolean;
     /**
-     * The pasted text was blank once trimmed, or both `deck` and `decklist_text` were given in the same request
+     * The pasted text was blank, or both `deck` and `decklist_text` were given
      * @type {boolean}
      * @memberof JoinErrors
      */
@@ -5347,6 +5380,19 @@ export interface RegistrationErrors {
     token_used: boolean;
 }
 /**
+ * Why [`super::handler::delete_tournament_participant`] was refused
+ * @export
+ * @interface RemoveParticipantErrors
+ */
+export interface RemoveParticipantErrors {
+    /**
+     * They have been paired at a table; drop them instead
+     * @type {boolean}
+     * @memberof RemoveParticipantErrors
+     */
+    already_paired: boolean;
+}
+/**
  * @type ReportMatchResult200Response
  * 
  * @export
@@ -6241,7 +6287,7 @@ export interface SetTimerRequest {
      */
     action: TimerActionRequest;
     /**
-     * Seconds to add, for `Adjust`; the new length, for `Reset`
+     * Seconds to add, for `Adjust`; the new length, for `Reset` (`None` keeps the current one)
      * @type {number}
      * @memberof SetTimerRequest
      */
@@ -8001,14 +8047,6 @@ export interface TournamentStateResponse {
      * @memberof TournamentStateResponse
      */
     planned_rounds?: number | null;
-    /**
-     * Changes exactly when something a client renders changed
-     * 
-     * A hex string, not an integer: a 64-bit counter crosses JavaScript's safe-integer range and would compare equal for unequal states on the one platform that consumes it.
-     * @type {string}
-     * @memberof TournamentStateResponse
-     */
-    revision: string;
     /**
      * The round the room is on
      * @type {RoundResponse}

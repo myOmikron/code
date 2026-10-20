@@ -134,7 +134,8 @@ pub struct JoinErrors {
     pub decklist_missing: bool,
     /// The deck does not exist, is not the caller's, or is empty
     pub unknown_deck: bool,
-    /// The pasted text was blank once trimmed, or both `deck` and
-    /// `decklist_text` were given in the same request
+    /// The deck renders to a longer list than a decklist may hold
+    pub deck_too_long: bool,
+    /// The pasted text was blank, or both `deck` and `decklist_text` were given
     pub invalid_decklist: bool,
 }

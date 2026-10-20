@@ -9,7 +9,6 @@ Name | Type
 ------------ | -------------
 `outstanding_tables` | number
 `planned_rounds` | number
-`revision` | string
 `round` | [RoundResponse](RoundResponse.md)
 `server_time` | string
 `status` | [TournamentStatus](TournamentStatus.md)

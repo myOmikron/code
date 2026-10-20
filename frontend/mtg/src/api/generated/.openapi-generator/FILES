@@ -101,6 +101,7 @@ docs/FormErrorResponseForFinishLoginErrors.md
 docs/FormErrorResponseForJoinErrors.md
 docs/FormErrorResponseForPairRoundErrors.md
 docs/FormErrorResponseForRegistrationErrors.md
+docs/FormErrorResponseForRemoveParticipantErrors.md
 docs/FormErrorResponseForReportResultErrors.md
 docs/FormErrorResponseForRoundLifecycleErrors.md
 docs/FormErrorResponseForSetFixedTableErrors.md
@@ -189,6 +190,7 @@ docs/ReadDeckUrlRequest.md
 docs/ReadDeckUrlResponse.md
 docs/RecoverAccountRequest.md
 docs/RegistrationErrors.md
+docs/RemoveParticipantErrors.md
 docs/ReportMatchResult200Response.md
 docs/ReportResultErrors.md
 docs/ReportResultRequest.md

@@ -123,7 +123,12 @@ export function TournamentResultDialog({
             // After the result, so a failed drop cannot leave the table unreported too.
             for (const seat of table.seats) {
                 if (!dropping[seat.participant] || seat.dropped) continue;
-                await Api.tournaments.participants.drop(tournamentUuid, seat.participant);
+                try {
+                    await Api.tournaments.participants.drop(tournamentUuid, seat.participant);
+                } catch (error) {
+                    console.error(error);
+                    notify.error(t("error.drop-failed", { name: seat.display_name }));
+                }
             }
 
             onClose();

@@ -75,6 +75,9 @@ function decklistErrorHandlers(t: (key: string) => string): {
         unknown_deck: (errors) => {
             errors.form = t("error.unknown-deck");
         },
+        deck_too_long: (errors) => {
+            errors.form = t("error.deck-too-long");
+        },
     };
 }
 

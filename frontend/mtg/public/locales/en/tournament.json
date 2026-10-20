@@ -1,5 +1,7 @@
 {
     "accessibility": {
+        "clock-five-minutes": "5 minutes left",
+        "clock-one-minute": "1 minute left",
         "copy-claim-link": "Copy seat link",
         "copy-join-code": "Copy join code",
         "edit-result": "Change the result for table {{number}}",
@@ -108,7 +110,7 @@
         "settings-locked": "The tournament is running — structure and scoring are frozen.",
         "share-link": "Anyone with the link sees the tournament, and the player list if you opened it.",
         "share-link-dead": "The organizers withdrew or replaced it.",
-        "tiebreak-floor": "Every opponent rate has a floor: 33 % in duels, 1 / win points in pods.",
+        "tiebreak-floor": "Rates have a floor: 33 % in duels, 1 / win points for opponents in pods.",
         "tiebreak-gw": "Share of the game points this player could have taken.",
         "tiebreak-mw": "Share of the points this player could have taken.",
         "tiebreak-ogw": "Mean of every opponent's game-win rate.",
@@ -122,9 +124,14 @@
     },
     "error": {
         "action-failed": "Action failed. Please refresh and try again.",
+        "already-paired": "Already paired – drop them instead.",
         "already-registered": "You are already registered",
+        "deck-too-long": "That deck is too long for a decklist.",
         "decklist-locked": "Decklists are locked for this tournament",
         "decklist-missing": "A decklist is required for this tournament",
+        "decklists-missing_one": "{{count}} player without a decklist not checked in.",
+        "decklists-missing_other": "{{count}} players without a decklist not checked in.",
+        "drop-failed": "Could not drop {{name}}.",
         "empty-name": "Please enter a name",
         "impossible-pods": "This field does not divide into tables of that size. Change the table size.",
         "invalid-decklist": "The decklist must not be blank",

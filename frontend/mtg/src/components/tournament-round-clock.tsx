@@ -88,10 +88,25 @@ export function TournamentRoundClock({
         : reading.over
           ? t("label.time-over")
           : t("accessibility.round-clock", { time: formatDuration(reading.seconds) });
+    // Only changes at the thresholds, so a screen reader hears those and nothing else.
+    const milestone = !running
+        ? ""
+        : reading.over
+          ? t("label.time-over")
+          : reading.seconds <= URGENT_SECONDS
+            ? t("accessibility.clock-one-minute")
+            : reading.seconds <= WARN_SECONDS
+              ? t("accessibility.clock-five-minutes")
+              : "";
     const reader = (
-        <span role={"timer"} aria-live={"off"} className={"sr-only"}>
-            {announced}
-        </span>
+        <>
+            <span role={"timer"} aria-live={"off"} className={"sr-only"}>
+                {announced}
+            </span>
+            <span aria-live={"polite"} className={"sr-only"}>
+                {milestone}
+            </span>
+        </>
     );
 
     if (size === "display" || !canControl) {

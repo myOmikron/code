@@ -249,6 +249,12 @@ pub fn standings(snapshot: &StandingsSnapshot) -> Vec<Standing> {
         .map(|(id, record)| (*id, record.match_points))
         .collect();
 
+    // MTR App. C floors a duel player's own percentages too; the addendum floors only opponents'.
+    let own_floor = if snapshot.pod_size <= 2 {
+        DUEL_FLOOR
+    } else {
+        0
+    };
     let mut rows: Vec<Standing> = snapshot
         .entrants
         .iter()
@@ -265,9 +271,9 @@ pub fn standings(snapshot: &StandingsSnapshot) -> Vec<Standing> {
                 losses: record.losses,
                 draws: record.draws,
                 byes: record.byes,
-                match_win: record.match_win(snapshot.points_win),
+                match_win: record.match_win(snapshot.points_win).max(own_floor),
                 opponent_match_win: mean(&record.opponents, &opponent_match_win, phantoms, floor),
-                game_win: record.game_win(),
+                game_win: record.game_win().max(own_floor),
                 opponent_game_win: mean(&record.opponents, &opponent_game_win, phantoms, floor),
                 opponents_average_points: mean_points(&record.opponents, &opponent_points),
             }
@@ -537,8 +543,11 @@ mod tests {
 
         let four = row(&rows, 4);
         assert_eq!(four.match_points, 0);
-        assert_eq!(four.match_win, 0);
-        assert_eq!(four.game_win, 2_000, "three game points from fifteen");
+        assert_eq!(four.match_win, DUEL_FLOOR, "no wins, floored");
+        assert_eq!(
+            four.game_win, DUEL_FLOOR,
+            "three game points from fifteen, floored"
+        );
 
         let two = row(&rows, 2);
         let three = row(&rows, 3);
@@ -641,7 +650,10 @@ mod tests {
             "the round they missed and the one they lost"
         );
         assert_eq!(three.match_points, 0);
-        assert_eq!(three.match_win, 0, "nothing from two rounds");
+        assert_eq!(
+            three.match_win, DUEL_FLOOR,
+            "nothing from two rounds, floored"
+        );
     }
 
     #[test]

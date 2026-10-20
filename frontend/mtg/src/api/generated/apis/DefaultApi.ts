@@ -71,6 +71,7 @@ import type {
     FormErrorResponseForDeletePasskeyErrors,
     FormErrorResponseForFinishLoginErrors,
     FormErrorResponseForRegistrationErrors,
+    FormErrorResponseForRemoveParticipantErrors,
     FormErrorResponseForRoundLifecycleErrors,
     FormErrorResponseForSetFixedTableErrors,
     FormErrorResponseForTournamentSettingsErrors,
@@ -2782,22 +2783,18 @@ export class DefaultApi extends runtime.BaseAPI {
      * Remove a participant outright
      * Remove a participant outright
      */
-    async deleteTournamentParticipantRaw(requestParameters: DeleteTournamentParticipantRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
+    async deleteTournamentParticipantRaw(requestParameters: DeleteTournamentParticipantRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FormErrorResponseForRemoveParticipantErrors>> {
         const requestOptions = await this.deleteTournamentParticipantRequestOpts(requestParameters);
         const response = await this.request(requestOptions, initOverrides);
 
-        if (this.isJsonMime(response.headers.get('content-type'))) {
-            return new runtime.JSONApiResponse<any>(response);
-        } else {
-            return new runtime.TextApiResponse(response) as any;
-        }
+        return new runtime.JSONApiResponse(response);
     }
 
     /**
      * Remove a participant outright
      * Remove a participant outright
      */
-    async deleteTournamentParticipant(requestParameters: DeleteTournamentParticipantRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
+    async deleteTournamentParticipant(requestParameters: DeleteTournamentParticipantRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FormErrorResponseForRemoveParticipantErrors> {
         const response = await this.deleteTournamentParticipantRaw(requestParameters, initOverrides);
         return await response.value();
     }
