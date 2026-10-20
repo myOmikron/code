@@ -1,7 +1,7 @@
 
 # SetDecklistRequest
 
-Request to write, replace or clear a participant\'s decklist  Both fields absent clears the list; both present is refused as [`DecklistErrors::invalid_decklist`] — a request names at most one source.
+Request to write, replace or clear a decklist; both fields absent clears it
 
 ## Properties
 

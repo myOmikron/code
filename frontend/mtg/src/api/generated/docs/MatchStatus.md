@@ -1,7 +1,7 @@
 
 # MatchStatus
 
-How far a table\'s result has got  Derived from the report rows on every write and never read back as truth — which is what lets the desk and the players\' phones share one state machine without either of them owning it.
+How far a table\'s result has got; derived from the report rows on every write
 
 ## Properties
 

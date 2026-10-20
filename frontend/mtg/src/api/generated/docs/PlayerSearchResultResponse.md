@@ -1,7 +1,7 @@
 
 # PlayerSearchResultResponse
 
-One account an organizer\'s player search turned up  Username only. The search exists to resolve \"which of these is my player\", and a username is what the organizer reads off their screen — anything else would make this a directory.
+One account an organizer\'s player search turned up; username only, not a directory
 
 ## Properties
 

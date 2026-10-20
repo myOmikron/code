@@ -1,15 +1,4 @@
 //! The tables under a round: who sits where, and which number it is printed with
-//!
-//! The decision itself is [`crate::tournament::pairing`], which is pure. This
-//! module is the part that reads a field out of the database, hands it over,
-//! and writes the answer back — the same split the rest of this model tree
-//! keeps, and the reason a pairing is reproducible from its seed.
-//!
-//! Pairing writes directly rather than offering a preview to commit. The race
-//! a preview would guard — somebody drops at the desk while the organizer is
-//! looking at the projector — is better served by a button: re-pair, and get a
-//! fresh round in a second. A staged preview turns that into an error at the
-//! exact moment an organizer wants to print.
 
 use std::collections::HashSet;
 
@@ -83,19 +72,12 @@ pub struct MatchTable {
     /// Whether the table was drawn
     pub is_draw: bool,
     /// Games inside the match that were themselves drawn
-    ///
-    /// Carried out so the desk's edit dialog can open on the result that is
-    /// already there rather than on zero.
     pub games_drawn: i16,
     /// Who sits there, in seat order
     pub seats: Vec<MatchSeat>,
 }
 
-/// A pin the layout could not honour
-///
-/// Two players who cannot leave their table asked for the same number. The
-/// lower-numbered table kept it; nothing about who plays whom changed, so the
-/// round is valid either way and an organizer simply has to move somebody.
+/// A pin the layout could not honour: another pinned player holds that number
 #[derive(Debug, Clone)]
 pub struct FixedTablePin {
     /// The number both asked for
@@ -124,17 +106,7 @@ pub enum PairOutcome {
     ImpossiblePods,
 }
 
-/// Every table of a round, in table-number order
-///
-/// Unguarded on purpose, like the rest of this module's reads: the caller has
-/// already resolved the tournament for its viewer, which is where the decision
-/// about who may look belongs.
-///
-/// @param tx the transaction to read in
-/// @param tournament the round belongs to
-/// @param round which round
-///
-/// @returns its tables
+/// Every table of a round, in table-number order, byes last (unguarded)
 #[instrument(name = "pairing::tables", skip(tx))]
 pub async fn tables(
     tx: &mut Transaction,
@@ -205,12 +177,6 @@ pub async fn tables(
 }
 
 /// One table, for the surface that just changed it
-///
-/// @param tx the transaction to read in
-/// @param tournament the table belongs to
-/// @param table which table
-///
-/// @returns the table, or `None` when it is not this tournament's
 #[instrument(name = "pairing::one_table", skip(tx))]
 pub async fn one_table(
     tx: &mut Transaction,
@@ -235,18 +201,7 @@ pub async fn one_table(
         .find(|found| found.uuid.into_inner() == table.into_inner()))
 }
 
-/// Pair a round, replacing whatever it already held
-///
-/// Guarded on holding any role rather than on managing the event, for the
-/// reason [`round`]'s own module docs give: a scorekeeper is exactly who runs
-/// rounds.
-///
-/// @param tx the transaction to write in
-/// @param account who is asking
-/// @param tournament the round belongs to
-/// @param round which round
-///
-/// @returns the tables, or why there are none
+/// Pair a round, replacing whatever it already held; any staff role may
 #[instrument(name = "pairing::pair", skip(tx))]
 pub async fn pair(
     tx: &mut Transaction,
@@ -264,14 +219,11 @@ pub async fn pair(
         return Ok(TournamentAccess::Denied);
     };
 
-    // A deckbuilding stage is a clock and nothing else, and a closed round is
-    // history somebody would be rewriting.
     if found.status == RoundStatus::Complete || found.kind == RoundKind::Deckbuilding {
         return Ok(TournamentAccess::Granted(PairOutcome::NotPairable));
     }
 
-    // Byes are `Confirmed` the moment they are written, so a guard that simply
-    // looked for a non-`Unreported` table could never re-pair an odd field.
+    // Byes are `Confirmed` on insert; skip them or an odd field could never re-pair.
     let reported = rorm::query(
         &mut *tx,
         (TournamentMatchModel.status, TournamentMatchModel.is_bye),
@@ -310,8 +262,7 @@ pub async fn pair(
         }
     };
 
-    // Seats first: the foreign key cascades, but relying on a cascade for a
-    // delete this module issues itself reads as an accident waiting to happen.
+    // Seats first, explicitly, rather than relying on the foreign key's cascade.
     let held: Vec<Uuid> = rorm::query(&mut *tx, TournamentMatchModel.uuid)
         .condition(TournamentMatchModel.round.equals(round.into_inner()))
         .all()
@@ -330,11 +281,8 @@ pub async fn pair(
         insert_table(&mut *tx, tournament, round, table, now).await?;
     }
 
-    // A fresh seed every time, so the button an organizer presses when a layout
-    // looks wrong actually produces a different one. Bound to a `let` rather
-    // than called inline: a `ThreadRng` temporary lives to the end of its
-    // statement, and one spanning the `.await` below makes this whole future
-    // `!Send` — the same trap `participant::register_account` documents.
+    // Store a fresh seed for the next re-pair. Bound to a `let`: a `ThreadRng`
+    // temporary across the `.await` makes the future `!Send`.
     let next_seed = rand::rng().random::<i64>();
     rorm::update(&mut *tx, TournamentRoundModel)
         .set(TournamentRoundModel.pairing_seed, next_seed)
@@ -392,18 +340,7 @@ pub enum ArrangeOutcome {
     Invalid(Vec<ManualPairingError>),
 }
 
-/// Replace a round's tables with a layout arranged at the desk
-///
-/// Tables whose seats did not change keep their row, so a reported table
-/// elsewhere in the room survives the edit.
-///
-/// @param tx the transaction to write in
-/// @param account who is asking
-/// @param tournament the round belongs to
-/// @param round which round
-/// @param layout who sits where, table by table, in seat order
-///
-/// @returns the tables, or why the layout was refused
+/// Replace a round's tables with a desk layout; unchanged tables keep their row and result
 #[instrument(name = "pairing::arrange", skip(tx, layout))]
 pub async fn arrange(
     tx: &mut Transaction,
@@ -429,8 +366,7 @@ pub async fn arrange(
         return Ok(TournamentAccess::Granted(ArrangeOutcome::NotPairable));
     }
 
-    // Anyone checked in, plus whoever already sits here — a player who dropped
-    // after the pairing keeps their seat until the desk moves them.
+    // Checked-in players plus anyone already seated: a late drop keeps their seat.
     let roster = rorm::query(
         &mut *tx,
         (
@@ -568,13 +504,6 @@ pub async fn arrange(
 }
 
 /// Who has already played whom before this round, for the desk's rematch flags
-///
-/// @param tx the transaction to read in
-/// @param account who is asking
-/// @param tournament the round belongs to
-/// @param round the round being edited, left out of its own history
-///
-/// @returns one unordered pair per meeting
 #[instrument(name = "pairing::meetings", skip(tx))]
 pub async fn meetings(
     tx: &mut Transaction,
@@ -603,12 +532,6 @@ pub async fn meetings(
 }
 
 /// Write one table and its seats
-///
-/// @param tx the transaction to write in
-/// @param tournament the table belongs to
-/// @param round which round
-/// @param table who sits there
-/// @param now when a bye counts as settled
 async fn insert_table(
     tx: &mut Transaction,
     tournament: TournamentUuid,
@@ -617,7 +540,6 @@ async fn insert_table(
     now: OffsetDateTime,
 ) -> Result<(), rorm::Error> {
     let uuid = Uuid::now_v7();
-    // A bye is decided the moment it is dealt: nobody plays it.
     let winner = table
         .is_bye
         .then(|| table.seats.first().copied())
@@ -654,16 +576,7 @@ async fn insert_table(
     Ok(())
 }
 
-/// Build the field this round pairs from
-///
-/// @param tx the transaction to read in
-/// @param event the tournament, for its scoring table
-/// @param tournament which tournament
-/// @param round the round being paired, so it is left out of its own history
-/// @param kind what the round is for
-/// @param pod_size how many a full table seats
-///
-/// @returns the snapshot, entrants in standings order
+/// Build the field this round pairs from, best record first
 async fn snapshot(
     tx: &mut Transaction,
     event: &Tournament,
@@ -672,8 +585,7 @@ async fn snapshot(
     kind: PairingKind,
     pod_size: usize,
 ) -> Result<PairingSnapshot, rorm::Error> {
-    // Checked in, and only checked in: starting the event drops everybody who
-    // never was, and an organizer's late entry is written checked in already.
+    // Only checked in: starting drops no-shows, and desk late entries are checked in.
     let roster = rorm::query(
         &mut *tx,
         (
@@ -714,10 +626,6 @@ async fn snapshot(
         })
         .collect();
 
-    // Points, then the roster's own tiebreak seed. The full ordering — opponent
-    // match win and the rest of Appendix C — belongs to the standings engine,
-    // which does not exist yet; until it does this is the whole of "who is
-    // ahead of whom", and it is exactly right for a first round.
     entrants.sort_by(|(left_seed, left), (right_seed, right)| {
         right
             .match_points
@@ -737,7 +645,7 @@ async fn snapshot(
 /// What one entrant has done in the rounds behind them
 #[derive(Debug, Default)]
 struct Record {
-    /// Match points won
+    /// Matches won
     wins: i32,
     /// Matches drawn
     draws: i32,
@@ -751,10 +659,6 @@ struct Record {
 
 impl Record {
     /// The entrant's match points under this event's scoring table
-    ///
-    /// @param event the tournament, for its point values
-    ///
-    /// @returns the points
     fn points(&self, event: &Tournament) -> i32 {
         self.wins * i32::from(event.points_win)
             + self.draws * i32::from(event.points_draw)
@@ -772,17 +676,7 @@ struct History {
     records: std::collections::HashMap<Uuid, Record>,
 }
 
-/// Read the scored rounds behind this one
-///
-/// **Only [`RoundKind::Swiss`] rounds.** Without that filter seven draft
-/// pod-mates count as previous opponents, and round one then pairs around
-/// people who have never played a game against each other.
-///
-/// @param tx the transaction to read in
-/// @param tournament whose history
-/// @param round the round being paired, which is left out of its own history
-///
-/// @returns the history
+/// Read the Swiss rounds behind this one; draft pod-mates are not previous opponents
 async fn history(
     tx: &mut Transaction,
     tournament: TournamentUuid,
@@ -860,7 +754,6 @@ async fn history(
             }
         }
 
-        // Only a settled table moves anybody's points.
         if status != MatchStatus::Confirmed {
             continue;
         }
@@ -892,11 +785,6 @@ struct RosterEntry {
 }
 
 /// The roster, for rendering a table
-///
-/// @param tx the transaction to read in
-/// @param tournament whose roster
-///
-/// @returns each participant's name, whether they have left, and their pin
 async fn roster_names(
     tx: &mut Transaction,
     tournament: TournamentUuid,
@@ -931,12 +819,6 @@ async fn roster_names(
 }
 
 /// The seats of a set of tables, keyed by table
-///
-/// @param tx the transaction to read in
-/// @param tournament the tables belong to
-/// @param wanted which tables
-///
-/// @returns their seats, unsorted
 async fn seats_of(
     tx: &mut Transaction,
     tournament: TournamentUuid,

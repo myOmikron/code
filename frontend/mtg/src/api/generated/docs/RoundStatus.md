@@ -1,7 +1,7 @@
 
 # RoundStatus
 
-Where a round stands  There is no `Cancelled`: re-pairing replaces a round\'s matches in place and deleting one is a hard delete guarded on \"nothing reported\", so a lingering cancelled round would only be a fourth thing every read has to remember to filter out.
+Where a round stands
 
 ## Properties
 

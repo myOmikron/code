@@ -1,7 +1,7 @@
 
 # ClaimTargetResponse
 
-What a claim token names, for the screen a scanned QR lands on before the player has committed to anything  Mirrors [`ClaimTarget`] field for field — its own public type rather than handing the model struct across the HTTP boundary directly, the same reasoning as every other response type in this module tree.
+What a claim token names, shown before the player commits to anything
 
 ## Properties
 

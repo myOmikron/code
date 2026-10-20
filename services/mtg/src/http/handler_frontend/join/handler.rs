@@ -1,10 +1,4 @@
-//! Handlers for joining a tournament by its typed code
-//!
-//! [`crate::tournament::code::normalize_join_code`] runs first in every one
-//! of these — a code that does not even parse into the alphabet is exactly
-//! as unknown as one the database has never minted, and folding the two into
-//! one [`JoinErrors::unknown_code`] answer tells a scanner nothing about
-//! which case it hit.
+//! Handlers for joining a tournament
 
 use galvyn::core::Module;
 use galvyn::core::re_exports::axum::extract::Path;
@@ -37,11 +31,7 @@ use crate::models::tournament::participant;
 use crate::models::tournament::participant::RegistrationOutcome;
 use crate::tournament::code::normalize_join_code;
 
-/// Resolve a typed code into the tournament it names, before anybody joins
-///
-/// Unauthenticated and rate limited (see [`super::initialize_routes`]) — a
-/// phone reading a whiteboard has no session yet. [`JoinLookupResponse::already_registered`]
-/// is always `false` here; there is no account to check it against.
+/// Resolve a join code into the tournament it names, before anybody joins
 #[get("/{code}")]
 pub async fn look_up_join_code(
     Path(code): Path<String>,
@@ -85,20 +75,9 @@ pub async fn look_up_join_code(
     }))
 }
 
-/// Join a tournament as a guest — no account, just a name for the pairings list
+/// Join a tournament as a guest
 ///
-/// Unauthenticated and rate limited, same reasoning as [`look_up_join_code`].
-/// The session is only told about the new participant *after* the
-/// transaction commits: a session entry naming a row that turned out not to
-/// exist would be worse than losing this one join to a crash in between.
-///
-/// `decklist_text`, if given, is written in the same transaction right after
-/// the row exists to hold it. A refusal past that point (only
-/// [`JoinErrors::invalid_decklist`] can actually happen for a guest, pasted
-/// text is the only source they have) answers its form error *without*
-/// committing — the transaction simply drops, so the participant row this
-/// handler just inserted is rolled back along with it, exactly like a failed
-/// [`participant::register_guest`] would be.
+/// A decklist failure returns without committing, which rolls back the new participant row.
 #[post("/{code}/guest")]
 pub async fn join_tournament_as_guest(
     session: Session,
@@ -140,9 +119,7 @@ pub async fn join_tournament_as_guest(
         RegistrationOutcome::Registered(_, None) => {
             unreachable!("register_guest always mints a claim token for a guest row")
         }
-        // `AlreadyRegistered` cannot happen for a guest row (see
-        // `register_guest`'s doc comment) — folded into `Closed`'s answer
-        // rather than relied upon to stay unreachable forever.
+        // `AlreadyRegistered` cannot happen for a guest; folded into `Closed` to stay safe.
         RegistrationOutcome::Full => {
             let mut errors = FormErrors::<JoinErrors>::new();
             errors.tournament_full = true;
@@ -195,13 +172,7 @@ pub async fn join_tournament_as_guest(
     }))
 }
 
-/// Look up a claim token before committing to anything: what it names, or
-/// that it does not resolve to anything live
-///
-/// Unauthenticated and rate limited, same reasoning as [`look_up_join_code`]
-/// — this is the screen a scanned claim QR lands on before the player has
-/// chosen anything. [`ClaimErrors::invalid_token`], not a bad request: a
-/// stale or already-claimed QR is an everyday outcome, not a caller mistake.
+/// Look up what a claim token names, without consuming it
 #[get("/claim/{token}")]
 pub async fn look_up_claim_token(
     Path(token): Path<String>,
@@ -219,16 +190,7 @@ pub async fn look_up_claim_token(
     Ok(ApiJson(ClaimTargetResponse::from(target)))
 }
 
-/// Re-attach a guest session to its row using a still-live claim token
-///
-/// Unauthenticated and rate limited, same reasoning as [`look_up_join_code`].
-/// Does **not** consume the token — see [`participant::reattach`]: the same
-/// device may lose its cookie and need the token again, and only an
-/// account's claim retires it for good. The session only learns about the
-/// participant *after* the transaction commits, the same reasoning as
-/// [`join_tournament_as_guest`]: a session pointed at a row the commit then
-/// failed to actually touch would be worse than losing this one reattach to
-/// a crash in between. Same typed error as [`look_up_claim_token`].
+/// Re-attach a guest session to its row using a still-live claim token, without consuming it
 #[post("/claim/{token}/reattach")]
 pub async fn reattach_claim_token(
     session: Session,
@@ -245,9 +207,7 @@ pub async fn reattach_claim_token(
 
     tx.commit().await?;
 
-    // After the commit, not before — exactly like `join_tournament_as_guest`:
-    // a session pointed at a row the commit then failed to write would be
-    // worse than losing this one reattach to a crash in between.
+    // Only after the commit, so the session never points at a row that was not written.
     TournamentActor::remember_guest(&session, participant_uuid).await?;
 
     Ok(ApiJson(ClaimTargetResponse::from(target)))
@@ -255,13 +215,7 @@ pub async fn reattach_claim_token(
 
 /// Join a tournament as the logged-in account
 ///
-/// `deck`/`decklist_text` are handled exactly like [`join_tournament_as_guest`]'s
-/// `decklist_text`: written in the same transaction right after the
-/// participant row exists, and a refusal past that point answers its form
-/// error without committing, so the fresh participant row never actually
-/// exists either. `deck_owner` and `actor` are both the joining account —
-/// [`decklist::write`] checks deck ownership against the former and audits
-/// against the latter, and here they are always the same person.
+/// A decklist failure returns without committing, which rolls back the new participant row.
 #[post("/{code}")]
 pub async fn join_tournament_by_code(
     account: Account,
@@ -288,7 +242,6 @@ pub async fn join_tournament_by_code(
     }
     errors.check()?;
 
-    // Always fits: `Username::MAX_LEN` is 32, well under `MaxStr<64>`.
     let display_name = display_name.unwrap_or_else(|| {
         MaxStr::new(account.username.as_str().to_owned())
             .unwrap_or_else(|_| unreachable!("a username is at most 32 characters"))
@@ -372,15 +325,7 @@ pub async fn join_tournament_by_code(
     }))
 }
 
-/// Whether joining `tournament` right now would actually register a player
-///
-/// Duplicates [`participant`]'s own private `registration_open` rather than
-/// exporting it: the HTTP layer only ever needs the plain, unwidened rule
-/// (the `added_by` organizer exception belongs to a walk-in, which never
-/// goes through this file), and re-deriving two lines from
-/// [`TournamentStatus`]/[`Tournament::allow_late_entry`] here is cheaper to
-/// keep in sync than a cross-module export would be to keep aligned with
-/// `participant`'s own widened caller.
+/// Whether joining `tournament` right now would register a player (no organizer exception)
 fn registration_open(tournament: &Tournament) -> bool {
     matches!(tournament.status, TournamentStatus::Registration)
         || (tournament.status == TournamentStatus::Running && tournament.allow_late_entry)

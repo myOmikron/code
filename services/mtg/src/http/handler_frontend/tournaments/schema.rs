@@ -1,10 +1,4 @@
-//! Schemas for the tournament roster surface
-//!
-//! [`TournamentResponse::from_parts`] is the one place [`Tournament::share_token`]
-//! and [`Tournament::join_code`] are redacted to `None` for a viewer holding no
-//! role — every handler that hands out a tournament goes through it rather than
-//! building the response by hand, so the redaction cannot be forgotten on a new
-//! route.
+//! Schemas of the tournament endpoints
 
 use galvyn::core::re_exports::schemars;
 use galvyn::core::re_exports::schemars::JsonSchema;
@@ -51,9 +45,6 @@ use crate::tournament::timer;
 use crate::tournament::timer::TimerState;
 
 /// A tournament, as an actor may see it
-///
-/// [`Self::share_token`] and [`Self::join_code`] are organizer-only secrets:
-/// see [`Self::from_parts`].
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct TournamentResponse {
     /// Primary key
@@ -94,21 +85,17 @@ pub struct TournamentResponse {
     pub late_entry_as_losses: bool,
     /// How the tournament requires its players to hand in a decklist
     pub decklist_policy: DecklistPolicy,
-    /// When decklists were locked tournament-wide, `None` while players may
-    /// still write their own
+    /// When decklists were locked tournament-wide, `None` while players may edit
     pub decklists_locked_at: Option<SchemaDateTime>,
     /// Who may see this tournament's roster at all
     pub participant_audience: ParticipantAudience,
-    /// Whether a guest's real name is shown to a reader who is neither staff
-    /// nor a participant
+    /// Whether a guest's real name is shown to non-staff, non-participant readers
     pub guest_names_public: bool,
     /// Who may see the event at all
     pub visibility: Visibility,
     /// Secret of the share link, organizer-only — `None` for every other viewer
     pub share_token: Option<MaxStr<64>>,
-    /// The raw join code, organizer-only — `None` for every other viewer
-    ///
-    /// Raw, not the `XXX-XXX` display form: the frontend renders that split.
+    /// The raw join code (no `XXX-XXX` split), organizer-only — `None` for every other viewer
     pub join_code: Option<MaxStr<8>>,
     /// When the join code stops resolving
     pub join_code_expires_at: Option<SchemaDateTime>,
@@ -127,8 +114,7 @@ pub struct TournamentResponse {
 }
 
 impl TournamentResponse {
-    /// Build the response, redacting [`Self::share_token`]/[`Self::join_code`]
-    /// unless `viewer_role` proves the viewer holds a role on this tournament
+    /// Build the response, redacting the share token and join code for viewers without a role
     pub fn from_parts(tournament: Tournament, viewer_role: Option<TournamentRole>) -> Self {
         let role_holder = viewer_role.is_some();
         Self {
@@ -199,13 +185,12 @@ pub struct GetTournamentResponse {
     pub tournament: TournamentResponse,
     /// What the viewer may do with it
     pub viewer: TournamentViewerResponse,
-    /// How many people are on the roster — the true count, never redacted by
-    /// [`crate::models::tournament::public::roster_view`]: an event may
-    /// advertise "12 angemeldet" while keeping the names to itself
+    /// How many people are on the roster, even when the names are hidden
     pub participant_count: i64,
 }
 
 impl GetTournamentResponse {
+    /// Build the response from a tournament read with its viewer
     pub fn from_with_viewer(with_viewer: TournamentWithViewer, participant_count: i64) -> Self {
         let TournamentWithViewer {
             tournament,
@@ -248,27 +233,16 @@ pub struct ListTournamentsResponse {
     pub tournaments: Vec<TournamentListEntryResponse>,
 }
 
-/// The editable shape of a tournament, shared by [`CreateTournamentRequest`] and
-/// [`super::handler::update_tournament`]
-///
-/// One type for both requests: an update sends exactly the same fields a
-/// create does, minus [`Visibility`] (which has its own endpoint and its own
-/// audit action). Validated in the handler against
-/// [`TournamentSettingsErrors`].
+/// The editable settings of a tournament, shared by create and update
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct TournamentSettingsRequest {
     /// Name of the tournament
     pub name: MaxStr<128>,
     /// Optional description
     pub description: Option<MaxStr<1024>>,
-    /// The format being played: a slug [`crate::models::format::rules_for`]
-    /// knows, or one of [`crate::models::format::LIMITED_FORMATS`]
+    /// The format slug: a constructed format or one of the limited formats
     pub format: MaxStr<32>,
     /// How many players sit at one table, 2..=5
-    ///
-    /// The client derives it from the format — pods of four for the
-    /// commander formats, two for everything else — rather than asking for
-    /// it; the bound stays here because the request still carries it.
     pub pod_size: i16,
     /// Best-of how many games a 1v1 match is, odd and 1..=5 — forced to 1 above pod_size 2
     pub games_per_match: i16,
@@ -284,38 +258,27 @@ pub struct TournamentSettingsRequest {
     pub points_bye: i16,
     /// Default round length in minutes, 10..=600
     pub round_minutes: i16,
-    /// How many players fit, `None` for an event that turns nobody away.
-    /// Held against self-service registration only.
+    /// How many players may self-register, `None` for no limit
     #[serde(default)]
     pub max_participants: Option<i16>,
-    /// How many scoring rounds the event means to play, `None` while undecided.
-    /// Always editable, the event's own schedule rather than a locked rule.
+    /// How many scoring rounds the event means to play, `None` while undecided
     #[serde(default)]
     pub planned_rounds: Option<i16>,
-    /// Whether players may still register *themselves* after the event
-    /// started — an organizer can always add a late entry at the desk. The
-    /// client no longer offers this and sends `false`.
+    /// Whether players may still register themselves after the event started
     pub allow_late_entry: bool,
     /// Whether a late entry's missed rounds count as match losses
-    ///
-    /// Sent as `false` by the client: that is the organizer's call when they
-    /// add the player, not a rule fixed up front.
     pub late_entry_as_losses: bool,
     /// How the tournament requires its players to hand in a decklist
     pub decklist_policy: DecklistPolicy,
     /// Who may see this tournament's roster at all
     pub participant_audience: ParticipantAudience,
-    /// Whether a guest's real name is shown to a reader who is neither staff
-    /// nor a participant
+    /// Whether a guest's real name is shown to non-staff, non-participant readers
     pub guest_names_public: bool,
     /// Where the event takes place
     pub venue: Option<MaxStr<255>>,
-    /// The venue's address — meaningful only alongside [`Self::venue`]; the
-    /// handler blanks it when `venue` is empty
+    /// The venue's address, blanked when `venue` is empty
     pub venue_address: Option<MaxStr<512>>,
-    /// How to actually get in ("Hinterhof, bitte klingeln") — meaningful
-    /// only alongside [`Self::venue`], shown to everyone who can see the
-    /// tournament
+    /// How to get in, shown to everyone who can see the tournament
     pub venue_instructions: Option<MaxStr<1024>>,
     /// When the event is announced to start
     pub starts_at: Option<SchemaDateTime>,
@@ -345,11 +308,9 @@ pub struct TournamentSettingsErrors {
     pub invalid_planned_rounds: bool,
     /// `max_participants` was given as zero or negative
     pub invalid_max_participants: bool,
-    /// The format slug is not one
-    /// [`crate::models::format::is_tournament_format`] accepts
+    /// The format slug is not a known tournament format
     pub invalid_format: bool,
-    /// The event no longer allows structural changes — see
-    /// [`crate::models::tournament::Tournament::update_settings`]
+    /// The event no longer allows structural changes
     pub settings_locked: bool,
 }
 
@@ -360,11 +321,7 @@ pub struct SetTournamentStatusRequest {
     pub status: TournamentStatus,
 }
 
-/// A round's clock, with the server's own reading of the time beside it
-///
-/// One struct rather than two sibling fields, so that serialising a deadline
-/// without the reference point it is measured against is not expressible. A
-/// phone with a wrong clock is the normal case, not the exception.
+/// A round's clock, with the server's remaining time so a wrong phone clock does not matter
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct TimerResponse {
     /// Where the clock stands
@@ -412,8 +369,7 @@ pub struct RoundResponse {
     pub kind: RoundKind,
     /// Where it sits among every round of this event
     pub sequence: i16,
-    /// The number on the pairings sheet, `null` for a draft or deckbuilding
-    /// stage — which is exactly what keeps those out of the round count
+    /// The number on the pairings sheet, `null` for draft or deckbuilding stages
     pub number: Option<i16>,
     /// Where the round stands
     pub status: RoundStatus,
@@ -429,11 +385,6 @@ pub struct RoundResponse {
 
 impl RoundResponse {
     /// Build a response from a round and the moment it was read
-    ///
-    /// @param round the round
-    /// @param now the server's own reading of the time
-    ///
-    /// @returns the response
     pub fn from_round(round: Round, now: OffsetDateTime) -> Self {
         let timer = round.timer();
         Self {
@@ -465,10 +416,7 @@ pub struct ListRoundsResponse {
     pub server_time: SchemaDateTime,
 }
 
-/// What a client polls to know whether anything moved
-///
-/// Deliberately cheap: a handful of indexed reads and no standings, because
-/// every phone in the room hits it on a timer.
+/// What every phone polls to know whether anything moved; kept cheap on purpose
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct TournamentStateResponse {
     /// The server's own reading of the time, for clock skew
@@ -572,11 +520,9 @@ pub struct MatchSeatResponse {
     pub seat: i16,
     /// How many games this seat has won
     pub games_won: i16,
-    /// Whether they have since left the event, so the row can say so rather
-    /// than leaving an organizer to wonder why nobody is sitting there
+    /// Whether they have since left the event
     pub dropped: bool,
-    /// The table they cannot leave, if there is one — what the pin on the row
-    /// is drawn from, and the reason this table carries the number it does
+    /// The table they are pinned to, if any
     pub fixed_table: Option<i16>,
 }
 
@@ -640,12 +586,7 @@ pub struct ListTablesResponse {
     pub tables: Vec<MatchTableResponse>,
 }
 
-/// A pin the layout could not honour
-///
-/// Two players who cannot leave their table asked for the same number. The
-/// lower-numbered table kept it and the other pin was dropped; nothing about
-/// who plays whom changed, so the round is still perfectly valid — an
-/// organizer simply has to move somebody by hand.
+/// A fixed-table pin the layout could not honour; the lower table number kept it
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct FixedTableConflict {
     /// The number both asked for
@@ -672,16 +613,14 @@ pub struct PairRoundErrors {
     pub results_reported: bool,
     /// Nobody is checked in, so there is nobody to seat
     pub no_entrants: bool,
-    /// The field divides into neither full pods nor pods one smaller — five
-    /// players at a pod size of four, say. The remedy is a different pod size.
+    /// The field divides into neither full pods nor pods one smaller
     pub impossible_pods: bool,
 }
 
 /// A layout arranged at the desk
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct ArrangePairingsRequest {
-    /// Who sits where, table by table, in seat order; a single seat at a duel
-    /// is the bye
+    /// Who sits where, table by table, in seat order; a single seat at a duel is the bye
     pub tables: Vec<Vec<TournamentParticipantUuid>>,
 }
 
@@ -692,8 +631,7 @@ pub struct ArrangePairingsErrors {
     pub not_pairable: bool,
     /// Tables the edit would change that already carry a result
     pub reported_tables: Vec<i16>,
-    /// Somebody is seated twice or not in this round, or a table has the
-    /// wrong size
+    /// Somebody is seated twice or not in this round, or a table has the wrong size
     pub invalid_layout: bool,
 }
 
@@ -745,11 +683,7 @@ pub struct MyMatchResponse {
     pub server_time: SchemaDateTime,
 }
 
-/// What one seat says happened at their table
-///
-/// The game counts are the winner's and the loser's, not one per seat: a pod is
-/// always best of one, so the only place a game score carries anything is a
-/// duel, where there are exactly two of them.
+/// What one seat says happened at their table; game counts only matter for duels
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct ReportResultRequest {
     /// Who they say won, `null` for a draw
@@ -767,11 +701,7 @@ pub struct ReportResultRequest {
     /// Games inside the match that were themselves drawn
     #[serde(default)]
     pub games_drawn: i16,
-    /// The key this tap was minted with
-    ///
-    /// The same key arriving twice is one tap retried and writes nothing; a
-    /// different one is somebody changing their mind and overwrites. Which is
-    /// what makes a double-tapped phone on a bad connection harmless.
+    /// Idempotency key: the same key twice is a retry, a new key overwrites the earlier report
     pub client_key: MaxStr<64>,
 }
 
@@ -845,12 +775,7 @@ impl From<Tiebreaker> for TiebreakerResponse {
     }
 }
 
-/// One row of the standings
-///
-/// Every percentage is in basis points — 10 000 is 100 % — which is also the
-/// precision it is meant to be shown at. Two rows whose numbers render the same
-/// really are equal, so a reader checking the table by hand never finds a tie
-/// broken by a digit that was not on screen.
+/// One row of the standings; percentages are basis points (10 000 = 100 %)
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct StandingResponse {
     /// Whose row this is
@@ -893,9 +818,6 @@ pub struct StandingsResponse {
     /// Which tiebreakers this event applies, most significant first
     pub tiebreakers: Vec<TiebreakerResponse>,
     /// How many tables of the current round have no settled result
-    ///
-    /// The reason the page can say "three tables still out" rather than letting
-    /// ranks shuffle under a reader who does not know why.
     pub outstanding_tables: i64,
 }
 
@@ -903,10 +825,6 @@ pub struct StandingsResponse {
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct SetTournamentStatusResponse {
     /// How many players were dropped for never checking in
-    ///
-    /// Only ever non-zero on the move to [`TournamentStatus::Running`]. The
-    /// client already listed them in its confirmation, so this is the count
-    /// that actually happened rather than the one it predicted.
     pub dropped_awaiting_check_in: i64,
 }
 
@@ -925,9 +843,6 @@ pub struct TournamentJoinCodeResponse {
 }
 
 /// Somebody on a tournament's roster, as an actor may see them
-///
-/// [`Self::notes`] is `None` unless the viewer is staff — see
-/// [`Self::from_parts`].
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct TournamentParticipantResponse {
     /// Primary key
@@ -953,13 +868,9 @@ pub struct TournamentParticipantResponse {
 }
 
 impl TournamentParticipantResponse {
-    /// Build the response, redacting [`Self::notes`] unless `is_organizer`
+    /// Build the response, redacting notes and fixed table unless `is_organizer`
     ///
-    /// `has_decklist` is not derived here — it comes from a batch read
-    /// ([`crate::models::tournament::decklist::submitted`] for the roster) or
-    /// from the write the caller just made, never from a per-row query: the
-    /// roster must never drag decklist text along, see the module docs on
-    /// [`crate::models::tournament::decklist`].
+    /// `has_decklist` comes from a batch read, so the roster never loads decklist text.
     pub fn from_parts(
         participant: TournamentParticipant,
         has_decklist: bool,
@@ -987,23 +898,16 @@ pub struct ListTournamentParticipantsResponse {
     pub participants: Vec<TournamentParticipantResponse>,
 }
 
-/// Request to put a player on the roster from the desk
-///
-/// Two shapes in one request: with `account` the row belongs to that account
-/// from the start — the organizer looked the player up because their phone
-/// was dead — and `display_name` is optional, defaulting to the username.
-/// Without it the row is a guest a name was typed for, claimable later by QR.
+/// Request to put a player on the roster from the desk: an account, or a guest by name
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct AddTournamentParticipantRequest {
     /// The account to seat, `None` to add a guest by name alone
     #[serde(default)]
     pub account: Option<AccountUuid>,
-    /// The name the player appears under; required for a guest, optional
-    /// alongside `account`
+    /// The name the player appears under; required for a guest
     #[serde(default)]
     pub display_name: Option<MaxStr<64>>,
-    /// A decklist to type in for them, pasted text only — an organizer never
-    /// links a Planarium deck on somebody else's behalf
+    /// A decklist to type in for them; organizers cannot link a deck for somebody else
     #[serde(default)]
     pub decklist_text: Option<MaxStr<16384>>,
 }
@@ -1023,11 +927,7 @@ pub struct AddParticipantErrors {
     pub invalid_decklist: bool,
 }
 
-/// One account an organizer's player search turned up
-///
-/// Username only. The search exists to resolve "which of these is my player",
-/// and a username is what the organizer reads off their screen — anything
-/// else would make this a directory.
+/// One account an organizer's player search turned up; username only, not a directory
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct PlayerSearchResultResponse {
     /// The account found
@@ -1039,10 +939,6 @@ pub struct PlayerSearchResultResponse {
 }
 
 /// How many hits one player search answers with
-///
-/// An organizer is looking for one known person, not browsing: a short list
-/// they can read at a glance is the whole point, and a longer needle is the
-/// way to narrow it.
 pub const PLAYER_SEARCH_LIMIT: u64 = 10;
 
 /// The needle an organizer's player search carries
@@ -1060,9 +956,6 @@ pub struct SearchPlayersResponse {
 }
 
 /// Request to change a participant's display name and/or organizer notes
-///
-/// `notes: null` clears the notes; an absent `notes` key leaves them alone —
-/// see [`crate::http::handler_frontend::collections::schema::double_option`].
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct UpdateTournamentParticipantRequest {
     /// A new display name, `None` to leave it alone
@@ -1161,13 +1054,6 @@ pub struct ClaimParticipantResponse {
 }
 
 /// Why a claim-token action was refused
-///
-/// Shared by [`super::handler::claim_tournament_participant`] (which can also
-/// answer [`Self::already_registered`]) and, unauthenticated, by
-/// [`crate::http::handler_frontend::join::handler::look_up_claim_token`] and
-/// [`crate::http::handler_frontend::join::handler::reattach_claim_token`] —
-/// the latter two only ever set [`Self::invalid_token`], since there is no
-/// account on a guest request for [`Self::already_registered`] to describe.
 #[derive(Default, Serialize, JsonSchema)]
 pub struct ClaimErrors {
     /// No unclaimed row carries this token
@@ -1177,10 +1063,6 @@ pub struct ClaimErrors {
 }
 
 /// A guest row's live claim token, for staff to show as a QR code
-///
-/// `None` covers both "already claimed" and "this is an account row" alike —
-/// see [`crate::models::tournament::participant::claim_token`] for why the
-/// caller has no reason to tell the two apart.
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct ClaimTokenResponse {
     /// The live token, `None` when there is none to hand out
@@ -1264,24 +1146,18 @@ impl From<Decklist> for DecklistResponse {
     }
 }
 
-/// What [`super::handler::get_participant_decklist`] and
-/// [`super::handler::set_participant_decklist`] answer with
+/// A participant's decklist plus whether the viewer may edit it
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct GetDecklistResponse {
     /// The decklist itself, `None` while nothing has been submitted
     pub decklist: Option<DecklistResponse>,
     /// Whether the tournament's decklists are locked tournament-wide
     pub locked: bool,
-    /// Whether the viewer may write this decklist right now — staff always,
-    /// the participant themself only while `!locked`. Computed server-side so
-    /// the UI never has to re-derive it from `locked` plus who is asking.
+    /// Whether the viewer may write this decklist now: staff always, the player while unlocked
     pub may_edit: bool,
 }
 
-/// Request to write, replace or clear a participant's decklist
-///
-/// Both fields absent clears the list; both present is refused as
-/// [`DecklistErrors::invalid_decklist`] — a request names at most one source.
+/// Request to write, replace or clear a decklist; both fields absent clears it
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct SetDecklistRequest {
     /// Link a Planarium deck — the caller must own it
@@ -1295,11 +1171,9 @@ pub struct SetDecklistRequest {
 /// Why [`super::handler::set_participant_decklist`] was refused
 #[derive(Default, Serialize, JsonSchema)]
 pub struct DecklistErrors {
-    /// The tournament's decklists are locked tournament-wide and the caller
-    /// is not staff
+    /// Decklists are locked tournament-wide and the caller is not staff
     pub locked: bool,
-    /// The named deck does not exist, is not the caller's, or rendered to
-    /// nothing playable — an empty deck is not a list anybody can register
+    /// The deck does not exist, is not the caller's, or is empty
     pub unknown_deck: bool,
     /// The pasted text was blank once trimmed, or both `deck` and `text` were
     /// given in the same request
@@ -1309,8 +1183,7 @@ pub struct DecklistErrors {
 /// Why [`super::handler::check_in_tournament_participant`] was refused
 #[derive(Default, Serialize, JsonSchema)]
 pub struct CheckInErrors {
-    /// The tournament's decklist policy requires a decklist before check-in
-    /// and this player has none on file
+    /// The decklist policy requires a decklist before check-in and none is on file
     pub decklist_missing: bool,
 }
 

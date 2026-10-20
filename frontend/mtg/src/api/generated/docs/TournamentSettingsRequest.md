@@ -1,7 +1,7 @@
 
 # TournamentSettingsRequest
 
-The editable shape of a tournament, shared by [`CreateTournamentRequest`] and [`super::handler::update_tournament`]  One type for both requests: an update sends exactly the same fields a create does, minus [`Visibility`] (which has its own endpoint and its own audit action). Validated in the handler against [`TournamentSettingsErrors`].
+The editable settings of a tournament, shared by create and update
 
 ## Properties
 

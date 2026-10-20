@@ -1,29 +1,4 @@
-//! Tournaments: an event with organizers, a roster, and — starting in M2 — rounds
-//!
-//! Milestone 1 is the roster slice: a tournament exists, has organizers and
-//! participants (accounts and guests), and people can join it by a typed
-//! short code. No rounds, no pairing, no results yet.
-//!
-//! # The guard discipline
-//!
-//! Every other model in this service folds its owner check into the
-//! statement it guards (`owned_by` in [`crate::models::deck`] and
-//! [`crate::models::watch_list`]): "is this account allowed" is a column on
-//! the row itself, so a `WHERE owner = $1` says it in one breath. A
-//! tournament cannot do that in general — "is this account an organizer" is a
-//! row in [`db::TournamentOrganizerModel`], a different table, and rorm's
-//! conditions cannot walk into another table to answer that. So tournaments
-//! use an explicit guard query instead ([`Tournament::role_of`],
-//! [`Tournament::get_as_organizer`]), and the discipline with teeth is: **there
-//! is no `Tournament::get_by_uuid`.** [`Tournament::fetch`] is the only raw
-//! read, it is private to this module, and every function that hands out a
-//! [`Tournament`] takes an actor or an account and answers a
-//! [`TournamentAccess`] or an `Option` instead — a handler that forgets the
-//! guard cannot be written, because there is nothing ungated to reach for.
-//!
-//! The owner column *is* a plain column, though, so the handful of
-//! owner-only mutations ([`Tournament::delete`], organizer management) fold
-//! it into their statement via `owned_by` exactly like a deck would.
+//! Tournaments: events with organizers, a roster and rounds
 
 use std::collections::HashMap;
 
@@ -71,25 +46,16 @@ pub mod round;
 pub mod standings;
 pub mod venue;
 
-/// How long a freshly minted join code stays live when the tournament names
-/// no start time
+/// How long a fresh join code lives when the tournament names no start time
 const DEFAULT_JOIN_CODE_LIFETIME: Duration = Duration::days(7);
 
 /// How long a join code outlives the tournament's announced start
-///
-/// Long enough that a table running behind schedule does not have its
-/// latecomers locked out.
 const JOIN_CODE_GRACE_AFTER_START: Duration = Duration::hours(12);
 
 /// How many times [`Tournament::rotate_join_code`] retries a colliding code
 const JOIN_CODE_MINT_ATTEMPTS: u32 = 5;
 
-/// When a join code minted or refreshed now should stop working
-///
-/// The event's announced start plus [`JOIN_CODE_GRACE_AFTER_START`] when it
-/// named one, else [`DEFAULT_JOIN_CODE_LIFETIME`] from now. Every site that
-/// writes `join_code_expires_at` goes through here, so "a code outlives its
-/// event by half a day" is stated once.
+/// When a join code minted or refreshed now should expire
 fn join_code_expiry(starts_at: Option<OffsetDateTime>) -> OffsetDateTime {
     match starts_at {
         Some(starts_at) => starts_at + JOIN_CODE_GRACE_AFTER_START,
@@ -98,18 +64,10 @@ fn join_code_expiry(starts_at: Option<OffsetDateTime>) -> OffsetDateTime {
 }
 
 /// Roll a join code no other tournament currently holds
-///
-/// A colliding candidate is detected by a probing SELECT and re-rolled, up to
-/// [`JOIN_CODE_MINT_ATTEMPTS`] times — the alphabet is wide enough (29^6) that
-/// this is a belt, not a plan. Probing instead of catching the unique
-/// violation is forced, not stylistic: Postgres aborts the whole transaction
-/// on a constraint violation, so an in-transaction retry after catching one
-/// could never run. The constraint stays the last word — losing the probe's
-/// race window to a concurrent mint surfaces as a plain error, which at these
-/// odds is a curiosity.
 async fn mint_join_code(tx: &mut Transaction) -> Result<MaxStr<8>, rorm::Error> {
     let mut code = generate_join_code();
     for _ in 0..JOIN_CODE_MINT_ATTEMPTS {
+        // Probe rather than catch the unique violation: Postgres aborts the transaction on one.
         let taken = rorm::query(&mut *tx, TournamentModel.uuid)
             .condition(TournamentModel.join_code.equals(Some(&code)))
             .optional()
@@ -126,8 +84,7 @@ async fn mint_join_code(tx: &mut Transaction) -> Result<MaxStr<8>, rorm::Error> 
 /// Where a tournament stands in its lifecycle
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub enum TournamentStatus {
-    /// Open for players to register or join by code — where every tournament
-    /// starts
+    /// Open for registration and joining by code; the initial status
     Registration,
     /// Under way
     Running,
@@ -144,20 +101,6 @@ custom_db_enum! {
 
 impl TournamentStatus {
     /// Whether the event may move from this status to `to`
-    ///
-    /// The lifecycle runs forward through `Registration -> Running ->
-    /// Finished` one step at a time; [`Self::Cancelled`] is reachable from
-    /// either non-terminal status, since calling an event off is never
-    /// scheduled in advance. Nothing leaves [`Self::Finished`] or
-    /// [`Self::Cancelled`] — both are where a tournament's history stops
-    /// changing.
-    ///
-    /// There is no draft stage. It only ever gated the join code, which
-    /// `visibility` already answers better — who may *see* an event is a
-    /// different question from whether it exists — and a code minted at
-    /// creation that silently refuses to resolve is worse than no code. An
-    /// event that should not be joinable yet wants a `registration_opens_at`,
-    /// not a status an organizer has to remember to leave.
     pub fn may_transition(self, to: Self) -> bool {
         use TournamentStatus::*;
         matches!(
@@ -181,14 +124,7 @@ custom_db_enum! {
     decoder: PairingSystemDecoder,
 }
 
-/// What a round is for
-///
-/// Only a [`Self::Swiss`] round carries a number, plays matches and moves the
-/// standings. The other two are the shape a limited event needs before it can
-/// start: a draft round groups people into pods so they open boosters
-/// together, and a deckbuilding round is a clock and nothing else. Both are
-/// rounds in the sense that they occupy the room and the timer, and in no
-/// other sense — see [`round::Round::number`].
+/// What a round is for; only Swiss rounds are numbered and scored
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub enum RoundKind {
     /// A scored round of matches
@@ -205,11 +141,6 @@ custom_db_enum! {
 }
 
 /// Where a round stands
-///
-/// There is no `Cancelled`: re-pairing replaces a round's matches in place and
-/// deleting one is a hard delete guarded on "nothing reported", so a lingering
-/// cancelled round would only be a fourth thing every read has to remember to
-/// filter out.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub enum RoundStatus {
     /// Paired, not yet handed to the room
@@ -225,11 +156,7 @@ custom_db_enum! {
     decoder: RoundStatusDecoder,
 }
 
-/// How far a table's result has got
-///
-/// Derived from the report rows on every write and never read back as truth —
-/// which is what lets the desk and the players' phones share one state machine
-/// without either of them owning it.
+/// How far a table's result has got; derived from the report rows on every write
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub enum MatchStatus {
     /// Nobody has said anything
@@ -270,7 +197,7 @@ custom_db_enum! {
 pub enum OrganizerRole {
     /// Everything the owner may do except hand the event to somebody else
     CoOrganizer,
-    /// Runs the roster and, from M2 on, results — not settings or the staff list
+    /// Runs the roster and results, not settings or the staff list
     Scorekeeper,
 }
 custom_db_enum! {
@@ -279,18 +206,12 @@ custom_db_enum! {
     decoder: OrganizerRoleDecoder,
 }
 
-/// How a tournament requires its players to hand in a decklist
-///
-/// Always editable, unlike the structural settings [`Tournament::update_settings`]
-/// locks once the event leaves [`TournamentStatus::Registration`]:
-/// an organizer must be able to relax or tighten the requirement at any point
-/// right up to the last round, the same reasoning as `round_minutes`.
+/// How a tournament requires its players to hand in a decklist; editable at any time
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub enum DecklistPolicy {
     /// A decklist is welcome but a player may register, check in and play without one
     Optional,
-    /// A player may register without a decklist, but [`participant::check_in`]
-    /// refuses them until one is on file
+    /// Registration without a decklist is fine, but check-in is refused until one is on file
     RequiredToCheckIn,
     /// A player may not complete registration at all without a decklist
     RequiredToRegister,
@@ -301,25 +222,14 @@ custom_db_enum! {
     decoder: DecklistPolicyDecoder,
 }
 
-/// Who may see a tournament's roster at all
-///
-/// A separate, later gate than [`Visibility`]: visibility decides whether a
-/// viewer reaches the tournament in the first place, this decides — once they
-/// have — whether they may see who is playing in it. Staff see the roster in
-/// full no matter what this is set to; see
-/// [`public::roster_view`](crate::models::tournament::public::roster_view)
-/// for exactly how the two combine.
+/// Who may see a tournament's roster; staff always see it in full
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub enum ParticipantAudience {
-    /// Only staff see the roster; a participant sees just their own row, and
-    /// everyone else sees none of it
+    /// Only staff see the roster; a participant sees just their own row
     Organizers,
-    /// Staff and every participant see the whole roster; everyone else sees
-    /// none of it
+    /// Staff and every participant see the whole roster
     Participants,
-    /// Everyone who may see the event at all sees the roster too — a guest
-    /// appears under their real name or a pseudonym, depending on
-    /// `guest_names_public`
+    /// Everyone who may see the event sees the roster; guest names per `guest_names_public`
     Anyone,
 }
 custom_db_enum! {
@@ -328,10 +238,7 @@ custom_db_enum! {
     decoder: ParticipantAudienceDecoder,
 }
 
-/// What happened, as recorded in a tournament's audit log
-///
-/// Stored by its variant name, so new variants in M2/M3 need no migration —
-/// they are just another string an old client has never seen.
+/// What happened, as recorded in a tournament's audit log; stored by variant name
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub enum AuditAction {
     /// The tournament was created
@@ -471,10 +378,6 @@ impl TournamentParticipantUuid {
     }
 
     /// Create a new `TournamentParticipantUuid` from a `ForeignModel<TournamentParticipantModel>`
-    ///
-    /// M1 held nothing else as a foreign key to a participant row, so this had
-    /// no reason to exist yet; `tournament_decklist.participant` in M1.5 is the
-    /// first one.
     pub(in crate::models) fn new_from_field(
         field: ForeignModel<TournamentParticipantModel>,
     ) -> Self {
@@ -489,14 +392,6 @@ impl TournamentParticipantUuid {
 
 /// Wrapper for the primary key of the [`venue::Venue`] model.
 /// To have better distinguishable types.
-///
-/// No `new_from_field` constructor, unlike [`TournamentUuid`] and
-/// [`TournamentParticipantUuid`]: nothing holds a `ForeignModel` pointing at
-/// a venue row — the "no provenance FK" decision means a venue's uuid is
-/// only ever read back as the raw primary key, never as somebody else's
-/// foreign key column. [`WatchListEntryUuid`](crate::models::watch_list::WatchListEntryUuid)
-/// and [`DeckCardUuid`](crate::models::deck::DeckCardUuid) are the same
-/// shape for the same reason.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, JsonSchema, Hash, Eq, PartialEq)]
 pub struct TournamentVenueUuid(Uuid);
 
@@ -512,10 +407,7 @@ impl TournamentVenueUuid {
     }
 }
 
-/// Outcome of an operation gated on holding some role in a tournament
-///
-/// One [`Self::Denied`] for "does not exist" and "not yours to touch" alike,
-/// the same reasoning as [`crate::models::deck::DeckAccess`].
+/// Outcome of a role-gated operation; missing and forbidden both read as [`Self::Denied`]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TournamentAccess<T = ()> {
     /// The actor holds the required role; carries whatever the operation produced
@@ -549,25 +441,13 @@ pub enum TournamentRole {
 }
 
 impl TournamentRole {
-    /// Whether this role may change settings, status, visibility, the join
-    /// code or who else is staff
-    ///
-    /// Everything a [`OrganizerRole::Scorekeeper`] is *not* trusted with —
-    /// running the roster and, from M2 on, results, is what is left over.
+    /// Whether this role may change settings, status, visibility, the join code or staff
     pub fn may_manage(self) -> bool {
         !matches!(self, Self::Organizer(OrganizerRole::Scorekeeper))
     }
 }
 
-/// Who is acting: a logged-in account, or a guest carrying participant rows
-/// in their session
-///
-/// A guest is never anonymous once they have joined something — they are the
-/// holder of one or more [`TournamentParticipantUuid`]s, remembered by
-/// [`extractor::TournamentActor::remember_guest`]. Nothing here says an
-/// account and a guest are mutually exclusive over time: a claimed guest row
-/// becomes an ordinary participant with an account, and the old participant
-/// uuid simply stops being useful to present.
+/// Who is acting: a logged-in account, or a guest holding participant rows in their session
 #[derive(Debug, Clone)]
 pub enum TournamentActor {
     /// A logged-in account
@@ -576,7 +456,7 @@ pub enum TournamentActor {
     Guest(Vec<TournamentParticipantUuid>),
 }
 
-/// A tournament: an event with a roster and, from M2 on, rounds
+/// A tournament: an event with a roster and rounds
 #[derive(Debug, Clone)]
 pub struct Tournament {
     /// Primary key
@@ -618,13 +498,11 @@ pub struct Tournament {
     pub late_entry_as_losses: bool,
     /// How the tournament requires its players to hand in a decklist
     pub decklist_policy: DecklistPolicy,
-    /// When decklists were locked tournament-wide, `None` while players may
-    /// still write their own
+    /// When decklists were locked tournament-wide, `None` while players may edit them
     pub decklists_locked_at: Option<OffsetDateTime>,
     /// Who may see this tournament's roster at all
     pub participant_audience: ParticipantAudience,
-    /// Whether a guest's real name is shown to a reader who is neither staff
-    /// nor a participant
+    /// Whether a guest's real name is shown to readers who are neither staff nor participants
     pub guest_names_public: bool,
     /// Who may see the event at all
     pub visibility: Visibility,
@@ -658,11 +536,7 @@ pub struct TournamentWithViewer {
     pub participant: Option<TournamentParticipantUuid>,
 }
 
-/// One line of the organizer-only staff list
-///
-/// Carries the account's username, unlike every participant-facing surface —
-/// see the module docs on why a display name and a username are never the
-/// same field here.
+/// One line of the organizer-only staff list, carrying the account's username
 #[derive(Debug, Clone)]
 pub struct TournamentOrganizer {
     /// The helping account
@@ -730,8 +604,7 @@ pub struct TournamentInsert {
     pub decklist_policy: DecklistPolicy,
     /// Who may see this tournament's roster at all
     pub participant_audience: ParticipantAudience,
-    /// Whether a guest's real name is shown to a reader who is neither staff
-    /// nor a participant
+    /// Whether a guest's real name is shown to readers who are neither staff nor participants
     pub guest_names_public: bool,
     /// Who may see the event at all
     pub visibility: Visibility,
@@ -745,10 +618,7 @@ pub struct TournamentInsert {
     pub starts_at: Option<OffsetDateTime>,
 }
 
-/// What an organizer may change about a [`Tournament`]'s settings in one PUT
-///
-/// The same fields [`TournamentInsert`] takes minus [`Visibility`], which has
-/// its own setter and its own audit action.
+/// What an organizer may change about a [`Tournament`]; visibility has its own setter
 #[derive(Debug, Clone)]
 pub struct TournamentUpdate {
     /// Name of the tournament
@@ -794,8 +664,7 @@ pub struct TournamentUpdate {
     pub decklist_policy: DecklistPolicy,
     /// Who may see this tournament's roster at all
     pub participant_audience: ParticipantAudience,
-    /// Whether a guest's real name is shown to a reader who is neither staff
-    /// nor a participant
+    /// Whether a guest's real name is shown to readers who are neither staff nor participants
     pub guest_names_public: bool,
 }
 
@@ -804,9 +673,7 @@ pub struct TournamentUpdate {
 pub enum SettingsChange {
     /// Everything the request asked for was written
     Changed,
-    /// The request tried to change structural fields while the event no
-    /// longer allows that; nothing was written — see
-    /// [`Tournament::update_settings`]
+    /// The request changed structural fields after registration closed; nothing was written
     Locked,
 }
 
@@ -815,11 +682,7 @@ pub enum SettingsChange {
 pub enum StatusChange {
     /// The status was written
     Changed {
-        /// How many players were dropped for never checking in
-        ///
-        /// Only ever non-zero on the move to [`TournamentStatus::Running`] —
-        /// see [`Tournament::set_status`] for why starting an event clears the
-        /// queue rather than pairing whoever happens to be in it.
+        /// How many players were dropped for never checking in (only on the move to Running)
         dropped_awaiting_check_in: u64,
     },
     /// [`TournamentStatus::may_transition`] refused the move; nothing changed
@@ -840,8 +703,7 @@ pub enum OrganizerChange {
 }
 
 impl Tournament {
-    /// The only raw fetch — see the module docs on why every other accessor
-    /// answers through a guard instead of calling this directly
+    /// The only raw fetch; every public accessor goes through a role or visibility guard
     #[instrument(name = "Tournament::fetch", skip(tx))]
     pub(in crate::models::tournament) async fn fetch(
         tx: &mut Transaction,
@@ -854,9 +716,6 @@ impl Tournament {
     }
 
     /// What role, if any, `account` holds on `tournament`
-    ///
-    /// The owner column is checked first: it is cheaper than the join and it
-    /// is the common case for the account that is looking at its own event.
     #[instrument(name = "Tournament::role_of", skip(tx))]
     pub async fn role_of(
         tx: &mut Transaction,
@@ -900,11 +759,7 @@ impl Tournament {
         Ok(TournamentAccess::Granted((role, Tournament::from(model))))
     }
 
-    /// The read for the actor group: owner, organizer and participant see
-    /// everything; everyone else sees it only while [`Visibility::Public`]
-    ///
-    /// A guest matches when one of the participant uuids their session holds
-    /// belongs to this tournament.
+    /// The read for an actor: role holders and participants always, others only while public
     #[instrument(name = "Tournament::get_for_viewer", skip(tx))]
     pub async fn get_for_viewer(
         tx: &mut Transaction,
@@ -968,16 +823,7 @@ impl Tournament {
         }
     }
 
-    /// Create a new tournament, owned by `owner`
-    ///
-    /// Visibility handling copied from [`crate::models::deck::Deck::create`]:
-    /// [`Visibility::Unlisted`] mints a share token, the other two get none.
-    ///
-    /// A join code is minted here, not on a later click: an organizer who has
-    /// just filled in the create dialog wants a code to put on the whiteboard,
-    /// and a tournament nobody can join is not a useful resting state. The
-    /// code stays inert until the event opens registration — that rule lives
-    /// in [`Tournament::get_by_join_code`] and is unchanged by minting early.
+    /// Create a new tournament owned by `owner`, with a join code already minted
     #[instrument(name = "Tournament::create", skip(tx))]
     pub async fn create(
         tx: &mut Transaction,
@@ -1039,28 +885,7 @@ impl Tournament {
         Ok(tournament)
     }
 
-    /// Update a tournament's settings
-    ///
-    /// `name`, `description`, `venue`, `venue_address`, `venue_instructions`,
-    /// `starts_at`, `round_minutes`, `planned_rounds`, `decklist_policy`,
-    /// `participant_audience` and `guest_names_public` are always editable — an organizer must be
-    /// able to fix a typo, move the venue, relax/tighten the decklist
-    /// requirement, or change who may see the roster and whether guests are
-    /// named, while the event is running.
-    /// Everything structural (format,
-    /// `pod_size`, `games_per_match`, `pairing_system`, the
-    /// point values, `allow_late_entry`,
-    /// `late_entry_as_losses`) only takes while
-    /// [`TournamentStatus::Registration`]: reshaping the bracket or the
-    /// scoring table mid-event would invalidate rounds already played.
-    ///
-    /// A locked event still accepts a request whose structural fields merely
-    /// *repeat* their current values — the client sends the whole settings
-    /// form, so "fix the venue mid-event" arrives with every structural field
-    /// unchanged, and refusing that would make the always-editable fields
-    /// uneditable in practice. [`SettingsChange::Locked`] therefore means the
-    /// request asked for an actual structural *change* while locked, and
-    /// nothing was written.
+    /// Update a tournament's settings; structural fields are locked once registration closes
     #[instrument(name = "Tournament::update_settings", skip(tx))]
     pub async fn update_settings(
         tx: &mut Transaction,
@@ -1079,10 +904,7 @@ impl Tournament {
         }
 
         let unlocked = matches!(tournament.status, TournamentStatus::Registration);
-        // The expiry was derived from the old start time, so moving the event
-        // has to move it too — otherwise postponing by a week silently leaves
-        // a code that dies before the doors open. Only the expiry follows; the
-        // code itself survives a reschedule.
+        // Postponing the event must move the code's expiry too, or it dies before the doors open.
         let moves_start =
             update.starts_at != tournament.starts_at && tournament.join_code.is_some();
         let changes_structure = update.format != tournament.format
@@ -1190,15 +1012,7 @@ impl Tournament {
         Ok(TournamentAccess::Granted(SettingsChange::Changed))
     }
 
-    /// Move a tournament to a new lifecycle status
-    ///
-    /// Entering [`TournamentStatus::Finished`] stamps `finished_at` and nulls
-    /// the join code and its expiry; entering [`TournamentStatus::Cancelled`]
-    /// nulls the code and its expiry without stamping `finished_at` — a
-    /// cancelled event never finished. Nulling the expiry alongside the code
-    /// is not spelled out by name anywhere else, but leaving a stale expiry
-    /// on a `None` code is a dangling value nothing would ever read
-    /// correctly again.
+    /// Move a tournament to a new lifecycle status; terminal statuses clear the join code
     #[instrument(name = "Tournament::set_status", skip(tx))]
     pub async fn set_status(
         tx: &mut Transaction,
@@ -1220,11 +1034,7 @@ impl Tournament {
             return Ok(TournamentAccess::Granted(StatusChange::InvalidTransition));
         }
 
-        // Starting the event closes the door: whoever never checked in is not in
-        // the room, and pairing them would hand their opponent a table with an
-        // empty chair. They keep their row and their history — `Dropped`, not
-        // deleted — so a player who turns up late is re-added at the desk as a
-        // late entry rather than conjured back out of nothing.
+        // Starting drops everyone not checked in, so no table is paired with an empty chair.
         let dropped_awaiting_check_in = if matches!(status, TournamentStatus::Running) {
             drop_awaiting_check_in(&mut *tx, account, uuid).await?
         } else {
@@ -1285,11 +1095,7 @@ impl Tournament {
         }))
     }
 
-    /// Set a tournament's visibility
-    ///
-    /// [`crate::models::deck::Deck::set_visibility`], verbatim semantics:
-    /// switching to [`Visibility::Unlisted`] mints a share token, switching
-    /// away revokes it.
+    /// Set a tournament's visibility; only [`Visibility::Unlisted`] keeps a share token
     #[instrument(name = "Tournament::set_visibility", skip(tx))]
     pub async fn set_visibility(
         tx: &mut Transaction,
@@ -1332,27 +1138,16 @@ impl Tournament {
     }
 
     /// Whether decklists are currently locked tournament-wide
-    ///
-    /// While locked, only staff may write a participant's decklist — see
-    /// [`decklist::set`].
     pub fn decklists_locked(&self) -> bool {
         self.decklists_locked_at.is_some()
     }
 
-    /// Whether this tournament's decklist policy requires a decklist to
-    /// complete registration, checked by the join handlers before they
-    /// register anyone
+    /// Whether a decklist is required to complete registration
     pub fn needs_decklist_to_register(&self) -> bool {
         self.decklist_policy == DecklistPolicy::RequiredToRegister
     }
 
-    /// Lock every decklist in the tournament: players may no longer write
-    /// their own, staff still can
-    ///
-    /// Idempotent by rewriting the timestamp rather than refusing a second
-    /// lock — an organizer locking an already-locked event is not an error,
-    /// just confirmation, and there is nothing a `None` outcome would let a
-    /// caller do differently.
+    /// Lock every decklist so only staff may write them; re-locking refreshes the timestamp
     #[instrument(name = "Tournament::lock_decklists", skip(tx))]
     pub async fn lock_decklists(
         tx: &mut Transaction,
@@ -1425,12 +1220,7 @@ impl Tournament {
         Ok(TournamentAccess::Granted(()))
     }
 
-    /// Mint a fresh join code, invalidating whatever one was live before
-    ///
-    /// [`Tournament::create`] already left a code in place, so this is the
-    /// "that one leaked, give me another" button rather than the only way to
-    /// get one. See [`mint_join_code`] for why a collision is probed for and
-    /// [`join_code_expiry`] for how long the new code lives.
+    /// Mint a fresh join code, invalidating the previous one
     #[instrument(name = "Tournament::rotate_join_code", skip(tx))]
     pub async fn rotate_join_code(
         tx: &mut Transaction,
@@ -1505,15 +1295,7 @@ impl Tournament {
         Ok(TournamentAccess::Granted(()))
     }
 
-    /// The unauthenticated lookup by join code
-    ///
-    /// This is the ONLY code-resolving path, so the liveness rules live here
-    /// and nowhere else: an expired code, a tournament that is
-    /// [`TournamentStatus::Finished`] or [`TournamentStatus::Cancelled`], or
-    /// no code at all, all read as
-    /// `None`. `set_status` already nulls the code on the two terminal
-    /// statuses, so the status check here is a second, cheaper line of
-    /// defence rather than the only one.
+    /// The unauthenticated lookup by join code; the only place join-code liveness is checked
     #[instrument(name = "Tournament::get_by_join_code", skip(tx, code))]
     pub async fn get_by_join_code(
         tx: &mut Transaction,
@@ -1538,12 +1320,7 @@ impl Tournament {
         Ok(live.then_some(tournament))
     }
 
-    /// Delete a tournament and, through the cascade, its organizers,
-    /// participants and audit log
-    ///
-    /// Owner only — the owner column is a plain field on the row, so unlike
-    /// the rest of this module's mutators, `owned_by` folds straight into the
-    /// statement.
+    /// Delete a tournament (owner only); organizers, participants and audit log cascade
     #[instrument(name = "Tournament::delete", skip(tx))]
     pub async fn delete(
         tx: &mut Transaction,
@@ -1591,9 +1368,7 @@ impl Tournament {
         Ok(TournamentAccess::Granted(organizers))
     }
 
-    /// Add an account as staff
-    ///
-    /// Owner only.
+    /// Add an account as staff (owner only)
     #[instrument(name = "Tournament::add_organizer", skip(tx))]
     pub async fn add_organizer(
         tx: &mut Transaction,
@@ -1649,9 +1424,7 @@ impl Tournament {
         Ok(TournamentAccess::Granted(OrganizerChange::Changed))
     }
 
-    /// Remove an account from staff
-    ///
-    /// Owner only.
+    /// Remove an account from staff (owner only)
     #[instrument(name = "Tournament::remove_organizer", skip(tx))]
     pub async fn remove_organizer(
         tx: &mut Transaction,
@@ -1688,13 +1461,7 @@ impl Tournament {
         Ok(TournamentAccess::Granted(()))
     }
 
-    /// Write one line to a tournament's audit log
-    ///
-    /// `detail` is truncated to 1024 characters rather than refused — the log
-    /// is for reading, not for replay, so a clipped sentence beats a failed
-    /// mutation. Every other mutator in this module and in
-    /// [`participant`](crate::models::tournament::participant) calls this
-    /// last, once its own write has gone through.
+    /// Write one line to a tournament's audit log; `detail` is truncated to 1024 chars
     #[instrument(name = "Tournament::audit", skip(tx, detail))]
     pub(in crate::models::tournament) async fn audit(
         tx: &mut Transaction,
@@ -1720,11 +1487,7 @@ impl Tournament {
         Ok(())
     }
 
-    /// Read a tournament's audit log, newest first
-    ///
-    /// Visible to any role holder. Ordered by uuid rather than `created_at`:
-    /// a v7 uuid already orders by creation, and it breaks ties that two
-    /// entries written in the same millisecond would leave ambiguous.
+    /// Read a tournament's audit log, newest first (v7 uuid order breaks same-ms ties)
     #[instrument(name = "Tournament::list_audit", skip(tx))]
     pub async fn list_audit(
         tx: &mut Transaction,
@@ -1743,8 +1506,6 @@ impl Tournament {
             .all()
             .await?;
 
-        // Caches the username lookup across rows: one organizer doing every
-        // action is the common case, and this keeps that case at one query.
         let mut usernames: HashMap<Uuid, MaxStr<32>> = HashMap::new();
         let mut entries = Vec::with_capacity(rows.len());
         for row in rows {
@@ -1841,15 +1602,7 @@ impl From<TournamentModel> for Tournament {
     }
 }
 
-/// Drop everybody still waiting to be checked in, and say how many
-///
-/// Called from [`Tournament::set_status`] on the move to
-/// [`TournamentStatus::Running`] and nowhere else. A row per drop lands in the
-/// audit log rather than one summary line: the log answers "what happened to
-/// *this* player", and a count would not.
-///
-/// `dropped_after_round` is `0` — the value the roster already uses for "never
-/// played a round", which is exactly what these players did.
+/// Drop everybody still waiting to be checked in, one audit row each; returns the count
 #[instrument(name = "drop_awaiting_check_in", skip(tx))]
 async fn drop_awaiting_check_in(
     tx: &mut Transaction,
@@ -1916,26 +1669,12 @@ fn owned_by(uuid: TournamentUuid, account: AccountUuid) -> impl Condition<'stati
 }
 
 /// Converts a stored [`Username`] into the bounded string a listing hands out
-///
-/// Organizer- and audit-facing surfaces read the raw string rather than
-/// [`Username`] itself, so a response type does not have to pull the account
-/// module's newtype in just to carry four bytes back out.
 fn bounded_username(username: Username) -> MaxStr<32> {
     MaxStr::new(username.as_str().to_owned())
         .unwrap_or_else(|_| unreachable!("Username::MAX_LEN is {}", Username::MAX_LEN))
 }
 
-/// Whether a write failed on a unique-constraint violation
-///
-/// The one distinction the registration and claim paths in
-/// [`participant`](crate::models::tournament::participant) ever need to
-/// make: every other failure is a database that is down or a bug, and is
-/// propagated untouched. Matching the `DatabaseError` this way — instead of
-/// pre-querying for the row that would collide — is deliberate: a pre-query
-/// races a concurrent insert, the constraint itself never does. It only
-/// works as the *last* statement before the caller answers, though —
-/// Postgres aborts the transaction on the violation, so nothing may write
-/// after a hit.
+/// Whether a write failed on a unique violation; Postgres aborts the tx, so nothing may follow
 pub(in crate::models::tournament) fn is_unique_violation(error: &rorm::Error) -> bool {
     matches!(
         error,

@@ -1,7 +1,7 @@
 
 # JoinTournamentRequest
 
-Request to join by code as a logged-in account  `deck` and `decklist_text` are mutually exclusive — both present answers [`JoinErrors::invalid_decklist`]; both absent is fine unless the tournament\'s [`Tournament::needs_decklist_to_register`](crate::models::tournament::Tournament::needs_decklist_to_register) says otherwise.
+Request to join by code as a logged-in account; `deck` and `decklist_text` are exclusive
 
 ## Properties
 

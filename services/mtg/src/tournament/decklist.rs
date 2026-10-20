@@ -1,20 +1,8 @@
-//! Rendering a decklist as the plain text an organizer reads
-//!
-//! Pure on purpose, like the rest of [`super`]: turning a Planarium deck's
-//! card slots into a decklist has nothing to do with the database or who is
-//! allowed to see it, and keeping it a plain function over a snapshot is what
-//! lets [`crate::models::tournament::decklist`] unit-test the shape of the
-//! output without a transaction. The format mirrors the names-only mode of
-//! `frontend/mtg/src/utils/deck-export.ts`: one line per card, no print, no
-//! foil marker — an organizer checking a list against a banlist cares what is
-//! played, not which copy.
+//! Renders a decklist as plain text (names only, like the frontend's names-only export)
 
 use std::collections::HashMap;
 
-/// The largest a decklist's stored text may be
-///
-/// Matches `tournament_decklist.text`'s column bound — see the model's docs
-/// on why a 16 KB cap and no further validation.
+/// Maximum length of a stored decklist, matching `tournament_decklist.text`
 pub const MAX_DECKLIST_CHARS: usize = 16384;
 
 /// One line of a decklist before it is merged with the rest of its section
@@ -31,28 +19,14 @@ pub struct DecklistLine {
 pub struct DecklistSection {
     /// The heading this section is written under, one of [`SECTION_HEADINGS`]
     pub heading: &'static str,
-    /// The section's lines, as read off the deck — possibly several lines
-    /// naming the same card, in no particular order
+    /// The section's lines, unmerged and unsorted
     pub lines: Vec<DecklistLine>,
 }
 
-/// Section headings, in the order a decklist is written
-///
-/// Maybeboard is deliberately absent: a decklist handed to an organizer says
-/// what is actually being played, and a card only under consideration is not
-/// that.
+/// Section headings in written order (no maybeboard: a decklist says what is played)
 pub const SECTION_HEADINGS: [&str; 4] = ["Commander", "Deck", "Companion", "Sideboard"];
 
-/// Render decklist sections into the plain text a decklist is stored and read as
-///
-/// Within each section, lines naming the same card are merged into one by
-/// summing their quantities, and the result is sorted by name in plain `str`
-/// order — not a locale-aware collation, unlike the frontend's export, since
-/// this text is read by an organizer, not typeset. A section with no lines
-/// left after merging is skipped entirely rather than written with an empty
-/// body. What remains is joined into `"{quantity} {name}"` lines under their
-/// heading, one blank line between sections, and no trailing newline —
-/// including when every section was empty, which renders as `""`.
+/// Render sections as `"{quantity} {name}"` lines, merged, `str`-sorted, empty ones skipped
 pub fn render(sections: &[DecklistSection]) -> String {
     let mut rendered_sections = Vec::with_capacity(sections.len());
 

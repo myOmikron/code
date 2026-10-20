@@ -9,15 +9,15 @@ All URIs are relative to *http://localhost*
 | [**addDeckCard**](DefaultApi.md#adddeckcardoperation) | **POST** /api/frontend/v1/decks/{deck}/cards | Put a card into a deck |
 | [**addScannerSessionEntry**](DefaultApi.md#addscannersessionentryoperation) | **POST** /api/frontend/v1/scanner-sessions/{session}/entries | Add scanned copies to a session |
 | [**addTournamentOrganizer**](DefaultApi.md#addtournamentorganizeroperation) | **POST** /api/frontend/v1/tournaments/{tournament}/organizers | Add an account as staff — owner only |
-| [**addTournamentParticipant**](DefaultApi.md#addtournamentparticipantoperation) | **POST** /api/frontend/v1/tournaments/{tournament}/participants | Walk a guest into the roster by name |
+| [**addTournamentParticipant**](DefaultApi.md#addtournamentparticipantoperation) | **POST** /api/frontend/v1/tournaments/{tournament}/participants | Put a player on the roster from the desk, by account or as a guest by name |
 | [**addWatchListEntry**](DefaultApi.md#addwatchlistentryoperation) | **POST** /api/frontend/v1/watch-lists/{list}/entries | Put a card on a watch list |
 | [**arrangeTournamentRound**](DefaultApi.md#arrangetournamentround) | **PUT** /api/frontend/v1/tournaments/{tournament}/rounds/{round}/pairings | Rewrite a round\&#39;s tables from a layout arranged at the desk |
 | [**assignCollectionEntryTag**](DefaultApi.md#assigncollectionentrytag) | **POST** /api/frontend/v1/collections/{collection}/entries/{entry}/tags/{tag} | Put a card-wide tag on a stack |
 | [**assignDeckCardTag**](DefaultApi.md#assigndeckcardtag) | **POST** /api/frontend/v1/decks/{deck}/cards/{card}/tags/{tag} | Put a tag on a card |
 | [**attachDeckCollection**](DefaultApi.md#attachdeckcollection) | **POST** /api/frontend/v1/decks/{deck}/collection | Start keeping the cards that are physically in this deck |
-| [**checkInTournamentParticipant**](DefaultApi.md#checkintournamentparticipant) | **POST** /api/frontend/v1/tournaments/{tournament}/participants/{participant}/check-in | Check in, self-service or by staff |
+| [**checkInTournamentParticipant**](DefaultApi.md#checkintournamentparticipant) | **POST** /api/frontend/v1/tournaments/{tournament}/participants/{participant}/check-in | Check a participant in at the desk (staff only) |
 | [**claimTournamentParticipant**](DefaultApi.md#claimtournamentparticipant) | **POST** /api/frontend/v1/tournaments/participants/claim | Attach the caller\&#39;s account to a guest row using its claim token |
-| [**clearMatchResult**](DefaultApi.md#clearmatchresult) | **DELETE** /api/frontend/v1/tournaments/{tournament}/matches/{match}/result | Take the desk\&#39;s result back off a table |
+| [**clearMatchResult**](DefaultApi.md#clearmatchresult) | **DELETE** /api/frontend/v1/tournaments/{tournament}/matches/{match}/result | Take the desk\&#39;s result back off a table, falling back to the players\&#39; reports |
 | [**completeTournamentRound**](DefaultApi.md#completetournamentround) | **POST** /api/frontend/v1/tournaments/{tournament}/rounds/{round}/complete | Close a round |
 | [**createCollection**](DefaultApi.md#createcollectionoperation) | **POST** /api/frontend/v1/collections |  |
 | [**createDeck**](DefaultApi.md#createdeckoperation) | **POST** /api/frontend/v1/decks | Create a deck |
@@ -67,7 +67,7 @@ All URIs are relative to *http://localhost*
 | [**getDeckSourcing**](DefaultApi.md#getdecksourcing) | **GET** /api/frontend/v1/decks/{deck}/sourcing | What the deck asks for, what is in it, and where the rest could come from |
 | [**getMpcfillCardbacks**](DefaultApi.md#getmpcfillcardbacks) | **GET** /api/frontend/v1/mpcfill/cardbacks | The card backs MPCFill offers |
 | [**getMyTournamentMatch**](DefaultApi.md#getmytournamentmatch) | **GET** /api/frontend/v1/tournaments/{tournament}/my-match | The viewer\&#39;s own table in the round the room is on |
-| [**getParticipantClaimToken**](DefaultApi.md#getparticipantclaimtoken) | **GET** /api/frontend/v1/tournaments/{tournament}/participants/{participant}/claim-token | Hand a guest row\&#39;s live claim token to staff, e.g. to render as a QR code |
+| [**getParticipantClaimToken**](DefaultApi.md#getparticipantclaimtoken) | **GET** /api/frontend/v1/tournaments/{tournament}/participants/{participant}/claim-token | A guest row\&#39;s live claim token, for any staff role to show as a QR code |
 | [**getParticipantDecklist**](DefaultApi.md#getparticipantdecklist) | **GET** /api/frontend/v1/tournaments/{tournament}/participants/{participant}/decklist | Read a participant\&#39;s decklist — staff, or the participant themself |
 | [**getPriceHistory**](DefaultApi.md#getpricehistory) | **GET** /api/frontend/v1/printings/{printing}/price-history | What a card has cost over time |
 | [**getPrintingLanguages**](DefaultApi.md#getprintinglanguages) | **GET** /api/frontend/v1/printings/{printing}/languages | Every language the same card exists in |
@@ -81,12 +81,12 @@ All URIs are relative to *http://localhost*
 | [**getSharedDeck**](DefaultApi.md#getshareddeck) | **GET** /api/frontend/v1/shared/decks/{token} | Fetch the deck a share link points at |
 | [**getSharedTournament**](DefaultApi.md#getsharedtournament) | **GET** /api/frontend/v1/shared/tournaments/{token} | Fetch the tournament a share link points at |
 | [**getTournament**](DefaultApi.md#gettournament) | **GET** /api/frontend/v1/tournaments/{tournament} | One tournament, with what the viewer may do with it |
-| [**getTournamentStandings**](DefaultApi.md#gettournamentstandings) | **GET** /api/frontend/v1/tournaments/{tournament}/standings | Where everybody stands |
-| [**getTournamentState**](DefaultApi.md#gettournamentstate) | **GET** /api/frontend/v1/tournaments/{tournament}/state | What a client polls to know whether anything moved |
+| [**getTournamentStandings**](DefaultApi.md#gettournamentstandings) | **GET** /api/frontend/v1/tournaments/{tournament}/standings | Where everybody stands, with names redacted the same way as the roster |
+| [**getTournamentState**](DefaultApi.md#gettournamentstate) | **GET** /api/frontend/v1/tournaments/{tournament}/state | What a client polls to know whether anything moved; kept cheap, no standings |
 | [**getWatchList**](DefaultApi.md#getwatchlist) | **GET** /api/frontend/v1/watch-lists/{list} | One watch list, without what is on it |
 | [**getWatchListAlarms**](DefaultApi.md#getwatchlistalarms) | **GET** /api/frontend/v1/watch-lists/alarms | Every alarm standing across the account\&#39;s watch lists |
 | [**importDeckCards**](DefaultApi.md#importdeckcardsoperation) | **POST** /api/frontend/v1/decks/{deck}/cards/import | Write a whole decklist into a deck |
-| [**joinTournamentAsGuest**](DefaultApi.md#jointournamentasguest) | **POST** /api/frontend/v1/join/{code}/guest | Join a tournament as a guest — no account, just a name for the pairings list |
+| [**joinTournamentAsGuest**](DefaultApi.md#jointournamentasguest) | **POST** /api/frontend/v1/join/{code}/guest | Join a tournament as a guest |
 | [**joinTournamentByCode**](DefaultApi.md#jointournamentbycode) | **POST** /api/frontend/v1/join/{code} | Join a tournament as the logged-in account |
 | [**listCollectionCards**](DefaultApi.md#listcollectioncards) | **GET** /api/frontend/v1/collections/{collection}/cards | List a page of a collection\&#39;s cards, sorted and filtered |
 | [**listCollectionEntries**](DefaultApi.md#listcollectionentries) | **GET** /api/frontend/v1/collections/{collection}/entries | List every stack filed in a collection |
@@ -102,21 +102,21 @@ All URIs are relative to *http://localhost*
 | [**listSharedTournamentParticipants**](DefaultApi.md#listsharedtournamentparticipants) | **GET** /api/frontend/v1/shared/tournaments/{token}/participants | List a shared tournament\&#39;s roster, redacted through the same |
 | [**listTournamentAudit**](DefaultApi.md#listtournamentaudit) | **GET** /api/frontend/v1/tournaments/{tournament}/audit | A tournament\&#39;s audit log, newest first |
 | [**listTournamentOrganizers**](DefaultApi.md#listtournamentorganizers) | **GET** /api/frontend/v1/tournaments/{tournament}/organizers | The staff list, visible to any role holder |
-| [**listTournamentParticipants**](DefaultApi.md#listtournamentparticipants) | **GET** /api/frontend/v1/tournaments/{tournament}/participants | A tournament\&#39;s roster, redacted through [&#x60;public::roster_view&#x60;] |
+| [**listTournamentParticipants**](DefaultApi.md#listtournamentparticipants) | **GET** /api/frontend/v1/tournaments/{tournament}/participants | A tournament\&#39;s roster, with guest names redacted through [&#x60;public::roster_view&#x60;] |
 | [**listTournamentRounds**](DefaultApi.md#listtournamentrounds) | **GET** /api/frontend/v1/tournaments/{tournament}/rounds | Every round of a tournament |
 | [**listTournamentVenues**](DefaultApi.md#listtournamentvenues) | **GET** /api/frontend/v1/tournaments/venues | The caller\&#39;s own venue book, most recently used first |
 | [**listTournaments**](DefaultApi.md#listtournaments) | **GET** /api/frontend/v1/tournaments | Every tournament the actor may see |
 | [**listWatchListCopies**](DefaultApi.md#listwatchlistcopies) | **GET** /api/frontend/v1/watch-lists/{list}/entries/{entry}/copies | Where the copies of one watched card are |
 | [**listWatchListEntries**](DefaultApi.md#listwatchlistentries) | **GET** /api/frontend/v1/watch-lists/{list}/entries | Everything one watch list page is drawn from |
-| [**lockTournamentDecklists**](DefaultApi.md#locktournamentdecklists) | **POST** /api/frontend/v1/tournaments/{tournament}/decklists/lock | Lock every decklist in the tournament: players may no longer write their |
+| [**lockTournamentDecklists**](DefaultApi.md#locktournamentdecklists) | **POST** /api/frontend/v1/tournaments/{tournament}/decklists/lock | Lock every decklist in the tournament; staff can still edit them |
 | [**logout**](DefaultApi.md#logout) | **GET** /api/frontend/v1/auth/logout | Log out, dropping the session |
-| [**lookUpClaimToken**](DefaultApi.md#lookupclaimtoken) | **GET** /api/frontend/v1/join/claim/{token} | Look up a claim token before committing to anything: what it names, or |
-| [**lookUpJoinCode**](DefaultApi.md#lookupjoincode) | **GET** /api/frontend/v1/join/{code} | Resolve a typed code into the tournament it names, before anybody joins |
+| [**lookUpClaimToken**](DefaultApi.md#lookupclaimtoken) | **GET** /api/frontend/v1/join/claim/{token} | Look up what a claim token names, without consuming it |
+| [**lookUpJoinCode**](DefaultApi.md#lookupjoincode) | **GET** /api/frontend/v1/join/{code} | Resolve a join code into the tournament it names, before anybody joins |
 | [**me**](DefaultApi.md#me) | **GET** /api/frontend/v1/accounts/me | The account the current session belongs to |
 | [**mergeCollectionEntries**](DefaultApi.md#mergecollectionentriesoperation) | **POST** /api/frontend/v1/collections/{collection}/entries/merge | Combine stacks of the same cards into one |
 | [**pairTournamentRound**](DefaultApi.md#pairtournamentround) | **POST** /api/frontend/v1/tournaments/{tournament}/rounds/{round}/pairings | Pair a round, replacing whatever it already held |
 | [**readDeckUrl**](DefaultApi.md#readdeckurloperation) | **POST** /api/frontend/v1/decks/import/url | Read a decklist off a link to another builder, or off one of our own links |
-| [**reattachClaimToken**](DefaultApi.md#reattachclaimtoken) | **POST** /api/frontend/v1/join/claim/{token}/reattach | Re-attach a guest session to its row using a still-live claim token |
+| [**reattachClaimToken**](DefaultApi.md#reattachclaimtoken) | **POST** /api/frontend/v1/join/claim/{token}/reattach | Re-attach a guest session to its row using a still-live claim token, without consuming it |
 | [**recoverAccount**](DefaultApi.md#recoveraccountoperation) | **POST** /api/frontend/v1/auth/recover | Send a fresh registration link to an account\&#39;s stored address |
 | [**removeTournamentOrganizer**](DefaultApi.md#removetournamentorganizer) | **DELETE** /api/frontend/v1/tournaments/{tournament}/organizers/{account} | Remove an account from staff — owner only |
 | [**reportMatchResult**](DefaultApi.md#reportmatchresult) | **POST** /api/frontend/v1/tournaments/{tournament}/matches/{match}/report | Report what happened at your own table |
@@ -129,19 +129,19 @@ All URIs are relative to *http://localhost*
 | [**rotateTournamentJoinCode**](DefaultApi.md#rotatetournamentjoincode) | **POST** /api/frontend/v1/tournaments/{tournament}/join-code | Mint a fresh join code, invalidating whatever one was live before |
 | [**searchMpcfillArt**](DefaultApi.md#searchmpcfillart) | **POST** /api/frontend/v1/mpcfill/search | The art MPCFill has for these cards |
 | [**searchPublicDecks**](DefaultApi.md#searchpublicdecks) | **GET** /api/frontend/v1/explore/decks | Search the decks their owners put on show |
-| [**searchTournamentPlayers**](DefaultApi.md#searchtournamentplayers) | **GET** /api/frontend/v1/tournaments/{tournament}/player-search | Look accounts up by username, to seat a player whose phone is dead |
+| [**searchTournamentPlayers**](DefaultApi.md#searchtournamentplayers) | **GET** /api/frontend/v1/tournaments/{tournament}/player-search | Look accounts up by username, to seat a player at the desk |
 | [**setDeckAdvisorSettings**](DefaultApi.md#setdeckadvisorsettings) | **PUT** /api/frontend/v1/decks/{deck}/advisor-settings | Replace this deck\&#39;s advisor settings |
 | [**setDeckBracket**](DefaultApi.md#setdeckbracketoperation) | **PUT** /api/frontend/v1/decks/{deck}/bracket | Say which Commander bracket the deck is built to |
 | [**setDeckColors**](DefaultApi.md#setdeckcolorsoperation) | **PUT** /api/frontend/v1/decks/{deck}/colors | Overrule which colours the deck may play |
 | [**setDeckFolder**](DefaultApi.md#setdeckfolderoperation) | **POST** /api/frontend/v1/decks/{deck}/folder | File a deck into one of the account\&#39;s folders |
 | [**setDeckRuleZero**](DefaultApi.md#setdeckrulezerooperation) | **PUT** /api/frontend/v1/decks/{deck}/rule-zero | Record the house rules the deck is played under |
-| [**setMatchResult**](DefaultApi.md#setmatchresult) | **PUT** /api/frontend/v1/tournaments/{tournament}/matches/{match}/result | Write a table\&#39;s result from the desk |
-| [**setParticipantDecklist**](DefaultApi.md#setparticipantdecklist) | **PUT** /api/frontend/v1/tournaments/{tournament}/participants/{participant}/decklist | Write, replace or clear a participant\&#39;s decklist — staff, or the |
+| [**setMatchResult**](DefaultApi.md#setmatchresult) | **PUT** /api/frontend/v1/tournaments/{tournament}/matches/{match}/result | Write a table\&#39;s result from the desk, overriding every player report |
+| [**setParticipantDecklist**](DefaultApi.md#setparticipantdecklist) | **PUT** /api/frontend/v1/tournaments/{tournament}/participants/{participant}/decklist | Write, replace or clear a participant\&#39;s decklist — staff, or the player while unlocked |
 | [**setParticipantFixedTable**](DefaultApi.md#setparticipantfixedtable) | **PUT** /api/frontend/v1/tournaments/{tournament}/participants/{participant}/fixed-table | Pin a player to one table, or release them |
 | [**setProfileVisibility**](DefaultApi.md#setprofilevisibilityoperation) | **PUT** /api/frontend/v1/accounts/me/profile-visibility | Open or close the logged-in account\&#39;s public profile |
 | [**setTournamentRoundTimer**](DefaultApi.md#settournamentroundtimer) | **PUT** /api/frontend/v1/tournaments/{tournament}/rounds/{round}/timer | Start, pause, adjust or reset a round\&#39;s clock |
 | [**setTournamentStatus**](DefaultApi.md#settournamentstatusoperation) | **PUT** /api/frontend/v1/tournaments/{tournament}/status | Move a tournament to a new lifecycle status |
-| [**setTournamentVisibility**](DefaultApi.md#settournamentvisibilityoperation) | **PUT** /api/frontend/v1/tournaments/{tournament}/visibility | Change who may see a tournament |
+| [**setTournamentVisibility**](DefaultApi.md#settournamentvisibilityoperation) | **PUT** /api/frontend/v1/tournaments/{tournament}/visibility | Change who may see a tournament; the client re-fetches it for the new share token |
 | [**setVisibilityCollection**](DefaultApi.md#setvisibilitycollection) | **POST** /api/frontend/v1/collections/{collection} | Change who may see a collection |
 | [**setVisibilityDeck**](DefaultApi.md#setvisibilitydeck) | **POST** /api/frontend/v1/decks/{deck} | Change who may see a deck |
 | [**signup**](DefaultApi.md#signupoperation) | **POST** /api/frontend/v1/auth/signup | Sign up for a new account |
@@ -163,7 +163,7 @@ All URIs are relative to *http://localhost*
 | [**updateGlobalTag**](DefaultApi.md#updateglobaltagoperation) | **PUT** /api/frontend/v1/tags/{tag} | Rename a card-wide tag or change its marker |
 | [**updateScannerSession**](DefaultApi.md#updatescannersessionoperation) | **PUT** /api/frontend/v1/scanner-sessions/{session} | Rename a session or change its marker and preferred collection |
 | [**updateScannerSessionEntry**](DefaultApi.md#updatescannersessionentryoperation) | **PATCH** /api/frontend/v1/scanner-sessions/{session}/entries/{entry} | Adjust count, finish, signed state, paid price or printing |
-| [**updateTournament**](DefaultApi.md#updatetournament) | **PUT** /api/frontend/v1/tournaments/{tournament} | Update a tournament\&#39;s settings |
+| [**updateTournament**](DefaultApi.md#updatetournament) | **PUT** /api/frontend/v1/tournaments/{tournament} | Update a tournament\&#39;s settings; structural changes are refused once settings lock |
 | [**updateTournamentParticipant**](DefaultApi.md#updatetournamentparticipantoperation) | **PUT** /api/frontend/v1/tournaments/{tournament}/participants/{participant} | Change a participant\&#39;s display name and/or organizer notes |
 | [**updateWatchList**](DefaultApi.md#updatewatchlistoperation) | **PUT** /api/frontend/v1/watch-lists/{list} | Rename a watch list or change its marker |
 | [**updateWatchListEntry**](DefaultApi.md#updatewatchlistentryoperation) | **PUT** /api/frontend/v1/watch-lists/{list}/entries/{entry} | Change some of an entry\&#39;s fields, leaving the rest alone |
@@ -539,9 +539,9 @@ No authorization required
 
 > AddTournamentParticipant200Response addTournamentParticipant(tournament, AddTournamentParticipantRequest)
 
-Walk a guest into the roster by name
+Put a player on the roster from the desk, by account or as a guest by name
 
-Walk a guest into the roster by name  [&#x60;participant::register_guest&#x60;] trusts its &#x60;added_by&#x60; argument to mean the caller already holds a role — this is the one place in the module tree allowed to make that promise, immediately after checking it.  &#x60;decklist_text&#x60;, if given, is written in the same transaction right after the row exists to hold it — no policy check here, the same as &#x60;register_guest&#x60; itself: an organizer may register a walk-in with or without a list regardless of [&#x60;crate::models::tournament::DecklistPolicy&#x60;], since a policy governs self-service registration, not staff typing somebody in by hand.
+Put a player on the roster from the desk, by account or as a guest by name  No decklist-policy check: the policy only governs self-service registration.
 
 ### Example
 
@@ -983,9 +983,9 @@ No authorization required
 
 > FormErrorResponseForCheckInErrors checkInTournamentParticipant(tournament, participant)
 
-Check in, self-service or by staff
+Check a participant in at the desk (staff only)
 
-Check in, self-service or by staff  Under [&#x60;crate::models::tournament::DecklistPolicy::RequiredToCheckIn&#x60;], a player with no decklist on file is refused with [&#x60;CheckInErrors::decklist_missing&#x60;] instead of the generic denial — see [&#x60;participant::check_in&#x60;].
+Check a participant in at the desk (staff only)
 
 ### Example
 
@@ -1126,9 +1126,9 @@ No authorization required
 
 > SetMatchResult200Response clearMatchResult(tournament, match)
 
-Take the desk\&#39;s result back off a table
+Take the desk\&#39;s result back off a table, falling back to the players\&#39; reports
 
-Take the desk\&#39;s result back off a table  Drops to whatever the players had agreed rather than to nothing, which is the undo for a mistyped result.
+Take the desk\&#39;s result back off a table, falling back to the players\&#39; reports
 
 ### Example
 
@@ -1698,7 +1698,7 @@ No authorization required
 
 Create a tournament; the caller becomes its owner
 
-Create a tournament; the caller becomes its owner  A non-blank &#x60;venue&#x60; is remembered into the caller\&#39;s own venue book — see [&#x60;remember_venue&#x60;]. It is written *before* the tournament, because building the insert consumes the request; the two share one transaction, so a tournament that fails to insert takes the remembered venue with it.
+Create a tournament; the caller becomes its owner
 
 ### Example
 
@@ -4531,7 +4531,7 @@ No authorization required
 
 The viewer\&#39;s own table in the round the room is on
 
-The viewer\&#39;s own table in the round the room is on  In the actor block, because the phone asking is usually a guest\&#39;s.
+The viewer\&#39;s own table in the round the room is on
 
 ### Example
 
@@ -4599,9 +4599,9 @@ No authorization required
 
 > ClaimTokenResponse getParticipantClaimToken(tournament, participant)
 
-Hand a guest row\&#39;s live claim token to staff, e.g. to render as a QR code
+A guest row\&#39;s live claim token, for any staff role to show as a QR code
 
-Hand a guest row\&#39;s live claim token to staff, e.g. to render as a QR code for a walk-in to scan  Guard: [&#x60;participant::claim_token&#x60;] — any role, deliberately not [&#x60;TournamentRole::may_manage&#x60;], the same reasoning as [&#x60;update_tournament_participant&#x60;]: walking a guest through claiming their own row is exactly what a scorekeeper is for. &#x60;claim_token: None&#x60; covers both \&quot;already claimed\&quot; and \&quot;this is an account row\&quot; — either way there is no live token to show, and the caller has no reason to tell the two apart.
+A guest row\&#39;s live claim token, for any staff role to show as a QR code
 
 ### Example
 
@@ -4674,7 +4674,7 @@ No authorization required
 
 Read a participant\&#39;s decklist — staff, or the participant themself
 
-Read a participant\&#39;s decklist — staff, or the participant themself  Guard: [&#x60;decklist::get&#x60;]. See [&#x60;get_decklist_response&#x60;] for how [&#x60;GetDecklistResponse::locked&#x60;]/[&#x60;GetDecklistResponse::may_edit&#x60;] are filled in.
+Read a participant\&#39;s decklist — staff, or the participant themself
 
 ### Example
 
@@ -5585,9 +5585,9 @@ No authorization required
 
 > StandingsResponse getTournamentStandings(tournament)
 
-Where everybody stands
+Where everybody stands, with names redacted the same way as the roster
 
-Where everybody stands  In the actor block: the standings are the thing a player refreshes between rounds, and a guest\&#39;s phone is exactly the device doing it. Whose rows come back is the same decision the roster goes through, so a guest who appears as \&quot;Gast 7\&quot; on one screen is \&quot;Gast 7\&quot; on the other.
+Where everybody stands, with names redacted the same way as the roster
 
 ### Example
 
@@ -5655,9 +5655,9 @@ No authorization required
 
 > TournamentStateResponse getTournamentState(tournament)
 
-What a client polls to know whether anything moved
+What a client polls to know whether anything moved; kept cheap, no standings
 
-What a client polls to know whether anything moved  In the actor block on purpose: a guest\&#39;s phone is exactly the device that needs this most, and wrapping it in an auth layer would lock the room out. Deliberately cheap — a handful of indexed reads and never a standings computation, because every phone hits it on a timer.
+What a client polls to know whether anything moved; kept cheap, no standings
 
 ### Example
 
@@ -5930,9 +5930,9 @@ No authorization required
 
 > JoinTournamentAsGuest200Response joinTournamentAsGuest(code, GuestJoinRequest)
 
-Join a tournament as a guest — no account, just a name for the pairings list
+Join a tournament as a guest
 
-Join a tournament as a guest — no account, just a name for the pairings list  Unauthenticated and rate limited, same reasoning as [&#x60;look_up_join_code&#x60;]. The session is only told about the new participant *after* the transaction commits: a session entry naming a row that turned out not to exist would be worse than losing this one join to a crash in between.  &#x60;decklist_text&#x60;, if given, is written in the same transaction right after the row exists to hold it. A refusal past that point (only [&#x60;JoinErrors::invalid_decklist&#x60;] can actually happen for a guest, pasted text is the only source they have) answers its form error *without* committing — the transaction simply drops, so the participant row this handler just inserted is rolled back along with it, exactly like a failed [&#x60;participant::register_guest&#x60;] would be.
+Join a tournament as a guest  A decklist failure returns without committing, which rolls back the new participant row.
 
 ### Example
 
@@ -6005,7 +6005,7 @@ No authorization required
 
 Join a tournament as the logged-in account
 
-Join a tournament as the logged-in account  &#x60;deck&#x60;/&#x60;decklist_text&#x60; are handled exactly like [&#x60;join_tournament_as_guest&#x60;]\&#39;s &#x60;decklist_text&#x60;: written in the same transaction right after the participant row exists, and a refusal past that point answers its form error without committing, so the fresh participant row never actually exists either. &#x60;deck_owner&#x60; and &#x60;actor&#x60; are both the joining account — [&#x60;decklist::write&#x60;] checks deck ownership against the former and audits against the latter, and here they are always the same person.
+Join a tournament as the logged-in account  A decklist failure returns without committing, which rolls back the new participant row.
 
 ### Example
 
@@ -6693,7 +6693,7 @@ No authorization required
 
 Every table of one round
 
-Every table of one round  In the actor block beside the round list: a player\&#39;s own table is the single thing their phone is open for, and an auth layer here would lock out every guest in the room.
+Every table of one round
 
 ### Example
 
@@ -7147,9 +7147,9 @@ No authorization required
 
 > ListTournamentParticipantsResponse listTournamentParticipants(tournament)
 
-A tournament\&#39;s roster, redacted through [&#x60;public::roster_view&#x60;]
+A tournament\&#39;s roster, with guest names redacted through [&#x60;public::roster_view&#x60;]
 
-A tournament\&#39;s roster, redacted through [&#x60;public::roster_view&#x60;]  This is the leak the model layer\&#39;s own docs warn about: skip [&#x60;public::roster_view&#x60;]/[&#x60;public::apply_roster_view&#x60;] here and a [&#x60;crate::models::visibility::Visibility::Public&#x60;] tournament hands every guest\&#39;s real name to any logged-in stranger, using nothing but this ordinary authed read — no share token needed. The share surface ([&#x60;crate::http::handler_frontend::shared::handler::list_shared_tournament_participants&#x60;]) applies the identical decision with &#x60;is_staff&#x60;/&#x60;is_participant&#x60; both &#x60;false&#x60;.
+A tournament\&#39;s roster, with guest names redacted through [&#x60;public::roster_view&#x60;]
 
 ### Example
 
@@ -7289,7 +7289,7 @@ No authorization required
 
 The caller\&#39;s own venue book, most recently used first
 
-The caller\&#39;s own venue book, most recently used first  Note: &#x60;/venues&#x60; is a static path segment while &#x60;/{tournament}&#x60; is a dynamic one, so axum\&#39;s router already prefers the static match here — nothing to arrange, just worth being aware of on a route table shaped like this one.
+The caller\&#39;s own venue book, most recently used first
 
 ### Example
 
@@ -7554,9 +7554,9 @@ No authorization required
 
 > any lockTournamentDecklists(tournament)
 
-Lock every decklist in the tournament: players may no longer write their
+Lock every decklist in the tournament; staff can still edit them
 
-Lock every decklist in the tournament: players may no longer write their own, staff still can
+Lock every decklist in the tournament; staff can still edit them
 
 ### Example
 
@@ -7686,9 +7686,9 @@ No authorization required
 
 > LookUpClaimToken200Response lookUpClaimToken(token)
 
-Look up a claim token before committing to anything: what it names, or
+Look up what a claim token names, without consuming it
 
-Look up a claim token before committing to anything: what it names, or that it does not resolve to anything live  Unauthenticated and rate limited, same reasoning as [&#x60;look_up_join_code&#x60;] — this is the screen a scanned claim QR lands on before the player has chosen anything. [&#x60;ClaimErrors::invalid_token&#x60;], not a bad request: a stale or already-claimed QR is an everyday outcome, not a caller mistake.
+Look up what a claim token names, without consuming it
 
 ### Example
 
@@ -7756,9 +7756,9 @@ No authorization required
 
 > LookUpJoinCode200Response lookUpJoinCode(code)
 
-Resolve a typed code into the tournament it names, before anybody joins
+Resolve a join code into the tournament it names, before anybody joins
 
-Resolve a typed code into the tournament it names, before anybody joins  Unauthenticated and rate limited (see [&#x60;super::initialize_routes&#x60;]) — a phone reading a whiteboard has no session yet. [&#x60;JoinLookupResponse::already_registered&#x60;] is always &#x60;false&#x60; here; there is no account to check it against.
+Resolve a join code into the tournament it names, before anybody joins
 
 ### Example
 
@@ -7963,7 +7963,7 @@ No authorization required
 
 Pair a round, replacing whatever it already held
 
-Pair a round, replacing whatever it already held  One endpoint for both the first pairing and every re-pair after it. There is no preview to commit: the race a staged pairing would guard is better served by pressing this again, and writing straight through survives a crashed tab and a locked phone, which a staged one does not.
+Pair a round, replacing whatever it already held
 
 ### Example
 
@@ -8104,9 +8104,9 @@ No authorization required
 
 > LookUpClaimToken200Response reattachClaimToken(token)
 
-Re-attach a guest session to its row using a still-live claim token
+Re-attach a guest session to its row using a still-live claim token, without consuming it
 
-Re-attach a guest session to its row using a still-live claim token  Unauthenticated and rate limited, same reasoning as [&#x60;look_up_join_code&#x60;]. Does **not** consume the token — see [&#x60;participant::reattach&#x60;]: the same device may lose its cookie and need the token again, and only an account\&#39;s claim retires it for good. The session only learns about the participant *after* the transaction commits, the same reasoning as [&#x60;join_tournament_as_guest&#x60;]: a session pointed at a row the commit then failed to actually touch would be worse than losing this one reattach to a crash in between. Same typed error as [&#x60;look_up_claim_token&#x60;].
+Re-attach a guest session to its row using a still-live claim token, without consuming it
 
 ### Example
 
@@ -8319,7 +8319,7 @@ No authorization required
 
 Report what happened at your own table
 
-Report what happened at your own table  In the actor block, because the people this exists for are the ones playing — a guest\&#39;s phone included. The guard behind it asks whether the caller is *sitting at this table* before it asks whether they run the event, so an organizer who is also playing reports like everybody else rather than silently confirming their own match.
+Report what happened at your own table  Seat is checked before role, so a playing organizer reports like everyone else.
 
 ### Example
 
@@ -9050,9 +9050,9 @@ No authorization required
 
 > SearchPlayersResponse searchTournamentPlayers(tournament, q)
 
-Look accounts up by username, to seat a player whose phone is dead
+Look accounts up by username, to seat a player at the desk
 
-Look accounts up by username, to seat a player whose phone is dead  Organizer-only and tournament-scoped: the guard is the role on this event, and the answer says which hits are already on this roster so the dialog can grey them out. A blank needle answers nothing rather than the whole table.
+Look accounts up by username, to seat a player at the desk
 
 ### Example
 
@@ -9488,9 +9488,9 @@ No authorization required
 
 > SetMatchResult200Response setMatchResult(tournament, match, SetResultRequest)
 
-Write a table\&#39;s result from the desk
+Write a table\&#39;s result from the desk, overriding every player report
 
-Write a table\&#39;s result from the desk  Beats every player report on that table and skips the confirmation dance entirely: the desk is authoritative, and the two-sided flow exists to save an organizer walking to the table, not to constrain them once they have.
+Write a table\&#39;s result from the desk, overriding every player report
 
 ### Example
 
@@ -9564,9 +9564,9 @@ No authorization required
 
 > SetParticipantDecklist200Response setParticipantDecklist(tournament, participant, SetDecklistRequest)
 
-Write, replace or clear a participant\&#39;s decklist — staff, or the
+Write, replace or clear a participant\&#39;s decklist — staff, or the player while unlocked
 
-Write, replace or clear a participant\&#39;s decklist — staff, or the participant themself while the tournament\&#39;s decklists are not locked  Guard: [&#x60;decklist::set&#x60;]. &#x60;deck&#x60; and &#x60;text&#x60; both present is refused as [&#x60;DecklistErrors::invalid_decklist&#x60;] before the guard even runs — a request names at most one source.
+Write, replace or clear a participant\&#39;s decklist — staff, or the player while unlocked
 
 ### Example
 
@@ -9935,9 +9935,9 @@ No authorization required
 
 > any setTournamentVisibility(tournament, SetTournamentVisibilityRequest)
 
-Change who may see a tournament
+Change who may see a tournament; the client re-fetches it for the new share token
 
-Change who may see a tournament  Discards the freshly minted share token the same way [&#x60;crate::http::handler_frontend::decks::handler::set_visibility_deck&#x60;] does: the client re-fetches [&#x60;get_tournament&#x60;] for it.
+Change who may see a tournament; the client re-fetches it for the new share token
 
 ### Example
 
@@ -11537,9 +11537,9 @@ No authorization required
 
 > FormErrorResponseForTournamentSettingsErrors updateTournament(tournament, TournamentSettingsRequest)
 
-Update a tournament\&#39;s settings
+Update a tournament\&#39;s settings; structural changes are refused once settings lock
 
-Update a tournament\&#39;s settings  The always-editable fields (name, description, venue, start time, round length) go through even while the event is running; a structural change (format, pod size, pairing, scoring, ...) while [&#x60;SettingsChange::Locked&#x60;] answers [&#x60;TournamentSettingsErrors::settings_locked&#x60;] instead — see [&#x60;Tournament::update_settings&#x60;]\&#39;s doc comment for exactly what counts as structural. A non-blank &#x60;venue&#x60; is remembered into the caller\&#39;s own venue book — see [&#x60;remember_venue&#x60;] — once the write actually goes through.
+Update a tournament\&#39;s settings; structural changes are refused once settings lock
 
 ### Example
 

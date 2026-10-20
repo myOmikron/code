@@ -1,7 +1,7 @@
 
 # ClaimTokenResponse
 
-A guest row\'s live claim token, for staff to show as a QR code  `None` covers both \"already claimed\" and \"this is an account row\" alike — see [`crate::models::tournament::participant::claim_token`] for why the caller has no reason to tell the two apart.
+A guest row\'s live claim token, for staff to show as a QR code
 
 ## Properties
 

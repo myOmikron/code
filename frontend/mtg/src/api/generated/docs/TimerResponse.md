@@ -1,7 +1,7 @@
 
 # TimerResponse
 
-A round\'s clock, with the server\'s own reading of the time beside it  One struct rather than two sibling fields, so that serialising a deadline without the reference point it is measured against is not expressible. A phone with a wrong clock is the normal case, not the exception.
+A round\'s clock, with the server\'s remaining time so a wrong phone clock does not matter
 
 ## Properties
 

@@ -1,7 +1,7 @@
 
 # FixedTableConflict
 
-A pin the layout could not honour  Two players who cannot leave their table asked for the same number. The lower-numbered table kept it and the other pin was dropped; nothing about who plays whom changed, so the round is still perfectly valid — an organizer simply has to move somebody by hand.
+A fixed-table pin the layout could not honour; the lower table number kept it
 
 ## Properties
 

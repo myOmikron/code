@@ -1,20 +1,7 @@
-//! Joining a tournament by its typed code
+//! Joining a tournament by join code or claim token
 //!
-//! The one surface in this service genuinely reachable without a session at
-//! all: a phone reading a whiteboard code has neither a cookie nor an
-//! account yet. [`look_up_join_code`](handler::look_up_join_code) and
-//! [`join_tournament_as_guest`](handler::join_tournament_as_guest) share one
-//! [`RateLimitLayer`], the same construction [`crate::http::handler_frontend::auth`]
-//! uses for its own unauthenticated endpoints — a whole venue sits behind
-//! one NAT IP, so the budget is generous (30 requests/minute) rather than
-//! per-person. [`look_up_claim_token`](handler::look_up_claim_token) and
-//! [`reattach_claim_token`](handler::reattach_claim_token) share the same
-//! block and the same reasoning: both are reachable straight from a scanned
-//! claim QR, with no session to speak of yet either.
-//! [`join_tournament_by_code`](handler::join_tournament_by_code)
-//! needs a logged-in [`Account`](crate::models::account::Account) and sits
-//! behind [`AuthRequiredLayer`] instead — no rate limiting: a passkey
-//! session is already the scarce thing an abuse budget would be protecting.
+//! The code/claim lookups are reachable without a session, so they sit behind a venue-sized
+//! rate limit (one NAT IP per venue); joining with an account needs `AuthRequiredLayer`.
 
 use std::time::Duration;
 

@@ -1,7 +1,7 @@
 
 # GuestJoinResponse
 
-What a successful guest join answers with  The one place outside [`crate::models::tournament::participant::register_guest`] itself a claim token is ever handed out — never repeated in a list response afterwards.
+What a successful guest join answers with; the only response carrying the claim token
 
 ## Properties
 

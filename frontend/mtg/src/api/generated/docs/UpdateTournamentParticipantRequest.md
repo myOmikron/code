@@ -1,7 +1,7 @@
 
 # UpdateTournamentParticipantRequest
 
-Request to change a participant\'s display name and/or organizer notes  `notes: null` clears the notes; an absent `notes` key leaves them alone — see [`crate::http::handler_frontend::collections::schema::double_option`].
+Request to change a participant\'s display name and/or organizer notes
 
 ## Properties
 

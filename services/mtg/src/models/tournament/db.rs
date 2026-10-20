@@ -22,11 +22,6 @@ use crate::models::tournament::TournamentStatus;
 use crate::models::visibility::Visibility;
 
 /// A tournament: an event with a roster, rounds and standings
-///
-/// The first thing in this service several accounts work on together. The
-/// `owner` stays the single account allowed to delete it or hand it over;
-/// everything an organizer does day-to-day is granted through
-/// [`TournamentOrganizerModel`] rows instead.
 #[derive(Model, Debug)]
 #[rorm(rename = "tournament")]
 pub struct TournamentModel {
@@ -34,10 +29,7 @@ pub struct TournamentModel {
     #[rorm(primary_key)]
     pub uuid: Uuid,
 
-    /// The account that created the event
-    ///
-    /// Indexed because the "my tournaments" list filters on it, and a foreign
-    /// key carries no index of its own.
+    /// The account that created the event (indexed for "my tournaments")
     #[rorm(index, on_update = "Cascade", on_delete = "Cascade")]
     pub owner: ForeignModel<AccountModel>,
 
@@ -47,22 +39,13 @@ pub struct TournamentModel {
     /// Optional description: what is played, what it costs, what there is to win
     pub description: Option<MaxStr<1024>>,
 
-    /// The format being played
-    ///
-    /// The same free-form Scryfall slug as `deck.format`, and for the same
-    /// reason: the backend never interprets it.
+    /// The format being played, a free-form Scryfall slug like `deck.format`
     pub format: MaxStr<32>,
 
-    /// How many players sit at one table
-    ///
-    /// Two is classic 1v1 Swiss, three to five are Commander pods. Validated
-    /// at the API boundary to 2..=5.
+    /// How many players sit at one table, 2..=5 (validated at the API)
     pub pod_size: i16,
 
-    /// Best-of how many games a 1v1 match is
-    ///
-    /// Odd, 1..=5; forced to one while [`Self::pod_size`] is above two — a pod
-    /// plays one game.
+    /// Best-of how many games a 1v1 match is; odd 1..=5, forced to one for pods
     pub games_per_match: i16,
 
     /// How the next round's tables are put together
@@ -72,9 +55,6 @@ pub struct TournamentModel {
     pub status: TournamentStatus,
 
     /// Match points for a win
-    ///
-    /// Points are data, not constants: 3/1/0 is the classic Swiss scoring, but
-    /// cEDH events genuinely run other spreads.
     pub points_win: i16,
 
     /// Match points for a draw
@@ -89,18 +69,10 @@ pub struct TournamentModel {
     /// Default round length in minutes, copied onto each round when it starts
     pub round_minutes: i16,
 
-    /// How many players fit, `None` for an event that never turns anyone away
-    ///
-    /// Only self-service registration is held to it — an organizer at the desk
-    /// may seat one more than the room officially holds, the same call late
-    /// entry already leaves to them.
+    /// Player cap, `None` for none; only self-service registration is held to it
     pub max_participants: Option<i16>,
 
-    /// How many scoring rounds the event means to play, `None` while undecided
-    ///
-    /// Always editable, including while the event runs: the MTR lets an
-    /// organizer add a round when more people turn up than the schedule
-    /// assumed, so this must never join the structural lock set.
+    /// How many scoring rounds the event means to play; editable while running, as the MTR allows
     pub planned_rounds: Option<i16>,
 
     /// Whether players may still register after the event started
@@ -112,52 +84,28 @@ pub struct TournamentModel {
     pub late_entry_as_losses: bool,
 
     /// How the tournament requires its players to hand in a decklist
-    ///
-    /// Defaulted for the migration that adds this column to a table that
-    /// already has rows — every tournament created before M1.5 becomes
-    /// [`DecklistPolicy::Optional`], the least disruptive reading of "this
-    /// event never asked".
     #[rorm(default = "Optional")]
     pub decklist_policy: DecklistPolicy,
 
-    /// When decklists were locked tournament-wide, `None` while players may
-    /// still write their own
+    /// When decklists were locked tournament-wide, `None` while players may edit them
     pub decklists_locked_at: Option<OffsetDateTime>,
 
     /// Who may see this tournament's roster at all
-    ///
-    /// Defaulted for the migration that adds this column to a table that
-    /// already has rows — every tournament created before M1.7 becomes
-    /// [`ParticipantAudience::Participants`], the setting closest to what
-    /// this service always did before the audience was configurable.
     #[rorm(default = "Participants")]
     pub participant_audience: ParticipantAudience,
 
-    /// Whether a guest's real name is shown to a reader who is neither staff
-    /// nor a participant
-    ///
-    /// Defaulted to `false`, for the same migration reason as
-    /// [`Self::participant_audience`] and as the conservative choice for a
-    /// fresh tournament: an organizer opts into publishing a walk-in's real
-    /// name rather than leaking it by not thinking about it.
+    /// Whether a guest's real name is shown to non-staff, non-participant readers (opt-in)
     #[rorm(default = false)]
     pub guest_names_public: bool,
 
     /// Who may see the event at all
-    ///
-    /// Reused verbatim from decks and collections: `Public` is listed,
-    /// `Unlisted` is reachable through [`Self::share_token`], `Private` is
-    /// organizers and participants only.
     pub visibility: Visibility,
 
     /// Secret of the share link, `None` once the link is revoked
     #[rorm(unique)]
     pub share_token: Option<MaxStr<64>>,
 
-    /// The short code players join by, `None` while none is handed out
-    ///
-    /// Unique among live codes only: it is nulled when the event finishes or
-    /// is cancelled, which is what reclaims the code space.
+    /// The short code players join by; nulled when the event ends to reclaim the code space
     #[rorm(unique)]
     pub join_code: Option<MaxStr<8>>,
 
@@ -167,15 +115,10 @@ pub struct TournamentModel {
     /// Where the event takes place, in the organizer's words
     pub venue: Option<MaxStr<255>>,
 
-    /// The venue's address — snapshotted at save time, not a foreign key
-    /// into [`TournamentVenueModel`]. See the module docs on
-    /// [`crate::models::tournament::venue`] for why there is no `venue_ref`.
-    /// Meaningful only alongside [`Self::venue`].
+    /// The venue's address, snapshotted at save time (no FK into [`TournamentVenueModel`])
     pub venue_address: Option<MaxStr<512>>,
 
-    /// How to actually get in — "Hinterhof, bitte klingeln" and the like,
-    /// snapshotted the same way as [`Self::venue_address`]. Shown to
-    /// everyone who can see the tournament, the same as the address itself.
+    /// How to actually get in, snapshotted like [`Self::venue_address`]
     pub venue_instructions: Option<MaxStr<1024>>,
 
     /// When the event is announced to start
@@ -253,18 +196,11 @@ pub struct TournamentInsertPatch {
     pub starts_at: Option<OffsetDateTime>,
 }
 
-/// An account helping to run a tournament
-///
-/// The owner does not get a row here — "may this account run this event" has
-/// one source of truth per account: being the owner, or having exactly one of
-/// these rows. The uniqueness of (tournament, account) is a raw-SQL index in
-/// the migration, because rorm has no composite unique annotation.
+/// An account helping to run a tournament (never the owner); unique per account via raw SQL
 #[derive(Model, Debug)]
 #[rorm(rename = "tournament_organizer")]
 pub struct TournamentOrganizerModel {
     /// Primary key
-    ///
-    /// The second half of the `tournament_organizer_tournament` index.
     #[rorm(
         primary_key,
         index(name = "tournament_organizer_tournament", priority = 2)
@@ -279,9 +215,7 @@ pub struct TournamentOrganizerModel {
     )]
     pub tournament: ForeignModel<TournamentModel>,
 
-    /// The helping account
-    ///
-    /// Indexed on its own for "events I help run".
+    /// The helping account (indexed for "events I help run")
     #[rorm(index, on_update = "Cascade", on_delete = "Cascade")]
     pub account: ForeignModel<AccountModel>,
 
@@ -307,19 +241,11 @@ pub struct TournamentOrganizerInsertPatch {
     pub role: OrganizerRole,
 }
 
-/// Somebody playing in a tournament
-///
-/// A participant is a name that *may* link to an account: walk-ins typed in
-/// by the organizer and players who joined by code without signing up are
-/// rows with `account = None`. The display name is denormalized on purpose —
-/// a standings sheet printed in March must still read the same in December,
-/// through renames and account deletions alike.
+/// Somebody playing in a tournament; the display name is denormalized to survive renames
 #[derive(Model, Debug)]
 #[rorm(rename = "tournament_participant")]
 pub struct TournamentParticipantModel {
     /// Primary key
-    ///
-    /// The second half of the `tournament_participant_tournament` index.
     #[rorm(
         primary_key,
         index(name = "tournament_participant_tournament", priority = 2)
@@ -334,12 +260,7 @@ pub struct TournamentParticipantModel {
     )]
     pub tournament: ForeignModel<TournamentModel>,
 
-    /// The account behind the player, `None` for a guest
-    ///
-    /// `SetNull`, not `Cascade`: an account deleting itself must not delete
-    /// rounds three other people played in. Indexed for "tournaments I played
-    /// in". One account registers at most once per tournament — a raw-SQL
-    /// partial unique index in the migration, since guests share the null.
+    /// The account behind the player, `None` for a guest; unique per tournament via raw SQL
     #[rorm(index, on_update = "Cascade", on_delete = "SetNull")]
     pub account: Option<ForeignModel<AccountModel>>,
 
@@ -359,21 +280,14 @@ pub struct TournamentParticipantModel {
     /// The last round the player was paired into, `None` while active
     pub dropped_after_round: Option<i16>,
 
-    /// Random tiebreak seed, minted at registration
-    ///
-    /// The deterministic last tiebreaker, the seat-shuffle key and the source
-    /// of a guest's public pseudonym, so all three stay stable per player.
+    /// Random seed for the last tiebreaker, seat shuffling and a guest's pseudonym
     pub seed: i32,
 
     /// The organizer's manual tiebreak value, zero unless touched
     #[rorm(default = 0)]
     pub manual_tiebreak: i32,
 
-    /// The secret a guest attaches or claims this row with
-    ///
-    /// A bearer credential scoped to this one participant: it re-attaches a
-    /// guest session that lost its cookie, and it is what an account presents
-    /// to claim the row. Nulled once claimed.
+    /// Bearer secret a guest re-attaches or claims this row with; nulled once claimed
     #[rorm(unique)]
     pub claim_token: Option<MaxStr<64>>,
 
@@ -383,11 +297,7 @@ pub struct TournamentParticipantModel {
     /// Organizer-only notes on the player
     pub notes: Option<MaxStr<512>>,
 
-    /// The table this player must sit at, `None` for everyone who can move
-    ///
-    /// A pairing input in name only: the engine never sees it and it changes
-    /// nothing about who plays whom. It decides only which number the table
-    /// containing this player is printed with.
+    /// The table this player must sit at; only affects table numbering, not pairing
     pub fixed_table: Option<i16>,
 
     /// The point in time the player registered
@@ -421,19 +331,11 @@ pub struct TournamentParticipantInsertPatch {
     pub claim_token: Option<MaxStr<64>>,
 }
 
-/// One organizer-visible line in a tournament's history
-///
-/// Append-only; deleted only with the tournament. Written next to every edit
-/// an organizer makes and every registration, so a disputed decision can be
-/// reconstructed after the event.
+/// One organizer-visible line in a tournament's history; append-only
 #[derive(Model, Debug)]
 #[rorm(rename = "tournament_audit")]
 pub struct TournamentAuditModel {
     /// Primary key
-    ///
-    /// The second half of the `tournament_audit_tournament` index; a v7 uuid
-    /// orders by creation, so the composite answers "this event's log, newest
-    /// first" on its own.
     #[rorm(primary_key, index(name = "tournament_audit_tournament", priority = 2))]
     pub uuid: Uuid,
 
@@ -452,11 +354,7 @@ pub struct TournamentAuditModel {
     /// What happened
     pub action: AuditAction,
 
-    /// What it happened to
-    ///
-    /// A bare uuid, not a foreign key, for the same reason
-    /// `deckcard.printing` is not one: a cascade must never be able to delete
-    /// the audit trail out from under the event.
+    /// What it happened to; a bare uuid so no cascade can delete the audit trail
     pub subject: Option<Uuid>,
 
     /// A short rendered account of the change, for reading, not for replay
@@ -485,16 +383,7 @@ pub struct TournamentAuditInsertPatch {
     pub detail: Option<MaxStr<1024>>,
 }
 
-/// A participant's decklist — the text an organizer or the player reads,
-/// nothing else
-///
-/// Split out of [`TournamentParticipantModel`] rather than a column on it:
-/// the roster is read on every poll from M2 on, and `rorm::query(Model)`
-/// loads every column of whatever it is given — dragging up to 16 KB of text
-/// along on a query that runs constantly for everyone would make the poll
-/// cost what a search page costs. Reading one player's list is rare next to
-/// reading the roster, so the split pays for itself the moment M2 starts
-/// polling.
+/// A participant's decklist, split off the participant row to keep roster polls light
 #[derive(Model, Debug)]
 #[rorm(rename = "tournament_decklist")]
 pub struct TournamentDecklistModel {
@@ -502,25 +391,15 @@ pub struct TournamentDecklistModel {
     #[rorm(primary_key)]
     pub uuid: Uuid,
 
-    /// The tournament this list belongs to
-    ///
-    /// Denormalized so every read and write is scoped without a join through
-    /// [`TournamentParticipantModel`] — the same house pattern as
-    /// `tournament_organizer.tournament` and `tournament_participant.tournament`.
+    /// The tournament this list belongs to, denormalized to scope queries without a join
     #[rorm(index, on_update = "Cascade", on_delete = "Cascade")]
     pub tournament: ForeignModel<TournamentModel>,
 
-    /// The player this list belongs to
-    ///
-    /// Unique, not merely indexed: one list per player.
+    /// The player this list belongs to (unique: one list per player)
     #[rorm(unique, on_update = "Cascade", on_delete = "Cascade")]
     pub participant: ForeignModel<TournamentParticipantModel>,
 
-    /// The Planarium deck the text was rendered from, if any — provenance only
-    ///
-    /// `SetNull`, not `Cascade`: a player deleting the source deck later must
-    /// not take their already-submitted list down with it, the same
-    /// reasoning as `tournament_participant.account`.
+    /// The deck the text was rendered from, if any; provenance only
     #[rorm(index, on_update = "Cascade", on_delete = "SetNull")]
     pub deck: Option<ForeignModel<DeckModel>>,
 
@@ -531,12 +410,7 @@ pub struct TournamentDecklistModel {
     #[rorm(auto_create_time)]
     pub created_at: OffsetDateTime,
 
-    /// The point in time the list was last written
-    ///
-    /// Also `auto_create_time`: rorm requires a `NOT NULL` `auto_update_time`
-    /// column to carry a value from the moment of insertion too, not only
-    /// from its first update — which is exactly what is wanted here, since a
-    /// freshly written list has no earlier "updated" moment to fall back to.
+    /// The point in time the list was last written (rorm needs `auto_create_time` here too)
     #[rorm(auto_create_time, auto_update_time)]
     pub updated_at: OffsetDateTime,
 }
@@ -557,13 +431,7 @@ pub struct TournamentDecklistInsertPatch {
     pub text: MaxStr<16384>,
 }
 
-/// One place an account has run a tournament at
-///
-/// The account's own book of venues, kept for the picker — not something a
-/// tournament points into. [`TournamentModel::venue`]/`venue_address`/
-/// `venue_instructions` snapshot a copy of a row here at save time and never
-/// look back at it; renaming or deleting a row here must never rewrite an
-/// event that already ran. Modelled on [`crate::models::watch_list::db::WatchListModel`].
+/// A venue in an account's book, for the picker; tournaments snapshot it, never reference it
 #[derive(Model, Debug)]
 #[rorm(rename = "tournament_venue")]
 pub struct TournamentVenueModel {
@@ -574,12 +442,7 @@ pub struct TournamentVenueModel {
     /// Name of the place
     pub name: MaxStr<255>,
 
-    /// [`Self::name`] lowercased, the upsert's lookup key
-    ///
-    /// Unique together with [`Self::owner`] — a raw-SQL index in the
-    /// migration, since rorm has no composite unique annotation. Bounded
-    /// like [`TournamentModel::venue`] rather than tighter, so every name a
-    /// tournament accepts has a key the book can store.
+    /// [`Self::name`] lowercased; unique with [`Self::owner`] via a raw-SQL index
     pub name_normalized: MaxStr<255>,
 
     /// Where it is, in the organizer's words
@@ -589,9 +452,6 @@ pub struct TournamentVenueModel {
     pub instructions: Option<MaxStr<1024>>,
 
     /// The account this venue belongs to
-    ///
-    /// Indexed for the same reason as `watch_list.owner`: every read filters
-    /// on it, and a foreign key carries no index of its own.
     #[rorm(index, on_update = "Cascade", on_delete = "Cascade")]
     pub owner: ForeignModel<AccountModel>,
 
@@ -599,12 +459,7 @@ pub struct TournamentVenueModel {
     #[rorm(auto_create_time)]
     pub created_at: OffsetDateTime,
 
-    /// The point in time the venue was last used
-    ///
-    /// Plain, not `auto_update_time`: it is written explicitly by
-    /// [`crate::models::tournament::venue::remember`] alone, so that a
-    /// `DELETE` or an update of some other column can never bump it as a
-    /// side effect.
+    /// When the venue was last used; a plain column written only by `venue::remember`
     pub last_used_at: OffsetDateTime,
 }
 
@@ -628,21 +483,11 @@ pub struct TournamentVenueInsertPatch {
     pub last_used_at: OffsetDateTime,
 }
 
-/// One round of a tournament — scored, or one of the two a limited event needs first
-///
-/// Two numbers, because they answer different questions. [`Self::sequence`] is
-/// "the nth thing that happened in this room" and every round has one.
-/// [`Self::number`] is the number printed on the pairings sheet, and only a
-/// [`RoundKind::Swiss`] round has one — which is precisely what keeps a draft
-/// pod stage and a deckbuilding stage out of the round count without anybody
-/// having to remember to subtract them.
+/// One round of a tournament; `sequence` counts every round, `number` only Swiss ones
 #[derive(Model)]
 #[rorm(rename = "tournament_round")]
 pub struct TournamentRoundModel {
     /// Primary key
-    ///
-    /// Paired with `tournament` in a composite index: a v7 uuid sorts by
-    /// creation, so "this event's rounds, in order" needs no second index.
     #[rorm(primary_key)]
     #[rorm(index(name = "tournament_round_tournament", priority = 2))]
     pub uuid: Uuid,
@@ -665,24 +510,12 @@ pub struct TournamentRoundModel {
     pub status: RoundStatus,
 
     /// How many players shared a table, `None` for a round with no tables
-    ///
-    /// Stored rather than read back off the tournament: a draft pod of eight
-    /// and a Swiss pod of four belong to the same event, and what a round was
-    /// actually built with has to survive a later settings change.
     pub pod_size: Option<i16>,
 
-    /// The seed the pairing was rolled from
-    ///
-    /// Stored, not derived from the round number: a derived seed would
-    /// reproduce the *same* pairing when an organizer asks for a new one,
-    /// which is the opposite of what the button is for. Keeping it makes a
-    /// pairing reproducible after the fact — "why did round 3 look like that".
+    /// The seed the pairing was rolled from; stored so a re-pair differs and a pairing replays
     pub pairing_seed: i64,
 
-    /// How long the round's clock runs for
-    ///
-    /// Seconds, in an `i32`: `round_minutes` allows 600, and 600 minutes is
-    /// 36 000 seconds — past `i16::MAX`.
+    /// How long the round's clock runs for, in seconds (`i32`: 600 minutes overflow `i16`)
     pub length_seconds: i32,
 
     /// When the clock runs out, `None` while it has never been started
@@ -727,10 +560,6 @@ pub struct TournamentRoundInsertPatch {
 }
 
 /// One table in a round
-///
-/// The winner column is `winner_participant`, not `winner`, on purpose: team
-/// events are a later milestone, and a `winner_team` beside it should read as
-/// a sibling rather than tempt anybody into overloading one column.
 #[derive(Model)]
 #[rorm(rename = "tournament_match")]
 pub struct TournamentMatchModel {
@@ -744,11 +573,7 @@ pub struct TournamentMatchModel {
     #[rorm(on_update = "Cascade", on_delete = "Cascade")]
     pub round: ForeignModel<TournamentRoundModel>,
 
-    /// The tournament, denormalized
-    ///
-    /// Lets every mutation on a table fold `AND tournament = $t` into its own
-    /// statement — the `owned_by` spirit, for a row two joins from the owner.
-    /// Rows never move between tournaments, so it cannot drift.
+    /// The tournament, denormalized so table mutations scope by tournament in one statement
     #[rorm(index)]
     #[rorm(on_update = "Cascade", on_delete = "Cascade")]
     pub tournament: ForeignModel<TournamentModel>,
@@ -767,11 +592,7 @@ pub struct TournamentMatchModel {
     #[rorm(on_update = "Cascade", on_delete = "SetNull")]
     pub winner_participant: Option<ForeignModel<TournamentParticipantModel>>,
 
-    /// Whether the match was drawn
-    ///
-    /// Distinguishes a confirmed draw from an unplayed table without either
-    /// reading [`Self::status`] — the standings engine reads outcomes, not
-    /// statuses.
+    /// Whether the match was drawn, so outcomes read without consulting [`Self::status`]
     #[rorm(default = false)]
     pub is_draw: bool,
 
@@ -822,11 +643,6 @@ pub struct TournamentMatchInsertPatch {
 }
 
 /// One player's place at one table
-///
-/// Per person even once teams land: attendance, drops, decklists and check-in
-/// are all facts about a person, and a team's decklist is two decklists. A
-/// team will be a grouping applied before the pairing snapshot is built, not a
-/// different kind of seat.
 #[derive(Model)]
 #[rorm(rename = "tournament_seat")]
 pub struct TournamentSeatModel {
@@ -843,10 +659,7 @@ pub struct TournamentSeatModel {
     #[rorm(on_update = "Cascade", on_delete = "Cascade")]
     pub tournament: ForeignModel<TournamentModel>,
 
-    /// Who sits here
-    ///
-    /// Indexed on its own: "which table am I at" is read by every phone in the
-    /// room on every poll, and it is the most executed query in the feature.
+    /// Who sits here; indexed for the per-poll "which table am I at" query
     #[rorm(index)]
     #[rorm(on_update = "Cascade", on_delete = "Cascade")]
     pub participant: ForeignModel<TournamentParticipantModel>,
@@ -879,10 +692,7 @@ pub struct TournamentSeatInsertPatch {
     pub seat: i16,
 }
 
-/// What one player says happened at their table
-///
-/// One row per reporter per table, corrected in place — the history that
-/// matters is which claims disagreed, not how often somebody re-tapped.
+/// What one player says happened at their table; one row per reporter, corrected in place
 #[derive(Model)]
 #[rorm(rename = "tournament_result_report")]
 pub struct TournamentResultReportModel {
@@ -928,11 +738,7 @@ pub struct TournamentResultReportModel {
     #[rorm(default = 0)]
     pub claimed_games_drawn: i16,
 
-    /// The key the client minted for this tap
-    ///
-    /// Idempotency without a second index: an unchanged key on an existing row
-    /// is the same tap arriving twice and writes nothing, a different one is
-    /// somebody changing their mind and overwrites.
+    /// The key the client minted for this tap; an unchanged key is a duplicate and writes nothing
     pub client_key: MaxStr<64>,
 
     /// The point in time the claim was first filed

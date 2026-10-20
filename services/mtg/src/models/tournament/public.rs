@@ -1,20 +1,4 @@
-//! The account-less reads a share link needs, and the one roster-visibility
-//! decision every surface applies afterwards
-//!
-//! Nothing in this file takes an actor or an account — that is deliberate,
-//! not an oversight. Every other accessor in this module tree
-//! ([`Tournament::role_of`], [`Tournament::get_as_organizer`],
-//! [`Tournament::get_for_viewer`]) takes one and answers through a guard;
-//! keeping the guard-free reads here, in a file that structurally *cannot*
-//! take an actor, is what stops a handler from reaching for
-//! [`get_by_share_token`] or [`roster_view`] in a spot where a guard was
-//! actually owed. [`get_by_share_token`] is reachable by anyone holding the
-//! link, by design — that is what a share link is. [`roster_view`] and
-//! [`apply_roster_view`] are not a guard at all: they run *after* one (an
-//! organizer/participant check for the ordinary authed roster read,
-//! [`Visibility`] plus [`get_by_share_token`] for the share surface) and
-//! decide what the roster looks like from there — see [`roster_view`]'s own
-//! docs for exactly how the two stages compose.
+//! Guard-free reads for share links, and the roster-visibility decision applied after a guard
 
 use std::collections::HashMap;
 
@@ -30,13 +14,7 @@ use crate::models::tournament::db::TournamentModel;
 use crate::models::tournament::participant::TournamentParticipant;
 use crate::models::visibility::Visibility;
 
-/// Fetch a tournament by the secret in its share link
-///
-/// Mirrors [`crate::models::deck::Deck::get_by_share_token`]: the visibility
-/// is folded into the condition, so a token left over on a tournament that
-/// has gone private again does not resolve. This is the only function in the
-/// crate allowed to turn a bare token into a [`Tournament`] — nothing else
-/// may resolve one.
+/// Fetch a tournament by its share-link secret; only resolves while [`Visibility::Unlisted`]
 #[instrument(name = "public::get_by_share_token", skip(tx, token))]
 pub async fn get_by_share_token(
     tx: &mut Transaction,
@@ -53,11 +31,6 @@ pub async fn get_by_share_token(
 }
 
 /// What of a tournament's roster a particular viewer may see
-///
-/// The answer [`roster_view`] computes and [`apply_roster_view`] turns into
-/// an actual list. Its own type rather than a couple of booleans, so the two
-/// can only be chained in the right order, and so a `match` over it stays
-/// exhaustive if the roster grows more views later.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RosterView {
     /// Every row, unredacted
@@ -70,23 +43,7 @@ pub enum RosterView {
     Hidden,
 }
 
-/// Decide what a viewer may see of a tournament's roster
-///
-/// A separate, *earlier* gate already ran by the time this is called:
-/// [`Visibility`] decides whether a viewer reaches the tournament at all — a
-/// private event refuses a stranger long before this function is asked
-/// anything, and a share token gets a stranger past [`Visibility`] but never
-/// past this. Staff (`is_staff`) always get [`RosterView::Full`]. A
-/// participant who is not staff gets it too, unless the tournament's audience
-/// is [`ParticipantAudience::Organizers`], in which case they still see their
-/// own row ([`RosterView::OwnOnly`]) rather than nothing. Everyone else — no
-/// role, no row of their own — sees the roster at all only under
-/// [`ParticipantAudience::Anyone`], and even then in full only once
-/// `guest_names_public` opts in; short of that it is
-/// [`RosterView::Pseudonymised`].
-///
-/// This is the one decision the ordinary authed roster read and the share
-/// surface both apply — see the module docs above.
+/// Decide what a viewer may see of a tournament's roster; runs after the visibility gate
 pub fn roster_view(tournament: &Tournament, is_staff: bool, is_participant: bool) -> RosterView {
     if is_staff {
         return RosterView::Full;
@@ -105,15 +62,7 @@ pub fn roster_view(tournament: &Tournament, is_staff: bool, is_participant: bool
     }
 }
 
-/// Turn a [`RosterView`] decision into the actual rows a viewer may see
-///
-/// `own` is the caller's own participant row, if they have one — only
-/// consulted for [`RosterView::OwnOnly`]. The pseudonym numbers
-/// [`RosterView::Pseudonymised`] assigns come from [`pseudonym_ranks`],
-/// computed once over every row in `participants` before anything here
-/// filters or maps them — so a guest's number stays the same regardless of
-/// what a caller does with the result afterwards (a search, a page, a second
-/// filter downstream).
+/// Turn a [`RosterView`] into the rows a viewer may see; pass the full roster, ranks span it
 pub fn apply_roster_view(
     view: RosterView,
     own: Option<TournamentParticipantUuid>,
@@ -150,19 +99,7 @@ pub fn apply_roster_view(
     }
 }
 
-/// Each participant's 1-based rank by `(seed, uuid)` ascending
-///
-/// The source of [`apply_roster_view`]'s pseudonym numbers, split out so the
-/// ranking itself — the part that must stay stable, order-independent and
-/// collision-free — has something to unit-test directly, decoupled from the
-/// "Gast {n}" string it feeds. Ranked over *every* row passed in, guest and
-/// account rows alike: only a guest row's rank is ever shown, but ranking the
-/// whole list rather than just the guests is what keeps a number from
-/// shifting depending on which slice of the same tournament a caller happens
-/// to ask for. `uuid` breaks the tie between two rows that were, however
-/// unlikely, minted the same seed — plain `i32` equality would collide two
-/// guests onto the same number, which is exactly the "unique inside one
-/// tournament" half of the guarantee this module's docs promise.
+/// Each participant's 1-based rank by `(seed, uuid)`, over every row so pseudonyms stay stable
 fn pseudonym_ranks(
     participants: &[TournamentParticipant],
 ) -> HashMap<TournamentParticipantUuid, usize> {
@@ -185,9 +122,6 @@ mod tests {
     use crate::models::tournament::TournamentUuid;
 
     /// A minimal [`TournamentParticipant`] for the pure tests below.
-    ///
-    /// `uuid_seed` and `seed` are independent knobs so a test can pin exactly
-    /// which one the ranking should break its tie on.
     fn participant(
         uuid_seed: u128,
         seed: i32,
@@ -287,8 +221,6 @@ mod tests {
 
     #[test]
     fn pseudonymised_ranking_is_stable_and_independent_of_input_order() {
-        // Three distinct seeds, so there is exactly one correct order:
-        // b (seed 10) < c (seed 20) < a (seed 30).
         let a = participant(1, 30, true, "A");
         let b = participant(2, 10, true, "B");
         let c = participant(3, 20, true, "C");
@@ -333,9 +265,6 @@ mod tests {
 
     #[test]
     fn pseudonymised_ranking_counts_account_rows_too() {
-        // Rank is computed over the whole list, not just the guests: an
-        // account row sorting first still consumes rank 1, so the guest
-        // behind it is "Gast 2", not "Gast 1".
         let organizer = participant(1, 1, false, "Organizer");
         let guest = participant(2, 2, true, "Willi");
         let out = apply_roster_view(RosterView::Pseudonymised, None, vec![organizer, guest]);
@@ -354,9 +283,6 @@ mod tests {
             vec![a.clone(), b.clone(), c.clone()],
         );
 
-        // A caller that keeps only a subset afterwards (e.g. a search filter
-        // layered on top of this function) must not see the ranks
-        // recomputed over the smaller set.
         let subset: Vec<_> = full.into_iter().filter(|row| row.uuid != b.uuid).collect();
         let names: Vec<&str> = subset.iter().map(|row| &*row.display_name).collect();
         assert_eq!(names, vec!["Gast 1", "Gast 3"]);
@@ -376,7 +302,6 @@ mod tests {
             .map(|row| &*row.display_name)
             .collect();
         assert_eq!(guest_names, vec!["Gast 2", "Gast 3"]);
-        // The account row is untouched.
         assert!(
             out.iter()
                 .any(|row| &*row.display_name == "Real Account Name")

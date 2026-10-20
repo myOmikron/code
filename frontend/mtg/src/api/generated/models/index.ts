@@ -212,9 +212,7 @@ export interface AddTournamentOrganizerRequest {
  */
 export type AddTournamentParticipant200Response = FormErrorResponseForAddParticipantErrors | TournamentParticipantResponse;
 /**
- * Request to put a player on the roster from the desk
- * 
- * Two shapes in one request: with `account` the row belongs to that account from the start — the organizer looked the player up because their phone was dead — and `display_name` is optional, defaulting to the username. Without it the row is a guest a name was typed for, claimable later by QR.
+ * Request to put a player on the roster from the desk: an account, or a guest by name
  * @export
  * @interface AddTournamentParticipantRequest
  */
@@ -226,13 +224,13 @@ export interface AddTournamentParticipantRequest {
      */
     account?: string | null;
     /**
-     * A decklist to type in for them, pasted text only — an organizer never links a Planarium deck on somebody else's behalf
+     * A decklist to type in for them; organizers cannot link a deck for somebody else
      * @type {string}
      * @memberof AddTournamentParticipantRequest
      */
     decklist_text?: string | null;
     /**
-     * The name the player appears under; required for a guest, optional alongside `account`
+     * The name the player appears under; required for a guest
      * @type {string}
      * @memberof AddTournamentParticipantRequest
      */
@@ -399,9 +397,7 @@ export interface ArrangePairingsRequest {
 export type ArrangeTournamentRound200Response = FormErrorResponseForArrangePairingsErrors | PairRoundResponse;
 
 /**
- * What happened, as recorded in a tournament's audit log
- * 
- * Stored by its variant name, so new variants in M2/M3 need no migration — they are just another string an old client has never seen.
+ * What happened, as recorded in a tournament's audit log; stored by variant name
  * @export
  */
 export const AuditAction = {
@@ -685,7 +681,7 @@ export type CardRarity = typeof CardRarity[keyof typeof CardRarity];
  */
 export interface CheckInErrors {
     /**
-     * The tournament's decklist policy requires a decklist before check-in and this player has none on file
+     * The decklist policy requires a decklist before check-in and none is on file
      * @type {boolean}
      * @memberof CheckInErrors
      */
@@ -693,8 +689,6 @@ export interface CheckInErrors {
 }
 /**
  * Why a claim-token action was refused
- * 
- * Shared by [`super::handler::claim_tournament_participant`] (which can also answer [`Self::already_registered`]) and, unauthenticated, by [`crate::http::handler_frontend::join::handler::look_up_claim_token`] and [`crate::http::handler_frontend::join::handler::reattach_claim_token`] — the latter two only ever set [`Self::invalid_token`], since there is no account on a guest request for [`Self::already_registered`] to describe.
  * @export
  * @interface ClaimErrors
  */
@@ -745,9 +739,7 @@ export interface ClaimParticipantResponse {
     tournament: string;
 }
 /**
- * What a claim token names, for the screen a scanned QR lands on before the player has committed to anything
- * 
- * Mirrors [`ClaimTarget`] field for field — its own public type rather than handing the model struct across the HTTP boundary directly, the same reasoning as every other response type in this module tree.
+ * What a claim token names, shown before the player commits to anything
  * @export
  * @interface ClaimTargetResponse
  */
@@ -779,8 +771,6 @@ export interface ClaimTargetResponse {
 }
 /**
  * A guest row's live claim token, for staff to show as a QR code
- * 
- * `None` covers both "already claimed" and "this is an account row" alike — see [`crate::models::tournament::participant::claim_token`] for why the caller has no reason to tell the two apart.
  * @export
  * @interface ClaimTokenResponse
  */
@@ -2288,13 +2278,13 @@ export interface DecklistErrors {
      */
     invalid_decklist: boolean;
     /**
-     * The tournament's decklists are locked tournament-wide and the caller is not staff
+     * Decklists are locked tournament-wide and the caller is not staff
      * @type {boolean}
      * @memberof DecklistErrors
      */
     locked: boolean;
     /**
-     * The named deck does not exist, is not the caller's, or rendered to nothing playable — an empty deck is not a list anybody can register
+     * The deck does not exist, is not the caller's, or is empty
      * @type {boolean}
      * @memberof DecklistErrors
      */
@@ -2302,9 +2292,7 @@ export interface DecklistErrors {
 }
 
 /**
- * How a tournament requires its players to hand in a decklist
- * 
- * Always editable, unlike the structural settings [`Tournament::update_settings`] locks once the event leaves [`TournamentStatus::Registration`]: an organizer must be able to relax or tighten the requirement at any point right up to the last round, the same reasoning as `round_minutes`.
+ * How a tournament requires its players to hand in a decklist; editable at any time
  * @export
  */
 export const DecklistPolicy = {
@@ -2313,7 +2301,7 @@ export const DecklistPolicy = {
     */
     Optional: 'Optional',
     /**
-    * A player may register without a decklist, but [&#x60;participant::check_in&#x60;] refuses them until one is on file
+    * Registration without a decklist is fine, but check-in is refused until one is on file
     */
     RequiredToCheckIn: 'RequiredToCheckIn',
     /**
@@ -2628,9 +2616,7 @@ export interface FinishRegistrationRequest {
     token: string;
 }
 /**
- * A pin the layout could not honour
- * 
- * Two players who cannot leave their table asked for the same number. The lower-numbered table kept it and the other pin was dropped; nothing about who plays whom changed, so the round is still perfectly valid — an organizer simply has to move somebody by hand.
+ * A fixed-table pin the layout could not honour; the lower table number kept it
  * @export
  * @interface FixedTableConflict
  */
@@ -3166,7 +3152,7 @@ export interface FormatRulesResponse {
     slug: string;
 }
 /**
- * What [`super::handler::get_participant_decklist`] and [`super::handler::set_participant_decklist`] answer with
+ * A participant's decklist plus whether the viewer may edit it
  * @export
  * @interface GetDecklistResponse
  */
@@ -3184,7 +3170,7 @@ export interface GetDecklistResponse {
      */
     locked: boolean;
     /**
-     * Whether the viewer may write this decklist right now — staff always, the participant themself only while `!locked`. Computed server-side so the UI never has to re-derive it from `locked` plus who is asking.
+     * Whether the viewer may write this decklist now: staff always, the player while unlocked
      * @type {boolean}
      * @memberof GetDecklistResponse
      */
@@ -3197,7 +3183,7 @@ export interface GetDecklistResponse {
  */
 export interface GetTournamentResponse {
     /**
-     * How many people are on the roster — the true count, never redacted by [`crate::models::tournament::public::roster_view`]: an event may advertise "12 angemeldet" while keeping the names to itself
+     * How many people are on the roster, even when the names are hidden
      * @type {number}
      * @memberof GetTournamentResponse
      */
@@ -3222,7 +3208,7 @@ export interface GetTournamentResponse {
  */
 export interface GuestJoinRequest {
     /**
-     * Paste a decklist directly — a guest never links a Planarium deck
+     * Paste a decklist directly; guests cannot link a deck
      * @type {string}
      * @memberof GuestJoinRequest
      */
@@ -3235,9 +3221,7 @@ export interface GuestJoinRequest {
     display_name: string;
 }
 /**
- * What a successful guest join answers with
- * 
- * The one place outside [`crate::models::tournament::participant::register_guest`] itself a claim token is ever handed out — never repeated in a list response afterwards.
+ * What a successful guest join answers with; the only response carrying the claim token
  * @export
  * @interface GuestJoinResponse
  */
@@ -3308,7 +3292,7 @@ export interface JoinErrors {
      */
     already_registered: boolean;
     /**
-     * The tournament's [`crate::models::tournament::DecklistPolicy::RequiredToRegister`] is set and neither `deck` nor `decklist_text` was given
+     * The tournament requires a decklist to register and none was given
      * @type {boolean}
      * @memberof JoinErrors
      */
@@ -3344,7 +3328,7 @@ export interface JoinErrors {
      */
     unknown_code: boolean;
     /**
-     * The named deck does not exist, is not the caller's, or rendered to nothing playable — an empty deck is not a list anybody can register
+     * The deck does not exist, is not the caller's, or is empty
      * @type {boolean}
      * @memberof JoinErrors
      */
@@ -3357,7 +3341,7 @@ export interface JoinErrors {
  */
 export interface JoinLookupResponse {
     /**
-     * Always `false` here — this route has no session to check against. [`super::handler::join_tournament_by_code`] reports a stranded join attempt as a form error instead, once it has an account to check.
+     * Always `false`: this route has no session to check against
      * @type {boolean}
      * @memberof JoinLookupResponse
      */
@@ -3375,7 +3359,7 @@ export interface JoinLookupResponse {
      */
     format: string;
     /**
-     * The code itself, as stored — a typed one may have arrived lowercase or with a separator, and a screen showing it wants the canonical form
+     * The canonical stored form of the code
      * @type {string}
      * @memberof JoinLookupResponse
      */
@@ -3441,7 +3425,7 @@ export interface JoinLookupResponse {
      */
     venue_address?: string | null;
     /**
-     * How to actually get in — shown to everyone who can see this lookup, same as the address
+     * How to get in, shown to everyone who can see this lookup
      * @type {string}
      * @memberof JoinLookupResponse
      */
@@ -3462,9 +3446,7 @@ export type JoinTournamentAsGuest200Response = FormErrorResponseForJoinErrors | 
  */
 export type JoinTournamentByCode200Response = FormErrorResponseForJoinErrors | JoinTournamentResponse;
 /**
- * Request to join by code as a logged-in account
- * 
- * `deck` and `decklist_text` are mutually exclusive — both present answers [`JoinErrors::invalid_decklist`]; both absent is fine unless the tournament's [`Tournament::needs_decklist_to_register`](crate::models::tournament::Tournament::needs_decklist_to_register) says otherwise.
+ * Request to join by code as a logged-in account; `deck` and `decklist_text` are exclusive
  * @export
  * @interface JoinTournamentRequest
  */
@@ -4165,13 +4147,13 @@ export interface MatchSeatResponse {
      */
     display_name: string;
     /**
-     * Whether they have since left the event, so the row can say so rather than leaving an organizer to wonder why nobody is sitting there
+     * Whether they have since left the event
      * @type {boolean}
      * @memberof MatchSeatResponse
      */
     dropped: boolean;
     /**
-     * The table they cannot leave, if there is one — what the pin on the row is drawn from, and the reason this table carries the number it does
+     * The table they are pinned to, if any
      * @type {number}
      * @memberof MatchSeatResponse
      */
@@ -4197,9 +4179,7 @@ export interface MatchSeatResponse {
 }
 
 /**
- * How far a table's result has got
- * 
- * Derived from the report rows on every write and never read back as truth — which is what lets the desk and the players' phones share one state machine without either of them owning it.
+ * How far a table's result has got; derived from the report rows on every write
  * @export
  */
 export const MatchStatus = {
@@ -4642,7 +4622,7 @@ export const OrganizerRole = {
     */
     CoOrganizer: 'CoOrganizer',
     /**
-    * Runs the roster and, from M2 on, results — not settings or the staff list
+    * Runs the roster and results, not settings or the staff list
     */
     Scorekeeper: 'Scorekeeper'
 } as const;
@@ -4655,7 +4635,7 @@ export type OrganizerRole = typeof OrganizerRole[keyof typeof OrganizerRole];
  */
 export interface PairRoundErrors {
     /**
-     * The field divides into neither full pods nor pods one smaller — five players at a pod size of four, say. The remedy is a different pod size.
+     * The field divides into neither full pods nor pods one smaller
      * @type {boolean}
      * @memberof PairRoundErrors
      */
@@ -4723,22 +4703,20 @@ export type PairingSystem = typeof PairingSystem[keyof typeof PairingSystem];
 
 
 /**
- * Who may see a tournament's roster at all
- * 
- * A separate, later gate than [`Visibility`]: visibility decides whether a viewer reaches the tournament in the first place, this decides — once they have — whether they may see who is playing in it. Staff see the roster in full no matter what this is set to; see [`public::roster_view`](crate::models::tournament::public::roster_view) for exactly how the two combine.
+ * Who may see a tournament's roster; staff always see it in full
  * @export
  */
 export const ParticipantAudience = {
     /**
-    * Only staff see the roster; a participant sees just their own row, and everyone else sees none of it
+    * Only staff see the roster; a participant sees just their own row
     */
     Organizers: 'Organizers',
     /**
-    * Staff and every participant see the whole roster; everyone else sees none of it
+    * Staff and every participant see the whole roster
     */
     Participants: 'Participants',
     /**
-    * Everyone who may see the event at all sees the roster too — a guest appears under their real name or a pseudonym, depending on &#x60;guest_names_public&#x60;
+    * Everyone who may see the event sees the roster; guest names per &#x60;guest_names_public&#x60;
     */
     Anyone: 'Anyone'
 } as const;
@@ -4770,9 +4748,7 @@ export const ParticipantStatus = {
 export type ParticipantStatus = typeof ParticipantStatus[keyof typeof ParticipantStatus];
 
 /**
- * One account an organizer's player search turned up
- * 
- * Username only. The search exists to resolve "which of these is my player", and a username is what the organizer reads off their screen — anything else would make this a directory.
+ * One account an organizer's player search turned up; username only, not a directory
  * @export
  * @interface PlayerSearchResultResponse
  */
@@ -5402,17 +5378,13 @@ export interface ReportResultErrors {
     round_closed: boolean;
 }
 /**
- * What one seat says happened at their table
- * 
- * The game counts are the winner's and the loser's, not one per seat: a pod is always best of one, so the only place a game score carries anything is a duel, where there are exactly two of them.
+ * What one seat says happened at their table; game counts only matter for duels
  * @export
  * @interface ReportResultRequest
  */
 export interface ReportResultRequest {
     /**
-     * The key this tap was minted with
-     * 
-     * The same key arriving twice is one tap retried and writes nothing; a different one is somebody changing their mind and overwrites. Which is what makes a double-tapped phone on a bad connection harmless.
+     * Idempotency key: the same key twice is a retry, a new key overwrites the earlier report
      * @type {string}
      * @memberof ReportResultRequest
      */
@@ -5655,9 +5627,7 @@ export interface RotateShareTokenResponse {
 }
 
 /**
- * What a round is for
- * 
- * Only a [`Self::Swiss`] round carries a number, plays matches and moves the standings. The other two are the shape a limited event needs before it can start: a draft round groups people into pods so they open boosters together, and a deckbuilding round is a clock and nothing else. Both are rounds in the sense that they occupy the room and the timer, and in no other sense — see [`round::Round::number`].
+ * What a round is for; only Swiss rounds are numbered and scored
  * @export
  */
 export const RoundKind = {
@@ -5714,7 +5684,7 @@ export interface RoundResponse {
      */
     kind: RoundKind;
     /**
-     * The number on the pairings sheet, `null` for a draft or deckbuilding stage — which is exactly what keeps those out of the round count
+     * The number on the pairings sheet, `null` for draft or deckbuilding stages
      * @type {number}
      * @memberof RoundResponse
      */
@@ -5761,8 +5731,6 @@ export interface RoundResponse {
 
 /**
  * Where a round stands
- * 
- * There is no `Cancelled`: re-pairing replaces a round's matches in place and deleting one is a hard delete guarded on "nothing reported", so a lingering cancelled round would only be a fourth thing every read has to remember to filter out.
  * @export
  */
 export const RoundStatus = {
@@ -6129,9 +6097,7 @@ export interface SetDeckVisibilityRequest {
 
 
 /**
- * Request to write, replace or clear a participant's decklist
- * 
- * Both fields absent clears the list; both present is refused as [`DecklistErrors::invalid_decklist`] — a request names at most one source.
+ * Request to write, replace or clear a decklist; both fields absent clears it
  * @export
  * @interface SetDecklistRequest
  */
@@ -6306,8 +6272,6 @@ export interface SetTournamentStatusRequest {
 export interface SetTournamentStatusResponse {
     /**
      * How many players were dropped for never checking in
-     * 
-     * Only ever non-zero on the move to [`TournamentStatus::Running`]. The client already listed them in its confirmation, so this is the count that actually happened rather than the one it predicted.
      * @type {number}
      * @memberof SetTournamentStatusResponse
      */
@@ -6949,9 +6913,7 @@ export interface SplitCollectionEntryResponse {
     source: CollectionEntryResponse;
 }
 /**
- * One row of the standings
- * 
- * Every percentage is in basis points — 10 000 is 100 % — which is also the precision it is meant to be shown at. Two rows whose numbers render the same really are equal, so a reader checking the table by hand never finds a tie broken by a digit that was not on screen.
+ * One row of the standings; percentages are basis points (10 000 = 100 %)
  * @export
  * @interface StandingResponse
  */
@@ -7055,8 +7017,6 @@ export interface StandingResponse {
 export interface StandingsResponse {
     /**
      * How many tables of the current round have no settled result
-     * 
-     * The reason the page can say "three tables still out" rather than letting ranks shuffle under a reader who does not know why.
      * @type {number}
      * @memberof StandingsResponse
      */
@@ -7329,9 +7289,7 @@ export const TimerActionRequest = {
 export type TimerActionRequest = typeof TimerActionRequest[keyof typeof TimerActionRequest];
 
 /**
- * A round's clock, with the server's own reading of the time beside it
- * 
- * One struct rather than two sibling fields, so that serialising a deadline without the reference point it is measured against is not expressible. A phone with a wrong clock is the normal case, not the exception.
+ * A round's clock, with the server's remaining time so a wrong phone clock does not matter
  * @export
  * @interface TimerResponse
  */
@@ -7561,8 +7519,6 @@ export interface TournamentOrganizerResponse {
 
 /**
  * Somebody on a tournament's roster, as an actor may see them
- * 
- * [`Self::notes`] is `None` unless the viewer is staff — see [`Self::from_parts`].
  * @export
  * @interface TournamentParticipantResponse
  */
@@ -7632,8 +7588,6 @@ export interface TournamentParticipantResponse {
 
 /**
  * A tournament, as an actor may see it
- * 
- * [`Self::share_token`] and [`Self::join_code`] are organizer-only secrets: see [`Self::from_parts`].
  * @export
  * @interface TournamentResponse
  */
@@ -7657,7 +7611,7 @@ export interface TournamentResponse {
      */
     decklist_policy: DecklistPolicy;
     /**
-     * When decklists were locked tournament-wide, `None` while players may still write their own
+     * When decklists were locked tournament-wide, `None` while players may edit
      * @type {string}
      * @memberof TournamentResponse
      */
@@ -7687,15 +7641,13 @@ export interface TournamentResponse {
      */
     games_per_match: number;
     /**
-     * Whether a guest's real name is shown to a reader who is neither staff nor a participant
+     * Whether a guest's real name is shown to non-staff, non-participant readers
      * @type {boolean}
      * @memberof TournamentResponse
      */
     guest_names_public: boolean;
     /**
-     * The raw join code, organizer-only — `None` for every other viewer
-     * 
-     * Raw, not the `XXX-XXX` display form: the frontend renders that split.
+     * The raw join code (no `XXX-XXX` split), organizer-only — `None` for every other viewer
      * @type {string}
      * @memberof TournamentResponse
      */
@@ -7842,7 +7794,7 @@ export interface TournamentResponse {
  */
 export interface TournamentSettingsErrors {
     /**
-     * The format slug is not one [`crate::models::format::is_tournament_format`] accepts
+     * The format slug is not a known tournament format
      * @type {boolean}
      * @memberof TournamentSettingsErrors
      */
@@ -7884,22 +7836,20 @@ export interface TournamentSettingsErrors {
      */
     invalid_round_length: boolean;
     /**
-     * The event no longer allows structural changes — see [`crate::models::tournament::Tournament::update_settings`]
+     * The event no longer allows structural changes
      * @type {boolean}
      * @memberof TournamentSettingsErrors
      */
     settings_locked: boolean;
 }
 /**
- * The editable shape of a tournament, shared by [`CreateTournamentRequest`] and [`super::handler::update_tournament`]
- * 
- * One type for both requests: an update sends exactly the same fields a create does, minus [`Visibility`] (which has its own endpoint and its own audit action). Validated in the handler against [`TournamentSettingsErrors`].
+ * The editable settings of a tournament, shared by create and update
  * @export
  * @interface TournamentSettingsRequest
  */
 export interface TournamentSettingsRequest {
     /**
-     * Whether players may still register *themselves* after the event started — an organizer can always add a late entry at the desk. The client no longer offers this and sends `false`.
+     * Whether players may still register themselves after the event started
      * @type {boolean}
      * @memberof TournamentSettingsRequest
      */
@@ -7917,7 +7867,7 @@ export interface TournamentSettingsRequest {
      */
     description?: string | null;
     /**
-     * The format being played: a slug [`crate::models::format::rules_for`] knows, or one of [`crate::models::format::LIMITED_FORMATS`]
+     * The format slug: a constructed format or one of the limited formats
      * @type {string}
      * @memberof TournamentSettingsRequest
      */
@@ -7929,21 +7879,19 @@ export interface TournamentSettingsRequest {
      */
     games_per_match: number;
     /**
-     * Whether a guest's real name is shown to a reader who is neither staff nor a participant
+     * Whether a guest's real name is shown to non-staff, non-participant readers
      * @type {boolean}
      * @memberof TournamentSettingsRequest
      */
     guest_names_public: boolean;
     /**
      * Whether a late entry's missed rounds count as match losses
-     * 
-     * Sent as `false` by the client: that is the organizer's call when they add the player, not a rule fixed up front.
      * @type {boolean}
      * @memberof TournamentSettingsRequest
      */
     late_entry_as_losses: boolean;
     /**
-     * How many players fit, `None` for an event that turns nobody away. Held against self-service registration only.
+     * How many players may self-register, `None` for no limit
      * @type {number}
      * @memberof TournamentSettingsRequest
      */
@@ -7967,15 +7915,13 @@ export interface TournamentSettingsRequest {
      */
     participant_audience: ParticipantAudience;
     /**
-     * How many scoring rounds the event means to play, `None` while undecided. Always editable, the event's own schedule rather than a locked rule.
+     * How many scoring rounds the event means to play, `None` while undecided
      * @type {number}
      * @memberof TournamentSettingsRequest
      */
     planned_rounds?: number | null;
     /**
      * How many players sit at one table, 2..=5
-     * 
-     * The client derives it from the format — pods of four for the commander formats, two for everything else — rather than asking for it; the bound stays here because the request still carries it.
      * @type {number}
      * @memberof TournamentSettingsRequest
      */
@@ -8023,13 +7969,13 @@ export interface TournamentSettingsRequest {
      */
     venue?: string | null;
     /**
-     * The venue's address — meaningful only alongside [`Self::venue`]; the handler blanks it when `venue` is empty
+     * The venue's address, blanked when `venue` is empty
      * @type {string}
      * @memberof TournamentSettingsRequest
      */
     venue_address?: string | null;
     /**
-     * How to actually get in ("Hinterhof, bitte klingeln") — meaningful only alongside [`Self::venue`], shown to everyone who can see the tournament
+     * How to get in, shown to everyone who can see the tournament
      * @type {string}
      * @memberof TournamentSettingsRequest
      */
@@ -8038,9 +7984,7 @@ export interface TournamentSettingsRequest {
 
 
 /**
- * What a client polls to know whether anything moved
- * 
- * Deliberately cheap: a handful of indexed reads and no standings, because every phone in the room hits it on a timer.
+ * What every phone polls to know whether anything moved; kept cheap on purpose
  * @export
  * @interface TournamentStateResponse
  */
@@ -8093,7 +8037,7 @@ export interface TournamentStateResponse {
  */
 export const TournamentStatus = {
     /**
-    * Open for players to register or join by code — where every tournament starts
+    * Open for registration and joining by code; the initial status
     */
     Registration: 'Registration',
     /**
@@ -8456,8 +8400,6 @@ export interface UpdateScannerSessionRequest {
 }
 /**
  * Request to change a participant's display name and/or organizer notes
- * 
- * `notes: null` clears the notes; an absent `notes` key leaves them alone — see [`crate::http::handler_frontend::collections::schema::double_option`].
  * @export
  * @interface UpdateTournamentParticipantRequest
  */

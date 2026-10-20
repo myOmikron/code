@@ -1,14 +1,4 @@
 //! The standings, read out of the rounds behind them
-//!
-//! The arithmetic is [`crate::tournament::standings`], which is pure. This is
-//! the part that assembles a field and its settled tables and hands them over.
-//!
-//! Everybody who played is computed, including players who have since dropped:
-//! their final record is what their past opponents' percentages are built from,
-//! so removing them would quietly move the standings of people still in the
-//! event. Who may *see* a row is a separate question, answered by the same
-//! [`super::public::roster_view`] the roster itself goes through — which is
-//! also what keeps a guest's pseudonym the same number on both screens.
 
 use galvyn::rorm;
 use galvyn::rorm::db::transaction::Transaction;
@@ -45,16 +35,7 @@ pub struct StandingRow {
     pub standing: Standing,
 }
 
-/// The standings of a tournament, best first
-///
-/// Unguarded, like the rest of this module tree's reads: the caller has already
-/// resolved the tournament for its viewer, and deciding whose rows they may see
-/// is the caller's job too.
-///
-/// @param tx the transaction to read in
-/// @param event the tournament, for its scoring table and pod size
-///
-/// @returns one row per player who is in the event
+/// The standings of a tournament, best first (unguarded: the caller filters rows)
 #[instrument(name = "standings::table", skip(tx, event))]
 pub async fn table(
     tx: &mut Transaction,
@@ -77,10 +58,8 @@ pub async fn table(
     .all()
     .await?;
 
-    // Everybody who is or was in the event. `dropped_after_round = 0` is the
-    // roster's own "never played a round", which is what somebody dropped at
-    // the start for never checking in carries — they are not in the standings
-    // because they were never in the tournament.
+    // Dropped players stay in: their record feeds their opponents' tiebreakers.
+    // `dropped_after_round = 0` means dropped at start without ever playing.
     let field: Vec<_> = roster
         .into_iter()
         .filter(|(_, _, status, _, dropped_after, _)| match status {
@@ -110,9 +89,6 @@ pub async fn table(
     .all()
     .await?;
 
-    // Only settled tables are results. A pending or disputed one is an argument
-    // in progress, and putting it in the standings would move ranks every time
-    // somebody taps their phone.
     let played = rorm::query(
         &mut *tx,
         (

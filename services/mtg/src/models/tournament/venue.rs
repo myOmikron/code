@@ -1,14 +1,4 @@
-//! Venues: the places an organizer's tournaments happen at
-//!
-//! A venue is not a table a tournament points into — see the top-level
-//! module docs' "no provenance FK" decision. [`Tournament`](super::Tournament)
-//! snapshots a name, an address and arrival instructions straight onto its
-//! own row at creation/update time; this module only keeps the account-level
-//! book those snapshots are drawn from, so the picker can offer a place back
-//! without the organizer retyping it. Renaming or deleting an entry here
-//! never touches an event that already copied it out — the same
-//! never-rewrite-history rule [`TournamentParticipant::display_name`](super::participant::TournamentParticipant::display_name)
-//! follows.
+//! Venues: an account's book of places, which tournaments snapshot rather than reference
 
 use galvyn::core::re_exports::time::OffsetDateTime;
 use galvyn::rorm;
@@ -37,16 +27,6 @@ pub struct Venue {
 }
 
 /// Lowercase, trim and collapse a venue name into the book's lookup key
-///
-/// A copy of [`participant::normalize_name`](super::participant), not a
-/// shared helper: that one returns `MaxStr<64>`, bounded to a display name's
-/// length, and widening it would change participant lookup behaviour for a
-/// column this module has nothing to do with. The bound here matches
-/// [`super::Tournament::venue`]'s own, so a name a tournament accepts is
-/// always a name the book can hold — nothing is ever truncated on the way in. Built word by word for the
-/// same reason as the original — lowercasing can grow a handful of Unicode
-/// characters by a byte or two, and truncating the result afterwards risks
-/// landing mid-character.
 fn normalize_name(name: &str) -> MaxStr<255> {
     let mut normalized = String::with_capacity(name.len());
     for word in name.split_whitespace() {
@@ -78,21 +58,7 @@ pub async fn list_for_account(
     Ok(rows.into_iter().map(Venue::from).collect())
 }
 
-/// Write what an event was just saved with into the account's book
-///
-/// Upsert keyed on the normalized name: using "Spielekiste" again updates the
-/// address and instructions rather than making a second entry, and bumps
-/// `last_used_at` so the picker offers the places actually in rotation
-/// first. Probe-then-write, not catch-the-violation: a `SELECT` by `(owner,
-/// name_normalized)` decides insert vs. update, because this call is not the
-/// last statement in its transaction — the tournament write that triggered
-/// it follows — and Postgres aborts the whole transaction on a constraint
-/// violation. Catching one here would leave nothing able to write
-/// afterwards; [`super::rotate_join_code`](super::Tournament::rotate_join_code)
-/// paid to learn that lesson once already.
-///
-/// A blank or whitespace-only name is not a venue: nothing is written and
-/// `Ok(())` comes back, the same as a no-op.
+/// Upsert what an event was just saved with into the account's book; a blank name is a no-op
 #[instrument(name = "venue::remember", skip(tx, name, address, instructions))]
 pub async fn remember(
     tx: &mut Transaction,
@@ -107,6 +73,7 @@ pub async fn remember(
     let name_normalized = normalize_name(name);
     let now = OffsetDateTime::now_utc();
 
+    // Probe, not catch: Postgres aborts the tx on a unique violation; the caller writes after.
     let existing = rorm::query(&mut *tx, TournamentVenueModel.uuid)
         .condition(rorm::and![
             TournamentVenueModel.owner.equals(account.into_inner()),
@@ -145,11 +112,7 @@ pub async fn remember(
     Ok(())
 }
 
-/// Drop one entry from the account's book
-///
-/// Returns whether a row of that account's was actually deleted, so the
-/// handler can answer `denied()` for somebody else's venue without saying
-/// which it was.
+/// Drop one entry from the account's book; `false` if no row of this account matched
 #[instrument(name = "venue::forget", skip(tx))]
 pub async fn forget(
     tx: &mut Transaction,

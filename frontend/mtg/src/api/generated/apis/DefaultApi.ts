@@ -1204,8 +1204,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Walk a guest into the roster by name  [`participant::register_guest`] trusts its `added_by` argument to mean the caller already holds a role — this is the one place in the module tree allowed to make that promise, immediately after checking it.  `decklist_text`, if given, is written in the same transaction right after the row exists to hold it — no policy check here, the same as `register_guest` itself: an organizer may register a walk-in with or without a list regardless of [`crate::models::tournament::DecklistPolicy`], since a policy governs self-service registration, not staff typing somebody in by hand.
-     * Walk a guest into the roster by name
+     * Put a player on the roster from the desk, by account or as a guest by name  No decklist-policy check: the policy only governs self-service registration.
+     * Put a player on the roster from the desk, by account or as a guest by name
      */
     async addTournamentParticipantRaw(requestParameters: AddTournamentParticipantOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<AddTournamentParticipant200Response>> {
         const requestOptions = await this.addTournamentParticipantRequestOpts(requestParameters);
@@ -1215,8 +1215,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Walk a guest into the roster by name  [`participant::register_guest`] trusts its `added_by` argument to mean the caller already holds a role — this is the one place in the module tree allowed to make that promise, immediately after checking it.  `decklist_text`, if given, is written in the same transaction right after the row exists to hold it — no policy check here, the same as `register_guest` itself: an organizer may register a walk-in with or without a list regardless of [`crate::models::tournament::DecklistPolicy`], since a policy governs self-service registration, not staff typing somebody in by hand.
-     * Walk a guest into the roster by name
+     * Put a player on the roster from the desk, by account or as a guest by name  No decklist-policy check: the policy only governs self-service registration.
+     * Put a player on the roster from the desk, by account or as a guest by name
      */
     async addTournamentParticipant(requestParameters: AddTournamentParticipantOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AddTournamentParticipant200Response> {
         const response = await this.addTournamentParticipantRaw(requestParameters, initOverrides);
@@ -1552,8 +1552,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Check in, self-service or by staff  Under [`crate::models::tournament::DecklistPolicy::RequiredToCheckIn`], a player with no decklist on file is refused with [`CheckInErrors::decklist_missing`] instead of the generic denial — see [`participant::check_in`].
-     * Check in, self-service or by staff
+     * Check a participant in at the desk (staff only)
+     * Check a participant in at the desk (staff only)
      */
     async checkInTournamentParticipantRaw(requestParameters: CheckInTournamentParticipantRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FormErrorResponseForCheckInErrors>> {
         const requestOptions = await this.checkInTournamentParticipantRequestOpts(requestParameters);
@@ -1563,8 +1563,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Check in, self-service or by staff  Under [`crate::models::tournament::DecklistPolicy::RequiredToCheckIn`], a player with no decklist on file is refused with [`CheckInErrors::decklist_missing`] instead of the generic denial — see [`participant::check_in`].
-     * Check in, self-service or by staff
+     * Check a participant in at the desk (staff only)
+     * Check a participant in at the desk (staff only)
      */
     async checkInTournamentParticipant(requestParameters: CheckInTournamentParticipantRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FormErrorResponseForCheckInErrors> {
         const response = await this.checkInTournamentParticipantRaw(requestParameters, initOverrides);
@@ -1649,8 +1649,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Take the desk\'s result back off a table  Drops to whatever the players had agreed rather than to nothing, which is the undo for a mistyped result.
-     * Take the desk\'s result back off a table
+     * Take the desk\'s result back off a table, falling back to the players\' reports
+     * Take the desk\'s result back off a table, falling back to the players\' reports
      */
     async clearMatchResultRaw(requestParameters: ClearMatchResultRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SetMatchResult200Response>> {
         const requestOptions = await this.clearMatchResultRequestOpts(requestParameters);
@@ -1660,8 +1660,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Take the desk\'s result back off a table  Drops to whatever the players had agreed rather than to nothing, which is the undo for a mistyped result.
-     * Take the desk\'s result back off a table
+     * Take the desk\'s result back off a table, falling back to the players\' reports
+     * Take the desk\'s result back off a table, falling back to the players\' reports
      */
     async clearMatchResult(requestParameters: ClearMatchResultRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SetMatchResult200Response> {
         const response = await this.clearMatchResultRaw(requestParameters, initOverrides);
@@ -2005,7 +2005,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Create a tournament; the caller becomes its owner  A non-blank `venue` is remembered into the caller\'s own venue book — see [`remember_venue`]. It is written *before* the tournament, because building the insert consumes the request; the two share one transaction, so a tournament that fails to insert takes the remembered venue with it.
+     * Create a tournament; the caller becomes its owner
      * Create a tournament; the caller becomes its owner
      */
     async createTournamentRaw(requestParameters: CreateTournamentOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CreateTournament200Response>> {
@@ -2016,7 +2016,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Create a tournament; the caller becomes its owner  A non-blank `venue` is remembered into the caller\'s own venue book — see [`remember_venue`]. It is written *before* the tournament, because building the insert consumes the request; the two share one transaction, so a tournament that fails to insert takes the remembered venue with it.
+     * Create a tournament; the caller becomes its owner
      * Create a tournament; the caller becomes its owner
      */
     async createTournament(requestParameters: CreateTournamentOperationRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CreateTournament200Response> {
@@ -3968,7 +3968,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * The viewer\'s own table in the round the room is on  In the actor block, because the phone asking is usually a guest\'s.
+     * The viewer\'s own table in the round the room is on
      * The viewer\'s own table in the round the room is on
      */
     async getMyTournamentMatchRaw(requestParameters: GetMyTournamentMatchRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MyMatchResponse>> {
@@ -3979,7 +3979,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * The viewer\'s own table in the round the room is on  In the actor block, because the phone asking is usually a guest\'s.
+     * The viewer\'s own table in the round the room is on
      * The viewer\'s own table in the round the room is on
      */
     async getMyTournamentMatch(requestParameters: GetMyTournamentMatchRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MyMatchResponse> {
@@ -4023,8 +4023,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Hand a guest row\'s live claim token to staff, e.g. to render as a QR code for a walk-in to scan  Guard: [`participant::claim_token`] — any role, deliberately not [`TournamentRole::may_manage`], the same reasoning as [`update_tournament_participant`]: walking a guest through claiming their own row is exactly what a scorekeeper is for. `claim_token: None` covers both \"already claimed\" and \"this is an account row\" — either way there is no live token to show, and the caller has no reason to tell the two apart.
-     * Hand a guest row\'s live claim token to staff, e.g. to render as a QR code
+     * A guest row\'s live claim token, for any staff role to show as a QR code
+     * A guest row\'s live claim token, for any staff role to show as a QR code
      */
     async getParticipantClaimTokenRaw(requestParameters: GetParticipantClaimTokenRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ClaimTokenResponse>> {
         const requestOptions = await this.getParticipantClaimTokenRequestOpts(requestParameters);
@@ -4034,8 +4034,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Hand a guest row\'s live claim token to staff, e.g. to render as a QR code for a walk-in to scan  Guard: [`participant::claim_token`] — any role, deliberately not [`TournamentRole::may_manage`], the same reasoning as [`update_tournament_participant`]: walking a guest through claiming their own row is exactly what a scorekeeper is for. `claim_token: None` covers both \"already claimed\" and \"this is an account row\" — either way there is no live token to show, and the caller has no reason to tell the two apart.
-     * Hand a guest row\'s live claim token to staff, e.g. to render as a QR code
+     * A guest row\'s live claim token, for any staff role to show as a QR code
+     * A guest row\'s live claim token, for any staff role to show as a QR code
      */
     async getParticipantClaimToken(requestParameters: GetParticipantClaimTokenRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ClaimTokenResponse> {
         const response = await this.getParticipantClaimTokenRaw(requestParameters, initOverrides);
@@ -4078,7 +4078,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Read a participant\'s decklist — staff, or the participant themself  Guard: [`decklist::get`]. See [`get_decklist_response`] for how [`GetDecklistResponse::locked`]/[`GetDecklistResponse::may_edit`] are filled in.
+     * Read a participant\'s decklist — staff, or the participant themself
      * Read a participant\'s decklist — staff, or the participant themself
      */
     async getParticipantDecklistRaw(requestParameters: GetParticipantDecklistRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<GetDecklistResponse>> {
@@ -4089,7 +4089,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Read a participant\'s decklist — staff, or the participant themself  Guard: [`decklist::get`]. See [`get_decklist_response`] for how [`GetDecklistResponse::locked`]/[`GetDecklistResponse::may_edit`] are filled in.
+     * Read a participant\'s decklist — staff, or the participant themself
      * Read a participant\'s decklist — staff, or the participant themself
      */
     async getParticipantDecklist(requestParameters: GetParticipantDecklistRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GetDecklistResponse> {
@@ -4689,8 +4689,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Where everybody stands  In the actor block: the standings are the thing a player refreshes between rounds, and a guest\'s phone is exactly the device doing it. Whose rows come back is the same decision the roster goes through, so a guest who appears as \"Gast 7\" on one screen is \"Gast 7\" on the other.
-     * Where everybody stands
+     * Where everybody stands, with names redacted the same way as the roster
+     * Where everybody stands, with names redacted the same way as the roster
      */
     async getTournamentStandingsRaw(requestParameters: GetTournamentStandingsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<StandingsResponse>> {
         const requestOptions = await this.getTournamentStandingsRequestOpts(requestParameters);
@@ -4700,8 +4700,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Where everybody stands  In the actor block: the standings are the thing a player refreshes between rounds, and a guest\'s phone is exactly the device doing it. Whose rows come back is the same decision the roster goes through, so a guest who appears as \"Gast 7\" on one screen is \"Gast 7\" on the other.
-     * Where everybody stands
+     * Where everybody stands, with names redacted the same way as the roster
+     * Where everybody stands, with names redacted the same way as the roster
      */
     async getTournamentStandings(requestParameters: GetTournamentStandingsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<StandingsResponse> {
         const response = await this.getTournamentStandingsRaw(requestParameters, initOverrides);
@@ -4736,8 +4736,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * What a client polls to know whether anything moved  In the actor block on purpose: a guest\'s phone is exactly the device that needs this most, and wrapping it in an auth layer would lock the room out. Deliberately cheap — a handful of indexed reads and never a standings computation, because every phone hits it on a timer.
-     * What a client polls to know whether anything moved
+     * What a client polls to know whether anything moved; kept cheap, no standings
+     * What a client polls to know whether anything moved; kept cheap, no standings
      */
     async getTournamentStateRaw(requestParameters: GetTournamentStateRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<TournamentStateResponse>> {
         const requestOptions = await this.getTournamentStateRequestOpts(requestParameters);
@@ -4747,8 +4747,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * What a client polls to know whether anything moved  In the actor block on purpose: a guest\'s phone is exactly the device that needs this most, and wrapping it in an auth layer would lock the room out. Deliberately cheap — a handful of indexed reads and never a standings computation, because every phone hits it on a timer.
-     * What a client polls to know whether anything moved
+     * What a client polls to know whether anything moved; kept cheap, no standings
+     * What a client polls to know whether anything moved; kept cheap, no standings
      */
     async getTournamentState(requestParameters: GetTournamentStateRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<TournamentStateResponse> {
         const response = await this.getTournamentStateRaw(requestParameters, initOverrides);
@@ -4922,8 +4922,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Join a tournament as a guest — no account, just a name for the pairings list  Unauthenticated and rate limited, same reasoning as [`look_up_join_code`]. The session is only told about the new participant *after* the transaction commits: a session entry naming a row that turned out not to exist would be worse than losing this one join to a crash in between.  `decklist_text`, if given, is written in the same transaction right after the row exists to hold it. A refusal past that point (only [`JoinErrors::invalid_decklist`] can actually happen for a guest, pasted text is the only source they have) answers its form error *without* committing — the transaction simply drops, so the participant row this handler just inserted is rolled back along with it, exactly like a failed [`participant::register_guest`] would be.
-     * Join a tournament as a guest — no account, just a name for the pairings list
+     * Join a tournament as a guest  A decklist failure returns without committing, which rolls back the new participant row.
+     * Join a tournament as a guest
      */
     async joinTournamentAsGuestRaw(requestParameters: JoinTournamentAsGuestRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<JoinTournamentAsGuest200Response>> {
         const requestOptions = await this.joinTournamentAsGuestRequestOpts(requestParameters);
@@ -4933,8 +4933,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Join a tournament as a guest — no account, just a name for the pairings list  Unauthenticated and rate limited, same reasoning as [`look_up_join_code`]. The session is only told about the new participant *after* the transaction commits: a session entry naming a row that turned out not to exist would be worse than losing this one join to a crash in between.  `decklist_text`, if given, is written in the same transaction right after the row exists to hold it. A refusal past that point (only [`JoinErrors::invalid_decklist`] can actually happen for a guest, pasted text is the only source they have) answers its form error *without* committing — the transaction simply drops, so the participant row this handler just inserted is rolled back along with it, exactly like a failed [`participant::register_guest`] would be.
-     * Join a tournament as a guest — no account, just a name for the pairings list
+     * Join a tournament as a guest  A decklist failure returns without committing, which rolls back the new participant row.
+     * Join a tournament as a guest
      */
     async joinTournamentAsGuest(requestParameters: JoinTournamentAsGuestRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<JoinTournamentAsGuest200Response> {
         const response = await this.joinTournamentAsGuestRaw(requestParameters, initOverrides);
@@ -4972,7 +4972,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Join a tournament as the logged-in account  `deck`/`decklist_text` are handled exactly like [`join_tournament_as_guest`]\'s `decklist_text`: written in the same transaction right after the participant row exists, and a refusal past that point answers its form error without committing, so the fresh participant row never actually exists either. `deck_owner` and `actor` are both the joining account — [`decklist::write`] checks deck ownership against the former and audits against the latter, and here they are always the same person.
+     * Join a tournament as the logged-in account  A decklist failure returns without committing, which rolls back the new participant row.
      * Join a tournament as the logged-in account
      */
     async joinTournamentByCodeRaw(requestParameters: JoinTournamentByCodeRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<JoinTournamentByCode200Response>> {
@@ -4983,7 +4983,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Join a tournament as the logged-in account  `deck`/`decklist_text` are handled exactly like [`join_tournament_as_guest`]\'s `decklist_text`: written in the same transaction right after the participant row exists, and a refusal past that point answers its form error without committing, so the fresh participant row never actually exists either. `deck_owner` and `actor` are both the joining account — [`decklist::write`] checks deck ownership against the former and audits against the latter, and here they are always the same person.
+     * Join a tournament as the logged-in account  A decklist failure returns without committing, which rolls back the new participant row.
      * Join a tournament as the logged-in account
      */
     async joinTournamentByCode(requestParameters: JoinTournamentByCodeRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<JoinTournamentByCode200Response> {
@@ -5483,7 +5483,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Every table of one round  In the actor block beside the round list: a player\'s own table is the single thing their phone is open for, and an auth layer here would lock out every guest in the room.
+     * Every table of one round
      * Every table of one round
      */
     async listRoundTablesRaw(requestParameters: ListRoundTablesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListTablesResponse>> {
@@ -5494,7 +5494,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Every table of one round  In the actor block beside the round list: a player\'s own table is the single thing their phone is open for, and an auth layer here would lock out every guest in the room.
+     * Every table of one round
      * Every table of one round
      */
     async listRoundTables(requestParameters: ListRoundTablesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListTablesResponse> {
@@ -5809,8 +5809,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * A tournament\'s roster, redacted through [`public::roster_view`]  This is the leak the model layer\'s own docs warn about: skip [`public::roster_view`]/[`public::apply_roster_view`] here and a [`crate::models::visibility::Visibility::Public`] tournament hands every guest\'s real name to any logged-in stranger, using nothing but this ordinary authed read — no share token needed. The share surface ([`crate::http::handler_frontend::shared::handler::list_shared_tournament_participants`]) applies the identical decision with `is_staff`/`is_participant` both `false`.
-     * A tournament\'s roster, redacted through [`public::roster_view`]
+     * A tournament\'s roster, with guest names redacted through [`public::roster_view`]
+     * A tournament\'s roster, with guest names redacted through [`public::roster_view`]
      */
     async listTournamentParticipantsRaw(requestParameters: ListTournamentParticipantsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListTournamentParticipantsResponse>> {
         const requestOptions = await this.listTournamentParticipantsRequestOpts(requestParameters);
@@ -5820,8 +5820,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * A tournament\'s roster, redacted through [`public::roster_view`]  This is the leak the model layer\'s own docs warn about: skip [`public::roster_view`]/[`public::apply_roster_view`] here and a [`crate::models::visibility::Visibility::Public`] tournament hands every guest\'s real name to any logged-in stranger, using nothing but this ordinary authed read — no share token needed. The share surface ([`crate::http::handler_frontend::shared::handler::list_shared_tournament_participants`]) applies the identical decision with `is_staff`/`is_participant` both `false`.
-     * A tournament\'s roster, redacted through [`public::roster_view`]
+     * A tournament\'s roster, with guest names redacted through [`public::roster_view`]
+     * A tournament\'s roster, with guest names redacted through [`public::roster_view`]
      */
     async listTournamentParticipants(requestParameters: ListTournamentParticipantsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListTournamentParticipantsResponse> {
         const response = await this.listTournamentParticipantsRaw(requestParameters, initOverrides);
@@ -5895,7 +5895,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * The caller\'s own venue book, most recently used first  Note: `/venues` is a static path segment while `/{tournament}` is a dynamic one, so axum\'s router already prefers the static match here — nothing to arrange, just worth being aware of on a route table shaped like this one.
+     * The caller\'s own venue book, most recently used first
      * The caller\'s own venue book, most recently used first
      */
     async listTournamentVenuesRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListTournamentVenuesResponse>> {
@@ -5906,7 +5906,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * The caller\'s own venue book, most recently used first  Note: `/venues` is a static path segment while `/{tournament}` is a dynamic one, so axum\'s router already prefers the static match here — nothing to arrange, just worth being aware of on a route table shaped like this one.
+     * The caller\'s own venue book, most recently used first
      * The caller\'s own venue book, most recently used first
      */
     async listTournamentVenues(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListTournamentVenuesResponse> {
@@ -6083,8 +6083,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Lock every decklist in the tournament: players may no longer write their own, staff still can
-     * Lock every decklist in the tournament: players may no longer write their
+     * Lock every decklist in the tournament; staff can still edit them
+     * Lock every decklist in the tournament; staff can still edit them
      */
     async lockTournamentDecklistsRaw(requestParameters: LockTournamentDecklistsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
         const requestOptions = await this.lockTournamentDecklistsRequestOpts(requestParameters);
@@ -6098,8 +6098,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Lock every decklist in the tournament: players may no longer write their own, staff still can
-     * Lock every decklist in the tournament: players may no longer write their
+     * Lock every decklist in the tournament; staff can still edit them
+     * Lock every decklist in the tournament; staff can still edit them
      */
     async lockTournamentDecklists(requestParameters: LockTournamentDecklistsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
         const response = await this.lockTournamentDecklistsRaw(requestParameters, initOverrides);
@@ -6172,8 +6172,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Look up a claim token before committing to anything: what it names, or that it does not resolve to anything live  Unauthenticated and rate limited, same reasoning as [`look_up_join_code`] — this is the screen a scanned claim QR lands on before the player has chosen anything. [`ClaimErrors::invalid_token`], not a bad request: a stale or already-claimed QR is an everyday outcome, not a caller mistake.
-     * Look up a claim token before committing to anything: what it names, or
+     * Look up what a claim token names, without consuming it
+     * Look up what a claim token names, without consuming it
      */
     async lookUpClaimTokenRaw(requestParameters: LookUpClaimTokenRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<LookUpClaimToken200Response>> {
         const requestOptions = await this.lookUpClaimTokenRequestOpts(requestParameters);
@@ -6183,8 +6183,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Look up a claim token before committing to anything: what it names, or that it does not resolve to anything live  Unauthenticated and rate limited, same reasoning as [`look_up_join_code`] — this is the screen a scanned claim QR lands on before the player has chosen anything. [`ClaimErrors::invalid_token`], not a bad request: a stale or already-claimed QR is an everyday outcome, not a caller mistake.
-     * Look up a claim token before committing to anything: what it names, or
+     * Look up what a claim token names, without consuming it
+     * Look up what a claim token names, without consuming it
      */
     async lookUpClaimToken(requestParameters: LookUpClaimTokenRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<LookUpClaimToken200Response> {
         const response = await this.lookUpClaimTokenRaw(requestParameters, initOverrides);
@@ -6219,8 +6219,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Resolve a typed code into the tournament it names, before anybody joins  Unauthenticated and rate limited (see [`super::initialize_routes`]) — a phone reading a whiteboard has no session yet. [`JoinLookupResponse::already_registered`] is always `false` here; there is no account to check it against.
-     * Resolve a typed code into the tournament it names, before anybody joins
+     * Resolve a join code into the tournament it names, before anybody joins
+     * Resolve a join code into the tournament it names, before anybody joins
      */
     async lookUpJoinCodeRaw(requestParameters: LookUpJoinCodeRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<LookUpJoinCode200Response>> {
         const requestOptions = await this.lookUpJoinCodeRequestOpts(requestParameters);
@@ -6230,8 +6230,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Resolve a typed code into the tournament it names, before anybody joins  Unauthenticated and rate limited (see [`super::initialize_routes`]) — a phone reading a whiteboard has no session yet. [`JoinLookupResponse::already_registered`] is always `false` here; there is no account to check it against.
-     * Resolve a typed code into the tournament it names, before anybody joins
+     * Resolve a join code into the tournament it names, before anybody joins
+     * Resolve a join code into the tournament it names, before anybody joins
      */
     async lookUpJoinCode(requestParameters: LookUpJoinCodeRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<LookUpJoinCode200Response> {
         const response = await this.lookUpJoinCodeRaw(requestParameters, initOverrides);
@@ -6363,7 +6363,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Pair a round, replacing whatever it already held  One endpoint for both the first pairing and every re-pair after it. There is no preview to commit: the race a staged pairing would guard is better served by pressing this again, and writing straight through survives a crashed tab and a locked phone, which a staged one does not.
+     * Pair a round, replacing whatever it already held
      * Pair a round, replacing whatever it already held
      */
     async pairTournamentRoundRaw(requestParameters: PairTournamentRoundRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PairTournamentRound200Response>> {
@@ -6374,7 +6374,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Pair a round, replacing whatever it already held  One endpoint for both the first pairing and every re-pair after it. There is no preview to commit: the race a staged pairing would guard is better served by pressing this again, and writing straight through survives a crashed tab and a locked phone, which a staged one does not.
+     * Pair a round, replacing whatever it already held
      * Pair a round, replacing whatever it already held
      */
     async pairTournamentRound(requestParameters: PairTournamentRoundRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PairTournamentRound200Response> {
@@ -6452,8 +6452,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Re-attach a guest session to its row using a still-live claim token  Unauthenticated and rate limited, same reasoning as [`look_up_join_code`]. Does **not** consume the token — see [`participant::reattach`]: the same device may lose its cookie and need the token again, and only an account\'s claim retires it for good. The session only learns about the participant *after* the transaction commits, the same reasoning as [`join_tournament_as_guest`]: a session pointed at a row the commit then failed to actually touch would be worse than losing this one reattach to a crash in between. Same typed error as [`look_up_claim_token`].
-     * Re-attach a guest session to its row using a still-live claim token
+     * Re-attach a guest session to its row using a still-live claim token, without consuming it
+     * Re-attach a guest session to its row using a still-live claim token, without consuming it
      */
     async reattachClaimTokenRaw(requestParameters: ReattachClaimTokenRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<LookUpClaimToken200Response>> {
         const requestOptions = await this.reattachClaimTokenRequestOpts(requestParameters);
@@ -6463,8 +6463,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Re-attach a guest session to its row using a still-live claim token  Unauthenticated and rate limited, same reasoning as [`look_up_join_code`]. Does **not** consume the token — see [`participant::reattach`]: the same device may lose its cookie and need the token again, and only an account\'s claim retires it for good. The session only learns about the participant *after* the transaction commits, the same reasoning as [`join_tournament_as_guest`]: a session pointed at a row the commit then failed to actually touch would be worse than losing this one reattach to a crash in between. Same typed error as [`look_up_claim_token`].
-     * Re-attach a guest session to its row using a still-live claim token
+     * Re-attach a guest session to its row using a still-live claim token, without consuming it
+     * Re-attach a guest session to its row using a still-live claim token, without consuming it
      */
     async reattachClaimToken(requestParameters: ReattachClaimTokenRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<LookUpClaimToken200Response> {
         const response = await this.reattachClaimTokenRaw(requestParameters, initOverrides);
@@ -6615,7 +6615,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Report what happened at your own table  In the actor block, because the people this exists for are the ones playing — a guest\'s phone included. The guard behind it asks whether the caller is *sitting at this table* before it asks whether they run the event, so an organizer who is also playing reports like everybody else rather than silently confirming their own match.
+     * Report what happened at your own table  Seat is checked before role, so a playing organizer reports like everyone else.
      * Report what happened at your own table
      */
     async reportMatchResultRaw(requestParameters: ReportMatchResultRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ReportMatchResult200Response>> {
@@ -6626,7 +6626,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Report what happened at your own table  In the actor block, because the people this exists for are the ones playing — a guest\'s phone included. The guard behind it asks whether the caller is *sitting at this table* before it asks whether they run the event, so an organizer who is also playing reports like everybody else rather than silently confirming their own match.
+     * Report what happened at your own table  Seat is checked before role, so a playing organizer reports like everyone else.
      * Report what happened at your own table
      */
     async reportMatchResult(requestParameters: ReportMatchResultRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ReportMatchResult200Response> {
@@ -7117,8 +7117,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Look accounts up by username, to seat a player whose phone is dead  Organizer-only and tournament-scoped: the guard is the role on this event, and the answer says which hits are already on this roster so the dialog can grey them out. A blank needle answers nothing rather than the whole table.
-     * Look accounts up by username, to seat a player whose phone is dead
+     * Look accounts up by username, to seat a player at the desk
+     * Look accounts up by username, to seat a player at the desk
      */
     async searchTournamentPlayersRaw(requestParameters: SearchTournamentPlayersRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SearchPlayersResponse>> {
         const requestOptions = await this.searchTournamentPlayersRequestOpts(requestParameters);
@@ -7128,8 +7128,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Look accounts up by username, to seat a player whose phone is dead  Organizer-only and tournament-scoped: the guard is the role on this event, and the answer says which hits are already on this roster so the dialog can grey them out. A blank needle answers nothing rather than the whole table.
-     * Look accounts up by username, to seat a player whose phone is dead
+     * Look accounts up by username, to seat a player at the desk
+     * Look accounts up by username, to seat a player at the desk
      */
     async searchTournamentPlayers(requestParameters: SearchTournamentPlayersRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SearchPlayersResponse> {
         const response = await this.searchTournamentPlayersRaw(requestParameters, initOverrides);
@@ -7445,8 +7445,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Write a table\'s result from the desk  Beats every player report on that table and skips the confirmation dance entirely: the desk is authoritative, and the two-sided flow exists to save an organizer walking to the table, not to constrain them once they have.
-     * Write a table\'s result from the desk
+     * Write a table\'s result from the desk, overriding every player report
+     * Write a table\'s result from the desk, overriding every player report
      */
     async setMatchResultRaw(requestParameters: SetMatchResultRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SetMatchResult200Response>> {
         const requestOptions = await this.setMatchResultRequestOpts(requestParameters);
@@ -7456,8 +7456,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Write a table\'s result from the desk  Beats every player report on that table and skips the confirmation dance entirely: the desk is authoritative, and the two-sided flow exists to save an organizer walking to the table, not to constrain them once they have.
-     * Write a table\'s result from the desk
+     * Write a table\'s result from the desk, overriding every player report
+     * Write a table\'s result from the desk, overriding every player report
      */
     async setMatchResult(requestParameters: SetMatchResultRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SetMatchResult200Response> {
         const response = await this.setMatchResultRaw(requestParameters, initOverrides);
@@ -7503,8 +7503,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Write, replace or clear a participant\'s decklist — staff, or the participant themself while the tournament\'s decklists are not locked  Guard: [`decklist::set`]. `deck` and `text` both present is refused as [`DecklistErrors::invalid_decklist`] before the guard even runs — a request names at most one source.
-     * Write, replace or clear a participant\'s decklist — staff, or the
+     * Write, replace or clear a participant\'s decklist — staff, or the player while unlocked
+     * Write, replace or clear a participant\'s decklist — staff, or the player while unlocked
      */
     async setParticipantDecklistRaw(requestParameters: SetParticipantDecklistRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SetParticipantDecklist200Response>> {
         const requestOptions = await this.setParticipantDecklistRequestOpts(requestParameters);
@@ -7514,8 +7514,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Write, replace or clear a participant\'s decklist — staff, or the participant themself while the tournament\'s decklists are not locked  Guard: [`decklist::set`]. `deck` and `text` both present is refused as [`DecklistErrors::invalid_decklist`] before the guard even runs — a request names at most one source.
-     * Write, replace or clear a participant\'s decklist — staff, or the
+     * Write, replace or clear a participant\'s decklist — staff, or the player while unlocked
+     * Write, replace or clear a participant\'s decklist — staff, or the player while unlocked
      */
     async setParticipantDecklist(requestParameters: SetParticipantDecklistRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SetParticipantDecklist200Response> {
         const response = await this.setParticipantDecklistRaw(requestParameters, initOverrides);
@@ -7765,8 +7765,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Change who may see a tournament  Discards the freshly minted share token the same way [`crate::http::handler_frontend::decks::handler::set_visibility_deck`] does: the client re-fetches [`get_tournament`] for it.
-     * Change who may see a tournament
+     * Change who may see a tournament; the client re-fetches it for the new share token
+     * Change who may see a tournament; the client re-fetches it for the new share token
      */
     async setTournamentVisibilityRaw(requestParameters: SetTournamentVisibilityOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
         const requestOptions = await this.setTournamentVisibilityRequestOpts(requestParameters);
@@ -7780,8 +7780,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Change who may see a tournament  Discards the freshly minted share token the same way [`crate::http::handler_frontend::decks::handler::set_visibility_deck`] does: the client re-fetches [`get_tournament`] for it.
-     * Change who may see a tournament
+     * Change who may see a tournament; the client re-fetches it for the new share token
+     * Change who may see a tournament; the client re-fetches it for the new share token
      */
     async setTournamentVisibility(requestParameters: SetTournamentVisibilityOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
         const response = await this.setTournamentVisibilityRaw(requestParameters, initOverrides);
@@ -8950,8 +8950,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Update a tournament\'s settings  The always-editable fields (name, description, venue, start time, round length) go through even while the event is running; a structural change (format, pod size, pairing, scoring, ...) while [`SettingsChange::Locked`] answers [`TournamentSettingsErrors::settings_locked`] instead — see [`Tournament::update_settings`]\'s doc comment for exactly what counts as structural. A non-blank `venue` is remembered into the caller\'s own venue book — see [`remember_venue`] — once the write actually goes through.
-     * Update a tournament\'s settings
+     * Update a tournament\'s settings; structural changes are refused once settings lock
+     * Update a tournament\'s settings; structural changes are refused once settings lock
      */
     async updateTournamentRaw(requestParameters: UpdateTournamentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FormErrorResponseForTournamentSettingsErrors>> {
         const requestOptions = await this.updateTournamentRequestOpts(requestParameters);
@@ -8961,8 +8961,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Update a tournament\'s settings  The always-editable fields (name, description, venue, start time, round length) go through even while the event is running; a structural change (format, pod size, pairing, scoring, ...) while [`SettingsChange::Locked`] answers [`TournamentSettingsErrors::settings_locked`] instead — see [`Tournament::update_settings`]\'s doc comment for exactly what counts as structural. A non-blank `venue` is remembered into the caller\'s own venue book — see [`remember_venue`] — once the write actually goes through.
-     * Update a tournament\'s settings
+     * Update a tournament\'s settings; structural changes are refused once settings lock
+     * Update a tournament\'s settings; structural changes are refused once settings lock
      */
     async updateTournament(requestParameters: UpdateTournamentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FormErrorResponseForTournamentSettingsErrors> {
         const response = await this.updateTournamentRaw(requestParameters, initOverrides);

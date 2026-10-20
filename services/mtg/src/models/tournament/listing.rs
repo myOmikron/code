@@ -1,12 +1,4 @@
-//! A tournament roster's cross-actor listing: every event one account or guest may see at once
-//!
-//! Raw SQL for the account branch only, and only there: "owned, co-organized
-//! or played-in" spans three tables that a single rorm condition cannot
-//! express as one set, the same reasoning as [`crate::models::deck::listing`]
-//! reaches for a printing join. A guest's session holds a handful of
-//! participant uuids at most, so that branch stays plain queries plus an
-//! in-memory sort — hand-writing the equivalent SQL would cost more than it
-//! saves.
+//! Listing every tournament an account or guest may see
 
 use std::cmp::Reverse;
 use std::collections::HashSet;
@@ -39,12 +31,7 @@ pub struct TournamentListEntry {
     pub participant_count: i64,
 }
 
-/// Every tournament `actor` may see in a list
-///
-/// For an account: owned ∪ co-organized ∪ playing-in. For a guest: the
-/// tournaments of the participant rows their session holds. No paging — a
-/// person's events are few enough that handing over the whole list is
-/// cheaper than a second round trip per page.
+/// Every tournament `actor` may see in a list, unpaged
 #[instrument(name = "TournamentListEntry::list_for_actor", skip(tx, actor))]
 pub async fn list_for_actor(
     tx: &mut Transaction,
@@ -56,23 +43,13 @@ pub async fn list_for_actor(
     }
 }
 
-/// [`list_for_actor`]'s branch for a logged-in account
-///
-/// One statement: a `UNION` of the three ways an account relates to a
-/// tournament, joined back to `tournament` for the ordering columns and to a
-/// grouped count of `tournament_participant` for the roster size — the same
-/// "one raw read for the whole list" shape as
-/// [`crate::models::deck::listing::DeckSummary::read_for_account`]. The
-/// per-tournament role and own-participant lookups stay ordinary queries
-/// afterwards: reusing [`Tournament::role_of`] here is one query more than
-/// folding it into the statement above would cost, in exchange for never
-/// having two implementations of "what role does this account hold" to keep
-/// in sync.
+/// [`list_for_actor`]'s branch for an account: one raw `UNION` query, then per-row guards
 #[instrument(name = "listing::list_for_account", skip(tx))]
 async fn list_for_account(
     tx: &mut Transaction,
     account: AccountUuid,
 ) -> Result<Vec<TournamentListEntry>, rorm::Error> {
+    // Raw SQL: rorm conditions cannot union owned, co-organized and played-in across tables.
     let statement = "SELECT u.tournament AS tournament, COALESCE(pc.participant_count, 0) AS participant_count \
          FROM ( \
              SELECT uuid AS tournament FROM tournament WHERE owner = $1 \
@@ -100,10 +77,6 @@ async fn list_for_account(
         let tournament = TournamentUuid::from_uuid(row.get("tournament").map_err(decode)?);
         let participant_count: i64 = row.get("participant_count").map_err(decode)?;
 
-        // The listing statement above only proves an account touched this
-        // tournament at some point; `Tournament::fetch` is still the one
-        // place allowed to read the row itself, per the module's guard
-        // discipline.
         let Some(model) = Tournament::fetch(&mut *tx, tournament).await? else {
             continue;
         };
@@ -132,12 +105,7 @@ async fn list_for_account(
     Ok(entries)
 }
 
-/// [`list_for_actor`]'s branch for a guest
-///
-/// A guest's session holds at most a handful of participant uuids, so this
-/// is a plain lookup per uuid rather than the `UNION` the account branch
-/// needs — hand-writing the SQL equivalent would cost more than it saves at
-/// this size. Sorted afterwards in Rust for the same reason.
+/// [`list_for_actor`]'s branch for a guest: a handful of uuids, plain queries, Rust-side sort
 #[instrument(name = "listing::list_for_guest", skip(tx, participants))]
 async fn list_for_guest(
     tx: &mut Transaction,
@@ -160,8 +128,6 @@ async fn list_for_guest(
         };
         let tournament = TournamentUuid::new_from_field(row.tournament);
         if !seen.insert(tournament.into_inner()) {
-            // The same tournament through a second stale participant uuid —
-            // one entry per event, not one per guest row.
             continue;
         }
 
@@ -190,12 +156,7 @@ async fn list_for_guest(
     Ok(entries)
 }
 
-/// `(starts_at, created_at)` as unix timestamps, a missing `starts_at`
-/// standing in as the earliest possible moment
-///
-/// Read through [`Reverse`] this sorts newest/latest first with a missing
-/// `starts_at` trailing every real one — `NULLS LAST` under `DESC`, the same
-/// order [`list_for_account`]'s statement asks Postgres for.
+/// Sort key that, under [`Reverse`], matches `starts_at DESC NULLS LAST, created_at DESC`
 fn sort_key(tournament: &Tournament) -> (i64, i64) {
     let starts_at = tournament
         .starts_at

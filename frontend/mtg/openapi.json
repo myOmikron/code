@@ -5214,8 +5214,8 @@
         },
         "/api/frontend/v1/join/{code}": {
             "get": {
-                "summary": "Resolve a typed code into the tournament it names, before anybody joins",
-                "description": "Resolve a typed code into the tournament it names, before anybody joins\n\nUnauthenticated and rate limited (see [`super::initialize_routes`]) — a\nphone reading a whiteboard has no session yet. [`JoinLookupResponse::already_registered`]\nis always `false` here; there is no account to check it against.",
+                "summary": "Resolve a join code into the tournament it names, before anybody joins",
+                "description": "Resolve a join code into the tournament it names, before anybody joins",
                 "operationId": "look_up_join_code",
                 "parameters": [
                     {
@@ -5280,7 +5280,7 @@
             },
             "post": {
                 "summary": "Join a tournament as the logged-in account",
-                "description": "Join a tournament as the logged-in account\n\n`deck`/`decklist_text` are handled exactly like [`join_tournament_as_guest`]'s\n`decklist_text`: written in the same transaction right after the\nparticipant row exists, and a refusal past that point answers its form\nerror without committing, so the fresh participant row never actually\nexists either. `deck_owner` and `actor` are both the joining account —\n[`decklist::write`] checks deck ownership against the former and audits\nagainst the latter, and here they are always the same person.",
+                "description": "Join a tournament as the logged-in account\n\nA decklist failure returns without committing, which rolls back the new participant row.",
                 "operationId": "join_tournament_by_code",
                 "parameters": [
                     {
@@ -5355,8 +5355,8 @@
         },
         "/api/frontend/v1/join/{code}/guest": {
             "post": {
-                "summary": "Join a tournament as a guest — no account, just a name for the pairings list",
-                "description": "Join a tournament as a guest — no account, just a name for the pairings list\n\nUnauthenticated and rate limited, same reasoning as [`look_up_join_code`].\nThe session is only told about the new participant *after* the\ntransaction commits: a session entry naming a row that turned out not to\nexist would be worse than losing this one join to a crash in between.\n\n`decklist_text`, if given, is written in the same transaction right after\nthe row exists to hold it. A refusal past that point (only\n[`JoinErrors::invalid_decklist`] can actually happen for a guest, pasted\ntext is the only source they have) answers its form error *without*\ncommitting — the transaction simply drops, so the participant row this\nhandler just inserted is rolled back along with it, exactly like a failed\n[`participant::register_guest`] would be.",
+                "summary": "Join a tournament as a guest",
+                "description": "Join a tournament as a guest\n\nA decklist failure returns without committing, which rolls back the new participant row.",
                 "operationId": "join_tournament_as_guest",
                 "parameters": [
                     {
@@ -5431,8 +5431,8 @@
         },
         "/api/frontend/v1/join/claim/{token}": {
             "get": {
-                "summary": "Look up a claim token before committing to anything: what it names, or",
-                "description": "Look up a claim token before committing to anything: what it names, or\nthat it does not resolve to anything live\n\nUnauthenticated and rate limited, same reasoning as [`look_up_join_code`]\n— this is the screen a scanned claim QR lands on before the player has\nchosen anything. [`ClaimErrors::invalid_token`], not a bad request: a\nstale or already-claimed QR is an everyday outcome, not a caller mistake.",
+                "summary": "Look up what a claim token names, without consuming it",
+                "description": "Look up what a claim token names, without consuming it",
                 "operationId": "look_up_claim_token",
                 "parameters": [
                     {
@@ -5498,8 +5498,8 @@
         },
         "/api/frontend/v1/join/claim/{token}/reattach": {
             "post": {
-                "summary": "Re-attach a guest session to its row using a still-live claim token",
-                "description": "Re-attach a guest session to its row using a still-live claim token\n\nUnauthenticated and rate limited, same reasoning as [`look_up_join_code`].\nDoes **not** consume the token — see [`participant::reattach`]: the same\ndevice may lose its cookie and need the token again, and only an\naccount's claim retires it for good. The session only learns about the\nparticipant *after* the transaction commits, the same reasoning as\n[`join_tournament_as_guest`]: a session pointed at a row the commit then\nfailed to actually touch would be worse than losing this one reattach to\na crash in between. Same typed error as [`look_up_claim_token`].",
+                "summary": "Re-attach a guest session to its row using a still-live claim token, without consuming it",
+                "description": "Re-attach a guest session to its row using a still-live claim token, without consuming it",
                 "operationId": "reattach_claim_token",
                 "parameters": [
                     {
@@ -7264,7 +7264,7 @@
             },
             "post": {
                 "summary": "Create a tournament; the caller becomes its owner",
-                "description": "Create a tournament; the caller becomes its owner\n\nA non-blank `venue` is remembered into the caller's own venue book — see\n[`remember_venue`]. It is written *before* the tournament, because\nbuilding the insert consumes the request; the two share one transaction,\nso a tournament that fails to insert takes the remembered venue with it.",
+                "description": "Create a tournament; the caller becomes its owner",
                 "operationId": "create_tournament",
                 "requestBody": {
                     "content": {
@@ -7388,8 +7388,8 @@
                 }
             },
             "put": {
-                "summary": "Update a tournament's settings",
-                "description": "Update a tournament's settings\n\nThe always-editable fields (name, description, venue, start time, round\nlength) go through even while the event is running; a structural change\n(format, pod size, pairing, scoring, ...) while [`SettingsChange::Locked`]\nanswers [`TournamentSettingsErrors::settings_locked`] instead — see\n[`Tournament::update_settings`]'s doc comment for exactly what counts as\nstructural. A non-blank `venue` is remembered into the caller's own venue\nbook — see [`remember_venue`] — once the write actually goes through.",
+                "summary": "Update a tournament's settings; structural changes are refused once settings lock",
+                "description": "Update a tournament's settings; structural changes are refused once settings lock",
                 "operationId": "update_tournament",
                 "parameters": [
                     {
@@ -7526,8 +7526,8 @@
         },
         "/api/frontend/v1/tournaments/{tournament}/participants": {
             "get": {
-                "summary": "A tournament's roster, redacted through [`public::roster_view`]",
-                "description": "A tournament's roster, redacted through [`public::roster_view`]\n\nThis is the leak the model layer's own docs warn about: skip\n[`public::roster_view`]/[`public::apply_roster_view`] here and a\n[`crate::models::visibility::Visibility::Public`] tournament hands every\nguest's real name to any logged-in stranger, using nothing but this\nordinary authed read — no share token needed. The share surface\n([`crate::http::handler_frontend::shared::handler::list_shared_tournament_participants`])\napplies the identical decision with `is_staff`/`is_participant` both\n`false`.",
+                "summary": "A tournament's roster, with guest names redacted through [`public::roster_view`]",
+                "description": "A tournament's roster, with guest names redacted through [`public::roster_view`]",
                 "operationId": "list_tournament_participants",
                 "parameters": [
                     {
@@ -7586,8 +7586,8 @@
                 }
             },
             "post": {
-                "summary": "Walk a guest into the roster by name",
-                "description": "Walk a guest into the roster by name\n\n[`participant::register_guest`] trusts its `added_by` argument to mean the\ncaller already holds a role — this is the one place in the module tree\nallowed to make that promise, immediately after checking it.\n\n`decklist_text`, if given, is written in the same transaction right after\nthe row exists to hold it — no policy check here, the same as\n`register_guest` itself: an organizer may register a walk-in with or\nwithout a list regardless of [`crate::models::tournament::DecklistPolicy`],\nsince a policy governs self-service registration, not staff typing\nsomebody in by hand.",
+                "summary": "Put a player on the roster from the desk, by account or as a guest by name",
+                "description": "Put a player on the roster from the desk, by account or as a guest by name\n\nNo decklist-policy check: the policy only governs self-service registration.",
                 "operationId": "add_tournament_participant",
                 "parameters": [
                     {
@@ -7664,8 +7664,8 @@
         },
         "/api/frontend/v1/tournaments/{tournament}/state": {
             "get": {
-                "summary": "What a client polls to know whether anything moved",
-                "description": "What a client polls to know whether anything moved\n\nIn the actor block on purpose: a guest's phone is exactly the device that\nneeds this most, and wrapping it in an auth layer would lock the room out.\nDeliberately cheap — a handful of indexed reads and never a standings\ncomputation, because every phone hits it on a timer.",
+                "summary": "What a client polls to know whether anything moved; kept cheap, no standings",
+                "description": "What a client polls to know whether anything moved; kept cheap, no standings",
                 "operationId": "get_tournament_state",
                 "parameters": [
                     {
@@ -7865,7 +7865,7 @@
         "/api/frontend/v1/tournaments/{tournament}/rounds/{round}/tables": {
             "get": {
                 "summary": "Every table of one round",
-                "description": "Every table of one round\n\nIn the actor block beside the round list: a player's own table is the single\nthing their phone is open for, and an auth layer here would lock out every\nguest in the room.",
+                "description": "Every table of one round",
                 "operationId": "list_round_tables",
                 "parameters": [
                     {
@@ -7933,8 +7933,8 @@
         },
         "/api/frontend/v1/tournaments/{tournament}/standings": {
             "get": {
-                "summary": "Where everybody stands",
-                "description": "Where everybody stands\n\nIn the actor block: the standings are the thing a player refreshes between\nrounds, and a guest's phone is exactly the device doing it. Whose rows come\nback is the same decision the roster goes through, so a guest who appears as\n\"Gast 7\" on one screen is \"Gast 7\" on the other.",
+                "summary": "Where everybody stands, with names redacted the same way as the roster",
+                "description": "Where everybody stands, with names redacted the same way as the roster",
                 "operationId": "get_tournament_standings",
                 "parameters": [
                     {
@@ -7996,7 +7996,7 @@
         "/api/frontend/v1/tournaments/{tournament}/my-match": {
             "get": {
                 "summary": "The viewer's own table in the round the room is on",
-                "description": "The viewer's own table in the round the room is on\n\nIn the actor block, because the phone asking is usually a guest's.",
+                "description": "The viewer's own table in the round the room is on",
                 "operationId": "get_my_tournament_match",
                 "parameters": [
                     {
@@ -8058,7 +8058,7 @@
         "/api/frontend/v1/tournaments/{tournament}/matches/{match}/report": {
             "post": {
                 "summary": "Report what happened at your own table",
-                "description": "Report what happened at your own table\n\nIn the actor block, because the people this exists for are the ones playing\n— a guest's phone included. The guard behind it asks whether the caller is\n*sitting at this table* before it asks whether they run the event, so an\norganizer who is also playing reports like everybody else rather than\nsilently confirming their own match.",
+                "description": "Report what happened at your own table\n\nSeat is checked before role, so a playing organizer reports like everyone else.",
                 "operationId": "report_match_result",
                 "parameters": [
                     {
@@ -8212,7 +8212,7 @@
         "/api/frontend/v1/tournaments/{tournament}/participants/{participant}/decklist": {
             "get": {
                 "summary": "Read a participant's decklist — staff, or the participant themself",
-                "description": "Read a participant's decklist — staff, or the participant themself\n\nGuard: [`decklist::get`]. See [`get_decklist_response`] for how\n[`GetDecklistResponse::locked`]/[`GetDecklistResponse::may_edit`] are\nfilled in.",
+                "description": "Read a participant's decklist — staff, or the participant themself",
                 "operationId": "get_participant_decklist",
                 "parameters": [
                     {
@@ -8278,8 +8278,8 @@
                 }
             },
             "put": {
-                "summary": "Write, replace or clear a participant's decklist — staff, or the",
-                "description": "Write, replace or clear a participant's decklist — staff, or the\nparticipant themself while the tournament's decklists are not locked\n\nGuard: [`decklist::set`]. `deck` and `text` both present is refused as\n[`DecklistErrors::invalid_decklist`] before the guard even runs — a\nrequest names at most one source.",
+                "summary": "Write, replace or clear a participant's decklist — staff, or the player while unlocked",
+                "description": "Write, replace or clear a participant's decklist — staff, or the player while unlocked",
                 "operationId": "set_participant_decklist",
                 "parameters": [
                     {
@@ -8434,8 +8434,8 @@
         },
         "/api/frontend/v1/tournaments/{tournament}/visibility": {
             "put": {
-                "summary": "Change who may see a tournament",
-                "description": "Change who may see a tournament\n\nDiscards the freshly minted share token the same way\n[`crate::http::handler_frontend::decks::handler::set_visibility_deck`]\ndoes: the client re-fetches [`get_tournament`] for it.",
+                "summary": "Change who may see a tournament; the client re-fetches it for the new share token",
+                "description": "Change who may see a tournament; the client re-fetches it for the new share token",
                 "operationId": "set_tournament_visibility",
                 "parameters": [
                     {
@@ -8627,8 +8627,8 @@
         },
         "/api/frontend/v1/tournaments/{tournament}/decklists/lock": {
             "post": {
-                "summary": "Lock every decklist in the tournament: players may no longer write their",
-                "description": "Lock every decklist in the tournament: players may no longer write their\nown, staff still can",
+                "summary": "Lock every decklist in the tournament; staff can still edit them",
+                "description": "Lock every decklist in the tournament; staff can still edit them",
                 "operationId": "lock_tournament_decklists",
                 "parameters": [
                     {
@@ -8958,8 +8958,8 @@
         },
         "/api/frontend/v1/tournaments/{tournament}/participants/{participant}/check-in": {
             "post": {
-                "summary": "Check in, self-service or by staff",
-                "description": "Check in, self-service or by staff\n\nUnder [`crate::models::tournament::DecklistPolicy::RequiredToCheckIn`], a\nplayer with no decklist on file is refused with\n[`CheckInErrors::decklist_missing`] instead of the generic denial — see\n[`participant::check_in`].",
+                "summary": "Check a participant in at the desk (staff only)",
+                "description": "Check a participant in at the desk (staff only)",
                 "operationId": "check_in_tournament_participant",
                 "parameters": [
                     {
@@ -9440,7 +9440,7 @@
             },
             "post": {
                 "summary": "Pair a round, replacing whatever it already held",
-                "description": "Pair a round, replacing whatever it already held\n\nOne endpoint for both the first pairing and every re-pair after it. There is\nno preview to commit: the race a staged pairing would guard is better served\nby pressing this again, and writing straight through survives a crashed tab\nand a locked phone, which a staged one does not.",
+                "description": "Pair a round, replacing whatever it already held",
                 "operationId": "pair_tournament_round",
                 "parameters": [
                     {
@@ -9584,8 +9584,8 @@
         },
         "/api/frontend/v1/tournaments/{tournament}/matches/{match}/result": {
             "put": {
-                "summary": "Write a table's result from the desk",
-                "description": "Write a table's result from the desk\n\nBeats every player report on that table and skips the confirmation dance\nentirely: the desk is authoritative, and the two-sided flow exists to save an\norganizer walking to the table, not to constrain them once they have.",
+                "summary": "Write a table's result from the desk, overriding every player report",
+                "description": "Write a table's result from the desk, overriding every player report",
                 "operationId": "set_match_result",
                 "parameters": [
                     {
@@ -9667,8 +9667,8 @@
                 }
             },
             "delete": {
-                "summary": "Take the desk's result back off a table",
-                "description": "Take the desk's result back off a table\n\nDrops to whatever the players had agreed rather than to nothing, which is the\nundo for a mistyped result.",
+                "summary": "Take the desk's result back off a table, falling back to the players' reports",
+                "description": "Take the desk's result back off a table, falling back to the players' reports",
                 "operationId": "clear_match_result",
                 "parameters": [
                     {
@@ -9743,8 +9743,8 @@
         },
         "/api/frontend/v1/tournaments/{tournament}/player-search": {
             "get": {
-                "summary": "Look accounts up by username, to seat a player whose phone is dead",
-                "description": "Look accounts up by username, to seat a player whose phone is dead\n\nOrganizer-only and tournament-scoped: the guard is the role on this event,\nand the answer says which hits are already on this roster so the dialog can\ngrey them out. A blank needle answers nothing rather than the whole table.",
+                "summary": "Look accounts up by username, to seat a player at the desk",
+                "description": "Look accounts up by username, to seat a player at the desk",
                 "operationId": "search_tournament_players",
                 "parameters": [
                     {
@@ -10044,8 +10044,8 @@
         },
         "/api/frontend/v1/tournaments/{tournament}/participants/{participant}/claim-token": {
             "get": {
-                "summary": "Hand a guest row's live claim token to staff, e.g. to render as a QR code",
-                "description": "Hand a guest row's live claim token to staff, e.g. to render as a QR code\nfor a walk-in to scan\n\nGuard: [`participant::claim_token`] — any role, deliberately not\n[`TournamentRole::may_manage`], the same reasoning as\n[`update_tournament_participant`]: walking a guest through claiming their\nown row is exactly what a scorekeeper is for. `claim_token: None` covers\nboth \"already claimed\" and \"this is an account row\" — either way there is\nno live token to show, and the caller has no reason to tell the two apart.",
+                "summary": "A guest row's live claim token, for any staff role to show as a QR code",
+                "description": "A guest row's live claim token, for any staff role to show as a QR code",
                 "operationId": "get_participant_claim_token",
                 "parameters": [
                     {
@@ -10253,7 +10253,7 @@
         "/api/frontend/v1/tournaments/venues": {
             "get": {
                 "summary": "The caller's own venue book, most recently used first",
-                "description": "The caller's own venue book, most recently used first\n\nNote: `/venues` is a static path segment while `/{tournament}` is a\ndynamic one, so axum's router already prefers the static match here —\nnothing to arrange, just worth being aware of on a route table shaped\nlike this one.",
+                "description": "The caller's own venue book, most recently used first",
                 "operationId": "list_tournament_venues",
                 "responses": {
                     "200": {
@@ -10310,7 +10310,7 @@
                         "name": "venue",
                         "required": true,
                         "schema": {
-                            "description": "Wrapper for the primary key of the [`venue::Venue`] model. To have better distinguishable types.\n\nNo `new_from_field` constructor, unlike [`TournamentUuid`] and [`TournamentParticipantUuid`]: nothing holds a `ForeignModel` pointing at a venue row — the \"no provenance FK\" decision means a venue's uuid is only ever read back as the raw primary key, never as somebody else's foreign key column. [`WatchListEntryUuid`](crate::models::watch_list::WatchListEntryUuid) and [`DeckCardUuid`](crate::models::deck::DeckCardUuid) are the same shape for the same reason.",
+                            "description": "Wrapper for the primary key of the [`venue::Venue`] model. To have better distinguishable types.",
                             "type": "string",
                             "format": "uuid"
                         },
@@ -11339,7 +11339,7 @@
                 ]
             },
             "AddTournamentParticipantRequest": {
-                "description": "Request to put a player on the roster from the desk\n\nTwo shapes in one request: with `account` the row belongs to that account from the start — the organizer looked the player up because their phone was dead — and `display_name` is optional, defaulting to the username. Without it the row is a guest a name was typed for, claimable later by QR.",
+                "description": "Request to put a player on the roster from the desk: an account, or a guest by name",
                 "type": "object",
                 "properties": {
                     "account": {
@@ -11353,7 +11353,7 @@
                     },
                     "decklist_text": {
                         "nullable": true,
-                        "description": "A decklist to type in for them, pasted text only — an organizer never links a Planarium deck on somebody else's behalf",
+                        "description": "A decklist to type in for them; organizers cannot link a deck for somebody else",
                         "allOf": [
                             {
                                 "$ref": "#/components/schemas/MaxStr_16384"
@@ -11362,7 +11362,7 @@
                     },
                     "display_name": {
                         "nullable": true,
-                        "description": "The name the player appears under; required for a guest, optional alongside `account`",
+                        "description": "The name the player appears under; required for a guest",
                         "allOf": [
                             {
                                 "$ref": "#/components/schemas/MaxStr_64"
@@ -11549,7 +11549,7 @@
                 ]
             },
             "AuditAction": {
-                "description": "What happened, as recorded in a tournament's audit log\n\nStored by its variant name, so new variants in M2/M3 need no migration — they are just another string an old client has never seen.",
+                "description": "What happened, as recorded in a tournament's audit log; stored by variant name",
                 "oneOf": [
                     {
                         "description": "The tournament was created",
@@ -11952,7 +11952,7 @@
                 "type": "object",
                 "properties": {
                     "decklist_missing": {
-                        "description": "The tournament's decklist policy requires a decklist before check-in and this player has none on file",
+                        "description": "The decklist policy requires a decklist before check-in and none is on file",
                         "type": "boolean"
                     }
                 },
@@ -11961,7 +11961,7 @@
                 ]
             },
             "ClaimErrors": {
-                "description": "Why a claim-token action was refused\n\nShared by [`super::handler::claim_tournament_participant`] (which can also answer [`Self::already_registered`]) and, unauthenticated, by [`crate::http::handler_frontend::join::handler::look_up_claim_token`] and [`crate::http::handler_frontend::join::handler::reattach_claim_token`] — the latter two only ever set [`Self::invalid_token`], since there is no account on a guest request for [`Self::already_registered`] to describe.",
+                "description": "Why a claim-token action was refused",
                 "type": "object",
                 "properties": {
                     "already_registered": {
@@ -12022,7 +12022,7 @@
                 ]
             },
             "ClaimTargetResponse": {
-                "description": "What a claim token names, for the screen a scanned QR lands on before the player has committed to anything\n\nMirrors [`ClaimTarget`] field for field — its own public type rather than handing the model struct across the HTTP boundary directly, the same reasoning as every other response type in this module tree.",
+                "description": "What a claim token names, shown before the player commits to anything",
                 "type": "object",
                 "properties": {
                     "display_name": {
@@ -12066,7 +12066,7 @@
                 ]
             },
             "ClaimTokenResponse": {
-                "description": "A guest row's live claim token, for staff to show as a QR code\n\n`None` covers both \"already claimed\" and \"this is an account row\" alike — see [`crate::models::tournament::participant::claim_token`] for why the caller has no reason to tell the two apart.",
+                "description": "A guest row's live claim token, for staff to show as a QR code",
                 "type": "object",
                 "properties": {
                     "claim_token": {
@@ -13745,11 +13745,11 @@
                         "type": "boolean"
                     },
                     "locked": {
-                        "description": "The tournament's decklists are locked tournament-wide and the caller is not staff",
+                        "description": "Decklists are locked tournament-wide and the caller is not staff",
                         "type": "boolean"
                     },
                     "unknown_deck": {
-                        "description": "The named deck does not exist, is not the caller's, or rendered to nothing playable — an empty deck is not a list anybody can register",
+                        "description": "The deck does not exist, is not the caller's, or is empty",
                         "type": "boolean"
                     }
                 },
@@ -13760,7 +13760,7 @@
                 ]
             },
             "DecklistPolicy": {
-                "description": "How a tournament requires its players to hand in a decklist\n\nAlways editable, unlike the structural settings [`Tournament::update_settings`] locks once the event leaves [`TournamentStatus::Registration`]: an organizer must be able to relax or tighten the requirement at any point right up to the last round, the same reasoning as `round_minutes`.",
+                "description": "How a tournament requires its players to hand in a decklist; editable at any time",
                 "oneOf": [
                     {
                         "description": "A decklist is welcome but a player may register, check in and play without one",
@@ -13770,7 +13770,7 @@
                         ]
                     },
                     {
-                        "description": "A player may register without a decklist, but [`participant::check_in`] refuses them until one is on file",
+                        "description": "Registration without a decklist is fine, but check-in is refused until one is on file",
                         "type": "string",
                         "enum": [
                             "RequiredToCheckIn"
@@ -14131,7 +14131,7 @@
                 ]
             },
             "FixedTableConflict": {
-                "description": "A pin the layout could not honour\n\nTwo players who cannot leave their table asked for the same number. The lower-numbered table kept it and the other pin was dropped; nothing about who plays whom changed, so the round is still perfectly valid — an organizer simply has to move somebody by hand.",
+                "description": "A fixed-table pin the layout could not honour; the lower table number kept it",
                 "type": "object",
                 "properties": {
                     "participant": {
@@ -14790,7 +14790,7 @@
                 ]
             },
             "GetDecklistResponse": {
-                "description": "What [`super::handler::get_participant_decklist`] and [`super::handler::set_participant_decklist`] answer with",
+                "description": "A participant's decklist plus whether the viewer may edit it",
                 "type": "object",
                 "properties": {
                     "decklist": {
@@ -14807,7 +14807,7 @@
                         "type": "boolean"
                     },
                     "may_edit": {
-                        "description": "Whether the viewer may write this decklist right now — staff always, the participant themself only while `!locked`. Computed server-side so the UI never has to re-derive it from `locked` plus who is asking.",
+                        "description": "Whether the viewer may write this decklist now: staff always, the player while unlocked",
                         "type": "boolean"
                     }
                 },
@@ -14821,7 +14821,7 @@
                 "type": "object",
                 "properties": {
                     "participant_count": {
-                        "description": "How many people are on the roster — the true count, never redacted by [`crate::models::tournament::public::roster_view`]: an event may advertise \"12 angemeldet\" while keeping the names to itself",
+                        "description": "How many people are on the roster, even when the names are hidden",
                         "type": "integer",
                         "format": "int64"
                     },
@@ -14854,7 +14854,7 @@
                 "properties": {
                     "decklist_text": {
                         "nullable": true,
-                        "description": "Paste a decklist directly — a guest never links a Planarium deck",
+                        "description": "Paste a decklist directly; guests cannot link a deck",
                         "allOf": [
                             {
                                 "$ref": "#/components/schemas/MaxStr_16384"
@@ -14875,7 +14875,7 @@
                 ]
             },
             "GuestJoinResponse": {
-                "description": "What a successful guest join answers with\n\nThe one place outside [`crate::models::tournament::participant::register_guest`] itself a claim token is ever handed out — never repeated in a list response afterwards.",
+                "description": "What a successful guest join answers with; the only response carrying the claim token",
                 "type": "object",
                 "properties": {
                     "claim_token": {
@@ -14954,7 +14954,7 @@
                         "type": "boolean"
                     },
                     "decklist_missing": {
-                        "description": "The tournament's [`crate::models::tournament::DecklistPolicy::RequiredToRegister`] is set and neither `deck` nor `decklist_text` was given",
+                        "description": "The tournament requires a decklist to register and none was given",
                         "type": "boolean"
                     },
                     "empty_name": {
@@ -14978,7 +14978,7 @@
                         "type": "boolean"
                     },
                     "unknown_deck": {
-                        "description": "The named deck does not exist, is not the caller's, or rendered to nothing playable — an empty deck is not a list anybody can register",
+                        "description": "The deck does not exist, is not the caller's, or is empty",
                         "type": "boolean"
                     }
                 },
@@ -14998,7 +14998,7 @@
                 "type": "object",
                 "properties": {
                     "already_registered": {
-                        "description": "Always `false` here — this route has no session to check against. [`super::handler::join_tournament_by_code`] reports a stranded join attempt as a form error instead, once it has an account to check.",
+                        "description": "Always `false`: this route has no session to check against",
                         "type": "boolean"
                     },
                     "decklist_policy": {
@@ -15018,7 +15018,7 @@
                         ]
                     },
                     "join_code": {
-                        "description": "The code itself, as stored — a typed one may have arrived lowercase or with a separator, and a screen showing it wants the canonical form",
+                        "description": "The canonical stored form of the code",
                         "allOf": [
                             {
                                 "$ref": "#/components/schemas/MaxStr_8"
@@ -15098,7 +15098,7 @@
                     },
                     "venue_instructions": {
                         "nullable": true,
-                        "description": "How to actually get in — shown to everyone who can see this lookup, same as the address",
+                        "description": "How to get in, shown to everyone who can see this lookup",
                         "allOf": [
                             {
                                 "$ref": "#/components/schemas/MaxStr_1024"
@@ -15120,7 +15120,7 @@
                 ]
             },
             "JoinTournamentRequest": {
-                "description": "Request to join by code as a logged-in account\n\n`deck` and `decklist_text` are mutually exclusive — both present answers [`JoinErrors::invalid_decklist`]; both absent is fine unless the tournament's [`Tournament::needs_decklist_to_register`](crate::models::tournament::Tournament::needs_decklist_to_register) says otherwise.",
+                "description": "Request to join by code as a logged-in account; `deck` and `decklist_text` are exclusive",
                 "type": "object",
                 "properties": {
                     "deck": {
@@ -15915,12 +15915,12 @@
                         ]
                     },
                     "dropped": {
-                        "description": "Whether they have since left the event, so the row can say so rather than leaving an organizer to wonder why nobody is sitting there",
+                        "description": "Whether they have since left the event",
                         "type": "boolean"
                     },
                     "fixed_table": {
                         "nullable": true,
-                        "description": "The table they cannot leave, if there is one — what the pin on the row is drawn from, and the reason this table carries the number it does",
+                        "description": "The table they are pinned to, if any",
                         "type": "integer",
                         "format": "int16"
                     },
@@ -15952,7 +15952,7 @@
                 ]
             },
             "MatchStatus": {
-                "description": "How far a table's result has got\n\nDerived from the report rows on every write and never read back as truth — which is what lets the desk and the players' phones share one state machine without either of them owning it.",
+                "description": "How far a table's result has got; derived from the report rows on every write",
                 "oneOf": [
                     {
                         "description": "Nobody has said anything",
@@ -16488,7 +16488,7 @@
                         ]
                     },
                     {
-                        "description": "Runs the roster and, from M2 on, results — not settings or the staff list",
+                        "description": "Runs the roster and results, not settings or the staff list",
                         "type": "string",
                         "enum": [
                             "Scorekeeper"
@@ -16501,7 +16501,7 @@
                 "type": "object",
                 "properties": {
                     "impossible_pods": {
-                        "description": "The field divides into neither full pods nor pods one smaller — five players at a pod size of four, say. The remedy is a different pod size.",
+                        "description": "The field divides into neither full pods nor pods one smaller",
                         "type": "boolean"
                     },
                     "no_entrants": {
@@ -16568,24 +16568,24 @@
                 ]
             },
             "ParticipantAudience": {
-                "description": "Who may see a tournament's roster at all\n\nA separate, later gate than [`Visibility`]: visibility decides whether a viewer reaches the tournament in the first place, this decides — once they have — whether they may see who is playing in it. Staff see the roster in full no matter what this is set to; see [`public::roster_view`](crate::models::tournament::public::roster_view) for exactly how the two combine.",
+                "description": "Who may see a tournament's roster; staff always see it in full",
                 "oneOf": [
                     {
-                        "description": "Only staff see the roster; a participant sees just their own row, and everyone else sees none of it",
+                        "description": "Only staff see the roster; a participant sees just their own row",
                         "type": "string",
                         "enum": [
                             "Organizers"
                         ]
                     },
                     {
-                        "description": "Staff and every participant see the whole roster; everyone else sees none of it",
+                        "description": "Staff and every participant see the whole roster",
                         "type": "string",
                         "enum": [
                             "Participants"
                         ]
                     },
                     {
-                        "description": "Everyone who may see the event at all sees the roster too — a guest appears under their real name or a pseudonym, depending on `guest_names_public`",
+                        "description": "Everyone who may see the event sees the roster; guest names per `guest_names_public`",
                         "type": "string",
                         "enum": [
                             "Anyone"
@@ -16627,7 +16627,7 @@
                 ]
             },
             "PlayerSearchResultResponse": {
-                "description": "One account an organizer's player search turned up\n\nUsername only. The search exists to resolve \"which of these is my player\", and a username is what the organizer reads off their screen — anything else would make this a directory.",
+                "description": "One account an organizer's player search turned up; username only, not a directory",
                 "type": "object",
                 "properties": {
                     "on_roster": {
@@ -17282,11 +17282,11 @@
                 ]
             },
             "ReportResultRequest": {
-                "description": "What one seat says happened at their table\n\nThe game counts are the winner's and the loser's, not one per seat: a pod is always best of one, so the only place a game score carries anything is a duel, where there are exactly two of them.",
+                "description": "What one seat says happened at their table; game counts only matter for duels",
                 "type": "object",
                 "properties": {
                     "client_key": {
-                        "description": "The key this tap was minted with\n\nThe same key arriving twice is one tap retried and writes nothing; a different one is somebody changing their mind and overwrites. Which is what makes a double-tapped phone on a bad connection harmless.",
+                        "description": "Idempotency key: the same key twice is a retry, a new key overwrites the earlier report",
                         "allOf": [
                             {
                                 "$ref": "#/components/schemas/MaxStr_64"
@@ -17563,7 +17563,7 @@
                 ]
             },
             "RoundKind": {
-                "description": "What a round is for\n\nOnly a [`Self::Swiss`] round carries a number, plays matches and moves the standings. The other two are the shape a limited event needs before it can start: a draft round groups people into pods so they open boosters together, and a deckbuilding round is a clock and nothing else. Both are rounds in the sense that they occupy the room and the timer, and in no other sense — see [`round::Round::number`].",
+                "description": "What a round is for; only Swiss rounds are numbered and scored",
                 "oneOf": [
                     {
                         "description": "A scored round of matches",
@@ -17629,7 +17629,7 @@
                     },
                     "number": {
                         "nullable": true,
-                        "description": "The number on the pairings sheet, `null` for a draft or deckbuilding stage — which is exactly what keeps those out of the round count",
+                        "description": "The number on the pairings sheet, `null` for draft or deckbuilding stages",
                         "type": "integer",
                         "format": "int16"
                     },
@@ -17687,7 +17687,7 @@
                 ]
             },
             "RoundStatus": {
-                "description": "Where a round stands\n\nThere is no `Cancelled`: re-pairing replaces a round's matches in place and deleting one is a hard delete guarded on \"nothing reported\", so a lingering cancelled round would only be a fourth thing every read has to remember to filter out.",
+                "description": "Where a round stands",
                 "oneOf": [
                     {
                         "description": "Paired, not yet handed to the room",
@@ -18129,7 +18129,7 @@
                 ]
             },
             "SetDecklistRequest": {
-                "description": "Request to write, replace or clear a participant's decklist\n\nBoth fields absent clears the list; both present is refused as [`DecklistErrors::invalid_decklist`] — a request names at most one source.",
+                "description": "Request to write, replace or clear a decklist; both fields absent clears it",
                 "type": "object",
                 "properties": {
                     "deck": {
@@ -18300,7 +18300,7 @@
                 "type": "object",
                 "properties": {
                     "dropped_awaiting_check_in": {
-                        "description": "How many players were dropped for never checking in\n\nOnly ever non-zero on the move to [`TournamentStatus::Running`]. The client already listed them in its confirmation, so this is the count that actually happened rather than the one it predicted.",
+                        "description": "How many players were dropped for never checking in",
                         "type": "integer",
                         "format": "int64"
                     }
@@ -19036,7 +19036,7 @@
                 ]
             },
             "StandingResponse": {
-                "description": "One row of the standings\n\nEvery percentage is in basis points — 10 000 is 100 % — which is also the precision it is meant to be shown at. Two rows whose numbers render the same really are equal, so a reader checking the table by hand never finds a tie broken by a digit that was not on screen.",
+                "description": "One row of the standings; percentages are basis points (10 000 = 100 %)",
                 "type": "object",
                 "properties": {
                     "byes": {
@@ -19143,7 +19143,7 @@
                 "type": "object",
                 "properties": {
                     "outstanding_tables": {
-                        "description": "How many tables of the current round have no settled result\n\nThe reason the page can say \"three tables still out\" rather than letting ranks shuffle under a reader who does not know why.",
+                        "description": "How many tables of the current round have no settled result",
                         "type": "integer",
                         "format": "int64"
                     },
@@ -19442,7 +19442,7 @@
                 ]
             },
             "TimerResponse": {
-                "description": "A round's clock, with the server's own reading of the time beside it\n\nOne struct rather than two sibling fields, so that serialising a deadline without the reference point it is measured against is not expressible. A phone with a wrong clock is the normal case, not the exception.",
+                "description": "A round's clock, with the server's remaining time so a wrong phone clock does not matter",
                 "type": "object",
                 "properties": {
                     "ends_at": {
@@ -19726,7 +19726,7 @@
                 ]
             },
             "TournamentParticipantResponse": {
-                "description": "Somebody on a tournament's roster, as an actor may see them\n\n[`Self::notes`] is `None` unless the viewer is staff — see [`Self::from_parts`].",
+                "description": "Somebody on a tournament's roster, as an actor may see them",
                 "type": "object",
                 "properties": {
                     "checked_in_at": {
@@ -19815,7 +19815,7 @@
                 "format": "uuid"
             },
             "TournamentResponse": {
-                "description": "A tournament, as an actor may see it\n\n[`Self::share_token`] and [`Self::join_code`] are organizer-only secrets: see [`Self::from_parts`].",
+                "description": "A tournament, as an actor may see it",
                 "type": "object",
                 "properties": {
                     "allow_late_entry": {
@@ -19840,7 +19840,7 @@
                     },
                     "decklists_locked_at": {
                         "nullable": true,
-                        "description": "When decklists were locked tournament-wide, `None` while players may still write their own",
+                        "description": "When decklists were locked tournament-wide, `None` while players may edit",
                         "allOf": [
                             {
                                 "$ref": "#/components/schemas/SchemaDateTime"
@@ -19879,12 +19879,12 @@
                         "format": "int16"
                     },
                     "guest_names_public": {
-                        "description": "Whether a guest's real name is shown to a reader who is neither staff nor a participant",
+                        "description": "Whether a guest's real name is shown to non-staff, non-participant readers",
                         "type": "boolean"
                     },
                     "join_code": {
                         "nullable": true,
-                        "description": "The raw join code, organizer-only — `None` for every other viewer\n\nRaw, not the `XXX-XXX` display form: the frontend renders that split.",
+                        "description": "The raw join code (no `XXX-XXX` split), organizer-only — `None` for every other viewer",
                         "allOf": [
                             {
                                 "$ref": "#/components/schemas/MaxStr_8"
@@ -20081,7 +20081,7 @@
                 "type": "object",
                 "properties": {
                     "invalid_format": {
-                        "description": "The format slug is not one [`crate::models::format::is_tournament_format`] accepts",
+                        "description": "The format slug is not a known tournament format",
                         "type": "boolean"
                     },
                     "invalid_games_per_match": {
@@ -20109,7 +20109,7 @@
                         "type": "boolean"
                     },
                     "settings_locked": {
-                        "description": "The event no longer allows structural changes — see [`crate::models::tournament::Tournament::update_settings`]",
+                        "description": "The event no longer allows structural changes",
                         "type": "boolean"
                     }
                 },
@@ -20125,11 +20125,11 @@
                 ]
             },
             "TournamentSettingsRequest": {
-                "description": "The editable shape of a tournament, shared by [`CreateTournamentRequest`] and [`super::handler::update_tournament`]\n\nOne type for both requests: an update sends exactly the same fields a create does, minus [`Visibility`] (which has its own endpoint and its own audit action). Validated in the handler against [`TournamentSettingsErrors`].",
+                "description": "The editable settings of a tournament, shared by create and update",
                 "type": "object",
                 "properties": {
                     "allow_late_entry": {
-                        "description": "Whether players may still register *themselves* after the event started — an organizer can always add a late entry at the desk. The client no longer offers this and sends `false`.",
+                        "description": "Whether players may still register themselves after the event started",
                         "type": "boolean"
                     },
                     "decklist_policy": {
@@ -20150,7 +20150,7 @@
                         ]
                     },
                     "format": {
-                        "description": "The format being played: a slug [`crate::models::format::rules_for`] knows, or one of [`crate::models::format::LIMITED_FORMATS`]",
+                        "description": "The format slug: a constructed format or one of the limited formats",
                         "allOf": [
                             {
                                 "$ref": "#/components/schemas/MaxStr_32"
@@ -20163,16 +20163,16 @@
                         "format": "int16"
                     },
                     "guest_names_public": {
-                        "description": "Whether a guest's real name is shown to a reader who is neither staff nor a participant",
+                        "description": "Whether a guest's real name is shown to non-staff, non-participant readers",
                         "type": "boolean"
                     },
                     "late_entry_as_losses": {
-                        "description": "Whether a late entry's missed rounds count as match losses\n\nSent as `false` by the client: that is the organizer's call when they add the player, not a rule fixed up front.",
+                        "description": "Whether a late entry's missed rounds count as match losses",
                         "type": "boolean"
                     },
                     "max_participants": {
                         "nullable": true,
-                        "description": "How many players fit, `None` for an event that turns nobody away. Held against self-service registration only.",
+                        "description": "How many players may self-register, `None` for no limit",
                         "type": "integer",
                         "format": "int16"
                     },
@@ -20202,12 +20202,12 @@
                     },
                     "planned_rounds": {
                         "nullable": true,
-                        "description": "How many scoring rounds the event means to play, `None` while undecided. Always editable, the event's own schedule rather than a locked rule.",
+                        "description": "How many scoring rounds the event means to play, `None` while undecided",
                         "type": "integer",
                         "format": "int16"
                     },
                     "pod_size": {
-                        "description": "How many players sit at one table, 2..=5\n\nThe client derives it from the format — pods of four for the commander formats, two for everything else — rather than asking for it; the bound stays here because the request still carries it.",
+                        "description": "How many players sit at one table, 2..=5",
                         "type": "integer",
                         "format": "int16"
                     },
@@ -20256,7 +20256,7 @@
                     },
                     "venue_address": {
                         "nullable": true,
-                        "description": "The venue's address — meaningful only alongside [`Self::venue`]; the handler blanks it when `venue` is empty",
+                        "description": "The venue's address, blanked when `venue` is empty",
                         "allOf": [
                             {
                                 "$ref": "#/components/schemas/MaxStr_512"
@@ -20265,7 +20265,7 @@
                     },
                     "venue_instructions": {
                         "nullable": true,
-                        "description": "How to actually get in (\"Hinterhof, bitte klingeln\") — meaningful only alongside [`Self::venue`], shown to everyone who can see the tournament",
+                        "description": "How to get in, shown to everyone who can see the tournament",
                         "allOf": [
                             {
                                 "$ref": "#/components/schemas/MaxStr_1024"
@@ -20292,7 +20292,7 @@
                 ]
             },
             "TournamentStateResponse": {
-                "description": "What a client polls to know whether anything moved\n\nDeliberately cheap: a handful of indexed reads and no standings, because every phone in the room hits it on a timer.",
+                "description": "What every phone polls to know whether anything moved; kept cheap on purpose",
                 "type": "object",
                 "properties": {
                     "outstanding_tables": {
@@ -20351,7 +20351,7 @@
                 "description": "Where a tournament stands in its lifecycle",
                 "oneOf": [
                     {
-                        "description": "Open for players to register or join by code — where every tournament starts",
+                        "description": "Open for registration and joining by code; the initial status",
                         "type": "string",
                         "enum": [
                             "Registration"
@@ -20430,7 +20430,7 @@
                 ]
             },
             "TournamentVenueUuid": {
-                "description": "Wrapper for the primary key of the [`venue::Venue`] model. To have better distinguishable types.\n\nNo `new_from_field` constructor, unlike [`TournamentUuid`] and [`TournamentParticipantUuid`]: nothing holds a `ForeignModel` pointing at a venue row — the \"no provenance FK\" decision means a venue's uuid is only ever read back as the raw primary key, never as somebody else's foreign key column. [`WatchListEntryUuid`](crate::models::watch_list::WatchListEntryUuid) and [`DeckCardUuid`](crate::models::deck::DeckCardUuid) are the same shape for the same reason.",
+                "description": "Wrapper for the primary key of the [`venue::Venue`] model. To have better distinguishable types.",
                 "type": "string",
                 "format": "uuid"
             },
@@ -20797,7 +20797,7 @@
                 ]
             },
             "UpdateTournamentParticipantRequest": {
-                "description": "Request to change a participant's display name and/or organizer notes\n\n`notes: null` clears the notes; an absent `notes` key leaves them alone — see [`crate::http::handler_frontend::collections::schema::double_option`].",
+                "description": "Request to change a participant's display name and/or organizer notes",
                 "type": "object",
                 "properties": {
                     "display_name": {

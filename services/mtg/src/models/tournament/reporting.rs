@@ -1,18 +1,4 @@
 //! Results: what the room says, and what the desk says
-//!
-//! Two ways in, one state machine. A player reports from their phone and an
-//! opponent agrees; an organizer types the result at the desk and that is the
-//! end of it. Neither owns the stored status — it is re-derived by
-//! [`crate::tournament::reporting::resolve`] on every write and never read back
-//! as truth, which is what lets both exist without one of them having to win.
-//!
-//! The guard here deliberately inverts the one
-//! [`super::participant::self_serve`] uses. That one asks "is this actor
-//! staff?" first; this one asks "is this actor *sitting at this table*?" first,
-//! so an organizer who is also playing reports like a player. Otherwise their
-//! own table would silently self-confirm the moment they tapped it, which is
-//! the most embarrassing bug this feature could have. Overriding is a different
-//! call, and an audited one.
 
 use galvyn::core::re_exports::time::OffsetDateTime;
 use galvyn::rorm;
@@ -92,8 +78,7 @@ pub enum ReportOutcome {
 pub enum ResultChange {
     /// The table was written and re-resolved
     Changed(MatchStatus),
-    /// The table is a bye nobody played — a closed round is *not* a refusal
-    /// for the desk, which is how a wrong result in an earlier round gets fixed
+    /// The table is a bye nobody played (a closed round is not a refusal for the desk)
     NotEditable,
     /// Neither a winner nor a draw, or a winner who is not at the table
     InvalidOutcome,
@@ -130,12 +115,6 @@ pub struct SeatClaim {
 }
 
 /// Find the viewer's own table in the current round
-///
-/// @param tx the transaction to read in
-/// @param actor who is asking
-/// @param tournament which tournament
-///
-/// @returns their table and what has been said about it
 #[instrument(name = "reporting::my_match", skip(tx, actor))]
 pub async fn my_match(
     tx: &mut Transaction,
@@ -195,14 +174,7 @@ pub async fn my_match(
     }))
 }
 
-/// How an actor relates to one table, seat before staff
-///
-/// @param tx the transaction to read in
-/// @param actor who is asking
-/// @param tournament the table belongs to
-/// @param table which table
-///
-/// @returns how they relate to it, or `None` if they have nothing to do with it
+/// How an actor relates to a table; seat before staff, so a playing organizer reports
 #[instrument(name = "reporting::seated", skip(tx, actor))]
 pub async fn seated(
     tx: &mut Transaction,
@@ -226,20 +198,7 @@ pub async fn seated(
     }
 }
 
-/// File one seat's claim about their own table
-///
-/// The `(table, reporter)` pair is upserted rather than appended: what matters
-/// is which claims disagree, not how many times somebody re-tapped. An
-/// unchanged [`ReportClaim::client_key`] on an existing row is that same tap
-/// arriving twice and writes nothing at all.
-///
-/// @param tx the transaction to write in
-/// @param actor who is reporting
-/// @param tournament the table belongs to
-/// @param table which table
-/// @param claim what they say happened
-///
-/// @returns where the table stands now, or why nothing was written
+/// File one seat's claim about their own table, upserted per `(table, reporter)`
 #[instrument(name = "reporting::report", skip(tx, actor))]
 pub async fn report(
     tx: &mut Transaction,
@@ -290,8 +249,7 @@ pub async fn report(
         .winner
         .map(|winner| ForeignModelByField(winner.into_inner()));
     match existing {
-        // The same tap arriving twice — a flaky connection, a double press —
-        // writes nothing and answers where the table already stands.
+        // Same client key: a retried tap, so write nothing.
         Some((_, key)) if key == claim.client_key => {}
         Some((uuid, _)) => {
             rorm::update(&mut *tx, TournamentResultReportModel)
@@ -338,22 +296,12 @@ pub async fn report(
         }
     }
 
-    // Deliberately not audited. Forty phone taps an evening would bury the one
-    // row that matters — the desk overriding somebody — and the report rows are
-    // already the history of who said what.
+    // Not audited: the report rows are the history, and taps would bury desk overrides.
     let status = recompute(&mut *tx, table, None).await?;
     Ok(TournamentAccess::Granted(ReportOutcome::Recorded(status)))
 }
 
 /// Write a table's result from the desk, beating every report
-///
-/// @param tx the transaction to write in
-/// @param account the organizer writing it
-/// @param tournament the table belongs to
-/// @param table which table
-/// @param claim what the desk says happened
-///
-/// @returns where the table stands now, or why nothing was written
 #[instrument(name = "reporting::set_result", skip(tx))]
 pub async fn set_result(
     tx: &mut Transaction,
@@ -371,11 +319,7 @@ pub async fn set_result(
     let Some(is_bye) = table_is_bye(&mut *tx, tournament, table).await? else {
         return Ok(TournamentAccess::Denied);
     };
-    // Deliberately no `round_open` check here, unlike [`report`]: a closed
-    // round is exactly where the desk corrects a result that was entered
-    // wrong, and the standings are recomputed from confirmed tables on every
-    // read, so the correction flows through on its own. The audit row below
-    // is what makes editing history acceptable.
+    // No `round_open` check: the desk may correct a closed round; the audit row covers it.
     if is_bye {
         return Ok(TournamentAccess::Granted(ResultChange::NotEditable));
     }
@@ -424,18 +368,7 @@ pub async fn set_result(
     Ok(TournamentAccess::Granted(ResultChange::Changed(status)))
 }
 
-/// Take the desk's result back off a table
-///
-/// The undo for a mistyped result, and the reason `organizer_override` is a
-/// column rather than "there is a result": clearing it drops back to whatever
-/// the phones said rather than to nothing.
-///
-/// @param tx the transaction to write in
-/// @param account the organizer clearing it
-/// @param tournament the table belongs to
-/// @param table which table
-///
-/// @returns where the table stands now
+/// Take the desk's result back off a table, falling back to what the phones said
 #[instrument(name = "reporting::clear_result", skip(tx))]
 pub async fn clear_result(
     tx: &mut Transaction,
@@ -478,16 +411,7 @@ pub async fn clear_result(
     Ok(TournamentAccess::Granted(ResultChange::Changed(status)))
 }
 
-/// Re-derive a table's result from everything said about it, and store it
-///
-/// The stored columns are a cache of this function, written on every change and
-/// never consulted to produce the next one.
-///
-/// @param tx the transaction to write in
-/// @param table which table
-/// @param organizer the desk's own outcome when it is writing one
-///
-/// @returns the status now stored
+/// Re-derive a table's result from everything said about it, and cache it on the row
 async fn recompute(
     tx: &mut Transaction,
     table: TournamentMatchUuid,
@@ -510,9 +434,7 @@ async fn recompute(
     };
 
     let seats = seats_at(&mut *tx, table).await?;
-    // A desk result that is not being written right now still has to survive a
-    // recompute triggered by a late phone report, so it is read back off the
-    // row it was stored on.
+    // A stored desk result must survive a recompute triggered by a late phone report.
     let desk = match (organizer, overridden) {
         (Some(outcome), _) => Some(outcome),
         (None, true) => stored_outcome(&mut *tx, table).await?,
@@ -533,9 +455,7 @@ async fn recompute(
         MatchState::Confirmed(outcome) => (MatchStatus::Confirmed, Some(outcome)),
         MatchState::Disputed => (MatchStatus::Disputed, None),
     };
-    // Only a settled table carries an outcome on the row: a pending or disputed
-    // one must not look like a result to the standings engine, which reads
-    // outcomes rather than statuses.
+    // Pending or disputed tables store no outcome, so they never look like a result.
     let settled = matches!(status, MatchStatus::Confirmed);
 
     rorm::update(&mut *tx, TournamentMatchModel)
@@ -566,9 +486,7 @@ async fn recompute(
         .condition(TournamentMatchModel.uuid.equals(table.into_inner()))
         .await?;
 
-    // Per-seat game wins, which is what the game-win tiebreakers read. A seat
-    // that did not win the match takes the loser's count, which for a pod —
-    // always best of one — is simply zero.
+    // Per-seat game wins for the tiebreakers; a non-winning seat takes the loser's count.
     for seat in &seats {
         let games = match (settled, outcome) {
             (true, Some(outcome)) if outcome.draw => outcome.winner_games,
@@ -591,11 +509,6 @@ async fn recompute(
 }
 
 /// Who is sitting at a table, in seat order
-///
-/// @param tx the transaction to read in
-/// @param table which table
-///
-/// @returns their participant uuids
 async fn seats_at(
     tx: &mut Transaction,
     table: TournamentMatchUuid,
@@ -619,12 +532,6 @@ async fn seats_at(
 }
 
 /// Which participant rows this actor speaks for in this tournament
-///
-/// @param tx the transaction to read in
-/// @param actor who is asking
-/// @param tournament which tournament
-///
-/// @returns their participant uuids
 async fn own_seats(
     tx: &mut Transaction,
     actor: &TournamentActor,
@@ -642,8 +549,7 @@ async fn own_seats(
                 .all()
                 .await?)
         }
-        // A guest's session carries uuids it cannot prove belong here, so they
-        // are re-checked against the tournament rather than trusted.
+        // A guest session's uuids are unproven, so re-check them against the tournament.
         TournamentActor::Guest(participants) => {
             let claimed: Vec<Uuid> = participants.iter().map(|p| p.into_inner()).collect();
             if claimed.is_empty() {
@@ -661,11 +567,6 @@ async fn own_seats(
 }
 
 /// Every claim filed on a table
-///
-/// @param tx the transaction to read in
-/// @param table which table
-///
-/// @returns the claims
 async fn claims_on(
     tx: &mut Transaction,
     table: TournamentMatchUuid,
@@ -705,11 +606,6 @@ async fn claims_on(
 }
 
 /// The outcome already stored on a table
-///
-/// @param tx the transaction to read in
-/// @param table which table
-///
-/// @returns the outcome, or `None` for a table with no result on it
 async fn stored_outcome(
     tx: &mut Transaction,
     table: TournamentMatchUuid,
@@ -770,11 +666,6 @@ async fn stored_outcome(
 }
 
 /// Whether the round a table belongs to is still open
-///
-/// @param tx the transaction to read in
-/// @param table which table
-///
-/// @returns whether anything may still be written to it
 async fn round_open(tx: &mut Transaction, table: TournamentMatchUuid) -> Result<bool, rorm::Error> {
     let Some(round) = rorm::query(&mut *tx, TournamentMatchModel.round)
         .condition(TournamentMatchModel.uuid.equals(table.into_inner()))
@@ -794,13 +685,7 @@ async fn round_open(tx: &mut Transaction, table: TournamentMatchUuid) -> Result<
         .is_some_and(|status| status != RoundStatus::Complete))
 }
 
-/// Whether a table belongs to this tournament, and whether it is a bye
-///
-/// @param tx the transaction to read in
-/// @param tournament the table should belong to
-/// @param table which table
-///
-/// @returns whether it is a bye, or `None` when it is not this tournament's
+/// Whether a table belongs to this tournament (`None` if not), and whether it is a bye
 async fn table_is_bye(
     tx: &mut Transaction,
     tournament: TournamentUuid,
@@ -818,17 +703,10 @@ async fn table_is_bye(
 }
 
 /// Whether an outcome says something a table could actually have produced
-///
-/// @param winner who is claimed to have won
-/// @param draw whether a draw is claimed
-/// @param seats who is at the table
-///
-/// @returns whether it is worth storing
 fn valid(winner: &Option<TournamentParticipantUuid>, draw: bool, seats: &[Uuid]) -> bool {
     match (winner, draw) {
         (Some(winner), false) => seats.contains(&winner.into_inner()),
         (None, true) => true,
-        // A winner *and* a draw, or neither, is not an outcome.
         _ => false,
     }
 }

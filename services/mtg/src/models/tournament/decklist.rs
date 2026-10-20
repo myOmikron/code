@@ -1,12 +1,4 @@
-//! A participant's decklist: what they submitted, who may read or change it
-//!
-//! The database side of [`crate::tournament::decklist`], which does the
-//! actual rendering — this module is where guarding, upserting and the
-//! deck-to-text pipeline live. See [`db::TournamentDecklistModel`] for why
-//! the text sits in its own table rather than a column on
-//! [`super::participant::TournamentParticipant`].
-//!
-//! [`db::TournamentDecklistModel`]: crate::models::tournament::db::TournamentDecklistModel
+//! A participant's decklist: guarded reads and writes, and rendering a deck to text
 
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -73,21 +65,17 @@ pub enum DecklistChange {
     Written(Decklist),
     /// The row was deleted — also the answer when there was none to delete
     Cleared,
-    /// The tournament's decklists are locked and the actor is not staff;
-    /// nothing was written
+    /// Decklists are locked and the actor is not staff; nothing was written
     Locked,
     /// The named deck does not exist, or the caller does not own it
     UnknownDeck,
-    /// The named deck rendered to nothing playable — an empty deck is not a
-    /// list anybody can register
+    /// The named deck rendered to nothing playable
     EmptyDeck,
     /// The pasted text was blank once trimmed
     Invalid,
 }
 
-/// Who the actor is relative to the participant row being read or written
-///
-/// See [`participant::self_serve`], the guard every function here starts with.
+/// Who the actor is relative to the participant row, as [`participant::self_serve`] answers it
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SelfServe {
     /// Holds a role on the tournament
@@ -96,12 +84,7 @@ pub enum SelfServe {
     Own,
 }
 
-/// Read a participant's decklist
-///
-/// Guard: [`participant::self_serve`] — staff or the participant themself,
-/// nobody else. `None` inside the [`TournamentAccess::Granted`] means the
-/// guard passed but nothing has been submitted yet, which is not the same as
-/// being refused.
+/// Read a participant's decklist (staff or the participant); `Granted(None)` if none submitted
 #[instrument(name = "decklist::get", skip(tx))]
 pub async fn get(
     tx: &mut Transaction,
@@ -128,13 +111,7 @@ pub async fn get(
     Ok(TournamentAccess::Granted(row.map(Decklist::from)))
 }
 
-/// Write, replace or clear a participant's decklist, self-service or by staff
-///
-/// Guard: [`participant::self_serve`]. A player editing their own row
-/// ([`SelfServe::Own`]) is refused with [`DecklistChange::Locked`] while
-/// [`Tournament::decklists_locked`] — staff bypass the lock entirely, since
-/// fixing a player's list after locking is precisely what staff access is
-/// for. Everything past the guard is [`write`]'s job.
+/// Write, replace or clear a participant's decklist; players are refused while locked, staff not
 #[instrument(name = "decklist::set", skip(tx, source))]
 pub async fn set(
     tx: &mut Transaction,
@@ -170,25 +147,7 @@ pub async fn set(
     ))
 }
 
-/// Write, replace or clear a participant's decklist without a guard
-///
-/// The core [`set`] calls once its guard has cleared the actor — and also
-/// what the registration handlers in `crate::http::handler_frontend::tournaments`
-/// and `crate::http::handler_frontend::join` call directly, right after
-/// inserting a fresh participant row in the same transaction, before there is
-/// anything to guard yet. `deck_owner` is whose ownership [`DecklistSource::Deck`]
-/// is checked against; `actor` is who the audit log names. The two are not
-/// always the same account: an organizer typing in a walk-in's pasted text is
-/// the actor, but no deck is ever linked on a walk-in's behalf.
-///
-/// Upsert as UPDATE-then-INSERT, never INSERT-and-catch: Postgres aborts the
-/// whole transaction on a unique violation, so a fallback branch after a
-/// caught one could never run — the same discipline as `register_account`.
-///
-/// `pub(crate)`, not `pub(in crate::models::tournament)`: those registration
-/// handlers live under `crate::http`, outside this module tree, and are the
-/// only reason this needs to be visible past `crate::models::tournament` at
-/// all — nothing else in the crate should call it.
+/// Write, replace or clear a decklist without a guard; also called by the registration handlers
 #[instrument(name = "decklist::write", skip(tx, source))]
 pub(crate) async fn write(
     tx: &mut Transaction,
@@ -254,6 +213,7 @@ pub(crate) async fn write(
         }
     };
 
+    // UPDATE-then-INSERT, not catch: Postgres aborts the transaction on a unique violation.
     let affected = rorm::update(&mut *tx, TournamentDecklistModel)
         .set(TournamentDecklistModel.text, text.clone())
         .set(
@@ -301,10 +261,7 @@ pub(crate) async fn write(
     Ok(DecklistChange::Written(Decklist::from(row)))
 }
 
-/// Every participant of a tournament who has a decklist on file
-///
-/// One query on `(participant,)` — what the roster's `has_decklist` is built
-/// from, without ever touching [`TournamentDecklistModel::text`].
+/// Every participant of a tournament who has a decklist on file, without loading the text
 #[instrument(name = "decklist::submitted", skip(tx))]
 pub async fn submitted(
     tx: &mut Transaction,
@@ -325,10 +282,6 @@ pub async fn submitted(
 }
 
 /// Whether a participant has a decklist on file
-///
-/// The check-in gate's guard: [`participant::check_in`] reads this before its
-/// `UPDATE` when the tournament's policy is
-/// [`super::DecklistPolicy::RequiredToCheckIn`].
 #[instrument(name = "decklist::exists", skip(tx))]
 pub async fn exists(
     tx: &mut Transaction,
@@ -345,16 +298,7 @@ pub async fn exists(
         .is_some())
 }
 
-/// Render a Planarium deck into the text a decklist stores
-///
-/// `None` covers three cases alike, all of which mean "there is nothing to
-/// submit here": the deck has no cards outside the Maybeboard, every slot's
-/// printing is unknown to the catalog, or the render came out longer than
-/// [`MAX_DECKLIST_CHARS`] — a 16 KB deck is not a real decklist, so it is
-/// dropped rather than silently truncated into a wrong one. A slot whose
-/// printing the catalog does not know is skipped and logged rather than
-/// failing the whole render — a stale sync should not be why a player cannot
-/// submit a list.
+/// Render a deck into decklist text, empty if nothing in it is playable
 #[instrument(name = "decklist::render_deck", skip(tx))]
 async fn render_deck(tx: &mut Transaction, deck: DeckUuid) -> Result<Option<String>, rorm::Error> {
     let playable: Vec<_> = DeckCard::get_all_in_deck(&mut *tx, deck)

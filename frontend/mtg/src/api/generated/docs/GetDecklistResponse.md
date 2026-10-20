@@ -1,7 +1,7 @@
 
 # GetDecklistResponse
 
-What [`super::handler::get_participant_decklist`] and [`super::handler::set_participant_decklist`] answer with
+A participant\'s decklist plus whether the viewer may edit it
 
 ## Properties
 

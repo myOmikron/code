@@ -1,7 +1,7 @@
 
 # TournamentResponse
 
-A tournament, as an actor may see it  [`Self::share_token`] and [`Self::join_code`] are organizer-only secrets: see [`Self::from_parts`].
+A tournament, as an actor may see it
 
 ## Properties
 

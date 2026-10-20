@@ -13,18 +13,11 @@ use crate::models::account::Account;
 use crate::models::tournament::TournamentActor;
 use crate::models::tournament::TournamentParticipantUuid;
 
-/// Session key holding the participant uuids a guest has joined as
-///
-/// A `Vec<Uuid>` rather than a single one: a phone that joins two events in
-/// one sitting stays a guest of both without a second cookie.
+/// Session key holding the participant uuids a guest has joined as (one per event)
 pub const GUEST_SESSION_KEY: &str = "tournament_guests";
 
 impl TournamentActor {
     /// Append a freshly joined guest participant to the session
-    ///
-    /// Generic over the form-error type so it composes with handlers that
-    /// report typed errors, the same shape as
-    /// [`Account::set_logged_in`](crate::models::account::Account::set_logged_in).
     pub async fn remember_guest<E>(
         session: &Session,
         participant: TournamentParticipantUuid,
@@ -58,9 +51,7 @@ where
         state: &S,
     ) -> impl Future<Output = Result<Self, Self::Rejection>> + Send {
         async move {
-            // `Account` caches itself on the request, so trying it first and
-            // falling back to the guest session costs no extra query over
-            // extracting an `Account` directly would.
+            // `Account` caches itself on the request, so trying it first costs no extra query.
             match Account::from_request_parts(parts, state).await {
                 Ok(account) => Ok(TournamentActor::Account(account)),
                 Err(rejection) => {
@@ -77,10 +68,7 @@ where
                         .await?
                         .unwrap_or_default();
                     if guests.is_empty() {
-                        // Neither a logged-in account nor a guest history —
-                        // the same opaque rejection an unauthorized `Account`
-                        // gets, so a caller cannot tell "never signed in"
-                        // apart from "never joined anything" from the outside.
+                        // Same opaque rejection as a missing `Account`, so "never joined" does not leak.
                         return Err(rejection);
                     }
 

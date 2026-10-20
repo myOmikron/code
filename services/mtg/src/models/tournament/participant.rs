@@ -1,16 +1,4 @@
 //! Participants: the people playing in a tournament, guests included
-//!
-//! A participant is a name that *may* link to an [`Account`](crate::models::account::Account): an organizer's
-//! walk-in and a phone that joined by code and never signed up are both rows
-//! with `account = None`. [`TournamentParticipant`] never carries a claim
-//! token — that secret leaves this module in exactly two places: the second
-//! field of [`RegistrationOutcome::Registered`] returned by
-//! [`register_guest`], and [`claim_token`]'s own return value, handed to
-//! staff to show a player as a QR code — nowhere else. It also never carries
-//! a username: an organizer recognises
-//! staff by [`super::TournamentOrganizer::username`], but a roster is read by
-//! [`TournamentParticipant::display_name`] only, guest and account alike —
-//! see the module docs on [`super`] for why.
 
 use std::collections::HashSet;
 
@@ -42,12 +30,7 @@ use crate::models::tournament::decklist;
 use crate::models::tournament::decklist::SelfServe;
 use crate::models::tournament::is_unique_violation;
 
-/// Somebody playing in a tournament
-///
-/// Mirrors [`TournamentParticipantModel`] minus `claim_token` (see the module
-/// docs) plus [`Self::is_guest`], a convenience derived from
-/// [`Self::account`] so callers never have to spell out `.is_none()`
-/// themselves.
+/// Somebody playing in a tournament; deliberately never carries the claim token
 #[derive(Debug, Clone)]
 pub struct TournamentParticipant {
     /// Primary key
@@ -83,15 +66,9 @@ pub struct TournamentParticipant {
 }
 
 /// Outcome of [`register_account`] and [`register_guest`]
-///
-/// One enum for both: the second field of [`Self::Registered`] is the
-/// freshly minted claim token, `Some` only when [`register_guest`] produced
-/// one — an account row is never claimable, so [`register_account`] always
-/// answers `None` there.
 #[derive(Debug, Clone)]
 pub enum RegistrationOutcome {
-    /// A row was written, carrying the participant and — for a guest only —
-    /// its one-time claim token
+    /// A row was written, with the guest's one-time claim token (`None` for an account)
     Registered(TournamentParticipant, Option<MaxStr<64>>),
     /// Registration is not open right now; nothing was written
     Closed,
@@ -122,14 +99,7 @@ fn generate_claim_token() -> MaxStr<64> {
         .unwrap_or_else(|_| unreachable!("43 alphanumeric chars fit into 64"))
 }
 
-/// Lowercase, trim and collapse a display name into the league resolver's
-/// lookup key
-///
-/// Built word by word rather than truncated after the fact: lowercasing can
-/// grow a handful of Unicode characters by a byte or two, and truncating the
-/// result afterwards risks landing mid-character. Stopping before a word
-/// would push past 64 bytes side-steps that entirely, at the cost of
-/// (silently) dropping the tail of a name pathological enough to hit it.
+/// Lowercase, trim and collapse a name into the lookup key, word by word to stay in 64 bytes
 fn normalize_name(name: &str) -> MaxStr<64> {
     let mut normalized = String::with_capacity(name.len());
     for word in name.split_whitespace() {
@@ -147,11 +117,7 @@ fn normalize_name(name: &str) -> MaxStr<64> {
         .unwrap_or_else(|_| unreachable!("kept under the maximum length by construction"))
 }
 
-/// How many seats the roster currently occupies
-///
-/// A dropped or disqualified player frees their seat again: the row stays for
-/// the standings, but the chair is available to the next person through the
-/// door.
+/// How many seats the roster occupies; dropped and disqualified players free theirs
 async fn seats_taken(tx: &mut Transaction, tournament: &Tournament) -> Result<i64, rorm::Error> {
     let rows = rorm::query(&mut *tx, TournamentParticipantModel.status)
         .condition(
@@ -172,13 +138,7 @@ async fn seats_taken(tx: &mut Transaction, tournament: &Tournament) -> Result<i6
         .count() as i64)
 }
 
-/// Whether the event still has room for one more self-service registration
-///
-/// Only asked on the self-service paths. An organizer at the desk is trusted
-/// to know their own room and may seat one past the limit, the same call
-/// `allow_late_entry` already leaves to them. Read-then-write is good enough
-/// here: two phones racing the last seat is not a correctness problem worth a
-/// lock — the roster simply ends up one over, which an organizer can fix.
+/// Whether one more self-service registration fits; the desk may seat past the limit
 async fn has_room(tx: &mut Transaction, tournament: &Tournament) -> Result<bool, rorm::Error> {
     let Some(max) = tournament.max_participants else {
         return Ok(true);
@@ -186,34 +146,13 @@ async fn has_room(tx: &mut Transaction, tournament: &Tournament) -> Result<bool,
     Ok(seats_taken(&mut *tx, tournament).await? < i64::from(max))
 }
 
-/// Whether a player may register *themselves* right now
-///
-/// Shared by [`register_account`] and [`register_guest`]; the latter widens
-/// it for an organizer typing in a walk-in before calling this. A late entry
-/// is that organizer's to make: `allow_late_entry` only ever opens the
-/// self-service door while the event runs, and the client no longer offers
-/// it, so in practice a player who turns up late is added at the desk.
+/// Whether a player may register themselves right now
 fn registration_open(tournament: &Tournament) -> bool {
     matches!(tournament.status, TournamentStatus::Registration)
         || (tournament.status == TournamentStatus::Running && tournament.allow_late_entry)
 }
 
-/// Register an account as a participant
-///
-/// `added_by` says who is asking, exactly as in [`register_guest`]: `None`
-/// for a player registering themselves, `Some` for an organizer adding a
-/// known account at the desk — the phone-died case. The organizer path widens
-/// the window the same way and skips the capacity check; the caller must have
-/// checked that account holds a role before calling this.
-///
-/// Whether a self-service request is open follows [`registration_open`]. The partial
-/// unique index on `(tournament, account)` — not a pre-query — is what
-/// decides [`RegistrationOutcome::AlreadyRegistered`]: a pre-query would race
-/// a second tab submitting the same form. Because Postgres aborts the whole
-/// transaction on that violation, the audit row is written only in the
-/// success arm, *after* the insert; logging `ParticipantAdded` on the
-/// violation path is both impossible (nothing may write into an aborted
-/// transaction) and wrong (nothing was added).
+/// Register an account; `added_by` is the organizer when added at the desk
 #[instrument(name = "register_account", skip(tx, tournament))]
 pub async fn register_account(
     tx: &mut Transaction,
@@ -232,24 +171,14 @@ pub async fn register_account(
         return Ok(RegistrationOutcome::Full);
     }
 
-    // A player the desk seats mid-event starts at the round after the last one
-    // the room finished — the ones before it are losses they were not there for,
-    // which is what the MTR asks of a late entry.
+    // Late entries start after the last closed round; earlier ones count as losses (MTR).
     let entered_round = super::round::scored_progress(&mut *tx, tournament.uuid)
         .await?
         .completed
         + 1;
 
     let name_normalized = normalize_name(&display_name);
-    // Bound to a `let` rather than called inline: a `ThreadRng` temporary
-    // reaching into the same statement as the trailing `.await` stays alive
-    // until the statement ends (Rust drops statement temporaries last, not
-    // sub-expression-first), which would hold the `!Send` rng across the
-    // await and poison every handler's future that ever calls this.
-    // The desk adding somebody is itself the observation that they are in the
-    // room, so a walk-in skips the check-in queue entirely — otherwise every
-    // player an organizer types in would have to be checked in a second time,
-    // and would be dropped on start if they forgot.
+    // The desk adding somebody is their check-in, so walk-ins skip the queue.
     let (status, checked_in_at) = if added_by.is_some() {
         (
             ParticipantStatus::CheckedIn,
@@ -258,6 +187,7 @@ pub async fn register_account(
     } else {
         (ParticipantStatus::Registered, None)
     };
+    // Bound to a `let`: a `ThreadRng` temporary spanning the `.await` makes the future `!Send`.
     let seed = rand::rng().random();
     let result = rorm::insert(&mut *tx, TournamentParticipantModel)
         .single(&TournamentParticipantInsertPatch {
@@ -274,6 +204,7 @@ pub async fn register_account(
         })
         .await;
 
+    // The partial unique index decides `AlreadyRegistered`; Postgres has aborted the tx then.
     let model = match result {
         Ok(model) => model,
         Err(error) if is_unique_violation(&error) => {
@@ -296,22 +227,7 @@ pub async fn register_account(
     Ok(RegistrationOutcome::Registered(participant, None))
 }
 
-/// Register a guest — a walk-in typed in by an organizer, or a phone that
-/// joined by code without signing in
-///
-/// `added_by` distinguishes the two: `None` for a self-service join, `Some`
-/// for an organizer typing in a walk-in — the caller must already have
-/// checked that account holds a role before calling this, the same
-/// discipline as everywhere else in this module tree. An organizer may add
-/// walk-ins — as the one route for a late entry — while
-/// [`TournamentStatus::Running`], whatever `allow_late_entry` says; that is the
-/// one way [`registration_open`]'s rule is widened here.
-///
-/// A guest row can never collide with the partial unique index — that index
-/// is `WHERE account IS NOT NULL`, and this insert always sets `account` to
-/// `None` — so [`RegistrationOutcome::AlreadyRegistered`] is unreachable
-/// through this function; it stays in the shared enum only because
-/// [`register_account`] needs it.
+/// Register a guest: a walk-in typed in by an organizer, or a phone that joined by code
 #[instrument(name = "register_guest", skip(tx, tournament))]
 pub async fn register_guest(
     tx: &mut Transaction,
@@ -329,21 +245,14 @@ pub async fn register_guest(
     }
 
     let claim_token = generate_claim_token();
-    // A player the desk seats mid-event starts at the round after the last one
-    // the room finished — the ones before it are losses they were not there for,
-    // which is what the MTR asks of a late entry.
+    // Late entries start after the last closed round; earlier ones count as losses (MTR).
     let entered_round = super::round::scored_progress(&mut *tx, tournament.uuid)
         .await?
         .completed
         + 1;
 
     let name_normalized = normalize_name(&display_name);
-    // See the matching comment in `register_account`: bound to a `let` so
-    // the `!Send` `ThreadRng` temporary does not span the trailing `.await`.
-    // The desk adding somebody is itself the observation that they are in the
-    // room, so a walk-in skips the check-in queue entirely — otherwise every
-    // player an organizer types in would have to be checked in a second time,
-    // and would be dropped on start if they forgot.
+    // The desk adding somebody is their check-in, so walk-ins skip the queue.
     let (status, checked_in_at) = if added_by.is_some() {
         (
             ParticipantStatus::CheckedIn,
@@ -352,6 +261,7 @@ pub async fn register_guest(
     } else {
         (ParticipantStatus::Registered, None)
     };
+    // Bound to a `let`: a `ThreadRng` temporary spanning the `.await` makes the future `!Send`.
     let seed = rand::rng().random();
     let model = rorm::insert(&mut *tx, TournamentParticipantModel)
         .single(&TournamentParticipantInsertPatch {
@@ -386,19 +296,6 @@ pub async fn register_guest(
 }
 
 /// Attach an account to a guest row using its claim token
-///
-/// The lookup by token already excludes claimed rows — `claim_token` is
-/// nulled the instant a row is claimed (see [`TournamentParticipantModel`]),
-/// so a token that still resolves always names an unclaimed guest. The
-/// update repeats the token in its `WHERE` to close the same race a
-/// find-then-write always has: if two requests race the same token, only the
-/// one whose `UPDATE` still sees it live affects a row. Losing that race
-/// reads as [`ClaimOutcome::InvalidToken`] — indistinguishable from a token
-/// that was never valid, which is the point.
-///
-/// [`ClaimOutcome::AlreadyRegistered`] is the partial unique index again, not
-/// a pre-query, for the same reason as [`register_account`]: the audit row is
-/// written only after the update has actually gone through.
 #[instrument(name = "claim", skip(tx, claim_token))]
 pub async fn claim(
     tx: &mut Transaction,
@@ -437,9 +334,7 @@ pub async fn claim(
         Err(error) => return Err(error),
     };
     if affected == 0 {
-        // Somebody else claimed this token in the gap between the lookup and
-        // the write above — single-use, so it is now exactly as invalid as a
-        // token that never existed.
+        // Lost the race: the token was claimed between the lookup and the update.
         return Ok(ClaimOutcome::InvalidToken);
     }
 
@@ -464,19 +359,7 @@ pub async fn claim(
     Ok(ClaimOutcome::Claimed(participant))
 }
 
-/// Hand a guest row's live claim token to staff, e.g. to render it as a QR
-/// code for a walk-in to scan
-///
-/// Guard: [`Tournament::role_of`] — **any** role, deliberately not
-/// [`super::TournamentRole::may_manage`]. Walking a guest through claiming
-/// their own row with a shown QR is exactly what a
-/// [`super::OrganizerRole::Scorekeeper`] is for, the same reasoning as
-/// [`update`]'s guard. `Ok(Granted(None))` covers both "this row already
-/// belongs to an account" and "somebody already claimed it" alike — either
-/// way there is no live token to hand out, and the caller has no reason to
-/// tell the two apart. Only actually audits when a token comes back: handing
-/// out `None` is not a bearer credential leaving the building, so it is not
-/// what [`AuditAction::ClaimTokenIssued`] is for.
+/// Hand a guest row's live claim token to staff (any role), e.g. to show as a QR code
 #[instrument(name = "claim_token", skip(tx))]
 pub async fn claim_token(
     tx: &mut Transaction,
@@ -521,8 +404,7 @@ pub async fn claim_token(
     Ok(TournamentAccess::Granted(claim_token))
 }
 
-/// What a claim token names, for the screen a scanned QR lands on before the
-/// player has committed to anything
+/// What a claim token names, for the screen a scanned QR lands on
 #[derive(Debug, Clone)]
 pub struct ClaimTarget {
     /// The tournament the row belongs to
@@ -536,10 +418,6 @@ pub struct ClaimTarget {
 }
 
 /// Look up a live claim token without acting on it
-///
-/// A pure read: [`reattach`] is this exact lookup plus an audit row. See
-/// [`resolve_claim_token`] for why a token that still resolves always names
-/// an unclaimed guest.
 #[instrument(name = "look_up_claim_token", skip(tx, claim_token))]
 pub async fn look_up_claim_token(
     tx: &mut Transaction,
@@ -548,16 +426,7 @@ pub async fn look_up_claim_token(
     resolve_claim_token(&mut *tx, claim_token).await
 }
 
-/// Re-attach a guest session to its row using a still-live claim token
-///
-/// Deliberately does **not** clear the token, unlike [`claim`]: this only
-/// proves a device already holds the secret and wants its guest session
-/// pointed at the row again, not that an account is taking permanent
-/// ownership of it. The same device may lose its cookie and need the token a
-/// second, third, ... time — only an account's [`claim`] is the one-time
-/// event that retires it. `actor: None` on the audit row, the same reasoning
-/// as [`audit_actor`] for a guest's own [`check_in`]/[`drop`]: a guest
-/// re-attaching is nobody accountable.
+/// Re-attach a guest session to its row; unlike [`claim`], the token stays live
 #[instrument(name = "reattach", skip(tx, claim_token))]
 pub async fn reattach(
     tx: &mut Transaction,
@@ -581,13 +450,6 @@ pub async fn reattach(
 }
 
 /// The lookup [`look_up_claim_token`] and [`reattach`] share
-///
-/// `claim_token` is nulled the instant an account claims a row (see
-/// [`claim`]), so — exactly like [`claim`]'s own lookup — a token that still
-/// resolves here always names an unclaimed guest. Two queries rather than a
-/// join: this runs behind an unauthenticated, rate-limited endpoint reachable
-/// straight from a scanned QR, so simplicity beats saving one round trip most
-/// of these requests will never repeat.
 async fn resolve_claim_token(
     tx: &mut Transaction,
     claim_token: &str,
@@ -618,9 +480,7 @@ async fn resolve_claim_token(
         .optional()
         .await?
     else {
-        // The participant row outlived its tournament, which the schema's
-        // cascading delete should make impossible — read as "no such token"
-        // rather than unwrap into a panic over it.
+        // The cascade should prevent this; read it as "no such token" rather than panic.
         return Ok(None);
     };
 
@@ -632,11 +492,7 @@ async fn resolve_claim_token(
     }))
 }
 
-/// Every participant of a tournament, oldest registration first
-///
-/// No guard: the caller already holds a [`super::TournamentWithViewer`] or
-/// equivalent proof that it may see this tournament at all before asking for
-/// its roster.
+/// Every participant of a tournament, oldest registration first (unguarded)
 #[instrument(name = "list", skip(tx))]
 pub async fn list(
     tx: &mut Transaction,
@@ -654,14 +510,7 @@ pub async fn list(
     Ok(rows.into_iter().map(TournamentParticipant::from).collect())
 }
 
-/// Change a participant's display name and/or organizer notes
-///
-/// Guard: `organizer_account` must hold *some* role — unlike the
-/// settings/status/visibility mutators in [`super`], this does not require
-/// [`super::TournamentRole::may_manage`], since running the roster is
-/// specifically what [`super::OrganizerRole::Scorekeeper`] is for.
-/// `tournament` is folded into the `WHERE` alongside `participant`, so a
-/// valid organizer of one tournament cannot touch another's row by uuid.
+/// Change a participant's display name and/or notes; any role may, scorekeepers included
 #[instrument(name = "update", skip(tx, display_name, notes))]
 pub async fn update(
     tx: &mut Transaction,
@@ -698,8 +547,7 @@ pub async fn update(
                 ])
                 .await?
         }
-        // Nothing to change — still confirm the row is this tournament's
-        // before answering `Granted`.
+        // Nothing to change: still confirm the row belongs to this tournament.
         Err(_) => u64::from(
             rorm::query(&mut *tx, TournamentParticipantModel.uuid)
                 .condition(rorm::and![
@@ -732,11 +580,7 @@ pub async fn update(
     Ok(TournamentAccess::Granted(()))
 }
 
-/// Which accounts already hold a row in this tournament
-///
-/// Read by the organizer's player search so a hit already on the roster can be
-/// shown as such instead of failing on submit. Guest rows have no account and
-/// simply do not appear.
+/// Which accounts already hold a row in this tournament, for the player search
 #[instrument(name = "accounts_on_roster", skip(tx))]
 pub async fn accounts_on_roster(
     tx: &mut Transaction,
@@ -757,20 +601,7 @@ pub async fn accounts_on_roster(
         .collect())
 }
 
-/// Whether `actor` may act as staff or as the participant themself on
-/// `participant`, and if so which
-///
-/// The guard every mutator on a participant row starts with — [`drop`]
-/// through the thin [`may_self_serve`] wrapper, [`check_in`] directly
-/// because it accepts [`SelfServe::Staff`] alone, and
-/// [`decklist::get`]/[`decklist::set`] directly, since they have to tell
-/// [`SelfServe::Staff`] apart from [`SelfServe::Own`] to decide whether the
-/// decklist lock applies. `Staff` when the actor holds any role on the
-/// tournament; `Own` when the actor *is* that participant: an
-/// [`TournamentActor::Account`] whose own row this is, or a
-/// [`TournamentActor::Guest`] carrying that exact uuid in its session — in
-/// both cases re-checked against the database, since a session cannot prove
-/// which tournament a uuid belongs to on its own. `None` otherwise.
+/// Whether `actor` may act on `participant` as staff or as that participant themself
 pub(super) async fn self_serve(
     tx: &mut Transaction,
     actor: &TournamentActor,
@@ -824,10 +655,6 @@ pub(super) async fn self_serve(
 }
 
 /// Whether `actor` may drop or otherwise self-serve `participant`
-///
-/// Thin wrapper over [`self_serve`] for callers that only need to know
-/// *whether* access is granted, not which kind — [`drop`] treats staff and
-/// the participant themself alike.
 async fn may_self_serve(
     tx: &mut Transaction,
     actor: &TournamentActor,
@@ -839,8 +666,7 @@ async fn may_self_serve(
         .is_some())
 }
 
-/// The account behind `actor`, for the audit log — `None` for a guest, since
-/// nothing accountable identifies one
+/// The account behind `actor` for the audit log, `None` for a guest
 fn audit_actor(actor: &TournamentActor) -> Option<AccountUuid> {
     match actor {
         TournamentActor::Account(account) => Some(account.uuid),
@@ -853,25 +679,11 @@ fn audit_actor(actor: &TournamentActor) -> Option<AccountUuid> {
 pub enum CheckInOutcome {
     /// The player is checked in
     CheckedIn,
-    /// The tournament's [`DecklistPolicy::RequiredToCheckIn`] is set and this
-    /// player has no decklist on file; nothing was written
+    /// [`DecklistPolicy::RequiredToCheckIn`] is set and no decklist is on file
     DecklistMissing,
 }
 
-/// Check a participant in — staff only
-///
-/// Being present is something the desk observes, not something a player can
-/// assert from their phone, so this is the one participant mutator that
-/// refuses [`SelfServe::Own`]. Dropping stays self-service: a player leaving
-/// is a fact only they have.
-///
-/// Only takes from [`ParticipantStatus::Registered`] — folded into the
-/// `WHERE` rather than checked separately, so a stale double-click answers
-/// [`TournamentAccess::Denied`] instead of stamping `checked_in_at` twice.
-/// Under [`DecklistPolicy::RequiredToCheckIn`], a player with no decklist on
-/// file is refused *before* that `UPDATE` runs at all — [`CheckInOutcome::DecklistMissing`],
-/// not [`TournamentAccess::Denied`], since the actor is allowed here, just not
-/// ready yet.
+/// Check a participant in; staff only, since presence is observed at the desk
 #[instrument(name = "check_in", skip(tx, actor))]
 pub async fn check_in(
     tx: &mut Transaction,
@@ -933,13 +745,6 @@ pub async fn check_in(
 }
 
 /// Drop a participant, self-service or by staff
-///
-/// Takes from [`ParticipantStatus::Registered`] or
-/// [`ParticipantStatus::CheckedIn`] — the two "still active" statuses; a row
-/// already [`ParticipantStatus::Dropped`] or
-/// [`ParticipantStatus::Disqualified`] answers [`TournamentAccess::Denied`]
-/// rather than being dropped again. `dropped_after_round` is always `0` in
-/// M1: no round has been played yet for it to name.
 #[instrument(name = "drop", skip(tx, actor))]
 pub async fn drop(
     tx: &mut Transaction,
@@ -951,9 +756,7 @@ pub async fn drop(
         return Ok(TournamentAccess::Denied);
     }
 
-    // The last scoring round they were part of. Zero keeps meaning "never
-    // played a round", which is what the roster already writes for somebody
-    // dropped because they never checked in.
+    // The last scored round; 0 still means "never played a round".
     let dropped_after = super::round::scored_progress(&mut *tx, tournament)
         .await?
         .latest;
@@ -1001,12 +804,7 @@ pub async fn drop(
     Ok(TournamentAccess::Granted(()))
 }
 
-/// Remove a participant outright
-///
-/// A hard delete — allowed in M1 because nobody has played a round yet; M2
-/// adds the "owns a seat in a pairing" refusal. Reads the display name before
-/// deleting so the audit entry still names who was removed after the row is
-/// gone.
+/// Remove a participant outright, keeping their name in the audit entry
 #[instrument(name = "remove", skip(tx))]
 pub async fn remove(
     tx: &mut Transaction,
@@ -1102,17 +900,6 @@ pub enum FixedTableChange {
 }
 
 /// Pin a player to one table, or release them
-///
-/// The pairing engine numbers the table they land at after the pin; when two
-/// pinned players meet, the first in seat order keeps theirs.
-///
-/// @param tx the transaction to write in
-/// @param organizer_account who is asking
-/// @param tournament the participant belongs to
-/// @param participant whose pin
-/// @param table the table, `None` to release them
-///
-/// @returns whether the pin was written
 #[instrument(name = "participant::set_fixed_table", skip(tx))]
 pub async fn set_fixed_table(
     tx: &mut Transaction,

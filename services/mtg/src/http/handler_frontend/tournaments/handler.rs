@@ -1,14 +1,4 @@
-//! Handlers for the tournament roster surface
-//!
-//! Two blocks share this module, wired separately in [`super::initialize_routes`]:
-//! reads and self-service reachable through the [`TournamentActor`] extractor
-//! carry no [`AuthRequiredLayer`](crate::http::middleware::auth_required::AuthRequiredLayer) —
-//! that is deliberate, not an oversight, see the module docs there — while
-//! every staff mutation sits behind it and additionally extracts a bare
-//! [`Account`]. Every function that hands out or touches a [`Tournament`] or
-//! [`TournamentParticipant`] still runs through its model-layer guard
-//! regardless of which block a handler lives in; the layer only decides
-//! whether an [`Account`] must exist at all, never whether it may act.
+//! Handlers of the tournament endpoints
 
 use std::collections::HashMap;
 use std::collections::hash_map::DefaultHasher;
@@ -144,8 +134,6 @@ use crate::models::tournament::venue;
 use crate::models::visibility::Visibility;
 use crate::tournament::timer::TimerAction;
 
-// --- actor block: no `AuthRequiredLayer`, identity via `TournamentActor` ---
-
 /// Every tournament the actor may see
 #[get("/")]
 pub async fn list_tournaments(
@@ -174,9 +162,6 @@ pub async fn get_tournament(
     else {
         return Err(denied());
     };
-    // The true roster size, never redacted by `roster_view` — an event may
-    // advertise "12 angemeldet" while keeping the names to itself. Counted
-    // the same way `TournamentListEntryResponse::participant_count` is.
     let participant_count = participant::list(&mut tx, tournament_uuid).await?.len() as i64;
 
     tx.commit().await?;
@@ -187,16 +172,7 @@ pub async fn get_tournament(
     )))
 }
 
-/// A tournament's roster, redacted through [`public::roster_view`]
-///
-/// This is the leak the model layer's own docs warn about: skip
-/// [`public::roster_view`]/[`public::apply_roster_view`] here and a
-/// [`crate::models::visibility::Visibility::Public`] tournament hands every
-/// guest's real name to any logged-in stranger, using nothing but this
-/// ordinary authed read — no share token needed. The share surface
-/// ([`crate::http::handler_frontend::shared::handler::list_shared_tournament_participants`])
-/// applies the identical decision with `is_staff`/`is_participant` both
-/// `false`.
+/// A tournament's roster, with guest names redacted through [`public::roster_view`]
 #[get("/{tournament}/participants")]
 pub async fn list_tournament_participants(
     actor: TournamentActor,
@@ -217,9 +193,6 @@ pub async fn list_tournament_participants(
         with_viewer.participant.is_some(),
     );
     let participants = public::apply_roster_view(view, with_viewer.participant, participants);
-    // One extra query, not one per row: `decklist::submitted` never touches
-    // decklist text, which is exactly the point of that table living apart
-    // from the participant row.
     let submitted = decklist::submitted(&mut tx, tournament_uuid).await?;
 
     tx.commit().await?;
@@ -235,12 +208,7 @@ pub async fn list_tournament_participants(
     }))
 }
 
-/// Check in, self-service or by staff
-///
-/// Under [`crate::models::tournament::DecklistPolicy::RequiredToCheckIn`], a
-/// player with no decklist on file is refused with
-/// [`CheckInErrors::decklist_missing`] instead of the generic denial — see
-/// [`participant::check_in`].
+/// Check a participant in at the desk (staff only)
 #[post("/{tournament}/participants/{participant}/check-in")]
 pub async fn check_in_tournament_participant(
     actor: TournamentActor,
@@ -283,10 +251,6 @@ pub async fn drop_tournament_participant(
 }
 
 /// Read a participant's decklist — staff, or the participant themself
-///
-/// Guard: [`decklist::get`]. See [`get_decklist_response`] for how
-/// [`GetDecklistResponse::locked`]/[`GetDecklistResponse::may_edit`] are
-/// filled in.
 #[get("/{tournament}/participants/{participant}/decklist")]
 pub async fn get_participant_decklist(
     actor: TournamentActor,
@@ -302,12 +266,7 @@ pub async fn get_participant_decklist(
     Ok(ApiJson(response))
 }
 
-/// Write, replace or clear a participant's decklist — staff, or the
-/// participant themself while the tournament's decklists are not locked
-///
-/// Guard: [`decklist::set`]. `deck` and `text` both present is refused as
-/// [`DecklistErrors::invalid_decklist`] before the guard even runs — a
-/// request names at most one source.
+/// Write, replace or clear a participant's decklist — staff, or the player while unlocked
 #[put("/{tournament}/participants/{participant}/decklist")]
 pub async fn set_participant_decklist(
     actor: TournamentActor,
@@ -339,9 +298,6 @@ pub async fn set_participant_decklist(
             errors.locked = true;
             return errors.fail();
         }
-        // An empty deck is not a list anybody can register either — folded
-        // into the same field as an unknown/unowned one, see
-        // `DecklistErrors::unknown_deck`'s doc comment.
         DecklistChange::UnknownDeck | DecklistChange::EmptyDeck => {
             let mut errors = FormErrors::<DecklistErrors>::new();
             errors.unknown_deck = true;
@@ -362,14 +318,7 @@ pub async fn set_participant_decklist(
     Ok(ApiJson(response))
 }
 
-// --- management block: behind `AuthRequiredLayer`, identity via `Account` ---
-
 /// Create a tournament; the caller becomes its owner
-///
-/// A non-blank `venue` is remembered into the caller's own venue book — see
-/// [`remember_venue`]. It is written *before* the tournament, because
-/// building the insert consumes the request; the two share one transaction,
-/// so a tournament that fails to insert takes the remembered venue with it.
 #[post("/")]
 pub async fn create_tournament(
     account: Account,
@@ -403,15 +352,7 @@ pub async fn create_tournament(
     )))
 }
 
-/// Update a tournament's settings
-///
-/// The always-editable fields (name, description, venue, start time, round
-/// length) go through even while the event is running; a structural change
-/// (format, pod size, pairing, scoring, ...) while [`SettingsChange::Locked`]
-/// answers [`TournamentSettingsErrors::settings_locked`] instead — see
-/// [`Tournament::update_settings`]'s doc comment for exactly what counts as
-/// structural. A non-blank `venue` is remembered into the caller's own venue
-/// book — see [`remember_venue`] — once the write actually goes through.
+/// Update a tournament's settings; structural changes are refused once settings lock
 #[put("/{tournament}")]
 pub async fn update_tournament(
     account: Account,
@@ -479,9 +420,7 @@ pub async fn set_tournament_status(
             TournamentAccess::Granted(StatusChange::Changed {
                 dropped_awaiting_check_in,
             }) => dropped_awaiting_check_in,
-            // Not a guard denial — the actor may manage this tournament, the
-            // move itself just is not legal from where it stands. A distinct
-            // message earns its keep here.
+            // Allowed actor, illegal move: a distinct message rather than `denied()`.
             TournamentAccess::Granted(StatusChange::InvalidTransition) => {
                 return Err(ApiError::bad_request(
                     "That status transition is not allowed",
@@ -497,11 +436,7 @@ pub async fn set_tournament_status(
     }))
 }
 
-/// Change who may see a tournament
-///
-/// Discards the freshly minted share token the same way
-/// [`crate::http::handler_frontend::decks::handler::set_visibility_deck`]
-/// does: the client re-fetches [`get_tournament`] for it.
+/// Change who may see a tournament; the client re-fetches it for the new share token
 #[put("/{tournament}/visibility")]
 pub async fn set_tournament_visibility(
     account: Account,
@@ -548,8 +483,7 @@ pub async fn revoke_tournament_join_code(
     Ok(ApiJson(()))
 }
 
-/// Lock every decklist in the tournament: players may no longer write their
-/// own, staff still can
+/// Lock every decklist in the tournament; staff can still edit them
 #[post("/{tournament}/decklists/lock")]
 pub async fn lock_tournament_decklists(
     account: Account,
@@ -659,18 +593,9 @@ pub async fn remove_tournament_organizer(
     Ok(ApiJson(()))
 }
 
-/// Walk a guest into the roster by name
+/// Put a player on the roster from the desk, by account or as a guest by name
 ///
-/// [`participant::register_guest`] trusts its `added_by` argument to mean the
-/// caller already holds a role — this is the one place in the module tree
-/// allowed to make that promise, immediately after checking it.
-///
-/// `decklist_text`, if given, is written in the same transaction right after
-/// the row exists to hold it — no policy check here, the same as
-/// `register_guest` itself: an organizer may register a walk-in with or
-/// without a list regardless of [`crate::models::tournament::DecklistPolicy`],
-/// since a policy governs self-service registration, not staff typing
-/// somebody in by hand.
+/// No decklist-policy check: the policy only governs self-service registration.
 #[post("/{tournament}/participants")]
 pub async fn add_tournament_participant(
     account: Account,
@@ -691,9 +616,6 @@ pub async fn add_tournament_participant(
         return Err(denied());
     };
 
-    // Two doors into the same roster. With an account the row is claimed from
-    // the start, so the name defaults to that account's username; without one
-    // the organizer has to have typed something.
     let outcome = match seated_account {
         Some(seated_account) => {
             let Some(seated) = Account::get_by_uuid(&mut tx, seated_account).await? else {
@@ -701,7 +623,6 @@ pub async fn add_tournament_participant(
                 errors.unknown_account = true;
                 return errors.fail();
             };
-            // Always fits: `Username::MAX_LEN` is 32, well under `MaxStr<64>`.
             let display_name = display_name.unwrap_or_else(|| {
                 MaxStr::new(seated.username.as_str().to_owned())
                     .unwrap_or_else(|_| unreachable!("a username is at most 32 characters"))
@@ -782,12 +703,7 @@ pub async fn add_tournament_participant(
     )))
 }
 
-/// What a client polls to know whether anything moved
-///
-/// In the actor block on purpose: a guest's phone is exactly the device that
-/// needs this most, and wrapping it in an auth layer would lock the room out.
-/// Deliberately cheap — a handful of indexed reads and never a standings
-/// computation, because every phone hits it on a timer.
+/// What a client polls to know whether anything moved; kept cheap, no standings
 #[get("/{tournament}/state")]
 pub async fn get_tournament_state(
     actor: TournamentActor,
@@ -1021,10 +937,6 @@ pub async fn set_tournament_round_timer(
 }
 
 /// Unwrap a lifecycle outcome, turning a refusal into its typed error
-///
-/// @param change what the model answered
-///
-/// @returns the round, or the refusal to return
 fn round_or_refusal(change: RoundChange) -> ApiResult<Round, RoundLifecycleErrors> {
     match change {
         RoundChange::Changed(round) => Ok(round),
@@ -1074,10 +986,6 @@ fn state_revision(tournament: &Tournament, round: Option<&Round>, outstanding: i
 }
 
 /// Every table of one round
-///
-/// In the actor block beside the round list: a player's own table is the single
-/// thing their phone is open for, and an auth layer here would lock out every
-/// guest in the room.
 #[get("/{tournament}/rounds/{round}/tables")]
 pub async fn list_round_tables(
     actor: TournamentActor,
@@ -1102,11 +1010,6 @@ pub async fn list_round_tables(
 }
 
 /// Pair a round, replacing whatever it already held
-///
-/// One endpoint for both the first pairing and every re-pair after it. There is
-/// no preview to commit: the race a staged pairing would guard is better served
-/// by pressing this again, and writing straight through survives a crashed tab
-/// and a locked phone, which a staged one does not.
 #[post("/{tournament}/rounds/{round}/pairings")]
 pub async fn pair_tournament_round(
     account: Account,
@@ -1232,8 +1135,6 @@ pub async fn list_round_meetings(
 }
 
 /// The viewer's own table in the round the room is on
-///
-/// In the actor block, because the phone asking is usually a guest's.
 #[get("/{tournament}/my-match")]
 pub async fn get_my_tournament_match(
     actor: TournamentActor,
@@ -1273,11 +1174,7 @@ pub async fn get_my_tournament_match(
 
 /// Report what happened at your own table
 ///
-/// In the actor block, because the people this exists for are the ones playing
-/// — a guest's phone included. The guard behind it asks whether the caller is
-/// *sitting at this table* before it asks whether they run the event, so an
-/// organizer who is also playing reports like everybody else rather than
-/// silently confirming their own match.
+/// Seat is checked before role, so a playing organizer reports like everyone else.
 #[post("/{tournament}/matches/{match}/report")]
 pub async fn report_match_result(
     actor: TournamentActor,
@@ -1327,11 +1224,7 @@ pub async fn report_match_result(
     Ok(ApiJson(MatchTableResponse::from(table)))
 }
 
-/// Write a table's result from the desk
-///
-/// Beats every player report on that table and skips the confirmation dance
-/// entirely: the desk is authoritative, and the two-sided flow exists to save an
-/// organizer walking to the table, not to constrain them once they have.
+/// Write a table's result from the desk, overriding every player report
 #[put("/{tournament}/matches/{match}/result")]
 pub async fn set_match_result(
     account: Account,
@@ -1346,8 +1239,7 @@ pub async fn set_match_result(
         winner_games: request.winner_games,
         loser_games: request.loser_games,
         games_drawn: request.games_drawn,
-        // The desk's own write is not a report and never lands in a report row,
-        // so it has no tap to be idempotent about.
+        // Deliberately empty: the desk's write never lands in a report row.
         client_key: MaxStr::new(String::new())
             .unwrap_or_else(|_| unreachable!("the empty string fits in sixty-four characters")),
     };
@@ -1369,10 +1261,7 @@ pub async fn set_match_result(
     Ok(ApiJson(MatchTableResponse::from(table)))
 }
 
-/// Take the desk's result back off a table
-///
-/// Drops to whatever the players had agreed rather than to nothing, which is the
-/// undo for a mistyped result.
+/// Take the desk's result back off a table, falling back to the players' reports
 #[delete("/{tournament}/matches/{match}/result")]
 pub async fn clear_match_result(
     account: Account,
@@ -1397,10 +1286,6 @@ pub async fn clear_match_result(
 }
 
 /// Turn a refusal from the desk's own result calls into its typed error
-///
-/// @param change what the model layer answered
-///
-/// @returns nothing when the write went through
 fn result_or_refusal(change: ResultChange) -> ApiResult<(), SetResultErrors> {
     match change {
         ResultChange::Changed(_) => Ok(()),
@@ -1417,12 +1302,7 @@ fn result_or_refusal(change: ResultChange) -> ApiResult<(), SetResultErrors> {
     }
 }
 
-/// Where everybody stands
-///
-/// In the actor block: the standings are the thing a player refreshes between
-/// rounds, and a guest's phone is exactly the device doing it. Whose rows come
-/// back is the same decision the roster goes through, so a guest who appears as
-/// "Gast 7" on one screen is "Gast 7" on the other.
+/// Where everybody stands, with names redacted the same way as the roster
 #[get("/{tournament}/standings")]
 pub async fn get_tournament_standings(
     actor: TournamentActor,
@@ -1441,10 +1321,7 @@ pub async fn get_tournament_standings(
         with_viewer.role.is_some(),
         with_viewer.participant.is_some(),
     );
-    // The names the viewer may see, pseudonymised by the one decision that owns
-    // it. Rows the view drops are dropped here too, but every row was *computed*
-    // over the whole field — an opponent percentage built from a redacted roster
-    // would simply be wrong.
+    // Rows are computed over the whole field; only the visible names are filtered.
     let visible: HashMap<_, _> = public::apply_roster_view(view, with_viewer.participant, roster)
         .into_iter()
         .map(|participant| (participant.uuid, participant.display_name))
@@ -1493,11 +1370,7 @@ pub async fn get_tournament_standings(
     }))
 }
 
-/// Look accounts up by username, to seat a player whose phone is dead
-///
-/// Organizer-only and tournament-scoped: the guard is the role on this event,
-/// and the answer says which hits are already on this roster so the dialog can
-/// grey them out. A blank needle answers nothing rather than the whole table.
+/// Look accounts up by username, to seat a player at the desk
 #[get("/{tournament}/player-search")]
 pub async fn search_tournament_players(
     account: Account,
@@ -1612,15 +1485,7 @@ pub async fn delete_tournament_participant(
     Ok(ApiJson(()))
 }
 
-/// Hand a guest row's live claim token to staff, e.g. to render as a QR code
-/// for a walk-in to scan
-///
-/// Guard: [`participant::claim_token`] — any role, deliberately not
-/// [`TournamentRole::may_manage`], the same reasoning as
-/// [`update_tournament_participant`]: walking a guest through claiming their
-/// own row is exactly what a scorekeeper is for. `claim_token: None` covers
-/// both "already claimed" and "this is an account row" — either way there is
-/// no live token to show, and the caller has no reason to tell the two apart.
+/// A guest row's live claim token, for any staff role to show as a QR code
 #[get("/{tournament}/participants/{participant}/claim-token")]
 pub async fn get_participant_claim_token(
     account: Account,
@@ -1688,11 +1553,6 @@ pub async fn list_tournament_audit(
 }
 
 /// The caller's own venue book, most recently used first
-///
-/// Note: `/venues` is a static path segment while `/{tournament}` is a
-/// dynamic one, so axum's router already prefers the static match here —
-/// nothing to arrange, just worth being aware of on a route table shaped
-/// like this one.
 #[get("/venues")]
 pub async fn list_tournament_venues(
     account: Account,
@@ -1740,13 +1600,7 @@ fn denied<E>() -> ApiError<E> {
     ApiError::bad_request("Request was denied")
 }
 
-/// Check a [`TournamentSettingsRequest`] against the bounds the model does
-/// not itself enforce
-///
-/// Kept separate from the model layer on purpose: `Tournament::create`/
-/// `update_settings` trust their caller, the same discipline as everywhere
-/// else in this module tree — the HTTP boundary is where user input actually
-/// gets checked.
+/// Check a settings request against the bounds the model does not enforce
 fn validate_settings(
     errors: &mut FormErrors<TournamentSettingsErrors>,
     settings: &TournamentSettingsRequest,
@@ -1794,10 +1648,6 @@ fn has_venue(venue: &Option<MaxStr<255>>) -> bool {
 }
 
 /// Blank `address`/`instructions` when `venue` does not name an actual place
-///
-/// An address with no place attached is not something any surface can
-/// render — shared by [`insert_from_settings`] and [`update_from_settings`]
-/// so the rule cannot drift between create and update.
 fn venue_pair(
     venue: &Option<MaxStr<255>>,
     address: Option<MaxStr<512>>,
@@ -1811,10 +1661,6 @@ fn venue_pair(
 }
 
 /// Trim a venue line, and read a blank one as no venue at all
-///
-/// Every surface tests a venue for emptiness rather than for `None`, so a
-/// stored `"   "` would draw a venue heading with nothing under it — and
-/// [`venue_pair`] has already thrown its address away by then.
 fn venue_name(venue: Option<MaxStr<255>>) -> Option<MaxStr<255>> {
     let venue = venue?;
     let trimmed = venue.trim();
@@ -1830,12 +1676,7 @@ fn venue_name(venue: Option<MaxStr<255>>) -> Option<MaxStr<255>> {
     )
 }
 
-/// Write a non-blank venue into the caller's own venue book, once the
-/// tournament write that named it has gone through
-///
-/// A no-op for a blank/`None` venue. The book's name column carries the same
-/// [`MaxStr<255>`] bound as a tournament's own venue line, so a name that got
-/// this far always fits and nothing is truncated.
+/// Write a non-blank venue into the caller's own venue book
 async fn remember_venue(
     tx: &mut Transaction,
     account: AccountUuid,
@@ -1855,8 +1696,7 @@ async fn remember_venue(
     venue::remember(tx, account, &name, address.as_ref(), instructions.as_ref()).await
 }
 
-/// Build a [`TournamentInsert`] from a validated [`TournamentSettingsRequest`] plus the
-/// visibility [`create_tournament`] takes alongside it
+/// Build a [`TournamentInsert`] from validated settings plus the visibility
 fn insert_from_settings(
     settings: TournamentSettingsRequest,
     visibility: Visibility,
@@ -1926,17 +1766,9 @@ fn update_from_settings(settings: TournamentSettingsRequest) -> TournamentUpdate
     }
 }
 
-/// Build a [`GetDecklistResponse`] for an actor whose access to `participant`
-/// [`decklist::get`] or [`decklist::set`] has already granted
+/// Build a [`GetDecklistResponse`] once a decklist guard has granted access
 ///
-/// Shared by [`get_participant_decklist`] and [`set_participant_decklist`]:
-/// both need the freshly read row plus the same `locked`/`may_edit` facts.
-/// [`Tournament::get_for_viewer`] is what supplies them — its guard is wider
-/// than [`decklist::get`]'s (it also lets a `Public` tournament's stranger
-/// through), but a decklist guard granting access already implies the actor
-/// holds a role or is the participant themself, either of which makes
-/// `get_for_viewer` succeed too, so its `None` branch here can never actually
-/// fire.
+/// The `get_for_viewer` denial cannot fire: a decklist grant implies viewer access.
 async fn get_decklist_response<E>(
     tx: &mut Transaction,
     actor: &TournamentActor,

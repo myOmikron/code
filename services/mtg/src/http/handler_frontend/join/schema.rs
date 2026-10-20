@@ -1,4 +1,4 @@
-//! Schemas for joining a tournament by its typed code
+//! Schemas for joining a tournament
 
 use galvyn::core::re_exports::schemars;
 use galvyn::core::re_exports::schemars::JsonSchema;
@@ -19,8 +19,7 @@ use crate::models::tournament::participant::ClaimTarget;
 pub struct JoinLookupResponse {
     /// The tournament the code names
     pub tournament: TournamentUuid,
-    /// The code itself, as stored — a typed one may have arrived lowercase or
-    /// with a separator, and a screen showing it wants the canonical form
+    /// The canonical stored form of the code
     pub join_code: MaxStr<8>,
     /// Name of the tournament
     pub name: MaxStr<128>,
@@ -36,8 +35,7 @@ pub struct JoinLookupResponse {
     pub venue: Option<MaxStr<255>>,
     /// The venue's address, meaningful only alongside [`Self::venue`]
     pub venue_address: Option<MaxStr<512>>,
-    /// How to actually get in — shown to everyone who can see this lookup,
-    /// same as the address
+    /// How to get in, shown to everyone who can see this lookup
     pub venue_instructions: Option<MaxStr<1024>>,
     /// How the tournament requires its players to hand in a decklist
     pub decklist_policy: DecklistPolicy,
@@ -47,18 +45,11 @@ pub struct JoinLookupResponse {
     pub max_participants: Option<i16>,
     /// Whether joining right now would actually register a player
     pub registration_open: bool,
-    /// Always `false` here — this route has no session to check against.
-    /// [`super::handler::join_tournament_by_code`] reports a stranded join
-    /// attempt as a form error instead, once it has an account to check.
+    /// Always `false`: this route has no session to check against
     pub already_registered: bool,
 }
 
-/// Request to join by code as a logged-in account
-///
-/// `deck` and `decklist_text` are mutually exclusive — both present answers
-/// [`JoinErrors::invalid_decklist`]; both absent is fine unless the
-/// tournament's [`Tournament::needs_decklist_to_register`](crate::models::tournament::Tournament::needs_decklist_to_register)
-/// says otherwise.
+/// Request to join by code as a logged-in account; `deck` and `decklist_text` are exclusive
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct JoinTournamentRequest {
     /// The name to appear under; `None` defaults to the account's username
@@ -86,16 +77,12 @@ pub struct JoinTournamentResponse {
 pub struct GuestJoinRequest {
     /// The name to appear under
     pub display_name: MaxStr<64>,
-    /// Paste a decklist directly — a guest never links a Planarium deck
+    /// Paste a decklist directly; guests cannot link a deck
     #[serde(default)]
     pub decklist_text: Option<MaxStr<16384>>,
 }
 
-/// What a successful guest join answers with
-///
-/// The one place outside [`crate::models::tournament::participant::register_guest`]
-/// itself a claim token is ever handed out — never repeated in a list
-/// response afterwards.
+/// What a successful guest join answers with; the only response carrying the claim token
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct GuestJoinResponse {
     /// The tournament joined
@@ -106,12 +93,7 @@ pub struct GuestJoinResponse {
     pub claim_token: MaxStr<64>,
 }
 
-/// What a claim token names, for the screen a scanned QR lands on before the
-/// player has committed to anything
-///
-/// Mirrors [`ClaimTarget`] field for field — its own public type rather than
-/// handing the model struct across the HTTP boundary directly, the same
-/// reasoning as every other response type in this module tree.
+/// What a claim token names, shown before the player commits to anything
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct ClaimTargetResponse {
     /// The tournament the row belongs to
@@ -148,11 +130,9 @@ pub struct JoinErrors {
     pub tournament_full: bool,
     /// The display name was empty or all whitespace
     pub empty_name: bool,
-    /// The tournament's [`crate::models::tournament::DecklistPolicy::RequiredToRegister`]
-    /// is set and neither `deck` nor `decklist_text` was given
+    /// The tournament requires a decklist to register and none was given
     pub decklist_missing: bool,
-    /// The named deck does not exist, is not the caller's, or rendered to
-    /// nothing playable — an empty deck is not a list anybody can register
+    /// The deck does not exist, is not the caller's, or is empty
     pub unknown_deck: bool,
     /// The pasted text was blank once trimmed, or both `deck` and
     /// `decklist_text` were given in the same request

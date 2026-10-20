@@ -1,7 +1,7 @@
 
 # TournamentStateResponse
 
-What a client polls to know whether anything moved  Deliberately cheap: a handful of indexed reads and no standings, because every phone in the room hits it on a timer.
+What every phone polls to know whether anything moved; kept cheap on purpose
 
 ## Properties
 

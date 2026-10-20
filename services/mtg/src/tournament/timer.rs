@@ -1,14 +1,4 @@
-//! The round clock
-//!
-//! Three columns and no background job. An expired clock has no side effect —
-//! the round stays open until the desk closes it, because "time is up" is an
-//! announcement a human makes, not a state change software is entitled to.
-//!
-//! Every function takes `now` rather than reading it, which is what makes the
-//! whole thing testable and what keeps this module inside its parent's rule
-//! against clocks. The server is the only authority on the time: a phone with
-//! a wrong clock is the normal case, not the exception, so responses carry
-//! both the deadline and the server's own reading of now.
+//! The round clock; every function takes the server's `now`, and expiry has no side effect
 
 use galvyn::core::re_exports::time::OffsetDateTime;
 
@@ -58,11 +48,6 @@ pub enum TimerState {
 }
 
 /// Read a clock's state
-///
-/// @param timer the round's three columns
-/// @param now the server's own reading of the time
-///
-/// @returns where the clock stands
 pub fn state(timer: &Timer, now: OffsetDateTime) -> TimerState {
     let Some(ends_at) = timer.ends_at else {
         return TimerState::Idle;
@@ -77,15 +62,7 @@ pub fn state(timer: &Timer, now: OffsetDateTime) -> TimerState {
     }
 }
 
-/// How many seconds are left, never below zero
-///
-/// A paused clock holds whatever it had when it stopped; an idle one reads as
-/// its full length, which is what the desk sees before pressing start.
-///
-/// @param timer the round's three columns
-/// @param now the server's own reading of the time
-///
-/// @returns the seconds left
+/// Seconds left, never below zero; an idle clock reads as its full length
 pub fn remaining_seconds(timer: &Timer, now: OffsetDateTime) -> i32 {
     let Some(ends_at) = timer.ends_at else {
         return timer.length_seconds.max(0);
@@ -95,18 +72,7 @@ pub fn remaining_seconds(timer: &Timer, now: OffsetDateTime) -> i32 {
     i32::try_from(left).unwrap_or(i32::MAX).max(0)
 }
 
-/// Apply what the desk did
-///
-/// Total by design: resuming a running clock, pausing a paused one and
-/// starting one that already runs all answer the clock unchanged. A judge
-/// under pressure double-taps, and a second tap that undoes the first would be
-/// worse than one that does nothing.
-///
-/// @param timer the round's three columns
-/// @param action what the desk did
-/// @param now the server's own reading of the time
-///
-/// @returns the columns to write back
+/// Apply a desk action; repeated or inapplicable actions leave the clock unchanged (double taps)
 pub fn apply(timer: &Timer, action: TimerAction, now: OffsetDateTime) -> Timer {
     match action {
         TimerAction::Start => {
@@ -134,8 +100,7 @@ pub fn apply(timer: &Timer, action: TimerAction, now: OffsetDateTime) -> Timer {
             };
             Timer {
                 length_seconds: timer.length_seconds,
-                // Push the deadline out by exactly as long as the clock stood
-                // still, so a pause never costs or gives anybody time.
+                // Shift the deadline by the paused span so a pause never costs time.
                 ends_at: Some(ends_at + (now - paused_at)),
                 paused_at: None,
             }
@@ -158,10 +123,6 @@ pub fn apply(timer: &Timer, action: TimerAction, now: OffsetDateTime) -> Timer {
 }
 
 /// Seconds as a duration, for the arithmetic above
-///
-/// @param seconds how many seconds
-///
-/// @returns the duration
 fn time_span(seconds: i32) -> galvyn::core::re_exports::time::Duration {
     galvyn::core::re_exports::time::Duration::seconds(i64::from(seconds))
 }
@@ -171,10 +132,6 @@ mod tests {
     use super::*;
 
     /// A clock of `length` seconds that has never been started
-    ///
-    /// @param length how long the round runs for
-    ///
-    /// @returns the idle clock
     fn idle(length: i32) -> Timer {
         Timer {
             length_seconds: length,
@@ -184,8 +141,6 @@ mod tests {
     }
 
     /// A fixed point in time to measure everything against
-    ///
-    /// @returns the reference instant
     fn t0() -> OffsetDateTime {
         OffsetDateTime::from_unix_timestamp(1_700_000_000).expect("a valid timestamp")
     }

@@ -1,7 +1,7 @@
 
 # RoundKind
 
-What a round is for  Only a [`Self::Swiss`] round carries a number, plays matches and moves the standings. The other two are the shape a limited event needs before it can start: a draft round groups people into pods so they open boosters together, and a deckbuilding round is a clock and nothing else. Both are rounds in the sense that they occupy the room and the timer, and in no other sense — see [`round::Round::number`].
+What a round is for; only Swiss rounds are numbered and scored
 
 ## Properties
 

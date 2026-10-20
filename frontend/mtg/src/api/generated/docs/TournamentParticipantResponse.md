@@ -1,7 +1,7 @@
 
 # TournamentParticipantResponse
 
-Somebody on a tournament\'s roster, as an actor may see them  [`Self::notes`] is `None` unless the viewer is staff — see [`Self::from_parts`].
+Somebody on a tournament\'s roster, as an actor may see them
 
 ## Properties
 

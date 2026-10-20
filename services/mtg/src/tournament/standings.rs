@@ -1,17 +1,4 @@
-//! Where everybody stands, and in what order
-//!
-//! Pure, like the rest of [`super`], and **entirely in fixed-point basis
-//! points** — 10 000 is 100 %, and there is not a float anywhere. Two reasons.
-//! A live standing and one frozen at the end of the event have to be
-//! byte-identical or somebody will notice the third decimal moving, and the
-//! precision stored is exactly the precision shown: a percentage renders as
-//! `xx.xx %`, which is one basis point, so two rows that look equal *are*
-//! equal. Comparing at a precision finer than the one on screen is how a
-//! standings table ends up impossible for a human to check by hand.
-//!
-//! The tiebreakers are fixed rather than configurable. Duels follow the Magic
-//! Tournament Rules' Appendix C; pods follow the judge community's Multiplayer
-//! Addendum, which answers a different question and so needs a different set.
+//! Standings and tiebreakers in basis points (MTR App. C for duels, Multiplayer Addendum for pods)
 
 use std::collections::HashMap;
 
@@ -23,16 +10,10 @@ pub type EntrantId = Uuid;
 /// 100 %, in the fixed point everything here is carried in
 pub const ONE: i64 = 10_000;
 
-/// The floor the MTR puts under a duel percentage
-///
-/// Literally 0.33 rather than a third: Appendix C names the number, and 1/3
-/// would put every hand-checked sheet one basis point out.
+/// MTR App. C: floor of exactly 0.33 (not a third) under averaged duel percentages
 const DUEL_FLOOR: i64 = 3_300;
 
-/// Game points for winning a game, per the MTR
-///
-/// Game points are not a tournament setting — match points are — so these stay
-/// at the values Appendix C fixes rather than following `points_win`.
+/// Game points for winning a game (fixed by MTR App. C, unlike match points)
 const GAME_POINTS_WIN: i32 = 3;
 
 /// Game points for a drawn game
@@ -62,10 +43,7 @@ pub struct Entrant {
     pub id: EntrantId,
     /// The first round they could have played, 1 for everybody who started
     pub entered_round: i16,
-    /// The last round they played, `None` for somebody still in
-    ///
-    /// `Some(0)` means they never played a round at all — the value the roster
-    /// already writes for a player dropped when the event started.
+    /// The last round they played, `None` while still in; `Some(0)` if they never played
     pub dropped_after_round: Option<i16>,
     /// The roster's own tiebreak seed, which breaks what nothing else does
     pub seed: i32,
@@ -151,16 +129,7 @@ pub struct Standing {
     pub opponents_average_points: i64,
 }
 
-/// Which tiebreakers this event actually applies, in order
-///
-/// Duels take Appendix C. Pods take the addendum's set instead, which leads
-/// with the player's own match-win percentage rather than their opponents' —
-/// in a pod only one of four can win, so raw points separate the field far
-/// less and a player's own rate says more than it does across a duel field.
-///
-/// @param pod_size how many a full table seats
-///
-/// @returns the tiebreakers, most significant first
+/// Tiebreakers applied for a pod size, most significant first
 pub fn tiebreakers(pod_size: usize) -> Vec<Tiebreaker> {
     if pod_size <= 2 {
         vec![
@@ -179,11 +148,7 @@ pub fn tiebreakers(pod_size: usize) -> Vec<Tiebreaker> {
     }
 }
 
-/// Work out the standings
-///
-/// @param snapshot the field and every settled table
-///
-/// @returns one row per entrant, best first
+/// Compute the standings, one row per entrant, best first
 pub fn standings(snapshot: &StandingsSnapshot) -> Vec<Standing> {
     let mut own: HashMap<EntrantId, Record> = snapshot
         .entrants
@@ -192,9 +157,7 @@ pub fn standings(snapshot: &StandingsSnapshot) -> Vec<Standing> {
         .collect();
     let mut public: HashMap<EntrantId, Record> = own.clone();
 
-    // A late entry takes a loss for every round it missed, and no opponents
-    // with it — which is the point: their arrival must not move anybody's
-    // opponent percentages, only their own standing.
+    // Missed rounds count as losses without opponents, so a late entry moves nobody else's OMW.
     for entrant in &snapshot.entrants {
         let missed = i32::from(entrant.entered_round.max(1) - 1);
         if missed > 0 {
@@ -214,8 +177,7 @@ pub fn standings(snapshot: &StandingsSnapshot) -> Vec<Standing> {
             let Some(seat) = table.seats.first() else {
                 continue;
             };
-            // Counted in the player's own record and left out of the one their
-            // opponents average. See `bye_games` for the game score it carries.
+            // MTR: byes count in the player's own record but not in the one opponents average.
             if let Some(record) = own.get_mut(&seat.id) {
                 let (won, played) = bye_games(snapshot.games_per_match);
                 record.match_points += snapshot.points_bye;
@@ -273,8 +235,6 @@ pub fn standings(snapshot: &StandingsSnapshot) -> Vec<Standing> {
         }
     }
 
-    // The percentages every average below is built out of, floored once here so
-    // that nothing downstream can forget to.
     let floor = floor_for(snapshot);
     let opponent_match_win: HashMap<EntrantId, i64> = public
         .iter()
@@ -294,9 +254,7 @@ pub fn standings(snapshot: &StandingsSnapshot) -> Vec<Standing> {
         .iter()
         .map(|entrant| {
             let record = &own[&entrant.id];
-            // A short pod played one opponent fewer than a full one, so its
-            // seats get a phantom opponent at the floor. Without it, sitting at
-            // a three is worth more than sitting at a four purely by arithmetic.
+            // Short pods add a phantom opponent at the floor, else a three outscores a four.
             let phantoms = record.short_pods as usize;
             Standing {
                 id: entrant.id,
@@ -326,10 +284,7 @@ pub fn standings(snapshot: &StandingsSnapshot) -> Vec<Standing> {
         compare(left, right, &order).then_with(|| seeds[&left.id].cmp(&seeds[&right.id]))
     });
 
-    // Standard competition ranking: everybody equal on every applied tiebreaker
-    // shares a place, and the next place skips the ones they used up. The seed
-    // breaks the total order but never the printed place — it is a coin toss,
-    // and a coin toss is not a reason to print somebody second.
+    // Standard competition ranking; the seed breaks the total order but never the printed place.
     let mut place = 1;
     for index in 0..rows.len() {
         if index > 0 && compare(&rows[index - 1], &rows[index], &order) != std::cmp::Ordering::Equal
@@ -343,12 +298,6 @@ pub fn standings(snapshot: &StandingsSnapshot) -> Vec<Standing> {
 }
 
 /// Compare two rows on the applied tiebreakers alone
-///
-/// @param left one row
-/// @param right the other
-/// @param order which tiebreakers this event applies
-///
-/// @returns how they compare, better first
 fn compare(left: &Standing, right: &Standing, order: &[Tiebreaker]) -> std::cmp::Ordering {
     for tiebreaker in order {
         let ordering = match tiebreaker {
@@ -372,15 +321,7 @@ fn compare(left: &Standing, right: &Standing, order: &[Tiebreaker]) -> std::cmp:
     std::cmp::Ordering::Equal
 }
 
-/// The floor under every percentage that feeds an average
-///
-/// The MTR names 0.33 for duels. The addendum generalises it to "one match
-/// point out of a win", which is the same number when a win is worth three and
-/// the right one when a pod win is worth seven.
-///
-/// @param snapshot the event
-///
-/// @returns the floor, in basis points
+/// The floor under averaged percentages (pods: one match point out of a win, per the addendum)
 fn floor_for(snapshot: &StandingsSnapshot) -> i64 {
     if snapshot.pod_size <= 2 {
         DUEL_FLOOR
@@ -389,28 +330,13 @@ fn floor_for(snapshot: &StandingsSnapshot) -> i64 {
     }
 }
 
-/// The game record a bye carries in its own player's record
-///
-/// A clean win at this event's match length — two games at best of three, one
-/// at best of one — rather than a fixed 2–0 that would be nonsense in a
-/// single-game event. It is left out of the record opponents average entirely.
-///
-/// @param games_per_match best of how many
-///
-/// @returns games won and games played
+/// A bye's games won and played: a clean win at this event's match length
 fn bye_games(games_per_match: i16) -> (i32, i32) {
     let wins = (i32::from(games_per_match.max(1)) / 2) + 1;
     (wins, wins)
 }
 
 /// The mean of a lookup over a list of opponents, with phantoms at the floor
-///
-/// @param opponents who they played, with multiplicity
-/// @param lookup each opponent's already-floored value
-/// @param phantoms how many phantom opponents to add at the floor
-/// @param floor what a phantom is worth, and the answer when there is nobody
-///
-/// @returns the mean, in basis points
 fn mean(
     opponents: &[EntrantId],
     lookup: &HashMap<EntrantId, i64>,
@@ -430,11 +356,6 @@ fn mean(
 }
 
 /// The mean of the opponents' raw match points
-///
-/// @param opponents who they played, with multiplicity
-/// @param lookup each opponent's match points
-///
-/// @returns the mean, in the same fixed point as every other column
 fn mean_points(opponents: &[EntrantId], lookup: &HashMap<EntrantId, i32>) -> i64 {
     if opponents.is_empty() {
         return 0;
@@ -473,10 +394,6 @@ struct Record {
 
 impl Record {
     /// Share of the match points they could have taken
-    ///
-    /// @param points_win what a win is worth at this event
-    ///
-    /// @returns the percentage, in basis points
     fn match_win(&self, points_win: i32) -> i64 {
         let possible = i64::from(self.matches) * i64::from(points_win.max(1));
         if possible <= 0 {
@@ -486,8 +403,6 @@ impl Record {
     }
 
     /// Share of the game points they could have taken
-    ///
-    /// @returns the percentage, in basis points
     fn game_win(&self) -> i64 {
         let possible = i64::from(self.games) * i64::from(GAME_POINTS_WIN);
         if possible <= 0 {
@@ -502,19 +417,11 @@ mod tests {
     use super::*;
 
     /// One of the players
-    ///
-    /// @param n which one
-    ///
-    /// @returns their id
     fn p(n: u128) -> EntrantId {
         Uuid::from_u128(n)
     }
 
-    /// An entrant who started with the event and never left
-    ///
-    /// @param n which one, also their seed
-    ///
-    /// @returns the entrant
+    /// An entrant present from round one, seeded `n`
     fn entrant(n: u128) -> Entrant {
         Entrant {
             id: p(n),
@@ -525,14 +432,6 @@ mod tests {
     }
 
     /// A decided duel
-    ///
-    /// @param round which round
-    /// @param winner who took it
-    /// @param loser who did not
-    /// @param winner_games games the winner took
-    /// @param loser_games games the loser took
-    ///
-    /// @returns the table
     fn duel(
         round: i16,
         winner: u128,
@@ -561,11 +460,6 @@ mod tests {
     }
 
     /// A bye
-    ///
-    /// @param round which round
-    /// @param who took it
-    ///
-    /// @returns the table
     fn bye(round: i16, who: u128) -> MatchRecord {
         MatchRecord {
             round_number: round,
@@ -582,13 +476,6 @@ mod tests {
     }
 
     /// A decided pod
-    ///
-    /// @param round which round
-    /// @param winner who took it
-    /// @param rest who else sat there
-    /// @param short whether the pod was a player light
-    ///
-    /// @returns the table
     fn pod(round: i16, winner: u128, rest: &[u128], short: bool) -> MatchRecord {
         let mut seats = vec![SeatRecord {
             id: p(winner),
@@ -610,11 +497,6 @@ mod tests {
     }
 
     /// A duel event's snapshot
-    ///
-    /// @param entrants how many players
-    /// @param matches the settled tables
-    ///
-    /// @returns the snapshot
     fn duels(entrants: u128, matches: Vec<MatchRecord>) -> StandingsSnapshot {
         StandingsSnapshot {
             pod_size: 2,
@@ -629,19 +511,13 @@ mod tests {
     }
 
     /// The row for one player
-    ///
-    /// @param rows the standings
-    /// @param who which player
-    ///
-    /// @returns their row
     fn row(rows: &[Standing], who: u128) -> &Standing {
         rows.iter().find(|row| row.id == p(who)).expect("a row")
     }
 
     #[test]
     fn fixture_four_duels_over_two_rounds_to_the_basis_point() {
-        // R1: 1 beats 2 two-nil, 3 beats 4 two-one.
-        // R2: 1 beats 3 two-one, 2 beats 4 two-nil.
+        // R1: 1 beats 2 (2-0), 3 beats 4 (2-1); R2: 1 beats 3 (2-1), 2 beats 4 (2-0).
         let rows = standings(&duels(
             4,
             vec![
@@ -659,14 +535,11 @@ mod tests {
         assert_eq!(one.opponent_match_win, 5_000, "both opponents on 3 of 6");
         assert_eq!(one.opponent_game_win, 5_000);
 
-        // Four lost both, so every percentage of theirs is floored when
-        // somebody else averages it — but their own is reported raw.
         let four = row(&rows, 4);
         assert_eq!(four.match_points, 0);
         assert_eq!(four.match_win, 0);
         assert_eq!(four.game_win, 2_000, "three game points from fifteen");
 
-        // Two and three took one each and played the same quality of field.
         let two = row(&rows, 2);
         let three = row(&rows, 3);
         assert_eq!(two.opponent_match_win, 6_650, "(10000 + floored 3300) / 2");
@@ -714,8 +587,6 @@ mod tests {
         assert_eq!(five.opponents_average_points, 0);
         assert_eq!((one.place, five.place), (1, 1), "nothing separates them");
 
-        // The short pod's losers played a winner across two opponents rather
-        // than three, so their opponents' average points is the higher one.
         let two = row(&rows, 2);
         let six = row(&rows, 6);
         assert_eq!(two.opponents_average_points, 23_333, "(7 + 0 + 0) / 3");

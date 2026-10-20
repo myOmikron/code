@@ -1,30 +1,14 @@
-//! What happened at a table, out of everything anybody said about it
-//!
-//! Pure, like the rest of [`super`]. The desk and the players share one state
-//! machine without either of them owning it: a stored [`MatchStatus`] is
-//! written on every change and **never read back as truth**, because the truth
-//! is the report rows plus whatever the desk wrote, and deriving it every time
-//! is what keeps forty phones and one laptop from disagreeing.
-//!
-//! [`MatchStatus`]: crate::models::tournament::MatchStatus
+//! Derives a table's result from reports and desk ruling; the stored `MatchStatus` is never read
 
 use uuid::Uuid;
 
 /// Whoever occupies one seat — a participant today, a team later
 pub type EntrantId = Uuid;
 
-/// How many seats have to say the same thing before a table is settled
-///
-/// Two, for a pod of five as much as for a duel. Demanding every seat is not
-/// how a room works — somebody always walks off to get a drink — and the desk
-/// can override whatever two people agreed on anyway.
+/// How many seats must agree before a table is settled, for duels and pods alike
 pub const REQUIRED_AGREEMENTS: usize = 2;
 
-/// What somebody says happened at a table
-///
-/// Compared whole, game score included: game wins feed the tiebreakers, so two
-/// players who agree on the winner and disagree on whether it was 2–0 or 2–1
-/// have not agreed on the result.
+/// What somebody says happened at a table, compared whole (game score feeds tiebreakers)
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Outcome {
     /// Who won, `None` for a draw
@@ -74,22 +58,9 @@ pub enum MatchState {
     Disputed,
 }
 
-/// Work out where a table stands
-///
-/// Resolution order, with **disagreement beating agreement**: a bye is settled
-/// the moment it is dealt; the desk's own result beats everything and does not
-/// consult the reports at all; claims from anybody not seated there are
-/// dropped; nothing said leaves it unreported; any two claims differing at all
-/// disputes it, even if two others agree; otherwise enough agreement confirms
-/// it and anything less is pending.
-///
-/// @param input everything known about the table
-///
-/// @returns where it stands
+/// Resolve where a table stands; any disagreement disputes it, even against an agreeing pair
 pub fn resolve(input: &MatchInput<'_>) -> MatchState {
     if input.is_bye {
-        // Nobody played it, so there is nothing for anybody to report and no
-        // reason to leave it open.
         return MatchState::Confirmed(Outcome {
             winner: input.seats.first().copied(),
             draw: false,
@@ -102,9 +73,7 @@ pub fn resolve(input: &MatchInput<'_>) -> MatchState {
         return MatchState::Confirmed(outcome);
     }
 
-    // A claim from somebody who is not at this table, or naming a winner who is
-    // not, says nothing about it. Dropped rather than disputed: a stale phone
-    // should not be able to hold up a table it is not sitting at.
+    // Off-table claims are dropped, not disputed, so a stale phone cannot hold up a table.
     let claims: Vec<&Claim> = input
         .claims
         .iter()
@@ -134,19 +103,11 @@ mod tests {
     use super::*;
 
     /// One of the players at the table
-    ///
-    /// @param n which one
-    ///
-    /// @returns their id
     fn seat(n: u128) -> EntrantId {
         Uuid::from_u128(n)
     }
 
-    /// A two-nil win for `winner`
-    ///
-    /// @param winner who took it
-    ///
-    /// @returns the outcome
+    /// A 2-0 win for `winner`
     fn win(winner: EntrantId) -> Outcome {
         Outcome {
             winner: Some(winner),
@@ -158,8 +119,6 @@ mod tests {
     }
 
     /// A drawn match
-    ///
-    /// @returns the outcome
     fn drawn() -> Outcome {
         Outcome {
             winner: None,
@@ -171,11 +130,6 @@ mod tests {
     }
 
     /// A table of two, with whatever has been said about it
-    ///
-    /// @param seats who is there
-    /// @param claims what they said
-    ///
-    /// @returns the input
     fn table<'a>(seats: &'a [EntrantId], claims: &'a [Claim]) -> MatchInput<'a> {
         MatchInput {
             is_bye: false,

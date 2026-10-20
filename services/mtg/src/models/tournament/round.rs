@@ -1,15 +1,4 @@
-//! Rounds: the clock, and — from the next milestone — the tables under it
-//!
-//! Follows the guard discipline the rest of this module tree documents: no
-//! function hands out a round without an actor to check it against, and the
-//! raw reads are private to the module.
-//!
-//! One deviation worth stating, because it looks like a mistake: the write
-//! paths here guard on [`Tournament::role_of`] holding *any* role rather than
-//! on [`TournamentRole::may_manage`]. `may_manage` is false for a
-//! [`OrganizerRole::Scorekeeper`], and running rounds and results is precisely
-//! what a scorekeeper is for — the same call
-//! [`crate::models::tournament::participant::update`] already makes.
+//! Rounds of a tournament and their clock
 
 use galvyn::core::re_exports::time::OffsetDateTime;
 use galvyn::rorm;
@@ -72,8 +61,6 @@ pub struct Round {
 
 impl Round {
     /// The round's clock, as the pure engine wants it
-    ///
-    /// @returns the three columns
     pub fn timer(&self) -> Timer {
         Timer {
             length_seconds: self.length_seconds,
@@ -127,16 +114,7 @@ pub struct ScoredProgress {
     pub latest: i16,
 }
 
-/// How far this event has got through its scoring rounds
-///
-/// Only [`RoundKind::Swiss`] rounds are counted: a draft pod stage and a
-/// deckbuilding stage occupy the room without being rounds anybody played, and
-/// a late entry must not take a loss for missing one.
-///
-/// @param tx the transaction to read in
-/// @param tournament whose rounds
-///
-/// @returns what is behind the room and what it is on
+/// Progress through the Swiss rounds; draft and deckbuilding stages do not count
 #[instrument(name = "round::scored_progress", skip(tx))]
 pub async fn scored_progress(
     tx: &mut Transaction,
@@ -170,14 +148,7 @@ pub async fn scored_progress(
     })
 }
 
-/// Every round of a tournament, oldest first
-///
-/// No guard: the caller has already proved it may see this tournament.
-///
-/// @param tx the transaction to read in
-/// @param tournament whose rounds to read
-///
-/// @returns the rounds
+/// Every round of a tournament, oldest first (unguarded)
 #[instrument(name = "round::list", skip(tx))]
 pub async fn list(
     tx: &mut Transaction,
@@ -192,19 +163,12 @@ pub async fn list(
 }
 
 /// The round the room is on, `None` before the first one
-///
-/// @param tx the transaction to read in
-/// @param tournament whose round to read
-///
-/// @returns the latest round by sequence
 #[instrument(name = "round::current", skip(tx))]
 pub async fn current(
     tx: &mut Transaction,
     tournament: TournamentUuid,
 ) -> Result<Option<Round>, rorm::Error> {
-    // Read them all and take the head rather than `limit(1)`: an event has a
-    // handful of rounds, and rorm's builder cannot follow a limit with
-    // `optional()`.
+    // No `limit(1)`: rorm cannot follow a limit with `optional()`.
     let rounds = rorm::query(&mut *tx, TournamentRoundModel)
         .condition(TournamentRoundModel.tournament.equals(tournament.0))
         .order_desc(TournamentRoundModel.sequence)
@@ -213,16 +177,7 @@ pub async fn current(
     Ok(rounds.into_iter().next().map(Round::from))
 }
 
-/// Read one round of this tournament
-///
-/// Scoped to the tournament on purpose: a round uuid from another event must
-/// read as missing rather than as somebody else's round.
-///
-/// @param tx the transaction to read in
-/// @param tournament the round must belong to
-/// @param round which round
-///
-/// @returns the round, or `None`
+/// Read one round, scoped to the tournament so a foreign uuid reads as missing
 #[instrument(name = "round::one", skip(tx))]
 pub async fn one(
     tx: &mut Transaction,
@@ -239,20 +194,7 @@ pub async fn one(
     Ok(found.map(Round::from))
 }
 
-/// Add a round to a running tournament
-///
-/// The numbering is the whole trick: `sequence` counts every round and
-/// `number` counts only the scored ones, so a draft pod stage and a
-/// deckbuilding stage sit in the room's history without ever consuming a round
-/// number. Everything downstream — the standings, `entered_round`, "round 2 of
-/// 4" — reads `number`.
-///
-/// @param tx the transaction to write in
-/// @param account who is asking
-/// @param tournament to add a round to
-/// @param request what kind of round, and how long
-///
-/// @returns the round, or why not
+/// Add a round; `sequence` counts every round, `number` only the scored ones
 #[instrument(name = "round::create", skip(tx))]
 pub async fn create(
     tx: &mut Transaction,
@@ -296,14 +238,12 @@ pub async fn create(
     };
     let pod_size = match request.kind {
         RoundKind::Swiss => Some(event.pod_size),
-        // A draft pod is eight seats by convention, not by the event's table
-        // size — a pod of four drafting together would be a different event.
+        // Draft pods are eight seats by convention, whatever the event's table size.
         RoundKind::Draft => Some(DRAFT_POD_SIZE),
         RoundKind::Deckbuilding => None,
     };
-    // Bound to a `let` before the insert's `.await`: a `ThreadRng` temporary
-    // living across an await makes the whole handler future `!Send`, the same
-    // trap `participant::register_account` documents.
+    // Bound to a `let`: a `ThreadRng` temporary across the insert's `.await`
+    // would make the future `!Send`.
     let pairing_seed: i64 = rand::rng().random();
 
     let model = rorm::insert(&mut *tx, TournamentRoundModel)
@@ -338,13 +278,6 @@ pub async fn create(
 const DRAFT_POD_SIZE: i16 = 8;
 
 /// Hand a paired round to the room and start its clock
-///
-/// @param tx the transaction to write in
-/// @param account who is asking
-/// @param tournament the round belongs to
-/// @param round which round
-///
-/// @returns the round, or why not
 #[instrument(name = "round::start", skip(tx))]
 pub async fn start(
     tx: &mut Transaction,
@@ -395,19 +328,7 @@ pub async fn start(
     reread(&mut *tx, tournament, round).await
 }
 
-/// Close a round
-///
-/// Refuses while a scored round still has tables without a confirmed result,
-/// naming them, unless the desk insists. A round with no tables at all — a
-/// deckbuilding stage — always closes.
-///
-/// @param tx the transaction to write in
-/// @param account who is asking
-/// @param tournament the round belongs to
-/// @param round which round
-/// @param force whether to close it despite outstanding tables
-///
-/// @returns the round, or which tables are missing
+/// Close a round; refuses while tables lack a confirmed result unless `force`
 #[instrument(name = "round::complete", skip(tx))]
 pub async fn complete(
     tx: &mut Transaction,
@@ -458,13 +379,6 @@ pub async fn complete(
 }
 
 /// Delete a round nobody has played
-///
-/// @param tx the transaction to write in
-/// @param account who is asking
-/// @param tournament the round belongs to
-/// @param round which round
-///
-/// @returns whether it went
 #[instrument(name = "round::delete", skip(tx))]
 pub async fn delete(
     tx: &mut Transaction,
@@ -504,14 +418,6 @@ pub async fn delete(
 }
 
 /// Start, pause, adjust or reset a round's clock
-///
-/// @param tx the transaction to write in
-/// @param account who is asking
-/// @param tournament the round belongs to
-/// @param round which round
-/// @param action what the desk did
-///
-/// @returns the round with its new clock
 #[instrument(name = "round::set_timer", skip(tx))]
 pub async fn set_timer(
     tx: &mut Transaction,
@@ -553,11 +459,6 @@ pub async fn set_timer(
 }
 
 /// The table numbers of a round that have no confirmed result
-///
-/// @param tx the transaction to read in
-/// @param round whose tables to check
-///
-/// @returns the numbers, ascending
 #[instrument(name = "round::outstanding_tables", skip(tx))]
 pub async fn outstanding_tables(
     tx: &mut Transaction,
@@ -582,11 +483,6 @@ pub async fn outstanding_tables(
 }
 
 /// How many of a round's tables anybody has said anything about
-///
-/// @param tx the transaction to read in
-/// @param round whose tables to count
-///
-/// @returns the count
 async fn reported_tables(
     tx: &mut Transaction,
     round: TournamentRoundUuid,
@@ -604,15 +500,7 @@ async fn reported_tables(
         .count())
 }
 
-/// The tournament behind a staff actor, or `None` when they hold no role
-///
-/// Any role will do — see the module docs on why this is not `may_manage`.
-///
-/// @param tx the transaction to read in
-/// @param account who is asking
-/// @param tournament which event
-///
-/// @returns the tournament, or `None`
+/// The tournament if `account` holds any role (not `may_manage`: scorekeepers run rounds)
 async fn staff_event(
     tx: &mut Transaction,
     account: AccountUuid,
@@ -625,12 +513,6 @@ async fn staff_event(
 }
 
 /// Read a round back after writing it, for the caller's response
-///
-/// @param tx the transaction to read in
-/// @param tournament the round belongs to
-/// @param round which round
-///
-/// @returns the round
 async fn reread(
     tx: &mut Transaction,
     tournament: TournamentUuid,

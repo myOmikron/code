@@ -1,7 +1,7 @@
 
 # ReportResultRequest
 
-What one seat says happened at their table  The game counts are the winner\'s and the loser\'s, not one per seat: a pod is always best of one, so the only place a game score carries anything is a duel, where there are exactly two of them.
+What one seat says happened at their table; game counts only matter for duels
 
 ## Properties
 

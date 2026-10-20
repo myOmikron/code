@@ -1,7 +1,7 @@
 
 # AuditAction
 
-What happened, as recorded in a tournament\'s audit log  Stored by its variant name, so new variants in M2/M3 need no migration — they are just another string an old client has never seen.
+What happened, as recorded in a tournament\'s audit log; stored by variant name
 
 ## Properties
 
