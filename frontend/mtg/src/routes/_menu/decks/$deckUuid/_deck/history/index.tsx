@@ -1,7 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { Api } from "src/api/api";
 import { DeckHistoryList } from "src/components/deck-history-list";
 
 export const Route = createFileRoute("/_menu/decks/$deckUuid/_deck/history/")({
+    loader: ({ params }) => Api.decks.history(params.deckUuid),
     component: RouteComponent,
 });
 
@@ -12,6 +14,7 @@ export const Route = createFileRoute("/_menu/decks/$deckUuid/_deck/history/")({
  */
 function RouteComponent() {
     const { deckUuid } = Route.useParams();
+    const firstPage = Route.useLoaderData();
 
-    return <DeckHistoryList deckUuid={deckUuid} />;
+    return <DeckHistoryList deckUuid={deckUuid} firstPage={firstPage} />;
 }

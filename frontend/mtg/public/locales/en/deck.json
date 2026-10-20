@@ -340,7 +340,6 @@
         "history-import_other": "Imported {{count}} cards",
         "history-introduced_one": "Deck history starts with {{count}} card",
         "history-introduced_other": "Deck history starts with {{count}} cards",
-        "history-loading": "Loading Deck history …",
         "history-move": "Moved to another zone",
         "history-point-empty": "The deck was empty.",
         "history-point-line": "{{quantity}} × {{name}}",

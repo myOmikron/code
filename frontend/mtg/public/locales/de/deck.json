@@ -340,7 +340,6 @@
         "history-import_other": "{{count}} Karten importiert",
         "history-introduced_one": "Deck-Verlauf beginnt mit {{count}} Karte",
         "history-introduced_other": "Deck-Verlauf beginnt mit {{count}} Karten",
-        "history-loading": "Deck-Verlauf wird geladen …",
         "history-move": "In eine andere Zone verschoben",
         "history-point-empty": "Das Deck war leer.",
         "history-point-line": "{{quantity}} × {{name}}",
