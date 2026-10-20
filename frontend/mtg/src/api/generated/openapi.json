@@ -4395,7 +4395,7 @@
             },
             "post": {
                 "summary": "Put a card into a deck",
-                "description": "Put a card into a deck\n\nCopies of a print already sitting in the zone (same finish) fold into that\nslot instead of opening a second row beside it. The answer is the slot's\nbookkeeping fields either way — catalog data and tags come from the list\nendpoint.",
+                "description": "Put a card into a deck\n\nCopies joining an alike Deck entry (same printing, zone, finish and proxy\nstatus) raise its count instead of opening a second line beside it. The\nanswer is the entry's bookkeeping fields either way; catalog data and tags\ncome from the list endpoint.",
                 "operationId": "add_deck_card",
                 "parameters": [
                     {
@@ -4661,8 +4661,8 @@
                 }
             },
             "patch": {
-                "summary": "Change a slot: its count, its zone or the print it sleeves",
-                "description": "Change a slot: its count, its zone or the print it sleeves",
+                "summary": "Change a Deck entry: its count, its zone or the print it sleeves",
+                "description": "Change a Deck entry: its count, its zone or the print it sleeves\n\nAn entry made alike to another one merges into it, and a count of zero\nremoves it.",
                 "operationId": "update_deck_card",
                 "parameters": [
                     {
@@ -15127,7 +15127,7 @@
                     },
                     "quantity": {
                         "nullable": true,
-                        "description": "The new count",
+                        "description": "The new count, zero removes the Deck entry",
                         "type": "integer",
                         "format": "int32"
                     },

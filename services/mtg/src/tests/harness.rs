@@ -159,31 +159,7 @@ async fn log_in(session: Session, Path(username): Path<String>) -> StatusCode {
 ///
 /// Databases left over from earlier runs are dropped first, unless a run still uses them.
 async fn create_database() -> DatabaseDriver {
-    let var = |name: &str, default: &str| std::env::var(name).unwrap_or_else(|_| default.into());
-    let host = var("TEST_POSTGRES_HOST", "localhost");
-    let port = var("TEST_POSTGRES_PORT", "5432")
-        .parse()
-        .expect("TEST_POSTGRES_PORT is a port");
-    let user = var("TEST_POSTGRES_USER", "postgres");
-    let password = var("TEST_POSTGRES_PASSWORD", "");
-    let driver = |name: String| DatabaseDriver::Postgres {
-        name,
-        host: host.clone(),
-        port,
-        user: user.clone(),
-        password: password.clone(),
-    };
-
-    let server = Database::connect(DatabaseConfiguration::new(driver("postgres".to_string())))
-        .await
-        .unwrap_or_else(|error| {
-            panic!(
-                "No Postgres for the tests at {host}:{port} ({error}). \
-                 Start one with `just dev infra up -d --wait test-postgres` \
-                 or point TEST_POSTGRES_HOST and TEST_POSTGRES_PORT at one."
-            )
-        });
-
+    let server = connect_server().await;
     let leftovers: Vec<String> =
         sqlx::query_scalar("SELECT datname FROM pg_database WHERE datname LIKE $1")
             .bind(format!("{DATABASE_PREFIX}%"))
@@ -195,26 +171,70 @@ async fn create_database() -> DatabaseDriver {
             .execute(server.as_pool())
             .await;
     }
+    server.close().await;
 
+    migrated_database(None).await
+}
+
+/// The driver for the database `name` on the test Postgres server
+fn test_driver(name: String) -> DatabaseDriver {
+    let var = |name: &str, default: &str| std::env::var(name).unwrap_or_else(|_| default.into());
+    DatabaseDriver::Postgres {
+        name,
+        host: var("TEST_POSTGRES_HOST", "localhost"),
+        port: var("TEST_POSTGRES_PORT", "5432")
+            .parse()
+            .expect("TEST_POSTGRES_PORT is a port"),
+        user: var("TEST_POSTGRES_USER", "postgres"),
+        password: var("TEST_POSTGRES_PASSWORD", ""),
+    }
+}
+
+/// Connects to the test Postgres server's maintenance database
+async fn connect_server() -> Database {
+    Database::connect(DatabaseConfiguration::new(test_driver(
+        "postgres".to_string(),
+    )))
+    .await
+    .unwrap_or_else(|error| {
+        panic!(
+            "No Postgres for the tests ({error}). \
+             Start one with `just dev infra up -d --wait test-postgres` \
+             or point TEST_POSTGRES_HOST and TEST_POSTGRES_PORT at one."
+        )
+    })
+}
+
+/// Creates a fresh database with the migrations up to `until` applied, all of them for `None`
+///
+/// For tests of a migration itself: they write the rows it finds into a database
+/// stopped just before it, then [`migrate`] the rest.
+pub async fn migrated_database(until: Option<u16>) -> DatabaseDriver {
     let name = format!("{DATABASE_PREFIX}{}", Uuid::new_v4().simple());
+    let server = connect_server().await;
     sqlx::query(sqlx::AssertSqlSafe(format!(r#"CREATE DATABASE "{name}""#)))
         .execute(server.as_pool())
         .await
         .expect("create the test database");
     server.close().await;
 
+    let driver = test_driver(name);
+    migrate(&driver, until).await;
+    driver
+}
+
+/// Applies the migrations up to `until` that the database is missing, all of them for `None`
+pub async fn migrate(driver: &DatabaseDriver, until: Option<u16>) {
     rorm::cli::migrate::run_migrate_custom(
         rorm::config::DatabaseConfig {
-            driver: driver(name.clone()),
+            driver: driver.clone(),
             last_migration_table_name: None,
         },
         concat!(env!("CARGO_MANIFEST_DIR"), "/migrations").to_string(),
-        None,
+        until,
     )
     .await
     .expect("apply the migrations");
-
-    driver(name)
 }
 
 /// A request to the service, addressed by its absolute url

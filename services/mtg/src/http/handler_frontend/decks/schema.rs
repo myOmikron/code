@@ -744,7 +744,7 @@ pub struct UpdateDeckCardRequest {
     /// Scryfall's id of the printing — send this to sleeve a different print
     #[serde(default)]
     pub printing: Option<Uuid>,
-    /// The new count
+    /// The new count, zero removes the Deck entry
     #[serde(default)]
     pub quantity: Option<i32>,
     /// The zone to move it to

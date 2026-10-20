@@ -341,29 +341,41 @@ impl DeckTag {
         Ok(DeckAccess::Granted(()))
     }
 
-    /// Put every tag of one slot onto another
+    /// Put every tag of one Deck entry onto another
     ///
-    /// Used when a slot is split because part of it is sleeved up in a different
-    /// printing: what the card is for in this deck did not change with its
-    /// artwork. Only the deck's own assignments are copied; a card-wide tag
-    /// finds the new slot by itself, through the printing.
+    /// Used when an entry is split because part of it is sleeved up in a
+    /// different printing, since what the card is for in this deck did not
+    /// change with its artwork, and when two alike entries merge, which keep
+    /// the tags of both. Tags `onto` already wears are not put on twice. Only
+    /// the deck's own assignments are copied; a card-wide tag finds the entry by
+    /// itself, through the printing.
     #[instrument(name = "DeckTag::copy_assignments", skip(tx))]
     pub async fn copy_assignments(
         tx: &mut Transaction,
         from: DeckCardUuid,
         onto: DeckCardUuid,
     ) -> Result<(), rorm::Error> {
-        let assignments = rorm::query(&mut *tx, DeckCardTagModel)
+        let worn: HashSet<Uuid> = rorm::query(&mut *tx, DeckCardTagModel.tag)
+            .condition(DeckCardTagModel.deck_card.equals(onto.into_inner()))
+            .all()
+            .await?
+            .into_iter()
+            .map(|tag| tag.0)
+            .collect();
+        let assignments = rorm::query(&mut *tx, DeckCardTagModel.tag)
             .condition(DeckCardTagModel.deck_card.equals(from.into_inner()))
             .all()
             .await?;
 
-        for assignment in assignments {
+        for tag in assignments {
+            if worn.contains(&tag.0) {
+                continue;
+            }
             rorm::insert(&mut *tx, DeckCardTagModel)
                 .single(&DeckCardTagInsertPatch {
                     uuid: Uuid::now_v7(),
                     deck_card: ForeignModelByField(onto.into_inner()),
-                    tag: assignment.tag,
+                    tag,
                 })
                 .await?;
         }

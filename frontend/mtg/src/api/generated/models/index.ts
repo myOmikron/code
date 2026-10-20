@@ -6046,7 +6046,7 @@ export interface UpdateDeckCardRequest {
      */
     proxy?: boolean | null;
     /**
-     * The new count
+     * The new count, zero removes the Deck entry
      * @type {number}
      * @memberof UpdateDeckCardRequest
      */
