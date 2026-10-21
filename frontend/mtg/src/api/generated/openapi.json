@@ -9421,6 +9421,15 @@
                             }
                         ]
                     },
+                    "openid_provider": {
+                        "nullable": true,
+                        "description": "The OpenID provider an External Account logs in through, `None` for a Local Account",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/AdminOpenIdProvider"
+                            }
+                        ]
+                    },
                     "role": {
                         "description": "What the Account may do",
                         "allOf": [
@@ -9854,6 +9863,24 @@
                 "description": "Primary key of an [`AdminLogEntry`]",
                 "type": "string",
                 "format": "uuid"
+            },
+            "AdminOpenIdProvider": {
+                "description": "The OpenID provider an External Account logs in through",
+                "type": "object",
+                "properties": {
+                    "display_name": {
+                        "nullable": true,
+                        "description": "What the frontend calls the provider, `None` once it is no longer configured",
+                        "type": "string"
+                    },
+                    "issuer": {
+                        "description": "The provider's issuer",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "issuer"
+                ]
             },
             "AdminPriceGuideStamp": {
                 "description": "The file the prices were last read from",

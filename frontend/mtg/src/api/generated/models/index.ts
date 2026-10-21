@@ -216,6 +216,12 @@ export interface AdminAccount {
      */
     lock?: AdminAccountLock | null;
     /**
+     * The OpenID provider an External Account logs in through, `None` for a Local Account
+     * @type {AdminOpenIdProvider}
+     * @memberof AdminAccount
+     */
+    openid_provider?: AdminOpenIdProvider | null;
+    /**
      * What the Account may do
      * @type {Role}
      * @memberof AdminAccount
@@ -604,6 +610,25 @@ export interface AdminLogEntryResponse {
      * @memberof AdminLogEntryResponse
      */
     uuid: string;
+}
+/**
+ * The OpenID provider an External Account logs in through
+ * @export
+ * @interface AdminOpenIdProvider
+ */
+export interface AdminOpenIdProvider {
+    /**
+     * What the frontend calls the provider, `None` once it is no longer configured
+     * @type {string}
+     * @memberof AdminOpenIdProvider
+     */
+    display_name?: string | null;
+    /**
+     * The provider's issuer
+     * @type {string}
+     * @memberof AdminOpenIdProvider
+     */
+    issuer: string;
 }
 /**
  * The file the prices were last read from

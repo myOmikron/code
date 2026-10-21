@@ -12,6 +12,7 @@ Name | Type
 `decks` | number
 `email` | string
 `lock` | [AdminAccountLock](AdminAccountLock.md)
+`openid_provider` | [AdminOpenIdProvider](AdminOpenIdProvider.md)
 `role` | [Role](Role.md)
 `username` | string
 `uuid` | string

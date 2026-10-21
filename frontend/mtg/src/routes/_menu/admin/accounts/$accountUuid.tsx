@@ -18,6 +18,7 @@ import { Role } from "src/api/generated";
 import { AdminDeleteAccountDialog } from "src/components/admin-delete-account-dialog";
 import { AdminLockDialog } from "src/components/admin-lock-dialog";
 import { AdminLogEntries } from "src/components/admin-log-entries";
+import { AdminLoginMethodBadge } from "src/components/admin-login-method-badge";
 import { AdminRoleBadge } from "src/components/admin-role-badge";
 import { useAccount } from "src/context/account";
 import { isFormError } from "src/utils/error";
@@ -97,6 +98,10 @@ function RouteComponent() {
                 <DescriptionTerm>{t("label.role")}</DescriptionTerm>
                 <DescriptionDetails>
                     <AdminRoleBadge role={account.role} />
+                </DescriptionDetails>
+                <DescriptionTerm>{t("label.login")}</DescriptionTerm>
+                <DescriptionDetails>
+                    <AdminLoginMethodBadge openidProvider={account.openid_provider} />
                 </DescriptionDetails>
                 <DescriptionTerm>{t("label.lock")}</DescriptionTerm>
                 <DescriptionDetails>

@@ -3,6 +3,8 @@
 //! Every count here is read through an index leading with `owner`, so a page
 //! of the list costs what its rows own and never a scan of a whole table.
 
+use std::collections::HashMap;
+
 use galvyn::core::Module;
 use galvyn::core::re_exports::time::OffsetDateTime;
 use galvyn::rorm;
@@ -41,6 +43,17 @@ pub struct AccountOverview {
     pub decks: i64,
     /// The account's Lock, `None` while it is not locked
     pub lock: Option<AccountLock>,
+    /// The OpenID provider an External Account logs in through, `None` for a Local Account
+    pub openid_provider: Option<AccountOpenIdProvider>,
+}
+
+/// The OpenID provider an External Account logs in through
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AccountOpenIdProvider {
+    /// The provider's issuer, as the Account's External identity states it
+    pub issuer: String,
+    /// What the frontend calls the provider, `None` once it is no longer configured
+    pub display_name: Option<String>,
 }
 
 /// An Account's Lock as Admins see it
@@ -92,7 +105,7 @@ const SEARCH_CANDIDATES: i64 = 1000;
 
 /// The columns both reads select
 const COLUMNS: &str = "\
-    a.uuid, a.username, a.email, a.role, a.created_at, a.locked_at, a.lock_reason, \
+    a.uuid, a.identity, a.username, a.email, a.role, a.created_at, a.locked_at, a.lock_reason, \
     (SELECT count(*) FROM collection c WHERE c.owner = a.uuid AND c.deck IS NULL) AS collections, \
     (SELECT count(*) FROM deck d WHERE d.owner = a.uuid) AS decks";
 
@@ -161,6 +174,8 @@ impl AccountOverview {
             .iter()
             .map(decode_overview)
             .collect::<Result<Vec<_>, _>>()?;
+        with_openid_providers(&mut *tx, &mut accounts).await?;
+        let mut accounts: Vec<_> = accounts.into_iter().map(|(_, account)| account).collect();
         let next_cursor = if accounts.len() > filter.limit as usize {
             accounts.truncate(filter.limit as usize);
             accounts.last().map(|account| account.uuid)
@@ -182,7 +197,7 @@ impl AccountDetail {
         uuid: AccountUuid,
     ) -> Result<Option<AccountDetail>, rorm::Error> {
         let statement = format!(
-            "SELECT {COLUMNS}, a.identity, \
+            "SELECT {COLUMNS}, \
                (SELECT COALESCE(SUM(s.free + s.sleeved), 0)::bigint \
                 FROM collection_stock s WHERE s.owner = a.uuid) AS cards \
              FROM account a WHERE a.uuid = $1 AND NOT a.tombstone"
@@ -194,12 +209,16 @@ impl AccountDetail {
             return Ok(None);
         };
 
-        let overview = decode_overview(row)?;
+        let (identity, overview) = decode_overview(row)?;
         let cards = row.get("cards").map_err(decode)?;
-        let identity: Uuid = row.get("identity").map_err(decode)?;
         let passkeys = IdentityModule::global()
-            .count_passkeys(&mut *tx, IdentityUuid::new(identity))
+            .count_passkeys(&mut *tx, identity)
             .await?;
+        let mut accounts = vec![(identity, overview)];
+        with_openid_providers(&mut *tx, &mut accounts).await?;
+        let Some((_, overview)) = accounts.pop() else {
+            unreachable!("the Account is still there");
+        };
 
         Ok(Some(AccountDetail {
             overview,
@@ -222,14 +241,42 @@ fn prefix_pattern(search: &str) -> String {
     pattern
 }
 
-/// Reads the [`COLUMNS`] of a row
-fn decode_overview(row: &Row) -> Result<AccountOverview, rorm::Error> {
+/// Fills in the OpenID provider of the External Accounts among `accounts`
+///
+/// One query for all of them, through the index on the External identity's Identity.
+async fn with_openid_providers(
+    tx: &mut Transaction,
+    accounts: &mut [(IdentityUuid, AccountOverview)],
+) -> Result<(), rorm::Error> {
+    let identities: Vec<IdentityUuid> = accounts.iter().map(|(identity, _)| *identity).collect();
+    let module = IdentityModule::global();
+    let mut issuers: HashMap<IdentityUuid, String> =
+        module.external_issuers(&mut *tx, &identities).await?;
+    for (identity, account) in accounts {
+        account.openid_provider = issuers.remove(identity).map(|issuer| {
+            let display_name = module
+                .openid_providers()
+                .iter()
+                .find(|provider| provider.issuer() == issuer)
+                .map(|provider| provider.display_name().to_string());
+            AccountOpenIdProvider {
+                issuer,
+                display_name,
+            }
+        });
+    }
+    Ok(())
+}
+
+/// Reads the [`COLUMNS`] of a row, with the Identity the Account references
+fn decode_overview(row: &Row) -> Result<(IdentityUuid, AccountOverview), rorm::Error> {
     let role: String = row.get("role").map_err(decode)?;
     let username: String = row.get("username").map_err(decode)?;
     let email: String = row.get("email").map_err(decode)?;
     let locked_at: Option<OffsetDateTime> = row.get("locked_at").map_err(decode)?;
     let lock_reason: Option<String> = row.get("lock_reason").map_err(decode)?;
-    Ok(AccountOverview {
+    let identity: Uuid = row.get("identity").map_err(decode)?;
+    let overview = AccountOverview {
         uuid: AccountUuid(row.get("uuid").map_err(decode)?),
         username: Username::new_from_field(
             MaxStr::new(username)
@@ -246,7 +293,9 @@ fn decode_overview(row: &Row) -> Result<AccountOverview, rorm::Error> {
             locked_at,
             reason: lock_reason.unwrap_or_default(),
         }),
-    })
+        openid_provider: None,
+    };
+    Ok((IdentityUuid::new(identity), overview))
 }
 
 #[cfg(test)]

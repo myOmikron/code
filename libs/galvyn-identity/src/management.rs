@@ -1,5 +1,8 @@
 //! Identities and their Registration links outside of a ceremony
 
+#[cfg(feature = "oidc")]
+use std::collections::HashMap;
+
 use galvyn::core::Module;
 use galvyn::core::re_exports::time::Duration;
 use galvyn::core::re_exports::time::OffsetDateTime;
@@ -120,6 +123,23 @@ impl IdentityModule {
             }));
         }
         Ok(None)
+    }
+
+    /// The issuer of each external Identity among `identities`, in one query
+    ///
+    /// The issuer is the one [`LoginMethod::External`] states. A local
+    /// Identity, one without a login method yet and a missing one have no entry.
+    #[cfg(feature = "oidc")]
+    pub async fn external_issuers(
+        &self,
+        exe: impl Executor<'_>,
+        identities: &[IdentityUuid],
+    ) -> Result<HashMap<IdentityUuid, String>, rorm::Error> {
+        let issuers = super::oidc::models::ExternalIdentity::issuers_of(exe, identities).await?;
+        Ok(issuers
+            .into_iter()
+            .map(|(identity, issuer)| (identity, issuer.into_inner()))
+            .collect())
     }
 
     /// Issue a Registration link for `identity` and return the full link
