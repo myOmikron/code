@@ -5,8 +5,16 @@ Accounts, their collections and decks, and the admin dashboard that manages the 
 ## Language
 
 **Account**:
-A person's record in mtg: username, email, Role, and everything they own (collections, decks, scanner sessions). References exactly one Identity.
+A person's record in mtg: username, email, Role, and everything they own (collections, decks, scanner sessions). References exactly one Identity. Its email is taken once, at signup or first OIDC login, and never changes.
 _Avoid_: user, profile
+
+**Local Account**:
+An Account whose Identity is local: it logs in with Passkeys and recovers through a Registration link mailed to its email.
+_Avoid_: passkey user
+
+**External Account**:
+An Account whose Identity is external: it logs in through one OpenID provider (e.g. Google) and has no recovery in mtg, since whoever controls the account at the provider can log in. Created on its first OIDC login, after the person picks a username. Never turns into a local Account or back.
+_Avoid_: Google account (that is the account at Google), social account
 
 **Role**:
 What an Account may do beyond managing its own things. Either **Member** (the default) or **Admin**. Set by the `set-role` cli subcommand or by an Admin in the admin dashboard. An Admin can never demote itself.
@@ -17,7 +25,7 @@ An Account with the Admin Role. Sees the admin dashboard and manages other Accou
 _Avoid_: superuser, staff, moderator
 
 **Lock**:
-An Admin's block on an Account: its Login and Registration link Enrollment are refused with `locked`, and its existing sessions fail on their next request, learning only that the Account is locked. Recovery answers the same silent `200` as for an unknown username and mails no link, by design: recovery must not reveal which usernames exist or are locked. Its public decks and shares stay reachable. Carries a **Lock reason** (required); lifting it, the **unlock**, takes an optional **unlock reason**. Only Admins see either reason, and no mail is sent.
+An Admin's block on an Account: its Login and Registration link Enrollment are refused with `locked`, and its existing sessions fail on their next request, learning only that the Account is locked. Recovery answers the same silent `200` as for an unknown username or an External Account and mails no link, by design: recovery must not reveal which usernames exist or are locked. Its public decks and shares stay reachable. Carries a **Lock reason** (required); lifting it, the **unlock**, takes an optional **unlock reason**. Only Admins see either reason, and no mail is sent.
 _Avoid_: ban, suspension, disable
 
 **Admin log**:
@@ -95,6 +103,7 @@ _Avoid_: changelog, history, news feed
 ## Relationships
 
 - An **Account** has exactly one **Role**, and at most one **Lock** at a time
+- An **Account** is either a **Local Account** or an **External Account**, never both, never switching
 - Every **Lock**, unlock, **Role** change, **Deletion** and **Rename** by an **Admin** or the cli writes one **Admin log** entry
 - A **Deletion** hands the Account's public decks to the **Tombstone**, unless it is a full Deletion
 - A **Statistics snapshot** never counts the **Tombstone**
