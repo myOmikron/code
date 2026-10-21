@@ -8,6 +8,7 @@
         "add-watch-card": "Add a card",
         "cancel": "Cancel",
         "close": "Close",
+        "continue-with-provider": "Continue with {{provider}}",
         "copy-share-link": "Copy",
         "create-share-link": "Create link",
         "create-watch-list": "Create watch list",
@@ -47,6 +48,7 @@
     },
     "error": {
         "index-not-ready": "The reference index is not ready yet.",
+        "provider-unavailable": "That login is not reachable right now. Try again later.",
         "username-charset": "Only letters, digits, underscore, hyphen and dot are allowed.",
         "username-length": "The username has to be 3 to 32 characters long.",
         "username-start": "The first character has to be a letter or a digit.",

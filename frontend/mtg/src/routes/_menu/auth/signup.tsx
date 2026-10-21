@@ -18,6 +18,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useForm } from "@tanstack/react-form";
 import { Api } from "src/api/api.tsx";
+import { OpenIdLoginButtons } from "src/components/openid-login-buttons";
 import { handleFormError, isFormError } from "src/utils/error";
 import { validateUsername } from "src/utils/username-rules";
 
@@ -152,6 +153,8 @@ function RouteComponent() {
                             </Button>
                             <PrimaryButton type={"submit"}>{t("button.signup")}</PrimaryButton>
                         </div>
+
+                        <OpenIdLoginButtons rememberMe={true} />
                     </FieldGroup>
                 </Fieldset>
             </Form>

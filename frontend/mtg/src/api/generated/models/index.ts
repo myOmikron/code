@@ -1128,6 +1128,38 @@ export const CardRarity = {
 export type CardRarity = typeof CardRarity[keyof typeof CardRarity];
 
 /**
+ * Why the username step was refused
+ * @export
+ * @interface ChooseUsernameErrors
+ */
+export interface ChooseUsernameErrors {
+    /**
+     * No OIDC login is pending, or it ran out
+     * @type {boolean}
+     * @memberof ChooseUsernameErrors
+     */
+    nothing_pending: boolean;
+    /**
+     * The username belongs to another Account
+     * @type {boolean}
+     * @memberof ChooseUsernameErrors
+     */
+    username_taken: boolean;
+}
+/**
+ * Request to finish the username step of a pending OIDC login
+ * @export
+ * @interface ChooseUsernameRequest
+ */
+export interface ChooseUsernameRequest {
+    /**
+     * The desired username
+     * @type {any}
+     * @memberof ChooseUsernameRequest
+     */
+    username: any;
+}
+/**
  * One stack of identical cards in a collection
  * @export
  * @interface CollectionEntryResponse
@@ -3586,6 +3618,27 @@ export interface FormErrorResponseForAdminUnlockAccountErrors {
 /**
  * The response that is sent in a case of an error the caller should present his user
  * @export
+ * @interface FormErrorResponseForChooseUsernameErrors
+ */
+export interface FormErrorResponseForChooseUsernameErrors {
+    /**
+     * The actual error struct
+     * @type {ChooseUsernameErrors}
+     * @memberof FormErrorResponseForChooseUsernameErrors
+     */
+    error: ChooseUsernameErrors;
+    /**
+     * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
+     * @type {ErrorConstant}
+     * @memberof FormErrorResponseForChooseUsernameErrors
+     */
+    result: ErrorConstant;
+}
+
+
+/**
+ * The response that is sent in a case of an error the caller should present his user
+ * @export
  * @interface FormErrorResponseForDeleteAccountErrors
  */
 export interface FormErrorResponseForDeleteAccountErrors {
@@ -3773,6 +3826,27 @@ export interface FormErrorResponseForStartLoginErrors {
 
 
 /**
+ * The response that is sent in a case of an error the caller should present his user
+ * @export
+ * @interface FormErrorResponseForStartOidcLoginErrors
+ */
+export interface FormErrorResponseForStartOidcLoginErrors {
+    /**
+     * The actual error struct
+     * @type {StartOidcLoginErrors}
+     * @memberof FormErrorResponseForStartOidcLoginErrors
+     */
+    error: StartOidcLoginErrors;
+    /**
+     * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
+     * @type {ErrorConstant}
+     * @memberof FormErrorResponseForStartOidcLoginErrors
+     */
+    result: ErrorConstant;
+}
+
+
+/**
  * What a format asks of a deck built for it
  * @export
  * @interface FormatRulesResponse
@@ -3826,6 +3900,19 @@ export interface FormatRulesResponse {
      * @memberof FormatRulesResponse
      */
     slug: string;
+}
+/**
+ * The session's pending OIDC login
+ * @export
+ * @interface GetPendingOidcLoginResponse
+ */
+export interface GetPendingOidcLoginResponse {
+    /**
+     * The pending login, `None` if there is none or it ran out
+     * @type {PendingOidcLogin}
+     * @memberof GetPendingOidcLoginResponse
+     */
+    pending?: PendingOidcLogin | null;
 }
 /**
  * A decklist to write into a deck
@@ -4016,6 +4103,19 @@ export interface ListOnLoanResponse {
      * @memberof ListOnLoanResponse
      */
     loans: Array<OnLoanResponse>;
+}
+/**
+ * The OpenID providers people may log in through
+ * @export
+ * @interface ListOpenIdProvidersResponse
+ */
+export interface ListOpenIdProvidersResponse {
+    /**
+     * The active providers, empty while OIDC login is off
+     * @type {Array<SimpleOpenIdProvider>}
+     * @memberof ListOpenIdProvidersResponse
+     */
+    providers: Array<SimpleOpenIdProvider>;
 }
 /**
  * The passkeys of the logged-in account
@@ -4667,6 +4767,25 @@ export interface OnLoanResponse {
      * @memberof OnLoanResponse
      */
     set_name?: string | null;
+}
+/**
+ * An OIDC login waiting for its username step
+ * @export
+ * @interface PendingOidcLogin
+ */
+export interface PendingOidcLogin {
+    /**
+     * The verified email the Account will get
+     * @type {string}
+     * @memberof PendingOidcLogin
+     */
+    email: string;
+    /**
+     * The display name of the provider that vouched for the person
+     * @type {string}
+     * @memberof PendingOidcLogin
+     */
+    provider: string;
 }
 /**
  * What one card cost on one day
@@ -6052,6 +6171,25 @@ export interface SignupResponse {
     username: string;
 }
 /**
+ * An OpenID provider people may log in through
+ * @export
+ * @interface SimpleOpenIdProvider
+ */
+export interface SimpleOpenIdProvider {
+    /**
+     * What the frontend calls the provider, e.g. `Google`
+     * @type {string}
+     * @memberof SimpleOpenIdProvider
+     */
+    display_name: string;
+    /**
+     * The provider's id, to start a login with, e.g. `google`
+     * @type {string}
+     * @memberof SimpleOpenIdProvider
+     */
+    id: string;
+}
+/**
  * A passkey registered on the account
  * @export
  * @interface SimplePasskey
@@ -6477,6 +6615,57 @@ export interface StartLoginResponse {
      * @memberof StartLoginResponse
      */
     options: any | null;
+}
+/**
+ * @type StartOidcLogin200Response
+ * 
+ * @export
+ */
+export type StartOidcLogin200Response = FormErrorResponseForStartOidcLoginErrors | StartOidcLoginResponse;
+/**
+ * Why an OIDC login could not be started
+ * @export
+ * @interface StartOidcLoginErrors
+ */
+export interface StartOidcLoginErrors {
+    /**
+     * The provider cannot be reached right now
+     * @type {boolean}
+     * @memberof StartOidcLoginErrors
+     */
+    provider_unavailable: boolean;
+}
+/**
+ * Request to start an OIDC login
+ * @export
+ * @interface StartOidcLoginRequest
+ */
+export interface StartOidcLoginRequest {
+    /**
+     * The id of the provider to log in through
+     * @type {string}
+     * @memberof StartOidcLoginRequest
+     */
+    provider: string;
+    /**
+     * Keep the session alive across browser restarts
+     * @type {boolean}
+     * @memberof StartOidcLoginRequest
+     */
+    remember_me: boolean;
+}
+/**
+ * Response to a started OIDC login
+ * @export
+ * @interface StartOidcLoginResponse
+ */
+export interface StartOidcLoginResponse {
+    /**
+     * The provider's authorization url to send the browser to
+     * @type {string}
+     * @memberof StartOidcLoginResponse
+     */
+    url: string;
 }
 /**
  * @type StartRegistration200Response

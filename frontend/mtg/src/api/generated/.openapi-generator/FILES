@@ -42,6 +42,8 @@ docs/BracketRulesResponse.md
 docs/CardCondition.md
 docs/CardFinish.md
 docs/CardRarity.md
+docs/ChooseUsernameErrors.md
+docs/ChooseUsernameRequest.md
 docs/CollectionEntryResponse.md
 docs/CollectionOverviewResponse.md
 docs/CollectionResponse.md
@@ -113,6 +115,7 @@ docs/FormErrorResponseForAdminDeleteAccountErrors.md
 docs/FormErrorResponseForAdminLockAccountErrors.md
 docs/FormErrorResponseForAdminSetRoleErrors.md
 docs/FormErrorResponseForAdminUnlockAccountErrors.md
+docs/FormErrorResponseForChooseUsernameErrors.md
 docs/FormErrorResponseForDeleteAccountErrors.md
 docs/FormErrorResponseForDeletePasskeyErrors.md
 docs/FormErrorResponseForFinishLoginErrors.md
@@ -122,7 +125,9 @@ docs/FormErrorResponseForRenameAccountErrors.md
 docs/FormErrorResponseForRenamePasskeyErrors.md
 docs/FormErrorResponseForSignupErrors.md
 docs/FormErrorResponseForStartLoginErrors.md
+docs/FormErrorResponseForStartOidcLoginErrors.md
 docs/FormatRulesResponse.md
+docs/GetPendingOidcLoginResponse.md
 docs/ImportDeckCardsRequest.md
 docs/ImportDeckCardsResponse.md
 docs/ImportMode.md
@@ -133,6 +138,7 @@ docs/ListDeckFoldersResponse.md
 docs/ListFormatsResponse.md
 docs/ListGlobalTagsResponse.md
 docs/ListOnLoanResponse.md
+docs/ListOpenIdProvidersResponse.md
 docs/ListPasskeysResponse.md
 docs/ListScannerSessionsResponse.md
 docs/ListWatchListAlarmsResponse.md
@@ -155,6 +161,7 @@ docs/MpcFillSearchResponse.md
 docs/NewCollectionEntry.md
 docs/OldestPrintingResponse.md
 docs/OnLoanResponse.md
+docs/PendingOidcLogin.md
 docs/PriceDayResponse.md
 docs/PriceHistoryResponse.md
 docs/PricePointResponse.md
@@ -206,6 +213,7 @@ docs/Signup200Response.md
 docs/SignupErrors.md
 docs/SignupRequest.md
 docs/SignupResponse.md
+docs/SimpleOpenIdProvider.md
 docs/SimplePasskey.md
 docs/SourcedPrintingResponse.md
 docs/SourcedStackResponse.md
@@ -218,6 +226,10 @@ docs/StartLogin200Response.md
 docs/StartLoginErrors.md
 docs/StartLoginRequest.md
 docs/StartLoginResponse.md
+docs/StartOidcLogin200Response.md
+docs/StartOidcLoginErrors.md
+docs/StartOidcLoginRequest.md
+docs/StartOidcLoginResponse.md
 docs/StartRegistration200Response.md
 docs/StartRegistrationRequest.md
 docs/StartRegistrationResponse.md

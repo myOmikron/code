@@ -27,6 +27,7 @@ import { Route as MenuAdminSyncsRouteImport } from './routes/_menu/admin/syncs'
 import { Route as MenuAuthLoginRouteImport } from './routes/_menu/auth/login'
 import { Route as MenuAuthRegisterRouteImport } from './routes/_menu/auth/register'
 import { Route as MenuAuthSignupRouteImport } from './routes/_menu/auth/signup'
+import { Route as MenuAuthUsernameRouteImport } from './routes/_menu/auth/username'
 import { Route as MenuCollectionsIndexRouteImport } from './routes/_menu/collections/index'
 import { Route as MenuDecksIndexRouteImport } from './routes/_menu/decks/index'
 import { Route as MenuGameUtilsIndexRouteImport } from './routes/_menu/game-utils/index'
@@ -164,6 +165,11 @@ const MenuAuthRegisterRoute = MenuAuthRegisterRouteImport.update({
 const MenuAuthSignupRoute = MenuAuthSignupRouteImport.update({
   id: '/signup',
   path: '/signup',
+  getParentRoute: () => MenuAuthRoute,
+} as any)
+const MenuAuthUsernameRoute = MenuAuthUsernameRouteImport.update({
+  id: '/username',
+  path: '/username',
   getParentRoute: () => MenuAuthRoute,
 } as any)
 const MenuCollectionsIndexRoute = MenuCollectionsIndexRouteImport.update({
@@ -476,6 +482,7 @@ export interface FileRoutesByFullPath {
   '/auth/login': typeof MenuAuthLoginRoute
   '/auth/register': typeof MenuAuthRegisterRoute
   '/auth/signup': typeof MenuAuthSignupRoute
+  '/auth/username': typeof MenuAuthUsernameRoute
   '/game-utils/life-tracker': typeof MenuGameUtilsLifeTrackerRoute
   '/game-utils/mpc-fill': typeof MenuGameUtilsMpcFillRoute
   '/game-utils/proxy-printer': typeof MenuGameUtilsProxyPrinterRoute
@@ -542,6 +549,7 @@ export interface FileRoutesByTo {
   '/auth/login': typeof MenuAuthLoginRoute
   '/auth/register': typeof MenuAuthRegisterRoute
   '/auth/signup': typeof MenuAuthSignupRoute
+  '/auth/username': typeof MenuAuthUsernameRoute
   '/game-utils/life-tracker': typeof MenuGameUtilsLifeTrackerRoute
   '/game-utils/mpc-fill': typeof MenuGameUtilsMpcFillRoute
   '/game-utils/proxy-printer': typeof MenuGameUtilsProxyPrinterRoute
@@ -607,6 +615,7 @@ export interface FileRoutesById {
   '/_menu/auth/login': typeof MenuAuthLoginRoute
   '/_menu/auth/register': typeof MenuAuthRegisterRoute
   '/_menu/auth/signup': typeof MenuAuthSignupRoute
+  '/_menu/auth/username': typeof MenuAuthUsernameRoute
   '/_menu/game-utils/life-tracker': typeof MenuGameUtilsLifeTrackerRoute
   '/_menu/game-utils/mpc-fill': typeof MenuGameUtilsMpcFillRoute
   '/_menu/game-utils/proxy-printer': typeof MenuGameUtilsProxyPrinterRoute
@@ -677,6 +686,7 @@ export interface FileRouteTypes {
     | '/auth/login'
     | '/auth/register'
     | '/auth/signup'
+    | '/auth/username'
     | '/game-utils/life-tracker'
     | '/game-utils/mpc-fill'
     | '/game-utils/proxy-printer'
@@ -743,6 +753,7 @@ export interface FileRouteTypes {
     | '/auth/login'
     | '/auth/register'
     | '/auth/signup'
+    | '/auth/username'
     | '/game-utils/life-tracker'
     | '/game-utils/mpc-fill'
     | '/game-utils/proxy-printer'
@@ -807,6 +818,7 @@ export interface FileRouteTypes {
     | '/_menu/auth/login'
     | '/_menu/auth/register'
     | '/_menu/auth/signup'
+    | '/_menu/auth/username'
     | '/_menu/game-utils/life-tracker'
     | '/_menu/game-utils/mpc-fill'
     | '/_menu/game-utils/proxy-printer'
@@ -992,6 +1004,13 @@ declare module '@tanstack/react-router' {
       path: '/signup'
       fullPath: '/auth/signup'
       preLoaderRoute: typeof MenuAuthSignupRouteImport
+      parentRoute: typeof MenuAuthRoute
+    }
+    '/_menu/auth/username': {
+      id: '/_menu/auth/username'
+      path: '/username'
+      fullPath: '/auth/username'
+      preLoaderRoute: typeof MenuAuthUsernameRouteImport
       parentRoute: typeof MenuAuthRoute
     }
     '/_menu/collections/': {
@@ -1405,12 +1424,14 @@ interface MenuAuthRouteChildren {
   MenuAuthLoginRoute: typeof MenuAuthLoginRoute
   MenuAuthRegisterRoute: typeof MenuAuthRegisterRoute
   MenuAuthSignupRoute: typeof MenuAuthSignupRoute
+  MenuAuthUsernameRoute: typeof MenuAuthUsernameRoute
 }
 
 const MenuAuthRouteChildren: MenuAuthRouteChildren = {
   MenuAuthLoginRoute: MenuAuthLoginRoute,
   MenuAuthRegisterRoute: MenuAuthRegisterRoute,
   MenuAuthSignupRoute: MenuAuthSignupRoute,
+  MenuAuthUsernameRoute: MenuAuthUsernameRoute,
 }
 
 const MenuAuthRouteWithChildren = MenuAuthRoute._addFileChildren(
