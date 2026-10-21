@@ -9,16 +9,11 @@
         "check-mail": "Wir haben dir einen Link geschickt. Öffne ihn, um den Passkey für {{username}} einzurichten — er ist 7 Tage gültig.",
         "check-spam": "Nichts angekommen? Schau im Spam-Ordner nach und prüfe, ob die Adresse stimmt.",
         "choose-username": "{{provider}} hat dich als {{email}} angemeldet. Wähle noch einen Benutzernamen, dann ist dein Konto fertig.",
-        "nothing-pending": "Hier gibt es gerade nichts zu tun: Der Anmeldeversuch ist abgelaufen oder schon abgeschlossen. Melde dich noch einmal an.",
-        "username": "Wird öffentlich angezeigt. 3 bis 32 Zeichen; erlaubt sind Buchstaben, Ziffern, Unterstrich, Bindestrich und Punkt, das erste Zeichen muss ein Buchstabe oder eine Ziffer sein."
+        "nothing-pending": "Hier gibt es gerade nichts zu tun: Der Anmeldeversuch ist abgelaufen oder schon abgeschlossen. Melde dich noch einmal an."
     },
     "error": {
         "email-malformed": "Das sieht nicht nach einer E-Mail-Adresse aus.",
-        "nothing-pending": "Der Anmeldeversuch ist abgelaufen. Melde dich noch einmal an.",
-        "username-charset": "Erlaubt sind nur Buchstaben, Ziffern, Unterstrich, Bindestrich und Punkt.",
-        "username-length": "Der Benutzername muss 3 bis 32 Zeichen lang sein.",
-        "username-start": "Das erste Zeichen muss ein Buchstabe oder eine Ziffer sein.",
-        "username-taken": "Dieser Benutzername ist schon vergeben. Wähle einen anderen."
+        "nothing-pending": "Der Anmeldeversuch ist abgelaufen. Melde dich noch einmal an."
     },
     "heading": {
         "check-mail": "Prüfe deine Mails",
@@ -26,8 +21,7 @@
         "signup": "Konto erstellen"
     },
     "label": {
-        "email": "E-Mail-Adresse",
-        "username": "Benutzername"
+        "email": "E-Mail-Adresse"
     },
     "toast": {
         "signed-up": "Willkommen, {{username}}"

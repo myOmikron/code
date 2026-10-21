@@ -1,5 +1,7 @@
 //! Client-side mirror of the backend's username rules.
 
+import { TFunction } from "i18next";
+
 // The backend rejects a malformed username while parsing the request body, which answers
 // with a plain 400 instead of a form error. Checking the same rules here keeps such a
 // request from ever leaving the browser, so the form can name the offending rule.
@@ -25,4 +27,19 @@ export function validateUsername(username: string): UsernameError | null {
     if (username.length < USERNAME_MIN_LEN || username.length > USERNAME_MAX_LEN) return "length";
     if (!/^[a-zA-Z0-9]/.test(username)) return "start";
     return null;
+}
+
+/**
+ * Names the username rule a form's input breaks
+ *
+ * @param t the default namespace's translator
+ * @param error the broken rule, from {@link validateUsername}
+ * @returns the message for the username field
+ */
+export function usernameErrorMessage(t: TFunction, error: UsernameError): string {
+    return {
+        length: t("error.username-length"),
+        charset: t("error.username-charset"),
+        start: t("error.username-start"),
+    }[error];
 }

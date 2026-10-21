@@ -18,12 +18,12 @@ import { useForm } from "@tanstack/react-form";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
-import { PendingOidcLogin } from "src/api/generated";
+import { OidcLoginFailure, PendingOidcLogin } from "src/api/generated";
 import { PrimaryButton } from "src/components/primary-button";
 import { useAccount } from "src/context/account";
 import { handleFormError, isFormError } from "src/utils/error";
 import { saveLastUsername } from "src/utils/username-storage";
-import { validateUsername } from "src/utils/username-rules";
+import { usernameErrorMessage, validateUsername } from "src/utils/username-rules";
 
 export const Route = createFileRoute("/_menu/auth/username")({
     component: RouteComponent,
@@ -33,12 +33,14 @@ export const Route = createFileRoute("/_menu/auth/username")({
  * The username step of a first OIDC login.
  *
  * The provider vouched for the person and stated their email; the Account is only created
- * once a username is picked here. Leaving the page creates nothing.
+ * once a username is picked here. Leaving the page creates nothing. An email an Account took
+ * since the callback ends the login on the login page, which explains it.
  *
  * @returns the username step
  */
 function RouteComponent() {
     const [t] = useTranslation("signup");
+    const [tg] = useTranslation();
     const navigate = useNavigate();
     const { refresh } = useAccount();
     const [pending, setPending] = useState<PendingOidcLogin | null | undefined>(undefined);
@@ -56,29 +58,22 @@ function RouteComponent() {
             onSubmitAsync: async ({ value: { username } }) => {
                 const usernameError = validateUsername(username);
                 if (usernameError !== null) {
-                    return {
-                        fields: {
-                            username: {
-                                length: t("error.username-length"),
-                                charset: t("error.username-charset"),
-                                start: t("error.username-start"),
-                            }[usernameError],
-                        },
-                        form: undefined,
-                    };
+                    return { fields: { username: usernameErrorMessage(tg, usernameError) }, form: undefined };
                 }
                 const response = await Api.auth.oidc.chooseUsername(username);
                 if (isFormError(response)) {
                     return handleFormError(response.error, {
                         username_taken: (errors) => {
-                            errors.fields.username = t("error.username-taken");
+                            errors.fields.username = tg("error.username-taken");
                         },
                         nothing_pending: (errors) => {
                             errors.fields.username = t("error.nothing-pending");
                         },
-                        // An Account took the email since the callback; the login page explains it.
                         email_in_use: () => {
-                            void navigate({ to: "/auth/login", search: { oidc_error: "email_in_use" } });
+                            void navigate({
+                                to: "/auth/login",
+                                search: { oidc_error: OidcLoginFailure.email_in_use },
+                            });
                         },
                     });
                 }
@@ -125,8 +120,8 @@ function RouteComponent() {
                         <form.Field name={"username"}>
                             {(fieldApi) => (
                                 <Field>
-                                    <RequiredLabel>{t("label.username")}</RequiredLabel>
-                                    <Description>{t("description.username")}</Description>
+                                    <RequiredLabel>{tg("label.username")}</RequiredLabel>
+                                    <Description>{tg("description.username")}</Description>
                                     <Input
                                         autoFocus={true}
                                         required={true}

@@ -1241,7 +1241,7 @@
         "/api/frontend/v1/auth/recover": {
             "post": {
                 "summary": "Send a fresh registration link to an account's stored address",
-                "description": "Send a fresh registration link to an account's stored address\n\nThe \"lost passkey\" flow: a new device has no passkey, so the login form\noffers this instead of a dead end. Registering over the link only *adds* a\npasskey — the existing ones keep working until their owner removes them.\n\nAlways answers `200`, whether or not the username exists — the response\nmust not be usable to probe which usernames are registered. The link is\nonly ever sent to the address stored on the account, never to one from the\nrequest, so this endpoint cannot be used to mail a third party. A locked\naccount gets no link either, and only a Local Account gets one at all; the\nanswer is the same `200`.",
+                "description": "Send a fresh registration link to an account's stored address\n\nThe \"lost passkey\" flow: a new device has no passkey, so the login form\noffers this instead of a dead end. Registering over the link only *adds* a\npasskey — the existing ones keep working until their owner removes them.\n\nAlways answers `200`, whether or not the username exists — the response\nmust not be usable to probe which usernames are registered. The link is\nonly ever sent to the address stored on the account, never to one from the\nrequest, so this endpoint cannot be used to mail a third party. A locked\naccount gets no link either, and only a Local Account gets one at all,\nincluding one not enrolled yet whose invite mail got lost; the answer is\nthe same `200`.",
                 "operationId": "recover_account",
                 "requestBody": {
                     "content": {
@@ -1685,7 +1685,7 @@
         "/api/frontend/v1/auth/oidc/callback": {
             "get": {
                 "summary": "Finish an OIDC login: the provider sends the browser back here",
-                "description": "Finish an OIDC login: the provider sends the browser back here\n\nA known External identity is logged in and lands on the app. An unknown\none is held pending and goes to the username step. A refused login goes\nback to the login page with `oidc_error` naming why. A locked Account is\nlogged in by the module and right out again here.",
+                "description": "Finish an OIDC login: the provider sends the browser back here\n\nA known External identity is logged in and lands on the app, unless its\nAccount is locked. An unknown one is held pending and goes to the username\nstep. A refused login goes back to the login page with `oidc_error`\nnaming why.",
                 "operationId": "finish_oidc_login",
                 "parameters": [
                     {
@@ -1825,7 +1825,7 @@
         "/api/frontend/v1/auth/oidc/username": {
             "post": {
                 "summary": "Finish the username step: create the External Account and log it in",
-                "description": "Finish the username step: create the External Account and log it in\n\nCreates the Identity, the External identity and the Account, with the\nprovider's verified email, in one transaction. A refused username keeps\nthe login pending, so the person can pick another. An email an Account\ntook since the callback ends the pending login.",
+                "description": "Finish the username step: create the External Account and log it in\n\nCreates the Identity, the External identity and the Account, with the\nprovider's verified email, in one transaction. A refused username keeps\nthe login pending, so the person can pick another, also when a concurrent\nrequest took it after the check. An email an Account took since the\ncallback ends the pending login.",
                 "operationId": "choose_username",
                 "requestBody": {
                     "content": {
@@ -14496,6 +14496,60 @@
                     "finish",
                     "printing",
                     "quantity"
+                ]
+            },
+            "OidcLoginFailure": {
+                "description": "Why an OIDC login was refused, as the callback names it to the login page\n\nSent as the `oidc_error` query parameter of the login page, see [`OidcCallbackRedirect`].",
+                "oneOf": [
+                    {
+                        "description": "The person cancelled at the provider",
+                        "type": "string",
+                        "enum": [
+                            "cancelled"
+                        ]
+                    },
+                    {
+                        "description": "The login was not started in this session, or ran out",
+                        "type": "string",
+                        "enum": [
+                            "expired"
+                        ]
+                    },
+                    {
+                        "description": "The provider cannot be reached right now",
+                        "type": "string",
+                        "enum": [
+                            "provider_unavailable"
+                        ]
+                    },
+                    {
+                        "description": "The provider did not state a verified email",
+                        "type": "string",
+                        "enum": [
+                            "email_unverified"
+                        ]
+                    },
+                    {
+                        "description": "The verified email belongs to an Account already",
+                        "type": "string",
+                        "enum": [
+                            "email_in_use"
+                        ]
+                    },
+                    {
+                        "description": "An Admin locked the Account",
+                        "type": "string",
+                        "enum": [
+                            "locked"
+                        ]
+                    },
+                    {
+                        "description": "The provider's answer did not check out",
+                        "type": "string",
+                        "enum": [
+                            "failed"
+                        ]
+                    }
                 ]
             },
             "OldestPrintingResponse": {

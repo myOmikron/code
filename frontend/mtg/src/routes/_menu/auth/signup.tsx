@@ -20,7 +20,7 @@ import { useForm } from "@tanstack/react-form";
 import { Api } from "src/api/api.tsx";
 import { OpenIdLoginButtons } from "src/components/openid-login-buttons";
 import { handleFormError, isFormError } from "src/utils/error";
-import { validateUsername } from "src/utils/username-rules";
+import { usernameErrorMessage, validateUsername } from "src/utils/username-rules";
 
 export const Route = createFileRoute("/_menu/auth/signup")({
     component: RouteComponent,
@@ -43,16 +43,7 @@ function RouteComponent() {
                 // instead of a form error and would end up on the error screen.
                 const usernameError = validateUsername(username);
                 if (usernameError !== null) {
-                    return {
-                        fields: {
-                            username: {
-                                length: tg("error.username-length"),
-                                charset: tg("error.username-charset"),
-                                start: tg("error.username-start"),
-                            }[usernameError],
-                        },
-                        form: undefined,
-                    };
+                    return { fields: { username: usernameErrorMessage(tg, usernameError) }, form: undefined };
                 }
                 // The registration mail should read like the page that caused
                 // it, so the UI's language travels with the request. Anything
