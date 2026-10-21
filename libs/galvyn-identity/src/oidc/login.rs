@@ -29,6 +29,7 @@ use super::error::FinishOidcLoginError;
 use super::models::ExternalIdentity;
 use super::models::ISSUER_SUBJECT_UNIQUE;
 use super::provider::DiscoveredClient;
+use super::provider::send;
 use super::session;
 use super::session::LoginState;
 use super::session::Pending;
@@ -319,12 +320,13 @@ impl IdentityModule {
             .discovered_client(provider, false)
             .await
             .ok_or(FinishOidcLoginError::ProviderUnavailable)?;
+        let http = self.oidc.http();
         let Ok(request) = client.exchange_code(AuthorizationCode::new(code)) else {
             return Err(FinishOidcLoginError::TokenExchangeFailed);
         };
         let response = request
             .set_pkce_verifier(PkceCodeVerifier::new(verifier))
-            .request_async(&|request| self.oidc.send(request))
+            .request_async(&move |request| send(http.clone(), request))
             .await
             .map_err(|error| {
                 warn!(provider = provider.id(), "code exchange failed: {error}");

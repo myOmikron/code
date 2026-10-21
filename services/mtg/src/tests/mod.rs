@@ -8,6 +8,7 @@ mod deletion;
 pub mod harness;
 mod lock;
 mod login_method;
+mod oidc;
 mod passkeys;
 mod rename;
 mod statistics;

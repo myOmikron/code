@@ -45,12 +45,14 @@ pub enum LoginMethod {
     /// The Identity holds Passkeys
     Local,
     /// The Identity holds External identities
-    #[cfg(feature = "oidc")]
+    ///
+    /// Only with the `oidc` feature; the variant exists without it, so a
+    /// service's matches compile however the workspace unifies features.
     External {
         /// The issuer of the OpenID provider vouching for it
         ///
-        /// [`IdentityModule::openid_providers`](crate::IdentityModule::openid_providers)
-        /// tells which configured provider that is, if one still is.
+        /// `IdentityModule::openid_providers` tells which configured provider
+        /// that is, if one still is.
         issuer: String,
     },
 }

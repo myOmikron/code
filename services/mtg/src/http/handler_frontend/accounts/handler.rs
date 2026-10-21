@@ -149,6 +149,9 @@ pub async fn finish_add_passkey(
         Err(FinishDeviceEnrollmentError::MalformedCredential) => errors.malformed_credential = true,
         Err(FinishDeviceEnrollmentError::VerificationFailed) => errors.registration_failed = true,
         Err(FinishDeviceEnrollmentError::AlreadyEnrolled) => errors.already_registered = true,
+        Err(FinishDeviceEnrollmentError::ExternalIdentity) => {
+            return Err(ApiError::bad_request("An External Account has no passkeys"));
+        }
         Err(FinishDeviceEnrollmentError::Internal(error)) => return Err(error.into()),
     }
     errors.fail()

@@ -45,7 +45,9 @@ pub enum FinishEnrollmentError {
     /// The Passkey is already enrolled
     AlreadyEnrolled,
     /// The Identity is external: it holds an External identity, never a Passkey
-    #[cfg(feature = "oidc")]
+    ///
+    /// Only with the `oidc` feature; the variant exists without it, so a
+    /// service's matches compile however the workspace unifies features.
     ExternalIdentity,
     /// Something unrelated to the request broke
     Internal(CoreApiError),
@@ -63,7 +65,9 @@ pub enum FinishDeviceEnrollmentError {
     /// The Passkey is already enrolled
     AlreadyEnrolled,
     /// The Identity is external: it holds an External identity, never a Passkey
-    #[cfg(feature = "oidc")]
+    ///
+    /// Only with the `oidc` feature; the variant exists without it, so a
+    /// service's matches compile however the workspace unifies features.
     ExternalIdentity,
     /// Something unrelated to the request broke
     Internal(CoreApiError),
@@ -76,7 +80,6 @@ impl From<FinishDeviceEnrollmentError> for FinishEnrollmentError {
             FinishDeviceEnrollmentError::MalformedCredential => Self::MalformedCredential,
             FinishDeviceEnrollmentError::VerificationFailed => Self::VerificationFailed,
             FinishDeviceEnrollmentError::AlreadyEnrolled => Self::AlreadyEnrolled,
-            #[cfg(feature = "oidc")]
             FinishDeviceEnrollmentError::ExternalIdentity => Self::ExternalIdentity,
             FinishDeviceEnrollmentError::Internal(error) => Self::Internal(error),
         }

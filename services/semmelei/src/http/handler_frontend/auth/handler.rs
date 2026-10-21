@@ -114,6 +114,9 @@ fn enrollment_refused(error: FinishEnrollmentError) -> ApiError {
         FinishEnrollmentError::AlreadyEnrolled => {
             ApiError::bad_request("This passkey is already registered")
         }
+        FinishEnrollmentError::ExternalIdentity => {
+            ApiError::bad_request("This account logs in through an OpenID provider")
+        }
         FinishEnrollmentError::Internal(error) => error.into(),
     }
 }
