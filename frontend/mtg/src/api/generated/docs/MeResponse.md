@@ -7,6 +7,7 @@ The account the current session belongs to
 
 Name | Type
 ------------ | -------------
+`external` | boolean
 `role` | [Role](Role.md)
 `username` | string
 `uuid` | string

@@ -15,6 +15,7 @@ use galvyn::rorm::fields::types::MaxStr;
 use galvyn_identity::FinishDeviceEnrollmentError;
 use galvyn_identity::Identity;
 use galvyn_identity::IdentityModule;
+use galvyn_identity::LoginMethod;
 use galvyn_identity::RemovalRefused;
 use galvyn_identity::RemovePasskeyError;
 
@@ -45,6 +46,9 @@ use crate::models::account::DeletionMode;
 pub async fn me(session: Session, identity: Identity) -> ApiResult<ApiJson<MeResponse>, MeErrors> {
     let mut tx = Database::global().start_transaction().await?;
     let account = Account::get_by_identity(&mut tx, identity.uuid).await?;
+    let login_method = IdentityModule::global()
+        .login_method(&mut tx, identity.uuid)
+        .await?;
     tx.commit().await?;
 
     let account = account.ok_or(ApiError::unauthorized("No account for the identity"))?;
@@ -62,6 +66,7 @@ pub async fn me(session: Session, identity: Identity) -> ApiResult<ApiJson<MeRes
         uuid: account.uuid,
         username: account.username.as_str().to_string(),
         role: account.role,
+        external: matches!(login_method, Some(LoginMethod::External { .. })),
     }))
 }
 

@@ -14238,6 +14238,10 @@
                 "description": "The account the current session belongs to",
                 "type": "object",
                 "properties": {
+                    "external": {
+                        "description": "Whether the account logs in through an OpenID provider (an External Account)\n\nAn External Account has no Passkeys and cannot add one.",
+                        "type": "boolean"
+                    },
                     "role": {
                         "description": "What the account may do, decides whether the admin dashboard is offered",
                         "allOf": [
@@ -14260,6 +14264,7 @@
                     }
                 },
                 "required": [
+                    "external",
                     "role",
                     "username",
                     "uuid"

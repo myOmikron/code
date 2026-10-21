@@ -5,6 +5,7 @@ mod admin_log;
 mod bracket_flags;
 mod deck_history;
 mod deletion;
+mod external_accounts;
 pub mod harness;
 mod lock;
 mod login_method;
