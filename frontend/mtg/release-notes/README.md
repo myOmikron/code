@@ -19,6 +19,7 @@ en: Undo and redo deck changes, also with Ctrl+Z / Ctrl+Y.
 - Plain text in the players' words, one or two sentences, no Markdown, no links.
   Quote a text that holds `: ` or starts with a quote.
 - `pnpm run release-notes:check` validates every fragment; the frontend CI runs it.
+  The build parses the fragments (`scripts/release-notes.ts`) and fails on an invalid one.
 
 `just release mtg <version>` moves the pending fragments into `<version>/`, writes
 its `release.yaml` (version and Release date), commits and creates the signed tag.

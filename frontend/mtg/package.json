@@ -71,8 +71,7 @@
         "react-toastify": "catalog:dependencies",
         "recharts": "catalog:dependencies",
         "tesseract.js": "catalog:dependencies",
-        "tesseract.js-core": "catalog:dependencies",
-        "yaml": "catalog:dependencies"
+        "tesseract.js-core": "catalog:dependencies"
     },
     "devDependencies": {
         "@eslint/js": "catalog:devDependencies",
@@ -98,6 +97,7 @@
         "vite-plugin-pwa": "catalog:devDependencies",
         "vite-plugin-svgr": "catalog:devDependencies",
         "vitest": "catalog:devDependencies",
-        "workbox-window": "catalog:devDependencies"
+        "workbox-window": "catalog:devDependencies",
+        "yaml": "catalog:devDependencies"
     }
 }

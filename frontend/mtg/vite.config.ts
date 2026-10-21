@@ -6,6 +6,7 @@ import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import tailwindcss from "@tailwindcss/vite";
 import { VitePWA } from "vite-plugin-pwa";
 import { resilientImageCache } from "./pwa/image-cache";
+import { releaseNotes } from "./scripts/release-notes";
 
 // Where the vite dev server proxies API requests to.
 // The compose dev stack sets this to the webserver service.
@@ -39,6 +40,7 @@ export default defineConfig({
         react(),
         svgr(),
         tailwindcss(),
+        releaseNotes(),
         VitePWA({
             // The scanner should silently stay current, no update prompt
             registerType: "autoUpdate",
