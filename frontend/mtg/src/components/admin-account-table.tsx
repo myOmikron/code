@@ -1,6 +1,7 @@
 import { Badge, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Text } from "components";
 import { useTranslation } from "react-i18next";
 import type { AdminAccount } from "src/api/generated";
+import { AdminLoginMethodBadge } from "src/components/admin-login-method-badge";
 import { AdminRoleBadge } from "src/components/admin-role-badge";
 import { formatDate } from "src/utils/format";
 
@@ -27,6 +28,7 @@ export function AdminAccountTable({ accounts }: AdminAccountTableProps) {
                     <TableHeader>{t("label.username")}</TableHeader>
                     <TableHeader className={"max-md:hidden"}>{t("label.email")}</TableHeader>
                     <TableHeader>{t("label.role")}</TableHeader>
+                    <TableHeader className={"max-lg:hidden"}>{t("label.login")}</TableHeader>
                     <TableHeader className={"max-sm:hidden"}>{t("label.created-at")}</TableHeader>
                     <TableHeader className={"text-right max-sm:hidden"}>{t("label.collections")}</TableHeader>
                     <TableHeader className={"text-right max-sm:hidden"}>{t("label.decks")}</TableHeader>
@@ -49,6 +51,9 @@ export function AdminAccountTable({ accounts }: AdminAccountTableProps) {
                                 <AdminRoleBadge role={account.role} />
                                 {account.lock && <Badge color={"red"}>{t("label.locked")}</Badge>}
                             </div>
+                        </TableCell>
+                        <TableCell className={"max-lg:hidden"}>
+                            <AdminLoginMethodBadge openidProvider={account.openid_provider} />
                         </TableCell>
                         <TableCell className={"max-sm:hidden"}>{formatDate(account.created_at)}</TableCell>
                         <TableCell className={"text-right tabular-nums max-sm:hidden"}>{account.collections}</TableCell>

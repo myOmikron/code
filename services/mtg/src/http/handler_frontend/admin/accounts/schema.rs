@@ -51,6 +51,17 @@ pub struct AdminAccount {
     pub decks: i64,
     /// The Account's Lock, `None` while it is not locked
     pub lock: Option<AdminAccountLock>,
+    /// The OpenID provider an External Account logs in through, `None` for a Local Account
+    pub openid_provider: Option<AdminOpenIdProvider>,
+}
+
+/// The OpenID provider an External Account logs in through
+#[derive(Debug, Clone, Serialize, JsonSchema)]
+pub struct AdminOpenIdProvider {
+    /// The provider's issuer
+    pub issuer: String,
+    /// What the frontend calls the provider, `None` once it is no longer configured
+    pub display_name: Option<String>,
 }
 
 /// An Account's Lock
@@ -75,6 +86,10 @@ impl From<AccountOverview> for AdminAccount {
             lock: value.lock.map(|lock| AdminAccountLock {
                 locked_at: SchemaDateTime(lock.locked_at),
                 reason: lock.reason,
+            }),
+            openid_provider: value.openid_provider.map(|provider| AdminOpenIdProvider {
+                issuer: provider.issuer,
+                display_name: provider.display_name,
             }),
         }
     }

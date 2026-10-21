@@ -338,6 +338,46 @@ fn an_external_identity_enrolled_without_ceremony_logs_in() {
     });
 }
 
+#[test]
+fn external_issuers_name_only_the_external_identities() {
+    run(async {
+        database().await;
+        let fake = FakeOpenIdProvider::start().await;
+        let module = module(&fake, false).await;
+        let mut tx = Database::global().start_transaction().await.unwrap();
+        let external = module.create_identity(&mut tx).await.unwrap();
+        module
+            .enroll_external_identity_without_ceremony(
+                &mut tx,
+                external,
+                fake.issuer(),
+                &alice().subject,
+            )
+            .await
+            .unwrap();
+        let without = module.create_identity(&mut tx).await.unwrap();
+        tx.commit().await.unwrap();
+
+        let issuers = module
+            .external_issuers(Database::global(), &[external, without])
+            .await
+            .unwrap();
+
+        assert_eq!(issuers.len(), 1, "{issuers:?}");
+        assert_eq!(
+            issuers.get(&external).map(String::as_str),
+            Some(fake.issuer())
+        );
+        assert!(
+            module
+                .external_issuers(Database::global(), &[])
+                .await
+                .unwrap()
+                .is_empty()
+        );
+    });
+}
+
 #[cfg(feature = "passkey")]
 mod local_or_external {
     use galvyn::core::Module;

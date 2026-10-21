@@ -1,5 +1,7 @@
 //! External identities of an Identity
 
+use std::collections::HashMap;
+
 use galvyn::rorm;
 use galvyn::rorm::db::executor::Executor;
 use galvyn::rorm::fields::types::ForeignModelByField;
@@ -81,5 +83,35 @@ impl ExternalIdentity {
             .order_asc(ExternalIdentityModel.created_at)
             .optional()
             .await
+    }
+
+    /// [`ExternalIdentity::issuer_of`] for each of `identities`, in one query
+    ///
+    /// An Identity without an External identity has no entry.
+    #[instrument(name = "ExternalIdentity::issuers_of", skip(exe))]
+    pub(crate) async fn issuers_of(
+        exe: impl Executor<'_>,
+        identities: &[IdentityUuid],
+    ) -> Result<HashMap<IdentityUuid, MaxStr<255>>, rorm::Error> {
+        if identities.is_empty() {
+            return Ok(HashMap::new());
+        }
+        let uuids = identities.iter().map(|uuid| uuid.into_inner());
+        let rows = rorm::query(
+            exe,
+            (ExternalIdentityModel.identity, ExternalIdentityModel.issuer),
+        )
+        .condition(ExternalIdentityModel.identity.r#in(uuids))
+        .order_asc(ExternalIdentityModel.created_at)
+        .all()
+        .await?;
+
+        let mut issuers = HashMap::new();
+        for (identity, issuer) in rows {
+            issuers
+                .entry(IdentityUuid::new_from_field(identity))
+                .or_insert(issuer);
+        }
+        Ok(issuers)
     }
 }
