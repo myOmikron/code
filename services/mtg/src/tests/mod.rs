@@ -7,6 +7,7 @@ mod deck_history;
 mod deletion;
 pub mod harness;
 mod lock;
+mod login_method;
 mod passkeys;
 mod rename;
 mod statistics;

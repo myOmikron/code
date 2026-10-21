@@ -33,6 +33,7 @@ pub use self::management::OpenLink;
 pub use self::middleware::AuthRequiredLayer;
 pub use self::models::Identity;
 pub use self::models::IdentityUuid;
+pub use self::models::LoginMethod;
 #[cfg(feature = "passkey")]
 pub use self::passkey::BeginLoginError;
 #[cfg(feature = "passkey")]

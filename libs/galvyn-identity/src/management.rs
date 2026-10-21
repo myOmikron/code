@@ -16,6 +16,7 @@ use super::error::LinkError;
 use super::error::OpenLinkError;
 use super::models::Identity;
 use super::models::IdentityUuid;
+use super::models::LoginMethod;
 use super::models::RegistrationLink;
 use super::models::RegistrationLinkUuid;
 
@@ -73,6 +74,28 @@ impl IdentityModule {
         identity: IdentityUuid,
     ) -> Result<bool, rorm::Error> {
         Identity::delete(exe, identity).await
+    }
+
+    /// How `identity` logs in, or `None` while it has no login method yet
+    ///
+    /// A missing Identity has no login method either.
+    #[cfg_attr(
+        not(feature = "passkey"),
+        expect(
+            unused_variables,
+            reason = "Without a login method there is nothing to look up"
+        )
+    )]
+    pub async fn login_method(
+        &self,
+        exe: impl Executor<'_>,
+        identity: IdentityUuid,
+    ) -> Result<Option<LoginMethod>, rorm::Error> {
+        #[cfg(feature = "passkey")]
+        if self.count_passkeys(exe, identity).await? > 0 {
+            return Ok(Some(LoginMethod::Local));
+        }
+        Ok(None)
     }
 
     /// Issue a Registration link for `identity` and return the full link

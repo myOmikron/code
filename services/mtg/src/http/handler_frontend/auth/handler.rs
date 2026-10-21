@@ -16,6 +16,7 @@ use galvyn_identity::FinishEnrollmentError;
 use galvyn_identity::FinishLoginError;
 use galvyn_identity::IdentityModule;
 use galvyn_identity::LinkError;
+use galvyn_identity::LoginMethod;
 use galvyn_identity::OpenLinkError;
 use tracing::info;
 use url::Url;
@@ -81,7 +82,8 @@ pub async fn signup(
 /// must not be usable to probe which usernames are registered. The link is
 /// only ever sent to the address stored on the account, never to one from the
 /// request, so this endpoint cannot be used to mail a third party. A locked
-/// account gets no link either, and the answer is the same `200`.
+/// account gets no link either, and only a Local Account gets one at all; the
+/// answer is the same `200`.
 #[post("/recover")]
 pub async fn recover_account(
     ApiJson(request): ApiJson<RecoverAccountRequest>,
@@ -95,6 +97,18 @@ pub async fn recover_account(
     };
     if account.locked {
         info!("Recovery for a locked account");
+        tx.commit().await?;
+        return Ok(ApiJson(()));
+    }
+    let local = match IdentityModule::global()
+        .login_method(&mut tx, account.identity)
+        .await?
+    {
+        // Not enrolled yet: a Local Account whose invite mail got lost
+        None | Some(LoginMethod::Local) => true,
+    };
+    if !local {
+        info!("Recovery for an account that is not local");
         tx.commit().await?;
         return Ok(ApiJson(()));
     }
@@ -115,9 +129,9 @@ pub async fn recover_account(
 ///
 /// Returns the recipient, username, and Registration link of the mail to send.
 ///
-/// A taken username gets a fresh link only while its account has no passkey
-/// yet: that is the "my invite mail got lost" case. Once a passkey exists the
-/// account is somebody's, and a stranger typing the username must not be able
+/// A taken username gets a fresh link only while its account's Identity has no
+/// login method yet: that is the "my invite mail got lost" case. Once it has one
+/// the account is somebody's, and a stranger typing the username must not be able
 /// to trigger mail to them. A locked account never gets one. The email is
 /// unique too, and just as unrevealable.
 async fn prepare_signup(
@@ -128,11 +142,10 @@ async fn prepare_signup(
     let identity_module = IdentityModule::global();
 
     if let Some(account) = Account::get_by_username(&mut *tx, &request.username).await? {
-        let has_passkey = !identity_module
-            .list_passkeys(&mut *tx, account.identity)
-            .await?
-            .is_empty();
-        if has_passkey || account.locked {
+        let login_method = identity_module
+            .login_method(&mut *tx, account.identity)
+            .await?;
+        if login_method.is_some() || account.locked {
             info!("Signup for a username that is already registered");
             errors.username_taken = true;
             return Ok(None);
