@@ -1,11 +1,22 @@
 //! Request/response schemas of the OIDC login handlers
 
+use galvyn::core::handler::context::EndpointContext;
+use galvyn::core::handler::response_body::ResponseBody;
+use galvyn::core::handler::response_body::ShouldBeResponseBody;
+use galvyn::core::re_exports::axum::http::HeaderName;
+use galvyn::core::re_exports::axum::http::StatusCode;
+use galvyn::core::re_exports::axum::response::IntoResponse;
+use galvyn::core::re_exports::axum::response::Redirect;
+use galvyn::core::re_exports::axum::response::Response;
+use galvyn::core::re_exports::mime::Mime;
 use galvyn::core::re_exports::schemars;
 use galvyn::core::re_exports::schemars::JsonSchema;
+use galvyn::core::re_exports::schemars::schema::Schema;
 use galvyn::rorm::fields::types::MaxStr;
 use serde::Deserialize;
 use serde::Serialize;
 
+use crate::http::handler_frontend::oidc::LOGIN_PAGE;
 use crate::models::account::Username;
 
 /// The OpenID providers people may log in through
@@ -60,8 +71,10 @@ pub struct OidcCallbackQuery {
 
 /// Why an OIDC login was refused, as the callback names it to the login page
 ///
-/// Sent as the `oidc_error` query parameter of the login page.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// Sent as the `oidc_error` query parameter of the login page, see
+/// [`OidcCallbackRedirect`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
 pub enum OidcLoginFailure {
     /// The person cancelled at the provider
     Cancelled,
@@ -79,18 +92,52 @@ pub enum OidcLoginFailure {
     Failed,
 }
 
-impl OidcLoginFailure {
-    /// The value of the `oidc_error` query parameter
-    pub fn code(self) -> &'static str {
-        match self {
-            OidcLoginFailure::Cancelled => "cancelled",
-            OidcLoginFailure::Expired => "expired",
-            OidcLoginFailure::ProviderUnavailable => "provider_unavailable",
-            OidcLoginFailure::EmailUnverified => "email_unverified",
-            OidcLoginFailure::EmailInUse => "email_in_use",
-            OidcLoginFailure::Locked => "locked",
-            OidcLoginFailure::Failed => "failed",
-        }
+/// The query of the login page a refused OIDC login returns to
+#[derive(Serialize)]
+struct LoginPageQuery {
+    /// Why the login was refused
+    oidc_error: OidcLoginFailure,
+}
+
+/// Where the callback sends the browser: the app, the username step, or the login page
+///
+/// A `303 See Other` without a body. Its schema in the spec is
+/// [`OidcLoginFailure`]: no body carries it, but the frontend reads it from
+/// the login page's `oidc_error` and needs the generated type for that.
+#[derive(Debug)]
+pub struct OidcCallbackRedirect(Redirect);
+
+impl OidcCallbackRedirect {
+    /// Send the browser to the frontend page `path`
+    pub fn to(path: &str) -> Self {
+        Self(Redirect::to(path))
+    }
+
+    /// Send the browser back to the login page, naming why
+    pub fn refused(failure: OidcLoginFailure) -> Self {
+        let query = serde_urlencoded::to_string(LoginPageQuery {
+            oidc_error: failure,
+        })
+        .unwrap_or_else(|_| unreachable!("a struct of one unit variant serializes"));
+        Self::to(&format!("{LOGIN_PAGE}?{query}"))
+    }
+}
+
+impl IntoResponse for OidcCallbackRedirect {
+    fn into_response(self) -> Response {
+        self.0.into_response()
+    }
+}
+
+impl ShouldBeResponseBody for OidcCallbackRedirect {}
+impl ResponseBody for OidcCallbackRedirect {
+    fn header() -> Vec<HeaderName> {
+        <Redirect as ResponseBody>::header()
+    }
+
+    fn body(ctx: &mut EndpointContext) -> Vec<(StatusCode, Option<(Mime, Option<Schema>)>)> {
+        ctx.generator.generate::<OidcLoginFailure>();
+        <Redirect as ResponseBody>::body(ctx)
     }
 }
 

@@ -34,6 +34,7 @@ use crate::http::handler_frontend::accounts::schema::RenamePasskeyErrors;
 use crate::http::handler_frontend::accounts::schema::RenamePasskeyRequest;
 use crate::http::handler_frontend::accounts::schema::SimplePasskey;
 use crate::http::handler_frontend::accounts::schema::StartAddPasskeyResponse;
+use crate::http::handler_frontend::auth::handler::no_passkeys_for_external;
 use crate::models::account::Account;
 use crate::models::account::AccountPasskeyUuid;
 use crate::models::account::DeletionMode;
@@ -66,7 +67,7 @@ pub async fn me(session: Session, identity: Identity) -> ApiResult<ApiJson<MeRes
         uuid: account.uuid,
         username: account.username.as_str().to_string(),
         role: account.role,
-        external: matches!(login_method, Some(LoginMethod::External { .. })),
+        external: login_method.as_ref().is_some_and(LoginMethod::is_external),
     }))
 }
 
@@ -155,7 +156,7 @@ pub async fn finish_add_passkey(
         Err(FinishDeviceEnrollmentError::VerificationFailed) => errors.registration_failed = true,
         Err(FinishDeviceEnrollmentError::AlreadyEnrolled) => errors.already_registered = true,
         Err(FinishDeviceEnrollmentError::ExternalIdentity) => {
-            return Err(ApiError::bad_request("An External Account has no passkeys"));
+            return Err(no_passkeys_for_external());
         }
         Err(FinishDeviceEnrollmentError::Internal(error)) => return Err(error.into()),
     }

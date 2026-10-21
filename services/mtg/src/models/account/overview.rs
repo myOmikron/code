@@ -209,16 +209,15 @@ impl AccountDetail {
             return Ok(None);
         };
 
-        let (identity, overview) = decode_overview(row)?;
+        let (identity, mut overview) = decode_overview(row)?;
         let cards = row.get("cards").map_err(decode)?;
-        let passkeys = IdentityModule::global()
-            .count_passkeys(&mut *tx, identity)
-            .await?;
-        let mut accounts = vec![(identity, overview)];
-        with_openid_providers(&mut *tx, &mut accounts).await?;
-        let Some((_, overview)) = accounts.pop() else {
-            unreachable!("the Account is still there");
-        };
+        let module = IdentityModule::global();
+        let passkeys = module.count_passkeys(&mut *tx, identity).await?;
+        overview.openid_provider = module
+            .external_issuers(&mut *tx, &[identity])
+            .await?
+            .remove(&identity)
+            .map(openid_provider);
 
         Ok(Some(AccountDetail {
             overview,
@@ -253,19 +252,20 @@ async fn with_openid_providers(
     let mut issuers: HashMap<IdentityUuid, String> =
         module.external_issuers(&mut *tx, &identities).await?;
     for (identity, account) in accounts {
-        account.openid_provider = issuers.remove(identity).map(|issuer| {
-            let display_name = module
-                .openid_providers()
-                .iter()
-                .find(|provider| provider.issuer() == issuer)
-                .map(|provider| provider.display_name().to_string());
-            AccountOpenIdProvider {
-                issuer,
-                display_name,
-            }
-        });
+        account.openid_provider = issuers.remove(identity).map(openid_provider);
     }
     Ok(())
+}
+
+/// The OpenID provider whose issuer is `issuer`, named if it is still configured
+fn openid_provider(issuer: String) -> AccountOpenIdProvider {
+    let display_name = IdentityModule::global()
+        .openid_provider_by_issuer(&issuer)
+        .map(|provider| provider.display_name().to_string());
+    AccountOpenIdProvider {
+        issuer,
+        display_name,
+    }
 }
 
 /// Reads the [`COLUMNS`] of a row, with the Identity the Account references

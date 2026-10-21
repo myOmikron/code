@@ -4,10 +4,14 @@
 use galvyn::core::Module;
 use galvyn::core::re_exports::axum::http::Method;
 use galvyn::core::re_exports::axum::http::StatusCode;
+use galvyn::core::re_exports::time::OffsetDateTime;
+use galvyn::rorm;
 use galvyn::rorm::Database;
 use galvyn::rorm::fields::types::MaxStr;
 use galvyn_identity::FakePerson;
+use galvyn_identity::IdentityModel;
 use galvyn_identity::IdentityModule;
+use galvyn_identity::IdentityUuid;
 use galvyn_identity::LoginMethod;
 use serde_json::json;
 use url::Url;
@@ -368,6 +372,24 @@ fn an_email_in_use_is_refused_before_the_username_step_and_creates_nothing() {
 }
 
 #[test]
+fn an_email_in_use_is_refused_in_any_case() {
+    run(async {
+        let member = create_account(Role::Member).await;
+        let email = format!("{}@MTG.test", member.username.to_uppercase());
+        let mut client = TestClient::new();
+
+        let location = continue_with_google(&mut client, stranger_with_email(&email)).await;
+
+        assert_eq!(
+            location.query(),
+            Some("oidc_error=email_in_use"),
+            "{location}"
+        );
+        assert_eq!(orphans().await, (0, 0));
+    });
+}
+
+#[test]
 fn an_email_taken_during_the_username_step_is_refused() {
     run(async {
         let person = stranger();
@@ -400,6 +422,12 @@ fn a_locked_external_account_cannot_log_in() {
         let external = external_account(person.clone()).await;
         lock(&external).await;
 
+        let identity = account_named(&external.username)
+            .await
+            .expect("the account exists")
+            .identity;
+        let before = last_login_at(identity).await;
+
         let mut client = TestClient::new();
         let location = continue_with_google(&mut client, person).await;
 
@@ -409,7 +437,66 @@ fn a_locked_external_account_cannot_log_in() {
             client.get(&api("accounts/me")).await.status,
             StatusCode::UNAUTHORIZED
         );
+        assert_eq!(last_login_at(identity).await, before);
     });
+}
+
+#[test]
+fn an_oidc_login_gets_a_fresh_session_id() {
+    run(async {
+        let person = stranger();
+        external_account(person.clone()).await;
+        let mut client = TestClient::new();
+        client
+            .json(
+                Method::POST,
+                &api("auth/oidc/start"),
+                &json!({ "provider": "google", "remember_me": false }),
+            )
+            .await
+            .ok_json();
+        let planted = client
+            .cookie(SESSION_COOKIE)
+            .expect("starting a login sets the session cookie")
+            .to_string();
+
+        continue_with_google(&mut client, person).await;
+
+        let logged_in = client.cookie(SESSION_COOKIE).expect("a session cookie");
+        assert_ne!(logged_in, planted);
+        client.get(&api("accounts/me")).await.ok_json();
+    });
+}
+
+#[test]
+fn the_username_step_gets_a_fresh_session_id() {
+    run(async {
+        let mut client = TestClient::new();
+        continue_with_google(&mut client, stranger()).await;
+        let pending = client
+            .cookie(SESSION_COOKIE)
+            .expect("a pending login has a session cookie")
+            .to_string();
+
+        choose_username(&mut client, &free_username())
+            .await
+            .ok_json();
+
+        let logged_in = client.cookie(SESSION_COOKIE).expect("a session cookie");
+        assert_ne!(logged_in, pending);
+    });
+}
+
+/// The name of the session cookie
+const SESSION_COOKIE: &str = "id";
+
+/// When the Identity last logged in
+async fn last_login_at(identity: IdentityUuid) -> Option<OffsetDateTime> {
+    rorm::query(Database::global(), IdentityModel.last_login_at)
+        .condition(IdentityModel.uuid.equals(identity.into_inner()))
+        .one()
+        .await
+        .expect("read the identity")
 }
 
 #[test]

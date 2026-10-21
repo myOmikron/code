@@ -294,6 +294,11 @@ impl TestClient {
         }
     }
 
+    /// The value of the cookie `name`, if the jar holds it
+    pub fn cookie(&self, name: &str) -> Option<&str> {
+        self.cookies.get(name).map(String::as_str)
+    }
+
     /// A client whose session is logged in as `account`
     pub async fn logged_in(account: &TestAccount) -> Self {
         let mut client = Self::new();
