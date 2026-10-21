@@ -2,6 +2,7 @@
     "button": {
         "change-details": "Angaben ändern",
         "choose-username": "Konto erstellen",
+        "login": "Anmelden",
         "login-instead": "Ich habe schon ein Konto",
         "signup": "Konto erstellen"
     },
@@ -9,7 +10,9 @@
         "check-mail": "Wir haben dir einen Link geschickt. Öffne ihn, um den Passkey für {{username}} einzurichten — er ist 7 Tage gültig.",
         "check-spam": "Nichts angekommen? Schau im Spam-Ordner nach und prüfe, ob die Adresse stimmt.",
         "choose-username": "{{provider}} hat dich als {{email}} angemeldet. Wähle noch einen Benutzernamen, dann ist dein Konto fertig.",
-        "nothing-pending": "Hier gibt es gerade nichts zu tun: Der Anmeldeversuch ist abgelaufen oder schon abgeschlossen. Melde dich noch einmal an."
+        "nothing-pending": "Hier gibt es gerade nichts zu tun: Der Anmeldeversuch ist abgelaufen oder schon abgeschlossen. Melde dich noch einmal an.",
+        "passkey": "Wir schicken dir einen Link, um einen Passkey einzurichten. Ein Passwort gibt es nicht.",
+        "signup": "Deine Sammlung, Decks und Preise an einem Ort."
     },
     "error": {
         "email-malformed": "Das sieht nicht nach einer E-Mail-Adresse aus.",
@@ -21,7 +24,8 @@
         "signup": "Konto erstellen"
     },
     "label": {
-        "email": "E-Mail-Adresse"
+        "email": "E-Mail-Adresse",
+        "have-account": "Schon ein Konto?"
     },
     "toast": {
         "signed-up": "Willkommen, {{username}}"

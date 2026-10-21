@@ -2,6 +2,7 @@
     "button": {
         "change-details": "Change details",
         "choose-username": "Create account",
+        "login": "Sign in",
         "login-instead": "I already have an account",
         "signup": "Create account"
     },
@@ -9,7 +10,9 @@
         "check-mail": "We sent you a link. Open it to set up the passkey for {{username}} — it is valid for 7 days.",
         "check-spam": "Nothing arrived? Check your spam folder and make sure the address is right.",
         "choose-username": "{{provider}} signed you in as {{email}}. Choose a username and your account is ready.",
-        "nothing-pending": "Nothing to do here right now: the login attempt expired or is already done. Log in again."
+        "nothing-pending": "Nothing to do here right now: the login attempt expired or is already done. Log in again.",
+        "passkey": "We email you a link to set up a passkey. There is no password.",
+        "signup": "Your collection, decks and prices in one place."
     },
     "error": {
         "email-malformed": "That does not look like an email address.",
@@ -21,7 +24,8 @@
         "signup": "Create account"
     },
     "label": {
-        "email": "Email address"
+        "email": "Email address",
+        "have-account": "Already have an account?"
     },
     "toast": {
         "signed-up": "Welcome, {{username}}"

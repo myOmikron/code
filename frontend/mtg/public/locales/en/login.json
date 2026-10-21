@@ -6,7 +6,8 @@
     },
     "description": {
         "login": "Your device will then ask for your fingerprint, face or PIN. There is no password.",
-        "recovery-sent": "If that account exists, a new registration link is on its way to the address on file."
+        "recovery-sent": "If that account exists, a new registration link is on its way to the address on file.",
+        "welcome-back": "Welcome back. Sign in to your collection."
     },
     "error": {
         "authenticator-error": "Your device could not provide the passkey. Check that a screen lock or PIN is set up.",
@@ -32,6 +33,7 @@
         "login": "Sign in"
     },
     "label": {
+        "no-account": "No account yet?",
         "remember-me": "Stay signed in",
         "username": "Username"
     },

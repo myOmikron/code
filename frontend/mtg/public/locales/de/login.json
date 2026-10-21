@@ -6,7 +6,8 @@
     },
     "description": {
         "login": "Danach fragt dich dein Gerät nach Fingerabdruck, Gesicht oder PIN. Ein Passwort gibt es nicht.",
-        "recovery-sent": "Wenn es dieses Konto gibt, ist ein neuer Registrierungslink an die hinterlegte Mailadresse unterwegs."
+        "recovery-sent": "Wenn es dieses Konto gibt, ist ein neuer Registrierungslink an die hinterlegte Mailadresse unterwegs.",
+        "welcome-back": "Willkommen zurück. Melde dich bei deiner Sammlung an."
     },
     "error": {
         "authenticator-error": "Dein Gerät konnte den Passkey nicht bereitstellen. Prüfe, ob eine Bildschirmsperre oder PIN eingerichtet ist.",
@@ -32,6 +33,7 @@
         "login": "Anmelden"
     },
     "label": {
+        "no-account": "Noch kein Konto?",
         "remember-me": "Angemeldet bleiben",
         "username": "Benutzername"
     },

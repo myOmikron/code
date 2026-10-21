@@ -1,19 +1,21 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { FingerPrintIcon } from "@heroicons/react/20/solid";
 import {
     Button,
     Description,
+    Divider,
     ErrorMessage,
     Field,
     FieldGroup,
-    Fieldset,
     Form,
+    Heading,
     Input,
     Label,
-    Legend,
     RequiredLabel,
     Switch,
     SwitchField,
     Text,
+    TextLink,
     notify,
 } from "components";
 import { PrimaryButton } from "src/components/primary-button";
@@ -22,6 +24,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import { OidcLoginFailure } from "src/api/generated";
+import { AuthLayout } from "src/components/auth-layout";
 import { InlineError } from "src/components/inline-error";
 import { OpenIdLoginButtons } from "src/components/openid-login-buttons";
 import { useAccount } from "src/context/account";
@@ -211,76 +214,78 @@ function RouteComponent() {
             : undefined;
 
     return (
-        <div className={"flex h-full w-full items-center justify-center"}>
-            <div className={"flex max-w-2xl flex-col gap-6"}>
-                <Form onSubmit={form.handleSubmit}>
-                    <Fieldset>
-                        <Legend>{t("heading.login")}</Legend>
-
-                        <FieldGroup>
-                            <form.Field name={"username"}>
-                                {(fieldApi) => (
-                                    <Field>
-                                        <RequiredLabel>{t("label.username")}</RequiredLabel>
-                                        <Description>{t("description.login")}</Description>
-                                        <Input
-                                            autoFocus={true}
-                                            required={true}
-                                            maxLength={32}
-                                            autoComplete={"username webauthn"}
-                                            invalid={fieldApi.state.meta.errors.length > 0}
-                                            value={fieldApi.state.value}
-                                            onChange={(e) => fieldApi.handleChange(e.target.value)}
-                                        />
-                                        {fieldApi.state.meta.errors.map((error) => (
-                                            <ErrorMessage key={String(error)}>{String(error)}</ErrorMessage>
-                                        ))}
-                                        {formError !== undefined && <ErrorMessage>{formError}</ErrorMessage>}
-                                    </Field>
-                                )}
-                            </form.Field>
-
-                            <form.Field name={"rememberMe"}>
-                                {(fieldApi) => (
-                                    <SwitchField>
-                                        <Label>{t("label.remember-me")}</Label>
-                                        <Switch
-                                            color={"lime"}
-                                            checked={fieldApi.state.value}
-                                            onChange={(checked) => fieldApi.handleChange(checked)}
-                                        />
-                                    </SwitchField>
-                                )}
-                            </form.Field>
-
-                            <div className={"flex w-full flex-wrap items-center justify-between gap-3"}>
-                                <Button plain={true} disabled={recovering} onClick={() => void requestRecovery()}>
-                                    {t("button.lost-passkey")}
-                                </Button>
-                                <div className={"flex gap-3"}>
-                                    <Button outline={true} href={"/auth/signup"}>
-                                        {t("button.signup-instead")}
-                                    </Button>
-                                    <PrimaryButton type={"submit"} loading={form.state.isSubmitting}>
-                                        {t("button.login")}
-                                    </PrimaryButton>
-                                </div>
-                            </div>
-
-                            {recovery === "sent" && <Text>{t("description.recovery-sent")}</Text>}
-                            {recovery === "missing-username" && (
-                                <InlineError>{t("error.recovery-username-required")}</InlineError>
-                            )}
-                            {recovery === "failed" && <InlineError>{t("error.recovery-failed")}</InlineError>}
-
-                            <form.Subscribe selector={(state) => state.values.rememberMe}>
-                                {(rememberMe) => <OpenIdLoginButtons rememberMe={rememberMe} />}
-                            </form.Subscribe>
-                            {oidcErrorMessage !== undefined && <InlineError>{oidcErrorMessage}</InlineError>}
-                        </FieldGroup>
-                    </Fieldset>
-                </Form>
+        <AuthLayout>
+            <div className={"flex flex-col gap-2 text-center"}>
+                <Heading>{t("heading.login")}</Heading>
+                <Text>{t("description.welcome-back")}</Text>
             </div>
-        </div>
+
+            <Form onSubmit={form.handleSubmit}>
+                <FieldGroup>
+                    <form.Field name={"username"}>
+                        {(fieldApi) => (
+                            <Field>
+                                <RequiredLabel>{t("label.username")}</RequiredLabel>
+                                <Description>{t("description.login")}</Description>
+                                <Input
+                                    autoFocus={true}
+                                    required={true}
+                                    maxLength={32}
+                                    autoComplete={"username webauthn"}
+                                    invalid={fieldApi.state.meta.errors.length > 0}
+                                    value={fieldApi.state.value}
+                                    onChange={(e) => fieldApi.handleChange(e.target.value)}
+                                />
+                                {fieldApi.state.meta.errors.map((error) => (
+                                    <ErrorMessage key={String(error)}>{String(error)}</ErrorMessage>
+                                ))}
+                                {formError !== undefined && <ErrorMessage>{formError}</ErrorMessage>}
+                            </Field>
+                        )}
+                    </form.Field>
+
+                    <form.Field name={"rememberMe"}>
+                        {(fieldApi) => (
+                            <SwitchField>
+                                <Label>{t("label.remember-me")}</Label>
+                                <Switch
+                                    color={"blue"}
+                                    checked={fieldApi.state.value}
+                                    onChange={(checked) => fieldApi.handleChange(checked)}
+                                />
+                            </SwitchField>
+                        )}
+                    </form.Field>
+
+                    <PrimaryButton type={"submit"} className={"w-full"} loading={form.state.isSubmitting}>
+                        {!form.state.isSubmitting && <FingerPrintIcon data-slot={"icon"} aria-hidden={"true"} />}
+                        {t("button.login")}
+                    </PrimaryButton>
+
+                    <div className={"flex flex-col items-center gap-2"}>
+                        <Button plain={true} disabled={recovering} onClick={() => void requestRecovery()}>
+                            {t("button.lost-passkey")}
+                        </Button>
+                        {recovery === "sent" && <Text className={"text-center"}>{t("description.recovery-sent")}</Text>}
+                        {recovery === "missing-username" && (
+                            <InlineError>{t("error.recovery-username-required")}</InlineError>
+                        )}
+                        {recovery === "failed" && <InlineError>{t("error.recovery-failed")}</InlineError>}
+                    </div>
+                </FieldGroup>
+            </Form>
+
+            <form.Subscribe selector={(state) => state.values.rememberMe}>
+                {(rememberMe) => <OpenIdLoginButtons rememberMe={rememberMe} />}
+            </form.Subscribe>
+
+            {oidcErrorMessage !== undefined && <InlineError>{oidcErrorMessage}</InlineError>}
+
+            <Divider soft={true} />
+
+            <Text className={"text-center"}>
+                {t("label.no-account")} <TextLink href={"/auth/signup"}>{t("button.signup-instead")}</TextLink>
+            </Text>
+        </AuthLayout>
     );
 }

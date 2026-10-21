@@ -1,23 +1,25 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { EnvelopeIcon, FingerPrintIcon } from "@heroicons/react/24/outline";
 import {
     Button,
     Description,
+    Divider,
     ErrorMessage,
     Field,
     FieldGroup,
-    Fieldset,
     Form,
     Heading,
     Input,
-    Legend,
     RequiredLabel,
     Text,
+    TextLink,
 } from "components";
 import { PrimaryButton } from "src/components/primary-button";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useForm } from "@tanstack/react-form";
 import { Api } from "src/api/api.tsx";
+import { AuthLayout } from "src/components/auth-layout";
 import { OpenIdLoginButtons } from "src/components/openid-login-buttons";
 import { handleFormError, isFormError } from "src/utils/error";
 import { usernameErrorMessage, validateUsername } from "src/utils/username-rules";
@@ -69,86 +71,106 @@ function RouteComponent() {
     // the address already on the account.
     if (sentFor !== null) {
         return (
-            <div className={"flex h-full w-full items-center justify-center"}>
-                <div className={"flex max-w-2xl flex-col gap-6"}>
-                    <div className={"flex flex-col gap-3"}>
-                        <Heading>{t("heading.check-mail")}</Heading>
-                        <Text>{t("description.check-mail", { username: sentFor })}</Text>
-                        <Text>{t("description.check-spam")}</Text>
-                    </div>
-                    <div className={"flex w-full justify-end gap-3"}>
-                        <Button
-                            outline={true}
-                            onClick={() => {
-                                setSentFor(null);
-                                form.reset();
-                            }}
-                        >
-                            {t("button.change-details")}
-                        </Button>
-                        <Button href={"/auth/login"}>{t("button.login-instead")}</Button>
-                    </div>
+            <AuthLayout>
+                <div className={"flex flex-col items-center gap-4 text-center"}>
+                    <span
+                        className={
+                            "flex size-12 items-center justify-center rounded-full bg-lime-500/15 text-lime-700 dark:bg-lime-400/10 dark:text-lime-400"
+                        }
+                    >
+                        <EnvelopeIcon className={"size-6"} aria-hidden={"true"} />
+                    </span>
+                    <Heading>{t("heading.check-mail")}</Heading>
+                    <Text>{t("description.check-mail", { username: sentFor })}</Text>
+                    <Text>{t("description.check-spam")}</Text>
                 </div>
-            </div>
+                <div className={"flex flex-col gap-3"}>
+                    <Button className={"w-full"} href={"/auth/login"}>
+                        {t("button.login-instead")}
+                    </Button>
+                    <Button
+                        plain={true}
+                        className={"w-full"}
+                        onClick={() => {
+                            setSentFor(null);
+                            form.reset();
+                        }}
+                    >
+                        {t("button.change-details")}
+                    </Button>
+                </div>
+            </AuthLayout>
         );
     }
 
     return (
-        <div className={"flex h-full w-full items-center justify-center"}>
-            <Form onSubmit={form.handleSubmit} className={"max-w-2xl"}>
-                <Fieldset>
-                    <Legend>{t("heading.signup")}</Legend>
+        <AuthLayout>
+            <div className={"flex flex-col gap-2 text-center"}>
+                <Heading>{t("heading.signup")}</Heading>
+                <Text>{t("description.signup")}</Text>
+            </div>
 
-                    <FieldGroup>
-                        <form.Field name={"username"}>
-                            {(fieldApi) => (
-                                <Field>
-                                    <RequiredLabel>{tg("label.username")}</RequiredLabel>
-                                    <Description>{tg("description.username")}</Description>
-                                    <Input
-                                        autoFocus={true}
-                                        required={true}
-                                        maxLength={32}
-                                        invalid={fieldApi.state.meta.errors.length > 0}
-                                        value={fieldApi.state.value}
-                                        onChange={(e) => fieldApi.handleChange(e.target.value)}
-                                    />
-                                    {fieldApi.state.meta.errors.map((error) => (
-                                        <ErrorMessage key={String(error)}>{String(error)}</ErrorMessage>
-                                    ))}
-                                </Field>
-                            )}
-                        </form.Field>
-                        <form.Field name={"email"}>
-                            {(fieldApi) => (
-                                <Field>
-                                    <RequiredLabel>{t("label.email")}</RequiredLabel>
-                                    <Input
-                                        type={"email"}
-                                        required={true}
-                                        maxLength={255}
-                                        invalid={fieldApi.state.meta.errors.length > 0}
-                                        value={fieldApi.state.value}
-                                        onChange={(e) => fieldApi.handleChange(e.target.value)}
-                                    />
-                                    {fieldApi.state.meta.errors.map((error) => (
-                                        <ErrorMessage key={String(error)}>{String(error)}</ErrorMessage>
-                                    ))}
-                                </Field>
-                            )}
-                        </form.Field>
+            <Form onSubmit={form.handleSubmit}>
+                <FieldGroup>
+                    <form.Field name={"username"}>
+                        {(fieldApi) => (
+                            <Field>
+                                <RequiredLabel>{tg("label.username")}</RequiredLabel>
+                                <Description>{tg("description.username")}</Description>
+                                <Input
+                                    autoFocus={true}
+                                    required={true}
+                                    maxLength={32}
+                                    autoComplete={"username"}
+                                    invalid={fieldApi.state.meta.errors.length > 0}
+                                    value={fieldApi.state.value}
+                                    onChange={(e) => fieldApi.handleChange(e.target.value)}
+                                />
+                                {fieldApi.state.meta.errors.map((error) => (
+                                    <ErrorMessage key={String(error)}>{String(error)}</ErrorMessage>
+                                ))}
+                            </Field>
+                        )}
+                    </form.Field>
+                    <form.Field name={"email"}>
+                        {(fieldApi) => (
+                            <Field>
+                                <RequiredLabel>{t("label.email")}</RequiredLabel>
+                                <Input
+                                    type={"email"}
+                                    required={true}
+                                    maxLength={255}
+                                    autoComplete={"email"}
+                                    invalid={fieldApi.state.meta.errors.length > 0}
+                                    value={fieldApi.state.value}
+                                    onChange={(e) => fieldApi.handleChange(e.target.value)}
+                                />
+                                {fieldApi.state.meta.errors.map((error) => (
+                                    <ErrorMessage key={String(error)}>{String(error)}</ErrorMessage>
+                                ))}
+                            </Field>
+                        )}
+                    </form.Field>
 
-                        <div className={"flex w-full justify-end gap-3"}>
-                            <Button outline={true} href={"/auth/login"}>
-                                {t("button.login-instead")}
-                            </Button>
-                            <PrimaryButton type={"submit"}>{t("button.signup")}</PrimaryButton>
-                        </div>
-
-                        <OpenIdLoginButtons rememberMe={true} />
-                    </FieldGroup>
-                </Fieldset>
+                    <div className={"flex flex-col gap-3"}>
+                        <PrimaryButton type={"submit"} className={"w-full"} loading={form.state.isSubmitting}>
+                            {t("button.signup")}
+                        </PrimaryButton>
+                        <Text className={"flex items-start gap-2"}>
+                            <FingerPrintIcon className={"mt-1 size-4 shrink-0"} aria-hidden={"true"} />
+                            {t("description.passkey")}
+                        </Text>
+                    </div>
+                </FieldGroup>
             </Form>
-        </div>
+
+            <OpenIdLoginButtons rememberMe={true} />
+
+            <Divider soft={true} />
+
+            <Text className={"text-center"}>
+                {t("label.have-account")} <TextLink href={"/auth/login"}>{t("button.login")}</TextLink>
+            </Text>
+        </AuthLayout>
     );
 }

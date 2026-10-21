@@ -1,10 +1,16 @@
 import { Button } from "components";
-import { useEffect, useState } from "react";
+import { type ComponentType, type SVGProps, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import { SimpleOpenIdProvider } from "src/api/generated";
+import GoogleIcon from "src/assets/google.svg?react";
 import { InlineError } from "src/components/inline-error";
 import { isFormError } from "src/utils/error";
+
+/** The brand mark shown on a provider's button, by provider id */
+const PROVIDER_ICONS: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
+    google: GoogleIcon,
+};
 
 /**
  * The properties for {@link OpenIdLoginButtons}
@@ -17,8 +23,9 @@ export type OpenIdLoginButtonsProps = {
 /**
  * One "Continue with …" button per active OpenID provider, for signing up and logging in alike.
  *
- * Renders nothing while no provider is active. A click sends the browser to the provider,
- * which sends it back through the backend's callback.
+ * Preceded by an "or" divider towards the form above. Renders nothing while no provider is
+ * active. A click sends the browser to the provider, which sends it back through the
+ * backend's callback.
  *
  * @returns the buttons, or nothing
  */
@@ -61,18 +68,46 @@ export function OpenIdLoginButtons({ rememberMe }: OpenIdLoginButtonsProps) {
     if (providers.length === 0) return null;
 
     return (
-        <div className={"flex flex-col gap-3"}>
-            {providers.map((provider) => (
-                <Button
-                    key={provider.id}
-                    outline={true}
-                    disabled={starting !== null}
-                    onClick={() => void start(provider.id)}
-                >
-                    {tg("button.continue-with-provider", { provider: provider.display_name })}
-                </Button>
-            ))}
-            {unavailable && <InlineError>{tg("error.provider-unavailable")}</InlineError>}
+        <div className={"flex flex-col gap-6"}>
+            <OrDivider label={tg("label.or")} />
+            <div className={"flex flex-col gap-3"}>
+                {providers.map((provider) => {
+                    const Icon = PROVIDER_ICONS[provider.id];
+                    return (
+                        <Button
+                            key={provider.id}
+                            outline={true}
+                            className={"w-full"}
+                            disabled={starting !== null}
+                            loading={starting === provider.id}
+                            onClick={() => void start(provider.id)}
+                        >
+                            {Icon !== undefined && starting !== provider.id && (
+                                <Icon data-slot={"icon"} aria-hidden={"true"} />
+                            )}
+                            {tg("button.continue-with-provider", { provider: provider.display_name })}
+                        </Button>
+                    );
+                })}
+                {unavailable && <InlineError>{tg("error.provider-unavailable")}</InlineError>}
+            </div>
+        </div>
+    );
+}
+
+/**
+ * A horizontal rule with a short word in its middle
+ *
+ * @returns the divider
+ */
+function OrDivider({ label }: { label: string }) {
+    return (
+        <div className={"flex items-center gap-3"} role={"separator"} aria-label={label}>
+            <span className={"h-px flex-1 bg-zinc-950/10 dark:bg-white/10"} />
+            <span className={"text-xs font-medium tracking-wide text-zinc-500 uppercase dark:text-zinc-400"}>
+                {label}
+            </span>
+            <span className={"h-px flex-1 bg-zinc-950/10 dark:bg-white/10"} />
         </div>
     );
 }
