@@ -168,6 +168,58 @@ pub async fn send_recovery_link(
     .await
 }
 
+/// Tell an account the username an Admin gave it
+///
+/// Login and recovery both start from the username, so the owner has to learn
+/// the new one. The Admin's Rename reason stays out of the mail.
+#[instrument(name = "mail::send_new_username")]
+pub async fn send_new_username(
+    to: &MaxStr<255>,
+    username: &Username,
+    language: MailLanguage,
+) -> Result<(), MailError> {
+    let username = username.as_str();
+
+    let (subject, text_body) = match language {
+        MailLanguage::De => (
+            "Dein neuer Benutzername",
+            format!(
+                "Hallo {username},\n\
+                 \n\
+                 ein Admin hat deinen Benutzernamen geändert. Er lautet jetzt:\n\
+                 \n\
+                 {username}\n\
+                 \n\
+                 Melde dich ab sofort mit diesem Namen an. Deine Passkeys, Decks\n\
+                 und Sammlungen bleiben unverändert; Links auf dein altes Profil\n\
+                 funktionieren nicht mehr.\n",
+            ),
+        ),
+        MailLanguage::En => (
+            "Your new username",
+            format!(
+                "Hello {username},\n\
+                 \n\
+                 an admin changed your username. It is now:\n\
+                 \n\
+                 {username}\n\
+                 \n\
+                 Use this name to log in from now on. Your passkeys, decks and\n\
+                 collections stay as they are; links to your old profile no\n\
+                 longer work.\n",
+            ),
+        ),
+    };
+
+    queue(proto::mail_v1::SendEmail {
+        to: to.to_string(),
+        subject: String::from(subject),
+        text_body,
+        ..Default::default()
+    })
+    .await
+}
+
 /// Hand a mail to the gateway
 ///
 /// Tests have no NATS: there the mail lands in the `outbox` instead.

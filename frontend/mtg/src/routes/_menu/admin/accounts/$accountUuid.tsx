@@ -18,6 +18,7 @@ import { Role } from "src/api/generated";
 import { AdminDeleteAccountDialog } from "src/components/admin-delete-account-dialog";
 import { AdminLockDialog } from "src/components/admin-lock-dialog";
 import { AdminLogEntries } from "src/components/admin-log-entries";
+import { AdminRenameDialog } from "src/components/admin-rename-dialog";
 import { AdminLoginMethodBadge } from "src/components/admin-login-method-badge";
 import { AdminRoleBadge } from "src/components/admin-role-badge";
 import { useAccount } from "src/context/account";
@@ -30,8 +31,8 @@ export const Route = createFileRoute("/_menu/admin/accounts/$accountUuid")({
 });
 
 /**
- * One Account as an Admin sees it: what it owns, its Role and Lock to change, and what
- * Admins did to it so far.
+ * One Account as an Admin sees it: what it owns, its Role, Lock and username to change,
+ * and what Admins did to it so far.
  *
  * @returns the page
  */
@@ -44,6 +45,7 @@ function RouteComponent() {
     const { data: detail, reload } = useLoaded(() => Api.admin.accounts.get(accountUuid), [accountUuid]);
     const [confirming, setConfirming] = useState(false);
     const [locking, setLocking] = useState(false);
+    const [renaming, setRenaming] = useState(false);
     const [deleting, setDeleting] = useState(false);
     const [logVersion, setLogVersion] = useState(0);
 
@@ -77,6 +79,16 @@ function RouteComponent() {
         reload();
         setLogVersion((held) => held + 1);
         notify.success(wasLocked ? t("toast.unlocked") : t("toast.locked"));
+    }
+
+    /**
+     * Closes the Rename dialog after the Account was renamed and reads the Account again
+     */
+    function renamed() {
+        setRenaming(false);
+        reload();
+        setLogVersion((held) => held + 1);
+        notify.success(t("toast.renamed"));
     }
 
     return (
@@ -136,6 +148,11 @@ function RouteComponent() {
                     <Button outline={true} disabled={own} onClick={() => setLocking(true)}>
                         {account.lock ? t("button.unlock") : t("button.lock")}
                     </Button>
+                    {!own && (
+                        <Button outline={true} onClick={() => setRenaming(true)}>
+                            {t("button.rename")}
+                        </Button>
+                    )}
                     <Button color={"red"} disabled={own} onClick={() => setDeleting(true)}>
                         {t("button.delete")}
                     </Button>
@@ -149,6 +166,8 @@ function RouteComponent() {
             </div>
 
             <AdminLockDialog open={locking} account={account} onClose={() => setLocking(false)} onDone={lockChanged} />
+
+            <AdminRenameDialog open={renaming} account={account} onClose={() => setRenaming(false)} onDone={renamed} />
 
             <AdminDeleteAccountDialog
                 open={deleting}

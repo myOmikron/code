@@ -7,8 +7,8 @@ use galvyn::rorm::fields::types::ForeignModel;
 use galvyn::rorm::fields::types::MaxStr;
 use uuid::Uuid;
 
+use crate::models::account::ADMIN_REASON_MAX_LEN;
 use crate::models::account::DeletionMode;
-use crate::models::account::LOCK_REASON_MAX_LEN;
 use crate::models::account::Role;
 use crate::models::account::db::AccountModel;
 use crate::models::admin_log::AdminAction;
@@ -59,10 +59,13 @@ pub struct AdminLogEntryModel {
     pub role: Option<Role>,
 
     /// The reason the Admin gave
-    pub reason: Option<MaxStr<{ LOCK_REASON_MAX_LEN }>>,
+    pub reason: Option<MaxStr<{ ADMIN_REASON_MAX_LEN }>>,
 
     /// What a Deletion did with the Account's public decks
     pub deletion: Option<DeletionMode>,
+
+    /// The username a Rename gave the Account
+    pub new_username: Option<MaxStr<32>>,
 }
 
 /// Insert patch for [`AdminLogEntryModel`]
@@ -84,7 +87,9 @@ pub struct AdminLogEntryInsertPatch {
     /// The Role a Role change gave the Account
     pub role: Option<Role>,
     /// The reason the Admin gave
-    pub reason: Option<MaxStr<{ LOCK_REASON_MAX_LEN }>>,
+    pub reason: Option<MaxStr<{ ADMIN_REASON_MAX_LEN }>>,
     /// What a Deletion did with the public decks
     pub deletion: Option<DeletionMode>,
+    /// The username a Rename gave the Account
+    pub new_username: Option<MaxStr<32>>,
 }

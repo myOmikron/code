@@ -23,6 +23,7 @@ import type {
     AdminListAccountsResponse,
     AdminListLogResponse,
     AdminLockAccountRequest,
+    AdminRenameAccountRequest,
     AdminSetRoleRequest,
     AdminStatisticsResponse,
     AdminSyncsResponse,
@@ -68,6 +69,7 @@ import type {
     FormErrorResponseForAddPasskeyErrors,
     FormErrorResponseForAdminDeleteAccountErrors,
     FormErrorResponseForAdminLockAccountErrors,
+    FormErrorResponseForAdminRenameAccountErrors,
     FormErrorResponseForAdminSetRoleErrors,
     FormErrorResponseForAdminUnlockAccountErrors,
     FormErrorResponseForChooseUsernameErrors,
@@ -210,6 +212,11 @@ export interface AdminListLogRequest {
 export interface AdminLockAccountOperationRequest {
     uuid: string;
     AdminLockAccountRequest?: AdminLockAccountRequest;
+}
+
+export interface AdminRenameAccountOperationRequest {
+    uuid: string;
+    AdminRenameAccountRequest?: AdminRenameAccountRequest;
 }
 
 export interface AdminSetRoleOperationRequest {
@@ -1346,6 +1353,56 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async adminLockAccount(requestParameters: AdminLockAccountOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FormErrorResponseForAdminLockAccountErrors> {
         const response = await this.adminLockAccountRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for adminRenameAccount without sending the request
+     */
+    async adminRenameAccountRequestOpts(requestParameters: AdminRenameAccountOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['uuid'] == null) {
+            throw new runtime.RequiredError(
+                'uuid',
+                'Required parameter "uuid" was null or undefined when calling adminRenameAccount().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/admin/accounts/{uuid}/username`;
+        urlPath = urlPath.replace('{uuid}', encodeURIComponent(String(requestParameters['uuid'])));
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['AdminRenameAccountRequest'],
+        };
+    }
+
+    /**
+     * Rename an Account  Takes the same usernames as a Self-Rename, also for a locked Account, and mails the Account its new username without the reason. An Admin renames itself through its own settings, not here.
+     * Rename an Account
+     */
+    async adminRenameAccountRaw(requestParameters: AdminRenameAccountOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FormErrorResponseForAdminRenameAccountErrors>> {
+        const requestOptions = await this.adminRenameAccountRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Rename an Account  Takes the same usernames as a Self-Rename, also for a locked Account, and mails the Account its new username without the reason. An Admin renames itself through its own settings, not here.
+     * Rename an Account
+     */
+    async adminRenameAccount(requestParameters: AdminRenameAccountOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FormErrorResponseForAdminRenameAccountErrors> {
+        const response = await this.adminRenameAccountRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

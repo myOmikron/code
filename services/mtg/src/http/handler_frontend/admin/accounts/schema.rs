@@ -5,12 +5,13 @@ use galvyn::rorm::fields::types::MaxStr;
 use serde::Deserialize;
 use serde::Serialize;
 
+use crate::models::account::ADMIN_REASON_MAX_LEN;
 use crate::models::account::AccountUuid;
 use crate::models::account::DeletionMode;
-use crate::models::account::LOCK_REASON_MAX_LEN;
 use crate::models::account::Role;
 use crate::models::account::Username;
 use crate::models::account::overview::AccountOverview;
+use crate::utils::mail::MailLanguage;
 
 /// How to page and narrow the Account list
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
@@ -133,7 +134,7 @@ pub struct AdminSetRoleErrors {
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
 pub struct AdminLockAccountRequest {
     /// Why the Account is locked, shown to Admins only
-    pub reason: MaxStr<LOCK_REASON_MAX_LEN>,
+    pub reason: MaxStr<ADMIN_REASON_MAX_LEN>,
 }
 
 /// Why an Account could not be locked
@@ -152,7 +153,7 @@ pub struct AdminLockAccountErrors {
 pub struct AdminUnlockAccountRequest {
     /// Why the Lock is lifted, shown to Admins only
     #[serde(default)]
-    pub reason: Option<MaxStr<LOCK_REASON_MAX_LEN>>,
+    pub reason: Option<MaxStr<ADMIN_REASON_MAX_LEN>>,
 }
 
 /// Why an Account's Lock could not be lifted
@@ -179,4 +180,30 @@ pub struct AdminDeleteAccountErrors {
     pub own_account: bool,
     /// The typed username is not the Account's
     pub username_mismatch: bool,
+}
+
+/// Request to Rename an Account
+#[derive(Debug, Clone, Deserialize, JsonSchema)]
+pub struct AdminRenameAccountRequest {
+    /// The new username, held to the same rules as at signup
+    pub username: Username,
+    /// Why the Account is renamed, shown to Admins only
+    pub reason: MaxStr<ADMIN_REASON_MAX_LEN>,
+    /// The language of the mail that tells the Account its new username
+    ///
+    /// The client sends the language its UI is showing; left out, the mail
+    /// falls back to German, the app's primary language.
+    #[serde(default)]
+    pub language: MailLanguage,
+}
+
+/// Why an Account could not be renamed
+#[derive(Debug, Default, Serialize, JsonSchema)]
+pub struct AdminRenameAccountErrors {
+    /// The Account is the Admin's own, which it renames through its own settings
+    pub own_account: bool,
+    /// No reason was given
+    pub reason_missing: bool,
+    /// Another Account goes by this username already, case ignored
+    pub username_taken: bool,
 }

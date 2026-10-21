@@ -984,6 +984,84 @@
                 }
             }
         },
+        "/api/frontend/v1/admin/accounts/{uuid}/username": {
+            "put": {
+                "summary": "Rename an Account",
+                "description": "Rename an Account\n\nTakes the same usernames as a Self-Rename, also for a locked Account, and\nmails the Account its new username without the reason. An Admin renames\nitself through its own settings, not here.",
+                "operationId": "admin_rename_account",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "uuid",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Account`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AdminRenameAccountRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "nullable": true
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/FormErrorResponse_for_AdminRenameAccountErrors"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/frontend/v1/admin/log": {
             "get": {
                 "summary": "List the Admin log, newest first",
@@ -9793,6 +9871,39 @@
                             "kind",
                             "mode"
                         ]
+                    },
+                    {
+                        "description": "Gave the Account another username",
+                        "type": "object",
+                        "properties": {
+                            "kind": {
+                                "type": "string",
+                                "enum": [
+                                    "Rename"
+                                ]
+                            },
+                            "new_username": {
+                                "description": "The username the Account has now",
+                                "allOf": [
+                                    {
+                                        "$ref": "#/components/schemas/Username"
+                                    }
+                                ]
+                            },
+                            "reason": {
+                                "description": "Why the Account was renamed",
+                                "allOf": [
+                                    {
+                                        "$ref": "#/components/schemas/MaxStr_1024"
+                                    }
+                                ]
+                            }
+                        },
+                        "required": [
+                            "kind",
+                            "new_username",
+                            "reason"
+                        ]
                     }
                 ]
             },
@@ -9928,6 +10039,64 @@
                 },
                 "required": [
                     "runs"
+                ]
+            },
+            "AdminRenameAccountErrors": {
+                "description": "Why an Account could not be renamed",
+                "type": "object",
+                "properties": {
+                    "own_account": {
+                        "description": "The Account is the Admin's own, which it renames through its own settings",
+                        "type": "boolean"
+                    },
+                    "reason_missing": {
+                        "description": "No reason was given",
+                        "type": "boolean"
+                    },
+                    "username_taken": {
+                        "description": "Another Account goes by this username already, case ignored",
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "own_account",
+                    "reason_missing",
+                    "username_taken"
+                ]
+            },
+            "AdminRenameAccountRequest": {
+                "description": "Request to Rename an Account",
+                "type": "object",
+                "properties": {
+                    "language": {
+                        "description": "The language of the mail that tells the Account its new username\n\nThe client sends the language its UI is showing; left out, the mail falls back to German, the app's primary language.",
+                        "default": "De",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MailLanguage"
+                            }
+                        ]
+                    },
+                    "reason": {
+                        "description": "Why the Account is renamed, shown to Admins only",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_1024"
+                            }
+                        ]
+                    },
+                    "username": {
+                        "description": "The new username, held to the same rules as at signup",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/Username"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "reason",
+                    "username"
                 ]
             },
             "AdminSetRoleErrors": {
@@ -13178,6 +13347,32 @@
                         "allOf": [
                             {
                                 "$ref": "#/components/schemas/AdminLockAccountErrors"
+                            }
+                        ]
+                    },
+                    "result": {
+                        "description": "A constant `\"Err\"` used to differentiate this schema from any other \"Ok\" schema",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ErrorConstant"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "error",
+                    "result"
+                ]
+            },
+            "FormErrorResponse_for_AdminRenameAccountErrors": {
+                "description": "The response that is sent in a case of an error the caller should present his user",
+                "type": "object",
+                "properties": {
+                    "error": {
+                        "description": "The actual error struct",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/AdminRenameAccountErrors"
                             }
                         ]
                     },

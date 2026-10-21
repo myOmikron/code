@@ -168,8 +168,8 @@ impl DeletionMode {
     }
 }
 
-/// The longest Lock reason or unlock reason an Admin may give
-pub const LOCK_REASON_MAX_LEN: usize = 1024;
+/// The longest reason an Admin may give for a Lock, an unlock or a Rename
+pub const ADMIN_REASON_MAX_LEN: usize = 1024;
 
 /// The username of the tombstone deleted accounts leave their public decks with
 ///
@@ -510,7 +510,7 @@ impl Account {
     pub async fn lock(
         tx: &mut Transaction,
         uuid: AccountUuid,
-        reason: MaxStr<LOCK_REASON_MAX_LEN>,
+        reason: MaxStr<ADMIN_REASON_MAX_LEN>,
     ) -> Result<bool, rorm::Error> {
         let affected = rorm::update(tx, AccountModel)
             .set(AccountModel.locked_at, Some(OffsetDateTime::now_utc()))

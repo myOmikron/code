@@ -445,7 +445,7 @@ export interface AdminLockAccountRequest {
  * What an Admin did to an Account, with what the action needs to be read
  * @export
  */
-export type AdminLogAction = AdminLogActionOneOf | AdminLogActionOneOf1 | AdminLogActionOneOf2 | AdminLogActionOneOf3;
+export type AdminLogAction = AdminLogActionOneOf | AdminLogActionOneOf1 | AdminLogActionOneOf2 | AdminLogActionOneOf3 | AdminLogActionOneOf4;
 /**
  * Locked the Account
  * @export
@@ -563,6 +563,41 @@ export const AdminLogActionOneOf3KindEnum = {
 export type AdminLogActionOneOf3KindEnum = typeof AdminLogActionOneOf3KindEnum[keyof typeof AdminLogActionOneOf3KindEnum];
 
 /**
+ * Gave the Account another username
+ * @export
+ * @interface AdminLogActionOneOf4
+ */
+export interface AdminLogActionOneOf4 {
+    /**
+     * 
+     * @type {AdminLogActionOneOf4KindEnum}
+     * @memberof AdminLogActionOneOf4
+     */
+    kind: AdminLogActionOneOf4KindEnum;
+    /**
+     * The username the Account has now
+     * @type {any}
+     * @memberof AdminLogActionOneOf4
+     */
+    new_username: any;
+    /**
+     * Why the Account was renamed
+     * @type {string}
+     * @memberof AdminLogActionOneOf4
+     */
+    reason: string;
+}
+
+
+/**
+ * @export
+ */
+export const AdminLogActionOneOf4KindEnum = {
+    Rename: 'Rename'
+} as const;
+export type AdminLogActionOneOf4KindEnum = typeof AdminLogActionOneOf4KindEnum[keyof typeof AdminLogActionOneOf4KindEnum];
+
+/**
  * One entry of the Admin log
  * @export
  * @interface AdminLogEntryResponse
@@ -668,6 +703,60 @@ export interface AdminPriceGuideSync {
      */
     stamp?: AdminPriceGuideStamp | null;
 }
+/**
+ * Why an Account could not be renamed
+ * @export
+ * @interface AdminRenameAccountErrors
+ */
+export interface AdminRenameAccountErrors {
+    /**
+     * The Account is the Admin's own, which it renames through its own settings
+     * @type {boolean}
+     * @memberof AdminRenameAccountErrors
+     */
+    own_account: boolean;
+    /**
+     * No reason was given
+     * @type {boolean}
+     * @memberof AdminRenameAccountErrors
+     */
+    reason_missing: boolean;
+    /**
+     * Another Account goes by this username already, case ignored
+     * @type {boolean}
+     * @memberof AdminRenameAccountErrors
+     */
+    username_taken: boolean;
+}
+/**
+ * Request to Rename an Account
+ * @export
+ * @interface AdminRenameAccountRequest
+ */
+export interface AdminRenameAccountRequest {
+    /**
+     * The language of the mail that tells the Account its new username
+     * 
+     * The client sends the language its UI is showing; left out, the mail falls back to German, the app's primary language.
+     * @type {MailLanguage}
+     * @memberof AdminRenameAccountRequest
+     */
+    language?: MailLanguage;
+    /**
+     * Why the Account is renamed, shown to Admins only
+     * @type {string}
+     * @memberof AdminRenameAccountRequest
+     */
+    reason: string;
+    /**
+     * The new username, held to the same rules as at signup
+     * @type {any}
+     * @memberof AdminRenameAccountRequest
+     */
+    username: any;
+}
+
+
 /**
  * Why a Role could not be changed
  * @export
@@ -3599,6 +3688,27 @@ export interface FormErrorResponseForAdminLockAccountErrors {
      * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
      * @type {ErrorConstant}
      * @memberof FormErrorResponseForAdminLockAccountErrors
+     */
+    result: ErrorConstant;
+}
+
+
+/**
+ * The response that is sent in a case of an error the caller should present his user
+ * @export
+ * @interface FormErrorResponseForAdminRenameAccountErrors
+ */
+export interface FormErrorResponseForAdminRenameAccountErrors {
+    /**
+     * The actual error struct
+     * @type {AdminRenameAccountErrors}
+     * @memberof FormErrorResponseForAdminRenameAccountErrors
+     */
+    error: AdminRenameAccountErrors;
+    /**
+     * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
+     * @type {ErrorConstant}
+     * @memberof FormErrorResponseForAdminRenameAccountErrors
      */
     result: ErrorConstant;
 }

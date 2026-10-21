@@ -8,7 +8,7 @@ use galvyn::rorm::fields::types::MaxStr;
 use galvyn_identity::IdentityModel;
 use uuid::Uuid;
 
-use crate::models::account::LOCK_REASON_MAX_LEN;
+use crate::models::account::ADMIN_REASON_MAX_LEN;
 use crate::models::account::Role;
 
 /// An account
@@ -67,7 +67,7 @@ pub struct AccountModel {
     pub locked_at: Option<OffsetDateTime>,
 
     /// Why the account is locked, only ever shown to Admins
-    pub lock_reason: Option<MaxStr<{ LOCK_REASON_MAX_LEN }>>,
+    pub lock_reason: Option<MaxStr<{ ADMIN_REASON_MAX_LEN }>>,
 
     /// The identity this account signs in as
     ///

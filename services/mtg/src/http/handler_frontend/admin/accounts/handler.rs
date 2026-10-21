@@ -21,14 +21,16 @@ use crate::http::handler_frontend::admin::accounts::schema::AdminListAccountsQue
 use crate::http::handler_frontend::admin::accounts::schema::AdminListAccountsResponse;
 use crate::http::handler_frontend::admin::accounts::schema::AdminLockAccountErrors;
 use crate::http::handler_frontend::admin::accounts::schema::AdminLockAccountRequest;
+use crate::http::handler_frontend::admin::accounts::schema::AdminRenameAccountErrors;
+use crate::http::handler_frontend::admin::accounts::schema::AdminRenameAccountRequest;
 use crate::http::handler_frontend::admin::accounts::schema::AdminSetRoleErrors;
 use crate::http::handler_frontend::admin::accounts::schema::AdminSetRoleRequest;
 use crate::http::handler_frontend::admin::accounts::schema::AdminUnlockAccountErrors;
 use crate::http::handler_frontend::admin::accounts::schema::AdminUnlockAccountRequest;
 use crate::http::handler_frontend::admin::page_limit;
+use crate::models::account::ADMIN_REASON_MAX_LEN;
 use crate::models::account::Account;
 use crate::models::account::AccountUuid;
-use crate::models::account::LOCK_REASON_MAX_LEN;
 use crate::models::account::Role;
 use crate::models::account::overview::AccountDetail;
 use crate::models::account::overview::AccountFilter;
@@ -37,6 +39,7 @@ use crate::models::admin_log::AdminActor;
 use crate::models::admin_log::AdminLogAction;
 use crate::models::admin_log::AdminLogEntry;
 use crate::models::admin_log::NewAdminLogEntry;
+use crate::utils::mail::send_new_username;
 
 /// List Accounts, newest first
 #[get("/")]
@@ -180,6 +183,59 @@ pub async fn admin_unlock_account(
     Ok(ApiJson(()))
 }
 
+/// Rename an Account
+///
+/// Takes the same usernames as a Rename by the Account itself, also for a
+/// locked Account, and mails the Account its new username without the reason.
+/// An Admin renames itself through its own settings, not here.
+#[put("/{uuid}/username")]
+pub async fn admin_rename_account(
+    admin: Account,
+    Path(uuid): Path<AccountUuid>,
+    ApiJson(request): ApiJson<AdminRenameAccountRequest>,
+) -> ApiResult<ApiJson<()>, AdminRenameAccountErrors> {
+    let mut errors = FormErrors::<AdminRenameAccountErrors>::new();
+    if uuid == admin.uuid {
+        errors.own_account = true;
+    }
+    let reason = trimmed_reason(&request.reason);
+    if reason.is_none() {
+        errors.reason_missing = true;
+    }
+    errors.check()?;
+    let Some(reason) = reason else {
+        unreachable!("a missing reason fails the check");
+    };
+
+    let mut tx = Database::global().start_transaction().await?;
+    let account = manageable_account(&mut tx, uuid).await?;
+    if !Account::rename(&mut tx, uuid, request.username.clone()).await? {
+        tx.rollback().await?;
+        let mut errors = FormErrors::<AdminRenameAccountErrors>::new();
+        errors.username_taken = true;
+        return errors.fail();
+    }
+    AdminLogEntry::record(
+        &mut tx,
+        NewAdminLogEntry {
+            admin: AdminActor::Admin(&admin),
+            account: &account,
+            action: AdminLogAction::Rename {
+                new_username: request.username.clone(),
+                reason,
+            },
+        },
+    )
+    .await?;
+    tx.commit().await?;
+
+    send_new_username(&account.email, &request.username, request.language)
+        .await
+        .map_err(ApiError::map_server_error("Failed to queue mail"))?;
+
+    Ok(ApiJson(()))
+}
+
 /// Delete an Account
 ///
 /// By default its public decks go to the Tombstone, as on a self-deletion; a
@@ -240,7 +296,7 @@ async fn manageable_account<E>(
 }
 
 /// The reason an Admin gave, trimmed, `None` when nothing is left
-fn trimmed_reason(reason: &MaxStr<LOCK_REASON_MAX_LEN>) -> Option<MaxStr<LOCK_REASON_MAX_LEN>> {
+fn trimmed_reason(reason: &MaxStr<ADMIN_REASON_MAX_LEN>) -> Option<MaxStr<ADMIN_REASON_MAX_LEN>> {
     let reason = reason.trim();
     (!reason.is_empty()).then(|| {
         MaxStr::new(reason.to_string())

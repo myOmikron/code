@@ -2,6 +2,7 @@
 
 mod admin;
 mod admin_log;
+mod admin_rename;
 mod bracket_flags;
 mod deck_history;
 mod deletion;
