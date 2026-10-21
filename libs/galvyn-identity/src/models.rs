@@ -36,6 +36,16 @@ pub struct Identity {
     pub last_login_at: Option<OffsetDateTime>,
 }
 
+/// How an Identity logs in, once it has a login method
+///
+/// An Identity has none until its first Enrollment, which makes it local or
+/// external for good.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LoginMethod {
+    /// The Identity holds Passkeys
+    Local,
+}
+
 /// Wrapper for the primary key of the [`Identity`] model.
 /// To have better distinguishable types.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Hash, Eq, PartialEq)]
