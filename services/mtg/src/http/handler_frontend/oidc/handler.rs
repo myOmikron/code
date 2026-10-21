@@ -4,7 +4,8 @@
 //! answers and comes back to [`finish_oidc_login`], which redirects it to a
 //! frontend page: logged in, the username step, or the login page with the
 //! reason of a refusal. Refusals of an unknown External identity happen in
-//! [`admit_pending`], before the username step.
+//! [`admit_pending`], before the username step; a locked Account is logged
+//! right out again.
 
 use galvyn::core::Module;
 use galvyn::core::re_exports::axum::extract::Query;
@@ -16,12 +17,15 @@ use galvyn::core::stuff::api_error::FormErrors;
 use galvyn::core::stuff::api_json::ApiJson;
 use galvyn::get;
 use galvyn::post;
+use galvyn::rorm;
 use galvyn::rorm::Database;
+use galvyn::rorm::db::transaction::Transaction;
 use galvyn::rorm::fields::types::MaxStr;
 use galvyn_identity::BeginOidcLoginError;
 use galvyn_identity::BindError;
 use galvyn_identity::FinishOidcLoginError;
 use galvyn_identity::IdentityModule;
+use galvyn_identity::IdentityUuid;
 use galvyn_identity::OidcCallback;
 use galvyn_identity::OidcLoginOutcome;
 use galvyn_identity::PendingExternalIdentity;
@@ -89,7 +93,8 @@ pub async fn start_oidc_login(
 ///
 /// A known External identity is logged in and lands on the app. An unknown
 /// one is held pending and goes to the username step. A refused login goes
-/// back to the login page with `oidc_error` naming why.
+/// back to the login page with `oidc_error` naming why. A locked Account is
+/// logged in by the module and right out again here.
 #[get("/callback")]
 pub async fn finish_oidc_login(
     session: Session,
@@ -108,8 +113,17 @@ pub async fn finish_oidc_login(
         .await;
 
     let failure = match finished {
-        Ok(OidcLoginOutcome::LoggedIn(_)) => return Ok(Redirect::to(LOGGED_IN_PAGE)),
-        Ok(OidcLoginOutcome::Pending(pending)) => match admit_pending(&pending) {
+        Ok(OidcLoginOutcome::LoggedIn(identity)) => {
+            if !is_locked(identity).await? {
+                return Ok(Redirect::to(LOGGED_IN_PAGE));
+            }
+            identity_module
+                .logout(&session)
+                .await
+                .map_err(ApiError::map_server_error("Failed to flush session"))?;
+            OidcLoginFailure::Locked
+        }
+        Ok(OidcLoginOutcome::Pending(pending)) => match admit_pending(&pending).await? {
             Ok(()) => return Ok(Redirect::to(USERNAME_STEP_PAGE)),
             Err(failure) => {
                 identity_module
@@ -142,13 +156,41 @@ pub async fn finish_oidc_login(
     )))
 }
 
+/// Whether the Account signing in as `identity` is locked
+async fn is_locked(identity: IdentityUuid) -> ApiResult<bool> {
+    let mut tx = Database::global().start_transaction().await?;
+    let account = Account::get_by_identity(&mut tx, identity).await?;
+    tx.commit().await?;
+    Ok(account.is_some_and(|account| account.locked))
+}
+
 /// Decide whether an unknown External identity may go on to the username step
-fn admit_pending(pending: &PendingExternalIdentity) -> Result<(), OidcLoginFailure> {
-    if verified_email(pending).is_none() {
+///
+/// Its email must be verified and must not belong to an Account yet: saying
+/// so reveals the address is in use, which only its owner can learn here.
+async fn admit_pending(
+    pending: &PendingExternalIdentity,
+) -> ApiResult<Result<(), OidcLoginFailure>> {
+    let Some(email) = verified_email(pending) else {
         info!(provider = %pending.provider, "OIDC login without a verified email");
-        return Err(OidcLoginFailure::EmailUnverified);
+        return Ok(Err(OidcLoginFailure::EmailUnverified));
+    };
+    let mut tx = Database::global().start_transaction().await?;
+    let in_use = email_in_use(&mut tx, &email).await?;
+    tx.commit().await?;
+    if in_use {
+        return Ok(Err(OidcLoginFailure::EmailInUse));
     }
-    Ok(())
+    Ok(Ok(()))
+}
+
+/// Whether `email` belongs to an Account already
+async fn email_in_use(tx: &mut Transaction, email: &MaxStr<255>) -> Result<bool, rorm::Error> {
+    let in_use = Account::get_by_email(tx, email).await?.is_some();
+    if in_use {
+        info!("OIDC login for an email address that is already in use");
+    }
+    Ok(in_use)
 }
 
 /// The email of a pending External identity, if the provider verified it and it fits an Account
@@ -188,7 +230,8 @@ pub async fn get_pending_oidc_login(
 ///
 /// Creates the Identity, the External identity and the Account, with the
 /// provider's verified email, in one transaction. A refused username keeps
-/// the login pending, so the person can pick another.
+/// the login pending, so the person can pick another. An email an Account
+/// took since the callback ends the pending login.
 #[post("/username")]
 pub async fn choose_username(
     session: Session,
@@ -215,6 +258,15 @@ pub async fn choose_username(
     {
         tx.rollback().await?;
         errors.username_taken = true;
+        return errors.fail();
+    }
+    if email_in_use(&mut tx, &email).await? {
+        tx.rollback().await?;
+        identity_module
+            .discard_pending_external_identity(&session)
+            .await
+            .map_err(ApiError::map_server_error("Failed to write session"))?;
+        errors.email_in_use = true;
         return errors.fail();
     }
 

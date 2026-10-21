@@ -1,4 +1,5 @@
-//! OIDC login through the fake OpenID provider: the username step and returning logins
+//! OIDC login through the fake OpenID provider: the username step, returning
+//! logins and refused logins
 
 use galvyn::core::Module;
 use galvyn::core::re_exports::axum::http::Method;
@@ -16,6 +17,7 @@ use crate::models::account::Account;
 use crate::models::account::Role;
 use crate::models::account::Username;
 use crate::tests::harness::App;
+use crate::tests::harness::TestAccount;
 use crate::tests::harness::TestClient;
 use crate::tests::harness::TestResponse;
 use crate::tests::harness::api;
@@ -26,6 +28,58 @@ use crate::tests::harness::run;
 fn stranger() -> FakePerson {
     let id = Uuid::new_v4().simple();
     FakePerson::new(&format!("subject-{id}"), &format!("{id}@gmail.test"))
+}
+
+/// A person unknown to the service, whose verified email is `email`
+fn stranger_with_email(email: &str) -> FakePerson {
+    FakePerson::new(&format!("subject-{}", Uuid::new_v4().simple()), email)
+}
+
+/// Signs `person` up with Google and returns the External Account
+async fn external_account(person: FakePerson) -> TestAccount {
+    let username = free_username();
+    let mut client = TestClient::new();
+    continue_with_google(&mut client, person).await;
+    choose_username(&mut client, &username).await.ok_json();
+    let account = account_named(&username).await.expect("the account exists");
+    TestAccount {
+        uuid: account.uuid,
+        username,
+    }
+}
+
+/// Inserts a Local Account named `username` with `email`
+async fn insert_local_account(username: &str, email: &str) {
+    let mut tx = Database::global()
+        .start_transaction()
+        .await
+        .expect("start a transaction");
+    Account::insert(
+        &mut tx,
+        Username::new(username.to_string()).expect("valid username"),
+        MaxStr::new(email.to_string()).expect("short email"),
+    )
+    .await
+    .expect("create the account");
+    tx.commit().await.expect("commit");
+}
+
+/// Locks `account` as a fresh Admin
+async fn lock(account: &TestAccount) {
+    let admin = create_account(Role::Admin).await;
+    let body = TestClient::logged_in(&admin)
+        .await
+        .json(
+            Method::POST,
+            &api(&format!(
+                "admin/accounts/{}/lock",
+                account.uuid.into_inner()
+            )),
+            &json!({ "reason": "Spam" }),
+        )
+        .await
+        .ok_json();
+    assert_eq!(body, json!(null));
 }
 
 /// A free, valid username
@@ -261,11 +315,13 @@ fn abandoning_the_username_step_leaves_nothing_behind() {
 }
 
 #[test]
-fn an_unverified_email_is_refused_before_the_username_step() {
+fn an_unverified_email_is_refused_and_creates_nothing() {
     run(async {
         let mut client = TestClient::new();
+        let person = stranger().unverified();
+        let email = person.email.clone().expect("an email");
 
-        let location = continue_with_google(&mut client, stranger().unverified()).await;
+        let location = continue_with_google(&mut client, person).await;
 
         assert_eq!(location.path(), "/auth/login");
         assert_eq!(
@@ -275,6 +331,109 @@ fn an_unverified_email_is_refused_before_the_username_step() {
         );
         let pending = client.get(&api("auth/oidc/pending")).await.ok_json();
         assert_eq!(pending["pending"], json!(null));
+        assert_eq!(
+            choose_username(&mut client, &free_username())
+                .await
+                .ok_json()["error"]["nothing_pending"],
+            true
+        );
+        assert!(account_with_email(&email).await.is_none());
+        assert_eq!(orphans().await, (0, 0));
+    });
+}
+
+#[test]
+fn an_email_in_use_is_refused_before_the_username_step_and_creates_nothing() {
+    run(async {
+        let member = create_account(Role::Member).await;
+        let email = format!("{}@mtg.test", member.username);
+        let mut client = TestClient::new();
+
+        let location = continue_with_google(&mut client, stranger_with_email(&email)).await;
+
+        assert_eq!(location.path(), "/auth/login");
+        assert_eq!(
+            location.query(),
+            Some("oidc_error=email_in_use"),
+            "{location}"
+        );
+        let pending = client.get(&api("auth/oidc/pending")).await.ok_json();
+        assert_eq!(pending["pending"], json!(null));
+        let account = account_with_email(&email)
+            .await
+            .expect("the account exists");
+        assert_eq!(account.uuid, member.uuid);
+        assert_eq!(orphans().await, (0, 0));
+    });
+}
+
+#[test]
+fn an_email_taken_during_the_username_step_is_refused() {
+    run(async {
+        let person = stranger();
+        let email = person.email.clone().expect("an email");
+        let mut client = TestClient::new();
+        continue_with_google(&mut client, person).await;
+        let local_username = free_username();
+        insert_local_account(&local_username, &email).await;
+
+        let body = choose_username(&mut client, &free_username())
+            .await
+            .ok_json();
+
+        assert_eq!(body["result"], "Err", "{body}");
+        assert_eq!(body["error"]["email_in_use"], true, "{body}");
+        let account = account_with_email(&email)
+            .await
+            .expect("the account exists");
+        assert_eq!(account.username.as_str(), local_username);
+        let pending = client.get(&api("auth/oidc/pending")).await.ok_json();
+        assert_eq!(pending["pending"], json!(null));
+        assert_eq!(orphans().await, (0, 0));
+    });
+}
+
+#[test]
+fn a_locked_external_account_cannot_log_in() {
+    run(async {
+        let person = stranger();
+        let external = external_account(person.clone()).await;
+        lock(&external).await;
+
+        let mut client = TestClient::new();
+        let location = continue_with_google(&mut client, person).await;
+
+        assert_eq!(location.path(), "/auth/login");
+        assert_eq!(location.query(), Some("oidc_error=locked"), "{location}");
+        assert_eq!(
+            client.get(&api("accounts/me")).await.status,
+            StatusCode::UNAUTHORIZED
+        );
+    });
+}
+
+#[test]
+fn a_locked_external_accounts_session_fails_on_its_next_request() {
+    run(async {
+        let person = stranger();
+        let username = free_username();
+        let mut session = TestClient::new();
+        continue_with_google(&mut session, person).await;
+        choose_username(&mut session, &username).await.ok_json();
+        let account = account_named(&username).await.expect("the account exists");
+
+        lock(&TestAccount {
+            uuid: account.uuid,
+            username,
+        })
+        .await;
+
+        assert_eq!(
+            session.get(&api("accounts/passkeys")).await.status,
+            StatusCode::UNAUTHORIZED
+        );
+        let me = session.get(&api("accounts/me")).await.ok_json();
+        assert_eq!(me["error"]["locked"], true, "{me}");
     });
 }
 

@@ -71,6 +71,10 @@ pub enum OidcLoginFailure {
     ProviderUnavailable,
     /// The provider did not state a verified email
     EmailUnverified,
+    /// The verified email belongs to an Account already
+    EmailInUse,
+    /// An Admin locked the Account
+    Locked,
     /// The provider's answer did not check out
     Failed,
 }
@@ -83,6 +87,8 @@ impl OidcLoginFailure {
             OidcLoginFailure::Expired => "expired",
             OidcLoginFailure::ProviderUnavailable => "provider_unavailable",
             OidcLoginFailure::EmailUnverified => "email_unverified",
+            OidcLoginFailure::EmailInUse => "email_in_use",
+            OidcLoginFailure::Locked => "locked",
             OidcLoginFailure::Failed => "failed",
         }
     }
@@ -118,4 +124,7 @@ pub struct ChooseUsernameErrors {
     pub username_taken: bool,
     /// No OIDC login is pending, or it ran out
     pub nothing_pending: bool,
+    /// The verified email came to belong to an Account since the login
+    /// started; the pending login is gone
+    pub email_in_use: bool,
 }
