@@ -76,6 +76,10 @@ function RouteComponent() {
                         nothing_pending: (errors) => {
                             errors.fields.username = t("error.nothing-pending");
                         },
+                        // An Account took the email since the callback; the login page explains it.
+                        email_in_use: () => {
+                            void navigate({ to: "/auth/login", search: { oidc_error: "email_in_use" } });
+                        },
                     });
                 }
 

@@ -15,6 +15,7 @@
         "no-ceremony": "The sign-in attempt expired. Please start again.",
         "no-passkey-or-aborted": "Cancelled, or this device holds no matching passkey. Use the device you set it up on.",
         "oidc-cancelled": "The login was cancelled.",
+        "oidc-email-in-use": "An account with this email address exists already. Sign in with its passkey, or use \"Lost your passkey?\" to get a new one.",
         "oidc-email-unverified": "Your email address is not verified there. Verify it and try again.",
         "oidc-expired": "The login attempt expired. Start again.",
         "oidc-failed": "Login failed. Try again.",

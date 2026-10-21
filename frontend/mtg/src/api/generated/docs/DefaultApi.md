@@ -1379,7 +1379,7 @@ No authorization required
 
 Finish the username step: create the External Account and log it in
 
-Finish the username step: create the External Account and log it in  Creates the Identity, the External identity and the Account, with the provider\&#39;s verified email, in one transaction. A refused username keeps the login pending, so the person can pick another.
+Finish the username step: create the External Account and log it in  Creates the Identity, the External identity and the Account, with the provider\&#39;s verified email, in one transaction. A refused username keeps the login pending, so the person can pick another. An email an Account took since the callback ends the pending login.
 
 ### Example
 
@@ -3219,7 +3219,7 @@ No authorization required
 
 Finish an OIDC login: the provider sends the browser back here
 
-Finish an OIDC login: the provider sends the browser back here  A known External identity is logged in and lands on the app. An unknown one is held pending and goes to the username step. A refused login goes back to the login page with &#x60;oidc_error&#x60; naming why.
+Finish an OIDC login: the provider sends the browser back here  A known External identity is logged in and lands on the app. An unknown one is held pending and goes to the username step. A refused login goes back to the login page with &#x60;oidc_error&#x60; naming why. A locked Account is logged in by the module and right out again here.
 
 ### Example
 

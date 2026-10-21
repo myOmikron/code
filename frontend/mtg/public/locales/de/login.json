@@ -15,6 +15,7 @@
         "no-ceremony": "Der Anmeldeversuch ist abgelaufen. Fang noch einmal an.",
         "no-passkey-or-aborted": "Abgebrochen, oder auf diesem Gerät liegt kein passender Passkey. Nimm das Gerät, auf dem du ihn eingerichtet hast.",
         "oidc-cancelled": "Die Anmeldung wurde abgebrochen.",
+        "oidc-email-in-use": "Zu dieser Mailadresse gibt es schon ein Konto. Melde dich mit seinem Passkey an, oder hol dir über „Passkey verloren?“ einen neuen.",
         "oidc-email-unverified": "Deine Mailadresse ist dort nicht bestätigt. Bestätige sie und versuch es noch einmal.",
         "oidc-expired": "Der Anmeldeversuch ist abgelaufen. Fang noch einmal an.",
         "oidc-failed": "Anmeldung fehlgeschlagen. Probier es noch einmal.",

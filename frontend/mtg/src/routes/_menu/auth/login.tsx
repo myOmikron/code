@@ -186,6 +186,8 @@ function RouteComponent() {
         expired: t("error.oidc-expired"),
         provider_unavailable: t("error.oidc-provider-unavailable"),
         email_unverified: t("error.oidc-email-unverified"),
+        email_in_use: t("error.oidc-email-in-use"),
+        locked: t("error.locked"),
     };
     const oidcErrorMessage = oidcError === undefined ? undefined : (oidcErrors[oidcError] ?? t("error.oidc-failed"));
 

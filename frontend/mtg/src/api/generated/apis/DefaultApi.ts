@@ -1653,7 +1653,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Finish the username step: create the External Account and log it in  Creates the Identity, the External identity and the Account, with the provider\'s verified email, in one transaction. A refused username keeps the login pending, so the person can pick another.
+     * Finish the username step: create the External Account and log it in  Creates the Identity, the External identity and the Account, with the provider\'s verified email, in one transaction. A refused username keeps the login pending, so the person can pick another. An email an Account took since the callback ends the pending login.
      * Finish the username step: create the External Account and log it in
      */
     async chooseUsernameRaw(requestParameters: ChooseUsernameOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FormErrorResponseForChooseUsernameErrors>> {
@@ -1664,7 +1664,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Finish the username step: create the External Account and log it in  Creates the Identity, the External identity and the Account, with the provider\'s verified email, in one transaction. A refused username keeps the login pending, so the person can pick another.
+     * Finish the username step: create the External Account and log it in  Creates the Identity, the External identity and the Account, with the provider\'s verified email, in one transaction. A refused username keeps the login pending, so the person can pick another. An email an Account took since the callback ends the pending login.
      * Finish the username step: create the External Account and log it in
      */
     async chooseUsername(requestParameters: ChooseUsernameOperationRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FormErrorResponseForChooseUsernameErrors> {
@@ -2923,7 +2923,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Finish an OIDC login: the provider sends the browser back here  A known External identity is logged in and lands on the app. An unknown one is held pending and goes to the username step. A refused login goes back to the login page with `oidc_error` naming why.
+     * Finish an OIDC login: the provider sends the browser back here  A known External identity is logged in and lands on the app. An unknown one is held pending and goes to the username step. A refused login goes back to the login page with `oidc_error` naming why. A locked Account is logged in by the module and right out again here.
      * Finish an OIDC login: the provider sends the browser back here
      */
     async finishOidcLoginRaw(requestParameters: FinishOidcLoginRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
@@ -2934,7 +2934,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Finish an OIDC login: the provider sends the browser back here  A known External identity is logged in and lands on the app. An unknown one is held pending and goes to the username step. A refused login goes back to the login page with `oidc_error` naming why.
+     * Finish an OIDC login: the provider sends the browser back here  A known External identity is logged in and lands on the app. An unknown one is held pending and goes to the username step. A refused login goes back to the login page with `oidc_error` naming why. A locked Account is logged in by the module and right out again here.
      * Finish an OIDC login: the provider sends the browser back here
      */
     async finishOidcLogin(requestParameters: FinishOidcLoginRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
