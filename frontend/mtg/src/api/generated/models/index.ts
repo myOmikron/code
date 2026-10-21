@@ -4721,6 +4721,45 @@ export interface NewCollectionEntry {
 }
 
 
+
+/**
+ * Why an OIDC login was refused, as the callback names it to the login page
+ * 
+ * Sent as the `oidc_error` query parameter of the login page, see [`OidcCallbackRedirect`].
+ * @export
+ */
+export const OidcLoginFailure = {
+    /**
+    * The person cancelled at the provider
+    */
+    cancelled: 'cancelled',
+    /**
+    * The login was not started in this session, or ran out
+    */
+    expired: 'expired',
+    /**
+    * The provider cannot be reached right now
+    */
+    provider_unavailable: 'provider_unavailable',
+    /**
+    * The provider did not state a verified email
+    */
+    email_unverified: 'email_unverified',
+    /**
+    * The verified email belongs to an Account already
+    */
+    email_in_use: 'email_in_use',
+    /**
+    * An Admin locked the Account
+    */
+    locked: 'locked',
+    /**
+    * The provider&#39;s answer did not check out
+    */
+    failed: 'failed'
+} as const;
+export type OidcLoginFailure = typeof OidcLoginFailure[keyof typeof OidcLoginFailure];
+
 /**
  * The oldest printing in the collection
  * @export

@@ -21,6 +21,7 @@ import { useForm } from "@tanstack/react-form";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
+import { OidcLoginFailure } from "src/api/generated";
 import { InlineError } from "src/components/inline-error";
 import { OpenIdLoginButtons } from "src/components/openid-login-buttons";
 import { useAccount } from "src/context/account";
@@ -36,8 +37,19 @@ export type LoginSearch = {
     /** Where to go once the login went through; set by {@link RequireAccount} */
     redirect?: string;
     /** Why an OIDC login was refused; set by the backend's OIDC callback */
-    oidc_error?: string;
+    oidc_error?: OidcLoginFailure;
 };
+
+/**
+ * Reads the `oidc_error` search param
+ *
+ * @param value the raw search param
+ * @returns the failure it names, `failed` for one this frontend does not know, or `undefined` without one
+ */
+function parseOidcLoginFailure(value: unknown): OidcLoginFailure | undefined {
+    if (value === undefined) return undefined;
+    return Object.values(OidcLoginFailure).find((failure) => failure === value) ?? OidcLoginFailure.failed;
+}
 
 export const Route = createFileRoute("/_menu/auth/login")({
     component: RouteComponent,
@@ -48,7 +60,7 @@ export const Route = createFileRoute("/_menu/auth/login")({
             typeof search.redirect === "string" && search.redirect.startsWith("/") && !search.redirect.startsWith("//")
                 ? search.redirect
                 : undefined,
-        oidc_error: typeof search.oidc_error === "string" ? search.oidc_error : undefined,
+        oidc_error: parseOidcLoginFailure(search.oidc_error),
     }),
 });
 
@@ -181,15 +193,16 @@ function RouteComponent() {
         setRecovering(false);
     }
 
-    const oidcErrors: Record<string, string> = {
+    const oidcErrors: Record<OidcLoginFailure, string> = {
         cancelled: t("error.oidc-cancelled"),
         expired: t("error.oidc-expired"),
         provider_unavailable: t("error.oidc-provider-unavailable"),
         email_unverified: t("error.oidc-email-unverified"),
         email_in_use: t("error.oidc-email-in-use"),
         locked: t("error.locked"),
+        failed: t("error.oidc-failed"),
     };
-    const oidcErrorMessage = oidcError === undefined ? undefined : (oidcErrors[oidcError] ?? t("error.oidc-failed"));
+    const oidcErrorMessage = oidcError === undefined ? undefined : oidcErrors[oidcError];
 
     const submitError = form.state.errorMap.onSubmit;
     const formError =

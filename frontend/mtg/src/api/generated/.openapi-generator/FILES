@@ -160,6 +160,7 @@ docs/MpcFillImageResponse.md
 docs/MpcFillSearchRequest.md
 docs/MpcFillSearchResponse.md
 docs/NewCollectionEntry.md
+docs/OidcLoginFailure.md
 docs/OldestPrintingResponse.md
 docs/OnLoanResponse.md
 docs/PendingOidcLogin.md

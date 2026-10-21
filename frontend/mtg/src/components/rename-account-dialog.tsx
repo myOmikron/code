@@ -19,7 +19,7 @@ import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import { handleFormError, isFormError } from "src/utils/error";
-import { validateUsername } from "src/utils/username-rules";
+import { usernameErrorMessage, validateUsername } from "src/utils/username-rules";
 import { signalUsername } from "src/utils/webauthn";
 
 /**
@@ -52,16 +52,7 @@ export function RenameAccountDialog({ open, username, onClose, onRenamed }: Rena
                 const wanted = value.username.trim();
                 const ruleBroken = validateUsername(wanted);
                 if (ruleBroken !== null) {
-                    return {
-                        fields: {
-                            username: {
-                                length: tg("error.username-length"),
-                                charset: tg("error.username-charset"),
-                                start: tg("error.username-start"),
-                            }[ruleBroken],
-                        },
-                        form: undefined,
-                    };
+                    return { fields: { username: usernameErrorMessage(tg, ruleBroken) }, form: undefined };
                 }
 
                 const response = await Api.accounts.rename(wanted);

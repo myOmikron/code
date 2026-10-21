@@ -1379,7 +1379,7 @@ No authorization required
 
 Finish the username step: create the External Account and log it in
 
-Finish the username step: create the External Account and log it in  Creates the Identity, the External identity and the Account, with the provider\&#39;s verified email, in one transaction. A refused username keeps the login pending, so the person can pick another. An email an Account took since the callback ends the pending login.
+Finish the username step: create the External Account and log it in  Creates the Identity, the External identity and the Account, with the provider\&#39;s verified email, in one transaction. A refused username keeps the login pending, so the person can pick another, also when a concurrent request took it after the check. An email an Account took since the callback ends the pending login.
 
 ### Example
 
@@ -3219,7 +3219,7 @@ No authorization required
 
 Finish an OIDC login: the provider sends the browser back here
 
-Finish an OIDC login: the provider sends the browser back here  A known External identity is logged in and lands on the app. An unknown one is held pending and goes to the username step. A refused login goes back to the login page with &#x60;oidc_error&#x60; naming why. A locked Account is logged in by the module and right out again here.
+Finish an OIDC login: the provider sends the browser back here  A known External identity is logged in and lands on the app, unless its Account is locked. An unknown one is held pending and goes to the username step. A refused login goes back to the login page with &#x60;oidc_error&#x60; naming why.
 
 ### Example
 
@@ -6646,7 +6646,7 @@ No authorization required
 
 Send a fresh registration link to an account\&#39;s stored address
 
-Send a fresh registration link to an account\&#39;s stored address  The \&quot;lost passkey\&quot; flow: a new device has no passkey, so the login form offers this instead of a dead end. Registering over the link only *adds* a passkey — the existing ones keep working until their owner removes them.  Always answers &#x60;200&#x60;, whether or not the username exists — the response must not be usable to probe which usernames are registered. The link is only ever sent to the address stored on the account, never to one from the request, so this endpoint cannot be used to mail a third party. A locked account gets no link either, and only a Local Account gets one at all; the answer is the same &#x60;200&#x60;.
+Send a fresh registration link to an account\&#39;s stored address  The \&quot;lost passkey\&quot; flow: a new device has no passkey, so the login form offers this instead of a dead end. Registering over the link only *adds* a passkey — the existing ones keep working until their owner removes them.  Always answers &#x60;200&#x60;, whether or not the username exists — the response must not be usable to probe which usernames are registered. The link is only ever sent to the address stored on the account, never to one from the request, so this endpoint cannot be used to mail a third party. A locked account gets no link either, and only a Local Account gets one at all, including one not enrolled yet whose invite mail got lost; the answer is the same &#x60;200&#x60;.
 
 ### Example
 
