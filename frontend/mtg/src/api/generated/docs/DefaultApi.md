@@ -21,6 +21,7 @@ All URIs are relative to *http://localhost*
 | [**assignCollectionEntryTag**](DefaultApi.md#assigncollectionentrytag) | **POST** /api/frontend/v1/collections/{collection}/entries/{entry}/tags/{tag} | Put a card-wide tag on a stack |
 | [**assignDeckCardTag**](DefaultApi.md#assigndeckcardtag) | **POST** /api/frontend/v1/decks/{deck}/cards/{card}/tags/{tag} | Put a tag on a card |
 | [**attachDeckCollection**](DefaultApi.md#attachdeckcollection) | **POST** /api/frontend/v1/decks/{deck}/collection | Start keeping the cards that are physically in this deck |
+| [**chooseUsername**](DefaultApi.md#chooseusernameoperation) | **POST** /api/frontend/v1/auth/oidc/username | Finish the username step: create the External Account and log it in |
 | [**createCollection**](DefaultApi.md#createcollectionoperation) | **POST** /api/frontend/v1/collections |  |
 | [**createDeck**](DefaultApi.md#createdeckoperation) | **POST** /api/frontend/v1/decks | Create a deck |
 | [**createDeckFolder**](DefaultApi.md#createdeckfolderoperation) | **POST** /api/frontend/v1/folders | Make a folder |
@@ -46,6 +47,7 @@ All URIs are relative to *http://localhost*
 | [**fillDeckCollection**](DefaultApi.md#filldeckcollectionoperation) | **POST** /api/frontend/v1/decks/{deck}/sourcing/fill | Declare that the deck holds what its list asks for |
 | [**finishAddPasskey**](DefaultApi.md#finishaddpasskeyoperation) | **POST** /api/frontend/v1/accounts/passkeys/finish | Finish registering another passkey for the logged-in account |
 | [**finishLogin**](DefaultApi.md#finishloginoperation) | **POST** /api/frontend/v1/auth/login/finish | Finish a passkey login |
+| [**finishOidcLogin**](DefaultApi.md#finishoidclogin) | **GET** /api/frontend/v1/auth/oidc/callback | Finish an OIDC login: the provider sends the browser back here |
 | [**finishRegistration**](DefaultApi.md#finishregistrationoperation) | **POST** /api/frontend/v1/auth/register/finish | Finish a passkey registration |
 | [**getAllCollections**](DefaultApi.md#getallcollections) | **GET** /api/frontend/v1/collections |  |
 | [**getAllDeckFolders**](DefaultApi.md#getalldeckfolders) | **GET** /api/frontend/v1/folders | List every folder the account keeps |
@@ -64,6 +66,7 @@ All URIs are relative to *http://localhost*
 | [**getDeckPoint**](DefaultApi.md#getdeckpoint) | **GET** /api/frontend/v1/decks/{deck}/history/{change} | The deck as it was right after one of its Deck changes, read-only |
 | [**getDeckSourcing**](DefaultApi.md#getdecksourcing) | **GET** /api/frontend/v1/decks/{deck}/sourcing | What the deck asks for, what is in it, and where the rest could come from |
 | [**getMpcfillCardbacks**](DefaultApi.md#getmpcfillcardbacks) | **GET** /api/frontend/v1/mpcfill/cardbacks | The card backs MPCFill offers |
+| [**getPendingOidcLogin**](DefaultApi.md#getpendingoidclogin) | **GET** /api/frontend/v1/auth/oidc/pending | The session\&#39;s OIDC login waiting for its username step |
 | [**getPriceHistory**](DefaultApi.md#getpricehistory) | **GET** /api/frontend/v1/printings/{printing}/price-history | What a card has cost over time |
 | [**getPrintingLanguages**](DefaultApi.md#getprintinglanguages) | **GET** /api/frontend/v1/printings/{printing}/languages | Every language the same card exists in |
 | [**getPublicCollection**](DefaultApi.md#getpubliccollection) | **GET** /api/frontend/v1/explore/collections/{collection} | Fetch one collection its owner put on show |
@@ -81,6 +84,7 @@ All URIs are relative to *http://localhost*
 | [**listCollectionEntries**](DefaultApi.md#listcollectionentries) | **GET** /api/frontend/v1/collections/{collection}/entries | List every stack filed in a collection |
 | [**listCollectionOnLoan**](DefaultApi.md#listcollectiononloan) | **GET** /api/frontend/v1/collections/{collection}/on-loan | Count a collection\&#39;s statistics |
 | [**listDeckCards**](DefaultApi.md#listdeckcards) | **GET** /api/frontend/v1/decks/{deck}/cards | Every card of a deck, with the catalog data and the tags on it |
+| [**listOpenidProviders**](DefaultApi.md#listopenidproviders) | **GET** /api/frontend/v1/auth/oidc/providers | List the OpenID providers people may log in through |
 | [**listPasskeys**](DefaultApi.md#listpasskeys) | **GET** /api/frontend/v1/accounts/passkeys | List the passkeys of the logged-in account |
 | [**listPublicCollectionCards**](DefaultApi.md#listpubliccollectioncards) | **GET** /api/frontend/v1/explore/collections/{collection}/cards | List a page of a public collection\&#39;s cards, sorted and filtered |
 | [**listPublicDeckCards**](DefaultApi.md#listpublicdeckcards) | **GET** /api/frontend/v1/explore/decks/{deck}/cards | Every card of a public deck, with the catalog data and the tags on it |
@@ -117,6 +121,7 @@ All URIs are relative to *http://localhost*
 | [**splitCollectionEntry**](DefaultApi.md#splitcollectionentryoperation) | **POST** /api/frontend/v1/collections/{collection}/entries/{entry}/split | Move copies out of a stack into a new one |
 | [**startAddPasskey**](DefaultApi.md#startaddpasskey) | **POST** /api/frontend/v1/accounts/passkeys/start | Start registering another passkey for the logged-in account |
 | [**startLogin**](DefaultApi.md#startloginoperation) | **POST** /api/frontend/v1/auth/login/start | Start a passkey login for a given username |
+| [**startOidcLogin**](DefaultApi.md#startoidcloginoperation) | **POST** /api/frontend/v1/auth/oidc/start | Start an OIDC login, for signing up and logging in alike |
 | [**startRegistration**](DefaultApi.md#startregistrationoperation) | **POST** /api/frontend/v1/auth/register/start | Start a passkey registration |
 | [**swapDeckCard**](DefaultApi.md#swapdeckcardoperation) | **POST** /api/frontend/v1/decks/{deck}/cards/{card}/swap | Give up copies of a Deck entry for another card in the same zone |
 | [**takeDeckCards**](DefaultApi.md#takedeckcardsoperation) | **POST** /api/frontend/v1/decks/{deck}/sourcing/take | Move copies out of a collection and into the deck |
@@ -1354,6 +1359,76 @@ No authorization required
 ### HTTP request headers
 
 - **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## chooseUsername
+
+> FormErrorResponseForChooseUsernameErrors chooseUsername(ChooseUsernameRequest)
+
+Finish the username step: create the External Account and log it in
+
+Finish the username step: create the External Account and log it in  Creates the Identity, the External identity and the Account, with the provider\&#39;s verified email, in one transaction. A refused username keeps the login pending, so the person can pick another.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { ChooseUsernameOperationRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // ChooseUsernameRequest (optional)
+    ChooseUsernameRequest: ...,
+  } satisfies ChooseUsernameOperationRequest;
+
+  try {
+    const data = await api.chooseUsername(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **ChooseUsernameRequest** | [ChooseUsernameRequest](ChooseUsernameRequest.md) |  | [Optional] |
+
+### Return type
+
+[**FormErrorResponseForChooseUsernameErrors**](FormErrorResponseForChooseUsernameErrors.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
 - **Accept**: `application/json`
 
 
@@ -3138,6 +3213,84 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## finishOidcLogin
+
+> finishOidcLogin(code, error, state)
+
+Finish an OIDC login: the provider sends the browser back here
+
+Finish an OIDC login: the provider sends the browser back here  A known External identity is logged in and lands on the app. An unknown one is held pending and goes to the username step. A refused login goes back to the login page with &#x60;oidc_error&#x60; naming why.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { FinishOidcLoginRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string (optional)
+    code: ...,
+    // string (optional)
+    error: ...,
+    // string (optional)
+    state: ...,
+  } satisfies FinishOidcLoginRequest;
+
+  try {
+    const data = await api.finishOidcLogin(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **code** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **error** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **state** | `string` |  | [Optional] [Defaults to `undefined`] |
+
+### Return type
+
+`void` (Empty response body)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **303** |  |  -  |
+| **307** |  |  -  |
+| **308** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## finishRegistration
 
 > FormErrorResponseForRegistrationErrors finishRegistration(FinishRegistrationRequest)
@@ -4317,6 +4470,68 @@ This endpoint does not need any parameter.
 ### Return type
 
 [**MpcFillCardbacksResponse**](MpcFillCardbacksResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## getPendingOidcLogin
+
+> GetPendingOidcLoginResponse getPendingOidcLogin()
+
+The session\&#39;s OIDC login waiting for its username step
+
+The session\&#39;s OIDC login waiting for its username step
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { GetPendingOidcLoginRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  try {
+    const data = await api.getPendingOidcLogin();
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+This endpoint does not need any parameter.
+
+### Return type
+
+[**GetPendingOidcLoginResponse**](GetPendingOidcLoginResponse.md)
 
 ### Authorization
 
@@ -5554,6 +5769,65 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## listOpenidProviders
+
+> ListOpenIdProvidersResponse listOpenidProviders()
+
+List the OpenID providers people may log in through
+
+List the OpenID providers people may log in through  Empty while no provider is configured; the frontend then shows no button.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { ListOpenidProvidersRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  try {
+    const data = await api.listOpenidProviders();
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+This endpoint does not need any parameter.
+
+### Return type
+
+[**ListOpenIdProvidersResponse**](ListOpenIdProvidersResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## listPasskeys
 
 > ListPasskeysResponse listPasskeys()
@@ -6372,7 +6646,7 @@ No authorization required
 
 Send a fresh registration link to an account\&#39;s stored address
 
-Send a fresh registration link to an account\&#39;s stored address  The \&quot;lost passkey\&quot; flow: a new device has no passkey, so the login form offers this instead of a dead end. Registering over the link only *adds* a passkey — the existing ones keep working until their owner removes them.  Always answers &#x60;200&#x60;, whether or not the username exists — the response must not be usable to probe which usernames are registered. The link is only ever sent to the address stored on the account, never to one from the request, so this endpoint cannot be used to mail a third party. A locked account gets no link either, and the answer is the same &#x60;200&#x60;.
+Send a fresh registration link to an account\&#39;s stored address  The \&quot;lost passkey\&quot; flow: a new device has no passkey, so the login form offers this instead of a dead end. Registering over the link only *adds* a passkey — the existing ones keep working until their owner removes them.  Always answers &#x60;200&#x60;, whether or not the username exists — the response must not be usable to probe which usernames are registered. The link is only ever sent to the address stored on the account, never to one from the request, so this endpoint cannot be used to mail a third party. A locked account gets no link either, and only a Local Account gets one at all; the answer is the same &#x60;200&#x60;.
 
 ### Example
 
@@ -8155,6 +8429,76 @@ example().catch(console.error);
 ### Return type
 
 [**StartLogin200Response**](StartLogin200Response.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## startOidcLogin
+
+> StartOidcLogin200Response startOidcLogin(StartOidcLoginRequest)
+
+Start an OIDC login, for signing up and logging in alike
+
+Start an OIDC login, for signing up and logging in alike  Answers the provider\&#39;s authorization url to send the browser to.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { StartOidcLoginOperationRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // StartOidcLoginRequest (optional)
+    StartOidcLoginRequest: ...,
+  } satisfies StartOidcLoginOperationRequest;
+
+  try {
+    const data = await api.startOidcLogin(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **StartOidcLoginRequest** | [StartOidcLoginRequest](StartOidcLoginRequest.md) |  | [Optional] |
+
+### Return type
+
+[**StartOidcLogin200Response**](StartOidcLogin200Response.md)
 
 ### Authorization
 

@@ -78,6 +78,13 @@ export const Api = {
         recover: (username: string, language: MailLanguage) =>
             defaultApi.recoverAccount({ RecoverAccountRequest: { username, language } }),
         logout: async () => handleError(defaultApi.logout()),
+        oidc: {
+            providers: async () => handleError(defaultApi.listOpenidProviders()),
+            start: (provider: string, rememberMe: boolean) =>
+                defaultApi.startOidcLogin({ StartOidcLoginRequest: { provider, remember_me: rememberMe } }),
+            pending: async () => handleError(defaultApi.getPendingOidcLogin()),
+            chooseUsername: (username: string) => defaultApi.chooseUsername({ ChooseUsernameRequest: { username } }),
+        },
     },
     accounts: {
         // Answers 401 for anyone not logged in, which is the normal case for a visitor —

@@ -34,6 +34,7 @@ import type {
     CardCondition,
     CardFinish,
     CardRarity,
+    ChooseUsernameRequest,
     CollectionEntryResponse,
     CollectionOverviewResponse,
     CollectionResponse,
@@ -69,11 +70,13 @@ import type {
     FormErrorResponseForAdminLockAccountErrors,
     FormErrorResponseForAdminSetRoleErrors,
     FormErrorResponseForAdminUnlockAccountErrors,
+    FormErrorResponseForChooseUsernameErrors,
     FormErrorResponseForDeleteAccountErrors,
     FormErrorResponseForDeletePasskeyErrors,
     FormErrorResponseForFinishLoginErrors,
     FormErrorResponseForRegistrationErrors,
     FormErrorResponseForRenamePasskeyErrors,
+    GetPendingOidcLoginResponse,
     ImportDeckCardsRequest,
     ImportDeckCardsResponse,
     ListCardsResponse,
@@ -83,6 +86,7 @@ import type {
     ListFormatsResponse,
     ListGlobalTagsResponse,
     ListOnLoanResponse,
+    ListOpenIdProvidersResponse,
     ListPasskeysResponse,
     ListScannerSessionsResponse,
     ListWatchListAlarmsResponse,
@@ -135,6 +139,8 @@ import type {
     StartAddPasskeyResponse,
     StartLogin200Response,
     StartLoginRequest,
+    StartOidcLogin200Response,
+    StartOidcLoginRequest,
     StartRegistration200Response,
     StartRegistrationRequest,
     SwapDeckCardRequest,
@@ -230,6 +236,10 @@ export interface AssignDeckCardTagRequest {
 
 export interface AttachDeckCollectionRequest {
     deck: string;
+}
+
+export interface ChooseUsernameOperationRequest {
+    ChooseUsernameRequest?: ChooseUsernameRequest;
 }
 
 export interface CreateCollectionOperationRequest {
@@ -338,6 +348,12 @@ export interface FinishAddPasskeyOperationRequest {
 
 export interface FinishLoginOperationRequest {
     FinishLoginRequest?: FinishLoginRequest;
+}
+
+export interface FinishOidcLoginRequest {
+    code?: string | null;
+    error?: string | null;
+    state?: string;
 }
 
 export interface FinishRegistrationOperationRequest {
@@ -629,6 +645,10 @@ export interface SplitCollectionEntryOperationRequest {
 
 export interface StartLoginOperationRequest {
     StartLoginRequest?: StartLoginRequest;
+}
+
+export interface StartOidcLoginOperationRequest {
+    StartOidcLoginRequest?: StartOidcLoginRequest;
 }
 
 export interface StartRegistrationOperationRequest {
@@ -1607,6 +1627,48 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async attachDeckCollection(requestParameters: AttachDeckCollectionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CollectionResponse> {
         const response = await this.attachDeckCollectionRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for chooseUsername without sending the request
+     */
+    async chooseUsernameRequestOpts(requestParameters: ChooseUsernameOperationRequest): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/auth/oidc/username`;
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['ChooseUsernameRequest'],
+        };
+    }
+
+    /**
+     * Finish the username step: create the External Account and log it in  Creates the Identity, the External identity and the Account, with the provider\'s verified email, in one transaction. A refused username keeps the login pending, so the person can pick another.
+     * Finish the username step: create the External Account and log it in
+     */
+    async chooseUsernameRaw(requestParameters: ChooseUsernameOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FormErrorResponseForChooseUsernameErrors>> {
+        const requestOptions = await this.chooseUsernameRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Finish the username step: create the External Account and log it in  Creates the Identity, the External identity and the Account, with the provider\'s verified email, in one transaction. A refused username keeps the login pending, so the person can pick another.
+     * Finish the username step: create the External Account and log it in
+     */
+    async chooseUsername(requestParameters: ChooseUsernameOperationRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FormErrorResponseForChooseUsernameErrors> {
+        const response = await this.chooseUsernameRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -2830,6 +2892,56 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for finishOidcLogin without sending the request
+     */
+    async finishOidcLoginRequestOpts(requestParameters: FinishOidcLoginRequest): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        if (requestParameters['code'] != null) {
+            queryParameters['code'] = requestParameters['code'];
+        }
+
+        if (requestParameters['error'] != null) {
+            queryParameters['error'] = requestParameters['error'];
+        }
+
+        if (requestParameters['state'] != null) {
+            queryParameters['state'] = requestParameters['state'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/auth/oidc/callback`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Finish an OIDC login: the provider sends the browser back here  A known External identity is logged in and lands on the app. An unknown one is held pending and goes to the username step. A refused login goes back to the login page with `oidc_error` naming why.
+     * Finish an OIDC login: the provider sends the browser back here
+     */
+    async finishOidcLoginRaw(requestParameters: FinishOidcLoginRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.finishOidcLoginRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * Finish an OIDC login: the provider sends the browser back here  A known External identity is logged in and lands on the app. An unknown one is held pending and goes to the username step. A refused login goes back to the login page with `oidc_error` naming why.
+     * Finish an OIDC login: the provider sends the browser back here
+     */
+    async finishOidcLogin(requestParameters: FinishOidcLoginRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.finishOidcLoginRaw(requestParameters, initOverrides);
+    }
+
+    /**
      * Creates request options for finishRegistration without sending the request
      */
     async finishRegistrationRequestOpts(requestParameters: FinishRegistrationOperationRequest): Promise<runtime.RequestOpts> {
@@ -3606,6 +3718,45 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async getMpcfillCardbacks(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MpcFillCardbacksResponse> {
         const response = await this.getMpcfillCardbacksRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for getPendingOidcLogin without sending the request
+     */
+    async getPendingOidcLoginRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/auth/oidc/pending`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * The session\'s OIDC login waiting for its username step
+     * The session\'s OIDC login waiting for its username step
+     */
+    async getPendingOidcLoginRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<GetPendingOidcLoginResponse>> {
+        const requestOptions = await this.getPendingOidcLoginRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * The session\'s OIDC login waiting for its username step
+     * The session\'s OIDC login waiting for its username step
+     */
+    async getPendingOidcLogin(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GetPendingOidcLoginResponse> {
+        const response = await this.getPendingOidcLoginRaw(initOverrides);
         return await response.value();
     }
 
@@ -4444,6 +4595,45 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for listOpenidProviders without sending the request
+     */
+    async listOpenidProvidersRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/auth/oidc/providers`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * List the OpenID providers people may log in through  Empty while no provider is configured; the frontend then shows no button.
+     * List the OpenID providers people may log in through
+     */
+    async listOpenidProvidersRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListOpenIdProvidersResponse>> {
+        const requestOptions = await this.listOpenidProvidersRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * List the OpenID providers people may log in through  Empty while no provider is configured; the frontend then shows no button.
+     * List the OpenID providers people may log in through
+     */
+    async listOpenidProviders(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListOpenIdProvidersResponse> {
+        const response = await this.listOpenidProvidersRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for listPasskeys without sending the request
      */
     async listPasskeysRequestOpts(): Promise<runtime.RequestOpts> {
@@ -5044,7 +5234,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Send a fresh registration link to an account\'s stored address  The \"lost passkey\" flow: a new device has no passkey, so the login form offers this instead of a dead end. Registering over the link only *adds* a passkey — the existing ones keep working until their owner removes them.  Always answers `200`, whether or not the username exists — the response must not be usable to probe which usernames are registered. The link is only ever sent to the address stored on the account, never to one from the request, so this endpoint cannot be used to mail a third party. A locked account gets no link either, and the answer is the same `200`.
+     * Send a fresh registration link to an account\'s stored address  The \"lost passkey\" flow: a new device has no passkey, so the login form offers this instead of a dead end. Registering over the link only *adds* a passkey — the existing ones keep working until their owner removes them.  Always answers `200`, whether or not the username exists — the response must not be usable to probe which usernames are registered. The link is only ever sent to the address stored on the account, never to one from the request, so this endpoint cannot be used to mail a third party. A locked account gets no link either, and only a Local Account gets one at all; the answer is the same `200`.
      * Send a fresh registration link to an account\'s stored address
      */
     async recoverAccountRaw(requestParameters: RecoverAccountOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
@@ -5059,7 +5249,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Send a fresh registration link to an account\'s stored address  The \"lost passkey\" flow: a new device has no passkey, so the login form offers this instead of a dead end. Registering over the link only *adds* a passkey — the existing ones keep working until their owner removes them.  Always answers `200`, whether or not the username exists — the response must not be usable to probe which usernames are registered. The link is only ever sent to the address stored on the account, never to one from the request, so this endpoint cannot be used to mail a third party. A locked account gets no link either, and the answer is the same `200`.
+     * Send a fresh registration link to an account\'s stored address  The \"lost passkey\" flow: a new device has no passkey, so the login form offers this instead of a dead end. Registering over the link only *adds* a passkey — the existing ones keep working until their owner removes them.  Always answers `200`, whether or not the username exists — the response must not be usable to probe which usernames are registered. The link is only ever sent to the address stored on the account, never to one from the request, so this endpoint cannot be used to mail a third party. A locked account gets no link either, and only a Local Account gets one at all; the answer is the same `200`.
      * Send a fresh registration link to an account\'s stored address
      */
     async recoverAccount(requestParameters: RecoverAccountOperationRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
@@ -6291,6 +6481,48 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async startLogin(requestParameters: StartLoginOperationRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<StartLogin200Response> {
         const response = await this.startLoginRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for startOidcLogin without sending the request
+     */
+    async startOidcLoginRequestOpts(requestParameters: StartOidcLoginOperationRequest): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/auth/oidc/start`;
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['StartOidcLoginRequest'],
+        };
+    }
+
+    /**
+     * Start an OIDC login, for signing up and logging in alike  Answers the provider\'s authorization url to send the browser to.
+     * Start an OIDC login, for signing up and logging in alike
+     */
+    async startOidcLoginRaw(requestParameters: StartOidcLoginOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<StartOidcLogin200Response>> {
+        const requestOptions = await this.startOidcLoginRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Start an OIDC login, for signing up and logging in alike  Answers the provider\'s authorization url to send the browser to.
+     * Start an OIDC login, for signing up and logging in alike
+     */
+    async startOidcLogin(requestParameters: StartOidcLoginOperationRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<StartOidcLogin200Response> {
+        const response = await this.startOidcLoginRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

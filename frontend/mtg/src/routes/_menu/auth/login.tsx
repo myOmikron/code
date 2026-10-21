@@ -22,6 +22,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import { InlineError } from "src/components/inline-error";
+import { OpenIdLoginButtons } from "src/components/openid-login-buttons";
 import { useAccount } from "src/context/account";
 import { loadLastUsername, saveLastUsername } from "src/utils/username-storage";
 import { handleFormError, isFormError } from "src/utils/error";
@@ -34,6 +35,8 @@ import { authenticatePasskey, classifyPasskeyError } from "src/utils/webauthn";
 export type LoginSearch = {
     /** Where to go once the login went through; set by {@link RequireAccount} */
     redirect?: string;
+    /** Why an OIDC login was refused; set by the backend's OIDC callback */
+    oidc_error?: string;
 };
 
 export const Route = createFileRoute("/_menu/auth/login")({
@@ -45,13 +48,14 @@ export const Route = createFileRoute("/_menu/auth/login")({
             typeof search.redirect === "string" && search.redirect.startsWith("/") && !search.redirect.startsWith("//")
                 ? search.redirect
                 : undefined,
+        oidc_error: typeof search.oidc_error === "string" ? search.oidc_error : undefined,
     }),
 });
 
 function RouteComponent() {
     const [t, i18n] = useTranslation("login");
     const navigate = useNavigate();
-    const { redirect } = Route.useSearch();
+    const { redirect, oidc_error: oidcError } = Route.useSearch();
     const { refresh } = useAccount();
 
     // The lost-passkey request lives next to the form, not in it — submitting
@@ -177,6 +181,14 @@ function RouteComponent() {
         setRecovering(false);
     }
 
+    const oidcErrors: Record<string, string> = {
+        cancelled: t("error.oidc-cancelled"),
+        expired: t("error.oidc-expired"),
+        provider_unavailable: t("error.oidc-provider-unavailable"),
+        email_unverified: t("error.oidc-email-unverified"),
+    };
+    const oidcErrorMessage = oidcError === undefined ? undefined : (oidcErrors[oidcError] ?? t("error.oidc-failed"));
+
     const submitError = form.state.errorMap.onSubmit;
     const formError =
         typeof submitError === "object" && submitError !== null && "form" in submitError
@@ -245,6 +257,11 @@ function RouteComponent() {
                                 <InlineError>{t("error.recovery-username-required")}</InlineError>
                             )}
                             {recovery === "failed" && <InlineError>{t("error.recovery-failed")}</InlineError>}
+
+                            <form.Subscribe selector={(state) => state.values.rememberMe}>
+                                {(rememberMe) => <OpenIdLoginButtons rememberMe={rememberMe} />}
+                            </form.Subscribe>
+                            {oidcErrorMessage !== undefined && <InlineError>{oidcErrorMessage}</InlineError>}
                         </FieldGroup>
                     </Fieldset>
                 </Form>

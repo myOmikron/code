@@ -8,6 +8,7 @@
         "add-watch-card": "Karte hinzufügen",
         "cancel": "Abbrechen",
         "close": "Schließen",
+        "continue-with-provider": "Weiter mit {{provider}}",
         "copy-share-link": "Kopieren",
         "create-share-link": "Link erstellen",
         "create-watch-list": "Merkliste anlegen",
@@ -47,6 +48,7 @@
     },
     "error": {
         "index-not-ready": "Der Referenzindex ist noch nicht bereit.",
+        "provider-unavailable": "Die Anmeldung ist gerade nicht erreichbar. Versuch es später noch einmal.",
         "username-charset": "Erlaubt sind nur Buchstaben, Ziffern, Unterstrich, Bindestrich und Punkt.",
         "username-length": "Der Benutzername muss 3 bis 32 Zeichen lang sein.",
         "username-start": "Das erste Zeichen muss ein Buchstabe oder eine Ziffer sein.",
