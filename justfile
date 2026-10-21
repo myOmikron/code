@@ -73,6 +73,10 @@ build-service name:
 make-migrations name:
     cargo run --package {{ name }} -- make-migrations services/{{ name }}/migrations/
 
+# Cut a Release: file the pending Release notes (mtg), commit, signed tag <name>/v<version>; never pushes
+release name version:
+    bash tools/release.sh {{ name }} {{ version }}
+
 # Build Docker image for a service
 docker-build name:
     docker build -t {{ name }}:local -f services/{{ name }}/Dockerfile .

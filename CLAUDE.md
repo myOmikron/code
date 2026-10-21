@@ -139,6 +139,11 @@ mtg query cost). A review applies all of it; read the sections a change touches 
 
 ### Frontend
 
+#### mtg Release notes
+
+- A change mtg players notice (website, scanner, deck advisor) adds a Release note
+  fragment to `frontend/mtg/release-notes/unreleased/` in the same commit as the change;
+  format and rules in `frontend/mtg/release-notes/README.md`. Admin-only changes get none.
 
 #### New frontend apps
 
@@ -169,7 +174,10 @@ mtg query cost). A review applies all of it; read the sections a change touches 
 
 ## Release Workflow
 
-1. Tag format: `<service-name>/v<semver>` (e.g., `semmelei/v1.0.0`)
+1. Tag format: `<service-name>/v<semver>` (e.g., `semmelei/v1.0.0`). Cut it with
+   `just release <service> <version>` on an up-to-date, clean `main`: for mtg it files the
+   pending Release notes under the version and commits them, then it creates the signed tag.
+   It never pushes: `git push origin main <tag>`
 2. Pushing the tag triggers `release-docker.yaml`, which reads `docker/<service-name>.yaml`
    and builds/pushes each entry as `ghcr.io/<owner>/<service>/<key>:v<semver>` and `:latest`
 3. Registry logins: ghcr.io via `GITHUB_TOKEN`, dhi.io via `DHI_USER`/`DHI_TOKEN` secrets

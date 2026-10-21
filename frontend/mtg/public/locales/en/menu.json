@@ -1,4 +1,7 @@
 {
+    "accessibility": {
+        "unread-release-notes": "There is something new"
+    },
     "button": {
         "add-cards": "Add cards",
         "change-printing": "Pick another printing",
@@ -44,6 +47,7 @@
         "search-decks": "Search decks or commanders",
         "sign-up": "Create account",
         "view": "View",
-        "watch-lists": "Watch lists"
+        "watch-lists": "Watch lists",
+        "whats-new": "What's new"
     }
 }

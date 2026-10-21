@@ -1,4 +1,7 @@
 {
+    "accessibility": {
+        "unread-release-notes": "Es gibt Neuigkeiten"
+    },
     "button": {
         "add-cards": "Karten hinzufügen",
         "change-printing": "Anderen Druck wählen",
@@ -44,6 +47,7 @@
         "search-decks": "Deck oder Commander suchen",
         "sign-up": "Konto erstellen",
         "view": "Ansicht",
-        "watch-lists": "Merklisten"
+        "watch-lists": "Merklisten",
+        "whats-new": "Neuigkeiten"
     }
 }

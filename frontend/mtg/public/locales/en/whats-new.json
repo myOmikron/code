@@ -1,0 +1,15 @@
+{
+    "description": {
+        "no-release-notes": "Nothing new yet.",
+        "whats-new": "What changed with each version of Planarium."
+    },
+    "heading": {
+        "whats-new": "What's new"
+    },
+    "label": {
+        "fixed": "Fixed",
+        "improved": "Improved",
+        "new": "New",
+        "unreleased": "Unreleased"
+    }
+}

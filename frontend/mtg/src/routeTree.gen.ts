@@ -19,6 +19,7 @@ import { Route as MenuGameUtilsRouteImport } from './routes/_menu/game-utils'
 import { Route as MenuHomeRouteImport } from './routes/_menu/home'
 import { Route as MenuLegalRouteImport } from './routes/_menu/legal'
 import { Route as MenuPrivacyRouteImport } from './routes/_menu/privacy'
+import { Route as MenuWhatsNewRouteImport } from './routes/_menu/whats-new'
 import { Route as MenuAdminIndexRouteImport } from './routes/_menu/admin/index'
 import { Route as MenuAdminLogRouteImport } from './routes/_menu/admin/log'
 import { Route as MenuAdminStatisticsRouteImport } from './routes/_menu/admin/statistics'
@@ -123,6 +124,11 @@ const MenuLegalRoute = MenuLegalRouteImport.update({
 const MenuPrivacyRoute = MenuPrivacyRouteImport.update({
   id: '/privacy',
   path: '/privacy',
+  getParentRoute: () => MenuRoute,
+} as any)
+const MenuWhatsNewRoute = MenuWhatsNewRouteImport.update({
+  id: '/whats-new',
+  path: '/whats-new',
   getParentRoute: () => MenuRoute,
 } as any)
 const MenuAdminIndexRoute = MenuAdminIndexRouteImport.update({
@@ -463,6 +469,7 @@ export interface FileRoutesByFullPath {
   '/home': typeof MenuHomeRoute
   '/legal': typeof MenuLegalRoute
   '/privacy': typeof MenuPrivacyRoute
+  '/whats-new': typeof MenuWhatsNewRoute
   '/admin/log': typeof MenuAdminLogRoute
   '/admin/statistics': typeof MenuAdminStatisticsRoute
   '/admin/syncs': typeof MenuAdminSyncsRoute
@@ -528,6 +535,7 @@ export interface FileRoutesByTo {
   '/home': typeof MenuHomeRoute
   '/legal': typeof MenuLegalRoute
   '/privacy': typeof MenuPrivacyRoute
+  '/whats-new': typeof MenuWhatsNewRoute
   '/admin/log': typeof MenuAdminLogRoute
   '/admin/statistics': typeof MenuAdminStatisticsRoute
   '/admin/syncs': typeof MenuAdminSyncsRoute
@@ -591,6 +599,7 @@ export interface FileRoutesById {
   '/_menu/home': typeof MenuHomeRoute
   '/_menu/legal': typeof MenuLegalRoute
   '/_menu/privacy': typeof MenuPrivacyRoute
+  '/_menu/whats-new': typeof MenuWhatsNewRoute
   '/_menu/': typeof MenuIndexRoute
   '/_menu/admin/log': typeof MenuAdminLogRoute
   '/_menu/admin/statistics': typeof MenuAdminStatisticsRoute
@@ -661,6 +670,7 @@ export interface FileRouteTypes {
     | '/home'
     | '/legal'
     | '/privacy'
+    | '/whats-new'
     | '/admin/log'
     | '/admin/statistics'
     | '/admin/syncs'
@@ -726,6 +736,7 @@ export interface FileRouteTypes {
     | '/home'
     | '/legal'
     | '/privacy'
+    | '/whats-new'
     | '/admin/log'
     | '/admin/statistics'
     | '/admin/syncs'
@@ -788,6 +799,7 @@ export interface FileRouteTypes {
     | '/_menu/home'
     | '/_menu/legal'
     | '/_menu/privacy'
+    | '/_menu/whats-new'
     | '/_menu/'
     | '/_menu/admin/log'
     | '/_menu/admin/statistics'
@@ -924,6 +936,13 @@ declare module '@tanstack/react-router' {
       path: '/privacy'
       fullPath: '/privacy'
       preLoaderRoute: typeof MenuPrivacyRouteImport
+      parentRoute: typeof MenuRoute
+    }
+    '/_menu/whats-new': {
+      id: '/_menu/whats-new'
+      path: '/whats-new'
+      fullPath: '/whats-new'
+      preLoaderRoute: typeof MenuWhatsNewRouteImport
       parentRoute: typeof MenuRoute
     }
     '/_menu/admin/': {
@@ -1573,6 +1592,7 @@ interface MenuRouteChildren {
   MenuHomeRoute: typeof MenuHomeRoute
   MenuLegalRoute: typeof MenuLegalRoute
   MenuPrivacyRoute: typeof MenuPrivacyRoute
+  MenuWhatsNewRoute: typeof MenuWhatsNewRoute
   MenuIndexRoute: typeof MenuIndexRoute
   MenuProfileProfileRoute: typeof MenuProfileProfileRouteWithChildren
   MenuScanBenchRoute: typeof MenuScanBenchRoute
@@ -1599,6 +1619,7 @@ const MenuRouteChildren: MenuRouteChildren = {
   MenuHomeRoute: MenuHomeRoute,
   MenuLegalRoute: MenuLegalRoute,
   MenuPrivacyRoute: MenuPrivacyRoute,
+  MenuWhatsNewRoute: MenuWhatsNewRoute,
   MenuIndexRoute: MenuIndexRoute,
   MenuProfileProfileRoute: MenuProfileProfileRouteWithChildren,
   MenuScanBenchRoute: MenuScanBenchRoute,

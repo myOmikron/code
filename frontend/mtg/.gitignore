@@ -55,6 +55,7 @@ test/*.mjs
 !test/overlay-debug.mjs
 !test/printing-regression.mjs
 scripts/build-embedding-index.mjs
+scripts/check-release-notes.mjs
 
 # Photographs the scanner got wrong, cut into per-step renders (see test/failure-steps.ts).
 # Regenerated from the labelled corpus, tens of megabytes, and stale the moment the pipeline moves.

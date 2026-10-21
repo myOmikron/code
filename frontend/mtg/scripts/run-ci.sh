@@ -16,6 +16,8 @@ prettier --check src/
 eslint 'src/**/*.{ts,tsx}' --report-unused-disable-directives --max-warnings 0
 # Unit tests of the scan pipeline (matcher, index, gating)
 vitest run
+# Check the Release note fragments
+pnpm run release-notes:check
 
 # Check for missing translations
 missing=$(grep -Er "\"(\w|-)+\.(\w|-)+\"" public/locales/ || true)
