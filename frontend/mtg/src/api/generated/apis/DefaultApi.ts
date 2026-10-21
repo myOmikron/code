@@ -1387,7 +1387,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Rename an Account  Takes the same usernames as a Self-Rename, also for a locked Account, and mails the Account its new username without the reason. An Admin renames itself through its own settings, not here.
+     * Rename an Account  Takes the same usernames as a Rename by the Account itself, also for a locked Account, and mails the Account its new username without the reason. An Admin renames itself through its own settings, not here.
      * Rename an Account
      */
     async adminRenameAccountRaw(requestParameters: AdminRenameAccountOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FormErrorResponseForAdminRenameAccountErrors>> {
@@ -1398,7 +1398,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Rename an Account  Takes the same usernames as a Self-Rename, also for a locked Account, and mails the Account its new username without the reason. An Admin renames itself through its own settings, not here.
+     * Rename an Account  Takes the same usernames as a Rename by the Account itself, also for a locked Account, and mails the Account its new username without the reason. An Admin renames itself through its own settings, not here.
      * Rename an Account
      */
     async adminRenameAccount(requestParameters: AdminRenameAccountOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FormErrorResponseForAdminRenameAccountErrors> {
