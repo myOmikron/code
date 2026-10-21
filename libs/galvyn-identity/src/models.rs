@@ -51,10 +51,17 @@ pub enum LoginMethod {
     External {
         /// The issuer of the OpenID provider vouching for it
         ///
-        /// `IdentityModule::openid_providers` tells which configured provider
-        /// that is, if one still is.
+        /// `IdentityModule::openid_provider_by_issuer` tells which configured
+        /// provider that is, if one still is.
         issuer: String,
     },
+}
+
+impl LoginMethod {
+    /// Whether the Identity holds External identities
+    pub fn is_external(&self) -> bool {
+        matches!(self, LoginMethod::External { .. })
+    }
 }
 
 /// Wrapper for the primary key of the [`Identity`] model.

@@ -30,6 +30,7 @@ clap = { workspace = true }
 # Serialization and deserialization library
 serde = { workspace = true }
 serde_json = { workspace = true }
+serde_urlencoded = { workspace = true }
 url = { workspace = true }
 uuid = { workspace = true }
 

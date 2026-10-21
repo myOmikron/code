@@ -82,8 +82,9 @@ pub async fn signup(
 /// must not be usable to probe which usernames are registered. The link is
 /// only ever sent to the address stored on the account, never to one from the
 /// request, so this endpoint cannot be used to mail a third party. A locked
-/// account gets no link either, and only a Local Account gets one at all; the
-/// answer is the same `200`.
+/// account gets no link either, and only a Local Account gets one at all,
+/// including one not enrolled yet whose invite mail got lost; the answer is
+/// the same `200`.
 #[post("/recover")]
 pub async fn recover_account(
     ApiJson(request): ApiJson<RecoverAccountRequest>,
@@ -100,15 +101,10 @@ pub async fn recover_account(
         tx.commit().await?;
         return Ok(ApiJson(()));
     }
-    let local = match IdentityModule::global()
+    let login_method = IdentityModule::global()
         .login_method(&mut tx, account.identity)
-        .await?
-    {
-        // Not enrolled yet: a Local Account whose invite mail got lost
-        None | Some(LoginMethod::Local) => true,
-        Some(LoginMethod::External { .. }) => false,
-    };
-    if !local {
+        .await?;
+    if login_method.as_ref().is_some_and(LoginMethod::is_external) {
         info!("Recovery for an account that is not local");
         tx.commit().await?;
         return Ok(ApiJson(()));
@@ -283,6 +279,13 @@ pub async fn logout(session: Session) -> ApiResult<()> {
     Ok(())
 }
 
+/// The answer to an External Account trying to enroll a passkey
+///
+/// The frontend offers it no way to, so only a hand-made request gets here.
+pub(in crate::http::handler_frontend) fn no_passkeys_for_external<E>() -> ApiError<E> {
+    ApiError::bad_request("An External Account has no passkeys")
+}
+
 /// Report why a Registration link cannot be used
 fn report_link_error(errors: &mut FormErrors<RegistrationErrors>, error: LinkError) {
     match error {
@@ -364,9 +367,7 @@ pub async fn finish_registration(
         Err(FinishEnrollmentError::Link(error)) => report_link_error(&mut errors, error),
         Err(FinishEnrollmentError::VerificationFailed) => errors.registration_failed = true,
         Err(FinishEnrollmentError::AlreadyEnrolled) => errors.already_registered = true,
-        Err(FinishEnrollmentError::ExternalIdentity) => {
-            return Err(ApiError::bad_request("An External Account has no passkeys"));
-        }
+        Err(FinishEnrollmentError::ExternalIdentity) => return Err(no_passkeys_for_external()),
         Err(FinishEnrollmentError::Internal(error)) => return Err(error.into()),
     }
     errors.fail()

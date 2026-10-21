@@ -7,6 +7,8 @@ use galvyn::core::re_exports::time::OffsetDateTime;
 use galvyn::rorm;
 use galvyn::rorm::db::Executor;
 use galvyn::rorm::db::executor::All;
+use galvyn::rorm::db::executor::One;
+use galvyn::rorm::db::sql::value::Value;
 use galvyn::rorm::db::transaction::Transaction;
 use galvyn::rorm::fields::types::ForeignModelByField;
 use galvyn::rorm::fields::types::MaxStr;
@@ -211,6 +213,21 @@ pub struct Account {
     pub identity: IdentityUuid,
 }
 
+/// Postgres' name for the unique constraint on an account's normalized username
+const USERNAME_UNIQUE: &str = "account_username_normalized_key";
+
+/// Postgres' name for the unique constraint on an account's email
+const EMAIL_UNIQUE: &str = "account_email_key";
+
+/// The unique field of an account an insert clashed on, see [`Account::clash`]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AccountClash {
+    /// Another account holds the username
+    Username,
+    /// Another account holds the email
+    Email,
+}
+
 /// Wrapper for the primary key of the [`Account`] model.
 /// To have better distinguishable types.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, JsonSchema, Hash, Eq, PartialEq)]
@@ -317,6 +334,28 @@ impl Account {
         Ok(account.map(Account::from))
     }
 
+    /// Whether an account's email address is `email`, case ignored
+    ///
+    /// For a provider's verified email, which may spell an address in another
+    /// case than the account that holds it. Skips the tombstone like
+    /// [`Self::get_by_email`].
+    #[instrument(name = "Account::email_in_use_ignoring_case", skip(tx))]
+    pub async fn email_in_use_ignoring_case(
+        tx: &mut Transaction,
+        email: &str,
+    ) -> Result<bool, rorm::Error> {
+        let row = (&mut *tx)
+            .execute::<One>(
+                "SELECT EXISTS (SELECT 1 FROM account \
+                 WHERE lower(email) = lower($1) AND NOT tombstone)"
+                    .to_string(),
+                vec![Value::String(email)],
+            )
+            .await?;
+        row.get(0)
+            .map_err(|error| rorm::Error::RowError(error.into_owned()))
+    }
+
     /// Insert a new account with an identity of its own and return that identity
     ///
     /// Fails with a unique violation if the username or the email is already
@@ -356,6 +395,26 @@ impl Account {
             })
             .await?;
         Ok(())
+    }
+
+    /// Which unique field of an account `error` is a violation of, if any
+    ///
+    /// For the unique violations [`Self::insert`] and
+    /// [`Self::insert_for_identity`] fail with when a concurrent request took
+    /// the username or email between the check and the insert.
+    pub fn clash(error: &rorm::Error) -> Option<AccountClash> {
+        let rorm::Error::SqlxError(error) = error else {
+            return None;
+        };
+        let error = error.as_database_error()?;
+        if !error.is_unique_violation() {
+            return None;
+        }
+        match error.constraint()? {
+            USERNAME_UNIQUE => Some(AccountClash::Username),
+            EMAIL_UNIQUE => Some(AccountClash::Email),
+            _ => None,
+        }
     }
 
     /// Rename an account

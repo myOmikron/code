@@ -216,7 +216,14 @@ fn a_known_external_identity_logs_in() {
         let session = session();
         let outcome = log_in(&module, &fake, &session, person).await.unwrap();
 
-        assert!(matches!(outcome, OidcLoginOutcome::LoggedIn(logged) if logged == identity));
+        let OidcLoginOutcome::Known(known) = outcome else {
+            panic!("not known: {outcome:?}");
+        };
+        assert_eq!(known.identity(), identity);
+        assert_eq!(logged_in(&session).await.unwrap(), None);
+        assert_eq!(stored(identity).await.unwrap().last_login_at, before);
+
+        module.log_in_bound(&session, known).await.unwrap();
         assert_eq!(logged_in(&session).await.unwrap(), Some(identity));
         assert!(stored(identity).await.unwrap().last_login_at > before);
     });
@@ -268,7 +275,9 @@ fn a_provider_that_does_not_admit_still_logs_in_a_known_external_identity() {
 
         let module = module(&fake, false).await;
         let outcome = log_in(&module, &fake, &session(), person).await;
-        assert!(matches!(outcome, Ok(OidcLoginOutcome::LoggedIn(logged)) if logged == identity));
+        assert!(
+            matches!(outcome, Ok(OidcLoginOutcome::Known(known)) if known.identity() == identity)
+        );
     });
 }
 
@@ -333,7 +342,7 @@ fn an_external_identity_enrolled_without_ceremony_logs_in() {
         let outcome = log_in(&module, &fake, &session(), person).await;
         assert!(matches!(
             outcome,
-            Ok(OidcLoginOutcome::LoggedIn(logged)) if logged == identity
+            Ok(OidcLoginOutcome::Known(known)) if known.identity() == identity
         ));
     });
 }

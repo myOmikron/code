@@ -2,8 +2,9 @@
 //!
 //! An OIDC login runs the authorization code flow with PKCE, `state` and
 //! `nonce`. Its outcome is either a known External identity, whose Identity
-//! is logged in, or an unknown one, held in the session as pending until the
-//! service binds it to a fresh Identity together with its Account.
+//! the service logs in once it admits it (e.g. its Account is not locked),
+//! or an unknown one, held in the session as pending until the service binds
+//! it to a fresh Identity together with its Account.
 
 use url::Url;
 

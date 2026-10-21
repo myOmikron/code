@@ -3,6 +3,7 @@
 use galvyn::core::Module;
 use galvyn::core::re_exports::time::OffsetDateTime;
 use galvyn::core::session::Session;
+use galvyn::core::stuff::api_error::core::CoreApiError;
 use galvyn::rorm;
 use galvyn::rorm::Database;
 use galvyn::rorm::db::transaction::Transaction;
@@ -52,10 +53,14 @@ pub struct OidcCallback {
 }
 
 /// How a finished OIDC login ended
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum OidcLoginOutcome {
-    /// The External identity is bound to this Identity, now logged in
-    LoggedIn(IdentityUuid),
+    /// The External identity is bound to an Identity, not logged in yet
+    ///
+    /// The service decides whether that Identity may log in, e.g. that its
+    /// Account is not locked, and then hands it to
+    /// [`IdentityModule::log_in_bound`].
+    Known(BoundExternalIdentity),
     /// The External identity is unknown and now pending in the session
     ///
     /// Nothing is stored yet: the service creates its Account and binds the
@@ -77,20 +82,24 @@ pub struct PendingExternalIdentity {
     pub email_verified: bool,
 }
 
-/// The session's pending External identity, bound to a fresh Identity in the caller's transaction
+/// An External identity bound to an Identity the session is not logged in as yet
 ///
-/// Hand it to [`IdentityModule::log_in_bound`] once that transaction is committed.
+/// Either a known one, from [`IdentityModule::finish_oidc_login`], or the
+/// session's pending one, bound to a fresh Identity in the caller's
+/// transaction by [`IdentityModule::bind_pending_external_identity`]. Hand it
+/// to [`IdentityModule::log_in_bound`] to log in, once that transaction is
+/// committed.
 #[derive(Debug)]
 #[must_use = "the session is only logged in by `log_in_bound`"]
 pub struct BoundExternalIdentity {
-    /// The fresh Identity
+    /// The Identity
     identity: IdentityUuid,
     /// Whether the session survives the browser session once logged in
     remember_me: bool,
 }
 
 impl BoundExternalIdentity {
-    /// The fresh Identity, for the service's Account to reference
+    /// The Identity, for the service to find its Account by
     pub fn identity(&self) -> IdentityUuid {
         self.identity
     }
@@ -100,6 +109,21 @@ impl IdentityModule {
     /// The OpenID providers people may log in through, in configuration order
     pub fn openid_providers(&self) -> &[OpenIdProvider] {
         &self.oidc.providers
+    }
+
+    /// The OpenID provider configured under `id`, if one is
+    pub fn openid_provider(&self, id: &str) -> Option<&OpenIdProvider> {
+        self.oidc.get(id)
+    }
+
+    /// The OpenID provider whose issuer is `issuer`, if one is configured
+    ///
+    /// Tells which provider vouches for a [`LoginMethod::External`](crate::LoginMethod::External).
+    pub fn openid_provider_by_issuer(&self, issuer: &str) -> Option<&OpenIdProvider> {
+        self.oidc
+            .providers
+            .iter()
+            .find(|provider| provider.issuer() == issuer)
     }
 
     /// Begin an OIDC login through the provider named `provider`
@@ -151,11 +175,11 @@ impl IdentityModule {
     /// Finish the session's OIDC login with what the provider sent the browser back with
     ///
     /// Exchanges the code and checks the ID token's issuer, audience, expiry,
-    /// nonce and signature. A known External identity logs its Identity in
-    /// and keeps the session alive like a Passkey login with the
-    /// `remember_me` the Login began with. An unknown one becomes the
-    /// session's pending External identity, if the provider admits people on
-    /// their first OIDC login.
+    /// nonce and signature. A known External identity comes back for the
+    /// service to log in with [`IdentityModule::log_in_bound`]: nothing is
+    /// logged in or recorded before. An unknown one becomes the session's
+    /// pending External identity, if the provider admits people on their
+    /// first OIDC login.
     ///
     /// The running Login is used up either way.
     pub async fn finish_oidc_login(
@@ -197,8 +221,9 @@ impl IdentityModule {
         };
 
         let mut tx = Database::global().start_transaction().await?;
-        let Some(identity) = external.identity(&mut tx).await? else {
-            tx.commit().await?;
+        let identity = external.identity(&mut tx).await?;
+        tx.commit().await?;
+        let Some(identity) = identity else {
             if !provider.admits_on_first_login() {
                 return Err(FinishOidcLoginError::NotAdmitted);
             }
@@ -214,14 +239,11 @@ impl IdentityModule {
             session::set_pending(session, pending.clone()).await?;
             return Ok(OidcLoginOutcome::Pending(pending.into()));
         };
-        Identity::record_login(&mut tx, identity).await?;
-        tx.commit().await?;
 
-        session::forget_pending(session).await?;
-        set_logged_in(session, identity).await?;
-        session.set_expiry(Some(self.settings.login_expiry(state.remember_me)));
-
-        Ok(OidcLoginOutcome::LoggedIn(identity))
+        Ok(OidcLoginOutcome::Known(BoundExternalIdentity {
+            identity,
+            remember_me: state.remember_me,
+        }))
     }
 
     /// The session's pending External identity, unless it expired
@@ -262,7 +284,6 @@ impl IdentityModule {
         let external = ExternalIdentity { issuer, subject };
 
         let identity = Identity::insert(&mut *tx).await?;
-        Identity::record_login(&mut *tx, identity).await?;
         external.insert(&mut *tx, identity).await.map_err(|error| {
             if unique_violation(&error) {
                 BindError::AlreadyBound
@@ -277,15 +298,18 @@ impl IdentityModule {
         })
     }
 
-    /// Log the session in as the Identity its pending External identity got bound to
+    /// Log the session in as the Identity an External identity is bound to
     ///
-    /// Only call it once the transaction given to
-    /// [`IdentityModule::bind_pending_external_identity`] is committed.
+    /// Records the login and keeps the session alive like a Passkey login,
+    /// with the `remember_me` the Login began with. Only call it once the
+    /// transaction given to [`IdentityModule::bind_pending_external_identity`]
+    /// is committed.
     pub async fn log_in_bound(
         &self,
         session: &Session,
         bound: BoundExternalIdentity,
-    ) -> Result<(), tower_sessions::session::Error> {
+    ) -> Result<(), CoreApiError> {
+        Identity::record_login(Database::global(), bound.identity).await?;
         session::forget_pending(session).await?;
         set_logged_in(session, bound.identity).await?;
         session.set_expiry(Some(self.settings.login_expiry(bound.remember_me)));
