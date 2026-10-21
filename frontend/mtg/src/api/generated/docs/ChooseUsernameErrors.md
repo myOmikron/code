@@ -7,6 +7,7 @@ Why the username step was refused
 
 Name | Type
 ------------ | -------------
+`email_in_use` | boolean
 `nothing_pending` | boolean
 `username_taken` | boolean
 

@@ -1134,6 +1134,12 @@ export type CardRarity = typeof CardRarity[keyof typeof CardRarity];
  */
 export interface ChooseUsernameErrors {
     /**
+     * The verified email came to belong to an Account since the login started; the pending login is gone
+     * @type {boolean}
+     * @memberof ChooseUsernameErrors
+     */
+    email_in_use: boolean;
+    /**
      * No OIDC login is pending, or it ran out
      * @type {boolean}
      * @memberof ChooseUsernameErrors

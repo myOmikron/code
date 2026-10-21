@@ -1685,7 +1685,7 @@
         "/api/frontend/v1/auth/oidc/callback": {
             "get": {
                 "summary": "Finish an OIDC login: the provider sends the browser back here",
-                "description": "Finish an OIDC login: the provider sends the browser back here\n\nA known External identity is logged in and lands on the app. An unknown\none is held pending and goes to the username step. A refused login goes\nback to the login page with `oidc_error` naming why.",
+                "description": "Finish an OIDC login: the provider sends the browser back here\n\nA known External identity is logged in and lands on the app. An unknown\none is held pending and goes to the username step. A refused login goes\nback to the login page with `oidc_error` naming why. A locked Account is\nlogged in by the module and right out again here.",
                 "operationId": "finish_oidc_login",
                 "parameters": [
                     {
@@ -1825,7 +1825,7 @@
         "/api/frontend/v1/auth/oidc/username": {
             "post": {
                 "summary": "Finish the username step: create the External Account and log it in",
-                "description": "Finish the username step: create the External Account and log it in\n\nCreates the Identity, the External identity and the Account, with the\nprovider's verified email, in one transaction. A refused username keeps\nthe login pending, so the person can pick another.",
+                "description": "Finish the username step: create the External Account and log it in\n\nCreates the Identity, the External identity and the Account, with the\nprovider's verified email, in one transaction. A refused username keeps\nthe login pending, so the person can pick another. An email an Account\ntook since the callback ends the pending login.",
                 "operationId": "choose_username",
                 "requestBody": {
                     "content": {
@@ -10475,6 +10475,10 @@
                 "description": "Why the username step was refused",
                 "type": "object",
                 "properties": {
+                    "email_in_use": {
+                        "description": "The verified email came to belong to an Account since the login started; the pending login is gone",
+                        "type": "boolean"
+                    },
                     "nothing_pending": {
                         "description": "No OIDC login is pending, or it ran out",
                         "type": "boolean"
@@ -10485,6 +10489,7 @@
                     }
                 },
                 "required": [
+                    "email_in_use",
                     "nothing_pending",
                     "username_taken"
                 ]
