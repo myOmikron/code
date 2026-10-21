@@ -106,6 +106,7 @@ pub async fn recover_account(
     {
         // Not enrolled yet: a Local Account whose invite mail got lost
         None | Some(LoginMethod::Local) => true,
+        Some(LoginMethod::External { .. }) => false,
     };
     if !local {
         info!("Recovery for an account that is not local");
@@ -363,6 +364,9 @@ pub async fn finish_registration(
         Err(FinishEnrollmentError::Link(error)) => report_link_error(&mut errors, error),
         Err(FinishEnrollmentError::VerificationFailed) => errors.registration_failed = true,
         Err(FinishEnrollmentError::AlreadyEnrolled) => errors.already_registered = true,
+        Err(FinishEnrollmentError::ExternalIdentity) => {
+            return Err(ApiError::bad_request("An External Account has no passkeys"));
+        }
         Err(FinishEnrollmentError::Internal(error)) => return Err(error.into()),
     }
     errors.fail()

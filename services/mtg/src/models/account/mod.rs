@@ -328,6 +328,22 @@ impl Account {
         email: MaxStr<255>,
     ) -> Result<IdentityUuid, rorm::Error> {
         let identity = IdentityModule::global().create_identity(&mut *tx).await?;
+        Self::insert_for_identity(tx, identity, username, email).await?;
+        Ok(identity)
+    }
+
+    /// Insert a new account signing in as `identity`, a fresh Identity without an account
+    ///
+    /// For an External Account, whose Identity the module creates when it
+    /// binds the External identity. Fails with a unique violation if the
+    /// username or the email is already taken.
+    #[instrument(name = "Account::insert_for_identity", skip(tx))]
+    pub async fn insert_for_identity(
+        tx: &mut Transaction,
+        identity: IdentityUuid,
+        username: Username,
+        email: MaxStr<255>,
+    ) -> Result<(), rorm::Error> {
         rorm::insert(&mut *tx, AccountModel)
             .single(&AccountInsertPatch {
                 uuid: Uuid::now_v7(),
@@ -339,7 +355,7 @@ impl Account {
                 identity: ForeignModelByField(identity.into_inner()),
             })
             .await?;
-        Ok(identity)
+        Ok(())
     }
 
     /// Rename an account

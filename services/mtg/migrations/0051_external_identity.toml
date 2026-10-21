@@ -1,0 +1,119 @@
+[Migration]
+Hash = "15137661427094279662"
+Initial = false
+Dependency = 50
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateModel"
+Name = "external_identity"
+
+[[Migration.Operations.Fields]]
+Name = "uuid"
+Type = "uuid"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "primary_key"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "libs/galvyn-identity/src/oidc/db.rs"
+Line = 18
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "issuer"
+Type = "text"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 255
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "libs/galvyn-identity/src/oidc/db.rs"
+Line = 28
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "subject"
+Type = "text"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 255
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "libs/galvyn-identity/src/oidc/db.rs"
+Line = 31
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "issuer_subject"
+Type = "text"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 511
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "unique"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "libs/galvyn-identity/src/oidc/db.rs"
+Line = 38
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "created_at"
+Type = "datetime"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "auto_create_time"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "libs/galvyn-identity/src/oidc/db.rs"
+Line = 42
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "external_identity"
+
+[Migration.Operations.Field]
+Name = "identity"
+Type = "uuid"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "foreign_key"
+
+[Migration.Operations.Field.Annotations.Value]
+TableName = "identity"
+ColumnName = "uuid"
+OnDelete = "Cascade"
+OnUpdate = "Cascade"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "libs/galvyn-identity/src/oidc/db.rs"
+Line = 25
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateIndex"
+Model = "external_identity"
+
+[Migration.Operations.Index]
+Columns = ["identity"]

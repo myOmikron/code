@@ -21,6 +21,7 @@ use galvyn::rorm::db::Executor;
 use galvyn::rorm::db::executor::All;
 use galvyn_identity::IdentityModule;
 use galvyn_identity::IdentitySetup;
+use galvyn_identity::OidcSetup;
 use galvyn_identity::PasskeySetup;
 use service_bootstrap::nats::publisher::Nats;
 use service_bootstrap::nats::publisher::NatsSetup;
@@ -142,6 +143,10 @@ pub async fn init_modules(
             registration_link_path: "/auth/register".to_string(),
             passkey: PasskeySetup {
                 rp_name: "MTG".to_string(),
+            },
+            oidc: OidcSetup {
+                callback_path: http::handler_frontend::oidc::CALLBACK_PATH.to_string(),
+                providers: config.openid_providers.clone(),
             },
             ..IdentitySetup::default()
         })

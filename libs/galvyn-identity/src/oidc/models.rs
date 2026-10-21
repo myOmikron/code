@@ -36,11 +36,12 @@ impl ExternalIdentity {
         &self,
         exe: impl Executor<'_>,
     ) -> Result<Option<IdentityUuid>, rorm::Error> {
+        let issuer_subject = self.issuer_subject();
         let identity = rorm::query(exe, ExternalIdentityModel.identity)
             .condition(
                 ExternalIdentityModel
                     .issuer_subject
-                    .equals(&*self.issuer_subject()),
+                    .equals(&*issuer_subject),
             )
             .optional()
             .await?;

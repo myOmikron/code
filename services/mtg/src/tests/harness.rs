@@ -11,6 +11,9 @@
 //! Ported from `services/bnv-manager-v2/src/tests/harness.rs`. Login runs no WebAuthn
 //! ceremony: [`TestClient::log_in`] goes through a test-only route that marks the
 //! session logged in (`galvyn-identity`'s `test-support` feature).
+//!
+//! OIDC login runs against a fake OpenID provider, configured as `google`:
+//! [`App::fake`] plays the provider's authorization endpoint.
 
 use std::collections::HashMap;
 use std::future::Future;
@@ -29,6 +32,7 @@ use galvyn::core::re_exports::axum::body::Body;
 use galvyn::core::re_exports::axum::body::Bytes;
 use galvyn::core::re_exports::axum::body::to_bytes;
 use galvyn::core::re_exports::axum::extract::Path;
+use galvyn::core::re_exports::axum::http::HeaderMap;
 use galvyn::core::re_exports::axum::http::Method;
 use galvyn::core::re_exports::axum::http::Request;
 use galvyn::core::re_exports::axum::http::StatusCode;
@@ -41,6 +45,7 @@ use galvyn::rorm::Database;
 use galvyn::rorm::DatabaseConfiguration;
 use galvyn::rorm::DatabaseDriver;
 use galvyn::rorm::fields::types::MaxStr;
+use galvyn_identity::FakeOpenIdProvider;
 use galvyn_identity::IdentityModule;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -90,6 +95,7 @@ pub fn run<F: Future>(test: F) -> F::Output {
 /// The initialized service, shared by all tests of the binary
 pub struct App {
     router: Router,
+    fake: FakeOpenIdProvider,
 }
 
 impl App {
@@ -99,8 +105,14 @@ impl App {
         APP.get_or_init(App::start).await
     }
 
+    /// The fake OpenID provider the service knows as `google`
+    pub async fn fake() -> &'static FakeOpenIdProvider {
+        &App::get().await.fake
+    }
+
     async fn start() -> App {
         let driver = create_database().await;
+        let fake = FakeOpenIdProvider::start().await;
 
         crate::init_modules(
             &mut Galvyn::builder(GalvynSetup {
@@ -115,6 +127,7 @@ impl App {
                     database_driver: driver,
                     listen_address: IpAddr::V4(Ipv4Addr::LOCALHOST),
                     listen_port: NonZeroU16::MIN,
+                    openid_providers: vec![fake.provider_setup("google", true)],
                 },
                 nats: None,
             },
@@ -131,6 +144,7 @@ impl App {
                 .finish()
                 .0
                 .merge(test_routes),
+            fake,
         }
     }
 }
@@ -365,6 +379,7 @@ impl TestClient {
 
         TestResponse {
             status: parts.status,
+            headers: parts.headers,
             body: to_bytes(body, usize::MAX).await.expect("read the body"),
         }
     }
@@ -375,6 +390,8 @@ impl TestClient {
 pub struct TestResponse {
     /// Status code
     pub status: StatusCode,
+    /// Headers
+    pub headers: HeaderMap,
     /// Body
     pub body: Bytes,
 }
@@ -388,6 +405,18 @@ impl TestResponse {
                 String::from_utf8_lossy(&self.body)
             )
         })
+    }
+
+    /// Where the response redirects to, resolved against the service's origin
+    pub fn location(&self) -> Url {
+        assert!(self.status.is_redirection(), "not a redirect: {self:?}");
+        let location = self
+            .headers
+            .get(header::LOCATION)
+            .expect("a redirect has a location")
+            .to_str()
+            .expect("ascii location");
+        origin().join(location).expect("valid location")
     }
 
     /// The body as untyped json, after checking the status is `200 OK`

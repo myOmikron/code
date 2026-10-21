@@ -12,6 +12,7 @@ pub mod decks;
 pub mod explore;
 pub mod folders;
 pub mod mpcfill;
+pub mod oidc;
 pub mod printings;
 pub mod scanner_sessions;
 pub mod shared;
@@ -27,6 +28,7 @@ pub fn initialize_routes() -> GalvynRouter {
             admin::initialize_routes().wrap(AdminRequiredLayer),
         )
         .nest("/auth", auth::initialize_routes())
+        .nest("/auth/oidc", oidc::initialize_routes())
         .nest("/collections", collections::initialize_routes())
         .nest("/decks", decks::initialize_routes())
         .nest("/explore", explore::initialize_routes())

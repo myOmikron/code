@@ -9,8 +9,8 @@ authors = ["Niklas Pfister <git@omikron.dev>"]
 service-bootstrap = { workspace = true }
 galvyn = { workspace = true, default-features = true, features = ["rorm-postgres-only"] }
 
-# Identity and passkey login
-galvyn-identity = { workspace = true, features = ["passkey"] }
+# Identity, passkey and OIDC login
+galvyn-identity = { workspace = true, features = ["passkey", "oidc"] }
 
 # Response compression — a collection's entries run to megabytes of json
 tower-http = { workspace = true }
@@ -62,7 +62,7 @@ anyhow = { workspace = true }
 thiserror = { workspace = true }
 
 [dev-dependencies]
-galvyn-identity = { workspace = true, features = ["passkey", "test-support"] }
+galvyn-identity = { workspace = true, features = ["passkey", "oidc", "test-support"] }
 sqlx = { workspace = true }
 tower = { version = "~0.5", features = ["util"] }
 

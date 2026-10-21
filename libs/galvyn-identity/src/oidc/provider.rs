@@ -236,11 +236,13 @@ impl OpenIdProviders {
         if !refresh && let Some(metadata) = fresh(&discovered) {
             return Ok(metadata);
         }
-        let metadata = CoreProviderMetadata::discover_async(provider.issuer.clone(), &|request| {
-            self.send(request)
-        })
-        .await
-        .map_err(|e| DiscoveryFailed(format!("discovery of {} failed: {e}", provider.id)))?;
+        let http = self.http.clone();
+        let metadata =
+            CoreProviderMetadata::discover_async(provider.issuer.clone(), &move |request| {
+                send(http.clone(), request)
+            })
+            .await
+            .map_err(|e| DiscoveryFailed(format!("discovery of {} failed: {e}", provider.id)))?;
         *discovered = Some(Discovered {
             metadata: metadata.clone(),
             fetched_at: Instant::now(),
@@ -248,24 +250,33 @@ impl OpenIdProviders {
         Ok(metadata)
     }
 
-    /// Send a request a provider is the target of
-    pub(crate) async fn send(&self, request: HttpRequest) -> Result<HttpResponse, reqwest::Error> {
-        let (parts, body) = request.into_parts();
-        let response = self
-            .http
-            .request(parts.method, parts.uri.to_string())
-            .headers(parts.headers)
-            .body(body)
-            .send()
-            .await?;
-
-        let mut converted = http::Response::builder().status(response.status());
-        if let Some(headers) = converted.headers_mut() {
-            *headers = response.headers().clone();
-        }
-        let body = response.bytes().await?.to_vec();
-        Ok(converted
-            .body(body)
-            .unwrap_or_else(|_| unreachable!("status and headers come from a valid response")))
+    /// The client for requests to the providers
+    pub(crate) fn http(&self) -> reqwest::Client {
+        self.http.clone()
     }
+}
+
+/// Send a request a provider is the target of
+///
+/// Owns its client, so the future borrows nothing and stays `Send` for any caller.
+pub(crate) async fn send(
+    http: reqwest::Client,
+    request: HttpRequest,
+) -> Result<HttpResponse, reqwest::Error> {
+    let (parts, body) = request.into_parts();
+    let response = http
+        .request(parts.method, parts.uri.to_string())
+        .headers(parts.headers)
+        .body(body)
+        .send()
+        .await?;
+
+    let mut converted = http::Response::builder().status(response.status());
+    if let Some(headers) = converted.headers_mut() {
+        *headers = response.headers().clone();
+    }
+    let body = response.bytes().await?.to_vec();
+    Ok(converted
+        .body(body)
+        .unwrap_or_else(|_| unreachable!("status and headers come from a valid response")))
 }
