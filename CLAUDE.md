@@ -144,6 +144,7 @@ mtg query cost). A review applies all of it; read the sections a change touches 
 - A change mtg players notice (website, scanner, deck advisor) adds a Release note
   fragment to `frontend/mtg/release-notes/unreleased/` in the same commit as the change;
   format and rules in `frontend/mtg/release-notes/README.md`. Admin-only changes get none.
+  `just release mtg <version>` files them under the version (see Release Workflow).
 
 #### New frontend apps
 
