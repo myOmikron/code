@@ -93,3 +93,8 @@ predates a rule stays as it is until a change touches it.
   identifiers and doc comments. The icon slug `"box"`, `ArchiveBoxIcon` and CSS/layout
   boxes keep their names.
 - **Switches**: every `Switch` gets `color={"blue"}`.
+- **Release notes**: a change players notice (website, scanner, deck advisor) carries a
+  Release note fragment in `frontend/mtg/release-notes/unreleased/` in the same commit,
+  in their words (`frontend/mtg/release-notes/README.md`). A player-visible change without
+  one is a finding; an Admin-only change needs none. Fragments are validated _(checked:
+  `pnpm run release-notes:check`)_.

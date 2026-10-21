@@ -1,0 +1,15 @@
+{
+    "description": {
+        "no-release-notes": "Noch keine Neuigkeiten.",
+        "whats-new": "Was sich mit jeder Version von Planarium geändert hat."
+    },
+    "heading": {
+        "whats-new": "Neuigkeiten"
+    },
+    "label": {
+        "fixed": "Behoben",
+        "improved": "Verbessert",
+        "new": "Neu",
+        "unreleased": "Unveröffentlicht"
+    }
+}

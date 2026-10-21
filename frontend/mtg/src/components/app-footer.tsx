@@ -10,9 +10,10 @@ import { FOOTER_MARKER } from "src/utils/use-footer-dodge";
  * a user can look up: an installed app has no address bar and no about page,
  * and the service worker may be serving a build older than the last deploy.
  *
- * The version is the one baked in at build time — see the `APP_VERSION` build
- * arg in `vite.config.ts` — so what it names is the release on screen, not
- * whatever `package.json` said when the tag was cut.
+ * The version is the one baked in at build time (see the `APP_VERSION` build
+ * arg in `vite.config.ts`), so what it names is the release on screen, not
+ * whatever `package.json` said when the tag was cut. It links to the "What's
+ * new" page, which tells what that version brought.
  *
  * It also carries the two legal pages, which is the one place every screen of
  * the app has in common: they have to be reachable from anywhere, signed in or
@@ -31,7 +32,9 @@ export function AppFooter() {
             {...{ [FOOTER_MARKER]: true }}
             className={"flex h-6 items-center justify-center gap-2 px-4 text-[0.7rem] text-zinc-500 dark:text-zinc-400"}
         >
-            <span>{tg("label.version", { version: __APP_VERSION__ })}</span>
+            <TextLink href={"/whats-new"} className={"decoration-current/40"}>
+                {tg("label.version", { version: __APP_VERSION__ })}
+            </TextLink>
             <span aria-hidden={true}>·</span>
             <TextLink href={"/legal"} className={"decoration-current/40"}>
                 {tg("button.imprint")}

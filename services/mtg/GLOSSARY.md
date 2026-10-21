@@ -80,6 +80,18 @@ _Avoid_: history (alone), changelog, log
 A name the owner gives one Deck change, e.g. "FNM 18.10.", to find that point in the Deck history again. At most one per Deck change; it can be renamed and removed.
 _Avoid_: snapshot, tag, version, milestone
 
+**Release**:
+One shipped version of mtg, named by its `mtg/v<version>` tag, with the date it was cut. Website, scanner and deck advisor share one Release.
+_Avoid_: version (alone), deploy, update
+
+**Release note**:
+One change players notice, told in their words in German and English as New, Improved or Fixed. Written in the same commit as the change; changes only Admins notice get none.
+_Avoid_: changelog entry, entry, change
+
+**Release notes**:
+All Release notes of the Releases, shown newest first on the "What's new" page (Neuigkeiten). Releases without a Release note are left out.
+_Avoid_: changelog, history, news feed
+
 ## Relationships
 
 - An **Account** has exactly one **Role**, and at most one **Lock** at a time
@@ -87,6 +99,7 @@ _Avoid_: snapshot, tag, version, milestone
 - A **Deletion** hands the Account's public decks to the **Tombstone**, unless it is a full Deletion
 - A **Statistics snapshot** never counts the **Tombstone**
 - A deck has exactly one **Deck history**; handing the deck to the **Tombstone** empties it
+- A **Release** has any number of **Release notes**; pending ones belong to the next Release cut with `just release`
 - Undoing or resetting a **Deck change** restores **Deck entries** without their card tags, and never moves cards of the deck's collection
 
 ## Flagged ambiguities

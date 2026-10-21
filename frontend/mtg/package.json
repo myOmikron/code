@@ -12,6 +12,7 @@
         "format-check": "prettier --config .prettierrc.json --check src/",
         "ci": "bash scripts/run-ci.sh",
         "test": "vitest run",
+        "release-notes:check": "esbuild scripts/check-release-notes.ts --bundle --platform=node --format=esm --target=node22 --external:yaml --log-level=warning --outfile=scripts/check-release-notes.mjs && node scripts/check-release-notes.mjs",
         "test:image": "bash test/run-image-regression.sh",
         "test:dataset": "bash test/run-dataset.sh",
         "test:live": "bash test/run-live-bench.sh live-gate.html",
@@ -70,7 +71,8 @@
         "react-toastify": "catalog:dependencies",
         "recharts": "catalog:dependencies",
         "tesseract.js": "catalog:dependencies",
-        "tesseract.js-core": "catalog:dependencies"
+        "tesseract.js-core": "catalog:dependencies",
+        "yaml": "catalog:dependencies"
     },
     "devDependencies": {
         "@eslint/js": "catalog:devDependencies",

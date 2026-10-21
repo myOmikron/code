@@ -38,6 +38,7 @@ import {
     RectangleStackIcon,
     QuestionMarkCircleIcon,
     ShieldCheckIcon,
+    SparklesIcon,
     UserIcon,
 } from "@heroicons/react/20/solid";
 import { Role } from "src/api/generated";
@@ -45,6 +46,8 @@ import { Suspense, useMemo, useState } from "react";
 import { useInstall } from "src/context/install-context";
 import { AppFooter } from "src/components/app-footer";
 import { ShortcutHelpDialog } from "src/components/shortcut-help-dialog";
+import { UnreadDot } from "src/components/unread-dot";
+import { useUnreadReleaseNotes } from "src/utils/use-release-notes";
 import { ChromeProvider } from "src/context/chrome-context";
 import type { Chrome } from "src/context/chrome-context";
 import { ShortcutHelpProvider } from "src/context/shortcut-help-context";
@@ -95,6 +98,7 @@ function RouteComponent() {
         [helping],
     );
     const alarms = useWatchListAlarms(loggedIn, path);
+    const unreadReleaseNotes = useUnreadReleaseNotes();
 
     useShortcuts(
         {
@@ -187,6 +191,13 @@ function RouteComponent() {
                             )}
                             <NavbarSpacer />
                             <NavbarSection>
+                                <NavbarItem href={"/whats-new"} title={t("label.whats-new")}>
+                                    <SparklesIcon />
+                                    <NavbarLabel className={"sr-only"}>{t("label.whats-new")}</NavbarLabel>
+                                    {unreadReleaseNotes && (
+                                        <UnreadDot label={t("accessibility.unread-release-notes")} />
+                                    )}
+                                </NavbarItem>
                                 <NavbarItem onClick={() => setHelping(true)} title={t("heading.shortcuts")}>
                                     <QuestionMarkCircleIcon />
                                     <NavbarLabel className={"sr-only"}>{t("heading.shortcuts")}</NavbarLabel>
@@ -295,6 +306,13 @@ function RouteComponent() {
                                 <SidebarSpacer />
 
                                 <SidebarSection>
+                                    <SidebarItem href={"/whats-new"}>
+                                        <SparklesIcon />
+                                        <SidebarLabel>{t("label.whats-new")}</SidebarLabel>
+                                        {unreadReleaseNotes && (
+                                            <UnreadDot label={t("accessibility.unread-release-notes")} />
+                                        )}
+                                    </SidebarItem>
                                     <SidebarItem onClick={() => setHelping(true)}>
                                         <QuestionMarkCircleIcon />
                                         <SidebarLabel>{t("heading.shortcuts")}</SidebarLabel>
