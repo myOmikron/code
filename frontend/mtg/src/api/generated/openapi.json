@@ -987,7 +987,7 @@
         "/api/frontend/v1/admin/accounts/{uuid}/username": {
             "put": {
                 "summary": "Rename an Account",
-                "description": "Rename an Account\n\nTakes the same usernames as a Self-Rename, also for a locked Account, and\nmails the Account its new username without the reason. An Admin renames\nitself through its own settings, not here.",
+                "description": "Rename an Account\n\nTakes the same usernames as a Rename by the Account itself, also for a\nlocked Account, and mails the Account its new username without the reason.\nAn Admin renames itself through its own settings, not here.",
                 "operationId": "admin_rename_account",
                 "parameters": [
                     {

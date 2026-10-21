@@ -1012,7 +1012,7 @@ No authorization required
 
 Rename an Account
 
-Rename an Account  Takes the same usernames as a Self-Rename, also for a locked Account, and mails the Account its new username without the reason. An Admin renames itself through its own settings, not here.
+Rename an Account  Takes the same usernames as a Rename by the Account itself, also for a locked Account, and mails the Account its new username without the reason. An Admin renames itself through its own settings, not here.
 
 ### Example
 
