@@ -1,11 +1,6 @@
 import { describe, expect, it } from "vitest";
-import {
-    UNRELEASED,
-    displayedReleases,
-    parseReleaseNotes,
-    seenReleaseNotes,
-    unreadReleaseNotes,
-} from "src/utils/release-notes";
+import { UNRELEASED, displayedReleases, seenReleaseNotes, unreadReleaseNotes } from "src/utils/release-notes";
+import { parseReleaseNotes } from "src/utils/release-notes-parse";
 
 /**
  * A released version folder holding one note

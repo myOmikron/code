@@ -1,19 +1,18 @@
 /**
  * The Release notes this build ships, and the unread dot on the "What's new" menu entry.
  *
- * The fragments are bundled at build time, so every build knows exactly the
+ * The fragments are parsed at build time, so every build knows exactly the
  * notes up to its own version. What a player has seen is remembered per browser
  * in localStorage; storage that is unavailable means no dot.
  */
 
 import { useEffect, useSyncExternalStore } from "react";
-import { displayedReleases, parseReleaseNotes, seenReleaseNotes, unreadReleaseNotes } from "src/utils/release-notes";
+import { seenReleaseNotes, unreadReleaseNotes } from "src/utils/release-notes";
 import type { Release, Unread } from "src/utils/release-notes";
-
-const FILES = import.meta.glob<string>("/release-notes/*/*.yaml", { query: "?raw", import: "default", eager: true });
+import releases from "virtual:release-notes";
 
 /** The Releases the "What's new" page shows, newest first */
-export const RELEASES: Array<Release> = displayedReleases(parseReleaseNotes(FILES).releases, import.meta.env.DEV);
+export const RELEASES: Array<Release> = releases;
 
 const STORAGE_KEY = "release-notes.last-seen";
 
