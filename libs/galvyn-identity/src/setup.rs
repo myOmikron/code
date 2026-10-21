@@ -30,6 +30,10 @@ pub struct IdentitySetup {
     /// Setup of Passkey login
     #[cfg(feature = "passkey")]
     pub passkey: super::PasskeySetup,
+
+    /// Setup of OIDC login
+    #[cfg(feature = "oidc")]
+    pub oidc: super::OidcSetup,
 }
 
 impl Default for IdentitySetup {
@@ -41,6 +45,8 @@ impl Default for IdentitySetup {
             remember_me: Duration::days(30),
             #[cfg(feature = "passkey")]
             passkey: super::PasskeySetup::default(),
+            #[cfg(feature = "oidc")]
+            oidc: super::OidcSetup::default(),
         }
     }
 }

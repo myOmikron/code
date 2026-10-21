@@ -44,6 +44,9 @@ pub enum FinishEnrollmentError {
     VerificationFailed,
     /// The Passkey is already enrolled
     AlreadyEnrolled,
+    /// The Identity is external: it holds an External identity, never a Passkey
+    #[cfg(feature = "oidc")]
+    ExternalIdentity,
     /// Something unrelated to the request broke
     Internal(CoreApiError),
 }
@@ -59,6 +62,9 @@ pub enum FinishDeviceEnrollmentError {
     VerificationFailed,
     /// The Passkey is already enrolled
     AlreadyEnrolled,
+    /// The Identity is external: it holds an External identity, never a Passkey
+    #[cfg(feature = "oidc")]
+    ExternalIdentity,
     /// Something unrelated to the request broke
     Internal(CoreApiError),
 }
@@ -70,6 +76,8 @@ impl From<FinishDeviceEnrollmentError> for FinishEnrollmentError {
             FinishDeviceEnrollmentError::MalformedCredential => Self::MalformedCredential,
             FinishDeviceEnrollmentError::VerificationFailed => Self::VerificationFailed,
             FinishDeviceEnrollmentError::AlreadyEnrolled => Self::AlreadyEnrolled,
+            #[cfg(feature = "oidc")]
+            FinishDeviceEnrollmentError::ExternalIdentity => Self::ExternalIdentity,
             FinishDeviceEnrollmentError::Internal(error) => Self::Internal(error),
         }
     }
