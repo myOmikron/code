@@ -7,6 +7,7 @@ use galvyn::rorm::fields::types::MaxStr;
 use galvyn_identity::IdentityModule;
 use serde::Deserialize;
 use serde::Serialize;
+#[cfg(not(test))]
 use service_bootstrap::nats::publisher::Nats;
 use tracing::instrument;
 use url::Url;
@@ -88,19 +89,13 @@ pub async fn send_registration_link(
         ),
     };
 
-    Nats::global()
-        .publish(
-            nats_subjects::mail::v1::SEND,
-            proto::mail_v1::SendEmail {
-                to: to.to_string(),
-                subject: String::from(subject),
-                text_body,
-                ..Default::default()
-            },
-        )
-        .await?;
-
-    Ok(())
+    queue(proto::mail_v1::SendEmail {
+        to: to.to_string(),
+        subject: String::from(subject),
+        text_body,
+        ..Default::default()
+    })
+    .await
 }
 
 /// Send a fresh one-time registration link to an existing account
@@ -164,17 +159,58 @@ pub async fn send_recovery_link(
         ),
     };
 
-    Nats::global()
-        .publish(
-            nats_subjects::mail::v1::SEND,
-            proto::mail_v1::SendEmail {
-                to: to.to_string(),
-                subject: String::from(subject),
-                text_body,
-                ..Default::default()
-            },
-        )
-        .await?;
+    queue(proto::mail_v1::SendEmail {
+        to: to.to_string(),
+        subject: String::from(subject),
+        text_body,
+        ..Default::default()
+    })
+    .await
+}
 
-    Ok(())
+/// Hand a mail to the gateway
+///
+/// Tests have no NATS: there the mail lands in the `outbox` instead.
+async fn queue(mail: proto::mail_v1::SendEmail) -> Result<(), MailError> {
+    #[cfg(test)]
+    {
+        outbox::push(mail);
+        Ok(())
+    }
+    #[cfg(not(test))]
+    {
+        Nats::global()
+            .publish(nats_subjects::mail::v1::SEND, mail)
+            .await?;
+        Ok(())
+    }
+}
+
+/// The mails tests have sent, in place of the gateway
+#[cfg(test)]
+pub mod outbox {
+    use std::sync::Mutex;
+
+    use crate::proto::mail_v1::SendEmail;
+
+    /// Every mail sent by any test of this binary
+    static SENT: Mutex<Vec<SendEmail>> = Mutex::new(Vec::new());
+
+    /// Records a sent mail
+    pub(super) fn push(mail: SendEmail) {
+        SENT.lock().unwrap_or_else(|e| e.into_inner()).push(mail);
+    }
+
+    /// The mails sent to `address` so far
+    ///
+    /// Tests run in parallel against one outbox, so they look up their own
+    /// recipients rather than counting all mails.
+    pub fn sent_to(address: &str) -> Vec<SendEmail> {
+        SENT.lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .iter()
+            .filter(|mail| mail.to == address)
+            .cloned()
+            .collect()
+    }
 }

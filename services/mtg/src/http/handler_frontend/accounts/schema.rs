@@ -20,6 +20,10 @@ pub struct MeResponse {
     pub username: String,
     /// What the account may do, decides whether the admin dashboard is offered
     pub role: Role,
+    /// Whether the account logs in through an OpenID provider (an External Account)
+    ///
+    /// An External Account has no Passkeys and cannot add one.
+    pub external: bool,
 }
 
 /// Why the session has no account to answer with

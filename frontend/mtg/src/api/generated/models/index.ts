@@ -4483,6 +4483,14 @@ export interface MeErrors {
  */
 export interface MeResponse {
     /**
+     * Whether the account logs in through an OpenID provider (an External Account)
+     * 
+     * An External Account has no Passkeys and cannot add one.
+     * @type {boolean}
+     * @memberof MeResponse
+     */
+    external: boolean;
+    /**
      * What the account may do, decides whether the admin dashboard is offered
      * @type {Role}
      * @memberof MeResponse

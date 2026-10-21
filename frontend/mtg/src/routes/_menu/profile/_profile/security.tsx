@@ -37,11 +37,14 @@ export const Route = createFileRoute("/_menu/profile/_profile/security")({
  * The account's username and passkeys: renaming the account, and which devices can sign in,
  * adding, renaming and removing one.
  *
+ * An External Account has no Passkeys and cannot add one, so it only sees the rename and the Deletion.
+ *
  * @returns the page
  */
 function RouteComponent() {
     const [t] = useTranslation("profile");
     const me = useAccount();
+    const external = me.account?.external ?? false;
     const navigate = useNavigate();
     const [passkeys, setPasskeys] = useState<SimplePasskey[] | null>(null);
     const [adding, setAdding] = useState(false);
@@ -56,8 +59,8 @@ function RouteComponent() {
     }, []);
 
     useEffect(() => {
-        void refresh();
-    }, [refresh]);
+        if (!external) void refresh();
+    }, [refresh, external]);
 
     /**
      * Registers the current device as another passkey
@@ -162,61 +165,67 @@ function RouteComponent() {
 
             <Divider />
 
-            <div className={"flex flex-col gap-2"}>
-                <Subheading>{t("heading.passkeys")}</Subheading>
-                <Text>{t("description.passkeys")}</Text>
-            </div>
+            {!external && (
+                <>
+                    <div className={"flex flex-col gap-2"}>
+                        <Subheading>{t("heading.passkeys")}</Subheading>
+                        <Text>{t("description.passkeys")}</Text>
+                    </div>
 
-            {passkeys !== null && (
-                <StackedList>
-                    {passkeys.map((passkey) => (
-                        <StackedListFlexRow key={passkey.uuid} className={"gap-4"}>
-                            <KeyIcon className={"mt-1 size-5 shrink-0 text-zinc-400 dark:text-zinc-500"} />
-                            <div className={"flex min-w-0 flex-1 flex-col gap-1.5"}>
-                                <Strong className={"block truncate"}>{passkey.label}</Strong>
-                                <div className={"flex flex-wrap items-center gap-2"}>
-                                    {passkey.last_used_at === null || passkey.last_used_at === undefined ? (
-                                        <Badge color={"zinc"}>{t("label.never-used")}</Badge>
-                                    ) : (
-                                        <Badge color={"green"}>
-                                            {t("label.last-used", { date: formatDateTime(passkey.last_used_at) })}
-                                        </Badge>
-                                    )}
-                                    {isLast && <Badge color={"lime"}>{t("label.only-passkey")}</Badge>}
-                                </div>
-                                <Text className={"text-xs"}>
-                                    {t("label.added-on", { date: formatDateTime(passkey.created_at) })}
-                                </Text>
-                            </div>
-                            <Button
-                                plain
-                                aria-label={t("accessibility.rename-passkey", { label: passkey.label })}
-                                onClick={() => setRenaming(passkey)}
-                            >
-                                <PencilIcon className={"size-5"} />
-                            </Button>
-                            <Button
-                                plain
-                                disabled={isLast}
-                                aria-label={t("accessibility.remove-passkey", { label: passkey.label })}
-                                onClick={() => setConfirming(passkey)}
-                            >
-                                <TrashIcon className={"size-5"} />
-                            </Button>
-                        </StackedListFlexRow>
-                    ))}
-                </StackedList>
+                    {passkeys !== null && (
+                        <StackedList>
+                            {passkeys.map((passkey) => (
+                                <StackedListFlexRow key={passkey.uuid} className={"gap-4"}>
+                                    <KeyIcon className={"mt-1 size-5 shrink-0 text-zinc-400 dark:text-zinc-500"} />
+                                    <div className={"flex min-w-0 flex-1 flex-col gap-1.5"}>
+                                        <Strong className={"block truncate"}>{passkey.label}</Strong>
+                                        <div className={"flex flex-wrap items-center gap-2"}>
+                                            {passkey.last_used_at === null || passkey.last_used_at === undefined ? (
+                                                <Badge color={"zinc"}>{t("label.never-used")}</Badge>
+                                            ) : (
+                                                <Badge color={"green"}>
+                                                    {t("label.last-used", {
+                                                        date: formatDateTime(passkey.last_used_at),
+                                                    })}
+                                                </Badge>
+                                            )}
+                                            {isLast && <Badge color={"lime"}>{t("label.only-passkey")}</Badge>}
+                                        </div>
+                                        <Text className={"text-xs"}>
+                                            {t("label.added-on", { date: formatDateTime(passkey.created_at) })}
+                                        </Text>
+                                    </div>
+                                    <Button
+                                        plain
+                                        aria-label={t("accessibility.rename-passkey", { label: passkey.label })}
+                                        onClick={() => setRenaming(passkey)}
+                                    >
+                                        <PencilIcon className={"size-5"} />
+                                    </Button>
+                                    <Button
+                                        plain
+                                        disabled={isLast}
+                                        aria-label={t("accessibility.remove-passkey", { label: passkey.label })}
+                                        onClick={() => setConfirming(passkey)}
+                                    >
+                                        <TrashIcon className={"size-5"} />
+                                    </Button>
+                                </StackedListFlexRow>
+                            ))}
+                        </StackedList>
+                    )}
+
+                    <div className={"flex flex-col gap-2"}>
+                        <PrimaryButton className={"self-start"} loading={adding} onClick={() => void addPasskey()}>
+                            {t("button.add-passkey")}
+                        </PrimaryButton>
+                        <Text>{t("description.add-passkey")}</Text>
+                        {message !== undefined && <InlineError>{message}</InlineError>}
+                    </div>
+
+                    <Divider />
+                </>
             )}
-
-            <div className={"flex flex-col gap-2"}>
-                <PrimaryButton className={"self-start"} loading={adding} onClick={() => void addPasskey()}>
-                    {t("button.add-passkey")}
-                </PrimaryButton>
-                <Text>{t("description.add-passkey")}</Text>
-                {message !== undefined && <InlineError>{message}</InlineError>}
-            </div>
-
-            <Divider />
 
             <div className={"flex flex-col gap-2"}>
                 <Subheading>{t("heading.delete-account")}</Subheading>

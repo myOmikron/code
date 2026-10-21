@@ -25,7 +25,7 @@ use crate::tests::harness::create_account;
 use crate::tests::harness::run;
 
 /// A person unknown to the service, with a verified email
-fn stranger() -> FakePerson {
+pub(super) fn stranger() -> FakePerson {
     let id = Uuid::new_v4().simple();
     FakePerson::new(&format!("subject-{id}"), &format!("{id}@gmail.test"))
 }
@@ -83,12 +83,12 @@ async fn lock(account: &TestAccount) {
 }
 
 /// A free, valid username
-fn free_username() -> String {
+pub(super) fn free_username() -> String {
     format!("g{}", &Uuid::new_v4().simple().to_string()[..12])
 }
 
 /// Logs in with Google as `person` and returns where the callback sends the browser
-async fn continue_with_google(client: &mut TestClient, person: FakePerson) -> Url {
+pub(super) async fn continue_with_google(client: &mut TestClient, person: FakePerson) -> Url {
     let started = client
         .json(
             Method::POST,
@@ -105,7 +105,7 @@ async fn continue_with_google(client: &mut TestClient, person: FakePerson) -> Ur
 }
 
 /// Submits `username` for the session's pending OIDC login
-async fn choose_username(client: &mut TestClient, username: &str) -> TestResponse {
+pub(super) async fn choose_username(client: &mut TestClient, username: &str) -> TestResponse {
     client
         .json(
             Method::POST,
@@ -116,7 +116,7 @@ async fn choose_username(client: &mut TestClient, username: &str) -> TestRespons
 }
 
 /// The Account named `username`, if there is one
-async fn account_named(username: &str) -> Option<Account> {
+pub(super) async fn account_named(username: &str) -> Option<Account> {
     let mut tx = Database::global()
         .start_transaction()
         .await
