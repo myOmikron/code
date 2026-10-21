@@ -85,7 +85,10 @@ services:
       - 'URLS=[{ url: "/docs/frontend.json", name: "Frontend" }, { url: "/docs/openapi.json", name: "All routes" }]'
 
   webserver:
-    env_file: [ common/env.common ]
+    # common/env.secret holds GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET for "Continue with
+    # Google", off while both are empty. The OAuth client's redirect uri is
+    # PUBLIC_ORIGIN + /api/frontend/v1/auth/oidc/callback.
+    env_file: [ common/env.common, common/env.secret ]
     environment:
       - POSTGRES_HOST=postgres
       - LISTEN_ADDRESS=0.0.0.0
@@ -94,10 +97,6 @@ services:
       - GRAPH_URL=http://graph:8000
       # Index of community card art the proxy picker searches
       - MPCFILL_URL=${MPCFILL_URL:-https://mpcfill.com/}
-      # "Continue with Google", off while both are empty. The OAuth client's
-      # redirect uri is PUBLIC_ORIGIN + /api/frontend/v1/auth/oidc/callback.
-      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
-      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
     # net-dev connects it to NATS from dev/infra.yml (mail-gateway hand-off)
     networks: [ default, net-dev ]
     depends_on:
