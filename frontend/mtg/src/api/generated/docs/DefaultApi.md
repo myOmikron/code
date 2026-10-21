@@ -16,6 +16,7 @@ All URIs are relative to *http://localhost*
 | [**adminListAccounts**](DefaultApi.md#adminlistaccounts) | **GET** /api/frontend/v1/admin/accounts | List Accounts, newest first |
 | [**adminListLog**](DefaultApi.md#adminlistlog) | **GET** /api/frontend/v1/admin/log | List the Admin log, newest first |
 | [**adminLockAccount**](DefaultApi.md#adminlockaccountoperation) | **POST** /api/frontend/v1/admin/accounts/{uuid}/lock | Lock an Account |
+| [**adminRenameAccount**](DefaultApi.md#adminrenameaccountoperation) | **PUT** /api/frontend/v1/admin/accounts/{uuid}/username | Rename an Account |
 | [**adminSetRole**](DefaultApi.md#adminsetroleoperation) | **PUT** /api/frontend/v1/admin/accounts/{uuid}/role | Change an Account\&#39;s Role |
 | [**adminUnlockAccount**](DefaultApi.md#adminunlockaccountoperation) | **POST** /api/frontend/v1/admin/accounts/{uuid}/unlock | Lift an Account\&#39;s Lock |
 | [**assignCollectionEntryTag**](DefaultApi.md#assigncollectionentrytag) | **POST** /api/frontend/v1/collections/{collection}/entries/{entry}/tags/{tag} | Put a card-wide tag on a stack |
@@ -983,6 +984,79 @@ example().catch(console.error);
 ### Return type
 
 [**FormErrorResponseForAdminLockAccountErrors**](FormErrorResponseForAdminLockAccountErrors.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## adminRenameAccount
+
+> FormErrorResponseForAdminRenameAccountErrors adminRenameAccount(uuid, AdminRenameAccountRequest)
+
+Rename an Account
+
+Rename an Account  Takes the same usernames as a Self-Rename, also for a locked Account, and mails the Account its new username without the reason. An Admin renames itself through its own settings, not here.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { AdminRenameAccountOperationRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    uuid: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // AdminRenameAccountRequest (optional)
+    AdminRenameAccountRequest: ...,
+  } satisfies AdminRenameAccountOperationRequest;
+
+  try {
+    const data = await api.adminRenameAccount(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **uuid** | `string` |  | [Defaults to `undefined`] |
+| **AdminRenameAccountRequest** | [AdminRenameAccountRequest](AdminRenameAccountRequest.md) |  | [Optional] |
+
+### Return type
+
+[**FormErrorResponseForAdminRenameAccountErrors**](FormErrorResponseForAdminRenameAccountErrors.md)
 
 ### Authorization
 

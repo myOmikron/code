@@ -1,0 +1,22 @@
+[Migration]
+Hash = "10912195756428087212"
+Initial = false
+Dependency = 51
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "admin_log_entry"
+
+[Migration.Operations.Field]
+Name = "new_username"
+Type = "text"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "max_length"
+Value = 32
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/admin_log/db.rs"
+Line = 68
+Column = 9

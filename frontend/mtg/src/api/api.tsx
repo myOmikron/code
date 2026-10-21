@@ -130,6 +130,10 @@ export const Api = {
                 handleError(defaultApi.adminLockAccount({ uuid, AdminLockAccountRequest: { reason } })),
             unlock: async (uuid: UUID, reason?: string) =>
                 handleError(defaultApi.adminUnlockAccount({ uuid, AdminUnlockAccountRequest: { reason } })),
+            rename: async (uuid: UUID, username: string, reason: string, language: MailLanguage) =>
+                handleError(
+                    defaultApi.adminRenameAccount({ uuid, AdminRenameAccountRequest: { username, reason, language } }),
+                ),
             delete: async (uuid: UUID, username: string, mode: DeletionMode) =>
                 handleError(defaultApi.adminDeleteAccount({ uuid, AdminDeleteAccountRequest: { username, mode } })),
         },

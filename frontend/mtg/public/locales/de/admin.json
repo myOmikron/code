@@ -6,6 +6,7 @@
         "lock": "Sperren",
         "make-admin": "Zum Admin machen",
         "make-member": "Zum Mitglied machen",
+        "rename": "Umbenennen",
         "unlock": "Entsperren"
     },
     "description": {
@@ -17,11 +18,12 @@
         "make-admin": "{{username}} bekommt die Admin-Rolle und kann danach alle Konten verwalten.",
         "make-member": "{{username}} verliert die Admin-Rolle und sieht die Verwaltung nicht mehr.",
         "no-accounts": "Kein Konto passt zur Suche oder zum Filter.",
-        "no-log-entries": "Bisher hat kein Admin ein Konto gesperrt, entsperrt, gelöscht oder seine Rolle geändert.",
+        "no-log-entries": "Bisher hat kein Admin ein Konto gesperrt, entsperrt, umbenannt, gelöscht oder seine Rolle geändert.",
         "no-runs": "Noch kein Lauf aufgezeichnet.",
         "no-statistics": "Der erste Schnappschuss entsteht, sobald snapshot-statistics läuft.",
-        "own-account": "Dein eigenes Konto kannst du weder sperren noch löschen, und deine Admin-Rolle kannst du nicht abgeben.",
+        "own-account": "Dein eigenes Konto kannst du hier weder sperren, umbenennen noch löschen, und deine Admin-Rolle kannst du nicht abgeben. Umbenennen kannst du dich in deinen Einstellungen.",
         "reason": "Sehen nur Admins, das Konto erfährt den Grund nicht.",
+        "rename": "{{username}} bekommt einen neuen Benutzernamen und erfährt ihn per Mail, ohne den Grund. Der alte Name ist sofort frei, Links auf das alte Profil funktionieren nicht mehr.",
         "run-durations": "Ein Balken pro Lauf, der älteste links.",
         "syncs": "Die Synchronisierungen laufen in eigenen Containern. Hier steht nur, wie ihre Läufe ausgegangen sind; Läufe älter als 90 Tage werden entfernt.",
         "unlock": "{{username}} kann sich danach wieder anmelden."
@@ -33,7 +35,9 @@
         "own-account": "Deine eigene Admin-Rolle kannst du nicht abgeben.",
         "own-deletion": "Dein eigenes Konto kannst du hier nicht löschen.",
         "own-lock": "Dein eigenes Konto kannst du nicht sperren.",
+        "own-rename": "Dein eigenes Konto benennst du in deinen Einstellungen um.",
         "reason-missing": "Gib einen Grund für die Sperre an.",
+        "rename-reason-missing": "Gib einen Grund für die Umbenennung an.",
         "username-mismatch": "Der Benutzername stimmt nicht."
     },
     "heading": {
@@ -48,6 +52,7 @@
         "no-log-entries": "Keine Einträge",
         "no-statistics": "Noch keine Statistik",
         "price-guide-sync": "Preisliste von Cardmarket",
+        "rename": "Konto umbenennen",
         "run-durations": "Dauer der letzten Läufe",
         "statistics": "Statistik",
         "syncs": "Synchronisierung",
@@ -62,6 +67,7 @@
         "action-lock": "Gesperrt",
         "action-make-admin": "Zum Admin gemacht",
         "action-make-member": "Zum Mitglied gemacht",
+        "action-rename": "Umbenannt in {{username}}",
         "action-unlock": "Entsperrt",
         "admin": "Admin",
         "cards": "Karten",
@@ -89,6 +95,7 @@
         "never": "Noch nie",
         "new-accounts_one": "+{{count}} in 7 Tagen",
         "new-accounts_other": "+{{count}} in 7 Tagen",
+        "new-username": "Neuer Benutzername",
         "not-locked": "Nicht gesperrt",
         "open-scanner-sessions": "Offene Scan-Sitzungen",
         "outcome": "Ergebnis",
@@ -102,6 +109,7 @@
         "public-decks-of_other": "davon {{count}} öffentlich",
         "read-at": "Gelesen am",
         "reason": "Grund",
+        "rename-reason": "Grund der Umbenennung",
         "role": "Rolle",
         "role-admin": "Admin",
         "role-all": "Alle Rollen",
@@ -119,6 +127,7 @@
         "deleting": "Konto wird gelöscht …",
         "locked": "Konto gesperrt",
         "not-deleted": "Konto nicht gelöscht",
+        "renamed": "Konto umbenannt",
         "role-changed": "Rolle geändert",
         "unlocked": "Konto entsperrt"
     }

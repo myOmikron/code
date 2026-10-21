@@ -17,11 +17,12 @@ use service_bootstrap::custom_db_enum;
 use tracing::instrument;
 use uuid::Uuid;
 
+use crate::models::account::ADMIN_REASON_MAX_LEN;
 use crate::models::account::Account;
 use crate::models::account::AccountUuid;
 use crate::models::account::DeletionMode;
-use crate::models::account::LOCK_REASON_MAX_LEN;
 use crate::models::account::Role;
+use crate::models::account::Username;
 use crate::models::admin_log::db::AdminLogEntryInsertPatch;
 use crate::models::admin_log::db::AdminLogEntryModel;
 use crate::models::row::decode;
@@ -38,12 +39,12 @@ pub enum AdminLogAction {
     /// Locked the Account
     Lock {
         /// Why the Account was locked
-        reason: MaxStr<LOCK_REASON_MAX_LEN>,
+        reason: MaxStr<ADMIN_REASON_MAX_LEN>,
     },
     /// Lifted the Account's Lock
     Unlock {
         /// Why the Lock was lifted, if the Admin said
-        reason: Option<MaxStr<LOCK_REASON_MAX_LEN>>,
+        reason: Option<MaxStr<ADMIN_REASON_MAX_LEN>>,
     },
     /// Gave the Account another Role
     RoleChange {
@@ -54,6 +55,13 @@ pub enum AdminLogAction {
     Deletion {
         /// What happened to the Account's public decks
         mode: DeletionMode,
+    },
+    /// Gave the Account another username
+    Rename {
+        /// The username the Account has now
+        new_username: Username,
+        /// Why the Account was renamed
+        reason: MaxStr<ADMIN_REASON_MAX_LEN>,
     },
 }
 
@@ -68,10 +76,12 @@ pub enum AdminAction {
     RoleChange,
     /// [`AdminLogAction::Deletion`]
     Deletion,
+    /// [`AdminLogAction::Rename`]
+    Rename,
 }
 custom_db_enum! {
     enum: AdminAction,
-    variants: [Lock, Unlock, RoleChange, Deletion],
+    variants: [Lock, Unlock, RoleChange, Deletion, Rename],
     decoder: AdminActionDecoder,
 }
 
@@ -152,13 +162,25 @@ impl AdminLogEntry {
             ),
             AdminActor::Cli => (None, username_field(CLI_ADMIN_USERNAME)),
         };
-        let (action, role, reason, deletion) = match entry.action {
-            AdminLogAction::Lock { reason } => (AdminAction::Lock, None, Some(reason), None),
-            AdminLogAction::Unlock { reason } => (AdminAction::Unlock, None, reason, None),
+        let (action, role, reason, deletion, new_username) = match entry.action {
+            AdminLogAction::Lock { reason } => (AdminAction::Lock, None, Some(reason), None, None),
+            AdminLogAction::Unlock { reason } => (AdminAction::Unlock, None, reason, None, None),
             AdminLogAction::RoleChange { role } => {
-                (AdminAction::RoleChange, Some(role), None, None)
+                (AdminAction::RoleChange, Some(role), None, None, None)
             }
-            AdminLogAction::Deletion { mode } => (AdminAction::Deletion, None, None, Some(mode)),
+            AdminLogAction::Deletion { mode } => {
+                (AdminAction::Deletion, None, None, Some(mode), None)
+            }
+            AdminLogAction::Rename {
+                new_username,
+                reason,
+            } => (
+                AdminAction::Rename,
+                None,
+                Some(reason),
+                None,
+                Some(username_field(new_username.as_str())),
+            ),
         };
         rorm::insert(tx, AdminLogEntryModel)
             .return_nothing()
@@ -172,6 +194,7 @@ impl AdminLogEntry {
                 role,
                 reason,
                 deletion,
+                new_username,
             })
             .await
     }
@@ -203,7 +226,7 @@ impl AdminLogEntry {
         };
         let statement = format!(
             "SELECT uuid, created_at, admin, admin_username, account, account_username, \
-               action, role, reason, deletion \
+               action, role, reason, deletion, new_username \
              FROM admin_log_entry {condition} ORDER BY uuid DESC LIMIT ${}",
             values.len()
         );
@@ -256,6 +279,7 @@ fn decode_action(row: &Row) -> Result<AdminLogAction, rorm::Error> {
     let role: Option<String> = row.get("role").map_err(decode)?;
     let reason: Option<String> = row.get("reason").map_err(decode)?;
     let deletion: Option<String> = row.get("deletion").map_err(decode)?;
+    let new_username: Option<String> = row.get("new_username").map_err(decode)?;
     let reason = reason.map(|reason| {
         MaxStr::new(reason).unwrap_or_else(|_| unreachable!("the column holds at most the limit"))
     });
@@ -279,6 +303,13 @@ fn decode_action(row: &Row) -> Result<AdminLogAction, rorm::Error> {
                     .as_deref()
                     .and_then(DeletionMode::decode)
                     .unwrap_or_else(|| unreachable!("a Deletion is written with its mode")),
+            },
+            AdminAction::Rename => AdminLogAction::Rename {
+                new_username: new_username
+                    .and_then(|username| MaxStr::new(username).ok())
+                    .map(Username::new_from_field)
+                    .unwrap_or_else(|| unreachable!("a Rename is written with its username")),
+                reason: reason.unwrap_or_else(|| unreachable!("a Rename is written with a reason")),
             },
         },
     )

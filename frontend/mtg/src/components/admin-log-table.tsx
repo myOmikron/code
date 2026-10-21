@@ -52,6 +52,10 @@ export function AdminLogTable({ entries, showAccount }: AdminLogTableProps) {
                             : t("label.action-deletion")}
                     </Badge>
                 );
+            case "Rename":
+                return (
+                    <Badge color={"amber"}>{t("label.action-rename", { username: String(action.new_username) })}</Badge>
+                );
         }
     }
 
@@ -62,7 +66,9 @@ export function AdminLogTable({ entries, showAccount }: AdminLogTableProps) {
      * @returns the reason, empty when there is none
      */
     function reason(action: AdminLogAction) {
-        return action.kind === "Lock" || action.kind === "Unlock" ? (action.reason ?? "") : "";
+        return action.kind === "Lock" || action.kind === "Unlock" || action.kind === "Rename"
+            ? (action.reason ?? "")
+            : "";
     }
 
     return (
