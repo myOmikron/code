@@ -89,10 +89,10 @@ mtg query cost). A review applies all of it; read the sections a change touches 
 
 ### Authentication
 
-- **Staff/user auth is passkey (WebAuthn)**: no passwords, ever. OIDC is decided
-  (ADR-0002) but not built yet.
+- **Staff/user auth is passkey (WebAuthn)**: no passwords, ever. OIDC login (ADR-0002)
+  is the module's `oidc` feature, not enabled by any service yet.
   Backend: the `libs/galvyn-identity` galvyn module (`IdentityModule`, login methods as
-  cargo features, e.g. `passkey`); frontend: `@simplewebauthn/browser`.
+  cargo features: `passkey`, `oidc`); frontend: `@simplewebauthn/browser`.
 - Passkey login is username first, then a Passkey of that account's Identity
   (the Identity's Passkeys are the credential allow-list).
 - Account onboarding and device recovery work via one-time Registration links,

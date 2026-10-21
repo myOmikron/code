@@ -9,6 +9,7 @@ use galvyn::rorm;
 use galvyn::rorm::Database;
 use galvyn::rorm::db::executor::Executor;
 use galvyn::rorm::db::transaction::Transaction;
+use galvyn::rorm::db::transaction::TransactionError;
 use url::Url;
 
 use super::IdentityModule;
@@ -79,21 +80,44 @@ impl IdentityModule {
     /// How `identity` logs in, or `None` while it has no login method yet
     ///
     /// A missing Identity has no login method either.
-    #[cfg_attr(
-        not(feature = "passkey"),
-        expect(
-            unused_variables,
-            reason = "Without a login method there is nothing to look up"
-        )
-    )]
     pub async fn login_method(
         &self,
         exe: impl Executor<'_>,
         identity: IdentityUuid,
     ) -> Result<Option<LoginMethod>, rorm::Error> {
+        let mut tx = exe.ensure_transaction().await?;
+        let login_method = self.login_method_in(&mut tx, identity).await;
+        tx.commit_if_owned().await.map_err(|error| match error {
+            TransactionError::Database(error) => error,
+            TransactionError::Hook(_) => unreachable!("a transaction started here has no hooks"),
+        })?;
+        login_method
+    }
+
+    /// [`IdentityModule::login_method`], within `tx`
+    #[cfg_attr(
+        not(any(feature = "passkey", feature = "oidc")),
+        expect(
+            unused_variables,
+            reason = "Without a login method there is nothing to look up"
+        )
+    )]
+    pub(crate) async fn login_method_in(
+        &self,
+        tx: &mut Transaction,
+        identity: IdentityUuid,
+    ) -> Result<Option<LoginMethod>, rorm::Error> {
         #[cfg(feature = "passkey")]
-        if self.count_passkeys(exe, identity).await? > 0 {
+        if self.count_passkeys(&mut *tx, identity).await? > 0 {
             return Ok(Some(LoginMethod::Local));
+        }
+        #[cfg(feature = "oidc")]
+        if let Some(issuer) =
+            super::oidc::models::ExternalIdentity::issuer_of(&mut *tx, identity).await?
+        {
+            return Ok(Some(LoginMethod::External {
+                issuer: issuer.into_inner(),
+            }));
         }
         Ok(None)
     }

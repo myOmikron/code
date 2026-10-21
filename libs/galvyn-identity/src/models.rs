@@ -40,10 +40,19 @@ pub struct Identity {
 ///
 /// An Identity has none until its first Enrollment, which makes it local or
 /// external for good.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LoginMethod {
     /// The Identity holds Passkeys
     Local,
+    /// The Identity holds External identities
+    #[cfg(feature = "oidc")]
+    External {
+        /// The issuer of the OpenID provider vouching for it
+        ///
+        /// [`IdentityModule::openid_providers`](crate::IdentityModule::openid_providers)
+        /// tells which configured provider that is, if one still is.
+        issuer: String,
+    },
 }
 
 /// Wrapper for the primary key of the [`Identity`] model.

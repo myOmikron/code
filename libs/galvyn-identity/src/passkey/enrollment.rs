@@ -61,7 +61,8 @@ impl IdentityModule {
 
     /// Finish the session's Enrollment through the Registration link carrying `token`
     ///
-    /// Only an Enrollment begun through that same link is finished. Marking
+    /// Only an Enrollment begun through that same link is finished, and none
+    /// for an external Identity. Marking
     /// the link used checks again that it is unused and unexpired, together
     /// with storing the Passkey, so it enrolls exactly one, even when two
     /// Enrollments race for it.
@@ -82,6 +83,7 @@ impl IdentityModule {
         else {
             return Err(FinishEnrollmentError::NoEnrollmentInProgress);
         };
+        refuse_external(link.identity).await?;
         let credential = parse_registration(credential)?;
         let passkey = self.verify_registration(&credential, &state)?;
 
@@ -119,7 +121,8 @@ impl IdentityModule {
     /// Finish the session's Enrollment of an additional device for `identity`
     ///
     /// Only an Enrollment begun for that same Identity is finished, so one
-    /// begun before another Identity logged in on the browser is refused.
+    /// begun before another Identity logged in on the browser is refused, and
+    /// none for an external Identity.
     pub async fn finish_device_enrollment(
         &self,
         session: &Session,
@@ -132,6 +135,7 @@ impl IdentityModule {
         else {
             return Err(FinishDeviceEnrollmentError::NoEnrollmentInProgress);
         };
+        refuse_external(identity).await?;
         let credential = parse_registration(credential)?;
         let passkey = self.verify_registration(&credential, &state)?;
 
@@ -188,6 +192,25 @@ impl IdentityModule {
             .finish_passkey_registration(credential, state)
             .map_err(|_| FinishDeviceEnrollmentError::VerificationFailed)
     }
+}
+
+/// Refuse the Enrollment if `identity` is external
+#[cfg_attr(
+    not(feature = "oidc"),
+    expect(
+        unused_variables,
+        reason = "Without OIDC login every Identity is local"
+    )
+)]
+async fn refuse_external(identity: IdentityUuid) -> Result<(), FinishDeviceEnrollmentError> {
+    #[cfg(feature = "oidc")]
+    if crate::oidc::models::ExternalIdentity::issuer_of(Database::global(), identity)
+        .await?
+        .is_some()
+    {
+        return Err(FinishDeviceEnrollmentError::ExternalIdentity);
+    }
+    Ok(())
 }
 
 /// Parse the authenticator's response to an Enrollment

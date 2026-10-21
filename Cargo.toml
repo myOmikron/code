@@ -216,7 +216,7 @@ rustls = { version = "~0.23", default-features = false, features = ["aws-lc-rs"]
 oauth2 = { version = "~5", features = ["timing-resistant-secret-traits"] }
 
 # OpenId Connect client (requires `reqwest` for actual transport)
-openidconnect = { version = "~4", features = ["accept-rfc3339-timestamps", "timing-resistant-secret-traits"] }
+openidconnect = { version = "~4", default-features = false, features = ["accept-rfc3339-timestamps", "timing-resistant-secret-traits"] }
 
 # ----- #
 # Async #
