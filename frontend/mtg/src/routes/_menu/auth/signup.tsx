@@ -84,21 +84,20 @@ function RouteComponent() {
                     <Text>{t("description.check-mail", { username: sentFor })}</Text>
                     <Text>{t("description.check-spam")}</Text>
                 </div>
-                <div className={"flex flex-col gap-3"}>
-                    <Button className={"w-full"} href={"/auth/login"}>
-                        {t("button.login-instead")}
-                    </Button>
-                    <Button
-                        plain={true}
-                        className={"w-full"}
-                        onClick={() => {
-                            setSentFor(null);
-                            form.reset();
-                        }}
-                    >
-                        {t("button.change-details")}
-                    </Button>
-                </div>
+                <Button
+                    plain={true}
+                    className={"w-full"}
+                    onClick={() => {
+                        setSentFor(null);
+                        form.reset();
+                    }}
+                >
+                    {t("button.change-details")}
+                </Button>
+                <Divider soft={true} />
+                <Text className={"text-center"}>
+                    {t("label.have-account")} <TextLink href={"/auth/login"}>{t("button.login")}</TextLink>
+                </Text>
             </AuthLayout>
         );
     }
