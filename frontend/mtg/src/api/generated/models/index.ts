@@ -1279,6 +1279,23 @@ export interface ChooseUsernameRequest {
      */
     username: any;
 }
+
+/**
+ * What the owner lets a Collaborator do with the deck
+ * @export
+ */
+export const CollaboratorLevel = {
+    /**
+    * Looks at the deck the way its Share link shows it
+    */
+    Viewer: 'Viewer',
+    /**
+    * Also builds the deck as a decklist
+    */
+    Editor: 'Editor'
+} as const;
+export type CollaboratorLevel = typeof CollaboratorLevel[keyof typeof CollaboratorLevel];
+
 /**
  * One stack of identical cards in a collection
  * @export
@@ -2172,7 +2189,7 @@ export interface DeckCardResponse {
 
 
 /**
- * What the owner did in a Deck change
+ * What the owner or an Editor did in a Deck change
  * @export
  */
 export const DeckChangeKind = {
@@ -2266,7 +2283,7 @@ export interface DeckChangeResponse {
      */
     fields: Array<FieldDifference>;
     /**
-     * What the owner did
+     * What the owner or an Editor did
      * @type {DeckChangeKind}
      * @memberof DeckChangeResponse
      */
@@ -2289,6 +2306,33 @@ export interface DeckChangeResponse {
      * @memberof DeckChangeResponse
      */
     uuid: string;
+}
+
+
+/**
+ * One Account named on a deck
+ * @export
+ * @interface DeckCollaboratorResponse
+ */
+export interface DeckCollaboratorResponse {
+    /**
+     * The Account, which is what removing it names
+     * @type {string}
+     * @memberof DeckCollaboratorResponse
+     */
+    account: string;
+    /**
+     * What the owner lets it do
+     * @type {CollaboratorLevel}
+     * @memberof DeckCollaboratorResponse
+     */
+    level: CollaboratorLevel;
+    /**
+     * The Account's username as it is now
+     * @type {string}
+     * @memberof DeckCollaboratorResponse
+     */
+    username: string;
 }
 
 
@@ -2642,6 +2686,8 @@ export interface DeckPointResponse {
 }
 /**
  * A deck as its owner sees it
+ * 
+ * Anybody else gets it without the owner's share link and folder.
  * @export
  * @interface DeckResponse
  */
@@ -2727,6 +2773,12 @@ export interface DeckResponse {
      */
     name: string;
     /**
+     * The caller's role on the deck, `null` when only its Visibility shows it to them
+     * @type {DeckRole}
+     * @memberof DeckResponse
+     */
+    role?: DeckRole | null;
+    /**
      * Secret of the share link, `null` once the link is revoked
      * @type {string}
      * @memberof DeckResponse
@@ -2746,6 +2798,27 @@ export interface DeckResponse {
     visibility: Visibility;
 }
 
+
+
+/**
+ * The caller's standing on one deck
+ * @export
+ */
+export const DeckRole = {
+    /**
+    * The account the deck belongs to
+    */
+    Owner: 'Owner',
+    /**
+    * A Collaborator who helps build the deck
+    */
+    Editor: 'Editor',
+    /**
+    * A Collaborator who only looks at the deck
+    */
+    Viewer: 'Viewer'
+} as const;
+export type DeckRole = typeof DeckRole[keyof typeof DeckRole];
 
 /**
  * The recorded deck fields at an earlier point
@@ -3864,6 +3937,27 @@ export interface FormErrorResponseForMeErrors {
 /**
  * The response that is sent in a case of an error the caller should present his user
  * @export
+ * @interface FormErrorResponseForPutDeckCollaboratorErrors
+ */
+export interface FormErrorResponseForPutDeckCollaboratorErrors {
+    /**
+     * The actual error struct
+     * @type {PutDeckCollaboratorErrors}
+     * @memberof FormErrorResponseForPutDeckCollaboratorErrors
+     */
+    error: PutDeckCollaboratorErrors;
+    /**
+     * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
+     * @type {ErrorConstant}
+     * @memberof FormErrorResponseForPutDeckCollaboratorErrors
+     */
+    result: ErrorConstant;
+}
+
+
+/**
+ * The response that is sent in a case of an error the caller should present his user
+ * @export
  * @interface FormErrorResponseForRegistrationErrors
  */
 export interface FormErrorResponseForRegistrationErrors {
@@ -4188,6 +4282,19 @@ export interface ListDeckCardsResponse {
     tags: Array<DeckTagResponse>;
 }
 /**
+ * The Collaborators of a deck, alphabetically by username
+ * @export
+ * @interface ListDeckCollaboratorsResponse
+ */
+export interface ListDeckCollaboratorsResponse {
+    /**
+     * The Collaborators
+     * @type {Array<DeckCollaboratorResponse>}
+     * @memberof ListDeckCollaboratorsResponse
+     */
+    collaborators: Array<DeckCollaboratorResponse>;
+}
+/**
  * Every folder an account keeps
  * @export
  * @interface ListDeckFoldersResponse
@@ -4283,6 +4390,19 @@ export interface ListScannerSessionsResponse {
      * @memberof ListScannerSessionsResponse
      */
     sessions: Array<ScannerSessionResponse>;
+}
+/**
+ * The decks other Accounts named the caller on, alphabetically by name
+ * @export
+ * @interface ListSharedWithMeResponse
+ */
+export interface ListSharedWithMeResponse {
+    /**
+     * The decks
+     * @type {Array<SharedWithMeDeckResponse>}
+     * @memberof ListSharedWithMeResponse
+     */
+    decks: Array<SharedWithMeDeckResponse>;
 }
 /**
  * Every alarm that has gone off across an account's watch lists
@@ -5346,6 +5466,52 @@ export interface PublicProfileResponse {
     username: string;
 }
 /**
+ * @type PutDeckCollaborator200Response
+ * 
+ * @export
+ */
+export type PutDeckCollaborator200Response = DeckCollaboratorResponse | FormErrorResponseForPutDeckCollaboratorErrors;
+/**
+ * Why an Account could not be named on a deck
+ * @export
+ * @interface PutDeckCollaboratorErrors
+ */
+export interface PutDeckCollaboratorErrors {
+    /**
+     * The username is the caller's own, which owns the deck
+     * @type {boolean}
+     * @memberof PutDeckCollaboratorErrors
+     */
+    own_account: boolean;
+    /**
+     * No Account goes by this username
+     * @type {boolean}
+     * @memberof PutDeckCollaboratorErrors
+     */
+    unknown_username: boolean;
+}
+/**
+ * Request to name an Account on a deck, or to change its level
+ * @export
+ * @interface PutDeckCollaboratorRequest
+ */
+export interface PutDeckCollaboratorRequest {
+    /**
+     * What the owner lets it do
+     * @type {CollaboratorLevel}
+     * @memberof PutDeckCollaboratorRequest
+     */
+    level: CollaboratorLevel;
+    /**
+     * Username of the Account, case ignored
+     * @type {string}
+     * @memberof PutDeckCollaboratorRequest
+     */
+    username: string;
+}
+
+
+/**
  * Copies per rarity in a collection
  * @export
  * @interface RarityCountsResponse
@@ -6287,6 +6453,33 @@ export interface SharedDeckResponse {
      */
     owner: string;
 }
+/**
+ * A deck another Account named the caller on
+ * @export
+ * @interface SharedWithMeDeckResponse
+ */
+export interface SharedWithMeDeckResponse {
+    /**
+     * What the owner lets the caller do
+     * @type {CollaboratorLevel}
+     * @memberof SharedWithMeDeckResponse
+     */
+    level: CollaboratorLevel;
+    /**
+     * The deck as the list of decks shows it, without the owner's share link and folder
+     * @type {DeckOverviewResponse}
+     * @memberof SharedWithMeDeckResponse
+     */
+    overview: DeckOverviewResponse;
+    /**
+     * The owner's username as it is now
+     * @type {string}
+     * @memberof SharedWithMeDeckResponse
+     */
+    owner_username: string;
+}
+
+
 /**
  * @type Signup200Response
  * 

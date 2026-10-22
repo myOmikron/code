@@ -1,7 +1,8 @@
-import { Link, Outlet, createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
+import { Link, Outlet, createFileRoute, redirect, useNavigate, useRouter } from "@tanstack/react-router";
 import {
     ArchiveBoxIcon,
     ArrowDownTrayIcon,
+    ArrowRightStartOnRectangleIcon,
     ArrowUpTrayIcon,
     ArrowUturnLeftIcon,
     ChevronDownIcon,
@@ -16,6 +17,7 @@ import {
     PrinterIcon,
     TrashIcon,
     UserGroupIcon,
+    UsersIcon,
 } from "@heroicons/react/20/solid";
 import {
     Badge,
@@ -38,9 +40,12 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import { DeckBracketPicker } from "src/components/deck-bracket-picker";
+import { DeckCollaboratorListDialog } from "src/components/deck-collaborator-list-dialog";
+import { DeckCollaboratorsDialog } from "src/components/deck-collaborators-dialog";
 import { DeckDialog } from "src/components/deck-dialog";
 import { DeckDeleteDialog } from "src/components/deck-delete-dialog";
 import { DeckDissolveDialog } from "src/components/deck-dissolve-dialog";
+import { DeckLeaveDialog } from "src/components/deck-leave-dialog";
 import { DeckRuleZeroDialog } from "src/components/deck-rule-zero-dialog";
 import { ExportDeckDialog } from "src/components/export-deck-dialog";
 import { ImportDeckDialog } from "src/components/import-deck-dialog";
@@ -52,6 +57,7 @@ import { folderLabel } from "src/utils/deck-folders";
 import { commanderColors, letters, ruleZeroCount } from "src/utils/deck-rules";
 import { deckShareTarget } from "src/utils/share-targets";
 import { driftCopies } from "src/utils/deck-drift";
+import { deckCardsRoute, deckRights } from "src/utils/deck-rights";
 
 /** How the mini buttons above the tabs are framed */
 const ACTION_RING = "ring-1 ring-zinc-950/10 dark:ring-white/15";
@@ -62,8 +68,15 @@ export const Route = createFileRoute("/_menu/decks/$deckUuid/_deck")({
             Api.decks.get(params.deckUuid),
             Api.decks.formats(),
             Api.folders.list(),
-            Api.decks.drift(params.deckUuid),
+            Api.decks.driftIfOwner(params.deckUuid),
         ]);
+        if (deck.role == null) {
+            throw redirect({ to: "/global/decks/$deckUuid/cards", params, replace: true });
+        }
+        const cards = deckCardsRoute(deck.role);
+        if (cards !== "/decks/$deckUuid/cards") {
+            throw redirect({ to: cards, params, replace: true });
+        }
         return {
             deck,
             formats: offered.formats,
@@ -96,6 +109,8 @@ function RouteComponent() {
     const router = useRouter();
     const navigate = useNavigate();
     const [sharing, setSharing] = useState(false);
+    const [collaborating, setCollaborating] = useState(false);
+    const [leaving, setLeaving] = useState(false);
     const [importing, setImporting] = useState(false);
     const [exporting, setExporting] = useState(false);
     const [editing, setEditing] = useState(false);
@@ -105,11 +120,12 @@ function RouteComponent() {
     const [commanderIdentity, setCommanderIdentity] = useState<Array<string>>([]);
     const [hasProxies, setHasProxies] = useState(false);
 
+    const rights = deckRights(deck.role);
     const deviations = ruleZeroCount(deck);
     // What the list and the deck's own collection disagree about. Said in the
     // header rather than on the sourcing tab alone: somebody swapping a
     // printing while building is exactly the person who will not open that tab.
-    const drifted = driftCopies(drift);
+    const drifted = drift === null ? 0 : driftCopies(drift);
     const rules = formats.find((format) => format.slug === deck.format);
 
     // This layout never loads the card list, but the Rule 0 picker should
@@ -245,9 +261,23 @@ function RouteComponent() {
                                         {t("label.drift", { count: drifted })}
                                     </BadgeButton>
                                 )}
-                                <BadgeButton color={"zinc"} className={ACTION_RING} onClick={() => setSharing(true)}>
-                                    <LinkIcon className={"size-3.5"} />
-                                    {t("button.share-deck")}
+                                {rights.owner && (
+                                    <BadgeButton
+                                        color={"zinc"}
+                                        className={ACTION_RING}
+                                        onClick={() => setSharing(true)}
+                                    >
+                                        <LinkIcon className={"size-3.5"} />
+                                        {t("button.share-deck")}
+                                    </BadgeButton>
+                                )}
+                                <BadgeButton
+                                    color={"zinc"}
+                                    className={ACTION_RING}
+                                    onClick={() => setCollaborating(true)}
+                                >
+                                    <UsersIcon className={"size-3.5"} />
+                                    {t("button.collaborators")}
                                 </BadgeButton>
                                 <BadgeButton color={"zinc"} className={ACTION_RING} onClick={() => setEditing(true)}>
                                     <PencilSquareIcon className={"size-3.5"} />
@@ -315,38 +345,51 @@ function RouteComponent() {
                                             : t("description.order-mpc-fill")}
                                     </DropdownDescription>
                                 </DropdownItem>
-                                <DropdownDivider />
-                                <DropdownItem onClick={() => setDissolving(true)}>
-                                    <ArrowUturnLeftIcon />
-                                    <DropdownLabel>{t("button.dissolve-deck")}</DropdownLabel>
-                                    <DropdownDescription>{t("description.dissolve-menu")}</DropdownDescription>
-                                </DropdownItem>
-                                <DropdownDivider />
-                                <DropdownSection>
-                                    <DropdownHeading>{t("label.move-to-folder")}</DropdownHeading>
-                                    {folders
-                                        .filter((folder) => folder.uuid !== deck.folder)
-                                        .map((folder) => (
-                                            <DropdownItem key={folder.uuid} onClick={() => void move(folder.uuid)}>
-                                                {folder.kind === "Archive" ? <ArchiveBoxIcon /> : <FolderIcon />}
-                                                <DropdownLabel>
-                                                    {folderLabel(folder, t("label.folder-archive"))}
-                                                </DropdownLabel>
+                                {rights.owner && <DropdownDivider />}
+                                {rights.owner && (
+                                    <DropdownItem onClick={() => setDissolving(true)}>
+                                        <ArrowUturnLeftIcon />
+                                        <DropdownLabel>{t("button.dissolve-deck")}</DropdownLabel>
+                                        <DropdownDescription>{t("description.dissolve-menu")}</DropdownDescription>
+                                    </DropdownItem>
+                                )}
+                                {rights.owner && <DropdownDivider />}
+                                {rights.owner && (
+                                    <DropdownSection>
+                                        <DropdownHeading>{t("label.move-to-folder")}</DropdownHeading>
+                                        {folders
+                                            .filter((folder) => folder.uuid !== deck.folder)
+                                            .map((folder) => (
+                                                <DropdownItem key={folder.uuid} onClick={() => void move(folder.uuid)}>
+                                                    {folder.kind === "Archive" ? <ArchiveBoxIcon /> : <FolderIcon />}
+                                                    <DropdownLabel>
+                                                        {folderLabel(folder, t("label.folder-archive"))}
+                                                    </DropdownLabel>
+                                                </DropdownItem>
+                                            ))}
+                                        {deck.folder != null && (
+                                            <DropdownItem onClick={() => void move(null)}>
+                                                <FolderMinusIcon />
+                                                <DropdownLabel>{t("label.folder-none")}</DropdownLabel>
                                             </DropdownItem>
-                                        ))}
-                                    {deck.folder != null && (
-                                        <DropdownItem onClick={() => void move(null)}>
-                                            <FolderMinusIcon />
-                                            <DropdownLabel>{t("label.folder-none")}</DropdownLabel>
-                                        </DropdownItem>
-                                    )}
-                                </DropdownSection>
-                                <DropdownDivider />
-                                <DropdownItem onClick={() => setConfirming(true)}>
-                                    <TrashIcon />
-                                    <DropdownLabel>{t("button.delete-deck")}</DropdownLabel>
-                                    <DropdownDescription>{t("description.delete-menu")}</DropdownDescription>
-                                </DropdownItem>
+                                        )}
+                                    </DropdownSection>
+                                )}
+                                {!rights.owner && <DropdownDivider />}
+                                {!rights.owner && (
+                                    <DropdownItem onClick={() => setLeaving(true)}>
+                                        <ArrowRightStartOnRectangleIcon />
+                                        <DropdownLabel>{t("button.leave-deck")}</DropdownLabel>
+                                    </DropdownItem>
+                                )}
+                                {rights.owner && <DropdownDivider />}
+                                {rights.owner && (
+                                    <DropdownItem onClick={() => setConfirming(true)}>
+                                        <TrashIcon />
+                                        <DropdownLabel>{t("button.delete-deck")}</DropdownLabel>
+                                        <DropdownDescription>{t("description.delete-menu")}</DropdownDescription>
+                                    </DropdownItem>
+                                )}
                             </DropdownMenu>
                         </Dropdown>
                     }
@@ -357,18 +400,22 @@ function RouteComponent() {
                             <Tab href={"/decks/$deckUuid/cards"} params={{ deckUuid }} data-deck-pile={true}>
                                 {t("heading.cards")}
                             </Tab>
-                            <Tab href={"/decks/$deckUuid/sourcing"} params={{ deckUuid }}>
-                                {t("label.sourcing")}
-                            </Tab>
+                            {rights.owner && (
+                                <Tab href={"/decks/$deckUuid/sourcing"} params={{ deckUuid }}>
+                                    {t("label.sourcing")}
+                                </Tab>
+                            )}
                             <Tab href={"/decks/$deckUuid/statistics"} params={{ deckUuid }}>
                                 {t("heading.statistics")}
                             </Tab>
                             <Tab href={"/decks/$deckUuid/goldfish"} params={{ deckUuid }}>
                                 {t("heading.goldfish")}
                             </Tab>
-                            <Tab href={"/decks/$deckUuid/history"} params={{ deckUuid }}>
-                                {t("heading.history")}
-                            </Tab>
+                            {rights.owner && (
+                                <Tab href={"/decks/$deckUuid/history"} params={{ deckUuid }}>
+                                    {t("heading.history")}
+                                </Tab>
+                            )}
                             {/* Opinions live behind their own tab, and only where
                                 the graph has any: the advisor reads Commander. */}
                             {deck.format === "commander" && (
@@ -402,6 +449,23 @@ function RouteComponent() {
                     description={t("description.share-link")}
                     onClose={() => setSharing(false)}
                     onChanged={() => router.invalidate()}
+                />
+
+                {/* The owner manages the Collaborators, an Editor reads who they are */}
+                <DeckCollaboratorsDialog
+                    deckUuid={collaborating && rights.owner ? deckUuid : null}
+                    onClose={() => setCollaborating(false)}
+                />
+
+                <DeckCollaboratorListDialog
+                    deckUuid={collaborating && !rights.owner ? deckUuid : null}
+                    onClose={() => setCollaborating(false)}
+                />
+
+                <DeckLeaveDialog
+                    deck={leaving ? { uuid: deckUuid, name: deck.name } : null}
+                    onClose={() => setLeaving(false)}
+                    onLeft={() => navigate({ to: "/decks" })}
                 />
 
                 {/* While the commander decides the colours, they arrive from

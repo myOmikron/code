@@ -227,54 +227,119 @@ impl DeckSummary {
         tx: &mut Transaction,
         account: AccountUuid,
     ) -> Result<HashMap<DeckUuid, DeckSummary>, rorm::Error> {
-        let counts = "SELECT c.deck AS deck,                     COALESCE(SUM(c.quantity), 0)::bigint AS cards,                     COALESCE(SUM(CASE WHEN c.proxy THEN 0 ELSE c.quantity * COALESCE(p.price_eur, 0) END), 0)::bigint AS price              FROM deckcard c              JOIN deck d ON d.uuid = c.deck              LEFT JOIN printing p ON p.id = c.printing              WHERE d.owner = $1 AND c.zone IN ('Main', 'Commander')              GROUP BY c.deck"
-            .to_string();
-
-        let rows = (&mut *tx)
-            .execute::<All>(counts, vec![Value::Uuid(account.into_inner())])
-            .await?;
-
-        let mut summaries: HashMap<DeckUuid, DeckSummary> = HashMap::new();
-        for row in rows {
-            let decode =
-                |error: rorm::db::row::RowError<'_>| rorm::Error::RowError(error.into_owned());
-            let deck = DeckUuid::from_uuid(row.get("deck").map_err(decode)?);
-            summaries.insert(
-                deck,
-                DeckSummary {
-                    cards: row.get("cards").map_err(decode)?,
-                    price_eur: row.get("price").map_err(decode)?,
-                    commanders: Vec::new(),
-                },
-            );
-        }
-
-        let commanders = "SELECT c.deck AS deck, p.name, p.image_small, p.image_normal, p.image_art_crop, p.color_identity            FROM deckcard c              JOIN deck d ON d.uuid = c.deck              JOIN printing p ON p.id = c.printing              WHERE d.owner = $1 AND c.zone = 'Commander'              ORDER BY c.uuid ASC"
-            .to_string();
-
-        let rows = (&mut *tx)
-            .execute::<All>(commanders, vec![Value::Uuid(account.into_inner())])
-            .await?;
-
-        for row in rows {
-            let decode =
-                |error: rorm::db::row::RowError<'_>| rorm::Error::RowError(error.into_owned());
-            let deck = DeckUuid::from_uuid(row.get("deck").map_err(decode)?);
-            summaries
-                .entry(deck)
-                .or_default()
-                .commanders
-                .push(DeckCommander {
-                    name: row.get("name").map_err(decode)?,
-                    image_small: row.get("image_small").map_err(decode)?,
-                    image_normal: row.get("image_normal").map_err(decode)?,
-                    image_art_crop: row.get("image_art_crop").map_err(decode)?,
-                    color_identity: row.get("color_identity").map_err(decode)?,
-                });
-        }
-
-        Ok(summaries)
+        read_summaries(tx, account, SummaryScope::Owned).await
     }
+
+    /// Read the summary of every deck other Accounts named `account` on, keyed by the deck
+    ///
+    /// The price counts proxies like real cards, so it tells a Collaborator no
+    /// more about the owner's shelf than the redacted proxy flag does.
+    #[instrument(name = "DeckSummary::read_shared_with", skip(tx))]
+    pub async fn read_shared_with(
+        tx: &mut Transaction,
+        account: AccountUuid,
+    ) -> Result<HashMap<DeckUuid, DeckSummary>, rorm::Error> {
+        read_summaries(tx, account, SummaryScope::SharedWith).await
+    }
+}
+
+/// Which decks of an account a summary read covers
+#[derive(Copy, Clone, Debug)]
+enum SummaryScope {
+    /// The decks the account owns
+    Owned,
+    /// The decks the account is a Collaborator on
+    SharedWith,
+}
+
+impl SummaryScope {
+    /// The joins and the condition that select the decks, `$1` being the account
+    fn decks(self) -> &'static str {
+        match self {
+            Self::Owned => "WHERE d.owner = $1",
+            Self::SharedWith => "JOIN deck_collaborator k ON k.deck = d.uuid WHERE k.account = $1",
+        }
+    }
+
+    /// What one slot adds to the deck's price
+    fn price(self) -> &'static str {
+        match self {
+            Self::Owned => {
+                "CASE WHEN c.proxy THEN 0 ELSE c.quantity * COALESCE(p.price_eur, 0) END"
+            }
+            Self::SharedWith => "c.quantity * COALESCE(p.price_eur, 0)",
+        }
+    }
+}
+
+/// Read the summaries of the decks `scope` selects for `account`
+async fn read_summaries(
+    tx: &mut Transaction,
+    account: AccountUuid,
+    scope: SummaryScope,
+) -> Result<HashMap<DeckUuid, DeckSummary>, rorm::Error> {
+    let counts = format!(
+        "SELECT c.deck AS deck, \
+                COALESCE(SUM(c.quantity), 0)::bigint AS cards, \
+                COALESCE(SUM({price}), 0)::bigint AS price \
+         FROM deckcard c \
+         JOIN deck d ON d.uuid = c.deck \
+         LEFT JOIN printing p ON p.id = c.printing \
+         {decks} AND c.zone IN ('Main', 'Commander') \
+         GROUP BY c.deck",
+        price = scope.price(),
+        decks = scope.decks(),
+    );
+
+    let rows = (&mut *tx)
+        .execute::<All>(counts, vec![Value::Uuid(account.into_inner())])
+        .await?;
+
+    let mut summaries: HashMap<DeckUuid, DeckSummary> = HashMap::new();
+    for row in rows {
+        let decode = |error: rorm::db::row::RowError<'_>| rorm::Error::RowError(error.into_owned());
+        let deck = DeckUuid::from_uuid(row.get("deck").map_err(decode)?);
+        summaries.insert(
+            deck,
+            DeckSummary {
+                cards: row.get("cards").map_err(decode)?,
+                price_eur: row.get("price").map_err(decode)?,
+                commanders: Vec::new(),
+            },
+        );
+    }
+
+    let commanders = format!(
+        "SELECT c.deck AS deck, p.name, p.image_small, p.image_normal, p.image_art_crop, p.color_identity \
+         FROM deckcard c \
+         JOIN deck d ON d.uuid = c.deck \
+         JOIN printing p ON p.id = c.printing \
+         {decks} AND c.zone = 'Commander' \
+         ORDER BY c.uuid ASC",
+        decks = scope.decks(),
+    );
+
+    let rows = (&mut *tx)
+        .execute::<All>(commanders, vec![Value::Uuid(account.into_inner())])
+        .await?;
+
+    for row in rows {
+        let decode = |error: rorm::db::row::RowError<'_>| rorm::Error::RowError(error.into_owned());
+        let deck = DeckUuid::from_uuid(row.get("deck").map_err(decode)?);
+        summaries
+            .entry(deck)
+            .or_default()
+            .commanders
+            .push(DeckCommander {
+                name: row.get("name").map_err(decode)?,
+                image_small: row.get("image_small").map_err(decode)?,
+                image_normal: row.get("image_normal").map_err(decode)?,
+                image_art_crop: row.get("image_art_crop").map_err(decode)?,
+                color_identity: row.get("color_identity").map_err(decode)?,
+            });
+    }
+
+    Ok(summaries)
 }
 
 /// Every local or card-wide global tag visible on a deck, grouped by slot

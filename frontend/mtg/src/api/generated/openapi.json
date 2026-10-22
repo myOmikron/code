@@ -3434,8 +3434,8 @@
         },
         "/api/frontend/v1/decks/{deck}": {
             "get": {
-                "summary": "Fetch a single deck",
-                "description": "Fetch a single deck",
+                "summary": "Fetch a single deck, with the caller's role on it",
+                "description": "Fetch a single deck, with the caller's role on it\n\nOnly the owner gets its share link and folder.",
                 "operationId": "get_deck",
                 "parameters": [
                     {
@@ -3908,7 +3908,7 @@
         "/api/frontend/v1/decks/{deck}/advisor-settings": {
             "get": {
                 "summary": "Read this deck's advisor settings",
-                "description": "Read this deck's advisor settings\n\nA deck nobody has advised yet still answers: the document at its\ndefaults, not a 404. The 404 is reserved for a deck this account does not\nown.",
+                "description": "Read this deck's advisor settings\n\nA deck nobody has advised yet still answers: the document at its\ndefaults, not a 404. The 404 is reserved for a deck this account may not\nedit.",
                 "operationId": "get_deck_advisor_settings",
                 "parameters": [
                     {
@@ -4702,7 +4702,7 @@
         "/api/frontend/v1/decks/{deck}/cards": {
             "get": {
                 "summary": "Every card of a deck, with the catalog data and the tags on it",
-                "description": "Every card of a deck, with the catalog data and the tags on it\n\nThe whole deck in one answer: a hundred slots are not worth paging, and the\nclient groups and sorts them however the list is being looked at.",
+                "description": "Every card of a deck, with the catalog data and the tags on it\n\nThe whole deck in one answer: a hundred slots are not worth paging, and the\nclient groups and sorts them however the list is being looked at. A\nCollaborator gets it the way the Share link shows it, see [`redact_slot`].",
                 "operationId": "list_deck_cards",
                 "parameters": [
                     {
@@ -4762,7 +4762,7 @@
             },
             "post": {
                 "summary": "Put a card into a deck",
-                "description": "Put a card into a deck\n\nCopies joining an alike Deck entry (same printing, zone, finish and proxy\nstatus) raise its count instead of opening a second line beside it. The\nanswer is the entry's bookkeeping fields either way; catalog data and tags\ncome from the list endpoint.",
+                "description": "Put a card into a deck\n\nCopies joining an alike Deck entry (same printing, zone, finish and proxy\nstatus) raise its count instead of opening a second line beside it. The\nanswer is the entry's bookkeeping fields either way; catalog data and tags\ncome from the list endpoint. Only the owner adds proxies, see\n[`DeckGrant::proxy`].",
                 "operationId": "add_deck_card",
                 "parameters": [
                     {
@@ -5029,7 +5029,7 @@
             },
             "patch": {
                 "summary": "Change a Deck entry: its count, its zone or the print it sleeves",
-                "description": "Change a Deck entry: its count, its zone or the print it sleeves\n\nAn entry made alike to another one merges into it, and a count of zero\nremoves it.",
+                "description": "Change a Deck entry: its count, its zone or the print it sleeves\n\nAn entry made alike to another one merges into it, and a count of zero\nremoves it. A Collaborator's change leaves the proxy flag as it is, see\n[`DeckGrant::proxy`].",
                 "operationId": "update_deck_card",
                 "parameters": [
                     {
@@ -5185,7 +5185,7 @@
         "/api/frontend/v1/decks/{deck}/tags": {
             "post": {
                 "summary": "Create a tag on a deck",
-                "description": "Create a tag on a deck",
+                "description": "Create a tag on a deck\n\nThe tag is the owner's, whoever creates it. An Editor only creates tags\nlocal to this deck: a global one reaches every deck of the owner.",
                 "operationId": "create_deck_tag",
                 "parameters": [
                     {
@@ -5256,7 +5256,7 @@
         "/api/frontend/v1/decks/{deck}/tags/{tag}": {
             "put": {
                 "summary": "Rename a tag, change its marker or move its scope",
-                "description": "Rename a tag, change its marker or move its scope",
+                "description": "Rename a tag, change its marker or move its scope\n\nAn Editor only changes a tag local to this deck and keeps it there.",
                 "operationId": "update_deck_tag",
                 "parameters": [
                     {
@@ -5332,7 +5332,7 @@
             },
             "delete": {
                 "summary": "Delete a tag, taking it off every card it sat on",
-                "description": "Delete a tag, taking it off every card it sat on",
+                "description": "Delete a tag, taking it off every card it sat on\n\nAn Editor only deletes a tag local to this deck.",
                 "operationId": "delete_deck_tag",
                 "parameters": [
                     {
@@ -5401,7 +5401,7 @@
         "/api/frontend/v1/decks/{deck}/cards/{card}/tags/{tag}": {
             "post": {
                 "summary": "Put a tag on a card",
-                "description": "Put a tag on a card",
+                "description": "Put a tag on a card\n\nAn Editor only puts on tags local to this deck: a global one would tag the\ncard on every deck of the owner.",
                 "operationId": "assign_deck_card_tag",
                 "parameters": [
                     {
@@ -5477,7 +5477,7 @@
             },
             "delete": {
                 "summary": "Take a tag off a card",
-                "description": "Take a tag off a card",
+                "description": "Take a tag off a card\n\nAn Editor only takes off tags local to this deck, as with putting one on.",
                 "operationId": "unassign_deck_card_tag",
                 "parameters": [
                     {
@@ -5999,6 +5999,324 @@
                         "required": true,
                         "schema": {
                             "$ref": "#/components/schemas/DeckChangeUuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "nullable": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/decks/shared-with-me": {
+            "get": {
+                "summary": "The decks other Accounts named the caller on, alphabetically by name",
+                "description": "The decks other Accounts named the caller on, alphabetically by name\n\n\"Shared with me\": never filed into the caller's folders, which hold only\nthe caller's own decks.",
+                "operationId": "get_decks_shared_with_me",
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ListSharedWithMeResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/decks/{deck}/leave": {
+            "post": {
+                "summary": "Take oneself off a deck another Account named one on",
+                "description": "Take oneself off a deck another Account named one on\n\nThe deck leaves \"Shared with me\" and its access ends with the next request.\nIts owner cannot leave it.",
+                "operationId": "leave_deck",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "deck",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Deck`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "nullable": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/decks/{deck}/collaborators": {
+            "get": {
+                "summary": "The Collaborators of a deck, alphabetically by username",
+                "description": "The Collaborators of a deck, alphabetically by username\n\nThe owner and every Collaborator read it.",
+                "operationId": "list_deck_collaborators",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "deck",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Deck`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ListDeckCollaboratorsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "summary": "Name an Account on a deck by its username, or change the level it is named at",
+                "description": "Name an Account on a deck by its username, or change the level it is named at\n\nNaming an Account that is already on the deck changes its level, so it is\non the deck once. The owner and the Tombstone cannot be named.",
+                "operationId": "put_deck_collaborator",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "deck",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Deck`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PutDeckCollaboratorRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "$ref": "#/components/schemas/DeckCollaboratorResponse"
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/FormErrorResponse_for_PutDeckCollaboratorErrors"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/decks/{deck}/collaborators/{account}": {
+            "delete": {
+                "summary": "Take an Account off a deck",
+                "description": "Take an Account off a deck\n\nIt loses its access with the next request it makes.",
+                "operationId": "remove_deck_collaborator",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "deck",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/DeckUuid"
+                        },
+                        "style": "simple"
+                    },
+                    {
+                        "in": "path",
+                        "name": "account",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/AccountUuid"
                         },
                         "style": "simple"
                     }
@@ -10707,6 +11025,25 @@
                     "username"
                 ]
             },
+            "CollaboratorLevel": {
+                "description": "What the owner lets a Collaborator do with the deck",
+                "oneOf": [
+                    {
+                        "description": "Looks at the deck the way its Share link shows it",
+                        "type": "string",
+                        "enum": [
+                            "Viewer"
+                        ]
+                    },
+                    {
+                        "description": "Also builds the deck as a decklist",
+                        "type": "string",
+                        "enum": [
+                            "Editor"
+                        ]
+                    }
+                ]
+            },
             "CollectionEntryResponse": {
                 "description": "One stack of identical cards in a collection",
                 "type": "object",
@@ -11706,7 +12043,7 @@
                 "format": "uuid"
             },
             "DeckChangeKind": {
-                "description": "What the owner did in a Deck change",
+                "description": "What the owner or an Editor did in a Deck change",
                 "oneOf": [
                     {
                         "description": "The deck was created, empty",
@@ -11840,7 +12177,7 @@
                         }
                     },
                     "kind": {
-                        "description": "What the owner did",
+                        "description": "What the owner or an Editor did",
                         "allOf": [
                             {
                                 "$ref": "#/components/schemas/DeckChangeKind"
@@ -11882,6 +12219,37 @@
                 "description": "Wrapper for the primary key of a Deck change",
                 "type": "string",
                 "format": "uuid"
+            },
+            "DeckCollaboratorResponse": {
+                "description": "One Account named on a deck",
+                "type": "object",
+                "properties": {
+                    "account": {
+                        "description": "The Account, which is what removing it names",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/AccountUuid"
+                            }
+                        ]
+                    },
+                    "level": {
+                        "description": "What the owner lets it do",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CollaboratorLevel"
+                            }
+                        ]
+                    },
+                    "username": {
+                        "description": "The Account's username as it is now",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "account",
+                    "level",
+                    "username"
+                ]
             },
             "DeckCommanderResponse": {
                 "description": "One commander at the head of a deck",
@@ -12273,7 +12641,7 @@
                 ]
             },
             "DeckResponse": {
-                "description": "A deck as its owner sees it",
+                "description": "A deck as its owner sees it\n\nAnybody else gets it without the owner's share link and folder.",
                 "type": "object",
                 "properties": {
                     "allow_banned": {
@@ -12359,6 +12727,15 @@
                             }
                         ]
                     },
+                    "role": {
+                        "nullable": true,
+                        "description": "The caller's role on the deck, `null` when only its Visibility shows it to them",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DeckRole"
+                            }
+                        ]
+                    },
                     "share_token": {
                         "nullable": true,
                         "description": "Secret of the share link, `null` once the link is revoked",
@@ -12396,6 +12773,32 @@
                     "name",
                     "uuid",
                     "visibility"
+                ]
+            },
+            "DeckRole": {
+                "description": "The caller's standing on one deck",
+                "oneOf": [
+                    {
+                        "description": "The account the deck belongs to",
+                        "type": "string",
+                        "enum": [
+                            "Owner"
+                        ]
+                    },
+                    {
+                        "description": "A Collaborator who helps build the deck",
+                        "type": "string",
+                        "enum": [
+                            "Editor"
+                        ]
+                    },
+                    {
+                        "description": "A Collaborator who only looks at the deck",
+                        "type": "string",
+                        "enum": [
+                            "Viewer"
+                        ]
+                    }
                 ]
             },
             "DeckSettingsResponse": {
@@ -13572,6 +13975,32 @@
                     "result"
                 ]
             },
+            "FormErrorResponse_for_PutDeckCollaboratorErrors": {
+                "description": "The response that is sent in a case of an error the caller should present his user",
+                "type": "object",
+                "properties": {
+                    "error": {
+                        "description": "The actual error struct",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/PutDeckCollaboratorErrors"
+                            }
+                        ]
+                    },
+                    "result": {
+                        "description": "A constant `\"Err\"` used to differentiate this schema from any other \"Ok\" schema",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ErrorConstant"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "error",
+                    "result"
+                ]
+            },
             "FormErrorResponse_for_RegistrationErrors": {
                 "description": "The response that is sent in a case of an error the caller should present his user",
                 "type": "object",
@@ -13964,6 +14393,22 @@
                     "tags"
                 ]
             },
+            "ListDeckCollaboratorsResponse": {
+                "description": "The Collaborators of a deck, alphabetically by username",
+                "type": "object",
+                "properties": {
+                    "collaborators": {
+                        "description": "The Collaborators",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/DeckCollaboratorResponse"
+                        }
+                    }
+                },
+                "required": [
+                    "collaborators"
+                ]
+            },
             "ListDeckFoldersResponse": {
                 "description": "Every folder an account keeps",
                 "type": "object",
@@ -14082,6 +14527,22 @@
                 },
                 "required": [
                     "sessions"
+                ]
+            },
+            "ListSharedWithMeResponse": {
+                "description": "The decks other Accounts named the caller on, alphabetically by name",
+                "type": "object",
+                "properties": {
+                    "decks": {
+                        "description": "The decks",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/SharedWithMeDeckResponse"
+                        }
+                    }
+                },
+                "required": [
+                    "decks"
                 ]
             },
             "ListWatchListAlarmsResponse": {
@@ -15254,6 +15715,50 @@
                     "username"
                 ]
             },
+            "PutDeckCollaboratorErrors": {
+                "description": "Why an Account could not be named on a deck",
+                "type": "object",
+                "properties": {
+                    "own_account": {
+                        "description": "The username is the caller's own, which owns the deck",
+                        "type": "boolean"
+                    },
+                    "unknown_username": {
+                        "description": "No Account goes by this username",
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "own_account",
+                    "unknown_username"
+                ]
+            },
+            "PutDeckCollaboratorRequest": {
+                "description": "Request to name an Account on a deck, or to change its level",
+                "type": "object",
+                "properties": {
+                    "level": {
+                        "description": "What the owner lets it do",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CollaboratorLevel"
+                            }
+                        ]
+                    },
+                    "username": {
+                        "description": "Username of the Account, case ignored",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_255"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "level",
+                    "username"
+                ]
+            },
             "RarityCountsResponse": {
                 "description": "Copies per rarity in a collection",
                 "type": "object",
@@ -16313,6 +16818,37 @@
                     "format",
                     "name",
                     "owner"
+                ]
+            },
+            "SharedWithMeDeckResponse": {
+                "description": "A deck another Account named the caller on",
+                "type": "object",
+                "properties": {
+                    "level": {
+                        "description": "What the owner lets the caller do",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CollaboratorLevel"
+                            }
+                        ]
+                    },
+                    "overview": {
+                        "description": "The deck as the list of decks shows it, without the owner's share link and folder",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DeckOverviewResponse"
+                            }
+                        ]
+                    },
+                    "owner_username": {
+                        "description": "The owner's username as it is now",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "level",
+                    "overview",
+                    "owner_username"
                 ]
             },
             "SignupErrors": {

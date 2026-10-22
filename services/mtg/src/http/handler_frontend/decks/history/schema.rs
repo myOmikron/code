@@ -60,7 +60,7 @@ pub struct DeckUndoResponse {
 pub struct DeckChangeResponse {
     /// Primary key
     pub uuid: DeckChangeUuid,
-    /// What the owner did
+    /// What the owner or an Editor did
     pub kind: DeckChangeKind,
     /// When it happened
     pub changed_at: SchemaDateTime,

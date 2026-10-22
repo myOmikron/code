@@ -9,7 +9,7 @@
  */
 
 import { useTranslation } from "react-i18next";
-import type { DeckZone, FormatRulesResponse } from "src/api/generated";
+import type { CollaboratorLevel, DeckZone, FormatRulesResponse } from "src/api/generated";
 import type { DeckGrouping, DeckSort } from "src/utils/deck-grouping";
 import type { HouseRule } from "src/utils/deck-rules";
 import type { Translate } from "src/utils/translate";
@@ -116,6 +116,16 @@ export function useDeckLabels() {
          * @returns the label
          */
         houseRule: (rule: HouseRule): string => houseRuleName(t, rule),
+
+        /**
+         * What a Collaborator level is called
+         *
+         * @param level the level
+         *
+         * @returns its name
+         */
+        collaboratorLevel: (level: CollaboratorLevel): string =>
+            level === "Editor" ? t("label.collaborator-editor") : t("label.collaborator-viewer"),
     };
 }
 

@@ -13,6 +13,7 @@ use crate::models::deck::DeckZone;
 use crate::models::deck::advisor::DeckTargets;
 use crate::models::deck::advisor::MarkedCard;
 use crate::models::deck::advisor::ThemePrefs;
+use crate::models::deck::collaborator::CollaboratorLevel;
 use crate::models::deck::folder::DeckFolderKind;
 use crate::models::visibility::Visibility;
 
@@ -447,4 +448,54 @@ pub struct DeckAdvisorSettingsInsertPatch {
     pub kept: Json<Vec<MarkedCard>>,
     /// Whether the reader has been through the advisor's questions
     pub setup_done: bool,
+}
+
+/// An Account the owner named on one of their decks
+///
+/// The primary key is derived from the deck and the Account, see
+/// [`collaborator_key`], so a deck holds each Account at most once by the key
+/// itself.
+#[derive(Model, Debug)]
+#[rorm(rename = "deck_collaborator")]
+pub struct DeckCollaboratorModel {
+    /// Primary key, [`collaborator_key`] of the deck and the Account
+    #[rorm(primary_key)]
+    pub uuid: Uuid,
+
+    /// The deck the Account is named on
+    #[rorm(index, on_update = "Cascade", on_delete = "Cascade")]
+    pub deck: ForeignModel<DeckModel>,
+
+    /// The Account named on the deck
+    #[rorm(index, on_update = "Cascade", on_delete = "Cascade")]
+    pub account: ForeignModel<AccountModel>,
+
+    /// Whether the Account only looks at the deck or also builds it
+    pub level: CollaboratorLevel,
+
+    /// The point in time the Account was named on the deck
+    #[rorm(auto_create_time)]
+    pub created_at: OffsetDateTime,
+}
+
+/// Insert patch for [`DeckCollaboratorModel`]
+#[derive(Patch)]
+#[rorm(model = "DeckCollaboratorModel")]
+pub struct DeckCollaboratorInsertPatch {
+    /// Primary key, [`collaborator_key`] of the deck and the Account
+    pub uuid: Uuid,
+    /// The deck the Account is named on
+    pub deck: ForeignModel<DeckModel>,
+    /// The Account named on the deck
+    pub account: ForeignModel<AccountModel>,
+    /// Whether the Account only looks at the deck or also builds it
+    pub level: CollaboratorLevel,
+}
+
+/// The primary key of the Collaborator row naming `account` on `deck`
+///
+/// A name-based uuid in the deck's namespace: the same pair always gives the
+/// same key, so naming an Account twice on a deck collides on the primary key.
+pub fn collaborator_key(deck: Uuid, account: Uuid) -> Uuid {
+    Uuid::new_v3(&deck, account.as_bytes())
 }

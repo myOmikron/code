@@ -92,18 +92,18 @@ export type DeckHeaderBarProps = {
     onFocus: (focus: CardFocus) => void;
     /** Shows every card again */
     onClearFocus: () => void;
-    /** Opens the tag manager */
-    onManageTags: () => void;
+    /** Opens the tag manager; absent for a reader who may not change tags */
+    onManageTags?: () => void;
     /** Records a claimed bracket */
     onChangeBracket: (bracket: number | null) => void;
     /** Whether there is a Deck change to undo */
     canUndo: boolean;
     /** Whether there is an undone Deck change to redo */
     canRedo: boolean;
-    /** Takes back the latest Deck change */
-    onUndo: () => void;
-    /** Applies the latest undone Deck change again */
-    onRedo: () => void;
+    /** Takes back the latest Deck change; absent for a reader without the Deck history */
+    onUndo?: () => void;
+    /** Applies the latest undone Deck change again; absent for a reader without the Deck history */
+    onRedo?: () => void;
     /** The bar itself, for a page that has to know how much room it takes */
     ref?: Ref<HTMLDivElement>;
     /** The search field, so its keyboard shortcut can focus it */
@@ -356,26 +356,30 @@ export function DeckHeaderBar({
                         "ml-auto flex w-full basis-full flex-wrap items-center justify-end gap-2 sm:w-auto sm:flex-none sm:basis-auto sm:flex-nowrap"
                     }
                 >
-                    <button
-                        type={"button"}
-                        onClick={onUndo}
-                        disabled={!canUndo}
-                        aria-label={tg("button.undo")}
-                        title={tg("button.undo")}
-                        className={STEP_BUTTON}
-                    >
-                        <ArrowUturnLeftIcon className={"size-5"} />
-                    </button>
-                    <button
-                        type={"button"}
-                        onClick={onRedo}
-                        disabled={!canRedo}
-                        aria-label={tg("button.redo")}
-                        title={tg("button.redo")}
-                        className={STEP_BUTTON}
-                    >
-                        <ArrowUturnRightIcon className={"size-5"} />
-                    </button>
+                    {onUndo !== undefined && (
+                        <button
+                            type={"button"}
+                            onClick={onUndo}
+                            disabled={!canUndo}
+                            aria-label={tg("button.undo")}
+                            title={tg("button.undo")}
+                            className={STEP_BUTTON}
+                        >
+                            <ArrowUturnLeftIcon className={"size-5"} />
+                        </button>
+                    )}
+                    {onRedo !== undefined && (
+                        <button
+                            type={"button"}
+                            onClick={onRedo}
+                            disabled={!canRedo}
+                            aria-label={tg("button.redo")}
+                            title={tg("button.redo")}
+                            className={STEP_BUTTON}
+                        >
+                            <ArrowUturnRightIcon className={"size-5"} />
+                        </button>
+                    )}
                     <button
                         type={"button"}
                         onClick={onOpenSearch}
@@ -390,17 +394,19 @@ export function DeckHeaderBar({
                     >
                         <MagnifyingGlassIcon className={"size-5"} />
                     </button>
-                    <button
-                        type={"button"}
-                        onClick={onManageTags}
-                        aria-label={t("button.manage-tags")}
-                        title={t("button.manage-tags")}
-                        className={
-                            "shrink-0 rounded-(--radius-control) p-1.5 text-zinc-500 transition hover:bg-lime-400/15 hover:text-lime-700 dark:text-zinc-400 dark:hover:bg-lime-400/15 dark:hover:text-lime-300 pointer-coarse:p-2.5"
-                        }
-                    >
-                        <TagIcon className={"size-5"} />
-                    </button>
+                    {onManageTags !== undefined && (
+                        <button
+                            type={"button"}
+                            onClick={onManageTags}
+                            aria-label={t("button.manage-tags")}
+                            title={t("button.manage-tags")}
+                            className={
+                                "shrink-0 rounded-(--radius-control) p-1.5 text-zinc-500 transition hover:bg-lime-400/15 hover:text-lime-700 dark:text-zinc-400 dark:hover:bg-lime-400/15 dark:hover:text-lime-300 pointer-coarse:p-2.5"
+                            }
+                        >
+                            <TagIcon className={"size-5"} />
+                        </button>
+                    )}
                     <DeckViewControls
                         view={view}
                         grouping={grouping}

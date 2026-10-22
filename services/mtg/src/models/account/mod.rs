@@ -595,8 +595,8 @@ impl Account {
     /// the tombstone; [`DeletionMode::Full`] takes the public decks as well.
     /// The account goes by deleting its identity, and everything else it owns
     /// goes with it through the cascades on the foreign keys: passkeys,
-    /// registration links, collections, watch lists, folders, tags, and every
-    /// deck it did not put on show.
+    /// registration links, collections, watch lists, folders, tags, its places
+    /// as a Collaborator on other decks, and every deck it did not put on show.
     ///
     /// Returns `false` if the account does not exist.
     #[instrument(name = "Account::delete", skip(tx))]

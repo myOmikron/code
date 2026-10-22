@@ -41,6 +41,7 @@ import { Route as MenuWatchListsIndexRouteImport } from './routes/_menu/watch-li
 import { Route as MenuWatchListsWatchListUuidRouteImport } from './routes/_menu/watch-lists/$watchListUuid'
 import { Route as MenuAdminAccountsIndexRouteImport } from './routes/_menu/admin/accounts/index'
 import { Route as MenuAdminAccountsAccountUuidRouteImport } from './routes/_menu/admin/accounts/$accountUuid'
+import { Route as MenuCollaboratingDeckUuidDeckRouteImport } from './routes/_menu/collaborating/$deckUuid/_deck'
 import { Route as MenuCollectionsCollectionUuidCollectionRouteImport } from './routes/_menu/collections/$collectionUuid/_collection'
 import { Route as MenuDecksDeckUuidDeckRouteImport } from './routes/_menu/decks/$deckUuid/_deck'
 import { Route as MenuGlobalDecksIndexRouteImport } from './routes/_menu/global/decks/index'
@@ -51,6 +52,9 @@ import { Route as MenuProfileProfileSettingsRouteImport } from './routes/_menu/p
 import { Route as MenuScanStagedSessionUuidRouteImport } from './routes/_menu/scan/staged/$sessionUuid'
 import { Route as CollectScanScanLiveIndexRouteImport } from './routes/_collect/_scan/scan/live/index'
 import { Route as CollectScanScanLiveSessionUuidRouteImport } from './routes/_collect/_scan/scan/live/$sessionUuid'
+import { Route as MenuCollaboratingDeckUuidDeckIndexRouteImport } from './routes/_menu/collaborating/$deckUuid/_deck/index'
+import { Route as MenuCollaboratingDeckUuidDeckCardsRouteImport } from './routes/_menu/collaborating/$deckUuid/_deck/cards'
+import { Route as MenuCollaboratingDeckUuidDeckStatisticsRouteImport } from './routes/_menu/collaborating/$deckUuid/_deck/statistics'
 import { Route as MenuCollectionsCollectionUuidCollectionIndexRouteImport } from './routes/_menu/collections/$collectionUuid/_collection/index'
 import { Route as MenuCollectionsCollectionUuidCollectionCardsRouteImport } from './routes/_menu/collections/$collectionUuid/_collection/cards'
 import { Route as MenuCollectionsCollectionUuidCollectionOnLoanRouteImport } from './routes/_menu/collections/$collectionUuid/_collection/on-loan'
@@ -241,6 +245,12 @@ const MenuAdminAccountsAccountUuidRoute =
     path: '/accounts/$accountUuid',
     getParentRoute: () => MenuAdminRoute,
   } as any)
+const MenuCollaboratingDeckUuidDeckRoute =
+  MenuCollaboratingDeckUuidDeckRouteImport.update({
+    id: '/collaborating/$deckUuid/_deck',
+    path: '/collaborating/$deckUuid',
+    getParentRoute: () => MenuRoute,
+  } as any)
 const MenuCollectionsCollectionUuidCollectionRoute =
   MenuCollectionsCollectionUuidCollectionRouteImport.update({
     id: '/collections/$collectionUuid/_collection',
@@ -297,6 +307,24 @@ const CollectScanScanLiveSessionUuidRoute =
     id: '/scan/live/$sessionUuid',
     path: '/scan/live/$sessionUuid',
     getParentRoute: () => CollectScanRoute,
+  } as any)
+const MenuCollaboratingDeckUuidDeckIndexRoute =
+  MenuCollaboratingDeckUuidDeckIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => MenuCollaboratingDeckUuidDeckRoute,
+  } as any)
+const MenuCollaboratingDeckUuidDeckCardsRoute =
+  MenuCollaboratingDeckUuidDeckCardsRouteImport.update({
+    id: '/cards',
+    path: '/cards',
+    getParentRoute: () => MenuCollaboratingDeckUuidDeckRoute,
+  } as any)
+const MenuCollaboratingDeckUuidDeckStatisticsRoute =
+  MenuCollaboratingDeckUuidDeckStatisticsRouteImport.update({
+    id: '/statistics',
+    path: '/statistics',
+    getParentRoute: () => MenuCollaboratingDeckUuidDeckRoute,
   } as any)
 const MenuCollectionsCollectionUuidCollectionIndexRoute =
   MenuCollectionsCollectionUuidCollectionIndexRouteImport.update({
@@ -496,6 +524,7 @@ export interface FileRoutesByFullPath {
   '/scan/': typeof MenuScanIndexRoute
   '/watch-lists/': typeof MenuWatchListsIndexRoute
   '/admin/accounts/$accountUuid': typeof MenuAdminAccountsAccountUuidRoute
+  '/collaborating/$deckUuid': typeof MenuCollaboratingDeckUuidDeckRouteWithChildren
   '/collections/$collectionUuid': typeof MenuCollectionsCollectionUuidCollectionRouteWithChildren
   '/decks/$deckUuid': typeof MenuDecksDeckUuidDeckRouteWithChildren
   '/global/profiles/$username': typeof MenuGlobalProfilesUsernameRoute
@@ -506,6 +535,8 @@ export interface FileRoutesByFullPath {
   '/global/decks/': typeof MenuGlobalDecksIndexRoute
   '/profile/': typeof MenuProfileProfileIndexRoute
   '/scan/live/$sessionUuid': typeof CollectScanScanLiveSessionUuidRoute
+  '/collaborating/$deckUuid/cards': typeof MenuCollaboratingDeckUuidDeckCardsRoute
+  '/collaborating/$deckUuid/statistics': typeof MenuCollaboratingDeckUuidDeckStatisticsRoute
   '/collections/$collectionUuid/cards': typeof MenuCollectionsCollectionUuidCollectionCardsRoute
   '/collections/$collectionUuid/on-loan': typeof MenuCollectionsCollectionUuidCollectionOnLoanRoute
   '/collections/$collectionUuid/statistics': typeof MenuCollectionsCollectionUuidCollectionStatisticsRoute
@@ -519,6 +550,7 @@ export interface FileRoutesByFullPath {
   '/shared/collections/$token': typeof MenuSharedCollectionsTokenSharedRouteWithChildren
   '/shared/decks/$token': typeof MenuSharedDecksTokenSharedRouteWithChildren
   '/scan/live/': typeof CollectScanScanLiveIndexRoute
+  '/collaborating/$deckUuid/': typeof MenuCollaboratingDeckUuidDeckIndexRoute
   '/collections/$collectionUuid/': typeof MenuCollectionsCollectionUuidCollectionIndexRoute
   '/decks/$deckUuid/': typeof MenuDecksDeckUuidDeckIndexRoute
   '/decks/$deckUuid/history/$changeUuid': typeof MenuDecksDeckUuidDeckHistoryChangeUuidRoute
@@ -570,6 +602,8 @@ export interface FileRoutesByTo {
   '/global/decks': typeof MenuGlobalDecksIndexRoute
   '/profile': typeof MenuProfileProfileIndexRoute
   '/scan/live/$sessionUuid': typeof CollectScanScanLiveSessionUuidRoute
+  '/collaborating/$deckUuid/cards': typeof MenuCollaboratingDeckUuidDeckCardsRoute
+  '/collaborating/$deckUuid/statistics': typeof MenuCollaboratingDeckUuidDeckStatisticsRoute
   '/collections/$collectionUuid/cards': typeof MenuCollectionsCollectionUuidCollectionCardsRoute
   '/collections/$collectionUuid/on-loan': typeof MenuCollectionsCollectionUuidCollectionOnLoanRoute
   '/collections/$collectionUuid/statistics': typeof MenuCollectionsCollectionUuidCollectionStatisticsRoute
@@ -579,6 +613,7 @@ export interface FileRoutesByTo {
   '/decks/$deckUuid/sourcing': typeof MenuDecksDeckUuidDeckSourcingRoute
   '/decks/$deckUuid/statistics': typeof MenuDecksDeckUuidDeckStatisticsRoute
   '/scan/live': typeof CollectScanScanLiveIndexRoute
+  '/collaborating/$deckUuid': typeof MenuCollaboratingDeckUuidDeckIndexRoute
   '/collections/$collectionUuid': typeof MenuCollectionsCollectionUuidCollectionIndexRoute
   '/decks/$deckUuid': typeof MenuDecksDeckUuidDeckIndexRoute
   '/decks/$deckUuid/history/$changeUuid': typeof MenuDecksDeckUuidDeckHistoryChangeUuidRoute
@@ -629,6 +664,7 @@ export interface FileRoutesById {
   '/_menu/scan/': typeof MenuScanIndexRoute
   '/_menu/watch-lists/': typeof MenuWatchListsIndexRoute
   '/_menu/admin/accounts/$accountUuid': typeof MenuAdminAccountsAccountUuidRoute
+  '/_menu/collaborating/$deckUuid/_deck': typeof MenuCollaboratingDeckUuidDeckRouteWithChildren
   '/_menu/collections/$collectionUuid/_collection': typeof MenuCollectionsCollectionUuidCollectionRouteWithChildren
   '/_menu/decks/$deckUuid/_deck': typeof MenuDecksDeckUuidDeckRouteWithChildren
   '/_menu/global/profiles/$username': typeof MenuGlobalProfilesUsernameRoute
@@ -639,6 +675,8 @@ export interface FileRoutesById {
   '/_menu/global/decks/': typeof MenuGlobalDecksIndexRoute
   '/_menu/profile/_profile/': typeof MenuProfileProfileIndexRoute
   '/_collect/_scan/scan/live/$sessionUuid': typeof CollectScanScanLiveSessionUuidRoute
+  '/_menu/collaborating/$deckUuid/_deck/cards': typeof MenuCollaboratingDeckUuidDeckCardsRoute
+  '/_menu/collaborating/$deckUuid/_deck/statistics': typeof MenuCollaboratingDeckUuidDeckStatisticsRoute
   '/_menu/collections/$collectionUuid/_collection/cards': typeof MenuCollectionsCollectionUuidCollectionCardsRoute
   '/_menu/collections/$collectionUuid/_collection/on-loan': typeof MenuCollectionsCollectionUuidCollectionOnLoanRoute
   '/_menu/collections/$collectionUuid/_collection/statistics': typeof MenuCollectionsCollectionUuidCollectionStatisticsRoute
@@ -652,6 +690,7 @@ export interface FileRoutesById {
   '/_menu/shared/collections/$token/_shared': typeof MenuSharedCollectionsTokenSharedRouteWithChildren
   '/_menu/shared/decks/$token/_shared': typeof MenuSharedDecksTokenSharedRouteWithChildren
   '/_collect/_scan/scan/live/': typeof CollectScanScanLiveIndexRoute
+  '/_menu/collaborating/$deckUuid/_deck/': typeof MenuCollaboratingDeckUuidDeckIndexRoute
   '/_menu/collections/$collectionUuid/_collection/': typeof MenuCollectionsCollectionUuidCollectionIndexRoute
   '/_menu/decks/$deckUuid/_deck/': typeof MenuDecksDeckUuidDeckIndexRoute
   '/_menu/decks/$deckUuid/_deck/history/$changeUuid': typeof MenuDecksDeckUuidDeckHistoryChangeUuidRoute
@@ -700,6 +739,7 @@ export interface FileRouteTypes {
     | '/scan/'
     | '/watch-lists/'
     | '/admin/accounts/$accountUuid'
+    | '/collaborating/$deckUuid'
     | '/collections/$collectionUuid'
     | '/decks/$deckUuid'
     | '/global/profiles/$username'
@@ -710,6 +750,8 @@ export interface FileRouteTypes {
     | '/global/decks/'
     | '/profile/'
     | '/scan/live/$sessionUuid'
+    | '/collaborating/$deckUuid/cards'
+    | '/collaborating/$deckUuid/statistics'
     | '/collections/$collectionUuid/cards'
     | '/collections/$collectionUuid/on-loan'
     | '/collections/$collectionUuid/statistics'
@@ -723,6 +765,7 @@ export interface FileRouteTypes {
     | '/shared/collections/$token'
     | '/shared/decks/$token'
     | '/scan/live/'
+    | '/collaborating/$deckUuid/'
     | '/collections/$collectionUuid/'
     | '/decks/$deckUuid/'
     | '/decks/$deckUuid/history/$changeUuid'
@@ -774,6 +817,8 @@ export interface FileRouteTypes {
     | '/global/decks'
     | '/profile'
     | '/scan/live/$sessionUuid'
+    | '/collaborating/$deckUuid/cards'
+    | '/collaborating/$deckUuid/statistics'
     | '/collections/$collectionUuid/cards'
     | '/collections/$collectionUuid/on-loan'
     | '/collections/$collectionUuid/statistics'
@@ -783,6 +828,7 @@ export interface FileRouteTypes {
     | '/decks/$deckUuid/sourcing'
     | '/decks/$deckUuid/statistics'
     | '/scan/live'
+    | '/collaborating/$deckUuid'
     | '/collections/$collectionUuid'
     | '/decks/$deckUuid'
     | '/decks/$deckUuid/history/$changeUuid'
@@ -832,6 +878,7 @@ export interface FileRouteTypes {
     | '/_menu/scan/'
     | '/_menu/watch-lists/'
     | '/_menu/admin/accounts/$accountUuid'
+    | '/_menu/collaborating/$deckUuid/_deck'
     | '/_menu/collections/$collectionUuid/_collection'
     | '/_menu/decks/$deckUuid/_deck'
     | '/_menu/global/profiles/$username'
@@ -842,6 +889,8 @@ export interface FileRouteTypes {
     | '/_menu/global/decks/'
     | '/_menu/profile/_profile/'
     | '/_collect/_scan/scan/live/$sessionUuid'
+    | '/_menu/collaborating/$deckUuid/_deck/cards'
+    | '/_menu/collaborating/$deckUuid/_deck/statistics'
     | '/_menu/collections/$collectionUuid/_collection/cards'
     | '/_menu/collections/$collectionUuid/_collection/on-loan'
     | '/_menu/collections/$collectionUuid/_collection/statistics'
@@ -855,6 +904,7 @@ export interface FileRouteTypes {
     | '/_menu/shared/collections/$token/_shared'
     | '/_menu/shared/decks/$token/_shared'
     | '/_collect/_scan/scan/live/'
+    | '/_menu/collaborating/$deckUuid/_deck/'
     | '/_menu/collections/$collectionUuid/_collection/'
     | '/_menu/decks/$deckUuid/_deck/'
     | '/_menu/decks/$deckUuid/_deck/history/$changeUuid'
@@ -1104,6 +1154,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MenuAdminAccountsAccountUuidRouteImport
       parentRoute: typeof MenuAdminRoute
     }
+    '/_menu/collaborating/$deckUuid/_deck': {
+      id: '/_menu/collaborating/$deckUuid/_deck'
+      path: '/collaborating/$deckUuid'
+      fullPath: '/collaborating/$deckUuid'
+      preLoaderRoute: typeof MenuCollaboratingDeckUuidDeckRouteImport
+      parentRoute: typeof MenuRoute
+    }
     '/_menu/collections/$collectionUuid/_collection': {
       id: '/_menu/collections/$collectionUuid/_collection'
       path: '/collections/$collectionUuid'
@@ -1173,6 +1230,27 @@ declare module '@tanstack/react-router' {
       fullPath: '/scan/live/$sessionUuid'
       preLoaderRoute: typeof CollectScanScanLiveSessionUuidRouteImport
       parentRoute: typeof CollectScanRoute
+    }
+    '/_menu/collaborating/$deckUuid/_deck/': {
+      id: '/_menu/collaborating/$deckUuid/_deck/'
+      path: '/'
+      fullPath: '/collaborating/$deckUuid/'
+      preLoaderRoute: typeof MenuCollaboratingDeckUuidDeckIndexRouteImport
+      parentRoute: typeof MenuCollaboratingDeckUuidDeckRoute
+    }
+    '/_menu/collaborating/$deckUuid/_deck/cards': {
+      id: '/_menu/collaborating/$deckUuid/_deck/cards'
+      path: '/cards'
+      fullPath: '/collaborating/$deckUuid/cards'
+      preLoaderRoute: typeof MenuCollaboratingDeckUuidDeckCardsRouteImport
+      parentRoute: typeof MenuCollaboratingDeckUuidDeckRoute
+    }
+    '/_menu/collaborating/$deckUuid/_deck/statistics': {
+      id: '/_menu/collaborating/$deckUuid/_deck/statistics'
+      path: '/statistics'
+      fullPath: '/collaborating/$deckUuid/statistics'
+      preLoaderRoute: typeof MenuCollaboratingDeckUuidDeckStatisticsRouteImport
+      parentRoute: typeof MenuCollaboratingDeckUuidDeckRoute
     }
     '/_menu/collections/$collectionUuid/_collection/': {
       id: '/_menu/collections/$collectionUuid/_collection/'
@@ -1471,6 +1549,27 @@ const MenuProfileProfileRouteChildren: MenuProfileProfileRouteChildren = {
 const MenuProfileProfileRouteWithChildren =
   MenuProfileProfileRoute._addFileChildren(MenuProfileProfileRouteChildren)
 
+interface MenuCollaboratingDeckUuidDeckRouteChildren {
+  MenuCollaboratingDeckUuidDeckCardsRoute: typeof MenuCollaboratingDeckUuidDeckCardsRoute
+  MenuCollaboratingDeckUuidDeckStatisticsRoute: typeof MenuCollaboratingDeckUuidDeckStatisticsRoute
+  MenuCollaboratingDeckUuidDeckIndexRoute: typeof MenuCollaboratingDeckUuidDeckIndexRoute
+}
+
+const MenuCollaboratingDeckUuidDeckRouteChildren: MenuCollaboratingDeckUuidDeckRouteChildren =
+  {
+    MenuCollaboratingDeckUuidDeckCardsRoute:
+      MenuCollaboratingDeckUuidDeckCardsRoute,
+    MenuCollaboratingDeckUuidDeckStatisticsRoute:
+      MenuCollaboratingDeckUuidDeckStatisticsRoute,
+    MenuCollaboratingDeckUuidDeckIndexRoute:
+      MenuCollaboratingDeckUuidDeckIndexRoute,
+  }
+
+const MenuCollaboratingDeckUuidDeckRouteWithChildren =
+  MenuCollaboratingDeckUuidDeckRoute._addFileChildren(
+    MenuCollaboratingDeckUuidDeckRouteChildren,
+  )
+
 interface MenuCollectionsCollectionUuidCollectionRouteChildren {
   MenuCollectionsCollectionUuidCollectionCardsRoute: typeof MenuCollectionsCollectionUuidCollectionCardsRoute
   MenuCollectionsCollectionUuidCollectionOnLoanRoute: typeof MenuCollectionsCollectionUuidCollectionOnLoanRoute
@@ -1622,6 +1721,7 @@ interface MenuRouteChildren {
   MenuDecksIndexRoute: typeof MenuDecksIndexRoute
   MenuScanIndexRoute: typeof MenuScanIndexRoute
   MenuWatchListsIndexRoute: typeof MenuWatchListsIndexRoute
+  MenuCollaboratingDeckUuidDeckRoute: typeof MenuCollaboratingDeckUuidDeckRouteWithChildren
   MenuCollectionsCollectionUuidCollectionRoute: typeof MenuCollectionsCollectionUuidCollectionRouteWithChildren
   MenuDecksDeckUuidDeckRoute: typeof MenuDecksDeckUuidDeckRouteWithChildren
   MenuGlobalProfilesUsernameRoute: typeof MenuGlobalProfilesUsernameRoute
@@ -1649,6 +1749,8 @@ const MenuRouteChildren: MenuRouteChildren = {
   MenuDecksIndexRoute: MenuDecksIndexRoute,
   MenuScanIndexRoute: MenuScanIndexRoute,
   MenuWatchListsIndexRoute: MenuWatchListsIndexRoute,
+  MenuCollaboratingDeckUuidDeckRoute:
+    MenuCollaboratingDeckUuidDeckRouteWithChildren,
   MenuCollectionsCollectionUuidCollectionRoute:
     MenuCollectionsCollectionUuidCollectionRouteWithChildren,
   MenuDecksDeckUuidDeckRoute: MenuDecksDeckUuidDeckRouteWithChildren,

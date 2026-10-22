@@ -129,6 +129,28 @@ impl DeckTag {
         Ok(tags.into_iter().map(DeckTag::from).collect())
     }
 
+    /// Whether a tag is the account's and local to `deck`
+    ///
+    /// What an Editor's tag operations are limited to: such a tag reaches no
+    /// further than the deck they help build.
+    #[instrument(name = "DeckTag::is_local_to", skip(tx))]
+    pub async fn is_local_to(
+        tx: &mut Transaction,
+        owner: AccountUuid,
+        tag: DeckTagUuid,
+        deck: DeckUuid,
+    ) -> Result<bool, rorm::Error> {
+        let definition = rorm::query(&mut *tx, DeckTagModel.uuid)
+            .condition(rorm::and![
+                DeckTagModel.uuid.equals(tag.0),
+                DeckTagModel.owner.equals(owner.into_inner()),
+                DeckTagModel.deck.equals(Some(deck.into_inner())),
+            ])
+            .optional()
+            .await?;
+        Ok(definition.is_some())
+    }
+
     /// Put a card-wide tag on the card a printing stands for
     ///
     /// For everything outside a deck, a collection's stacks above all. Refuses

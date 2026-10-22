@@ -36,6 +36,7 @@ import { Visibility } from "src/api/generated";
 import type { DeckFolderResponse, DeckResponse, FormatRulesResponse } from "src/api/generated";
 import { useDeckLabels } from "src/components/deck-labels";
 import { folderLabel } from "src/utils/deck-folders";
+import { deckRights } from "src/utils/deck-rights";
 
 /** What the field holds while the deck is on no shelf */
 const UNFILED = "";
@@ -73,6 +74,7 @@ export function DeckDialog({ open, deck, formats, folders, onClose, onSaved }: D
     const [tg] = useTranslation();
     const labels = useDeckLabels();
 
+    const ownsShelf = deck === null || deckRights(deck.role).owner;
     const fallbackFormat = formats[0]?.slug ?? "commander";
     const form = useForm({
         defaultValues: {
@@ -89,10 +91,10 @@ export function DeckDialog({ open, deck, formats, folders, onClose, onSaved }: D
                 value: { name, description, format, folder, visibility, url, intoCollection },
             }) => {
                 const text = description === "" ? null : description;
-                const shelf = folder === UNFILED ? null : folder;
+                const filed = folder === UNFILED ? null : folder;
                 if (deck === null) {
                     const created = await Api.decks.create({ name, description: text, format, visibility });
-                    if (shelf !== null) await Api.decks.setFolder(created.uuid, shelf);
+                    if (filed !== null) await Api.decks.setFolder(created.uuid, filed);
                     await fill(created.uuid, url, intoCollection);
                     form.reset();
                     onSaved(created);
@@ -100,11 +102,11 @@ export function DeckDialog({ open, deck, formats, folders, onClose, onSaved }: D
                 }
 
                 await Api.decks.update(deck.uuid, { name, description: text, format });
-                if (visibility !== deck.visibility) {
+                if (ownsShelf && visibility !== deck.visibility) {
                     await Api.decks.setVisibility(deck.uuid, visibility);
                 }
-                if (shelf !== (deck.folder ?? null)) {
-                    await Api.decks.setFolder(deck.uuid, shelf);
+                if (ownsShelf && filed !== (deck.folder ?? null)) {
+                    await Api.decks.setFolder(deck.uuid, filed);
                 }
                 form.reset();
                 onSaved(null);
@@ -229,7 +231,7 @@ export function DeckDialog({ open, deck, formats, folders, onClose, onSaved }: D
                             )}
                         </form.Field>
 
-                        {folders.length > 0 && (
+                        {ownsShelf && folders.length > 0 && (
                             <form.Field name={"folder"}>
                                 {(fieldApi) => (
                                     <Field>
@@ -300,36 +302,38 @@ export function DeckDialog({ open, deck, formats, folders, onClose, onSaved }: D
                             </form.Field>
                         )}
 
-                        <form.Field name={"visibility"}>
-                            {(fieldApi) => (
-                                <Field>
-                                    <Label>{t("label.visibility")}</Label>
-                                    <Listbox value={fieldApi.state.value} onChange={fieldApi.handleChange}>
-                                        <ListboxOption value={Visibility.Private}>
-                                            <LockClosedIcon />
-                                            <ListboxLabel>{t("label.visibility-private")}</ListboxLabel>
-                                            <ListboxDescription>
-                                                {t("description.visibility-private")}
-                                            </ListboxDescription>
-                                        </ListboxOption>
-                                        <ListboxOption value={Visibility.Unlisted}>
-                                            <LinkIcon />
-                                            <ListboxLabel>{t("label.visibility-unlisted")}</ListboxLabel>
-                                            <ListboxDescription>
-                                                {t("description.visibility-unlisted")}
-                                            </ListboxDescription>
-                                        </ListboxOption>
-                                        <ListboxOption value={Visibility.Public}>
-                                            <GlobeAltIcon />
-                                            <ListboxLabel>{t("label.visibility-public")}</ListboxLabel>
-                                            <ListboxDescription>
-                                                {t("description.visibility-public")}
-                                            </ListboxDescription>
-                                        </ListboxOption>
-                                    </Listbox>
-                                </Field>
-                            )}
-                        </form.Field>
+                        {ownsShelf && (
+                            <form.Field name={"visibility"}>
+                                {(fieldApi) => (
+                                    <Field>
+                                        <Label>{t("label.visibility")}</Label>
+                                        <Listbox value={fieldApi.state.value} onChange={fieldApi.handleChange}>
+                                            <ListboxOption value={Visibility.Private}>
+                                                <LockClosedIcon />
+                                                <ListboxLabel>{t("label.visibility-private")}</ListboxLabel>
+                                                <ListboxDescription>
+                                                    {t("description.visibility-private")}
+                                                </ListboxDescription>
+                                            </ListboxOption>
+                                            <ListboxOption value={Visibility.Unlisted}>
+                                                <LinkIcon />
+                                                <ListboxLabel>{t("label.visibility-unlisted")}</ListboxLabel>
+                                                <ListboxDescription>
+                                                    {t("description.visibility-unlisted")}
+                                                </ListboxDescription>
+                                            </ListboxOption>
+                                            <ListboxOption value={Visibility.Public}>
+                                                <GlobeAltIcon />
+                                                <ListboxLabel>{t("label.visibility-public")}</ListboxLabel>
+                                                <ListboxDescription>
+                                                    {t("description.visibility-public")}
+                                                </ListboxDescription>
+                                            </ListboxOption>
+                                        </Listbox>
+                                    </Field>
+                                )}
+                            </form.Field>
+                        )}
                     </FieldGroup>
                 </DialogBody>
                 <DialogActions>

@@ -19,7 +19,7 @@ use crate::tests::harness::create_account;
 use crate::tests::harness::run;
 
 /// Deletes `account` as the Admin behind `client`, returning the response body
-async fn delete(
+pub(super) async fn delete(
     client: &mut TestClient,
     account: &TestAccount,
     username: &str,

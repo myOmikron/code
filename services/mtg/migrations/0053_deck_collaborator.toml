@@ -1,0 +1,116 @@
+[Migration]
+Hash = "2023658414799327989"
+Initial = false
+Dependency = 52
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateModel"
+Name = "deck_collaborator"
+
+[[Migration.Operations.Fields]]
+Name = "uuid"
+Type = "uuid"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "primary_key"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/deck/db.rs"
+Line = 463
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "level"
+Type = "text"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 255
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/deck/db.rs"
+Line = 474
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "created_at"
+Type = "datetime"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "auto_create_time"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/deck/db.rs"
+Line = 478
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "deck_collaborator"
+
+[Migration.Operations.Field]
+Name = "deck"
+Type = "uuid"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "foreign_key"
+
+[Migration.Operations.Field.Annotations.Value]
+TableName = "deck"
+ColumnName = "uuid"
+OnDelete = "Cascade"
+OnUpdate = "Cascade"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/deck/db.rs"
+Line = 467
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "deck_collaborator"
+
+[Migration.Operations.Field]
+Name = "account"
+Type = "uuid"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "foreign_key"
+
+[Migration.Operations.Field.Annotations.Value]
+TableName = "account"
+ColumnName = "uuid"
+OnDelete = "Cascade"
+OnUpdate = "Cascade"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/deck/db.rs"
+Line = 471
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateIndex"
+Model = "deck_collaborator"
+
+[Migration.Operations.Index]
+Columns = ["deck"]
+
+[[Migration.Operations]]
+Type = "CreateIndex"
+Model = "deck_collaborator"
+
+[Migration.Operations.Index]
+Columns = ["account"]

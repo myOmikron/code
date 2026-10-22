@@ -19,7 +19,9 @@ use crate::http::handler_frontend::decks::history::schema::DeckUndoResponse;
 use crate::http::handler_frontend::decks::history::schema::GetDeckHistoryQuery;
 use crate::http::handler_frontend::decks::history::schema::SetDeckCheckpointRequest;
 use crate::models::account::Account;
+use crate::models::deck::Deck;
 use crate::models::deck::DeckUuid;
+use crate::models::deck::access::DeckOperation;
 use crate::models::deck::history::DeckChangeUuid;
 use crate::models::deck::history::DeckHistory;
 
@@ -37,7 +39,10 @@ pub async fn get_deck_history(
 ) -> ApiResult<ApiJson<DeckHistoryResponse>> {
     let mut tx = Database::global().start_transaction().await?;
 
-    granted(DeckHistory::lock_for_reading(&mut tx, deck_uuid, account.uuid).await?)?;
+    let grant = granted(
+        Deck::authorize(&mut tx, deck_uuid, account.uuid, DeckOperation::ReadHistory).await?,
+    )?;
+    granted(DeckHistory::lock_for_reading(&mut tx, &grant).await?)?;
     let state = DeckHistory::undo_state(&mut tx, deck_uuid).await?;
     let page = DeckHistory::page(
         &mut tx,
@@ -70,7 +75,16 @@ pub async fn undo_deck_change(
 ) -> ApiResult<ApiJson<DeckUndoResponse>> {
     let mut tx = Database::global().start_transaction().await?;
 
-    let edit = granted(DeckHistory::lock(&mut tx, deck_uuid, account.uuid).await?)?;
+    let grant = granted(
+        Deck::authorize(
+            &mut tx,
+            deck_uuid,
+            account.uuid,
+            DeckOperation::ChangeHistory,
+        )
+        .await?,
+    )?;
+    let edit = granted(DeckHistory::lock(&mut tx, &grant).await?)?;
     if !edit.undo(&mut tx).await? {
         tx.rollback().await?;
         return Err(ApiError::bad_request("Nothing to undo"));
@@ -93,7 +107,16 @@ pub async fn redo_deck_change(
 ) -> ApiResult<ApiJson<DeckUndoResponse>> {
     let mut tx = Database::global().start_transaction().await?;
 
-    let edit = granted(DeckHistory::lock(&mut tx, deck_uuid, account.uuid).await?)?;
+    let grant = granted(
+        Deck::authorize(
+            &mut tx,
+            deck_uuid,
+            account.uuid,
+            DeckOperation::ChangeHistory,
+        )
+        .await?,
+    )?;
+    let edit = granted(DeckHistory::lock(&mut tx, &grant).await?)?;
     if !edit.redo(&mut tx).await? {
         tx.rollback().await?;
         return Err(ApiError::bad_request("Nothing to redo"));
@@ -115,7 +138,10 @@ pub async fn get_deck_point(
 ) -> ApiResult<ApiJson<DeckPointResponse>> {
     let mut tx = Database::global().start_transaction().await?;
 
-    granted(DeckHistory::lock_for_reading(&mut tx, deck_uuid, account.uuid).await?)?;
+    let grant = granted(
+        Deck::authorize(&mut tx, deck_uuid, account.uuid, DeckOperation::ReadHistory).await?,
+    )?;
+    granted(DeckHistory::lock_for_reading(&mut tx, &grant).await?)?;
     let point = DeckHistory::point(&mut tx, deck_uuid, change).await?;
 
     tx.commit().await?;
@@ -135,7 +161,16 @@ pub async fn reset_deck(
 ) -> ApiResult<ApiJson<DeckUndoResponse>> {
     let mut tx = Database::global().start_transaction().await?;
 
-    let edit = granted(DeckHistory::lock(&mut tx, deck_uuid, account.uuid).await?)?;
+    let grant = granted(
+        Deck::authorize(
+            &mut tx,
+            deck_uuid,
+            account.uuid,
+            DeckOperation::ChangeHistory,
+        )
+        .await?,
+    )?;
+    let edit = granted(DeckHistory::lock(&mut tx, &grant).await?)?;
     if !edit.reset(&mut tx, change).await? {
         tx.rollback().await?;
         return Err(ApiError::bad_request("No such Deck change"));
@@ -167,7 +202,16 @@ pub async fn set_deck_checkpoint(
 
     let mut tx = Database::global().start_transaction().await?;
 
-    let edit = granted(DeckHistory::lock(&mut tx, deck_uuid, account.uuid).await?)?;
+    let grant = granted(
+        Deck::authorize(
+            &mut tx,
+            deck_uuid,
+            account.uuid,
+            DeckOperation::ChangeHistory,
+        )
+        .await?,
+    )?;
+    let edit = granted(DeckHistory::lock(&mut tx, &grant).await?)?;
     if !edit.name_checkpoint(&mut tx, change, Some(name)).await? {
         tx.rollback().await?;
         return Err(ApiError::bad_request("No such Deck change"));
@@ -188,7 +232,16 @@ pub async fn remove_deck_checkpoint(
 ) -> ApiResult<ApiJson<()>> {
     let mut tx = Database::global().start_transaction().await?;
 
-    let edit = granted(DeckHistory::lock(&mut tx, deck_uuid, account.uuid).await?)?;
+    let grant = granted(
+        Deck::authorize(
+            &mut tx,
+            deck_uuid,
+            account.uuid,
+            DeckOperation::ChangeHistory,
+        )
+        .await?,
+    )?;
+    let edit = granted(DeckHistory::lock(&mut tx, &grant).await?)?;
     if !edit.name_checkpoint(&mut tx, change, None).await? {
         tx.rollback().await?;
         return Err(ApiError::bad_request("No such Deck change"));

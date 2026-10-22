@@ -1,7 +1,7 @@
 
 # DeckChangeKind
 
-What the owner did in a Deck change
+What the owner or an Editor did in a Deck change
 
 ## Properties
 

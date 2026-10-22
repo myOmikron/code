@@ -92,7 +92,7 @@ predates a rule stays as it is until a change touches it.
 - **Wording**: the thing cards live in is a collection (de: Sammlung), in UI strings,
   identifiers and doc comments. The icon slug `"box"`, `ArchiveBoxIcon` and CSS/layout
   boxes keep their names.
-- **Switches**: every `Switch` gets `color={"blue"}`.
+- **Switches**: every `Switch` gets `color={"emerald"}`.
 - **Release notes**: a change players notice (website, scanner, deck advisor) carries a
   Release note fragment in `frontend/mtg/release-notes/unreleased/` in the same commit
   (`frontend/mtg/release-notes/README.md`). A player-visible change without one is a

@@ -16,6 +16,7 @@ import { ContextMenu } from "src/components/context-menu";
 import type { ContextMenuSection, MenuAt } from "src/components/context-menu";
 import { useDeckLabels, ZONE_ORDER } from "src/components/deck-labels";
 import { DeckTagMarker } from "src/components/deck-tag-marker";
+import { useDeckTagWritable } from "src/context/deck-tag-writable-context";
 import { canFoil, finishOf, onlyFoil } from "src/utils/deck-foil";
 
 /**
@@ -42,10 +43,10 @@ export type DeckCardMenuProps = {
     onReplace?: (card: DeckCardResponse) => void;
     /** Sleeves the slot in foil, or takes the sheen off again */
     onToggleFoil: (card: DeckCardResponse, foil: boolean) => void;
-    /** Marks the slot as a proxy, or clears the mark again */
-    onToggleProxy: (card: DeckCardResponse, proxy: boolean) => void;
-    /** Puts a tag on the card or takes it off */
-    onToggleTag: (card: DeckCardResponse, tag: DeckTagResponse, on: boolean) => void;
+    /** Marks the slot as a proxy, or clears the mark again; absent for a reader who may not */
+    onToggleProxy?: (card: DeckCardResponse, proxy: boolean) => void;
+    /** Puts a tag on the card or takes it off; absent for a reader who may not */
+    onToggleTag?: (card: DeckCardResponse, tag: DeckTagResponse, on: boolean) => void;
     /** Takes the card out of the deck */
     onDelete: (card: DeckCardResponse) => void;
     /** Called when the menu should close */
@@ -79,6 +80,7 @@ export function DeckCardMenu({
 }: DeckCardMenuProps) {
     const [t] = useTranslation("deck");
     const labels = useDeckLabels();
+    const writable = useDeckTagWritable();
 
     if (card === null) return null;
 
@@ -130,13 +132,17 @@ export function DeckCardMenu({
                     disabled: !canFoil(card) || onlyFoil(card),
                     onSelect: () => onToggleFoil(card, !card.foil),
                 },
-                {
-                    key: "proxy",
-                    label: t("button.mark-proxy"),
-                    icon: card.proxy ? <CheckIcon /> : <DocumentDuplicateIcon />,
-                    shortcut: "X",
-                    onSelect: () => onToggleProxy(card, !card.proxy),
-                },
+                ...(onToggleProxy === undefined
+                    ? []
+                    : [
+                          {
+                              key: "proxy",
+                              label: t("button.mark-proxy"),
+                              icon: card.proxy ? <CheckIcon /> : <DocumentDuplicateIcon />,
+                              shortcut: "X",
+                              onSelect: () => onToggleProxy(card, !card.proxy),
+                          },
+                      ]),
             ],
         },
         {
@@ -154,18 +160,22 @@ export function DeckCardMenu({
         {
             key: "tags",
             heading: t("label.tags"),
-            items: tags.map((tag, index) => ({
-                key: tag.uuid,
-                label: tag.name,
-                icon: card.tags.includes(tag.uuid) ? (
-                    <CheckIcon />
-                ) : (
-                    <DeckTagMarker color={tag.color} icon={tag.icon} size={"sm"} />
-                ),
-                shortcut: index < 9 ? String(index + 1) : undefined,
-                keepOpen: true,
-                onSelect: () => onToggleTag(card, tag, !card.tags.includes(tag.uuid)),
-            })),
+            items:
+                onToggleTag === undefined
+                    ? []
+                    : tags.map((tag, index) => ({
+                          key: tag.uuid,
+                          label: tag.name,
+                          icon: card.tags.includes(tag.uuid) ? (
+                              <CheckIcon />
+                          ) : (
+                              <DeckTagMarker color={tag.color} icon={tag.icon} size={"sm"} />
+                          ),
+                          shortcut: index < 9 ? String(index + 1) : undefined,
+                          keepOpen: true,
+                          disabled: !writable(tag),
+                          onSelect: () => onToggleTag(card, tag, !card.tags.includes(tag.uuid)),
+                      })),
         },
         {
             key: "delete",
