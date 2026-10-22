@@ -1,6 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
-    Button,
     Description,
     ErrorMessage,
     Field,
@@ -12,6 +11,7 @@ import {
     Legend,
     RequiredLabel,
     Text,
+    TextLink,
     notify,
 } from "components";
 import { useForm } from "@tanstack/react-form";
@@ -99,9 +99,9 @@ function RouteComponent() {
                         <Heading>{t("heading.choose-username")}</Heading>
                         <Text>{t("description.nothing-pending")}</Text>
                     </div>
-                    <div className={"flex w-full justify-end"}>
-                        <Button href={"/auth/login"}>{t("button.login-instead")}</Button>
-                    </div>
+                    <Text>
+                        {t("label.have-account")} <TextLink href={"/auth/login"}>{t("button.login")}</TextLink>
+                    </Text>
                 </div>
             </div>
         );

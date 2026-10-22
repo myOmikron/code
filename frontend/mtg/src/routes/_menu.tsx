@@ -91,6 +91,7 @@ function RouteComponent() {
     // centimetre between its players. Reading pages stay in a bounded column.
     const path = useRouterState({ select: (state) => state.location.pathname });
     const building = /^\/decks\/[^/]+/.test(path) || /^\/game-utils(?:\/|$)/.test(path);
+    const authPage = path.startsWith("/auth/");
     const [pageShortcuts, setPageShortcuts] = useState<Array<ShortcutRow> | null>(null);
     const shortcuts = pageShortcuts ?? shortcutsFor(path, t, tg);
     const shortcutHelp = useMemo<ShortcutHelp>(
@@ -198,7 +199,12 @@ function RouteComponent() {
                                         <UnreadDot label={t("accessibility.unread-release-notes")} />
                                     )}
                                 </NavbarItem>
-                                <NavbarItem onClick={() => setHelping(true)} title={t("heading.shortcuts")}>
+                                {/* Shortcuts need a keyboard, which a touch screen rarely has. */}
+                                <NavbarItem
+                                    onClick={() => setHelping(true)}
+                                    title={t("heading.shortcuts")}
+                                    className={"pointer-coarse:hidden"}
+                                >
                                     <QuestionMarkCircleIcon />
                                     <NavbarLabel className={"sr-only"}>{t("heading.shortcuts")}</NavbarLabel>
                                 </NavbarItem>
@@ -244,12 +250,18 @@ function RouteComponent() {
                                         </DropdownMenu>
                                     </Dropdown>
                                 </NavbarSection>
-                            ) : (
+                            ) : authPage ? null : (
+                                // The auth pages are the form and link the other one themselves. On a
+                                // phone the bar only fits one button: signing in is what returning
+                                // players come for, signing up stays in the slide-over and in the
+                                // home page's call to action.
                                 <NavbarSection>
-                                    <Button outline={true} href={"/auth/login"}>
+                                    <Button outline={true} href={"/auth/login"} className={"whitespace-nowrap"}>
                                         {t("label.login")}
                                     </Button>
-                                    <PrimaryButton href={"/auth/signup"}>{t("label.sign-up")}</PrimaryButton>
+                                    <PrimaryButton href={"/auth/signup"} className={"whitespace-nowrap max-sm:hidden"}>
+                                        {t("label.sign-up")}
+                                    </PrimaryButton>
                                 </NavbarSection>
                             )}
                         </Navbar>
@@ -313,7 +325,7 @@ function RouteComponent() {
                                             <UnreadDot label={t("accessibility.unread-release-notes")} />
                                         )}
                                     </SidebarItem>
-                                    <SidebarItem onClick={() => setHelping(true)}>
+                                    <SidebarItem onClick={() => setHelping(true)} className={"pointer-coarse:hidden"}>
                                         <QuestionMarkCircleIcon />
                                         <SidebarLabel>{t("heading.shortcuts")}</SidebarLabel>
                                     </SidebarItem>
