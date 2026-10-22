@@ -1,7 +1,7 @@
 
 # DeckResponse
 
-A deck as its owner sees it
+A deck as its owner sees it  Anybody else gets it without the owner\'s share link and folder.
 
 ## Properties
 
@@ -20,6 +20,7 @@ Name | Type
 `folder` | string
 `format` | string
 `name` | string
+`role` | [DeckRole](DeckRole.md)
 `share_token` | string
 `uuid` | string
 `visibility` | [Visibility](Visibility.md)

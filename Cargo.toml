@@ -167,7 +167,7 @@ percent-encoding = { version = "~2" }
 serde_urlencoded = { version = "~0.7" }
 
 # UUID generation and parsing
-uuid = { version = "~1", features = ["v4", "v7", "serde", "std"] }
+uuid = { version = "~1", features = ["v3", "v4", "v7", "serde", "std"] }
 
 # -------------- #
 # Error handling #

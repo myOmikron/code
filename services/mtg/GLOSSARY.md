@@ -65,7 +65,7 @@ A card with the Snow supertype that produces mana. Everything it produces is sno
 _Avoid_: snow land, snow colour
 
 **Bracket claim**:
-The Commander bracket a deck says it is built to. The owner sets and changes it; the only time it is set without them is when a deck that claims none first reaches its full size, and then it is claimed at what its cards read as. It is never changed because of the cards once it is set.
+The Commander bracket a deck says it is built to. The owner or an Editor sets and changes it; the only time it is set without them is when a deck that claims none first reaches its full size, and then it is claimed at what its cards read as. It is never changed because of the cards once it is set.
 _Avoid_: detected bracket, power level
 
 **Played bracket**:
@@ -77,7 +77,7 @@ One line of a deck: a printing in a zone, foil or not, proxy or not, with a quan
 _Avoid_: slot, deck card, line
 
 **Deck change**:
-One step in a deck's Deck history: what the owner did to its Deck entries or to its name, description, format, colors, bracket, rule-zero exceptions or size. Tags, folder, visibility, sharing and the deck's collection are not part of it. An import, a fill, a swap or a move between zones is one Deck change. Changes to the same Deck entry, or to the same field, made in quick succession become one Deck change, unless a Deck checkpoint names it. Creating the deck is its first Deck change; a deck that existed before Deck histories begins with its state at that time. Undo, redo and resetting to an earlier point are Deck changes of their own, so the Deck history only ever grows.
+One step in a deck's Deck history: what the owner or an Editor did to its Deck entries or to its name, description, format, colors, bracket, rule-zero exceptions or size. Tags, folder, visibility, sharing and the deck's collection are not part of it. An import, a fill, a swap or a move between zones is one Deck change. Changes to the same Deck entry, or to the same field, made in quick succession become one Deck change, unless a Deck checkpoint names it. Creating the deck is its first Deck change; a deck that existed before Deck histories begins with its state at that time. Undo, redo and resetting to an earlier point are Deck changes of their own, so the Deck history only ever grows.
 _Avoid_: revision, edit, version
 
 **Deck history**:
@@ -87,6 +87,18 @@ _Avoid_: history (alone), changelog, log
 **Deck checkpoint**:
 A name the owner gives one Deck change, e.g. "FNM 18.10.", to find that point in the Deck history again. At most one per Deck change; it can be renamed and removed.
 _Avoid_: snapshot, tag, version, milestone
+
+**Collaborator**:
+Another Account the owner of a deck named on it by username, as a Viewer or an Editor. Sees the deck whatever its Visibility, the way its Share link shows it: proxy flags are reported as no proxy. Takes effect at once, without an invitation or a mail. Only the owner names, changes and removes Collaborators; neither the owner nor the Tombstone can be one. A deck that is not shared with an Account answers it the same as a deck that does not exist.
+_Avoid_: member, share, guest
+
+**Viewer**:
+A Collaborator who only looks at the deck: its list, zones, tags and statistics.
+_Avoid_: reader, read-only member
+
+**Editor**:
+A Collaborator who also builds the deck as a decklist: its cards, zones, name, description, format, bracket, colours, rule zero, advisor settings and deck-only tags. Everything about the owner's shelf stays the owner's. An Editor sees all tags on the deck but creates, changes, deletes and assigns only the deck-only ones; those are the owner's, whoever created them. Global tags and their card-wide assignments stay the owner's, so an Editor never changes how the owner's other decks are tagged.
+_Avoid_: co-owner, admin, writer
 
 **Release**:
 One shipped version of mtg, named by its `mtg/v<version>` tag, with the date it was cut. Website, scanner and deck advisor share one Release.
@@ -108,6 +120,8 @@ _Avoid_: changelog, history, news feed
 - A **Deletion** hands the Account's public decks to the **Tombstone**, unless it is a full Deletion
 - A **Statistics snapshot** never counts the **Tombstone**
 - A deck has exactly one **Deck history**; handing the deck to the **Tombstone** empties it
+- A deck has any number of **Collaborators**, each Account at most once, as a **Viewer** or an **Editor**; deleting the deck or the Account removes the Collaborator
+- A **Collaborator** sees the deck whatever its Visibility; Visibility and the Share link work the same with or without Collaborators
 - A **Release** has any number of **Release notes**; pending ones belong to the next Release cut with `just release`
 - Undoing or resetting a **Deck change** restores **Deck entries** without their card tags, and never moves cards of the deck's collection
 

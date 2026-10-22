@@ -18,6 +18,7 @@ use crate::models::deck::Deck;
 use crate::models::deck::DeckCardUuid;
 use crate::models::deck::DeckUuid;
 use crate::models::deck::DeckZone;
+use crate::models::deck::access::DeckRole;
 use crate::models::deck::advisor::AdvisorSettings;
 use crate::models::deck::advisor::DeckTargets;
 use crate::models::deck::advisor::MarkedCard;
@@ -46,10 +47,14 @@ use crate::models::visibility::Visibility;
 use crate::utils::archon::RoleBans;
 
 /// A deck as its owner sees it
+///
+/// Anybody else gets it without the owner's share link and folder.
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct DeckResponse {
     /// Primary key
     pub uuid: DeckUuid,
+    /// The caller's role on the deck, `null` when only its Visibility shows it to them
+    pub role: Option<DeckRole>,
     /// Name of the deck
     pub name: MaxStr<255>,
     /// Optional description, e.g. the deck's game plan
@@ -916,10 +921,12 @@ pub struct UpdateDeckTagRequest {
     pub global: bool,
 }
 
+/// The deck as its owner sees it
 impl From<Deck> for DeckResponse {
     fn from(deck: Deck) -> Self {
         Self {
             uuid: deck.uuid,
+            role: Some(DeckRole::Owner),
             name: deck.name,
             description: deck.description,
             format: deck.format,
@@ -934,6 +941,23 @@ impl From<Deck> for DeckResponse {
             folder: deck.folder,
             created_at: SchemaDateTime(deck.created_at),
             undo: DeckUndoResponse::default(),
+        }
+    }
+}
+
+impl DeckResponse {
+    /// The deck as an Account with `role` sees it
+    ///
+    /// Only the owner sees the share link and the folder it filed the deck in.
+    pub fn seen_as(self, role: Option<DeckRole>) -> Self {
+        match role {
+            Some(DeckRole::Owner) => Self { role, ..self },
+            Some(DeckRole::Editor | DeckRole::Viewer) | None => Self {
+                role,
+                share_token: None,
+                folder: None,
+                ..self
+            },
         }
     }
 }

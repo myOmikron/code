@@ -41,7 +41,7 @@ pub struct DeckChangeModel {
     /// When the Deck change happened
     pub changed_at: OffsetDateTime,
 
-    /// What the owner did, for telling it apart in the Deck history
+    /// What the owner or an Editor did, for telling it apart in the Deck history
     pub kind: DeckChangeKind,
 
     /// What the Deck change did to the deck
@@ -88,7 +88,7 @@ pub struct DeckChangeInsertPatch {
     pub deck: ForeignModel<DeckModel>,
     /// When the Deck change happened
     pub changed_at: OffsetDateTime,
-    /// What the owner did
+    /// What the owner or an Editor did
     pub kind: DeckChangeKind,
     /// What the Deck change did to the deck
     pub difference: Json<DeckDifference>,
@@ -104,7 +104,7 @@ pub struct DeckChangeReferringInsertPatch {
     pub deck: ForeignModel<DeckModel>,
     /// When the Deck change happened
     pub changed_at: OffsetDateTime,
-    /// What the owner did
+    /// What the owner or an Editor did
     pub kind: DeckChangeKind,
     /// What the Deck change did to the deck
     pub difference: Json<DeckDifference>,

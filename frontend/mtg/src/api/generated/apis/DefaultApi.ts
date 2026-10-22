@@ -84,6 +84,7 @@ import type {
     ListCardsResponse,
     ListCollectionEntriesResponse,
     ListDeckCardsResponse,
+    ListDeckCollaboratorsResponse,
     ListDeckFoldersResponse,
     ListFormatsResponse,
     ListGlobalTagsResponse,
@@ -91,6 +92,7 @@ import type {
     ListOpenIdProvidersResponse,
     ListPasskeysResponse,
     ListScannerSessionsResponse,
+    ListSharedWithMeResponse,
     ListWatchListAlarmsResponse,
     ListWatchListCopiesResponse,
     ListWatchListEntriesResponse,
@@ -106,6 +108,8 @@ import type {
     PublicDeckResponse,
     PublicDeckSort,
     PublicProfileResponse,
+    PutDeckCollaborator200Response,
+    PutDeckCollaboratorRequest,
     ReadDeckUrlRequest,
     ReadDeckUrlResponse,
     RecoverAccountRequest,
@@ -455,6 +459,10 @@ export interface ImportDeckCardsOperationRequest {
     ImportDeckCardsRequest?: ImportDeckCardsRequest;
 }
 
+export interface LeaveDeckRequest {
+    deck: string;
+}
+
 export interface ListCollectionCardsRequest {
     collection: string;
     after?: string | null;
@@ -478,6 +486,10 @@ export interface ListCollectionOnLoanRequest {
 }
 
 export interface ListDeckCardsRequest {
+    deck: string;
+}
+
+export interface ListDeckCollaboratorsRequest {
     deck: string;
 }
 
@@ -531,6 +543,11 @@ export interface MergeCollectionEntriesOperationRequest {
     MergeCollectionEntriesRequest?: MergeCollectionEntriesRequest;
 }
 
+export interface PutDeckCollaboratorOperationRequest {
+    deck: string;
+    PutDeckCollaboratorRequest?: PutDeckCollaboratorRequest;
+}
+
 export interface ReadDeckUrlOperationRequest {
     ReadDeckUrlRequest?: ReadDeckUrlRequest;
 }
@@ -546,6 +563,11 @@ export interface RedoDeckChangeRequest {
 export interface RemoveDeckCheckpointRequest {
     deck: string;
     change: string;
+}
+
+export interface RemoveDeckCollaboratorRequest {
+    deck: string;
+    account: string;
 }
 
 export interface RenameAccountOperationRequest {
@@ -898,7 +920,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Put a card into a deck  Copies joining an alike Deck entry (same printing, zone, finish and proxy status) raise its count instead of opening a second line beside it. The answer is the entry\'s bookkeeping fields either way; catalog data and tags come from the list endpoint.
+     * Put a card into a deck  Copies joining an alike Deck entry (same printing, zone, finish and proxy status) raise its count instead of opening a second line beside it. The answer is the entry\'s bookkeeping fields either way; catalog data and tags come from the list endpoint. Only the owner adds proxies, see [`DeckGrant::proxy`].
      * Put a card into a deck
      */
     async addDeckCardRaw(requestParameters: AddDeckCardOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DeckCardResponse>> {
@@ -909,7 +931,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Put a card into a deck  Copies joining an alike Deck entry (same printing, zone, finish and proxy status) raise its count instead of opening a second line beside it. The answer is the entry\'s bookkeeping fields either way; catalog data and tags come from the list endpoint.
+     * Put a card into a deck  Copies joining an alike Deck entry (same printing, zone, finish and proxy status) raise its count instead of opening a second line beside it. The answer is the entry\'s bookkeeping fields either way; catalog data and tags come from the list endpoint. Only the owner adds proxies, see [`DeckGrant::proxy`].
      * Put a card into a deck
      */
     async addDeckCard(requestParameters: AddDeckCardOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DeckCardResponse> {
@@ -1617,7 +1639,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Put a tag on a card
+     * Put a tag on a card  An Editor only puts on tags local to this deck: a global one would tag the card on every deck of the owner.
      * Put a tag on a card
      */
     async assignDeckCardTagRaw(requestParameters: AssignDeckCardTagRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
@@ -1632,7 +1654,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Put a tag on a card
+     * Put a tag on a card  An Editor only puts on tags local to this deck: a global one would tag the card on every deck of the owner.
      * Put a tag on a card
      */
     async assignDeckCardTag(requestParameters: AssignDeckCardTagRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
@@ -1882,7 +1904,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Create a tag on a deck
+     * Create a tag on a deck  The tag is the owner\'s, whoever creates it. An Editor only creates tags local to this deck: a global one reaches every deck of the owner.
      * Create a tag on a deck
      */
     async createDeckTagRaw(requestParameters: CreateDeckTagOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DeckTagResponse>> {
@@ -1893,7 +1915,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Create a tag on a deck
+     * Create a tag on a deck  The tag is the owner\'s, whoever creates it. An Editor only creates tags local to this deck: a global one reaches every deck of the owner.
      * Create a tag on a deck
      */
     async createDeckTag(requestParameters: CreateDeckTagOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DeckTagResponse> {
@@ -2372,7 +2394,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Delete a tag, taking it off every card it sat on
+     * Delete a tag, taking it off every card it sat on  An Editor only deletes a tag local to this deck.
      * Delete a tag, taking it off every card it sat on
      */
     async deleteDeckTagRaw(requestParameters: DeleteDeckTagRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
@@ -2387,7 +2409,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Delete a tag, taking it off every card it sat on
+     * Delete a tag, taking it off every card it sat on  An Editor only deletes a tag local to this deck.
      * Delete a tag, taking it off every card it sat on
      */
     async deleteDeckTag(requestParameters: DeleteDeckTagRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
@@ -3430,8 +3452,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Fetch a single deck
-     * Fetch a single deck
+     * Fetch a single deck, with the caller\'s role on it  Only the owner gets its share link and folder.
+     * Fetch a single deck, with the caller\'s role on it
      */
     async getDeckRaw(requestParameters: GetDeckRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DeckResponse>> {
         const requestOptions = await this.getDeckRequestOpts(requestParameters);
@@ -3441,8 +3463,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Fetch a single deck
-     * Fetch a single deck
+     * Fetch a single deck, with the caller\'s role on it  Only the owner gets its share link and folder.
+     * Fetch a single deck, with the caller\'s role on it
      */
     async getDeck(requestParameters: GetDeckRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DeckResponse> {
         const response = await this.getDeckRaw(requestParameters, initOverrides);
@@ -3477,7 +3499,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Read this deck\'s advisor settings  A deck nobody has advised yet still answers: the document at its defaults, not a 404. The 404 is reserved for a deck this account does not own.
+     * Read this deck\'s advisor settings  A deck nobody has advised yet still answers: the document at its defaults, not a 404. The 404 is reserved for a deck this account may not edit.
      * Read this deck\'s advisor settings
      */
     async getDeckAdvisorSettingsRaw(requestParameters: GetDeckAdvisorSettingsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<AdvisorSettingsResponse>> {
@@ -3488,7 +3510,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Read this deck\'s advisor settings  A deck nobody has advised yet still answers: the document at its defaults, not a 404. The 404 is reserved for a deck this account does not own.
+     * Read this deck\'s advisor settings  A deck nobody has advised yet still answers: the document at its defaults, not a 404. The 404 is reserved for a deck this account may not edit.
      * Read this deck\'s advisor settings
      */
     async getDeckAdvisorSettings(requestParameters: GetDeckAdvisorSettingsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AdvisorSettingsResponse> {
@@ -3736,6 +3758,45 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async getDeckSourcing(requestParameters: GetDeckSourcingRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DeckSourcingResponse> {
         const response = await this.getDeckSourcingRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for getDecksSharedWithMe without sending the request
+     */
+    async getDecksSharedWithMeRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/decks/shared-with-me`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * The decks other Accounts named the caller on, alphabetically by name  \"Shared with me\": never filed into the caller\'s folders, which hold only the caller\'s own decks.
+     * The decks other Accounts named the caller on, alphabetically by name
+     */
+    async getDecksSharedWithMeRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListSharedWithMeResponse>> {
+        const requestOptions = await this.getDecksSharedWithMeRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * The decks other Accounts named the caller on, alphabetically by name  \"Shared with me\": never filed into the caller\'s folders, which hold only the caller\'s own decks.
+     * The decks other Accounts named the caller on, alphabetically by name
+     */
+    async getDecksSharedWithMe(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListSharedWithMeResponse> {
+        const response = await this.getDecksSharedWithMeRaw(initOverrides);
         return await response.value();
     }
 
@@ -4424,6 +4485,57 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for leaveDeck without sending the request
+     */
+    async leaveDeckRequestOpts(requestParameters: LeaveDeckRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['deck'] == null) {
+            throw new runtime.RequiredError(
+                'deck',
+                'Required parameter "deck" was null or undefined when calling leaveDeck().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/decks/{deck}/leave`;
+        urlPath = urlPath.replace('{deck}', encodeURIComponent(String(requestParameters['deck'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Take oneself off a deck another Account named one on  The deck leaves \"Shared with me\" and its access ends with the next request. Its owner cannot leave it.
+     * Take oneself off a deck another Account named one on
+     */
+    async leaveDeckRaw(requestParameters: LeaveDeckRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
+        const requestOptions = await this.leaveDeckRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<any>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     * Take oneself off a deck another Account named one on  The deck leaves \"Shared with me\" and its access ends with the next request. Its owner cannot leave it.
+     * Take oneself off a deck another Account named one on
+     */
+    async leaveDeck(requestParameters: LeaveDeckRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
+        const response = await this.leaveDeckRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for listCollectionCards without sending the request
      */
     async listCollectionCardsRequestOpts(requestParameters: ListCollectionCardsRequest): Promise<runtime.RequestOpts> {
@@ -4632,7 +4744,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Every card of a deck, with the catalog data and the tags on it  The whole deck in one answer: a hundred slots are not worth paging, and the client groups and sorts them however the list is being looked at.
+     * Every card of a deck, with the catalog data and the tags on it  The whole deck in one answer: a hundred slots are not worth paging, and the client groups and sorts them however the list is being looked at. A Collaborator gets it the way the Share link shows it, see [`redact_slot`].
      * Every card of a deck, with the catalog data and the tags on it
      */
     async listDeckCardsRaw(requestParameters: ListDeckCardsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListDeckCardsResponse>> {
@@ -4643,11 +4755,58 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Every card of a deck, with the catalog data and the tags on it  The whole deck in one answer: a hundred slots are not worth paging, and the client groups and sorts them however the list is being looked at.
+     * Every card of a deck, with the catalog data and the tags on it  The whole deck in one answer: a hundred slots are not worth paging, and the client groups and sorts them however the list is being looked at. A Collaborator gets it the way the Share link shows it, see [`redact_slot`].
      * Every card of a deck, with the catalog data and the tags on it
      */
     async listDeckCards(requestParameters: ListDeckCardsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListDeckCardsResponse> {
         const response = await this.listDeckCardsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for listDeckCollaborators without sending the request
+     */
+    async listDeckCollaboratorsRequestOpts(requestParameters: ListDeckCollaboratorsRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['deck'] == null) {
+            throw new runtime.RequiredError(
+                'deck',
+                'Required parameter "deck" was null or undefined when calling listDeckCollaborators().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/decks/{deck}/collaborators`;
+        urlPath = urlPath.replace('{deck}', encodeURIComponent(String(requestParameters['deck'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * The Collaborators of a deck, alphabetically by username  The owner and every Collaborator read it.
+     * The Collaborators of a deck, alphabetically by username
+     */
+    async listDeckCollaboratorsRaw(requestParameters: ListDeckCollaboratorsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListDeckCollaboratorsResponse>> {
+        const requestOptions = await this.listDeckCollaboratorsRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * The Collaborators of a deck, alphabetically by username  The owner and every Collaborator read it.
+     * The Collaborators of a deck, alphabetically by username
+     */
+    async listDeckCollaborators(requestParameters: ListDeckCollaboratorsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListDeckCollaboratorsResponse> {
+        const response = await this.listDeckCollaboratorsRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -5227,6 +5386,56 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for putDeckCollaborator without sending the request
+     */
+    async putDeckCollaboratorRequestOpts(requestParameters: PutDeckCollaboratorOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['deck'] == null) {
+            throw new runtime.RequiredError(
+                'deck',
+                'Required parameter "deck" was null or undefined when calling putDeckCollaborator().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/decks/{deck}/collaborators`;
+        urlPath = urlPath.replace('{deck}', encodeURIComponent(String(requestParameters['deck'])));
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['PutDeckCollaboratorRequest'],
+        };
+    }
+
+    /**
+     * Name an Account on a deck by its username, or change the level it is named at  Naming an Account that is already on the deck changes its level, so it is on the deck once. The owner and the Tombstone cannot be named.
+     * Name an Account on a deck by its username, or change the level it is named at
+     */
+    async putDeckCollaboratorRaw(requestParameters: PutDeckCollaboratorOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PutDeckCollaborator200Response>> {
+        const requestOptions = await this.putDeckCollaboratorRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Name an Account on a deck by its username, or change the level it is named at  Naming an Account that is already on the deck changes its level, so it is on the deck once. The owner and the Tombstone cannot be named.
+     * Name an Account on a deck by its username, or change the level it is named at
+     */
+    async putDeckCollaborator(requestParameters: PutDeckCollaboratorOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PutDeckCollaborator200Response> {
+        const response = await this.putDeckCollaboratorRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for readDeckUrl without sending the request
      */
     async readDeckUrlRequestOpts(requestParameters: ReadDeckUrlOperationRequest): Promise<runtime.RequestOpts> {
@@ -5417,6 +5626,65 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async removeDeckCheckpoint(requestParameters: RemoveDeckCheckpointRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
         const response = await this.removeDeckCheckpointRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for removeDeckCollaborator without sending the request
+     */
+    async removeDeckCollaboratorRequestOpts(requestParameters: RemoveDeckCollaboratorRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['deck'] == null) {
+            throw new runtime.RequiredError(
+                'deck',
+                'Required parameter "deck" was null or undefined when calling removeDeckCollaborator().'
+            );
+        }
+
+        if (requestParameters['account'] == null) {
+            throw new runtime.RequiredError(
+                'account',
+                'Required parameter "account" was null or undefined when calling removeDeckCollaborator().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/decks/{deck}/collaborators/{account}`;
+        urlPath = urlPath.replace('{deck}', encodeURIComponent(String(requestParameters['deck'])));
+        urlPath = urlPath.replace('{account}', encodeURIComponent(String(requestParameters['account'])));
+
+        return {
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Take an Account off a deck  It loses its access with the next request it makes.
+     * Take an Account off a deck
+     */
+    async removeDeckCollaboratorRaw(requestParameters: RemoveDeckCollaboratorRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
+        const requestOptions = await this.removeDeckCollaboratorRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<any>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     * Take an Account off a deck  It loses its access with the next request it makes.
+     * Take an Account off a deck
+     */
+    async removeDeckCollaborator(requestParameters: RemoveDeckCollaboratorRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
+        const response = await this.removeDeckCollaboratorRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -6848,7 +7116,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Take a tag off a card
+     * Take a tag off a card  An Editor only takes off tags local to this deck, as with putting one on.
      * Take a tag off a card
      */
     async unassignDeckCardTagRaw(requestParameters: UnassignDeckCardTagRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
@@ -6863,7 +7131,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Take a tag off a card
+     * Take a tag off a card  An Editor only takes off tags local to this deck, as with putting one on.
      * Take a tag off a card
      */
     async unassignDeckCardTag(requestParameters: UnassignDeckCardTagRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
@@ -7119,7 +7387,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Change a Deck entry: its count, its zone or the print it sleeves  An entry made alike to another one merges into it, and a count of zero removes it.
+     * Change a Deck entry: its count, its zone or the print it sleeves  An entry made alike to another one merges into it, and a count of zero removes it. A Collaborator\'s change leaves the proxy flag as it is, see [`DeckGrant::proxy`].
      * Change a Deck entry: its count, its zone or the print it sleeves
      */
     async updateDeckCardRaw(requestParameters: UpdateDeckCardOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
@@ -7134,7 +7402,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Change a Deck entry: its count, its zone or the print it sleeves  An entry made alike to another one merges into it, and a count of zero removes it.
+     * Change a Deck entry: its count, its zone or the print it sleeves  An entry made alike to another one merges into it, and a count of zero removes it. A Collaborator\'s change leaves the proxy flag as it is, see [`DeckGrant::proxy`].
      * Change a Deck entry: its count, its zone or the print it sleeves
      */
     async updateDeckCard(requestParameters: UpdateDeckCardOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
@@ -7235,7 +7503,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Rename a tag, change its marker or move its scope
+     * Rename a tag, change its marker or move its scope  An Editor only changes a tag local to this deck and keeps it there.
      * Rename a tag, change its marker or move its scope
      */
     async updateDeckTagRaw(requestParameters: UpdateDeckTagOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
@@ -7250,7 +7518,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Rename a tag, change its marker or move its scope
+     * Rename a tag, change its marker or move its scope  An Editor only changes a tag local to this deck and keeps it there.
      * Rename a tag, change its marker or move its scope
      */
     async updateDeckTag(requestParameters: UpdateDeckTagOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {

@@ -14,6 +14,7 @@ import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type { DeckTagResponse } from "src/api/generated";
 import { DeckTagMarker } from "src/components/deck-tag-marker";
+import { useDeckTagWritable } from "src/context/deck-tag-writable-context";
 import { tagColor } from "src/utils/deck-tags";
 
 /**
@@ -86,12 +87,14 @@ export type DeckTagPickerProps = {
  * in one go, and re-opening the menu for each of them is three times the work
  * for the same result. The number beside each tag is the key that puts it on
  * whichever card the pointer is over, which is the way this is used once the
- * tags are known by heart.
+ * tags are known by heart. A tag the reader may not toggle is listed but
+ * disabled, see {@link useDeckTagWritable}.
  *
  * @returns the picker
  */
 export function DeckTagPicker({ tags, assigned, onToggle, onManage, children, className }: DeckTagPickerProps) {
     const [t] = useTranslation("deck");
+    const writable = useDeckTagWritable();
 
     return (
         <Dropdown>
@@ -119,6 +122,7 @@ export function DeckTagPicker({ tags, assigned, onToggle, onManage, children, cl
                     tags.map((tag, index) => (
                         <DropdownItem
                             key={tag.uuid}
+                            disabled={!writable(tag)}
                             onClick={(event) => {
                                 // Keeps the menu open, which Headless UI leaves
                                 // to whoever handles the click.

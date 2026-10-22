@@ -9,6 +9,7 @@ import { Visibility } from "src/api/generated";
 import type { DeckOverviewResponse, FormatRulesResponse } from "src/api/generated";
 import { useDeckLabels } from "src/components/deck-labels";
 import { ManaCost } from "src/components/mana-cost";
+import { deckCardsRoute } from "src/utils/deck-rights";
 import { deckRuleZero, letters } from "src/utils/deck-rules";
 import { formatCurrency } from "src/utils/format";
 
@@ -52,6 +53,8 @@ export type DeckTileProps = {
     selected?: boolean;
     /** Records pointer or focus arriving on this deck */
     onActivate?: () => void;
+    /** A line under the numbers, e.g. who shared the deck */
+    byline?: string;
 };
 
 /**
@@ -64,7 +67,7 @@ export type DeckTileProps = {
  *
  * @returns the tile
  */
-export function DeckTile({ overview, rules, onMenu, selected = false, onActivate }: DeckTileProps) {
+export function DeckTile({ overview, rules, onMenu, selected = false, onActivate, byline }: DeckTileProps) {
     const [t] = useTranslation("deck");
     const labels = useDeckLabels();
 
@@ -103,7 +106,7 @@ export function DeckTile({ overview, rules, onMenu, selected = false, onActivate
             )}
         >
             <Link
-                to={"/decks/$deckUuid/cards"}
+                to={deckCardsRoute(deck.role)}
                 params={{ deckUuid: deck.uuid }}
                 className={"block focus:outline-none"}
                 aria-label={deck.name}
@@ -229,6 +232,9 @@ export function DeckTile({ overview, rules, onMenu, selected = false, onActivate
                             style={{ width: `${filled(overview.cards, target)}%` }}
                         />
                     </span>
+                    {byline !== undefined && (
+                        <span className={"truncate text-xs text-zinc-500 dark:text-zinc-400"}>{byline}</span>
+                    )}
                 </span>
 
                 {deck.bracket != null && (

@@ -14,7 +14,7 @@ use crate::tests::harness::create_account;
 use crate::tests::harness::run;
 
 /// Locks `account` as the Admin behind `client`, returning the response body
-async fn lock(client: &mut TestClient, account: &TestAccount, reason: &str) -> Value {
+pub(super) async fn lock(client: &mut TestClient, account: &TestAccount, reason: &str) -> Value {
     client
         .json(
             Method::POST,

@@ -48,6 +48,7 @@ docs/CardFinish.md
 docs/CardRarity.md
 docs/ChooseUsernameErrors.md
 docs/ChooseUsernameRequest.md
+docs/CollaboratorLevel.md
 docs/CollectionEntryResponse.md
 docs/CollectionOverviewResponse.md
 docs/CollectionResponse.md
@@ -68,6 +69,7 @@ docs/DeckCardCatalogResponse.md
 docs/DeckCardResponse.md
 docs/DeckChangeKind.md
 docs/DeckChangeResponse.md
+docs/DeckCollaboratorResponse.md
 docs/DeckCommanderResponse.md
 docs/DeckDriftResponse.md
 docs/DeckDriftRowResponse.md
@@ -79,6 +81,7 @@ docs/DeckOverviewResponse.md
 docs/DeckPointEntryResponse.md
 docs/DeckPointResponse.md
 docs/DeckResponse.md
+docs/DeckRole.md
 docs/DeckSettingsResponse.md
 docs/DeckSize.md
 docs/DeckSizeOneOf.md
@@ -125,6 +128,7 @@ docs/FormErrorResponseForDeleteAccountErrors.md
 docs/FormErrorResponseForDeletePasskeyErrors.md
 docs/FormErrorResponseForFinishLoginErrors.md
 docs/FormErrorResponseForMeErrors.md
+docs/FormErrorResponseForPutDeckCollaboratorErrors.md
 docs/FormErrorResponseForRegistrationErrors.md
 docs/FormErrorResponseForRenameAccountErrors.md
 docs/FormErrorResponseForRenamePasskeyErrors.md
@@ -139,6 +143,7 @@ docs/ImportMode.md
 docs/ListCardsResponse.md
 docs/ListCollectionEntriesResponse.md
 docs/ListDeckCardsResponse.md
+docs/ListDeckCollaboratorsResponse.md
 docs/ListDeckFoldersResponse.md
 docs/ListFormatsResponse.md
 docs/ListGlobalTagsResponse.md
@@ -146,6 +151,7 @@ docs/ListOnLoanResponse.md
 docs/ListOpenIdProvidersResponse.md
 docs/ListPasskeysResponse.md
 docs/ListScannerSessionsResponse.md
+docs/ListSharedWithMeResponse.md
 docs/ListWatchListAlarmsResponse.md
 docs/ListWatchListCopiesResponse.md
 docs/ListWatchListEntriesResponse.md
@@ -178,6 +184,9 @@ docs/PublicCollectionResponse.md
 docs/PublicDeckResponse.md
 docs/PublicDeckSort.md
 docs/PublicProfileResponse.md
+docs/PutDeckCollaborator200Response.md
+docs/PutDeckCollaboratorErrors.md
+docs/PutDeckCollaboratorRequest.md
 docs/RarityCountsResponse.md
 docs/ReadDeckCardResponse.md
 docs/ReadDeckUrlRequest.md
@@ -215,6 +224,7 @@ docs/SetDeckRuleZeroRequest.md
 docs/SetDeckVisibilityRequest.md
 docs/SharedCollectionResponse.md
 docs/SharedDeckResponse.md
+docs/SharedWithMeDeckResponse.md
 docs/Signup200Response.md
 docs/SignupErrors.md
 docs/SignupRequest.md

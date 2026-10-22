@@ -38,7 +38,6 @@ use service_bootstrap::custom_db_enum;
 use tracing::instrument;
 use uuid::Uuid;
 
-use crate::models::account::AccountUuid;
 use crate::models::deck::Deck;
 use crate::models::deck::DeckAccess;
 use crate::models::deck::DeckCard;
@@ -46,6 +45,7 @@ use crate::models::deck::DeckCardInsert;
 use crate::models::deck::DeckEntryKey;
 use crate::models::deck::DeckUuid;
 use crate::models::deck::DeckZone;
+use crate::models::deck::access::DeckGrant;
 use crate::models::deck::db::DeckCardModel;
 use crate::models::deck::db::DeckModel;
 use crate::models::deck::history::db::DeckChangeInsertPatch;
@@ -58,7 +58,7 @@ pub(in crate::models) mod db;
 /// The longest name of a Deck checkpoint, in bytes
 pub const CHECKPOINT_LENGTH: usize = 64;
 
-/// What the owner did in a Deck change
+/// What the owner or an Editor did in a Deck change
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub enum DeckChangeKind {
     /// The deck was created, empty
@@ -585,7 +585,7 @@ enum Subject {
     Field(Discriminant<FieldDifference>),
 }
 
-/// A deck locked for an edit by its owner, until the transaction ends
+/// A deck locked for an edit, until the transaction ends
 ///
 /// Only [`DeckHistory::lock`] hands one out, so a Deck change is only ever
 /// recorded under the lock.
@@ -898,7 +898,7 @@ pub struct UndoState {
 pub struct DeckChange {
     /// Primary key
     pub uuid: DeckChangeUuid,
-    /// What the owner did
+    /// What the owner or an Editor did
     pub kind: DeckChangeKind,
     /// When it happened
     pub changed_at: OffsetDateTime,
@@ -959,16 +959,17 @@ pub struct DeckHistoryPage {
 pub struct DeckHistory;
 
 impl DeckHistory {
-    /// Lock a deck for an edit, if `owner` owns it
+    /// Lock the deck a [`DeckGrant`] is for, for an edit
     ///
     /// The row lock lasts until the transaction ends. It does not conflict
     /// with the key share lock inserting a Deck entry takes on its deck.
+    /// Denied when the deck changed hands since the grant was given.
     #[instrument(name = "DeckHistory::lock", skip(tx))]
     pub async fn lock(
         tx: &mut Transaction,
-        deck: DeckUuid,
-        owner: AccountUuid,
+        grant: &DeckGrant,
     ) -> Result<DeckAccess<DeckEdit>, rorm::Error> {
+        let (deck, owner) = (grant.deck(), grant.owner());
         let rows = (&mut *tx)
             .execute::<All>(
                 "SELECT uuid FROM deck WHERE uuid = $1 AND owner = $2 FOR NO KEY UPDATE"
@@ -986,18 +987,19 @@ impl DeckHistory {
         })
     }
 
-    /// Lock a deck for reading its Deck history, if `owner` owns it
+    /// Lock the deck a [`DeckGrant`] is for, for reading its Deck history
     ///
     /// The share lock waits for a Deck change being recorded and keeps the
     /// next one from being recorded until the transaction ends, so every
     /// later statement reads the Deck changes and the deck they describe as
-    /// one consistent state. Readers do not wait for each other.
+    /// one consistent state. Readers do not wait for each other. Denied when
+    /// the deck changed hands since the grant was given.
     #[instrument(name = "DeckHistory::lock_for_reading", skip(tx))]
     pub async fn lock_for_reading(
         tx: &mut Transaction,
-        deck: DeckUuid,
-        owner: AccountUuid,
+        grant: &DeckGrant,
     ) -> Result<DeckAccess, rorm::Error> {
+        let (deck, owner) = (grant.deck(), grant.owner());
         let rows = (&mut *tx)
             .execute::<All>(
                 "SELECT uuid FROM deck WHERE uuid = $1 AND owner = $2 FOR SHARE".to_string(),
@@ -1453,7 +1455,7 @@ struct StoredChange {
     uuid: DeckChangeUuid,
     /// When it happened
     changed_at: OffsetDateTime,
-    /// What the owner did
+    /// What the owner or an Editor did
     kind: DeckChangeKind,
     /// What it did to the deck
     difference: DeckDifference,

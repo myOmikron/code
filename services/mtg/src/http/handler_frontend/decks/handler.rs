@@ -2,6 +2,7 @@ use galvyn::core::Module;
 use galvyn::core::re_exports::axum::extract::Path;
 use galvyn::core::stuff::api_error::ApiError;
 use galvyn::core::stuff::api_error::ApiResult;
+use galvyn::core::stuff::api_error::core::CoreApiError;
 use galvyn::core::stuff::api_json::ApiJson;
 use galvyn::delete;
 use galvyn::get;
@@ -53,6 +54,7 @@ use crate::http::handler_frontend::decks::schema::TakeDeckCardsRequest;
 use crate::http::handler_frontend::decks::schema::UpdateDeckCardRequest;
 use crate::http::handler_frontend::decks::schema::UpdateDeckRequest;
 use crate::http::handler_frontend::decks::schema::UpdateDeckTagRequest;
+use crate::http::handler_frontend::shared::schema::redact_slot;
 use crate::models::account::Account;
 use crate::models::account::AccountUuid;
 use crate::models::card_attributes::CardCondition;
@@ -69,6 +71,9 @@ use crate::models::deck::DeckCardUuid;
 use crate::models::deck::DeckInsert;
 use crate::models::deck::DeckUuid;
 use crate::models::deck::DetachOutcome;
+use crate::models::deck::access::DeckGrant;
+use crate::models::deck::access::DeckOperation;
+use crate::models::deck::access::DeckRole;
 use crate::models::deck::advisor::AdvisorSettings;
 use crate::models::deck::drift::DeckDrift;
 use crate::models::deck::history::DeckChangeKind;
@@ -125,7 +130,17 @@ pub async fn attach_deck_collection(
 ) -> ApiResult<ApiJson<CollectionResponse>> {
     let mut tx = Database::global().start_transaction().await?;
 
-    let collection = match Deck::attach_collection(&mut tx, account.uuid, deck_uuid).await? {
+    let grant = granted(
+        Deck::authorize(
+            &mut tx,
+            deck_uuid,
+            account.uuid,
+            DeckOperation::AttachCollection,
+        )
+        .await?,
+    )?;
+
+    let collection = match Deck::attach_collection(&mut tx, grant.owner(), deck_uuid).await? {
         DeckAccess::Granted(collection) => collection,
         DeckAccess::Denied => return Err(ApiError::bad_request("Request was denied")),
     };
@@ -146,7 +161,17 @@ pub async fn detach_deck_collection(
 ) -> ApiResult<ApiJson<()>> {
     let mut tx = Database::global().start_transaction().await?;
 
-    match Deck::detach_collection(&mut tx, account.uuid, deck_uuid).await? {
+    let grant = granted(
+        Deck::authorize(
+            &mut tx,
+            deck_uuid,
+            account.uuid,
+            DeckOperation::DetachCollection,
+        )
+        .await?,
+    )?;
+
+    match Deck::detach_collection(&mut tx, grant.owner(), deck_uuid).await? {
         DetachOutcome::Detached => {}
         DetachOutcome::NotEmpty => {
             return Err(ApiError::bad_request("Sort the cards back first"));
@@ -167,15 +192,20 @@ pub async fn get_deck_sourcing(
 ) -> ApiResult<ApiJson<DeckSourcingResponse>> {
     let mut tx = Database::global().start_transaction().await?;
 
-    match Deck::may_administer(&mut tx, deck_uuid, account.uuid).await? {
-        DeckAccess::Granted(_) => {}
-        DeckAccess::Denied => return Err(ApiError::bad_request("Request was denied")),
-    }
+    let grant = granted(
+        Deck::authorize(
+            &mut tx,
+            deck_uuid,
+            account.uuid,
+            DeckOperation::ReadSourcing,
+        )
+        .await?,
+    )?;
 
     let collection = Deck::collection(&mut tx, deck_uuid).await?;
     let sourcing = DeckSourcing::read(
         &mut tx,
-        account.uuid,
+        grant.owner(),
         deck_uuid,
         collection.as_ref().map(|collection| collection.uuid),
     )
@@ -197,7 +227,7 @@ pub async fn get_deck_collection_drift(
 ) -> ApiResult<ApiJson<DeckDriftResponse>> {
     let mut tx = Database::global().start_transaction().await?;
 
-    granted(Deck::may_administer(&mut tx, deck_uuid, account.uuid).await?)?;
+    granted(Deck::authorize(&mut tx, deck_uuid, account.uuid, DeckOperation::ReadDrift).await?)?;
 
     let collection = Deck::collection(&mut tx, deck_uuid).await?;
     let drift = DeckDrift::read(
@@ -228,12 +258,15 @@ pub async fn take_deck_cards(
 ) -> ApiResult<ApiJson<()>> {
     let mut tx = Database::global().start_transaction().await?;
 
-    let edit = granted(DeckHistory::lock(&mut tx, deck_uuid, account.uuid).await?)?;
+    let grant = granted(
+        Deck::authorize(&mut tx, deck_uuid, account.uuid, DeckOperation::TakeCards).await?,
+    )?;
+    let edit = granted(DeckHistory::lock(&mut tx, &grant).await?)?;
     let Some(collection) = Deck::collection(&mut tx, deck_uuid).await? else {
         return Err(ApiError::bad_request("This deck keeps no collection"));
     };
 
-    let source = CollectionEntry::collection_of(&mut tx, account.uuid, entry)
+    let source = CollectionEntry::collection_of(&mut tx, grant.owner(), entry)
         .await?
         .ok_or_else(|| ApiError::bad_request("Request was denied"))?;
     if source == collection.uuid {
@@ -242,7 +275,7 @@ pub async fn take_deck_cards(
 
     let filed = match CollectionEntry::move_copies(
         &mut tx,
-        account.uuid,
+        grant.owner(),
         entry,
         quantity,
         collection.uuid,
@@ -292,13 +325,22 @@ pub async fn fill_deck_collection(
 ) -> ApiResult<ApiJson<FillDeckCollectionResponse>> {
     let mut tx = Database::global().start_transaction().await?;
 
-    let edit = granted(DeckHistory::lock(&mut tx, deck_uuid, account.uuid).await?)?;
+    let grant = granted(
+        Deck::authorize(
+            &mut tx,
+            deck_uuid,
+            account.uuid,
+            DeckOperation::FillCollection,
+        )
+        .await?,
+    )?;
+    let edit = granted(DeckHistory::lock(&mut tx, &grant).await?)?;
     let Some(collection) = Deck::collection(&mut tx, deck_uuid).await? else {
         return Err(ApiError::bad_request("This deck keeps no collection"));
     };
 
     let sourcing =
-        DeckSourcing::read(&mut tx, account.uuid, deck_uuid, Some(collection.uuid)).await?;
+        DeckSourcing::read(&mut tx, grant.owner(), deck_uuid, Some(collection.uuid)).await?;
 
     let mut filed = 0;
     // The loop below shadows `slot` with each listed slot in turn, so whether
@@ -394,10 +436,9 @@ pub async fn return_deck_cards(
 ) -> ApiResult<ApiJson<()>> {
     let mut tx = Database::global().start_transaction().await?;
 
-    match Deck::may_administer(&mut tx, deck_uuid, account.uuid).await? {
-        DeckAccess::Granted(_) => {}
-        DeckAccess::Denied => return Err(ApiError::bad_request("Request was denied")),
-    }
+    let grant = granted(
+        Deck::authorize(&mut tx, deck_uuid, account.uuid, DeckOperation::ReturnCards).await?,
+    )?;
     let Some(collection) = Deck::collection(&mut tx, deck_uuid).await? else {
         return Err(ApiError::bad_request("This deck keeps no collection"));
     };
@@ -411,7 +452,7 @@ pub async fn return_deck_cards(
         .or(stack.origin)
         .ok_or_else(|| ApiError::bad_request("Say which collection they go into"))?;
 
-    match CollectionEntry::move_copies(&mut tx, account.uuid, entry, quantity, into, None).await? {
+    match CollectionEntry::move_copies(&mut tx, grant.owner(), entry, quantity, into, None).await? {
         MoveOutcome::Moved { .. } => {}
         MoveOutcome::TooFewCopies => {
             return Err(ApiError::bad_request("The stack does not hold that many"));
@@ -437,16 +478,15 @@ pub async fn return_all_deck_cards(
 ) -> ApiResult<ApiJson<ReturnAllDeckCardsResponse>> {
     let mut tx = Database::global().start_transaction().await?;
 
-    match Deck::may_administer(&mut tx, deck_uuid, account.uuid).await? {
-        DeckAccess::Granted(_) => {}
-        DeckAccess::Denied => return Err(ApiError::bad_request("Request was denied")),
-    }
+    let grant = granted(
+        Deck::authorize(&mut tx, deck_uuid, account.uuid, DeckOperation::ReturnCards).await?,
+    )?;
     let Some(collection) = Deck::collection(&mut tx, deck_uuid).await? else {
         return Err(ApiError::bad_request("This deck keeps no collection"));
     };
 
     let stacks =
-        CollectionEntry::get_all_in_collection(&mut tx, account.uuid, collection.uuid).await?;
+        CollectionEntry::get_all_in_collection(&mut tx, grant.owner(), collection.uuid).await?;
 
     let mut returned = 0;
     let mut left = 0;
@@ -457,7 +497,7 @@ pub async fn return_all_deck_cards(
         };
         match CollectionEntry::move_copies(
             &mut tx,
-            account.uuid,
+            grant.owner(),
             stack.uuid,
             stack.quantity,
             into,
@@ -490,7 +530,11 @@ pub async fn set_deck_folder(
 ) -> ApiResult<ApiJson<()>> {
     let mut tx = Database::global().start_transaction().await?;
 
-    match Deck::set_folder(&mut tx, account.uuid, deck_uuid, folder).await? {
+    let grant = granted(
+        Deck::authorize(&mut tx, deck_uuid, account.uuid, DeckOperation::SetFolder).await?,
+    )?;
+
+    match Deck::set_folder(&mut tx, grant.owner(), deck_uuid, folder).await? {
         DeckAccess::Granted(_) => {}
         DeckAccess::Denied => return Err(ApiError::bad_request("Request was denied")),
     }
@@ -569,7 +613,9 @@ pub async fn create_deck(
     Ok(ApiJson(DeckResponse::from(deck)))
 }
 
-/// Fetch a single deck
+/// Fetch a single deck, with the caller's role on it
+///
+/// Only the owner gets its share link and folder.
 #[get("/{deck}")]
 pub async fn get_deck(
     account: Account,
@@ -580,7 +626,9 @@ pub async fn get_deck(
     let deck = Deck::get_visible(&mut tx, deck_uuid, Some(account.uuid))
         .await?
         .ok_or_else(denied)?;
-    let state = if deck.owner == account.uuid {
+    let role = deck.role_of(&mut tx, account.uuid).await?;
+    let reads_history = role.is_some_and(|role| role.permits(DeckOperation::ReadHistory.class()));
+    let state = if reads_history {
         DeckHistory::undo_state(&mut tx, deck_uuid).await?
     } else {
         UndoState::default()
@@ -588,10 +636,13 @@ pub async fn get_deck(
 
     tx.commit().await?;
 
-    Ok(ApiJson(DeckResponse {
-        undo: DeckUndoResponse::from(state),
-        ..DeckResponse::from(deck)
-    }))
+    Ok(ApiJson(
+        DeckResponse {
+            undo: DeckUndoResponse::from(state),
+            ..DeckResponse::from(deck)
+        }
+        .seen_as(role),
+    ))
 }
 
 /// Rename a deck, change its description or the format it is built for
@@ -607,10 +658,13 @@ pub async fn update_deck(
 ) -> ApiResult<ApiJson<()>> {
     let mut tx = Database::global().start_transaction().await?;
 
-    let edit = granted(DeckHistory::lock(&mut tx, deck_uuid, account.uuid).await?)?;
-    let before = locked_deck(&mut tx, &edit, account.uuid).await?;
-    granted(Deck::update(&mut tx, account.uuid, deck_uuid, name, description, format).await?)?;
-    record_settings(&mut tx, &edit, account.uuid, &before).await?;
+    let grant = granted(
+        Deck::authorize(&mut tx, deck_uuid, account.uuid, DeckOperation::UpdateDeck).await?,
+    )?;
+    let edit = granted(DeckHistory::lock(&mut tx, &grant).await?)?;
+    let before = locked_deck(&mut tx, &edit, grant.owner()).await?;
+    granted(Deck::update(&mut tx, grant.owner(), deck_uuid, name, description, format).await?)?;
+    record_settings(&mut tx, &edit, grant.owner(), &before).await?;
 
     tx.commit().await?;
 
@@ -626,7 +680,17 @@ pub async fn set_visibility_deck(
 ) -> ApiResult<ApiJson<()>> {
     let mut tx = Database::global().start_transaction().await?;
 
-    granted(Deck::set_visibility(&mut tx, account.uuid, deck_uuid, visibility).await?)?;
+    let grant = granted(
+        Deck::authorize(
+            &mut tx,
+            deck_uuid,
+            account.uuid,
+            DeckOperation::SetVisibility,
+        )
+        .await?,
+    )?;
+
+    granted(Deck::set_visibility(&mut tx, grant.owner(), deck_uuid, visibility).await?)?;
 
     tx.commit().await?;
 
@@ -646,10 +710,13 @@ pub async fn set_deck_colors(
 ) -> ApiResult<ApiJson<()>> {
     let mut tx = Database::global().start_transaction().await?;
 
-    let edit = granted(DeckHistory::lock(&mut tx, deck_uuid, account.uuid).await?)?;
-    let before = locked_deck(&mut tx, &edit, account.uuid).await?;
-    granted(Deck::set_allowed_color_identity(&mut tx, account.uuid, deck_uuid, colors).await?)?;
-    record_settings(&mut tx, &edit, account.uuid, &before).await?;
+    let grant = granted(
+        Deck::authorize(&mut tx, deck_uuid, account.uuid, DeckOperation::SetColors).await?,
+    )?;
+    let edit = granted(DeckHistory::lock(&mut tx, &grant).await?)?;
+    let before = locked_deck(&mut tx, &edit, grant.owner()).await?;
+    granted(Deck::set_allowed_color_identity(&mut tx, grant.owner(), deck_uuid, colors).await?)?;
+    record_settings(&mut tx, &edit, grant.owner(), &before).await?;
 
     tx.commit().await?;
 
@@ -675,14 +742,17 @@ pub async fn set_deck_bracket(
     // The brackets are Commander's, so nothing else may claim one. Taking a
     // claim back stays allowed whatever the format — that is how a deck that
     // was moved off Commander gets tidied up.
-    let edit = granted(DeckHistory::lock(&mut tx, deck_uuid, account.uuid).await?)?;
-    let before = locked_deck(&mut tx, &edit, account.uuid).await?;
+    let grant = granted(
+        Deck::authorize(&mut tx, deck_uuid, account.uuid, DeckOperation::SetBracket).await?,
+    )?;
+    let edit = granted(DeckHistory::lock(&mut tx, &grant).await?)?;
+    let before = locked_deck(&mut tx, &edit, grant.owner()).await?;
     if bracket.is_some() && !has_brackets(&before.format) {
         return Err(ApiError::bad_request("This format has no brackets"));
     }
 
-    granted(Deck::set_bracket(&mut tx, account.uuid, deck_uuid, bracket).await?)?;
-    record_settings(&mut tx, &edit, account.uuid, &before).await?;
+    granted(Deck::set_bracket(&mut tx, grant.owner(), deck_uuid, bracket).await?)?;
+    record_settings(&mut tx, &edit, grant.owner(), &before).await?;
 
     tx.commit().await?;
 
@@ -706,15 +776,18 @@ pub async fn set_deck_rule_zero(
 
     let mut tx = Database::global().start_transaction().await?;
 
-    let edit = granted(DeckHistory::lock(&mut tx, deck_uuid, account.uuid).await?)?;
-    let before = locked_deck(&mut tx, &edit, account.uuid).await?;
+    let grant = granted(
+        Deck::authorize(&mut tx, deck_uuid, account.uuid, DeckOperation::SetRuleZero).await?,
+    )?;
+    let edit = granted(DeckHistory::lock(&mut tx, &grant).await?)?;
+    let before = locked_deck(&mut tx, &edit, grant.owner()).await?;
     granted(
-        Deck::set_allowed_color_identity(&mut tx, account.uuid, deck_uuid, request.colors).await?,
+        Deck::set_allowed_color_identity(&mut tx, grant.owner(), deck_uuid, request.colors).await?,
     )?;
     granted(
         Deck::set_rule_zero(
             &mut tx,
-            account.uuid,
+            grant.owner(),
             deck_uuid,
             request.allow_extra_commanders,
             request.allow_duplicates,
@@ -723,7 +796,7 @@ pub async fn set_deck_rule_zero(
         )
         .await?,
     )?;
-    record_settings(&mut tx, &edit, account.uuid, &before).await?;
+    record_settings(&mut tx, &edit, grant.owner(), &before).await?;
 
     tx.commit().await?;
 
@@ -733,8 +806,8 @@ pub async fn set_deck_rule_zero(
 /// Read this deck's advisor settings
 ///
 /// A deck nobody has advised yet still answers: the document at its
-/// defaults, not a 404. The 404 is reserved for a deck this account does not
-/// own.
+/// defaults, not a 404. The 404 is reserved for a deck this account may not
+/// edit.
 #[get("/{deck}/advisor-settings")]
 pub async fn get_deck_advisor_settings(
     account: Account,
@@ -742,7 +815,17 @@ pub async fn get_deck_advisor_settings(
 ) -> ApiResult<ApiJson<AdvisorSettingsResponse>> {
     let mut tx = Database::global().start_transaction().await?;
 
-    let settings = granted(Deck::advisor_settings(&mut tx, account.uuid, deck_uuid).await?)?;
+    let grant = granted(
+        Deck::authorize(
+            &mut tx,
+            deck_uuid,
+            account.uuid,
+            DeckOperation::ReadAdvisorSettings,
+        )
+        .await?,
+    )?;
+
+    let settings = granted(Deck::advisor_settings(&mut tx, grant.owner(), deck_uuid).await?)?;
 
     tx.commit().await?;
 
@@ -777,10 +860,20 @@ pub async fn set_deck_advisor_settings(
 
     let mut tx = Database::global().start_transaction().await?;
 
+    let grant = granted(
+        Deck::authorize(
+            &mut tx,
+            deck_uuid,
+            account.uuid,
+            DeckOperation::SetAdvisorSettings,
+        )
+        .await?,
+    )?;
+
     granted(
         Deck::set_advisor_settings(
             &mut tx,
-            account.uuid,
+            grant.owner(),
             deck_uuid,
             AdvisorSettings {
                 themes: request.themes,
@@ -807,9 +900,19 @@ pub async fn rotate_deck_share_token(
 ) -> ApiResult<ApiJson<RotateDeckShareTokenResponse>> {
     let mut tx = Database::global().start_transaction().await?;
 
-    let share_token = match Deck::rotate_share_token(&mut tx, account.uuid, deck_uuid).await? {
+    let grant = granted(
+        Deck::authorize(
+            &mut tx,
+            deck_uuid,
+            account.uuid,
+            DeckOperation::RotateShareToken,
+        )
+        .await?,
+    )?;
+
+    let share_token = match Deck::rotate_share_token(&mut tx, grant.owner(), deck_uuid).await? {
         DeckAccess::Granted(token) => token,
-        DeckAccess::Denied => return Err(denied()),
+        DeckAccess::Denied => return Err(denied().into()),
     };
 
     tx.commit().await?;
@@ -825,7 +928,11 @@ pub async fn delete_deck(
 ) -> ApiResult<ApiJson<()>> {
     let mut tx = Database::global().start_transaction().await?;
 
-    granted(Deck::delete(&mut tx, account.uuid, deck_uuid).await?)?;
+    let grant = granted(
+        Deck::authorize(&mut tx, deck_uuid, account.uuid, DeckOperation::DeleteDeck).await?,
+    )?;
+
+    granted(Deck::delete(&mut tx, grant.owner(), deck_uuid).await?)?;
 
     tx.commit().await?;
 
@@ -835,7 +942,8 @@ pub async fn delete_deck(
 /// Every card of a deck, with the catalog data and the tags on it
 ///
 /// The whole deck in one answer: a hundred slots are not worth paging, and the
-/// client groups and sorts them however the list is being looked at.
+/// client groups and sorts them however the list is being looked at. A
+/// Collaborator gets it the way the Share link shows it, see [`redact_slot`].
 #[get("/{deck}/cards")]
 pub async fn list_deck_cards(
     account: Account,
@@ -843,14 +951,18 @@ pub async fn list_deck_cards(
 ) -> ApiResult<ApiJson<ListDeckCardsResponse>> {
     let mut tx = Database::global().start_transaction().await?;
 
-    granted(Deck::may_administer(&mut tx, deck_uuid, account.uuid).await?)?;
+    let grant = granted(
+        Deck::authorize(&mut tx, deck_uuid, account.uuid, DeckOperation::ListCards).await?,
+    )?;
 
+    let owner = grant.role() == DeckRole::Owner;
     let cards = ListedSlot::read_deck(&mut tx, deck_uuid)
         .await?
         .into_iter()
         .map(DeckCardResponse::from)
+        .map(|slot| if owner { slot } else { redact_slot(slot) })
         .collect();
-    let tags = DeckTag::get_usable(&mut tx, account.uuid, deck_uuid)
+    let tags = DeckTag::get_usable(&mut tx, grant.owner(), deck_uuid)
         .await?
         .into_iter()
         .map(DeckTagResponse::from)
@@ -866,7 +978,8 @@ pub async fn list_deck_cards(
 /// Copies joining an alike Deck entry (same printing, zone, finish and proxy
 /// status) raise its count instead of opening a second line beside it. The
 /// answer is the entry's bookkeeping fields either way; catalog data and tags
-/// come from the list endpoint.
+/// come from the list endpoint. Only the owner adds proxies, see
+/// [`DeckGrant::proxy`].
 #[post("/{deck}/cards")]
 pub async fn add_deck_card(
     account: Account,
@@ -881,7 +994,9 @@ pub async fn add_deck_card(
 ) -> ApiResult<ApiJson<DeckCardResponse>> {
     let mut tx = Database::global().start_transaction().await?;
 
-    let edit = granted(DeckHistory::lock(&mut tx, deck_uuid, account.uuid).await?)?;
+    let grant =
+        granted(Deck::authorize(&mut tx, deck_uuid, account.uuid, DeckOperation::AddCard).await?)?;
+    let edit = granted(DeckHistory::lock(&mut tx, &grant).await?)?;
 
     if quantity < 1 {
         return Err(ApiError::bad_request("A slot holds at least one copy"));
@@ -895,7 +1010,7 @@ pub async fn add_deck_card(
             quantity,
             zone,
             foil: foil.unwrap_or(false),
-            proxy: proxy.unwrap_or(false),
+            proxy: grant.proxy(proxy).unwrap_or(false),
         },
     )
     .await?;
@@ -1062,7 +1177,10 @@ pub async fn import_deck_cards(
 
     let mut tx = Database::global().start_transaction().await?;
 
-    let edit = granted(DeckHistory::lock(&mut tx, deck_uuid, account.uuid).await?)?;
+    let grant = granted(
+        Deck::authorize(&mut tx, deck_uuid, account.uuid, DeckOperation::ImportCards).await?,
+    )?;
+    let edit = granted(DeckHistory::lock(&mut tx, &grant).await?)?;
 
     if cards.iter().any(|card| card.quantity < 1) {
         return Err(ApiError::bad_request("A slot holds at least one copy"));
@@ -1075,7 +1193,7 @@ pub async fn import_deck_cards(
             quantity: card.quantity,
             zone: card.zone,
             foil: card.foil.unwrap_or(false),
-            proxy: card.proxy.unwrap_or(false),
+            proxy: grant.proxy(card.proxy).unwrap_or(false),
         })
         .collect();
     let added = inserts.len() as u32;
@@ -1083,7 +1201,7 @@ pub async fn import_deck_cards(
     let before = DeckCard::get_all_in_deck(&mut tx, deck_uuid).await?;
     if mode == ImportMode::Replace {
         if !DeckCard::replace_all(&mut tx, deck_uuid, inserts).await? {
-            return Err(denied());
+            return Err(denied().into());
         }
     } else {
         DeckCard::add_many(&mut tx, deck_uuid, inserts).await?;
@@ -1100,7 +1218,8 @@ pub async fn import_deck_cards(
 /// Change a Deck entry: its count, its zone or the print it sleeves
 ///
 /// An entry made alike to another one merges into it, and a count of zero
-/// removes it.
+/// removes it. A Collaborator's change leaves the proxy flag as it is, see
+/// [`DeckGrant::proxy`].
 #[patch("/{deck}/cards/{card}")]
 pub async fn update_deck_card(
     account: Account,
@@ -1109,7 +1228,10 @@ pub async fn update_deck_card(
 ) -> ApiResult<ApiJson<()>> {
     let mut tx = Database::global().start_transaction().await?;
 
-    let edit = granted(DeckHistory::lock(&mut tx, deck_uuid, account.uuid).await?)?;
+    let grant = granted(
+        Deck::authorize(&mut tx, deck_uuid, account.uuid, DeckOperation::UpdateCard).await?,
+    )?;
+    let edit = granted(DeckHistory::lock(&mut tx, &grant).await?)?;
 
     if request.quantity.is_some_and(|quantity| quantity < 0) {
         return Err(ApiError::bad_request("A quantity is never negative"));
@@ -1129,7 +1251,7 @@ pub async fn update_deck_card(
                 quantity: request.quantity,
                 zone: request.zone,
                 foil: request.foil,
-                proxy: request.proxy,
+                proxy: grant.proxy(request.proxy),
             },
         )
         .await?,
@@ -1168,7 +1290,10 @@ pub async fn swap_deck_card(
 ) -> ApiResult<ApiJson<DeckCardResponse>> {
     let mut tx = Database::global().start_transaction().await?;
 
-    let edit = granted(DeckHistory::lock(&mut tx, deck_uuid, account.uuid).await?)?;
+    let grant = granted(
+        Deck::authorize(&mut tx, deck_uuid, account.uuid, DeckOperation::UpdateCard).await?,
+    )?;
+    let edit = granted(DeckHistory::lock(&mut tx, &grant).await?)?;
 
     let going = DeckCard::get(&mut tx, deck_uuid, card_uuid)
         .await?
@@ -1186,7 +1311,7 @@ pub async fn swap_deck_card(
         quantity,
         zone: going.zone,
         foil: foil.unwrap_or(false),
-        proxy: proxy.unwrap_or(false),
+        proxy: grant.proxy(proxy).unwrap_or(false),
     };
     if coming.key() == going.key() {
         return Err(ApiError::bad_request("A card is not swapped for itself"));
@@ -1221,7 +1346,10 @@ pub async fn delete_deck_card(
 ) -> ApiResult<ApiJson<()>> {
     let mut tx = Database::global().start_transaction().await?;
 
-    let edit = granted(DeckHistory::lock(&mut tx, deck_uuid, account.uuid).await?)?;
+    let grant = granted(
+        Deck::authorize(&mut tx, deck_uuid, account.uuid, DeckOperation::DeleteCard).await?,
+    )?;
+    let edit = granted(DeckHistory::lock(&mut tx, &grant).await?)?;
     let entry = DeckCard::get(&mut tx, deck_uuid, card_uuid)
         .await?
         .ok_or_else(denied)?;
@@ -1238,6 +1366,9 @@ pub async fn delete_deck_card(
 }
 
 /// Create a tag on a deck
+///
+/// The tag is the owner's, whoever creates it. An Editor only creates tags
+/// local to this deck: a global one reaches every deck of the owner.
 #[post("/{deck}/tags")]
 pub async fn create_deck_tag(
     account: Account,
@@ -1251,11 +1382,16 @@ pub async fn create_deck_tag(
 ) -> ApiResult<ApiJson<DeckTagResponse>> {
     let mut tx = Database::global().start_transaction().await?;
 
-    granted(Deck::may_administer(&mut tx, deck_uuid, account.uuid).await?)?;
+    let grant = granted(
+        Deck::authorize(&mut tx, deck_uuid, account.uuid, DeckOperation::CreateTag).await?,
+    )?;
+    if global && !grant.may_change_global_tags() {
+        return Err(denied().into());
+    }
 
     let tag = DeckTag::create(
         &mut tx,
-        account.uuid,
+        grant.owner(),
         DeckTagInsert {
             deck: (!global).then_some(deck_uuid),
             name,
@@ -1271,6 +1407,8 @@ pub async fn create_deck_tag(
 }
 
 /// Rename a tag, change its marker or move its scope
+///
+/// An Editor only changes a tag local to this deck and keeps it there.
 #[put("/{deck}/tags/{tag}")]
 pub async fn update_deck_tag(
     account: Account,
@@ -1284,11 +1422,17 @@ pub async fn update_deck_tag(
 ) -> ApiResult<ApiJson<()>> {
     let mut tx = Database::global().start_transaction().await?;
 
-    granted(Deck::may_administer(&mut tx, deck_uuid, account.uuid).await?)?;
+    let grant = granted(
+        Deck::authorize(&mut tx, deck_uuid, account.uuid, DeckOperation::UpdateTag).await?,
+    )?;
+    if global && !grant.may_change_global_tags() {
+        return Err(denied().into());
+    }
+    require_local_tag(&mut tx, &grant, tag_uuid).await?;
     granted(
         DeckTag::update(
             &mut tx,
-            account.uuid,
+            grant.owner(),
             tag_uuid,
             (!global).then_some(deck_uuid),
             name,
@@ -1304,6 +1448,8 @@ pub async fn update_deck_tag(
 }
 
 /// Delete a tag, taking it off every card it sat on
+///
+/// An Editor only deletes a tag local to this deck.
 #[delete("/{deck}/tags/{tag}")]
 pub async fn delete_deck_tag(
     account: Account,
@@ -1311,8 +1457,11 @@ pub async fn delete_deck_tag(
 ) -> ApiResult<ApiJson<()>> {
     let mut tx = Database::global().start_transaction().await?;
 
-    granted(Deck::may_administer(&mut tx, deck_uuid, account.uuid).await?)?;
-    granted(DeckTag::delete(&mut tx, account.uuid, tag_uuid).await?)?;
+    let grant = granted(
+        Deck::authorize(&mut tx, deck_uuid, account.uuid, DeckOperation::DeleteTag).await?,
+    )?;
+    require_local_tag(&mut tx, &grant, tag_uuid).await?;
+    granted(DeckTag::delete(&mut tx, grant.owner(), tag_uuid).await?)?;
 
     tx.commit().await?;
 
@@ -1320,6 +1469,9 @@ pub async fn delete_deck_tag(
 }
 
 /// Put a tag on a card
+///
+/// An Editor only puts on tags local to this deck: a global one would tag the
+/// card on every deck of the owner.
 #[post("/{deck}/cards/{card}/tags/{tag}")]
 pub async fn assign_deck_card_tag(
     account: Account,
@@ -1327,8 +1479,11 @@ pub async fn assign_deck_card_tag(
 ) -> ApiResult<ApiJson<()>> {
     let mut tx = Database::global().start_transaction().await?;
 
-    granted(Deck::may_administer(&mut tx, deck_uuid, account.uuid).await?)?;
-    granted(DeckTag::assign(&mut tx, account.uuid, deck_uuid, card_uuid, tag_uuid).await?)?;
+    let grant = granted(
+        Deck::authorize(&mut tx, deck_uuid, account.uuid, DeckOperation::AssignTag).await?,
+    )?;
+    require_local_tag(&mut tx, &grant, tag_uuid).await?;
+    granted(DeckTag::assign(&mut tx, grant.owner(), deck_uuid, card_uuid, tag_uuid).await?)?;
 
     tx.commit().await?;
 
@@ -1336,6 +1491,8 @@ pub async fn assign_deck_card_tag(
 }
 
 /// Take a tag off a card
+///
+/// An Editor only takes off tags local to this deck, as with putting one on.
 #[delete("/{deck}/cards/{card}/tags/{tag}")]
 pub async fn unassign_deck_card_tag(
     account: Account,
@@ -1343,19 +1500,40 @@ pub async fn unassign_deck_card_tag(
 ) -> ApiResult<ApiJson<()>> {
     let mut tx = Database::global().start_transaction().await?;
 
-    granted(Deck::may_administer(&mut tx, deck_uuid, account.uuid).await?)?;
-    granted(DeckTag::unassign(&mut tx, account.uuid, deck_uuid, card_uuid, tag_uuid).await?)?;
+    let grant = granted(
+        Deck::authorize(&mut tx, deck_uuid, account.uuid, DeckOperation::UnassignTag).await?,
+    )?;
+    require_local_tag(&mut tx, &grant, tag_uuid).await?;
+    granted(DeckTag::unassign(&mut tx, grant.owner(), deck_uuid, card_uuid, tag_uuid).await?)?;
 
     tx.commit().await?;
 
     Ok(ApiJson(()))
 }
 
+/// Refuse a Collaborator every tag that is not local to the deck of `grant`
+///
+/// The owner passes with any tag of theirs, see
+/// [`DeckGrant::may_change_global_tags`].
+async fn require_local_tag(
+    tx: &mut Transaction,
+    grant: &DeckGrant,
+    tag: DeckTagUuid,
+) -> ApiResult<()> {
+    if grant.may_change_global_tags()
+        || DeckTag::is_local_to(tx, grant.owner(), tag, grant.deck()).await?
+    {
+        Ok(())
+    } else {
+        Err(denied().into())
+    }
+}
+
 /// The deck an edit holds the lock on, as it is now
 async fn locked_deck(tx: &mut Transaction, edit: &DeckEdit, owner: AccountUuid) -> ApiResult<Deck> {
     Deck::get_visible(tx, edit.deck(), Some(owner))
         .await?
-        .ok_or_else(denied)
+        .ok_or_else(|| denied().into())
 }
 
 /// Record what an edit of the deck's settings changed, against the deck before it
@@ -1376,11 +1554,13 @@ async fn record_settings(
 }
 
 /// Turn a denied access into the one answer every refused request gets
-pub(in crate::http::handler_frontend::decks) fn granted<T>(access: DeckAccess<T>) -> ApiResult<T> {
+pub(in crate::http::handler_frontend::decks) fn granted<T>(
+    access: DeckAccess<T>,
+) -> Result<T, CoreApiError> {
     access.granted().ok_or_else(denied)
 }
 
 /// The answer a request that may not happen gets
-fn denied() -> ApiError {
-    ApiError::bad_request("Request was denied")
+pub(in crate::http::handler_frontend::decks) fn denied() -> CoreApiError {
+    CoreApiError::bad_request("Request was denied")
 }

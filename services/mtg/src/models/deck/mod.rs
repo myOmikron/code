@@ -30,6 +30,7 @@ use crate::models::collection::Collection;
 use crate::models::collection::CollectionInsert;
 use crate::models::collection::db::CollectionEntryModel;
 use crate::models::collection::db::CollectionModel;
+use crate::models::deck::collaborator::DeckCollaborator;
 use crate::models::deck::db::DeckCardInsertPatch;
 use crate::models::deck::db::DeckCardModel;
 use crate::models::deck::db::DeckInsertPatch;
@@ -45,7 +46,9 @@ use crate::models::format::has_brackets;
 use crate::models::share::generate_share_token;
 use crate::models::visibility::Visibility;
 
+pub mod access;
 pub mod advisor;
+pub mod collaborator;
 pub(in crate::models) mod db;
 pub mod discovery;
 pub mod drift;
@@ -203,13 +206,14 @@ pub struct DeckInsert {
     pub allowed_color_identity: Option<MaxStr<8>>,
 }
 
-/// Outcome of an operation that only a deck's owner may perform
+/// Outcome of an operation on a deck that not everybody may perform
 ///
-/// [`Self::Denied`] covers "no such deck" and "somebody else's deck" alike, see
-/// [`crate::models::collection::CollectionAccess`].
+/// [`Self::Denied`] covers "no such deck" and "not this account's to touch"
+/// alike, see [`crate::models::collection::CollectionAccess`] and
+/// [`Deck::authorize`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DeckAccess<T = ()> {
-    /// The account owns the deck; carries whatever the operation produced
+    /// The operation was allowed; carries whatever it produced
     Granted(T),
     /// The deck is gone, or it is not this account's to touch
     Denied,
@@ -251,48 +255,32 @@ impl Deck {
 
     /// Fetch a deck if `viewer` is allowed to see it
     ///
-    /// Returns `None` both for "does not exist" and "not visible", for the same
-    /// reason as [`crate::models::collection::Collection::get_visible`].
+    /// Everybody sees a public deck; its owner and its Collaborators see it
+    /// whatever its Visibility. Returns `None` both for "does not exist" and
+    /// "not visible", for the same reason as
+    /// [`crate::models::collection::Collection::get_visible`].
     #[instrument(name = "Deck::get_visible", skip(tx))]
     pub async fn get_visible(
         tx: &mut Transaction,
         uuid: DeckUuid,
         viewer: Option<AccountUuid>,
     ) -> Result<Option<Deck>, rorm::Error> {
-        let mut visible = vec![DeckModel.visibility.equals(Visibility::Public).boxed()];
-        if let Some(viewer) = viewer {
-            visible.push(DeckModel.owner.equals(viewer.into_inner()).boxed());
-        }
-
         let deck = rorm::query(&mut *tx, DeckModel)
-            .condition(rorm::and![
-                DeckModel.uuid.equals(uuid.0),
-                DynamicCollection::or_unchecked(visible),
-            ])
+            .condition(DeckModel.uuid.equals(uuid.0))
             .optional()
             .await?;
-        Ok(deck.map(Deck::from))
-    }
+        let Some(deck) = deck.map(Deck::from) else {
+            return Ok(None);
+        };
 
-    /// Whether `account` is allowed to administer the deck
-    ///
-    /// Prefer the owner-scoped mutators below, which fold this into their
-    /// statement. Use this only when a handler needs the answer before doing
-    /// unrelated work.
-    #[instrument(name = "Deck::may_administer", skip(tx))]
-    pub async fn may_administer(
-        tx: &mut Transaction,
-        uuid: DeckUuid,
-        account: AccountUuid,
-    ) -> Result<DeckAccess, rorm::Error> {
-        let found = rorm::query(&mut *tx, DeckModel.uuid)
-            .condition(owned_by(uuid, account))
-            .optional()
-            .await?;
-        Ok(match found {
-            Some(_) => DeckAccess::Granted(()),
-            None => DeckAccess::Denied,
-        })
+        if deck.visibility == Visibility::Public {
+            return Ok(Some(deck));
+        }
+        let Some(viewer) = viewer else {
+            return Ok(None);
+        };
+        let role = deck.role_of(&mut *tx, viewer).await?;
+        Ok(role.map(|_| deck))
     }
 
     /// Fetch a deck by the secret in its share link
@@ -515,10 +503,11 @@ impl Deck {
         owner: AccountUuid,
         uuid: DeckUuid,
     ) -> Result<DetachOutcome, rorm::Error> {
-        if !Self::may_administer(&mut *tx, uuid, owner)
-            .await?
-            .is_granted()
-        {
+        let owned = rorm::query(&mut *tx, DeckModel.uuid)
+            .condition(owned_by(uuid, owner))
+            .optional()
+            .await?;
+        if owned.is_none() {
             return Ok(DetachOutcome::Denied);
         }
         let Some(collection) = Self::collection(&mut *tx, uuid).await? else {
@@ -620,7 +609,8 @@ impl Deck {
     /// deck was never anybody else's to read, so it leaves with its owner.
     ///
     /// They land unfiled, since a folder belongs to the account going away and
-    /// the cascade is about to take it. Their Deck histories do not come along,
+    /// the cascade is about to take it, and without Collaborators, so nobody
+    /// edits a deck its builder left. Their Deck histories do not come along,
     /// see [`DeckHistory::introduce`]. Returns how many decks moved.
     #[instrument(name = "Deck::hand_over_public", skip(tx))]
     pub async fn hand_over_public(
@@ -650,6 +640,7 @@ impl Deck {
                         .collect(),
                 ))
                 .await?;
+            DeckCollaborator::remove_all(&mut *tx, chunk).await?;
             DeckHistory::introduce(&mut *tx, chunk).await?;
         }
         Ok(decks.len() as u64)

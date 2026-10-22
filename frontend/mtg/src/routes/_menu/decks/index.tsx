@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import {
+    ArrowRightStartOnRectangleIcon,
     ArrowTopRightOnSquareIcon,
     ChevronRightIcon,
     CubeIcon,
@@ -18,11 +19,18 @@ import { PrimaryButton } from "src/components/primary-button";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
-import type { DeckFolderResponse, DeckOverviewResponse, FormatRulesResponse, Visibility } from "src/api/generated";
+import type {
+    DeckFolderResponse,
+    DeckOverviewResponse,
+    FormatRulesResponse,
+    SharedWithMeDeckResponse,
+    Visibility,
+} from "src/api/generated";
 import { DeckDeleteDialog } from "src/components/deck-delete-dialog";
 import { DeckFolderDialog } from "src/components/deck-folder-dialog";
 import { DeckDialog } from "src/components/deck-dialog";
 import { DeckDissolveDialog } from "src/components/deck-dissolve-dialog";
+import { DeckLeaveDialog } from "src/components/deck-leave-dialog";
 import { useDeckLabels } from "src/components/deck-labels";
 import { ContextMenu, useContextMenu } from "src/components/context-menu";
 import type { ContextMenuSection } from "src/components/context-menu";
@@ -37,6 +45,7 @@ import { useAccount } from "src/context/account";
 import { ShareDialog } from "src/components/share-dialog";
 import { useFolderCollapse } from "src/utils/deck-folder-collapse";
 import { byFolder, folderLabel } from "src/utils/deck-folders";
+import { deckCardsRoute } from "src/utils/deck-rights";
 import { formatCurrency } from "src/utils/format";
 import { deckShareTarget } from "src/utils/share-targets";
 import { useShortcuts } from "src/utils/use-shortcuts";
@@ -44,12 +53,13 @@ import { useShortcutHelpOpen } from "src/context/shortcut-help-context";
 
 export const Route = createFileRoute("/_menu/decks/")({
     loader: async () => {
-        const [decks, offered, shelves] = await Promise.all([
+        const [decks, offered, shelves, shared] = await Promise.all([
             Api.decks.list(),
             Api.decks.formats(),
             Api.folders.list(),
+            Api.decks.sharedWithMe(),
         ]);
-        return { decks, formats: offered.formats, folders: shelves.folders };
+        return { decks, formats: offered.formats, folders: shelves.folders, shared: shared.decks };
     },
     component: RouteComponent,
 });
@@ -60,13 +70,15 @@ export const Route = createFileRoute("/_menu/decks/")({
  * Filed onto the shelves the account arranged, and sorted into formats inside
  * each: which pile a deck belongs to is a decision somebody made, and the
  * format answers "which of these can I bring tonight" once that pile is open.
- * Decks on no shelf close the list, so every deck is somewhere.
+ * Decks on no shelf close the list, so every deck is somewhere. The decks
+ * other accounts shared with this one follow under "Shared with me", on no
+ * shelf of this account's.
  *
  * @returns the page
  */
 function RouteComponent() {
     const [t] = useTranslation("deck");
-    const { decks, formats, folders } = Route.useLoaderData();
+    const { decks, formats, folders, shared } = Route.useLoaderData();
     const router = useRouter();
     const navigate = useNavigate();
     const labels = useDeckLabels();
@@ -76,6 +88,7 @@ function RouteComponent() {
     const [sharing, setSharing] = useState<DeckOverviewResponse | null>(null);
     const [confirming, setConfirming] = useState<DeckOverviewResponse | null>(null);
     const [dissolving, setDissolving] = useState<DeckOverviewResponse | null>(null);
+    const [leaving, setLeaving] = useState<DeckOverviewResponse | null>(null);
     const [managingFolders, setManagingFolders] = useState(false);
     const { account } = useAccount();
     const folds = useFolderCollapse(account?.uuid ?? null);
@@ -85,6 +98,7 @@ function RouteComponent() {
     const field = useRef<HTMLInputElement>(null);
 
     const matching = filtered(decks, query);
+    const sharedMatching = shared.filter((entry) => filtered([entry.overview], query).length > 0);
     // A shelf holding nothing is worth showing while the whole list is on
     // screen — it is where the next deck goes — and only noise while a search
     // is narrowing things down.
@@ -114,7 +128,7 @@ function RouteComponent() {
                 if (selectedDeck !== null) setConfirming(selectedDeck);
             },
         },
-        dialog === null && sharing === null && confirming === null && !shortcutHelpOpen,
+        dialog === null && sharing === null && confirming === null && leaving === null && !shortcutHelpOpen,
     );
 
     /**
@@ -185,6 +199,18 @@ function RouteComponent() {
     }
 
     /**
+     * Who shared a deck and what they let the reader do
+     *
+     * @param entry the shared deck
+     *
+     * @returns the line under its numbers
+     */
+    function byline(entry: SharedWithMeDeckResponse): string {
+        const level = entry.level === "Editor" ? t("label.collaborator-editor") : t("label.collaborator-viewer");
+        return `${t("label.shared-by", { owner: entry.owner_username })} · ${level}`;
+    }
+
+    /**
      * What one deck can be told from its menu
      *
      * @param overview the deck the menu was opened on
@@ -192,6 +218,37 @@ function RouteComponent() {
      * @returns the lines, in the order the shortcuts are learnt
      */
     function sectionsFor(overview: DeckOverviewResponse): Array<ContextMenuSection> {
+        if (overview.deck.role !== "Owner") {
+            return [
+                {
+                    key: "deck",
+                    items: [
+                        {
+                            key: "open",
+                            label: t("button.open-deck"),
+                            icon: <ArrowTopRightOnSquareIcon />,
+                            onSelect: () =>
+                                void navigate({
+                                    to: deckCardsRoute(overview.deck.role),
+                                    params: { deckUuid: overview.deck.uuid },
+                                }),
+                        },
+                    ],
+                },
+                {
+                    key: "leave",
+                    items: [
+                        {
+                            key: "leave",
+                            label: t("button.leave-deck"),
+                            icon: <ArrowRightStartOnRectangleIcon />,
+                            tone: "danger",
+                            onSelect: () => setLeaving(overview),
+                        },
+                    ],
+                },
+            ];
+        }
         return [
             {
                 key: "deck",
@@ -329,7 +386,7 @@ function RouteComponent() {
                     </div>
                 </div>
 
-                {decks.length > 0 && (
+                {(decks.length > 0 || shared.length > 0) && (
                     <div className={"max-w-sm"}>
                         <InputGroup>
                             <MagnifyingGlassIcon />
@@ -353,7 +410,7 @@ function RouteComponent() {
                         title={t("heading.no-decks")}
                         description={t("description.no-decks")}
                     />
-                ) : matching.length === 0 ? (
+                ) : matching.length === 0 && sharedMatching.length === 0 ? (
                     <EmptyState
                         icon={<MagnifyingGlassIcon />}
                         title={t("heading.no-decks-found")}
@@ -453,6 +510,35 @@ function RouteComponent() {
                     })
                 )}
 
+                {sharedMatching.length > 0 && (
+                    <section className={"flex flex-col gap-4"}>
+                        <div className={"flex items-center gap-3"}>
+                            <h2 className={"truncate text-base/7 font-semibold text-zinc-950 dark:text-white"}>
+                                {t("heading.shared-with-me")}
+                            </h2>
+                            <span
+                                className={
+                                    "rounded-(--radius-pill) bg-zinc-950/5 px-2 py-0.5 text-xs font-medium text-zinc-600 tabular-nums dark:bg-white/10 dark:text-zinc-300"
+                                }
+                            >
+                                {sharedMatching.length}
+                            </span>
+                            <span className={"h-px flex-1 bg-zinc-950/5 dark:bg-white/10"} />
+                        </div>
+                        <ul className={"grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"}>
+                            {sharedMatching.map((entry) => (
+                                <DeckTile
+                                    key={entry.overview.deck.uuid}
+                                    overview={entry.overview}
+                                    rules={formats.find((rules) => rules.slug === entry.overview.deck.format)}
+                                    onMenu={menu.openAt}
+                                    byline={byline(entry)}
+                                />
+                            ))}
+                        </ul>
+                    </section>
+                )}
+
                 <ContextMenu
                     title={menu.open?.item.deck.name}
                     at={menu.open?.at ?? null}
@@ -498,6 +584,12 @@ function RouteComponent() {
                     onRename={renameFolder}
                     onDelete={(folder) => void deleteFolder(folder)}
                     onClose={() => setManagingFolders(false)}
+                />
+
+                <DeckLeaveDialog
+                    deck={leaving === null ? null : { uuid: leaving.deck.uuid, name: leaving.deck.name }}
+                    onClose={() => setLeaving(null)}
+                    onLeft={refresh}
                 />
 
                 <DeckDissolveDialog

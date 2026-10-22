@@ -834,7 +834,7 @@ function RouteComponent() {
             <DeckTagsDialog
                 open={managingTags}
                 tags={tags}
-                globalOnly={true}
+                scope={"global"}
                 onCreate={(wanted) => void createTags(wanted)}
                 onUpdate={(tag, name, color, icon) => saveTag(tag, name, color, icon)}
                 onDelete={(tag) => void deleteTag(tag)}

@@ -59,13 +59,14 @@ All URIs are relative to *http://localhost*
 | [**getBracketFlags**](DefaultApi.md#getbracketflags) | **POST** /api/frontend/v1/printings/bracket-flags | Which Commander bracket rules the given printings count towards |
 | [**getCollection**](DefaultApi.md#getcollection) | **GET** /api/frontend/v1/collections/{collection} | Fetch a single collection |
 | [**getCollectionStatistics**](DefaultApi.md#getcollectionstatistics) | **GET** /api/frontend/v1/collections/{collection}/statistics |  |
-| [**getDeck**](DefaultApi.md#getdeck) | **GET** /api/frontend/v1/decks/{deck} | Fetch a single deck |
+| [**getDeck**](DefaultApi.md#getdeck) | **GET** /api/frontend/v1/decks/{deck} | Fetch a single deck, with the caller\&#39;s role on it |
 | [**getDeckAdvisorSettings**](DefaultApi.md#getdeckadvisorsettings) | **GET** /api/frontend/v1/decks/{deck}/advisor-settings | Read this deck\&#39;s advisor settings |
 | [**getDeckCollectionDrift**](DefaultApi.md#getdeckcollectiondrift) | **GET** /api/frontend/v1/decks/{deck}/collection/drift | Where the deck list and the deck\&#39;s own collection disagree |
 | [**getDeckFormats**](DefaultApi.md#getdeckformats) | **GET** /api/frontend/v1/decks/formats | What the offered formats ask of a deck |
 | [**getDeckHistory**](DefaultApi.md#getdeckhistory) | **GET** /api/frontend/v1/decks/{deck}/history | A deck\&#39;s Deck history, newest first |
 | [**getDeckPoint**](DefaultApi.md#getdeckpoint) | **GET** /api/frontend/v1/decks/{deck}/history/{change} | The deck as it was right after one of its Deck changes, read-only |
 | [**getDeckSourcing**](DefaultApi.md#getdecksourcing) | **GET** /api/frontend/v1/decks/{deck}/sourcing | What the deck asks for, what is in it, and where the rest could come from |
+| [**getDecksSharedWithMe**](DefaultApi.md#getdeckssharedwithme) | **GET** /api/frontend/v1/decks/shared-with-me | The decks other Accounts named the caller on, alphabetically by name |
 | [**getMpcfillCardbacks**](DefaultApi.md#getmpcfillcardbacks) | **GET** /api/frontend/v1/mpcfill/cardbacks | The card backs MPCFill offers |
 | [**getPendingOidcLogin**](DefaultApi.md#getpendingoidclogin) | **GET** /api/frontend/v1/auth/oidc/pending | The session\&#39;s OIDC login waiting for its username step |
 | [**getPriceHistory**](DefaultApi.md#getpricehistory) | **GET** /api/frontend/v1/printings/{printing}/price-history | What a card has cost over time |
@@ -81,10 +82,12 @@ All URIs are relative to *http://localhost*
 | [**getWatchList**](DefaultApi.md#getwatchlist) | **GET** /api/frontend/v1/watch-lists/{list} | One watch list, without what is on it |
 | [**getWatchListAlarms**](DefaultApi.md#getwatchlistalarms) | **GET** /api/frontend/v1/watch-lists/alarms | Every alarm standing across the account\&#39;s watch lists |
 | [**importDeckCards**](DefaultApi.md#importdeckcardsoperation) | **POST** /api/frontend/v1/decks/{deck}/cards/import | Write a whole decklist into a deck |
+| [**leaveDeck**](DefaultApi.md#leavedeck) | **POST** /api/frontend/v1/decks/{deck}/leave | Take oneself off a deck another Account named one on |
 | [**listCollectionCards**](DefaultApi.md#listcollectioncards) | **GET** /api/frontend/v1/collections/{collection}/cards | List a page of a collection\&#39;s cards, sorted and filtered |
 | [**listCollectionEntries**](DefaultApi.md#listcollectionentries) | **GET** /api/frontend/v1/collections/{collection}/entries | List every stack filed in a collection |
 | [**listCollectionOnLoan**](DefaultApi.md#listcollectiononloan) | **GET** /api/frontend/v1/collections/{collection}/on-loan | Count a collection\&#39;s statistics |
 | [**listDeckCards**](DefaultApi.md#listdeckcards) | **GET** /api/frontend/v1/decks/{deck}/cards | Every card of a deck, with the catalog data and the tags on it |
+| [**listDeckCollaborators**](DefaultApi.md#listdeckcollaborators) | **GET** /api/frontend/v1/decks/{deck}/collaborators | The Collaborators of a deck, alphabetically by username |
 | [**listOpenidProviders**](DefaultApi.md#listopenidproviders) | **GET** /api/frontend/v1/auth/oidc/providers | List the OpenID providers people may log in through |
 | [**listPasskeys**](DefaultApi.md#listpasskeys) | **GET** /api/frontend/v1/accounts/passkeys | List the passkeys of the logged-in account |
 | [**listPublicCollectionCards**](DefaultApi.md#listpubliccollectioncards) | **GET** /api/frontend/v1/explore/collections/{collection}/cards | List a page of a public collection\&#39;s cards, sorted and filtered |
@@ -96,10 +99,12 @@ All URIs are relative to *http://localhost*
 | [**logout**](DefaultApi.md#logout) | **GET** /api/frontend/v1/auth/logout | Log out, dropping the session |
 | [**me**](DefaultApi.md#me) | **GET** /api/frontend/v1/accounts/me | The account the current session belongs to |
 | [**mergeCollectionEntries**](DefaultApi.md#mergecollectionentriesoperation) | **POST** /api/frontend/v1/collections/{collection}/entries/merge | Combine stacks of the same cards into one |
+| [**putDeckCollaborator**](DefaultApi.md#putdeckcollaboratoroperation) | **PUT** /api/frontend/v1/decks/{deck}/collaborators | Name an Account on a deck by its username, or change the level it is named at |
 | [**readDeckUrl**](DefaultApi.md#readdeckurloperation) | **POST** /api/frontend/v1/decks/import/url | Read a decklist off a link to another builder, or off one of our own links |
 | [**recoverAccount**](DefaultApi.md#recoveraccountoperation) | **POST** /api/frontend/v1/auth/recover | Send a fresh registration link to an account\&#39;s stored address |
 | [**redoDeckChange**](DefaultApi.md#redodeckchange) | **POST** /api/frontend/v1/decks/{deck}/history/redo | Apply the latest undone Deck change again |
 | [**removeDeckCheckpoint**](DefaultApi.md#removedeckcheckpoint) | **DELETE** /api/frontend/v1/decks/{deck}/history/{change}/checkpoint | Remove the Deck checkpoint of one of the deck\&#39;s Deck changes |
+| [**removeDeckCollaborator**](DefaultApi.md#removedeckcollaborator) | **DELETE** /api/frontend/v1/decks/{deck}/collaborators/{account} | Take an Account off a deck |
 | [**renameAccount**](DefaultApi.md#renameaccountoperation) | **PUT** /api/frontend/v1/accounts/me/username | Rename the logged-in account |
 | [**renamePasskey**](DefaultApi.md#renamepasskeyoperation) | **PUT** /api/frontend/v1/accounts/passkeys/{uuid} | Rename one of the logged-in account\&#39;s passkeys |
 | [**resetDeck**](DefaultApi.md#resetdeck) | **POST** /api/frontend/v1/decks/{deck}/history/{change}/reset | Bring the deck back to how it was right after one of its Deck changes |
@@ -295,7 +300,7 @@ No authorization required
 
 Put a card into a deck
 
-Put a card into a deck  Copies joining an alike Deck entry (same printing, zone, finish and proxy status) raise its count instead of opening a second line beside it. The answer is the entry\&#39;s bookkeeping fields either way; catalog data and tags come from the list endpoint.
+Put a card into a deck  Copies joining an alike Deck entry (same printing, zone, finish and proxy status) raise its count instead of opening a second line beside it. The answer is the entry\&#39;s bookkeeping fields either way; catalog data and tags come from the list endpoint. Only the owner adds proxies, see [&#x60;DeckGrant::proxy&#x60;].
 
 ### Example
 
@@ -1307,7 +1312,7 @@ No authorization required
 
 Put a tag on a card
 
-Put a tag on a card
+Put a tag on a card  An Editor only puts on tags local to this deck: a global one would tag the card on every deck of the owner.
 
 ### Example
 
@@ -1731,7 +1736,7 @@ No authorization required
 
 Create a tag on a deck
 
-Create a tag on a deck
+Create a tag on a deck  The tag is the owner\&#39;s, whoever creates it. An Editor only creates tags local to this deck: a global one reaches every deck of the owner.
 
 ### Example
 
@@ -2438,7 +2443,7 @@ No authorization required
 
 Delete a tag, taking it off every card it sat on
 
-Delete a tag, taking it off every card it sat on
+Delete a tag, taking it off every card it sat on  An Editor only deletes a tag local to this deck.
 
 ### Example
 
@@ -4017,9 +4022,9 @@ No authorization required
 
 > DeckResponse getDeck(deck)
 
-Fetch a single deck
+Fetch a single deck, with the caller\&#39;s role on it
 
-Fetch a single deck
+Fetch a single deck, with the caller\&#39;s role on it  Only the owner gets its share link and folder.
 
 ### Example
 
@@ -4089,7 +4094,7 @@ No authorization required
 
 Read this deck\&#39;s advisor settings
 
-Read this deck\&#39;s advisor settings  A deck nobody has advised yet still answers: the document at its defaults, not a 404. The 404 is reserved for a deck this account does not own.
+Read this deck\&#39;s advisor settings  A deck nobody has advised yet still answers: the document at its defaults, not a 404. The 404 is reserved for a deck this account may not edit.
 
 ### Example
 
@@ -4482,6 +4487,68 @@ example().catch(console.error);
 ### Return type
 
 [**DeckSourcingResponse**](DeckSourcingResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## getDecksSharedWithMe
+
+> ListSharedWithMeResponse getDecksSharedWithMe()
+
+The decks other Accounts named the caller on, alphabetically by name
+
+The decks other Accounts named the caller on, alphabetically by name  \&quot;Shared with me\&quot;: never filed into the caller\&#39;s folders, which hold only the caller\&#39;s own decks.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { GetDecksSharedWithMeRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  try {
+    const data = await api.getDecksSharedWithMe();
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+This endpoint does not need any parameter.
+
+### Return type
+
+[**ListSharedWithMeResponse**](ListSharedWithMeResponse.md)
 
 ### Authorization
 
@@ -5533,6 +5600,76 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## leaveDeck
+
+> any leaveDeck(deck)
+
+Take oneself off a deck another Account named one on
+
+Take oneself off a deck another Account named one on  The deck leaves \&quot;Shared with me\&quot; and its access ends with the next request. Its owner cannot leave it.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { LeaveDeckRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    deck: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies LeaveDeckRequest;
+
+  try {
+    const data = await api.leaveDeck(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **deck** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+**any**
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## listCollectionCards
 
 > ListCardsResponse listCollectionCards(collection, after, condition, descending, finish, limit, offset, printing, rarity, search, sort)
@@ -5779,7 +5916,7 @@ No authorization required
 
 Every card of a deck, with the catalog data and the tags on it
 
-Every card of a deck, with the catalog data and the tags on it  The whole deck in one answer: a hundred slots are not worth paging, and the client groups and sorts them however the list is being looked at.
+Every card of a deck, with the catalog data and the tags on it  The whole deck in one answer: a hundred slots are not worth paging, and the client groups and sorts them however the list is being looked at. A Collaborator gets it the way the Share link shows it, see [&#x60;redact_slot&#x60;].
 
 ### Example
 
@@ -5821,6 +5958,76 @@ example().catch(console.error);
 ### Return type
 
 [**ListDeckCardsResponse**](ListDeckCardsResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## listDeckCollaborators
+
+> ListDeckCollaboratorsResponse listDeckCollaborators(deck)
+
+The Collaborators of a deck, alphabetically by username
+
+The Collaborators of a deck, alphabetically by username  The owner and every Collaborator read it.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { ListDeckCollaboratorsRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    deck: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies ListDeckCollaboratorsRequest;
+
+  try {
+    const data = await api.listDeckCollaborators(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **deck** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**ListDeckCollaboratorsResponse**](ListDeckCollaboratorsResponse.md)
 
 ### Authorization
 
@@ -6644,6 +6851,79 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## putDeckCollaborator
+
+> PutDeckCollaborator200Response putDeckCollaborator(deck, PutDeckCollaboratorRequest)
+
+Name an Account on a deck by its username, or change the level it is named at
+
+Name an Account on a deck by its username, or change the level it is named at  Naming an Account that is already on the deck changes its level, so it is on the deck once. The owner and the Tombstone cannot be named.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { PutDeckCollaboratorOperationRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    deck: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // PutDeckCollaboratorRequest (optional)
+    PutDeckCollaboratorRequest: ...,
+  } satisfies PutDeckCollaboratorOperationRequest;
+
+  try {
+    const data = await api.putDeckCollaborator(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **deck** | `string` |  | [Defaults to `undefined`] |
+| **PutDeckCollaboratorRequest** | [PutDeckCollaboratorRequest](PutDeckCollaboratorRequest.md) |  | [Optional] |
+
+### Return type
+
+[**PutDeckCollaborator200Response**](PutDeckCollaborator200Response.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## readDeckUrl
 
 > ReadDeckUrlResponse readDeckUrl(ReadDeckUrlRequest)
@@ -6901,6 +7181,79 @@ example().catch(console.error);
 |------------- | ------------- | ------------- | -------------|
 | **deck** | `string` |  | [Defaults to `undefined`] |
 | **change** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+**any**
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## removeDeckCollaborator
+
+> any removeDeckCollaborator(deck, account)
+
+Take an Account off a deck
+
+Take an Account off a deck  It loses its access with the next request it makes.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { RemoveDeckCollaboratorRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    deck: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string
+    account: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies RemoveDeckCollaboratorRequest;
+
+  try {
+    const data = await api.removeDeckCollaborator(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **deck** | `string` |  | [Defaults to `undefined`] |
+| **account** | `string` |  | [Defaults to `undefined`] |
 
 ### Return type
 
@@ -8896,7 +9249,7 @@ No authorization required
 
 Take a tag off a card
 
-Take a tag off a card
+Take a tag off a card  An Editor only takes off tags local to this deck, as with putting one on.
 
 ### Example
 
@@ -9262,7 +9615,7 @@ No authorization required
 
 Change a Deck entry: its count, its zone or the print it sleeves
 
-Change a Deck entry: its count, its zone or the print it sleeves  An entry made alike to another one merges into it, and a count of zero removes it.
+Change a Deck entry: its count, its zone or the print it sleeves  An entry made alike to another one merges into it, and a count of zero removes it. A Collaborator\&#39;s change leaves the proxy flag as it is, see [&#x60;DeckGrant::proxy&#x60;].
 
 ### Example
 
@@ -9411,7 +9764,7 @@ No authorization required
 
 Rename a tag, change its marker or move its scope
 
-Rename a tag, change its marker or move its scope
+Rename a tag, change its marker or move its scope  An Editor only changes a tag local to this deck and keeps it there.
 
 ### Example
 

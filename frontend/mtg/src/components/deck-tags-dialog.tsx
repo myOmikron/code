@@ -51,16 +51,24 @@ export type DeckTagsDialogProps = {
     ) => Promise<void>;
     /** Throws a tag away, taking it off every card it sat on */
     onDelete: (tag: DeckTagResponse) => void;
-    /**
-     * Whether every tag here is card-wide, which is how a collection sees them
-     *
-     * A stack on a shelf is in no deck, so there is no local scope to offer and
-     * no switch to show: everything made and edited here follows the card.
-     */
-    globalOnly?: boolean;
+    /** Which scopes the reader makes and changes tags in, `"both"` when left out */
+    scope?: DeckTagScope;
     /** Called when the dialog should close */
     onClose: () => void;
 };
+
+/**
+ * Which scopes the reader makes and changes tags in
+ *
+ * - `"both"`: the owner on a deck, with a switch between local and global
+ * - `"global"`: every tag is card-wide, which is how a collection sees them. A stack
+ *   on a shelf is in no deck, so there is no local scope to offer and no switch to
+ *   show: everything made and edited here follows the card.
+ * - `"local"`: only the deck's own tags are the reader's, which is how an Editor sees
+ *   them. New tags are local to the deck, and the owner's global tags are listed
+ *   without the controls to change or delete them.
+ */
+export type DeckTagScope = "both" | "global" | "local";
 
 /**
  * The tags of a deck: what they are called, what colour they are, where they count.
@@ -84,7 +92,7 @@ export function DeckTagsDialog({
     onUpdate,
     onDelete,
     onClose,
-    globalOnly = false,
+    scope = "both",
 }: DeckTagsDialogProps) {
     const [t] = useTranslation("deck");
     const [tg] = useTranslation();
@@ -111,7 +119,8 @@ export function DeckTagsDialog({
     const named = readTagNames(name);
     const missing = TAG_PRESET.filter(
         (preset) => !tags.some((tag) => tag.name.toLowerCase() === preset.name.toLowerCase()),
-    );
+    ).map((preset) => (scope === "local" ? { ...preset, global: false } : preset));
+    const scoped = scope === "both";
 
     /**
      * Writes what is in the field, leaving it ready for the next one
@@ -150,10 +159,11 @@ export function DeckTagsDialog({
      *
      * @param heading what the group is called
      * @param group the tags in it
+     * @param readOnly whether the tags are listed without the controls to change them
      *
      * @returns the section
      */
-    function section(heading: string | undefined, group: Array<DeckTagResponse>) {
+    function section(heading: string | undefined, group: Array<DeckTagResponse>, readOnly = false) {
         if (group.length === 0) return null;
         return (
             <div className={"flex flex-col gap-2"}>
@@ -164,7 +174,7 @@ export function DeckTagsDialog({
                             {editing === tag.uuid ? (
                                 <TagForm
                                     tag={tag}
-                                    globalOnly={globalOnly}
+                                    scope={scope}
                                     onSave={async (next, nextColor, nextIcon, nextGlobal) => {
                                         await onUpdate(tag, next, nextColor, nextIcon, nextGlobal);
                                         setEditing(null);
@@ -200,28 +210,32 @@ export function DeckTagsDialog({
                                     <span className={"min-w-0 flex-1 truncate text-sm/6 text-zinc-950 dark:text-white"}>
                                         {tag.name}
                                     </span>
-                                    <button
-                                        type={"button"}
-                                        aria-label={t("button.edit-tag")}
-                                        title={t("button.edit-tag")}
-                                        onClick={() => setEditing(tag.uuid)}
-                                        className={
-                                            "rounded p-1 text-zinc-500 hover:bg-lime-400/15 hover:text-lime-700 dark:text-zinc-400 dark:hover:bg-lime-400/15 dark:hover:text-lime-300"
-                                        }
-                                    >
-                                        <PencilSquareIcon className={"size-4"} />
-                                    </button>
-                                    <button
-                                        type={"button"}
-                                        aria-label={t("button.delete-tag")}
-                                        title={t("button.delete-tag")}
-                                        onClick={() => setRemoving(tag.uuid)}
-                                        className={
-                                            "rounded p-1 text-zinc-500 hover:bg-red-500/10 hover:text-red-600 dark:text-zinc-400 dark:hover:bg-red-500/15 dark:hover:text-red-400"
-                                        }
-                                    >
-                                        <TrashIcon className={"size-4"} />
-                                    </button>
+                                    {!readOnly && (
+                                        <>
+                                            <button
+                                                type={"button"}
+                                                aria-label={t("button.edit-tag")}
+                                                title={t("button.edit-tag")}
+                                                onClick={() => setEditing(tag.uuid)}
+                                                className={
+                                                    "rounded p-1 text-zinc-500 hover:bg-lime-400/15 hover:text-lime-700 dark:text-zinc-400 dark:hover:bg-lime-400/15 dark:hover:text-lime-300"
+                                                }
+                                            >
+                                                <PencilSquareIcon className={"size-4"} />
+                                            </button>
+                                            <button
+                                                type={"button"}
+                                                aria-label={t("button.delete-tag")}
+                                                title={t("button.delete-tag")}
+                                                onClick={() => setRemoving(tag.uuid)}
+                                                className={
+                                                    "rounded p-1 text-zinc-500 hover:bg-red-500/10 hover:text-red-600 dark:text-zinc-400 dark:hover:bg-red-500/15 dark:hover:text-red-400"
+                                                }
+                                            >
+                                                <TrashIcon className={"size-4"} />
+                                            </button>
+                                        </>
+                                    )}
                                 </div>
                             )}
                         </li>
@@ -269,7 +283,7 @@ export function DeckTagsDialog({
                             </legend>
                             <TagIconChoice value={icon} color={color} onChange={setIcon} />
                         </fieldset>
-                        {!globalOnly && (
+                        {scoped && (
                             <SwitchField>
                                 <Label className={"text-xs!"}>{t("label.tag-global")}</Label>
                                 <Switch name={"tag-global"} color={"emerald"} checked={global} onChange={setGlobal} />
@@ -283,7 +297,7 @@ export function DeckTagsDialog({
                                         {t("button.tag-preset")}
                                     </Button>
                                 </div>
-                                {globalOnly ? (
+                                {!scoped ? (
                                     preview("", missing)
                                 ) : (
                                     <>
@@ -304,8 +318,10 @@ export function DeckTagsDialog({
                     <div className={"flex flex-col gap-6 border-t border-zinc-950/5 pt-5 dark:border-white/10"}>
                         <Text className={"text-xs"}>{t("description.tag-keys")}</Text>
                         {tags.length === 0 && <Text className={"text-sm"}>{t("label.no-tags")}</Text>}
-                        {!globalOnly && section(t("label.tag-scope-deck"), local)}
-                        {globalOnly ? section(undefined, shared) : section(t("label.tag-scope-global"), shared)}
+                        {scope !== "global" && section(t("label.tag-scope-deck"), local)}
+                        {scope === "global"
+                            ? section(undefined, shared)
+                            : section(t("label.tag-scope-global"), shared, scope === "local")}
                     </div>
                 </div>
             </DialogBody>
@@ -328,8 +344,8 @@ type TagFormProps = {
     onSave: (name: string, color: TagColor, icon: TagIconName, global: boolean) => Promise<void>;
     /** Leaves the tag as it was */
     onCancel: () => void;
-    /** Whether the tag is card-wide with no scope to choose, see {@link DeckTagsDialog} */
-    globalOnly?: boolean;
+    /** Which scopes the reader changes tags in, see {@link DeckTagScope} */
+    scope: DeckTagScope;
 };
 
 /**
@@ -337,7 +353,7 @@ type TagFormProps = {
  *
  * @returns the form
  */
-function TagForm({ tag, onSave, onCancel, globalOnly = false }: TagFormProps) {
+function TagForm({ tag, onSave, onCancel, scope }: TagFormProps) {
     const [t] = useTranslation("deck");
     const [name, setName] = useState(tag.name);
     const [color, setColor] = useState<TagColor>(tagColor(tag.color));
@@ -414,7 +430,7 @@ function TagForm({ tag, onSave, onCancel, globalOnly = false }: TagFormProps) {
                 </legend>
                 <TagIconChoice value={icon} color={color} onChange={setIcon} />
             </fieldset>
-            {!globalOnly && (
+            {scope === "both" && (
                 <SwitchField>
                     <Label className={"text-xs!"}>{t("label.tag-global")}</Label>
                     <Switch name={"tag-global"} color={"emerald"} checked={global} onChange={setGlobal} />

@@ -8,6 +8,7 @@ import {
     AddWatchListEntryRequest,
     AdminListAccountsRequest,
     AdminListLogRequest,
+    CollaboratorLevel,
     Configuration,
     DeletionMode,
     CreateCollectionRequest,
@@ -231,7 +232,10 @@ export const Api = {
     },
     decks: {
         list: async () => handleError(defaultApi.getAllDecks()),
+        sharedWithMe: async () => handleError(defaultApi.getDecksSharedWithMe()),
+        leave: async (uuid: UUID) => handleError(defaultApi.leaveDeck({ deck: uuid })),
         get: async (uuid: UUID) => handleError(defaultApi.getDeck({ deck: uuid })),
+        getIfThere: async (uuid: UUID) => orGone(defaultApi.getDeck({ deck: uuid })),
         create: async (req: CreateDeckRequest) => handleError(defaultApi.createDeck({ CreateDeckRequest: req })),
         update: async (uuid: UUID, req: UpdateDeckRequest) =>
             handleError(defaultApi.updateDeck({ deck: uuid, UpdateDeckRequest: req })),
@@ -249,6 +253,13 @@ export const Api = {
         setVisibility: async (uuid: UUID, visibility: Visibility) =>
             handleError(defaultApi.setVisibilityDeck({ deck: uuid, SetDeckVisibilityRequest: { visibility } })),
         rotateShareToken: async (uuid: UUID) => handleError(defaultApi.rotateDeckShareToken({ deck: uuid })),
+        collaborators: {
+            list: async (deck: UUID) => handleError(defaultApi.listDeckCollaborators({ deck })),
+            put: async (deck: UUID, username: string, level: CollaboratorLevel) =>
+                handleError(defaultApi.putDeckCollaborator({ deck, PutDeckCollaboratorRequest: { username, level } })),
+            remove: async (deck: UUID, account: UUID) =>
+                handleError(defaultApi.removeDeckCollaborator({ deck, account })),
+        },
         // `null` hands the decision back to the commander zone. Its own endpoint
         // because it is set from the legality band, not from the deck's form.
         setColors: async (uuid: UUID, colors: string | null) =>
@@ -291,6 +302,7 @@ export const Api = {
         // own request because the deck's header asks it on every tab, and the
         // sourcing answer would drag the whole account's shelf along.
         drift: async (deck: UUID) => handleError(defaultApi.getDeckCollectionDrift({ deck })),
+        driftIfOwner: async (deck: UUID) => orGone(defaultApi.getDeckCollectionDrift({ deck })),
         sourcing: {
             // What the deck asks for, what is in it, and where the rest could
             // come from — three flat lists the client matches up itself.
@@ -313,6 +325,7 @@ export const Api = {
         cards: {
             // The whole deck in one answer, catalog data and tags included.
             list: async (deck: UUID) => handleError(defaultApi.listDeckCards({ deck })),
+            listIfThere: async (deck: UUID) => orGone(defaultApi.listDeckCards({ deck })),
             add: async (deck: UUID, req: AddDeckCardRequest) =>
                 handleError(defaultApi.addDeckCard({ deck, AddDeckCardRequest: req })),
             update: async (deck: UUID, card: UUID, req: UpdateDeckCardRequest) =>

@@ -13,7 +13,7 @@ import {
     notify,
 } from "components";
 import type { CSSProperties } from "react";
-import { startTransition, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { CardFocus } from "src/utils/card-focus";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
@@ -66,6 +66,8 @@ import { useDeckViewSettings } from "src/utils/deck-view-settings";
 import { useFlippedCards } from "src/utils/use-flipped-cards";
 import { usePointerCard } from "src/utils/use-pointer-card";
 import { useShortcutHelpOpen } from "src/context/shortcut-help-context";
+import { DeckTagWritableContext } from "src/context/deck-tag-writable-context";
+import { deckRights, tagWritable } from "src/utils/deck-rights";
 
 /**
  * The zones the search's "already in" filter looks through.
@@ -117,6 +119,8 @@ function RouteComponent() {
     const { deckUuid } = Route.useParams();
     const { cards, tags } = Route.useLoaderData();
     const { deck, formats, brackets } = useLoaderData({ from: "/_menu/decks/$deckUuid/_deck" });
+    const rights = useMemo(() => deckRights(deck.role), [deck.role]);
+    const writable = useCallback((tag: DeckTagResponse) => tagWritable(rights, tag), [rights]);
     const search = Route.useSearch();
     const router = useRouter();
     const navigate = useNavigate();
@@ -347,15 +351,27 @@ function RouteComponent() {
     // of running the pointer down it.
     useShortcuts(
         {
-            ...Object.fromEntries(tags.slice(0, 9).map((tag, index) => [String(index + 1), () => void quickTag(tag)])),
+            ...(rights.edit
+                ? Object.fromEntries(
+                      tags.slice(0, 9).map((tag, index) => [String(index + 1), () => void quickTag(tag)]),
+                  )
+                : {}),
+            ...(rights.edit ? { t: () => setManagingTags(true) } : {}),
+            ...(rights.owner
+                ? {
+                      "mod+z": undoChange,
+                      "mod+y": redoChange,
+                      "mod+shift+z": redoChange,
+                      x: () => {
+                          const card = hovered;
+                          if (card !== null) void toggleProxy(card, !card.proxy);
+                      },
+                  }
+                : {}),
             a: () => setAdding(true),
             "mod+f": openDeckSearch,
-            "mod+z": undoChange,
-            "mod+y": redoChange,
-            "mod+shift+z": redoChange,
             v: () => setChoosing("view"),
             g: () => setChoosing("group"),
-            t: () => setManagingTags(true),
             p: () => {
                 const card = resolved.find((slot) => slot.uuid === active);
                 if (card !== undefined) pickPrinting(card);
@@ -363,10 +379,6 @@ function RouteComponent() {
             f: () => {
                 const card = hovered;
                 if (card !== null) void toggleFoil(card, !card.foil);
-            },
-            x: () => {
-                const card = hovered;
-                if (card !== null) void toggleProxy(card, !card.proxy);
             },
         },
         quiet,
@@ -756,6 +768,14 @@ function RouteComponent() {
         });
     }
 
+    /** What a card view offers for tagging, nothing for a reader who may not tag */
+    const tagging = {
+        onToggleTag: rights.edit
+            ? (card: DeckCardResponse, tag: DeckTagResponse, on: boolean) => void toggleTag(card, tag, on)
+            : undefined,
+        onManageTags: rights.edit ? () => setManagingTags(true) : undefined,
+    };
+
     /**
      * Sleeves a slot in foil, or takes the sheen off again
      *
@@ -785,6 +805,7 @@ function RouteComponent() {
      * @param tag the tag the pressed number stands for
      */
     async function quickTag(tag: DeckTagResponse) {
+        if (!writable(tag)) return;
         const card = active === null ? null : resolved.find((slot) => slot.uuid === active);
         if (card === undefined || card === null) {
             notify.error(t("toast.no-card-under-pointer"));
@@ -843,7 +864,7 @@ function RouteComponent() {
      */
     function pickPrinting(card: DeckCardResponse) {
         setPrintingFor(card.uuid);
-        if (sourcing !== null) return;
+        if (!rights.owner || sourcing !== null) return;
         void Api.decks.sourcing.read(deckUuid).then(setSourcing);
         void Api.collections
             .list()
@@ -878,6 +899,10 @@ function RouteComponent() {
     async function switchPrinting(card: DeckCardResponse, printing: Printing) {
         setPrintingFor(null);
         if (printing.id === card.printing) return;
+        if (!rights.owner) {
+            await writePrinting(card, printing);
+            return;
+        }
 
         // Picked before the read the picker started came back: waiting on it is
         // the difference between asking the question and skipping it silently.
@@ -965,380 +990,389 @@ function RouteComponent() {
     }
 
     return (
-        <div
-            className={tags.length > 0 ? "flex flex-col gap-6 pb-16" : "flex flex-col gap-6"}
-            style={{ "--deck-bar": `${barHeight}px` } as CSSProperties}
-        >
-            <DeckHeaderBar
-                ref={bar}
-                legality={legality}
-                format={deck.format}
-                target={target}
-                brackets={offered}
-                bracket={deck.bracket ?? null}
-                view={view}
-                grouping={grouping}
-                sort={sort}
-                size={size}
-                searchOpen={finding}
-                searchQuery={deckQuery}
-                searchRef={deckSearch}
-                onOpenSearch={openDeckSearch}
-                onChangeSearch={(query) => {
-                    setDeckQuery(query);
-                    setActive(null);
-                }}
-                onCloseSearch={closeDeckSearch}
-                onChangeView={changeView}
-                onChangeSize={changeSize}
-                onChangeGrouping={(next) => go({ group: next === "type" ? undefined : next })}
-                onChangeSort={changeSort}
-                onAdd={() => setAdding(true)}
-                onEditRuleZero={() => setEditingRuleZero(true)}
-                focus={focus}
-                onFocus={setFocus}
-                onClearFocus={() => setFocus(null)}
-                onManageTags={() => setManagingTags(true)}
-                onChangeBracket={(next) => void saveBracket(next)}
-                canUndo={deck.can_undo}
-                canRedo={deck.can_redo}
-                onUndo={undoChange}
-                onRedo={redoChange}
-            />
-
-            <div className={"flex items-start gap-6"}>
-                <aside
-                    className={"sticky hidden w-72 shrink-0 xl:block 2xl:w-80"}
-                    style={{ top: "calc(var(--deck-bar) + 1.5rem)" }}
-                >
-                    <DeckCardPreview
-                        card={menued ?? (quiet ? hovered : null)}
-                        commander={quiet ? leader : null}
-                        tags={tags}
-                        flipped={previewed !== null && flippedCards.isFlipped(previewed.uuid)}
-                    />
-                </aside>
-
-                <div
-                    onDragOver={(event) => {
-                        event.preventDefault();
-                        event.dataTransfer.dropEffect = "copy";
-                        setDragOver(true);
+        <DeckTagWritableContext value={writable}>
+            <div
+                className={rights.edit && tags.length > 0 ? "flex flex-col gap-6 pb-16" : "flex flex-col gap-6"}
+                style={{ "--deck-bar": `${barHeight}px` } as CSSProperties}
+            >
+                <DeckHeaderBar
+                    ref={bar}
+                    legality={legality}
+                    format={deck.format}
+                    target={target}
+                    brackets={offered}
+                    bracket={deck.bracket ?? null}
+                    view={view}
+                    grouping={grouping}
+                    sort={sort}
+                    size={size}
+                    searchOpen={finding}
+                    searchQuery={deckQuery}
+                    searchRef={deckSearch}
+                    onOpenSearch={openDeckSearch}
+                    onChangeSearch={(query) => {
+                        setDeckQuery(query);
+                        setActive(null);
                     }}
-                    onDragLeave={() => setDragOver(false)}
-                    onDrop={(event) => void drop(event)}
-                    className={
-                        dragOver
-                            ? "flex min-w-0 flex-1 flex-col gap-4 rounded-lg outline-2 outline-offset-4 outline-blue-500 outline-dashed"
-                            : "flex min-w-0 flex-1 flex-col gap-4 rounded-lg"
-                    }
-                >
-                    {resolved.length === 0 ? (
-                        <EmptyState title={t("heading.no-cards")} description={t("description.no-cards")} />
-                    ) : shown.length === 0 ? (
-                        <EmptyState title={t("heading.no-cards-found")} description={t("description.no-cards-found")} />
-                    ) : view === "grid" ? (
-                        <DeckCardGrid
-                            groups={groups}
-                            size={size}
-                            grouping={grouping}
-                            violations={legality.slots}
+                    onCloseSearch={closeDeckSearch}
+                    onChangeView={changeView}
+                    onChangeSize={changeSize}
+                    onChangeGrouping={(next) => go({ group: next === "type" ? undefined : next })}
+                    onChangeSort={changeSort}
+                    onAdd={() => setAdding(true)}
+                    onEditRuleZero={() => setEditingRuleZero(true)}
+                    focus={focus}
+                    onFocus={setFocus}
+                    onClearFocus={() => setFocus(null)}
+                    onManageTags={tagging.onManageTags}
+                    onChangeBracket={(next) => void saveBracket(next)}
+                    canUndo={deck.can_undo}
+                    canRedo={deck.can_redo}
+                    onUndo={rights.owner ? undoChange : undefined}
+                    onRedo={rights.owner ? redoChange : undefined}
+                />
+
+                <div className={"flex items-start gap-6"}>
+                    <aside
+                        className={"sticky hidden w-72 shrink-0 xl:block 2xl:w-80"}
+                        style={{ top: "calc(var(--deck-bar) + 1.5rem)" }}
+                    >
+                        <DeckCardPreview
+                            card={menued ?? (quiet ? hovered : null)}
+                            commander={quiet ? leader : null}
                             tags={tags}
-                            onInspect={(card) => go({ card: card.uuid })}
-                            onChangeQuantity={(card, quantity) => void changeQuantity(card, quantity)}
-                            onDelete={(card) => void remove(card)}
-                            onToggleTag={(card, tag, on) => void toggleTag(card, tag, on)}
-                            onManageTags={() => setManagingTags(true)}
-                            onActivate={(card) => setActive(card?.uuid ?? null)}
-                            isFlipped={(card) => flippedCards.isFlipped(card.uuid)}
-                            onFlip={(card) => flippedCards.toggle(card.uuid)}
-                            onMenu={(card, at) => setMenu({ card: card.uuid, at })}
-                            isCollapsed={collapsedGroups.isCollapsed}
-                            onToggleGroup={collapsedGroups.toggle}
+                            flipped={previewed !== null && flippedCards.isFlipped(previewed.uuid)}
                         />
-                    ) : view === "stack" ? (
-                        <DeckCardStacks
-                            groups={groups}
-                            size={size}
-                            grouping={grouping}
-                            violations={legality.slots}
-                            tags={tags}
-                            onInspect={(card) => go({ card: card.uuid })}
-                            onChangeQuantity={(card, quantity) => void changeQuantity(card, quantity)}
-                            onDelete={(card) => void remove(card)}
-                            onToggleTag={(card, tag, on) => void toggleTag(card, tag, on)}
-                            onManageTags={() => setManagingTags(true)}
-                            onActivate={(card) => setActive(card?.uuid ?? null)}
-                            isFlipped={(card) => flippedCards.isFlipped(card.uuid)}
-                            onFlip={(card) => flippedCards.toggle(card.uuid)}
-                            onMenu={(card, at) => setMenu({ card: card.uuid, at })}
-                            isCollapsed={collapsedGroups.isCollapsed}
-                            onToggleGroup={collapsedGroups.toggle}
-                        />
-                    ) : view === "list" ? (
-                        <DeckCardList
-                            groups={groups}
-                            grouping={grouping}
-                            violations={legality.slots}
-                            tags={tags}
-                            onInspect={(card) => go({ card: card.uuid })}
-                            onChangeQuantity={(card, quantity) => void changeQuantity(card, quantity)}
-                            onDelete={(card) => void remove(card)}
-                            onToggleTag={(card, tag, on) => void toggleTag(card, tag, on)}
-                            onManageTags={() => setManagingTags(true)}
-                            onActivate={(card) => setActive(card?.uuid ?? null)}
-                            isFlipped={(card) => flippedCards.isFlipped(card.uuid)}
-                            onFlip={(card) => flippedCards.toggle(card.uuid)}
-                            onMenu={(card, at) => setMenu({ card: card.uuid, at })}
-                            isCollapsed={collapsedGroups.isCollapsed}
-                            onToggleGroup={collapsedGroups.toggle}
-                        />
-                    ) : (
-                        <DeckCardTable
-                            groups={groups}
-                            grouping={grouping}
-                            violations={legality.slots}
-                            tags={tags}
-                            onInspect={(card) => go({ card: card.uuid })}
-                            onChangeQuantity={(card, quantity) => void changeQuantity(card, quantity)}
-                            onDelete={(card) => void remove(card)}
-                            onToggleTag={(card, tag, on) => void toggleTag(card, tag, on)}
-                            onManageTags={() => setManagingTags(true)}
-                            onActivate={(card) => setActive(card?.uuid ?? null)}
-                            isFlipped={(card) => flippedCards.isFlipped(card.uuid)}
-                            onFlip={(card) => flippedCards.toggle(card.uuid)}
-                            onMenu={(card, at) => setMenu({ card: card.uuid, at })}
-                            isCollapsed={collapsedGroups.isCollapsed}
-                            onToggleGroup={collapsedGroups.toggle}
-                        />
-                    )}
+                    </aside>
+
+                    <div
+                        onDragOver={(event) => {
+                            event.preventDefault();
+                            event.dataTransfer.dropEffect = "copy";
+                            setDragOver(true);
+                        }}
+                        onDragLeave={() => setDragOver(false)}
+                        onDrop={(event) => void drop(event)}
+                        className={
+                            dragOver
+                                ? "flex min-w-0 flex-1 flex-col gap-4 rounded-lg outline-2 outline-offset-4 outline-blue-500 outline-dashed"
+                                : "flex min-w-0 flex-1 flex-col gap-4 rounded-lg"
+                        }
+                    >
+                        {resolved.length === 0 ? (
+                            <EmptyState title={t("heading.no-cards")} description={t("description.no-cards")} />
+                        ) : shown.length === 0 ? (
+                            <EmptyState
+                                title={t("heading.no-cards-found")}
+                                description={t("description.no-cards-found")}
+                            />
+                        ) : view === "grid" ? (
+                            <DeckCardGrid
+                                groups={groups}
+                                size={size}
+                                grouping={grouping}
+                                violations={legality.slots}
+                                tags={tags}
+                                onInspect={(card) => go({ card: card.uuid })}
+                                onChangeQuantity={(card, quantity) => void changeQuantity(card, quantity)}
+                                onDelete={(card) => void remove(card)}
+                                {...tagging}
+                                onActivate={(card) => setActive(card?.uuid ?? null)}
+                                isFlipped={(card) => flippedCards.isFlipped(card.uuid)}
+                                onFlip={(card) => flippedCards.toggle(card.uuid)}
+                                onMenu={(card, at) => setMenu({ card: card.uuid, at })}
+                                isCollapsed={collapsedGroups.isCollapsed}
+                                onToggleGroup={collapsedGroups.toggle}
+                            />
+                        ) : view === "stack" ? (
+                            <DeckCardStacks
+                                groups={groups}
+                                size={size}
+                                grouping={grouping}
+                                violations={legality.slots}
+                                tags={tags}
+                                onInspect={(card) => go({ card: card.uuid })}
+                                onChangeQuantity={(card, quantity) => void changeQuantity(card, quantity)}
+                                onDelete={(card) => void remove(card)}
+                                {...tagging}
+                                onActivate={(card) => setActive(card?.uuid ?? null)}
+                                isFlipped={(card) => flippedCards.isFlipped(card.uuid)}
+                                onFlip={(card) => flippedCards.toggle(card.uuid)}
+                                onMenu={(card, at) => setMenu({ card: card.uuid, at })}
+                                isCollapsed={collapsedGroups.isCollapsed}
+                                onToggleGroup={collapsedGroups.toggle}
+                            />
+                        ) : view === "list" ? (
+                            <DeckCardList
+                                groups={groups}
+                                grouping={grouping}
+                                violations={legality.slots}
+                                tags={tags}
+                                onInspect={(card) => go({ card: card.uuid })}
+                                onChangeQuantity={(card, quantity) => void changeQuantity(card, quantity)}
+                                onDelete={(card) => void remove(card)}
+                                {...tagging}
+                                onActivate={(card) => setActive(card?.uuid ?? null)}
+                                isFlipped={(card) => flippedCards.isFlipped(card.uuid)}
+                                onFlip={(card) => flippedCards.toggle(card.uuid)}
+                                onMenu={(card, at) => setMenu({ card: card.uuid, at })}
+                                isCollapsed={collapsedGroups.isCollapsed}
+                                onToggleGroup={collapsedGroups.toggle}
+                            />
+                        ) : (
+                            <DeckCardTable
+                                groups={groups}
+                                grouping={grouping}
+                                violations={legality.slots}
+                                tags={tags}
+                                onInspect={(card) => go({ card: card.uuid })}
+                                onChangeQuantity={(card, quantity) => void changeQuantity(card, quantity)}
+                                onDelete={(card) => void remove(card)}
+                                {...tagging}
+                                onActivate={(card) => setActive(card?.uuid ?? null)}
+                                isFlipped={(card) => flippedCards.isFlipped(card.uuid)}
+                                onFlip={(card) => flippedCards.toggle(card.uuid)}
+                                onMenu={(card, at) => setMenu({ card: card.uuid, at })}
+                                isCollapsed={collapsedGroups.isCollapsed}
+                                onToggleGroup={collapsedGroups.toggle}
+                            />
+                        )}
+                    </div>
                 </div>
-            </div>
 
-            <DeckTagDock tags={tags} onManage={() => setManagingTags(true)} />
+                {rights.edit && <DeckTagDock tags={tags} onManage={() => setManagingTags(true)} />}
 
-            <Dialog open={choosing !== null} onClose={() => setChoosing(null)} size={"sm"}>
-                <DialogTitle>{choosing === "view" ? t("label.view") : t("label.grouping")}</DialogTitle>
-                <DialogBody>
-                    {choosing === "view" ? (
-                        <RadioGroup
-                            value={view}
-                            onChange={(next: string) => {
-                                setChoosing(null);
-                                requestAnimationFrame(() => {
-                                    startTransition(() => changeView(next as DeckView));
-                                });
-                            }}
-                        >
-                            {DECK_VIEWS.map((option) => (
-                                <RadioField key={option}>
-                                    <Radio value={option} color={"lime"} />
-                                    <Label>{t(`label.view-${option}`)}</Label>
-                                </RadioField>
-                            ))}
-                        </RadioGroup>
-                    ) : (
-                        <RadioGroup
-                            value={grouping}
-                            onChange={(next: string) => {
-                                const group = next as DeckGrouping;
-                                setChoosing(null);
-                                requestAnimationFrame(() => {
-                                    startTransition(() => go({ group: group === "type" ? undefined : group }));
-                                });
-                            }}
-                        >
-                            {DECK_GROUPINGS.map((option) => (
-                                <RadioField key={option}>
-                                    <Radio value={option} color={"lime"} />
-                                    <Label>{labels.grouping(option)}</Label>
-                                </RadioField>
-                            ))}
-                        </RadioGroup>
-                    )}
-                </DialogBody>
-                <DialogActions>
-                    <Button plain onClick={() => setChoosing(null)}>
-                        {tg("button.close")}
-                    </Button>
-                </DialogActions>
-            </Dialog>
-
-            <AddCardsDialog
-                open={adding}
-                zone={zone}
-                zones={zones}
-                onChangeZone={(next) => go({ zone: next === "Main" ? undefined : next })}
-                constraints={constraints}
-                countOf={copiesOf}
-                includedOf={isIncluded}
-                onAdd={async (printing) => {
-                    await add(printing);
-                }}
-                onRemove={subtract}
-                onResults={setHits}
-                markOf={(printing) =>
-                    claimed === undefined ? null : (
-                        <BracketBreakMark breaks={marks(printing.name)} bracket={claimed.number} />
-                    )
-                }
-                onClose={() => setAdding(false)}
-                // The graph's corpus is commander-legal; its filters follow the
-                // advisor and stay commander-only for now. That cut is made on
-                // the server, so a deck that agreed to the banned list will not
-                // find those cards among the graph's hits — the Scryfall half
-                // of the search is where they turn up.
-                graph={deck.format === "commander"}
-                graphIdentity={bound ? legality.allowedColors : undefined}
-                // A commander deck is singletons, so a name search ends with
-                // its card; in a 4-of format the query has to survive the
-                // first copy.
-                clearNameSearches={deck.format === "commander"}
-            />
-
-            <CardDetailDialog
-                printing={inspected}
-                market={inspecting?.card ?? null}
-                details={
-                    inspecting === null
-                        ? []
-                        : [
-                              { label: t("label.quantity"), value: inspecting.quantity },
-                              { label: t("label.zone"), value: labels.zone(inspecting.zone) },
-                              ...(inspecting.card?.price_eur_cents == null
-                                  ? []
-                                  : [
-                                        {
-                                            label: t("label.value"),
-                                            value: formatCurrency(
-                                                (inspecting.card.price_eur_cents * inspecting.quantity) / 100,
-                                            ),
-                                        },
-                                    ]),
-                          ]
-                }
-                onClose={() => go({ card: undefined })}
-                actions={
-                    inspecting === null ? undefined : (
-                        <>
-                            {zones
-                                .filter(
-                                    (option) =>
-                                        option !== inspecting.zone &&
-                                        (option !== "Commander" || (inspected !== null && canBeCommander(inspected))),
-                                )
-                                .map((option) => (
-                                    <Button key={option} outline onClick={() => void moveTo(inspecting, option)}>
-                                        {t("button.move-to", { zone: labels.zone(option) })}
-                                    </Button>
+                <Dialog open={choosing !== null} onClose={() => setChoosing(null)} size={"sm"}>
+                    <DialogTitle>{choosing === "view" ? t("label.view") : t("label.grouping")}</DialogTitle>
+                    <DialogBody>
+                        {choosing === "view" ? (
+                            <RadioGroup
+                                value={view}
+                                onChange={(next: string) => {
+                                    setChoosing(null);
+                                    requestAnimationFrame(() => {
+                                        startTransition(() => changeView(next as DeckView));
+                                    });
+                                }}
+                            >
+                                {DECK_VIEWS.map((option) => (
+                                    <RadioField key={option}>
+                                        <Radio value={option} color={"lime"} />
+                                        <Label>{t(`label.view-${option}`)}</Label>
+                                    </RadioField>
                                 ))}
-                            <Button plain onClick={() => go({ card: undefined })}>
-                                {tg("button.close")}
-                            </Button>
-                        </>
-                    )
-                }
-            ></CardDetailDialog>
+                            </RadioGroup>
+                        ) : (
+                            <RadioGroup
+                                value={grouping}
+                                onChange={(next: string) => {
+                                    const group = next as DeckGrouping;
+                                    setChoosing(null);
+                                    requestAnimationFrame(() => {
+                                        startTransition(() => go({ group: group === "type" ? undefined : group }));
+                                    });
+                                }}
+                            >
+                                {DECK_GROUPINGS.map((option) => (
+                                    <RadioField key={option}>
+                                        <Radio value={option} color={"lime"} />
+                                        <Label>{labels.grouping(option)}</Label>
+                                    </RadioField>
+                                ))}
+                            </RadioGroup>
+                        )}
+                    </DialogBody>
+                    <DialogActions>
+                        <Button plain onClick={() => setChoosing(null)}>
+                            {tg("button.close")}
+                        </Button>
+                    </DialogActions>
+                </Dialog>
 
-            <DeckTagsDialog
-                open={managingTags}
-                tags={tags}
-                onCreate={(wanted) => void createTags(wanted)}
-                onUpdate={(tag, name, color, icon, global) => saveTag(tag, name, color, icon, global)}
-                onDelete={(tag) => void deleteTag(tag)}
-                onClose={() => setManagingTags(false)}
-            />
+                <AddCardsDialog
+                    open={adding}
+                    zone={zone}
+                    zones={zones}
+                    onChangeZone={(next) => go({ zone: next === "Main" ? undefined : next })}
+                    constraints={constraints}
+                    countOf={copiesOf}
+                    includedOf={isIncluded}
+                    onAdd={async (printing) => {
+                        await add(printing);
+                    }}
+                    onRemove={subtract}
+                    onResults={setHits}
+                    markOf={(printing) =>
+                        claimed === undefined ? null : (
+                            <BracketBreakMark breaks={marks(printing.name)} bracket={claimed.number} />
+                        )
+                    }
+                    onClose={() => setAdding(false)}
+                    // The graph's corpus is commander-legal; its filters follow the
+                    // advisor and stay commander-only for now. That cut is made on
+                    // the server, so a deck that agreed to the banned list will not
+                    // find those cards among the graph's hits — the Scryfall half
+                    // of the search is where they turn up.
+                    graph={deck.format === "commander"}
+                    graphIdentity={bound ? legality.allowedColors : undefined}
+                    // A commander deck is singletons, so a name search ends with
+                    // its card; in a 4-of format the query has to survive the
+                    // first copy.
+                    clearNameSearches={deck.format === "commander"}
+                />
 
-            <DeckCardMenu
-                card={menued}
-                at={menu?.at ?? null}
-                tags={tags}
-                zones={zones.filter(
-                    (option) =>
-                        option !== "Commander" ||
-                        menued?.zone === "Commander" ||
-                        (menuPrinting !== null && canBeCommander(menuPrinting)),
-                )}
-                onInspect={(card) => go({ card: card.uuid })}
-                onChangeQuantity={(card, quantity) => void changeQuantity(card, quantity)}
-                onMoveTo={(card, next) => void moveTo(card, next)}
-                onChangePrinting={pickPrinting}
-                onReplace={
-                    deck.format === "commander"
-                        ? (card) => {
-                              if (card.card?.oracle_id != null) setReplacing(card);
-                          }
-                        : undefined
-                }
-                onToggleFoil={(card, foil) => void toggleFoil(card, foil)}
-                onToggleProxy={(card, proxy) => void toggleProxy(card, proxy)}
-                onToggleTag={(card, tag, on) => void toggleTag(card, tag, on)}
-                onDelete={(card) => void remove(card)}
-                onClose={() => setMenu(null)}
-            />
+                <CardDetailDialog
+                    printing={inspected}
+                    market={inspecting?.card ?? null}
+                    details={
+                        inspecting === null
+                            ? []
+                            : [
+                                  { label: t("label.quantity"), value: inspecting.quantity },
+                                  { label: t("label.zone"), value: labels.zone(inspecting.zone) },
+                                  ...(inspecting.card?.price_eur_cents == null
+                                      ? []
+                                      : [
+                                            {
+                                                label: t("label.value"),
+                                                value: formatCurrency(
+                                                    (inspecting.card.price_eur_cents * inspecting.quantity) / 100,
+                                                ),
+                                            },
+                                        ]),
+                              ]
+                    }
+                    onClose={() => go({ card: undefined })}
+                    actions={
+                        inspecting === null ? undefined : (
+                            <>
+                                {zones
+                                    .filter(
+                                        (option) =>
+                                            option !== inspecting.zone &&
+                                            (option !== "Commander" ||
+                                                (inspected !== null && canBeCommander(inspected))),
+                                    )
+                                    .map((option) => (
+                                        <Button key={option} outline onClick={() => void moveTo(inspecting, option)}>
+                                            {t("button.move-to", { zone: labels.zone(option) })}
+                                        </Button>
+                                    ))}
+                                <Button plain onClick={() => go({ card: undefined })}>
+                                    {tg("button.close")}
+                                </Button>
+                            </>
+                        )
+                    }
+                ></CardDetailDialog>
 
-            <PrintingDialog
-                owned={
-                    sourcing === null ? undefined : new Set(sourcing.candidates.map((candidate) => candidate.printing))
-                }
-                card={printed?.card == null ? null : { name: printed.card.name, printing: printed.printing }}
-                onPick={(printing) => {
-                    if (printed !== null) void switchPrinting(printed, printing);
-                }}
-                proxy={printed?.proxy}
-                onToggleProxy={(proxy) => {
-                    if (printed !== null) void toggleProxy(printed, proxy);
-                }}
-                onClose={() => setPrintingFor(null)}
-            />
+                <DeckTagsDialog
+                    open={rights.edit && managingTags}
+                    tags={tags}
+                    scope={rights.globalTags ? "both" : "local"}
+                    onCreate={(wanted) => void createTags(wanted)}
+                    onUpdate={(tag, name, color, icon, global) => saveTag(tag, name, color, icon, global)}
+                    onDelete={(tag) => void deleteTag(tag)}
+                    onClose={() => setManagingTags(false)}
+                />
 
-            <DeckPrintingSwitchDialog
-                change={
-                    switching === null
-                        ? null
-                        : {
-                              name: switching.card.card?.name ?? switching.printing.name,
-                              to: `${switching.printing.setCode} ${switching.printing.collectorNumber}`,
-                              stacks: filedUnder(switching.card),
-                          }
-                }
-                collections={shelf}
-                busy={false}
-                onReturn={(target) => void returnAndSwitch(target)}
-                onKeep={() => {
-                    const pending = switching;
-                    setSwitching(null);
-                    if (pending !== null) void writePrinting(pending.card, pending.printing);
-                }}
-                onClose={() => setSwitching(null)}
-            />
+                <DeckCardMenu
+                    card={menued}
+                    at={menu?.at ?? null}
+                    tags={tags}
+                    zones={zones.filter(
+                        (option) =>
+                            option !== "Commander" ||
+                            menued?.zone === "Commander" ||
+                            (menuPrinting !== null && canBeCommander(menuPrinting)),
+                    )}
+                    onInspect={(card) => go({ card: card.uuid })}
+                    onChangeQuantity={(card, quantity) => void changeQuantity(card, quantity)}
+                    onMoveTo={(card, next) => void moveTo(card, next)}
+                    onChangePrinting={pickPrinting}
+                    onReplace={
+                        deck.format === "commander"
+                            ? (card) => {
+                                  if (card.card?.oracle_id != null) setReplacing(card);
+                              }
+                            : undefined
+                    }
+                    onToggleFoil={(card, foil) => void toggleFoil(card, foil)}
+                    onToggleProxy={rights.owner ? (card, proxy) => void toggleProxy(card, proxy) : undefined}
+                    onToggleTag={tagging.onToggleTag}
+                    onDelete={(card) => void remove(card)}
+                    onClose={() => setMenu(null)}
+                />
 
-            {/* Mounted only while open: this component re-renders on every
+                <PrintingDialog
+                    owned={
+                        sourcing === null
+                            ? undefined
+                            : new Set(sourcing.candidates.map((candidate) => candidate.printing))
+                    }
+                    card={printed?.card == null ? null : { name: printed.card.name, printing: printed.printing }}
+                    onPick={(printing) => {
+                        if (printed !== null) void switchPrinting(printed, printing);
+                    }}
+                    proxy={rights.owner ? printed?.proxy : undefined}
+                    onToggleProxy={
+                        rights.owner
+                            ? (proxy) => {
+                                  if (printed !== null) void toggleProxy(printed, proxy);
+                              }
+                            : undefined
+                    }
+                    onClose={() => setPrintingFor(null)}
+                />
+
+                <DeckPrintingSwitchDialog
+                    change={
+                        switching === null
+                            ? null
+                            : {
+                                  name: switching.card.card?.name ?? switching.printing.name,
+                                  to: `${switching.printing.setCode} ${switching.printing.collectorNumber}`,
+                                  stacks: filedUnder(switching.card),
+                              }
+                    }
+                    collections={shelf}
+                    busy={false}
+                    onReturn={(target) => void returnAndSwitch(target)}
+                    onKeep={() => {
+                        const pending = switching;
+                        setSwitching(null);
+                        if (pending !== null) void writePrinting(pending.card, pending.printing);
+                    }}
+                    onClose={() => setSwitching(null)}
+                />
+
+                {/* Mounted only while open: this component re-renders on every
                 card the pointer crosses, and there is no reason to hold the
                 dialog's own settings query and graph request live until a
                 slot is actually marked. */}
-            {replacing !== null && (
-                <DeckReplaceDialog
-                    card={replacing}
-                    onClose={() => setReplacing(null)}
-                    deckUuid={deckUuid}
-                    deck={advisor}
-                    speed={bracketSpeed(deck.bracket)}
-                    onReplaced={() => void router.invalidate()}
-                    counts={legality}
-                    claim={replacing.zone === "Main" || replacing.zone === "Commander" ? claimed : undefined}
-                />
-            )}
+                {replacing !== null && (
+                    <DeckReplaceDialog
+                        card={replacing}
+                        onClose={() => setReplacing(null)}
+                        deckUuid={deckUuid}
+                        deck={advisor}
+                        speed={bracketSpeed(deck.bracket)}
+                        onReplaced={() => void router.invalidate()}
+                        counts={legality}
+                        claim={replacing.zone === "Main" || replacing.zone === "Commander" ? claimed : undefined}
+                    />
+                )}
 
-            <DeckRuleZeroDialog
-                open={editingRuleZero}
-                deck={deck}
-                colors={legality.allowedColors}
-                formatSize={rules?.deck_size.cards ?? null}
-                onClose={() => setEditingRuleZero(false)}
-                onSaved={() => router.invalidate()}
-            />
-        </div>
+                <DeckRuleZeroDialog
+                    open={editingRuleZero}
+                    deck={deck}
+                    colors={legality.allowedColors}
+                    formatSize={rules?.deck_size.cards ?? null}
+                    onClose={() => setEditingRuleZero(false)}
+                    onSaved={() => router.invalidate()}
+                />
+            </div>
+        </DeckTagWritableContext>
     );
 }
 
