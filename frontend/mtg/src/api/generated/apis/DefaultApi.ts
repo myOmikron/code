@@ -363,6 +363,7 @@ export interface FinishLoginOperationRequest {
 }
 
 export interface FinishOidcLoginRequest {
+    provider: string;
     code?: string | null;
     error?: string | null;
     state?: string;
@@ -2980,6 +2981,13 @@ export class DefaultApi extends runtime.BaseAPI {
      * Creates request options for finishOidcLogin without sending the request
      */
     async finishOidcLoginRequestOpts(requestParameters: FinishOidcLoginRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['provider'] == null) {
+            throw new runtime.RequiredError(
+                'provider',
+                'Required parameter "provider" was null or undefined when calling finishOidcLogin().'
+            );
+        }
+
         const queryParameters: any = {};
 
         if (requestParameters['code'] != null) {
@@ -2997,7 +3005,8 @@ export class DefaultApi extends runtime.BaseAPI {
         const headerParameters: runtime.HTTPHeaders = {};
 
 
-        let urlPath = `/api/frontend/v1/auth/oidc/callback`;
+        let urlPath = `/api/frontend/v1/auth/oidc/callback/{provider}`;
+        urlPath = urlPath.replace('{provider}', encodeURIComponent(String(requestParameters['provider'])));
 
         return {
             path: urlPath,
@@ -3022,7 +3031,7 @@ export class DefaultApi extends runtime.BaseAPI {
      * Finish an OIDC login: the provider sends the browser back here  A known External identity is logged in and lands on the app, unless its Account is locked. An unknown one is held pending and goes to the username step. A refused login goes back to the login page with `oidc_error` naming why.
      * Finish an OIDC login: the provider sends the browser back here
      */
-    async finishOidcLogin(requestParameters: FinishOidcLoginRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+    async finishOidcLogin(requestParameters: FinishOidcLoginRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
         await this.finishOidcLoginRaw(requestParameters, initOverrides);
     }
 
@@ -4836,7 +4845,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * List the OpenID providers people may log in through  Empty while no provider is configured; the frontend then shows no button.
+     * List the OpenID providers people may log in through  Empty while Google is not configured; the frontend then shows no button.
      * List the OpenID providers people may log in through
      */
     async listOpenidProvidersRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListOpenIdProvidersResponse>> {
@@ -4847,7 +4856,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * List the OpenID providers people may log in through  Empty while no provider is configured; the frontend then shows no button.
+     * List the OpenID providers people may log in through  Empty while Google is not configured; the frontend then shows no button.
      * List the OpenID providers people may log in through
      */
     async listOpenidProviders(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListOpenIdProvidersResponse> {

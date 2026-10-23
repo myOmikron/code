@@ -61,8 +61,8 @@ pub struct AdminAccount {
 pub struct AdminOpenIdProvider {
     /// The provider's issuer
     pub issuer: String,
-    /// What the frontend calls the provider, `None` once it is no longer configured
-    pub display_name: Option<String>,
+    /// What the frontend calls the provider
+    pub display_name: String,
 }
 
 /// An Account's Lock

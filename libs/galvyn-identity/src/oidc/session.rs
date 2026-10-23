@@ -23,7 +23,7 @@ pub(super) const PENDING_VALIDITY: Duration = Duration::minutes(15);
 /// A running Login, waiting for the provider to send the browser back
 #[derive(Debug, Serialize, Deserialize)]
 pub(super) struct LoginState {
-    /// The id of the provider the Login runs against
+    /// The slug of the provider the Login runs against
     pub provider: String,
     /// The `state` sent to the provider
     pub csrf_state: String,
@@ -38,12 +38,15 @@ pub(super) struct LoginState {
 /// An External identity a finished Login found unknown
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(super) struct Pending {
-    /// The id of the provider that vouched for the person
+    /// The slug of the provider that vouched for the person
     pub provider: String,
     /// The provider's issuer
     pub issuer: String,
-    /// The subject the provider identifies the person by
-    pub subject: String,
+    /// The value of the provider's identifying claim
+    ///
+    /// Read from `subject` too, the name it had while it always was the subject.
+    #[serde(alias = "subject")]
+    pub value: String,
     /// The email the provider stated, if any
     pub email: Option<String>,
     /// Whether the provider verified that email
@@ -112,7 +115,7 @@ mod tests {
         Pending {
             provider: "google".to_string(),
             issuer: "https://accounts.google.com".to_string(),
-            subject: "1234".to_string(),
+            value: "1234".to_string(),
             email: None,
             email_verified: false,
             remember_me: false,
@@ -128,5 +131,20 @@ mod tests {
     #[test]
     fn an_external_identity_is_no_longer_pending_after_fifteen_minutes() {
         assert!(!finished_at(0).valid_at(at(16)));
+    }
+
+    #[test]
+    fn a_pending_external_identity_stored_with_its_subject_stays_readable() {
+        let stored = serde_json::json!({
+            "provider": "google",
+            "issuer": "https://accounts.google.com",
+            "subject": "1234",
+            "email": null,
+            "email_verified": false,
+            "remember_me": false,
+            "finished_at": 0,
+        });
+        let pending: Pending = serde_json::from_value(stored).unwrap();
+        assert_eq!(pending.value, "1234");
     }
 }

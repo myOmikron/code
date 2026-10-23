@@ -45,6 +45,7 @@ use galvyn::rorm::Database;
 use galvyn::rorm::DatabaseConfiguration;
 use galvyn::rorm::DatabaseDriver;
 use galvyn::rorm::fields::types::MaxStr;
+use galvyn_identity::Admission;
 use galvyn_identity::FakeOpenIdProvider;
 use galvyn_identity::IdentityModule;
 use serde::Serialize;
@@ -57,6 +58,7 @@ use uuid::Uuid;
 
 use crate::ModuleSetups;
 use crate::config::Config;
+use crate::config::GOOGLE;
 use crate::models::account::Account;
 use crate::models::account::AccountUuid;
 use crate::models::account::Role;
@@ -127,7 +129,7 @@ impl App {
                     database_driver: driver,
                     listen_address: IpAddr::V4(Ipv4Addr::LOCALHOST),
                     listen_port: NonZeroU16::MIN,
-                    openid_providers: vec![fake.provider_setup("google", true)],
+                    google: Some(fake.provider(GOOGLE, Admission::Open)),
                 },
                 nats: None,
             },

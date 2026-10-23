@@ -204,7 +204,7 @@ impl IdentityModule {
 )]
 async fn refuse_external(identity: IdentityUuid) -> Result<(), FinishDeviceEnrollmentError> {
     #[cfg(feature = "oidc")]
-    if crate::oidc::models::ExternalIdentity::issuer_of(Database::global(), identity)
+    if crate::oidc::models::ExternalIdentity::login_of(Database::global(), identity)
         .await?
         .is_some()
     {

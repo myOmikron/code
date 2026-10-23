@@ -87,7 +87,7 @@ services:
   webserver:
     # common/env.secret holds GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET for "Continue with
     # Google", off while both are empty. The OAuth client's redirect uri is
-    # PUBLIC_ORIGIN + /api/frontend/v1/auth/oidc/callback.
+    # PUBLIC_ORIGIN + /api/frontend/v1/auth/oidc/callback/google.
     env_file: [ common/env.common, common/env.secret ]
     environment:
       - POSTGRES_HOST=postgres

@@ -48,7 +48,7 @@ All URIs are relative to *http://localhost*
 | [**fillDeckCollection**](DefaultApi.md#filldeckcollectionoperation) | **POST** /api/frontend/v1/decks/{deck}/sourcing/fill | Declare that the deck holds what its list asks for |
 | [**finishAddPasskey**](DefaultApi.md#finishaddpasskeyoperation) | **POST** /api/frontend/v1/accounts/passkeys/finish | Finish registering another passkey for the logged-in account |
 | [**finishLogin**](DefaultApi.md#finishloginoperation) | **POST** /api/frontend/v1/auth/login/finish | Finish a passkey login |
-| [**finishOidcLogin**](DefaultApi.md#finishoidclogin) | **GET** /api/frontend/v1/auth/oidc/callback | Finish an OIDC login: the provider sends the browser back here |
+| [**finishOidcLogin**](DefaultApi.md#finishoidclogin) | **GET** /api/frontend/v1/auth/oidc/callback/{provider} | Finish an OIDC login: the provider sends the browser back here |
 | [**finishRegistration**](DefaultApi.md#finishregistrationoperation) | **POST** /api/frontend/v1/auth/register/finish | Finish a passkey registration |
 | [**getAllCollections**](DefaultApi.md#getallcollections) | **GET** /api/frontend/v1/collections |  |
 | [**getAllDeckFolders**](DefaultApi.md#getalldeckfolders) | **GET** /api/frontend/v1/folders | List every folder the account keeps |
@@ -3295,7 +3295,7 @@ No authorization required
 
 ## finishOidcLogin
 
-> finishOidcLogin(code, error, state)
+> finishOidcLogin(provider, code, error, state)
 
 Finish an OIDC login: the provider sends the browser back here
 
@@ -3315,6 +3315,8 @@ async function example() {
   const api = new DefaultApi();
 
   const body = {
+    // string
+    provider: provider_example,
     // string (optional)
     code: ...,
     // string (optional)
@@ -3340,6 +3342,7 @@ example().catch(console.error);
 
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
+| **provider** | `string` |  | [Defaults to `undefined`] |
 | **code** | `string` |  | [Optional] [Defaults to `undefined`] |
 | **error** | `string` |  | [Optional] [Defaults to `undefined`] |
 | **state** | `string` |  | [Optional] [Defaults to `undefined`] |
@@ -6057,7 +6060,7 @@ No authorization required
 
 List the OpenID providers people may log in through
 
-List the OpenID providers people may log in through  Empty while no provider is configured; the frontend then shows no button.
+List the OpenID providers people may log in through  Empty while Google is not configured; the frontend then shows no button.
 
 ### Example
 
@@ -6106,6 +6109,9 @@ No authorization required
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 | **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 

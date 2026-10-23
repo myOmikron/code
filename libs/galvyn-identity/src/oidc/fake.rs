@@ -55,8 +55,9 @@ use tokio::net::TcpListener;
 use tokio::task::JoinHandle;
 use url::Url;
 
-use super::ClientSecret;
-use super::OpenIdProviderSetup;
+use super::Admission;
+use super::DEFAULT_IDENTIFYING_CLAIM;
+use super::NewOpenIdProvider;
 
 /// The RSA key the fake signs ID tokens with and publishes (test only)
 const SIGNING_KEY: &str = include_str!("fake/signing-key.pem");
@@ -115,6 +116,8 @@ pub enum Tamper {
     WrongNonce,
     /// The token is signed by another key under the published key's id
     BadSignature,
+    /// The token's `at_hash` is of another access token than the one sent along
+    WrongAccessTokenHash,
 }
 
 impl FakePerson {
@@ -237,15 +240,16 @@ impl FakeOpenIdProvider {
         CLIENT_SECRET
     }
 
-    /// The setup of a provider named `id` pointing at the fake
-    pub fn provider_setup(&self, id: &str, admits_on_first_login: bool) -> OpenIdProviderSetup {
-        OpenIdProviderSetup {
-            id: id.to_string(),
-            display_name: format!("Fake {id}"),
-            issuer: self.issuer.clone(),
+    /// A provider named `slug` pointing at the fake, identifying people by their subject
+    pub fn provider(&self, slug: &str, admission: Admission) -> NewOpenIdProvider {
+        NewOpenIdProvider {
+            slug: slug.to_string(),
+            display_name: format!("Fake {slug}"),
+            discovery_url: format!("{}/.well-known/openid-configuration", self.issuer),
             client_id: CLIENT_ID.to_string(),
-            client_secret: ClientSecret::Shared(CLIENT_SECRET.to_string()),
-            admits_on_first_login,
+            client_secret: CLIENT_SECRET.to_string(),
+            identifying_claim: DEFAULT_IDENTIFYING_CLAIM.to_string(),
+            admission,
         }
     }
 
@@ -324,8 +328,8 @@ impl Fake {
         format!("{}{path}", self.issuer)
     }
 
-    /// Sign an ID token for `grant`
-    fn id_token(&self, grant: &Grant) -> CoreIdToken {
+    /// Sign an ID token for `grant`, issued along with `access_token`
+    fn id_token(&self, grant: &Grant, access_token: &AccessToken) -> CoreIdToken {
         let person = &grant.person;
         let tamper = person.tamper;
         let now = OffsetDateTime::now_utc();
@@ -366,11 +370,16 @@ impl Fake {
             (_, true) => &self.rotated,
             (_, false) => &self.signing,
         };
+        let other_token = AccessToken::new("another-access-token".to_string());
+        let hashed = match tamper {
+            Some(Tamper::WrongAccessTokenHash) => &other_token,
+            _ => access_token,
+        };
         CoreIdToken::new(
             claims,
             key,
             CoreJwsSigningAlgorithm::RsaSsaPkcs1V15Sha256,
-            None,
+            Some(hashed),
             None,
         )
         .unwrap_or_else(|error| panic!("sign the ID token: {error}"))
@@ -449,10 +458,12 @@ async fn token(
         return refuse("invalid_grant");
     }
 
+    let access_token = AccessToken::new(uuid::Uuid::new_v4().to_string());
+    let id_token = fake.id_token(&grant, &access_token);
     let response = CoreTokenResponse::new(
-        AccessToken::new(uuid::Uuid::new_v4().to_string()),
+        access_token,
         CoreTokenType::Bearer,
-        CoreIdTokenFields::new(Some(fake.id_token(&grant)), EmptyExtraTokenFields {}),
+        CoreIdTokenFields::new(Some(id_token), EmptyExtraTokenFields {}),
     );
     Json(response).into_response()
 }

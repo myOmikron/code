@@ -187,6 +187,42 @@ fn the_active_providers_are_listed() {
 }
 
 #[test]
+fn google_sends_the_browser_back_to_its_own_callback() {
+    run(async {
+        let started = TestClient::new()
+            .json(
+                Method::POST,
+                &api("auth/oidc/start"),
+                &json!({ "provider": "google", "remember_me": false }),
+            )
+            .await
+            .ok_json();
+        let authorization_url = Url::parse(started["url"].as_str().expect("an authorization url"))
+            .expect("a valid authorization url");
+
+        let callback = App::fake().await.authorize(&authorization_url, stranger());
+        assert_eq!(
+            callback.as_str().split('?').next(),
+            Some("http://mtg.test/api/frontend/v1/auth/oidc/callback/google")
+        );
+    });
+}
+
+#[test]
+fn only_google_is_offered() {
+    run(async {
+        let response = TestClient::new()
+            .json(
+                Method::POST,
+                &api("auth/oidc/start"),
+                &json!({ "provider": "authentik", "remember_me": false }),
+            )
+            .await;
+        assert_eq!(response.status, StatusCode::BAD_REQUEST, "{response:?}");
+    });
+}
+
+#[test]
 fn a_first_oidc_login_goes_to_the_username_step() {
     run(async {
         let mut client = TestClient::new();
@@ -228,6 +264,7 @@ fn the_username_step_creates_an_external_account_with_the_providers_email() {
                 .await
                 .expect("read the login method"),
             Some(LoginMethod::External {
+                provider: "google".to_string(),
                 issuer: App::fake().await.issuer().to_string()
             })
         );
@@ -543,7 +580,7 @@ fn a_cancelled_oidc_login_goes_back_to_the_login_page() {
             .find(|(name, _)| name == "state")
             .map(|(_, value)| value.into_owned())
             .expect("a state");
-        let mut callback = api("auth/oidc/callback");
+        let mut callback = api("auth/oidc/callback/google");
         callback
             .query_pairs_mut()
             .append_pair("error", "access_denied")

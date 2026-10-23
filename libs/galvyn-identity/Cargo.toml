@@ -9,7 +9,7 @@ publish = false
 [features]
 default = []
 passkey = ["dep:webauthn-rs", "dep:webauthn-rs-proto", "dep:serde_cbor_2", "dep:openssl"]
-oidc = ["dep:openidconnect", "dep:reqwest", "dep:tokio"]
+oidc = ["dep:openidconnect", "dep:reqwest", "dep:tokio", "dep:base64", "dep:clap"]
 test-support = ["dep:base64"]
 
 [dependencies]
@@ -30,6 +30,7 @@ openssl = { workspace = true, optional = true }
 
 openidconnect = { workspace = true, optional = true }
 base64 = { workspace = true, optional = true }
+clap = { workspace = true, optional = true }
 reqwest = { workspace = true, optional = true }
 tokio = { workspace = true, optional = true, features = ["net"] }
 

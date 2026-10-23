@@ -115,31 +115,28 @@ impl IdentityModule {
             return Ok(Some(LoginMethod::Local));
         }
         #[cfg(feature = "oidc")]
-        if let Some(issuer) =
-            super::oidc::models::ExternalIdentity::issuer_of(&mut *tx, identity).await?
+        if let Some(login) =
+            super::oidc::models::ExternalIdentity::login_of(&mut *tx, identity).await?
         {
             return Ok(Some(LoginMethod::External {
-                issuer: issuer.into_inner(),
+                provider: login.provider,
+                issuer: login.issuer,
             }));
         }
         Ok(None)
     }
 
-    /// The issuer of each external Identity among `identities`, in one query
+    /// The OpenID provider of each external Identity among `identities`, in one query
     ///
-    /// The issuer is the one [`LoginMethod::External`] states. A local
+    /// The provider is the one [`LoginMethod::External`] states. A local
     /// Identity, one without a login method yet and a missing one have no entry.
     #[cfg(feature = "oidc")]
-    pub async fn external_issuers(
+    pub async fn external_logins(
         &self,
         exe: impl Executor<'_>,
         identities: &[IdentityUuid],
-    ) -> Result<HashMap<IdentityUuid, String>, rorm::Error> {
-        let issuers = super::oidc::models::ExternalIdentity::issuers_of(exe, identities).await?;
-        Ok(issuers
-            .into_iter()
-            .map(|(identity, issuer)| (identity, issuer.into_inner()))
-            .collect())
+    ) -> Result<HashMap<IdentityUuid, super::oidc::ExternalLogin>, rorm::Error> {
+        super::oidc::models::ExternalIdentity::logins_of(exe, identities).await
     }
 
     /// Issue a Registration link for `identity` and return the full link

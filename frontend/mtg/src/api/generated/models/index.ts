@@ -653,11 +653,11 @@ export interface AdminLogEntryResponse {
  */
 export interface AdminOpenIdProvider {
     /**
-     * What the frontend calls the provider, `None` once it is no longer configured
+     * What the frontend calls the provider
      * @type {string}
      * @memberof AdminOpenIdProvider
      */
-    display_name?: string | null;
+    display_name: string;
     /**
      * The provider's issuer
      * @type {string}

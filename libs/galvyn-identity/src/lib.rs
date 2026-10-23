@@ -7,7 +7,7 @@
 //! Account referencing an Identity, and their handlers, usernames and mails.
 //!
 //! Each login method is a cargo feature: `passkey` adds Passkey login, `oidc`
-//! adds OIDC login through the OpenID providers the service configures. An
+//! adds OIDC login through the OpenID providers in the module's tables. An
 //! Identity is local or external, never both: Passkey Enrollment is refused
 //! for an Identity holding an External identity, and an External identity is
 //! only ever bound to a fresh Identity.
@@ -42,15 +42,29 @@ pub use self::models::Identity;
 pub use self::models::IdentityUuid;
 pub use self::models::LoginMethod;
 #[cfg(feature = "oidc")]
+pub use self::oidc::AddOpenIdProviderCommand;
+#[cfg(feature = "oidc")]
+pub use self::oidc::AddOpenIdProviderError;
+#[cfg(feature = "oidc")]
+pub use self::oidc::Admission;
+#[cfg(feature = "oidc")]
+pub use self::oidc::AdmissionHook;
+#[cfg(feature = "oidc")]
 pub use self::oidc::BeginOidcLoginError;
 #[cfg(feature = "oidc")]
 pub use self::oidc::BindError;
 #[cfg(feature = "oidc")]
 pub use self::oidc::BoundExternalIdentity;
 #[cfg(feature = "oidc")]
-pub use self::oidc::ClientSecret;
+pub use self::oidc::CliAdmission;
+#[cfg(feature = "oidc")]
+pub use self::oidc::DEFAULT_IDENTIFYING_CLAIM;
 #[cfg(all(feature = "oidc", feature = "test-support"))]
 pub use self::oidc::EnrollExternalIdentityError;
+#[cfg(feature = "oidc")]
+pub use self::oidc::ExternalClaims;
+#[cfg(feature = "oidc")]
+pub use self::oidc::ExternalLogin;
 #[cfg(all(feature = "oidc", feature = "test-support"))]
 pub use self::oidc::FakeOpenIdProvider;
 #[cfg(all(feature = "oidc", feature = "test-support"))]
@@ -58,15 +72,21 @@ pub use self::oidc::FakePerson;
 #[cfg(feature = "oidc")]
 pub use self::oidc::FinishOidcLoginError;
 #[cfg(feature = "oidc")]
+pub use self::oidc::FirstLoginDecision;
+#[cfg(feature = "oidc")]
+pub use self::oidc::InvalidOpenIdProvider;
+#[cfg(feature = "oidc")]
+pub use self::oidc::NewOpenIdProvider;
+#[cfg(feature = "oidc")]
 pub use self::oidc::OidcCallback;
 #[cfg(feature = "oidc")]
 pub use self::oidc::OidcLoginOutcome;
 #[cfg(feature = "oidc")]
 pub use self::oidc::OidcSetup;
 #[cfg(feature = "oidc")]
-pub use self::oidc::OpenIdProvider;
+pub use self::oidc::OpenAdmission;
 #[cfg(feature = "oidc")]
-pub use self::oidc::OpenIdProviderSetup;
+pub use self::oidc::OpenIdProvider;
 #[cfg(feature = "oidc")]
 pub use self::oidc::PendingExternalIdentity;
 #[cfg(all(feature = "oidc", feature = "test-support"))]
@@ -116,7 +136,7 @@ pub struct IdentityModule {
     /// The configured Passkey ceremony engine
     #[cfg(feature = "passkey")]
     webauthn: webauthn_rs::Webauthn,
-    /// The configured OpenID providers
+    /// How the module reaches the OpenID providers
     #[cfg(feature = "oidc")]
     oidc: oidc::OpenIdProviders,
 }
@@ -128,7 +148,7 @@ pub struct Prepared {
     /// The configured Passkey ceremony engine
     #[cfg(feature = "passkey")]
     webauthn: webauthn_rs::Webauthn,
-    /// The configured OpenID providers
+    /// How the module reaches the OpenID providers
     #[cfg(feature = "oidc")]
     oidc: oidc::OpenIdProviders,
 }

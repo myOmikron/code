@@ -1,6 +1,7 @@
-//! The configured OpenID providers and what their discovery yields
+//! The OpenID providers in the module's tables and what their discovery yields
 
-use std::collections::HashSet;
+use std::collections::HashMap;
+use std::sync::Arc;
 use std::time::Duration;
 use std::time::Instant;
 
@@ -17,19 +18,22 @@ use openidconnect::core::CoreProviderMetadata;
 use openidconnect::http;
 use tokio::sync::RwLock;
 use url::Url;
+use uuid::Uuid;
 
-use super::ClientSecret;
 use super::OidcSetup;
-use super::OpenIdProviderSetup;
+use super::OpenAdmission;
 
 /// How long a provider's discovery document and keys are trusted before they are fetched again
 const DISCOVERY_MAX_AGE: Duration = Duration::from_secs(60 * 60);
 
 /// How long a request to a provider may take
-const REQUEST_TIMEOUT: Duration = Duration::from_secs(10);
+const REQUEST_TIMEOUT: Duration = Duration::from_secs(60);
 
-/// Longest issuer an External identity can store
-const MAX_ISSUER_LEN: usize = 255;
+/// Where below its issuer a provider serves its discovery document
+const WELL_KNOWN: &str = "/.well-known/openid-configuration";
+
+/// The claim identifying a person unless a provider is configured otherwise
+pub const DEFAULT_IDENTIFYING_CLAIM: &str = "sub";
 
 /// A client for one provider, as discovery leaves it
 pub(crate) type DiscoveredClient = CoreClient<
@@ -41,31 +45,261 @@ pub(crate) type DiscoveredClient = CoreClient<
     EndpointMaybeSet,
 >;
 
-/// Every configured OpenID provider
-pub(crate) struct OpenIdProviders {
-    /// The redirect uri registered with every provider
-    pub(crate) redirect_uri: RedirectUrl,
-    /// The providers, in configuration order
-    pub(crate) providers: Vec<OpenIdProvider>,
-    /// The client every request to a provider goes through
-    http: reqwest::Client,
+/// Who an OpenID provider admits on their first OIDC login
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Admission {
+    /// Everyone it vouches for: the first OIDC login creates their Identity
+    Open,
+    /// Only those holding a Registration link
+    InviteOnly,
 }
 
-/// An OpenID provider people may log in through
+impl Admission {
+    /// How the provider table stores it
+    pub(crate) fn encode(self) -> &'static str {
+        match self {
+            Admission::Open => "open",
+            Admission::InviteOnly => "invite_only",
+        }
+    }
+
+    /// The admission stored as `value`, if it is one
+    pub(crate) fn decode(value: &str) -> Option<Self> {
+        match value {
+            "open" => Some(Admission::Open),
+            "invite_only" => Some(Admission::InviteOnly),
+            _ => None,
+        }
+    }
+}
+
+/// An OpenID provider to add to the module's tables
+#[derive(Clone, PartialEq, Eq)]
+pub struct NewOpenIdProvider {
+    /// The service's own short name for the provider, e.g. `google`
+    ///
+    /// Lowercase letters, digits and `-`, as it ends the redirect uri.
+    pub slug: String,
+    /// What the frontend calls the provider, e.g. `Google`
+    pub display_name: String,
+    /// Where the provider's discovery document is, or its issuer below which it is
+    pub discovery_url: String,
+    /// The client id the provider issued the service
+    pub client_id: String,
+    /// The secret the service authenticates to the provider's token endpoint with
+    ///
+    /// Stored in plain text.
+    pub client_secret: String,
+    /// The ID token claim whose value identifies a person, usually
+    /// [`DEFAULT_IDENTIFYING_CLAIM`]
+    pub identifying_claim: String,
+    /// Who the provider admits on their first OIDC login
+    pub admission: Admission,
+}
+
+impl std::fmt::Debug for NewOpenIdProvider {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("NewOpenIdProvider")
+            .field("slug", &self.slug)
+            .field("display_name", &self.display_name)
+            .field("discovery_url", &self.discovery_url)
+            .field("client_id", &self.client_id)
+            .field("identifying_claim", &self.identifying_claim)
+            .field("admission", &self.admission)
+            .finish_non_exhaustive()
+    }
+}
+
+/// Which field of a [`NewOpenIdProvider`] is unusable
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum InvalidOpenIdProvider {
+    /// Empty, longer than 64 bytes, or not only lowercase letters, digits and `-`
+    Slug,
+    /// Empty or longer than 255 bytes
+    DisplayName,
+    /// No http(s) url, or longer than 255 bytes
+    DiscoveryUrl,
+    /// Empty or longer than 255 bytes
+    ClientId,
+    /// Empty or longer than 1024 bytes
+    ClientSecret,
+    /// Empty or longer than 64 bytes
+    IdentifyingClaim,
+}
+
+impl std::fmt::Display for InvalidOpenIdProvider {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            InvalidOpenIdProvider::Slug => {
+                "the slug needs 1 to 64 lowercase letters, digits or dashes"
+            }
+            InvalidOpenIdProvider::DisplayName => "the display name needs 1 to 255 bytes",
+            InvalidOpenIdProvider::DiscoveryUrl => {
+                "the discovery url needs to be an http(s) url of at most 255 bytes"
+            }
+            InvalidOpenIdProvider::ClientId => "the client id needs 1 to 255 bytes",
+            InvalidOpenIdProvider::ClientSecret => "the client secret needs 1 to 1024 bytes",
+            InvalidOpenIdProvider::IdentifyingClaim => "the identifying claim needs 1 to 64 bytes",
+        })
+    }
+}
+
+impl NewOpenIdProvider {
+    /// The first field that cannot be stored or used, if any
+    pub fn validate(&self) -> Result<(), InvalidOpenIdProvider> {
+        let fits = |value: &str, max: usize| !value.is_empty() && value.len() <= max;
+        let slug = fits(&self.slug, 64)
+            && self
+                .slug
+                .bytes()
+                .all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'-');
+        if !slug {
+            return Err(InvalidOpenIdProvider::Slug);
+        }
+        if !fits(&self.display_name, 255) {
+            return Err(InvalidOpenIdProvider::DisplayName);
+        }
+        let url = Url::parse(&self.discovery_url)
+            .is_ok_and(|url| matches!(url.scheme(), "http" | "https"));
+        if !fits(&self.discovery_url, 255) || !url {
+            return Err(InvalidOpenIdProvider::DiscoveryUrl);
+        }
+        if !fits(&self.client_id, 255) {
+            return Err(InvalidOpenIdProvider::ClientId);
+        }
+        if !fits(&self.client_secret, 1024) {
+            return Err(InvalidOpenIdProvider::ClientSecret);
+        }
+        if !fits(&self.identifying_claim, 64) {
+            return Err(InvalidOpenIdProvider::IdentifyingClaim);
+        }
+        Ok(())
+    }
+}
+
+/// An OpenID provider as the module's tables hold it
+///
+/// Its client secret stays inside the module.
+#[derive(Clone)]
 pub struct OpenIdProvider {
-    /// See [`OpenIdProviderSetup::id`]
-    id: String,
-    /// See [`OpenIdProviderSetup::display_name`]
-    display_name: String,
-    /// See [`OpenIdProviderSetup::issuer`]
-    issuer: IssuerUrl,
-    /// See [`OpenIdProviderSetup::client_id`]
-    client_id: ClientId,
-    /// See [`OpenIdProviderSetup::client_secret`]
-    client_secret: ClientSecret,
-    /// See [`OpenIdProviderSetup::admits_on_first_login`]
-    admits_on_first_login: bool,
-    /// The most recent discovery, fetched on first use
+    /// Primary key
+    pub(crate) uuid: Uuid,
+    /// See [`NewOpenIdProvider::slug`]
+    pub(crate) slug: String,
+    /// See [`NewOpenIdProvider::display_name`]
+    pub(crate) display_name: String,
+    /// See [`NewOpenIdProvider::discovery_url`]
+    pub(crate) discovery_url: String,
+    /// The issuer its discovery stated, `None` before the first discovery
+    pub(crate) issuer: Option<String>,
+    /// See [`NewOpenIdProvider::client_id`]
+    pub(crate) client_id: String,
+    /// See [`NewOpenIdProvider::client_secret`]
+    pub(crate) client_secret: String,
+    /// See [`NewOpenIdProvider::identifying_claim`]
+    pub(crate) identifying_claim: String,
+    /// See [`NewOpenIdProvider::admission`]
+    pub(crate) admission: Admission,
+}
+
+impl std::fmt::Debug for OpenIdProvider {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("OpenIdProvider")
+            .field("slug", &self.slug)
+            .field("display_name", &self.display_name)
+            .field("discovery_url", &self.discovery_url)
+            .field("issuer", &self.issuer)
+            .field("client_id", &self.client_id)
+            .field("identifying_claim", &self.identifying_claim)
+            .field("admission", &self.admission)
+            .finish_non_exhaustive()
+    }
+}
+
+impl OpenIdProvider {
+    /// The service's own short name for the provider
+    pub fn slug(&self) -> &str {
+        &self.slug
+    }
+
+    /// What the frontend calls the provider
+    pub fn display_name(&self) -> &str {
+        &self.display_name
+    }
+
+    /// Where the provider's discovery document is, or its issuer below which it is
+    pub fn discovery_url(&self) -> &str {
+        &self.discovery_url
+    }
+
+    /// The issuer the provider's discovery stated, `None` before its first discovery
+    pub fn issuer(&self) -> Option<&str> {
+        self.issuer.as_deref()
+    }
+
+    /// The client id the provider issued the service
+    pub fn client_id(&self) -> &str {
+        &self.client_id
+    }
+
+    /// The ID token claim whose value identifies a person
+    pub fn identifying_claim(&self) -> &str {
+        &self.identifying_claim
+    }
+
+    /// Who the provider admits on their first OIDC login
+    pub fn admission(&self) -> Admission {
+        self.admission
+    }
+
+    /// The issuer to discover below, from the configured discovery url
+    fn issuer_url(&self) -> Result<IssuerUrl, DiscoveryFailed> {
+        IssuerUrl::new(issuer_of(&self.discovery_url).to_string()).map_err(|error| {
+            DiscoveryFailed(format!(
+                "the discovery url of {} is no url: {error}",
+                self.slug
+            ))
+        })
+    }
+}
+
+/// The issuer whose discovery document `discovery_url` names
+///
+/// A url ending in the well-known path names the issuer before it; any
+/// other url is taken as the issuer itself.
+fn issuer_of(discovery_url: &str) -> &str {
+    discovery_url
+        .strip_suffix(WELL_KNOWN)
+        .unwrap_or(discovery_url)
+}
+
+/// The redirect uri of the provider `slug`: `callback_path` below `origin`, then the slug
+fn redirect_uri(origin: &Url, callback_path: &str, slug: &str) -> Url {
+    let mut uri = origin.clone();
+    uri.set_path(&format!("{}/{slug}", callback_path.trim_end_matches('/')));
+    uri.set_query(None);
+    uri
+}
+
+/// Every OpenID provider's discovery, and how the module reaches them
+pub(crate) struct OpenIdProviders {
+    /// The public origin the redirect uris are below
+    origin: Url,
+    /// The path the redirect uris start with, followed by the provider's slug
+    callback_path: String,
+    /// How a first OIDC login through an open provider is admitted
+    pub(crate) open_admission: OpenAdmission,
+    /// The client every request to a provider goes through
+    http: reqwest::Client,
+    /// The most recent discovery of each provider, by its primary key
+    discoveries: RwLock<HashMap<Uuid, Arc<Discovery>>>,
+}
+
+/// The discovery of one provider
+struct Discovery {
+    /// The discovery url it was fetched from
+    discovery_url: String,
+    /// The most recent successful fetch
     discovered: RwLock<Option<Discovered>>,
 }
 
@@ -81,139 +315,107 @@ struct Discovered {
 #[derive(Debug)]
 pub(crate) struct DiscoveryFailed(pub(crate) String);
 
-impl OpenIdProvider {
-    /// The service's own short name for the provider
-    pub fn id(&self) -> &str {
-        &self.id
-    }
-
-    /// What the frontend calls the provider
-    pub fn display_name(&self) -> &str {
-        &self.display_name
-    }
-
-    /// The provider's issuer
-    pub fn issuer(&self) -> &str {
-        self.issuer.as_str()
-    }
-
-    /// Whether the provider admits people on their first OIDC login
-    pub fn admits_on_first_login(&self) -> bool {
-        self.admits_on_first_login
-    }
-
-    /// Validate one provider's setup
-    fn new(setup: OpenIdProviderSetup) -> Result<Self, String> {
-        let OpenIdProviderSetup {
-            id,
-            display_name,
-            issuer,
-            client_id,
-            client_secret,
-            admits_on_first_login,
-        } = setup;
-        if id.is_empty() {
-            return Err("every OpenID provider needs an id".to_string());
-        }
-        if display_name.is_empty() {
-            return Err(format!("OpenID provider {id} needs a display_name"));
-        }
-        if client_id.is_empty() {
-            return Err(format!("OpenID provider {id} needs a client_id"));
-        }
-        match &client_secret {
-            ClientSecret::Shared(secret) if secret.is_empty() => {
-                return Err(format!("OpenID provider {id} needs a client_secret"));
-            }
-            ClientSecret::Shared(_) => {}
-        }
-        if issuer.len() > MAX_ISSUER_LEN {
-            return Err(format!(
-                "the issuer of OpenID provider {id} is longer than {MAX_ISSUER_LEN} bytes"
-            ));
-        }
-        let issuer = IssuerUrl::new(issuer)
-            .map_err(|e| format!("the issuer of OpenID provider {id} is no url: {e}"))?;
-        Ok(Self {
-            id,
-            display_name,
-            issuer,
-            client_id: ClientId::new(client_id),
-            client_secret,
-            admits_on_first_login,
-            discovered: RwLock::new(None),
-        })
-    }
-
-    /// The client secret to authenticate with
-    fn client_secret(&self) -> openidconnect::ClientSecret {
-        match &self.client_secret {
-            ClientSecret::Shared(secret) => openidconnect::ClientSecret::new(secret.clone()),
-        }
-    }
-}
-
 impl OpenIdProviders {
     /// Validate `setup` for a service served from `origin`
     pub(crate) fn new(origin: &Url, setup: OidcSetup) -> Result<Self, String> {
         let OidcSetup {
             callback_path,
-            providers,
+            root_certificates,
+            open_admission,
         } = setup;
-
-        let mut ids = HashSet::new();
-        let providers = providers
-            .into_iter()
-            .map(OpenIdProvider::new)
-            .collect::<Result<Vec<_>, _>>()?;
-        for provider in &providers {
-            if !ids.insert(provider.id.as_str()) {
-                return Err(format!("OpenID provider id {} is used twice", provider.id));
-            }
+        let mut certificates = Vec::new();
+        for bundle in root_certificates {
+            certificates.extend(
+                reqwest::Certificate::from_pem_bundle(bundle.as_bytes())
+                    .map_err(|e| format!("Failed to read a root certificate for OIDC: {e}"))?,
+            );
         }
-
-        if !providers.is_empty() && callback_path.is_empty() {
-            return Err("oidc.callback_path must be set in IdentitySetup".to_string());
-        }
-        let mut redirect_uri = origin.clone();
-        redirect_uri.set_path(&callback_path);
-        redirect_uri.set_query(None);
-
         let http = reqwest::Client::builder()
             .redirect(reqwest::redirect::Policy::none())
             .timeout(REQUEST_TIMEOUT)
+            .tls_certs_merge(certificates)
             .build()
             .map_err(|e| format!("Failed to build the client for OpenID providers: {e}"))?;
 
         Ok(Self {
-            redirect_uri: RedirectUrl::from_url(redirect_uri),
-            providers,
+            origin: origin.clone(),
+            callback_path,
+            open_admission,
             http,
+            discoveries: RwLock::new(HashMap::new()),
         })
     }
 
-    /// The provider named `id`
-    pub(crate) fn get(&self, id: &str) -> Option<&OpenIdProvider> {
-        self.providers.iter().find(|provider| provider.id == id)
+    /// Whether the service set OIDC login up, by naming its callback path
+    pub(crate) fn enabled(&self) -> bool {
+        !self.callback_path.is_empty()
     }
 
-    /// A client for `provider`, from its discovery
+    /// The redirect uri registered with `provider`
+    pub(crate) fn redirect_uri(&self, provider: &OpenIdProvider) -> RedirectUrl {
+        RedirectUrl::from_url(redirect_uri(
+            &self.origin,
+            &self.callback_path,
+            &provider.slug,
+        ))
+    }
+
+    /// A client for `provider` with the issuer its discovery states
     ///
-    /// Discovers on first use and once the last discovery is
-    /// [`DISCOVERY_MAX_AGE`] old, or right away with `refresh`, e.g. because
-    /// an ID token is signed by a key the last discovery did not list.
+    /// Discovers on first use, once the last discovery is
+    /// [`DISCOVERY_MAX_AGE`] old or the discovery url changed, and right away
+    /// with `refresh`, e.g. because an ID token is signed by a key the last
+    /// discovery did not list. Fails if the discovery states another issuer
+    /// than the one stored for the provider.
     pub(crate) async fn client(
         &self,
         provider: &OpenIdProvider,
         refresh: bool,
-    ) -> Result<DiscoveredClient, DiscoveryFailed> {
+    ) -> Result<(DiscoveredClient, String), DiscoveryFailed> {
         let metadata = self.metadata(provider, refresh).await?;
-        Ok(CoreClient::from_provider_metadata(
+        let issuer = metadata.issuer().as_str().to_string();
+        if provider
+            .issuer
+            .as_ref()
+            .is_some_and(|stored| *stored != issuer)
+        {
+            return Err(DiscoveryFailed(format!(
+                "discovery of {} states the issuer {issuer}, not the stored one",
+                provider.slug
+            )));
+        }
+        let client = CoreClient::from_provider_metadata(
             metadata,
-            provider.client_id.clone(),
-            Some(provider.client_secret()),
+            ClientId::new(provider.client_id.clone()),
+            Some(openidconnect::ClientSecret::new(
+                provider.client_secret.clone(),
+            )),
         )
-        .set_redirect_uri(self.redirect_uri.clone()))
+        .set_redirect_uri(self.redirect_uri(provider));
+        Ok((client, issuer))
+    }
+
+    /// The discovery of `provider`, replaced if its discovery url changed
+    async fn discovery(&self, provider: &OpenIdProvider) -> Arc<Discovery> {
+        let current = |discoveries: &HashMap<Uuid, Arc<Discovery>>| {
+            discoveries
+                .get(&provider.uuid)
+                .filter(|discovery| discovery.discovery_url == provider.discovery_url)
+                .cloned()
+        };
+        if let Some(discovery) = current(&*self.discoveries.read().await) {
+            return discovery;
+        }
+        let mut discoveries = self.discoveries.write().await;
+        if let Some(discovery) = current(&discoveries) {
+            return discovery;
+        }
+        let discovery = Arc::new(Discovery {
+            discovery_url: provider.discovery_url.clone(),
+            discovered: RwLock::new(None),
+        });
+        discoveries.insert(provider.uuid, discovery.clone());
+        discovery
     }
 
     /// `provider`'s discovery document, fetched again if it is stale or `refresh` is set
@@ -222,27 +424,28 @@ impl OpenIdProviders {
         provider: &OpenIdProvider,
         refresh: bool,
     ) -> Result<CoreProviderMetadata, DiscoveryFailed> {
+        let discovery = self.discovery(provider).await;
         let fresh = |discovered: &Option<Discovered>| {
             discovered
                 .as_ref()
                 .filter(|discovered| discovered.fetched_at.elapsed() < DISCOVERY_MAX_AGE)
                 .map(|discovered| discovered.metadata.clone())
         };
-        if !refresh && let Some(metadata) = fresh(&*provider.discovered.read().await) {
+        if !refresh && let Some(metadata) = fresh(&*discovery.discovered.read().await) {
             return Ok(metadata);
         }
 
-        let mut discovered = provider.discovered.write().await;
+        let mut discovered = discovery.discovered.write().await;
         if !refresh && let Some(metadata) = fresh(&discovered) {
             return Ok(metadata);
         }
         let http = self.http.clone();
         let metadata =
-            CoreProviderMetadata::discover_async(provider.issuer.clone(), &move |request| {
+            CoreProviderMetadata::discover_async(provider.issuer_url()?, &move |request| {
                 send(http.clone(), request)
             })
             .await
-            .map_err(|e| DiscoveryFailed(format!("discovery of {} failed: {e}", provider.id)))?;
+            .map_err(|e| DiscoveryFailed(format!("discovery of {} failed: {e}", provider.slug)))?;
         *discovered = Some(Discovered {
             metadata: metadata.clone(),
             fetched_at: Instant::now(),
@@ -279,4 +482,121 @@ pub(crate) async fn send(
     Ok(converted
         .body(body)
         .unwrap_or_else(|_| unreachable!("status and headers come from a valid response")))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn google() -> NewOpenIdProvider {
+        NewOpenIdProvider {
+            slug: "google".to_string(),
+            display_name: "Google".to_string(),
+            discovery_url: "https://accounts.google.com/.well-known/openid-configuration"
+                .to_string(),
+            client_id: "client".to_string(),
+            client_secret: "secret".to_string(),
+            identifying_claim: DEFAULT_IDENTIFYING_CLAIM.to_string(),
+            admission: Admission::Open,
+        }
+    }
+
+    #[test]
+    fn a_complete_provider_is_valid() {
+        assert_eq!(google().validate(), Ok(()));
+    }
+
+    #[test]
+    fn a_slug_has_to_fit_into_a_url_path() {
+        for slug in ["", "Google", "my provider", "a/b", &"a".repeat(65)] {
+            let provider = NewOpenIdProvider {
+                slug: slug.to_string(),
+                ..google()
+            };
+            assert_eq!(
+                provider.validate(),
+                Err(InvalidOpenIdProvider::Slug),
+                "{slug}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_discovery_url_has_to_be_an_http_url() {
+        for url in ["", "accounts.google.com", "ftp://accounts.google.com"] {
+            let provider = NewOpenIdProvider {
+                discovery_url: url.to_string(),
+                ..google()
+            };
+            assert_eq!(
+                provider.validate(),
+                Err(InvalidOpenIdProvider::DiscoveryUrl),
+                "{url}"
+            );
+        }
+    }
+
+    #[test]
+    fn client_id_secret_and_claim_cannot_be_empty() {
+        let refused = |provider: NewOpenIdProvider| provider.validate().unwrap_err();
+        assert_eq!(
+            refused(NewOpenIdProvider {
+                client_id: String::new(),
+                ..google()
+            }),
+            InvalidOpenIdProvider::ClientId
+        );
+        assert_eq!(
+            refused(NewOpenIdProvider {
+                client_secret: String::new(),
+                ..google()
+            }),
+            InvalidOpenIdProvider::ClientSecret
+        );
+        assert_eq!(
+            refused(NewOpenIdProvider {
+                identifying_claim: String::new(),
+                ..google()
+            }),
+            InvalidOpenIdProvider::IdentifyingClaim
+        );
+    }
+
+    #[test]
+    fn the_debug_output_leaves_the_client_secret_out() {
+        assert!(!format!("{:?}", google()).contains("secret\""));
+    }
+
+    #[test]
+    fn a_well_known_discovery_url_names_the_issuer_before_it() {
+        assert_eq!(
+            issuer_of("https://accounts.google.com/.well-known/openid-configuration"),
+            "https://accounts.google.com"
+        );
+        assert_eq!(
+            issuer_of("https://auth.example.org/application/o/mtg/"),
+            "https://auth.example.org/application/o/mtg/"
+        );
+    }
+
+    #[test]
+    fn the_redirect_uri_ends_with_the_providers_slug() {
+        let origin = Url::parse("https://mtg.example.org").unwrap();
+        assert_eq!(
+            redirect_uri(&origin, "/api/auth/oidc/callback", "google").as_str(),
+            "https://mtg.example.org/api/auth/oidc/callback/google"
+        );
+        assert_eq!(
+            redirect_uri(&origin, "/api/auth/oidc/callback/", "authentik").as_str(),
+            "https://mtg.example.org/api/auth/oidc/callback/authentik"
+        );
+    }
+
+    #[test]
+    fn an_admission_survives_the_provider_table() {
+        for admission in [Admission::Open, Admission::InviteOnly] {
+            assert_eq!(Admission::decode(admission.encode()), Some(admission));
+        }
+        assert_eq!(Admission::decode("closed"), None);
+    }
 }

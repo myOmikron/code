@@ -13,16 +13,12 @@ export type AdminLoginMethodBadgeProps = {
 /**
  * Whether an Account is local or external as a badge, an External Account with its OpenID provider
  *
- * A provider no longer configured is named by its issuer.
- *
  * @returns the badge
  */
 export function AdminLoginMethodBadge({ openidProvider }: AdminLoginMethodBadgeProps) {
     const [t] = useTranslation("admin");
     return openidProvider ? (
-        <Badge color={"purple"}>
-            {t("label.login-external", { provider: openidProvider.display_name ?? openidProvider.issuer })}
-        </Badge>
+        <Badge color={"purple"}>{t("label.login-external", { provider: openidProvider.display_name })}</Badge>
     ) : (
         <Badge color={"zinc"}>{t("label.login-local")}</Badge>
     );

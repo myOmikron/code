@@ -1,4 +1,4 @@
-//! External identities of an Identity
+//! The OpenID providers and the External identities of an Identity
 
 use std::collections::HashMap;
 
@@ -11,25 +11,46 @@ use uuid::Uuid;
 
 use super::db::ExternalIdentityInsertPatch;
 use super::db::ExternalIdentityModel;
+use super::db::OpenIdProviderInsertPatch;
+use super::db::OpenIdProviderModel;
+use super::provider::Admission;
+use super::provider::NewOpenIdProvider;
+use super::provider::OpenIdProvider;
 use crate::models::IdentityUuid;
 
-/// Postgres' name for the unique constraint on an External identity's issuer and subject
-pub(super) const ISSUER_SUBJECT_UNIQUE: &str = "external_identity_issuer_subject_key";
+/// Postgres' name for the unique constraint on an External identity's provider and value
+pub(super) const PROVIDER_VALUE_UNIQUE: &str = "external_identity_provider_value_key";
+
+/// Postgres' name for the unique constraint on an OpenID provider's slug
+pub(super) const SLUG_UNIQUE: &str = "openid_provider_slug_key";
 
 /// A person as one OpenID provider knows them
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct ExternalIdentity {
-    /// The issuer of the OpenID provider
+    /// The primary key of the OpenID provider
+    pub provider: Uuid,
+    /// The provider's issuer
     pub issuer: MaxStr<255>,
-    /// The subject the provider identifies the person by
-    pub subject: MaxStr<255>,
+    /// The value of the provider's identifying claim
+    pub value: MaxStr<255>,
+}
+
+/// The OpenID provider an external Identity logs in through
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ExternalLogin {
+    /// The provider's slug
+    pub provider: String,
+    /// What the frontend calls the provider
+    pub display_name: String,
+    /// The provider's issuer when the External identity was bound
+    pub issuer: String,
 }
 
 impl ExternalIdentity {
     /// The unique key of the pair
-    fn issuer_subject(&self) -> MaxStr<511> {
-        MaxStr::new(format!("{} {}", self.issuer, self.subject))
-            .unwrap_or_else(|_| unreachable!("two strings of 255 bytes and a space fit into 511"))
+    fn provider_value(&self) -> MaxStr<292> {
+        MaxStr::new(format!("{} {}", self.provider, self.value))
+            .unwrap_or_else(|_| unreachable!("a uuid, a space and 255 bytes fit into 292"))
     }
 
     /// The Identity this External identity is bound to, if any
@@ -38,12 +59,12 @@ impl ExternalIdentity {
         &self,
         exe: impl Executor<'_>,
     ) -> Result<Option<IdentityUuid>, rorm::Error> {
-        let issuer_subject = self.issuer_subject();
+        let provider_value = self.provider_value();
         let identity = rorm::query(exe, ExternalIdentityModel.identity)
             .condition(
                 ExternalIdentityModel
-                    .issuer_subject
-                    .equals(&*issuer_subject),
+                    .provider_value
+                    .equals(&*provider_value),
             )
             .optional()
             .await?;
@@ -52,7 +73,7 @@ impl ExternalIdentity {
 
     /// Bind this External identity to `identity`
     ///
-    /// Fails with a unique violation on [`ISSUER_SUBJECT_UNIQUE`] if it is
+    /// Fails with a unique violation on [`PROVIDER_VALUE_UNIQUE`] if it is
     /// bound already.
     #[instrument(name = "ExternalIdentity::insert", skip(exe))]
     pub(super) async fn insert(
@@ -64,54 +85,187 @@ impl ExternalIdentity {
             .single(&ExternalIdentityInsertPatch {
                 uuid: Uuid::now_v7(),
                 identity: ForeignModelByField(identity.into_inner()),
+                provider: ForeignModelByField(self.provider),
                 issuer: self.issuer.clone(),
-                subject: self.subject.clone(),
-                issuer_subject: self.issuer_subject(),
+                value: self.value.clone(),
+                provider_value: self.provider_value(),
             })
             .await?;
         Ok(())
     }
 
-    /// The issuer of one of `identity`'s External identities, if it has any
-    #[instrument(name = "ExternalIdentity::issuer_of", skip(exe))]
-    pub(crate) async fn issuer_of(
+    /// The login of one of `identity`'s External identities, if it has any
+    #[instrument(name = "ExternalIdentity::login_of", skip(exe))]
+    pub(crate) async fn login_of(
         exe: impl Executor<'_>,
         identity: IdentityUuid,
-    ) -> Result<Option<MaxStr<255>>, rorm::Error> {
-        rorm::query(exe, ExternalIdentityModel.issuer)
-            .condition(ExternalIdentityModel.identity.equals(identity.into_inner()))
-            .order_asc(ExternalIdentityModel.created_at)
-            .optional()
-            .await
+    ) -> Result<Option<ExternalLogin>, rorm::Error> {
+        let mut logins = Self::logins_of(exe, &[identity]).await?;
+        Ok(logins.remove(&identity))
     }
 
-    /// [`ExternalIdentity::issuer_of`] for each of `identities`, in one query
+    /// [`ExternalIdentity::login_of`] for each of `identities`, in one query
     ///
     /// An Identity without an External identity has no entry.
-    #[instrument(name = "ExternalIdentity::issuers_of", skip(exe))]
-    pub(crate) async fn issuers_of(
+    #[instrument(name = "ExternalIdentity::logins_of", skip(exe))]
+    pub(crate) async fn logins_of(
         exe: impl Executor<'_>,
         identities: &[IdentityUuid],
-    ) -> Result<HashMap<IdentityUuid, MaxStr<255>>, rorm::Error> {
+    ) -> Result<HashMap<IdentityUuid, ExternalLogin>, rorm::Error> {
         if identities.is_empty() {
             return Ok(HashMap::new());
         }
         let uuids = identities.iter().map(|uuid| uuid.into_inner());
         let rows = rorm::query(
             exe,
-            (ExternalIdentityModel.identity, ExternalIdentityModel.issuer),
+            (
+                ExternalIdentityModel.identity,
+                ExternalIdentityModel.issuer,
+                ExternalIdentityModel.provider.slug,
+                ExternalIdentityModel.provider.display_name,
+            ),
         )
         .condition(ExternalIdentityModel.identity.r#in(uuids))
         .order_asc(ExternalIdentityModel.created_at)
         .all()
         .await?;
 
-        let mut issuers = HashMap::new();
-        for (identity, issuer) in rows {
-            issuers
+        let mut logins = HashMap::new();
+        for (identity, issuer, slug, display_name) in rows {
+            logins
                 .entry(IdentityUuid::new_from_field(identity))
-                .or_insert(issuer);
+                .or_insert(ExternalLogin {
+                    provider: slug.into_inner(),
+                    display_name: display_name.into_inner(),
+                    issuer: issuer.into_inner(),
+                });
         }
-        Ok(issuers)
+        Ok(logins)
+    }
+}
+
+impl OpenIdProvider {
+    /// The provider named `slug`, if there is one
+    #[instrument(name = "OpenIdProvider::get_by_slug", skip(exe))]
+    pub(crate) async fn get_by_slug(
+        exe: impl Executor<'_>,
+        slug: &str,
+    ) -> Result<Option<OpenIdProvider>, rorm::Error> {
+        let provider = rorm::query(exe, OpenIdProviderModel)
+            .condition(OpenIdProviderModel.slug.equals(slug))
+            .optional()
+            .await?;
+        Ok(provider.map(OpenIdProvider::from))
+    }
+
+    /// Every provider, by slug
+    #[instrument(name = "OpenIdProvider::all", skip(exe))]
+    pub(crate) async fn all(exe: impl Executor<'_>) -> Result<Vec<OpenIdProvider>, rorm::Error> {
+        let providers = rorm::query(exe, OpenIdProviderModel)
+            .order_asc(OpenIdProviderModel.slug)
+            .all()
+            .await?;
+        Ok(providers.into_iter().map(OpenIdProvider::from).collect())
+    }
+
+    /// Insert `provider`, checked by [`NewOpenIdProvider::validate`]
+    ///
+    /// Fails with a unique violation on [`SLUG_UNIQUE`] if its slug is taken.
+    #[instrument(name = "OpenIdProvider::insert", skip(exe))]
+    pub(crate) async fn insert(
+        exe: impl Executor<'_>,
+        provider: &NewOpenIdProvider,
+    ) -> Result<(), rorm::Error> {
+        rorm::insert(exe, OpenIdProviderModel)
+            .single(&OpenIdProviderInsertPatch {
+                uuid: Uuid::now_v7(),
+                slug: valid(&provider.slug),
+                display_name: valid(&provider.display_name),
+                discovery_url: valid(&provider.discovery_url),
+                issuer: None,
+                client_id: valid(&provider.client_id),
+                client_secret: valid(&provider.client_secret),
+                identifying_claim: valid(&provider.identifying_claim),
+                admission: valid(provider.admission.encode()),
+            })
+            .await?;
+        Ok(())
+    }
+
+    /// Overwrite the provider named like `provider` with it, checked by [`NewOpenIdProvider::validate`]
+    ///
+    /// Its issuer stays. Returns `false` if there is no such provider.
+    #[instrument(name = "OpenIdProvider::overwrite", skip(exe))]
+    pub(crate) async fn overwrite(
+        exe: impl Executor<'_>,
+        provider: &NewOpenIdProvider,
+    ) -> Result<bool, rorm::Error> {
+        let affected = rorm::update(exe, OpenIdProviderModel)
+            .set(
+                OpenIdProviderModel.display_name,
+                valid(&provider.display_name),
+            )
+            .set(
+                OpenIdProviderModel.discovery_url,
+                valid(&provider.discovery_url),
+            )
+            .set(OpenIdProviderModel.client_id, valid(&provider.client_id))
+            .set(
+                OpenIdProviderModel.client_secret,
+                valid(&provider.client_secret),
+            )
+            .set(
+                OpenIdProviderModel.identifying_claim,
+                valid(&provider.identifying_claim),
+            )
+            .set(
+                OpenIdProviderModel.admission,
+                valid(provider.admission.encode()),
+            )
+            .condition(OpenIdProviderModel.slug.equals(&*provider.slug))
+            .await?;
+        Ok(affected > 0)
+    }
+
+    /// Store the issuer the first discovery of the provider `uuid` stated
+    ///
+    /// A stored issuer is kept.
+    #[instrument(name = "OpenIdProvider::store_issuer", skip(exe))]
+    pub(crate) async fn store_issuer(
+        exe: impl Executor<'_>,
+        uuid: Uuid,
+        issuer: MaxStr<255>,
+    ) -> Result<(), rorm::Error> {
+        rorm::update(exe, OpenIdProviderModel)
+            .set(OpenIdProviderModel.issuer, Some(issuer))
+            .condition(rorm::and![
+                OpenIdProviderModel.uuid.equals(uuid),
+                OpenIdProviderModel.issuer.is_none(),
+            ])
+            .await?;
+        Ok(())
+    }
+}
+
+/// A value [`NewOpenIdProvider::validate`] checked to fit its column
+fn valid<const N: usize>(value: &str) -> MaxStr<N> {
+    MaxStr::new(value.to_string())
+        .unwrap_or_else(|_| unreachable!("validated providers fit their columns"))
+}
+
+impl From<OpenIdProviderModel> for OpenIdProvider {
+    fn from(value: OpenIdProviderModel) -> Self {
+        Self {
+            uuid: value.uuid,
+            slug: value.slug.into_inner(),
+            display_name: value.display_name.into_inner(),
+            discovery_url: value.discovery_url.into_inner(),
+            issuer: value.issuer.map(MaxStr::into_inner),
+            client_id: value.client_id.into_inner(),
+            client_secret: value.client_secret.into_inner(),
+            identifying_claim: value.identifying_claim.into_inner(),
+            admission: Admission::decode(&value.admission)
+                .unwrap_or_else(|| unreachable!("only the Admission's own encoding is written")),
+        }
     }
 }

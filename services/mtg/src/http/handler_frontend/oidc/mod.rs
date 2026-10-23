@@ -5,10 +5,11 @@ use galvyn::core::GalvynRouter;
 pub mod handler;
 pub mod schema;
 
-/// The path the OpenID providers send the browser back to
+/// The path the OpenID providers send the browser back to, followed by the provider's slug
 ///
-/// Joined to the public origin, it is the redirect uri registered with every
-/// provider: changing it breaks OIDC login until the registrations follow.
+/// Joined to the public origin, `<CALLBACK_PATH>/<slug>` is the redirect uri
+/// registered with each provider: changing it breaks OIDC login until the
+/// registrations follow.
 pub const CALLBACK_PATH: &str = "/api/frontend/v1/auth/oidc/callback";
 
 /// The frontend page of the username step

@@ -2,12 +2,36 @@
 
 use galvyn::core::stuff::api_error::core::CoreApiError;
 
+use super::provider::InvalidOpenIdProvider;
 use crate::error::internal_from;
+
+/// Failure of [`IdentityModule::add_openid_provider`](crate::IdentityModule::add_openid_provider)
+#[derive(Debug)]
+pub enum AddOpenIdProviderError {
+    /// A field of the provider is unusable
+    Invalid(InvalidOpenIdProvider),
+    /// Another provider has the slug
+    SlugTaken,
+    /// Something unrelated to the request broke
+    Internal(CoreApiError),
+}
+
+impl std::fmt::Display for AddOpenIdProviderError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            AddOpenIdProviderError::Invalid(invalid) => invalid.fmt(f),
+            AddOpenIdProviderError::SlugTaken => f.write_str("another provider has the slug"),
+            AddOpenIdProviderError::Internal(error) => write!(f, "{error:?}"),
+        }
+    }
+}
+
+impl std::error::Error for AddOpenIdProviderError {}
 
 /// Failure of [`IdentityModule::begin_oidc_login`](crate::IdentityModule::begin_oidc_login)
 #[derive(Debug)]
 pub enum BeginOidcLoginError {
-    /// No OpenID provider is configured under this id
+    /// No OpenID provider has this slug, or OIDC login is off
     UnknownProvider,
     /// The provider's discovery document cannot be fetched
     ProviderUnavailable,
@@ -20,7 +44,8 @@ pub enum BeginOidcLoginError {
 pub enum FinishOidcLoginError {
     /// The session has no Login in progress
     NoLoginInProgress,
-    /// The callback's `state` is not the one the Login began with
+    /// The callback's `state` is not the one the Login began with, or it
+    /// came back for another provider than the Login began with
     StateMismatch,
     /// The provider sent the browser back with an error instead of a code,
     /// e.g. because the person cancelled
@@ -30,7 +55,7 @@ pub enum FinishOidcLoginError {
     },
     /// The callback carries neither a code nor an error
     MissingCode,
-    /// The provider the Login began with is no longer configured
+    /// The provider the Login began with is gone
     UnknownProvider,
     /// The provider cannot be reached
     ProviderUnavailable,
@@ -41,9 +66,13 @@ pub enum FinishOidcLoginError {
     /// Covers a wrong issuer, audience or nonce, an expired token and a bad
     /// signature alike.
     InvalidIdToken,
-    /// The External identity is unknown and the provider does not admit
-    /// people on their first OIDC login
+    /// The ID token does not state the provider's identifying claim
+    MissingIdentifyingClaim,
+    /// The External identity is unknown and the provider is invite only
     NotAdmitted,
+    /// The service's [`AdmissionHook`](super::AdmissionHook) declined the
+    /// unknown External identity; nothing is kept
+    Declined,
     /// Something unrelated to the request broke
     Internal(CoreApiError),
 }
@@ -69,13 +98,22 @@ pub enum EnrollExternalIdentityError {
     LocalIdentity,
     /// The External identity is bound already
     AlreadyBound,
-    /// The issuer or subject is longer than 255 bytes
+    /// No OpenID provider has the slug
+    UnknownProvider,
+    /// The provider was never discovered, so its issuer is unknown
+    UndiscoveredProvider,
+    /// The value is longer than 255 bytes
     TooLong,
     /// Something unrelated to the request broke
     Internal(CoreApiError),
 }
 
-internal_from!(BeginOidcLoginError, FinishOidcLoginError, BindError);
+internal_from!(
+    AddOpenIdProviderError,
+    BeginOidcLoginError,
+    FinishOidcLoginError,
+    BindError
+);
 
 #[cfg(feature = "test-support")]
 internal_from!(EnrollExternalIdentityError);

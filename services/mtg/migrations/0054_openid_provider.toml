@@ -1,0 +1,378 @@
+[Migration]
+Hash = "18115383000944164813"
+Initial = false
+Dependency = 53
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateModel"
+Name = "openid_provider"
+
+[[Migration.Operations.Fields]]
+Name = "uuid"
+Type = "uuid"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "primary_key"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "libs/galvyn-identity/src/oidc/db.rs"
+Line = 18
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "slug"
+Type = "text"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 64
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "unique"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "libs/galvyn-identity/src/oidc/db.rs"
+Line = 24
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "display_name"
+Type = "text"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 255
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "libs/galvyn-identity/src/oidc/db.rs"
+Line = 27
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "discovery_url"
+Type = "text"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 255
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "libs/galvyn-identity/src/oidc/db.rs"
+Line = 30
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "issuer"
+Type = "text"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 255
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "libs/galvyn-identity/src/oidc/db.rs"
+Line = 33
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "client_id"
+Type = "text"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 255
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "libs/galvyn-identity/src/oidc/db.rs"
+Line = 36
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "client_secret"
+Type = "text"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 1024
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "libs/galvyn-identity/src/oidc/db.rs"
+Line = 39
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "identifying_claim"
+Type = "text"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 64
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "libs/galvyn-identity/src/oidc/db.rs"
+Line = 42
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "admission"
+Type = "text"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 16
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "libs/galvyn-identity/src/oidc/db.rs"
+Line = 45
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "created_at"
+Type = "datetime"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "auto_create_time"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "libs/galvyn-identity/src/oidc/db.rs"
+Line = 49
+Column = 9
+
+[[Migration.Operations]]
+Type = "RenameModel"
+Old = "external_identity"
+New = "external_identity_old"
+
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+DO $$
+DECLARE
+    r record;
+BEGIN
+    FOR r IN
+        SELECT conname FROM pg_constraint
+        WHERE conrelid = 'external_identity_old'::regclass
+    LOOP
+        EXECUTE format(
+            'ALTER TABLE external_identity_old RENAME CONSTRAINT %I TO %I',
+            r.conname,
+            'external_identity_old_' || substr(r.conname, 19)
+        );
+    END LOOP;
+    FOR r IN
+        SELECT indexname FROM pg_indexes
+        WHERE tablename = 'external_identity_old'
+            AND left(indexname, 22) <> 'external_identity_old_'
+    LOOP
+        EXECUTE format(
+            'ALTER INDEX %I RENAME TO %I',
+            r.indexname,
+            'external_identity_old_' || substr(r.indexname, 19)
+        );
+    END LOOP;
+END
+$$;
+"""
+
+[[Migration.Operations]]
+Type = "CreateModel"
+Name = "external_identity"
+
+[[Migration.Operations.Fields]]
+Name = "uuid"
+Type = "uuid"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "primary_key"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "libs/galvyn-identity/src/oidc/db.rs"
+Line = 82
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "issuer"
+Type = "text"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 255
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "libs/galvyn-identity/src/oidc/db.rs"
+Line = 98
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "value"
+Type = "text"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 255
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "libs/galvyn-identity/src/oidc/db.rs"
+Line = 101
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "provider_value"
+Type = "text"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 292
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "unique"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "libs/galvyn-identity/src/oidc/db.rs"
+Line = 108
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "created_at"
+Type = "datetime"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "auto_create_time"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "libs/galvyn-identity/src/oidc/db.rs"
+Line = 112
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "external_identity"
+
+[Migration.Operations.Field]
+Name = "identity"
+Type = "uuid"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "foreign_key"
+
+[Migration.Operations.Field.Annotations.Value]
+TableName = "identity"
+ColumnName = "uuid"
+OnDelete = "Cascade"
+OnUpdate = "Cascade"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "libs/galvyn-identity/src/oidc/db.rs"
+Line = 89
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "external_identity"
+
+[Migration.Operations.Field]
+Name = "provider"
+Type = "uuid"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "foreign_key"
+
+[Migration.Operations.Field.Annotations.Value]
+TableName = "openid_provider"
+ColumnName = "uuid"
+OnDelete = "Restrict"
+OnUpdate = "Cascade"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "libs/galvyn-identity/src/oidc/db.rs"
+Line = 95
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateIndex"
+Model = "external_identity"
+
+[Migration.Operations.Index]
+Columns = ["identity"]
+
+[[Migration.Operations]]
+Type = "CreateIndex"
+Model = "external_identity"
+
+[Migration.Operations.Index]
+Columns = ["provider"]
+
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+INSERT INTO openid_provider (uuid, slug, display_name, discovery_url, issuer, client_id, client_secret, identifying_claim, admission, created_at)
+SELECT gen_random_uuid(), 'google', 'Google', 'https://accounts.google.com/.well-known/openid-configuration', 'https://accounts.google.com', 'set-from-env-at-startup', 'set-from-env-at-startup', 'sub', 'open', now()
+WHERE EXISTS (SELECT 1 FROM external_identity_old);
+
+INSERT INTO external_identity (uuid, identity, provider, issuer, value, provider_value, created_at)
+SELECT o.uuid, o.identity, p.uuid, o.issuer, o.subject, p.uuid::text || ' ' || o.subject, o.created_at
+FROM external_identity_old o
+JOIN openid_provider p ON p.slug = 'google';
+"""
+
+[[Migration.Operations]]
+Type = "DeleteModel"
+Name = "external_identity_old"

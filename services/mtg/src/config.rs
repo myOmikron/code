@@ -2,8 +2,9 @@ use std::net::IpAddr;
 use std::num::NonZeroU16;
 
 use galvyn::rorm::DatabaseDriver;
-use galvyn_identity::ClientSecret;
-use galvyn_identity::OpenIdProviderSetup;
+use galvyn_identity::Admission;
+use galvyn_identity::DEFAULT_IDENTIFYING_CLAIM;
+use galvyn_identity::NewOpenIdProvider;
 use service_bootstrap::config::ConfigError;
 use service_bootstrap::config::EnvLoader;
 use url::Url;
@@ -28,17 +29,25 @@ pub struct Config {
     pub database_driver: DatabaseDriver,
     pub listen_address: IpAddr,
     pub listen_port: NonZeroU16,
-    /// The OpenID providers people may log in through, none to turn OIDC login off
-    pub openid_providers: Vec<OpenIdProviderSetup>,
+    /// Google as the only OpenID provider people may log in through, `None` to turn OIDC login off
+    ///
+    /// Put into the identity module's provider table at startup, under the slug [`GOOGLE`].
+    pub google: Option<NewOpenIdProvider>,
 }
+
+/// The slug of Google in the identity module's provider table
+///
+/// It ends Google's redirect uri: changing it breaks OIDC login until the
+/// registration at Google follows.
+pub const GOOGLE: &str = "google";
 
 /// The MPCFill server used when none is configured
 ///
 /// The community's own, which is the one every reader of the site searches.
 const DEFAULT_MPCFILL_URL: &str = "https://mpcfill.com/";
 
-/// Google's issuer, exactly as its ID tokens state it
-const GOOGLE_ISSUER: &str = "https://accounts.google.com";
+/// Where Google serves its discovery document
+const GOOGLE_DISCOVERY_URL: &str = "https://accounts.google.com/.well-known/openid-configuration";
 
 pub fn load() -> Result<Config, ConfigError> {
     let mut env = EnvLoader::new();
@@ -73,7 +82,7 @@ pub fn load() -> Result<Config, ConfigError> {
         },
         listen_address: listen_address.unwrap(),
         listen_port: listen_port.unwrap(),
-        openid_providers: google.into_iter().collect(),
+        google,
     })
 }
 
@@ -81,7 +90,7 @@ pub fn load() -> Result<Config, ConfigError> {
 ///
 /// Setting only one of `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` is an
 /// error for the other. Google admits people on their first OIDC login.
-fn load_google(env: &mut EnvLoader) -> Option<OpenIdProviderSetup> {
+fn load_google(env: &mut EnvLoader) -> Option<NewOpenIdProvider> {
     const CLIENT_ID: &str = "GOOGLE_CLIENT_ID";
     const CLIENT_SECRET: &str = "GOOGLE_CLIENT_SECRET";
 
@@ -90,12 +99,13 @@ fn load_google(env: &mut EnvLoader) -> Option<OpenIdProviderSetup> {
     }
     let client_id = env.require(CLIENT_ID);
     let client_secret = env.require(CLIENT_SECRET);
-    Some(OpenIdProviderSetup {
-        id: "google".to_string(),
+    Some(NewOpenIdProvider {
+        slug: GOOGLE.to_string(),
         display_name: "Google".to_string(),
-        issuer: GOOGLE_ISSUER.to_string(),
+        discovery_url: GOOGLE_DISCOVERY_URL.to_string(),
         client_id: client_id?,
-        client_secret: ClientSecret::Shared(client_secret?),
-        admits_on_first_login: true,
+        client_secret: client_secret?,
+        identifying_claim: DEFAULT_IDENTIFYING_CLAIM.to_string(),
+        admission: Admission::Open,
     })
 }

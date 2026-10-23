@@ -8,6 +8,7 @@
 //! logged in.
 
 use galvyn::core::Module;
+use galvyn::core::re_exports::axum::extract::Path;
 use galvyn::core::re_exports::axum::extract::Query;
 use galvyn::core::session::Session;
 use galvyn::core::stuff::api_error::ApiError;
@@ -27,9 +28,11 @@ use galvyn_identity::IdentityModule;
 use galvyn_identity::IdentityUuid;
 use galvyn_identity::OidcCallback;
 use galvyn_identity::OidcLoginOutcome;
+use galvyn_identity::OpenIdProvider;
 use galvyn_identity::PendingExternalIdentity;
 use tracing::info;
 
+use crate::config::GOOGLE;
 use crate::http::handler_frontend::oidc::LOGGED_IN_PAGE;
 use crate::http::handler_frontend::oidc::USERNAME_STEP_PAGE;
 use crate::http::handler_frontend::oidc::schema::ChooseUsernameErrors;
@@ -46,22 +49,37 @@ use crate::http::handler_frontend::oidc::schema::StartOidcLoginRequest;
 use crate::http::handler_frontend::oidc::schema::StartOidcLoginResponse;
 use crate::models::account::Account;
 use crate::models::account::AccountClash;
+use crate::modules::config::Conf;
 
 /// List the OpenID providers people may log in through
 ///
-/// Empty while no provider is configured; the frontend then shows no button.
+/// Empty while Google is not configured; the frontend then shows no button.
 #[get("/providers")]
-pub async fn list_openid_providers() -> ApiJson<ListOpenIdProvidersResponse> {
-    ApiJson(ListOpenIdProvidersResponse {
-        providers: IdentityModule::global()
-            .openid_providers()
-            .iter()
-            .map(|provider| SimpleOpenIdProvider {
-                id: provider.id().to_string(),
-                display_name: provider.display_name().to_string(),
-            })
-            .collect(),
-    })
+pub async fn list_openid_providers() -> ApiResult<ApiJson<ListOpenIdProvidersResponse>> {
+    let providers = match offered_provider(GOOGLE).await? {
+        Some(provider) => vec![SimpleOpenIdProvider {
+            id: provider.slug().to_string(),
+            display_name: provider.display_name().to_string(),
+        }],
+        None => Vec::new(),
+    };
+    Ok(ApiJson(ListOpenIdProvidersResponse { providers }))
+}
+
+/// The provider named `slug`, if mtg offers it
+///
+/// mtg offers Google alone, and only while it is configured: other rows of
+/// the provider table, and Google's once its env vars are gone, stay unused.
+async fn offered_provider<E>(slug: &str) -> ApiResult<Option<OpenIdProvider>, E> {
+    if slug != GOOGLE || Conf::global().config.google.is_none() {
+        return Ok(None);
+    }
+    let mut tx = Database::global().start_transaction().await?;
+    let provider = IdentityModule::global()
+        .openid_provider(&mut tx, slug)
+        .await?;
+    tx.commit().await?;
+    Ok(provider)
 }
 
 /// Start an OIDC login, for signing up and logging in alike
@@ -73,6 +91,9 @@ pub async fn start_oidc_login(
     ApiJson(request): ApiJson<StartOidcLoginRequest>,
 ) -> ApiResult<ApiJson<StartOidcLoginResponse>, StartOidcLoginErrors> {
     let mut errors = FormErrors::<StartOidcLoginErrors>::new();
+    if offered_provider(&request.provider).await?.is_none() {
+        return Err(ApiError::bad_request("Unknown provider"));
+    }
     let started = IdentityModule::global()
         .begin_oidc_login(&session, &request.provider, request.remember_me)
         .await;
@@ -95,15 +116,17 @@ pub async fn start_oidc_login(
 /// Account is locked. An unknown one is held pending and goes to the username
 /// step. A refused login goes back to the login page with `oidc_error`
 /// naming why.
-#[get("/callback")]
+#[get("/callback/{provider}")]
 pub async fn finish_oidc_login(
     session: Session,
+    Path(provider): Path<MaxStr<64>>,
     Query(query): Query<OidcCallbackQuery>,
 ) -> ApiResult<OidcCallbackRedirect> {
     let identity_module = IdentityModule::global();
     let finished = identity_module
         .finish_oidc_login(
             &session,
+            &provider,
             OidcCallback {
                 state: query.state.to_string(),
                 code: query.code.map(|code| code.to_string()),
@@ -119,6 +142,11 @@ pub async fn finish_oidc_login(
                 return Ok(OidcCallbackRedirect::to(LOGGED_IN_PAGE));
             }
             OidcLoginFailure::Locked
+        }
+        Ok(OidcLoginOutcome::Admitted(_)) => {
+            return Err(ApiError::server_error(
+                "mtg admits through the username step, never through a hook",
+            ));
         }
         Ok(OidcLoginOutcome::Pending(pending)) => match admit_pending(&pending).await? {
             Ok(()) => return Ok(OidcCallbackRedirect::to(USERNAME_STEP_PAGE)),
@@ -140,7 +168,9 @@ pub async fn finish_oidc_login(
             | FinishOidcLoginError::UnknownProvider
             | FinishOidcLoginError::TokenExchangeFailed
             | FinishOidcLoginError::InvalidIdToken
-            | FinishOidcLoginError::NotAdmitted,
+            | FinishOidcLoginError::MissingIdentifyingClaim
+            | FinishOidcLoginError::NotAdmitted
+            | FinishOidcLoginError::Declined,
         ) => OidcLoginFailure::Failed,
         Err(FinishOidcLoginError::Internal(error)) => return Err(error.into()),
     };
@@ -214,8 +244,11 @@ pub async fn get_pending_oidc_login(
         .await
         .map_err(ApiError::map_server_error("Failed to read session"))?;
 
-    let pending = pending.and_then(|pending| {
-        let provider = identity_module.openid_provider(&pending.provider)?;
+    let provider = match &pending {
+        Some(pending) => offered_provider(&pending.provider).await?,
+        None => None,
+    };
+    let pending = pending.zip(provider).and_then(|(pending, provider)| {
         Some(PendingOidcLogin {
             provider: provider.display_name().to_string(),
             email: verified_email(&pending)?.to_string(),

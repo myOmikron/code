@@ -9,6 +9,7 @@ use std::time::Duration;
 use clap::Parser;
 use galvyn::ModuleBuilder;
 use galvyn::RouterBuilder;
+use galvyn::core::Module;
 use galvyn::core::modules::database::DatabaseSetup;
 use galvyn::core::re_exports::rorm;
 use galvyn::error::GalvynError;
@@ -146,7 +147,7 @@ pub async fn init_modules(
             },
             oidc: OidcSetup {
                 callback_path: http::handler_frontend::oidc::CALLBACK_PATH.to_string(),
-                providers: config.openid_providers.clone(),
+                ..OidcSetup::default()
             },
             ..IdentitySetup::default()
         })
@@ -159,7 +160,18 @@ pub async fn init_modules(
     if let Some(nats) = nats {
         builder.register_module::<Nats>(nats);
     }
-    builder.init_modules().await
+    let router = builder.init_modules().await?;
+
+    if let Some(google) = &config.google {
+        IdentityModule::put_openid_provider(Database::global(), google)
+            .await
+            .map_err(|error| {
+                GalvynError::Io(io::Error::other(format!(
+                    "Failed to put Google into the provider table: {error}"
+                )))
+            })?;
+    }
+    Ok(router)
 }
 
 async fn run(mut builder: ModuleBuilder, config: Config) -> Result<RouterBuilder, GalvynError> {

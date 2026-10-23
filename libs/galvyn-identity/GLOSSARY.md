@@ -13,7 +13,7 @@ A service's own record of a person (username, role, email, ...). Every Account r
 _Avoid_: user, login
 
 **External identity**:
-A person as one OpenID provider knows them, named by that provider's issuer and the value it identifies the person by (by default its subject). Bound to exactly one external Identity.
+A person as one OpenID provider knows them, named by that provider and the value of its identifying claim (by default the subject), unique per provider. It keeps the provider's issuer. Bound to exactly one external Identity.
 _Avoid_: OIDC account, federated user, social login
 
 **Passkey**:
@@ -37,5 +37,9 @@ A one-time, expiring link that lets whoever opens it enroll a login method for o
 _Avoid_: invite, registration token, magic link
 
 **OpenID provider**:
-An external service that vouches for people in an OIDC login, configured per service at runtime. Each one either admits people it vouches for on their first OIDC login, or only those holding a Registration link.
+An external service that vouches for people in an OIDC login, kept in the module's tables per service and named by its slug. Each one either admits people it vouches for on their first OIDC login (open), or only those holding a Registration link (invite only).
 _Avoid_: IdP, SSO, identity provider
+
+**Open admission**:
+How a first OIDC login through an open OpenID provider becomes an Account: either the service's admission hook creates the Account right away or declines, leaving nothing behind, or the External identity stays **pending** in the session until the service binds it to a fresh Identity together with its Account (e.g. after a username step).
+_Avoid_: auto-provisioning, JIT signup

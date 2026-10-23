@@ -1679,7 +1679,7 @@
         "/api/frontend/v1/auth/oidc/providers": {
             "get": {
                 "summary": "List the OpenID providers people may log in through",
-                "description": "List the OpenID providers people may log in through\n\nEmpty while no provider is configured; the frontend then shows no button.",
+                "description": "List the OpenID providers people may log in through\n\nEmpty while Google is not configured; the frontend then shows no button.",
                 "operationId": "list_openid_providers",
                 "responses": {
                     "200": {
@@ -1688,6 +1688,36 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/ListOpenIdProvidersResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
                                 }
                             }
                         }
@@ -1760,12 +1790,22 @@
                 }
             }
         },
-        "/api/frontend/v1/auth/oidc/callback": {
+        "/api/frontend/v1/auth/oidc/callback/{provider}": {
             "get": {
                 "summary": "Finish an OIDC login: the provider sends the browser back here",
                 "description": "Finish an OIDC login: the provider sends the browser back here\n\nA known External identity is logged in and lands on the app, unless its\nAccount is locked. An unknown one is held pending and goes to the username\nstep. A refused login goes back to the login page with `oidc_error`\nnaming why.",
                 "operationId": "finish_oidc_login",
                 "parameters": [
+                    {
+                        "in": "path",
+                        "name": "provider",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "maxLength": 64
+                        },
+                        "style": "simple"
+                    },
                     {
                         "in": "query",
                         "name": "code",
@@ -10373,8 +10413,7 @@
                 "type": "object",
                 "properties": {
                     "display_name": {
-                        "nullable": true,
-                        "description": "What the frontend calls the provider, `None` once it is no longer configured",
+                        "description": "What the frontend calls the provider",
                         "type": "string"
                     },
                     "issuer": {
@@ -10383,6 +10422,7 @@
                     }
                 },
                 "required": [
+                    "display_name",
                     "issuer"
                 ]
             },

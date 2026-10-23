@@ -14,6 +14,7 @@ use galvyn::rorm::db::row::Row;
 use galvyn::rorm::db::sql::value::Value;
 use galvyn::rorm::db::transaction::Transaction;
 use galvyn::rorm::fields::types::MaxStr;
+use galvyn_identity::ExternalLogin;
 use galvyn_identity::IdentityModule;
 use galvyn_identity::IdentityUuid;
 use tracing::instrument;
@@ -52,8 +53,8 @@ pub struct AccountOverview {
 pub struct AccountOpenIdProvider {
     /// The provider's issuer, as the Account's External identity states it
     pub issuer: String,
-    /// What the frontend calls the provider, `None` once it is no longer configured
-    pub display_name: Option<String>,
+    /// What the frontend calls the provider
+    pub display_name: String,
 }
 
 /// An Account's Lock as Admins see it
@@ -214,10 +215,10 @@ impl AccountDetail {
         let module = IdentityModule::global();
         let passkeys = module.count_passkeys(&mut *tx, identity).await?;
         overview.openid_provider = module
-            .external_issuers(&mut *tx, &[identity])
+            .external_logins(&mut *tx, &[identity])
             .await?
             .remove(&identity)
-            .map(openid_provider);
+            .map(AccountOpenIdProvider::from);
 
         Ok(Some(AccountDetail {
             overview,
@@ -249,22 +250,20 @@ async fn with_openid_providers(
 ) -> Result<(), rorm::Error> {
     let identities: Vec<IdentityUuid> = accounts.iter().map(|(identity, _)| *identity).collect();
     let module = IdentityModule::global();
-    let mut issuers: HashMap<IdentityUuid, String> =
-        module.external_issuers(&mut *tx, &identities).await?;
+    let mut logins: HashMap<IdentityUuid, ExternalLogin> =
+        module.external_logins(&mut *tx, &identities).await?;
     for (identity, account) in accounts {
-        account.openid_provider = issuers.remove(identity).map(openid_provider);
+        account.openid_provider = logins.remove(identity).map(AccountOpenIdProvider::from);
     }
     Ok(())
 }
 
-/// The OpenID provider whose issuer is `issuer`, named if it is still configured
-fn openid_provider(issuer: String) -> AccountOpenIdProvider {
-    let display_name = IdentityModule::global()
-        .openid_provider_by_issuer(&issuer)
-        .map(|provider| provider.display_name().to_string());
-    AccountOpenIdProvider {
-        issuer,
-        display_name,
+impl From<ExternalLogin> for AccountOpenIdProvider {
+    fn from(login: ExternalLogin) -> Self {
+        Self {
+            issuer: login.issuer,
+            display_name: login.display_name,
+        }
     }
 }
 
