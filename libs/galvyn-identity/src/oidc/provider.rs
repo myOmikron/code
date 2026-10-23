@@ -26,6 +26,11 @@ use super::OpenAdmission;
 /// How long a provider's discovery document and keys are trusted before they are fetched again
 const DISCOVERY_MAX_AGE: Duration = Duration::from_secs(60 * 60);
 
+/// How long a provider whose discovery failed is not offered on the login page
+///
+/// A login through it after that retries its discovery.
+const DISCOVERY_RETRY_AFTER: Duration = Duration::from_secs(5 * 60);
+
 /// How long a request to a provider may take
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(60);
 
@@ -344,6 +349,27 @@ struct Discovery {
     discovery_url: String,
     /// The most recent successful fetch
     discovered: RwLock<Option<Discovered>>,
+    /// When the most recent discovery failed, unless one succeeded since
+    failed_at: std::sync::Mutex<Option<Instant>>,
+}
+
+impl Discovery {
+    /// Remember whether the most recent discovery failed
+    fn record<T>(&self, result: &Result<T, DiscoveryFailed>) {
+        let failed_at = result.is_err().then(Instant::now);
+        *self
+            .failed_at
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner) = failed_at;
+    }
+
+    /// Whether the most recent discovery failed less than [`DISCOVERY_RETRY_AFTER`] ago
+    fn failed_recently(&self) -> bool {
+        self.failed_at
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .is_some_and(|failed_at| failed_at.elapsed() < DISCOVERY_RETRY_AFTER)
+    }
 }
 
 /// A provider's discovery document with its keys
@@ -415,7 +441,42 @@ impl OpenIdProviders {
         provider: &OpenIdProvider,
         refresh: bool,
     ) -> Result<(DiscoveredClient, String), DiscoveryFailed> {
-        let metadata = self.metadata(provider, refresh).await?;
+        let discovery = self.discovery(provider).await;
+        let discovered = self.discovered_issuer(&discovery, provider, refresh).await;
+        discovery.record(&discovered);
+        let (metadata, issuer) = discovered?;
+        let client = CoreClient::from_provider_metadata(
+            metadata,
+            ClientId::new(provider.client_id.clone()),
+            Some(openidconnect::ClientSecret::new(
+                provider.client_secret.clone(),
+            )),
+        )
+        .set_redirect_uri(self.redirect_uri(provider));
+        Ok((client, issuer))
+    }
+
+    /// Whether `provider` is offered on the login page
+    ///
+    /// It is not while its most recent discovery failed less than
+    /// [`DISCOVERY_RETRY_AFTER`] ago. Discovers nothing itself, so a broken
+    /// provider never holds up the login page.
+    pub(crate) async fn offered(&self, provider: &OpenIdProvider) -> bool {
+        let discoveries = self.discoveries.read().await;
+        !discoveries
+            .get(&provider.uuid)
+            .filter(|discovery| discovery.discovery_url == provider.discovery_url)
+            .is_some_and(|discovery| discovery.failed_recently())
+    }
+
+    /// `provider`'s discovery document with the issuer it states, which has to be the stored one
+    async fn discovered_issuer(
+        &self,
+        discovery: &Discovery,
+        provider: &OpenIdProvider,
+        refresh: bool,
+    ) -> Result<(CoreProviderMetadata, String), DiscoveryFailed> {
+        let metadata = self.metadata(discovery, provider, refresh).await?;
         let issuer = metadata.issuer().as_str().to_string();
         if provider
             .issuer
@@ -427,15 +488,7 @@ impl OpenIdProviders {
                 provider.slug
             )));
         }
-        let client = CoreClient::from_provider_metadata(
-            metadata,
-            ClientId::new(provider.client_id.clone()),
-            Some(openidconnect::ClientSecret::new(
-                provider.client_secret.clone(),
-            )),
-        )
-        .set_redirect_uri(self.redirect_uri(provider));
-        Ok((client, issuer))
+        Ok((metadata, issuer))
     }
 
     /// The discovery of `provider`, replaced if its discovery url changed
@@ -456,6 +509,7 @@ impl OpenIdProviders {
         let discovery = Arc::new(Discovery {
             discovery_url: provider.discovery_url.clone(),
             discovered: RwLock::new(None),
+            failed_at: std::sync::Mutex::new(None),
         });
         discoveries.insert(provider.uuid, discovery.clone());
         discovery
@@ -464,10 +518,10 @@ impl OpenIdProviders {
     /// `provider`'s discovery document, fetched again if it is stale or `refresh` is set
     async fn metadata(
         &self,
+        discovery: &Discovery,
         provider: &OpenIdProvider,
         refresh: bool,
     ) -> Result<CoreProviderMetadata, DiscoveryFailed> {
-        let discovery = self.discovery(provider).await;
         let fresh = |discovered: &Option<Discovered>| {
             discovered
                 .as_ref()

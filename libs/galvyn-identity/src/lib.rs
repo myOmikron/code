@@ -12,6 +12,9 @@
 //! for an Identity holding an External identity, and an External identity is
 //! only ever bound to a fresh Identity.
 //!
+//! The service nests [`login_methods_routes`] where its login page asks which
+//! login methods and OpenID providers to offer.
+//!
 //! The `test-support` feature adds operations that skip a ceremony, for a
 //! service's tests, and with `oidc` a fake OpenID provider to log in through.
 //!
@@ -36,6 +39,8 @@ use galvyn::rorm::Database;
 pub use self::db::IdentityModel;
 pub use self::error::LinkError;
 pub use self::error::OpenLinkError;
+pub use self::login_methods::EnabledLoginMethod;
+pub use self::login_methods::login_methods_routes;
 pub use self::management::OpenLink;
 pub use self::middleware::AuthRequiredLayer;
 pub use self::models::Identity;
@@ -125,6 +130,7 @@ use self::setup::Settings;
 mod db;
 mod error;
 mod extractor;
+pub mod login_methods;
 mod management;
 mod middleware;
 mod models;

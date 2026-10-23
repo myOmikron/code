@@ -261,3 +261,89 @@ fn the_providers_are_listed_with_their_display_name() {
         assert_eq!(listed, Some(format!("Fake {}", fixture.slug)));
     });
 }
+
+/// The slugs `fixture`'s module offers on the login page
+async fn offered(fixture: &Fixture) -> Vec<String> {
+    fixture
+        .module
+        .openid_providers(Database::global())
+        .await
+        .unwrap()
+        .iter()
+        .map(|provider| provider.slug().to_string())
+        .collect()
+}
+
+#[test]
+fn a_deactivated_provider_is_not_offered() {
+    run(async {
+        database().await;
+        let fake = FakeOpenIdProvider::start().await;
+        let fixture = module(&fake, Admission::Open).await;
+        IdentityModule::deactivate_openid_provider(Database::global(), &fixture.slug)
+            .await
+            .unwrap();
+
+        assert!(!offered(&fixture).await.contains(&fixture.slug));
+    });
+}
+
+#[test]
+fn a_provider_not_discovered_yet_is_offered() {
+    run(async {
+        database().await;
+        let fake = FakeOpenIdProvider::start().await;
+        let fixture = module(&fake, Admission::Open).await;
+        drop(fake);
+
+        assert!(offered(&fixture).await.contains(&fixture.slug));
+    });
+}
+
+#[test]
+fn a_provider_whose_discovery_failed_is_not_offered() {
+    run(async {
+        database().await;
+        let (fake, broken) = (
+            FakeOpenIdProvider::start().await,
+            FakeOpenIdProvider::start().await,
+        );
+        let working = module(&fake, Admission::Open).await;
+        let broken_slug = fresh_slug();
+        IdentityModule::add_openid_provider(
+            Database::global(),
+            &broken.provider(&broken_slug, Admission::Open),
+        )
+        .await
+        .unwrap();
+        drop(broken);
+
+        let begun = working
+            .module
+            .begin_oidc_login(&session(), &broken_slug, false)
+            .await;
+        assert!(matches!(
+            begun,
+            Err(BeginOidcLoginError::ProviderUnavailable)
+        ));
+        let offered = offered(&working).await;
+        assert!(!offered.contains(&broken_slug));
+        assert!(offered.contains(&working.slug));
+    });
+}
+
+#[test]
+fn a_provider_whose_discovery_succeeded_is_offered() {
+    run(async {
+        database().await;
+        let fake = FakeOpenIdProvider::start().await;
+        let fixture = module(&fake, Admission::Open).await;
+        fixture
+            .module
+            .begin_oidc_login(&session(), &fixture.slug, false)
+            .await
+            .unwrap_or_else(|error| panic!("begin the login: {error:?}"));
+
+        assert!(offered(&fixture).await.contains(&fixture.slug));
+    });
+}

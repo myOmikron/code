@@ -64,9 +64,10 @@ impl IdentityModule {
         }
     }
 
-    /// Every OpenID provider people may log in through, by slug
+    /// Every OpenID provider the login page offers, by slug
     ///
-    /// Empty while OIDC login is off; a deactivated provider is left out.
+    /// Empty while OIDC login is off. A deactivated provider is left out, and
+    /// so is one whose discovery failed a few minutes ago at most.
     pub async fn openid_providers(
         &self,
         exe: impl Executor<'_>,
@@ -74,9 +75,13 @@ impl IdentityModule {
         if !self.oidc.enabled() {
             return Ok(Vec::new());
         }
-        let mut providers = OpenIdProvider::all(exe).await?;
-        providers.retain(OpenIdProvider::is_active);
-        Ok(providers)
+        let mut offered = Vec::new();
+        for provider in OpenIdProvider::all(exe).await? {
+            if provider.is_active() && self.oidc.offered(&provider).await {
+                offered.push(provider);
+            }
+        }
+        Ok(offered)
     }
 
     /// The OpenID provider named `slug`, if there is one, it is active and OIDC login is on

@@ -56,13 +56,21 @@ use crate::modules::config::Conf;
 /// Empty while Google is not configured; the frontend then shows no button.
 #[get("/providers")]
 pub async fn list_openid_providers() -> ApiResult<ApiJson<ListOpenIdProvidersResponse>> {
-    let providers = match offered_provider(GOOGLE).await? {
-        Some(provider) => vec![SimpleOpenIdProvider {
+    if Conf::global().config.google.is_none() {
+        return Ok(ApiJson(ListOpenIdProvidersResponse {
+            providers: Vec::new(),
+        }));
+    }
+    let providers = IdentityModule::global()
+        .openid_providers(Database::global())
+        .await?
+        .into_iter()
+        .filter(|provider| provider.slug() == GOOGLE)
+        .map(|provider| SimpleOpenIdProvider {
             id: provider.slug().to_string(),
             display_name: provider.display_name().to_string(),
-        }],
-        None => Vec::new(),
-    };
+        })
+        .collect();
     Ok(ApiJson(ListOpenIdProvidersResponse { providers }))
 }
 
