@@ -128,6 +128,9 @@ tower-http = { version = "~0.7.0", features = ["trace", "compression-gzip", "com
 
 tower-sessions = { version = "~0.15" }
 
+# Service combinators, here to drive a router in-process in tests
+tower = { version = "~0.5", features = ["util"] }
+
 # ----------------------- #
 # Algorithms & Data types #
 # ----------------------- #

@@ -110,6 +110,41 @@ impl std::fmt::Debug for NewOpenIdProvider {
     }
 }
 
+/// The new fields of an OpenID provider in the module's tables
+///
+/// Its slug stays, as it ends the redirect uri registered with the provider.
+#[derive(Clone, PartialEq, Eq)]
+pub struct OpenIdProviderEdit {
+    /// See [`NewOpenIdProvider::display_name`]
+    pub display_name: String,
+    /// See [`NewOpenIdProvider::discovery_url`]
+    ///
+    /// Frozen to its issuer once an External identity references the provider.
+    pub discovery_url: String,
+    /// See [`NewOpenIdProvider::client_id`]
+    pub client_id: String,
+    /// The new client secret, `None` to keep the stored one
+    pub client_secret: Option<String>,
+    /// See [`NewOpenIdProvider::identifying_claim`]
+    ///
+    /// Frozen once an External identity references the provider.
+    pub identifying_claim: String,
+    /// See [`NewOpenIdProvider::admission`]
+    pub admission: Admission,
+}
+
+impl std::fmt::Debug for OpenIdProviderEdit {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("OpenIdProviderEdit")
+            .field("display_name", &self.display_name)
+            .field("discovery_url", &self.discovery_url)
+            .field("client_id", &self.client_id)
+            .field("identifying_claim", &self.identifying_claim)
+            .field("admission", &self.admission)
+            .finish_non_exhaustive()
+    }
+}
+
 /// Which field of a [`NewOpenIdProvider`] is unusable
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InvalidOpenIdProvider {
@@ -200,6 +235,8 @@ pub struct OpenIdProvider {
     pub(crate) identifying_claim: String,
     /// See [`NewOpenIdProvider::admission`]
     pub(crate) admission: Admission,
+    /// Whether people may log in through it
+    pub(crate) active: bool,
 }
 
 impl std::fmt::Debug for OpenIdProvider {
@@ -212,6 +249,7 @@ impl std::fmt::Debug for OpenIdProvider {
             .field("client_id", &self.client_id)
             .field("identifying_claim", &self.identifying_claim)
             .field("admission", &self.admission)
+            .field("active", &self.active)
             .finish_non_exhaustive()
     }
 }
@@ -252,6 +290,11 @@ impl OpenIdProvider {
         self.admission
     }
 
+    /// Whether people may log in through the provider, `false` once it is deactivated
+    pub fn is_active(&self) -> bool {
+        self.active
+    }
+
     /// The issuer to discover below, from the configured discovery url
     fn issuer_url(&self) -> Result<IssuerUrl, DiscoveryFailed> {
         IssuerUrl::new(issuer_of(&self.discovery_url).to_string()).map_err(|error| {
@@ -267,7 +310,7 @@ impl OpenIdProvider {
 ///
 /// A url ending in the well-known path names the issuer before it; any
 /// other url is taken as the issuer itself.
-fn issuer_of(discovery_url: &str) -> &str {
+pub(super) fn issuer_of(discovery_url: &str) -> &str {
     discovery_url
         .strip_suffix(WELL_KNOWN)
         .unwrap_or(discovery_url)

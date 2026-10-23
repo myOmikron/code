@@ -37,7 +37,7 @@ A one-time, expiring link that lets whoever opens it enroll a login method for o
 _Avoid_: invite, registration token, magic link
 
 **OpenID provider**:
-An external service that vouches for people in an OIDC login, kept in the module's tables per service and named by its slug. Each one either admits people it vouches for on their first OIDC login (open), or only those holding a Registration link (invite only).
+An external service that vouches for people in an OIDC login, kept in the module's tables per service and named by its slug. Each one either admits people it vouches for on their first OIDC login (open), or only those holding a Registration link (invite only). A **deactivated** provider admits no OIDC login and keeps its External identities until it is reactivated. Once an External identity references it, its identifying claim and issuer are frozen and a plain delete is refused.
 _Avoid_: IdP, SSO, identity provider
 
 **Open admission**:

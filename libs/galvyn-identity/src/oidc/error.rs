@@ -28,10 +28,36 @@ impl std::fmt::Display for AddOpenIdProviderError {
 
 impl std::error::Error for AddOpenIdProviderError {}
 
+/// Failure of [`IdentityModule::edit_openid_provider`](crate::IdentityModule::edit_openid_provider)
+#[derive(Debug)]
+pub enum EditOpenIdProviderError {
+    /// No OpenID provider has the slug
+    UnknownProvider,
+    /// A field of the edited provider is unusable
+    Invalid(InvalidOpenIdProvider),
+    /// The identifying claim changes while an External identity references the provider
+    IdentifyingClaimFrozen,
+    /// The discovery url names another issuer while an External identity references the provider
+    IssuerFrozen,
+    /// Something unrelated to the request broke
+    Internal(CoreApiError),
+}
+
+/// Failure of [`IdentityModule::delete_openid_provider`](crate::IdentityModule::delete_openid_provider)
+#[derive(Debug)]
+pub enum DeleteOpenIdProviderError {
+    /// No OpenID provider has the slug
+    UnknownProvider,
+    /// An External identity references the provider
+    Referenced,
+    /// Something unrelated to the request broke
+    Internal(CoreApiError),
+}
+
 /// Failure of [`IdentityModule::begin_oidc_login`](crate::IdentityModule::begin_oidc_login)
 #[derive(Debug)]
 pub enum BeginOidcLoginError {
-    /// No OpenID provider has this slug, or OIDC login is off
+    /// No OpenID provider has this slug, it is deactivated, or OIDC login is off
     UnknownProvider,
     /// The provider's discovery document cannot be fetched
     ProviderUnavailable,
@@ -55,7 +81,7 @@ pub enum FinishOidcLoginError {
     },
     /// The callback carries neither a code nor an error
     MissingCode,
-    /// The provider the Login began with is gone
+    /// The provider the Login began with is gone or deactivated
     UnknownProvider,
     /// The provider cannot be reached
     ProviderUnavailable,
@@ -80,7 +106,7 @@ pub enum FinishOidcLoginError {
 /// Failure of [`IdentityModule::bind_pending_external_identity`](crate::IdentityModule::bind_pending_external_identity)
 #[derive(Debug)]
 pub enum BindError {
-    /// The session holds no pending External identity, or it expired
+    /// The session holds no pending External identity, it expired, or its provider is deactivated
     NothingPending,
     /// The External identity got bound meanwhile, e.g. by a second request
     ///
@@ -112,6 +138,8 @@ pub enum EnrollExternalIdentityError {
 
 internal_from!(
     AddOpenIdProviderError,
+    EditOpenIdProviderError,
+    DeleteOpenIdProviderError,
     BeginOidcLoginError,
     FinishOidcLoginError,
     BindError

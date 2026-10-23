@@ -65,7 +65,7 @@ thiserror = { workspace = true }
 [dev-dependencies]
 galvyn-identity = { workspace = true, features = ["passkey", "oidc", "test-support"] }
 sqlx = { workspace = true }
-tower = { version = "~0.5", features = ["util"] }
+tower = { workspace = true }
 
 [build-dependencies]
 service-bootstrap-build = { workspace = true }

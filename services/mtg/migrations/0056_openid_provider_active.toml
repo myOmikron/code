@@ -1,0 +1,25 @@
+[Migration]
+Hash = "9151897983265969695"
+Initial = false
+Dependency = 55
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "openid_provider"
+
+[Migration.Operations.Field]
+Name = "active"
+Type = "boolean"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "default_value"
+Value = true
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "libs/galvyn-identity/src/oidc/db.rs"
+Line = 51
+Column = 9

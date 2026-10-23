@@ -20,11 +20,14 @@ use serde_json::Map;
 use serde_json::Value;
 use url::Url;
 
+pub use self::admin::openid_provider_admin_routes;
 pub use self::cli::AddOpenIdProviderCommand;
 pub use self::cli::CliAdmission;
 pub use self::error::AddOpenIdProviderError;
 pub use self::error::BeginOidcLoginError;
 pub use self::error::BindError;
+pub use self::error::DeleteOpenIdProviderError;
+pub use self::error::EditOpenIdProviderError;
 #[cfg(feature = "test-support")]
 pub use self::error::EnrollExternalIdentityError;
 pub use self::error::FinishOidcLoginError;
@@ -44,9 +47,11 @@ pub use self::provider::DEFAULT_IDENTIFYING_CLAIM;
 pub use self::provider::InvalidOpenIdProvider;
 pub use self::provider::NewOpenIdProvider;
 pub use self::provider::OpenIdProvider;
+pub use self::provider::OpenIdProviderEdit;
 pub(crate) use self::provider::OpenIdProviders;
 use crate::IdentityUuid;
 
+pub mod admin;
 mod claims;
 mod cli;
 mod db;

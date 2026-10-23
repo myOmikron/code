@@ -307,7 +307,8 @@ impl IdentityModule {
         else {
             return Err(BindError::NothingPending);
         };
-        let Some(provider) = OpenIdProvider::get_by_slug(&mut *tx, &pending.provider).await? else {
+        let provider = OpenIdProvider::get_by_slug(&mut *tx, &pending.provider).await?;
+        let Some(provider) = provider.filter(OpenIdProvider::is_active) else {
             return Err(BindError::NothingPending);
         };
         let external = ExternalIdentity {

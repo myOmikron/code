@@ -26,6 +26,7 @@ use crate::IdentitySetup;
 use crate::testing::database;
 use crate::testing::run;
 
+mod admin;
 mod admission;
 mod db;
 mod providers;

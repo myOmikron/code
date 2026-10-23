@@ -191,6 +191,7 @@ impl OpenIdProvider {
                 client_secret: valid(&provider.client_secret),
                 identifying_claim: valid(&provider.identifying_claim),
                 admission: valid(provider.admission.encode()),
+                active: true,
             })
             .await?;
         Ok(())
@@ -229,6 +230,89 @@ impl OpenIdProvider {
             .condition(OpenIdProviderModel.slug.equals(&*provider.slug))
             .await?;
         Ok(affected > 0)
+    }
+
+    /// Overwrite the provider `uuid` with `provider`, checked by [`NewOpenIdProvider::validate`]
+    ///
+    /// Its slug stays. Its issuer stays unless `forget_issuer` is set, which
+    /// has the next discovery store the issuer anew.
+    #[instrument(name = "OpenIdProvider::edit", skip(exe))]
+    pub(crate) async fn edit(
+        exe: impl Executor<'_>,
+        uuid: Uuid,
+        provider: &NewOpenIdProvider,
+        forget_issuer: bool,
+    ) -> Result<(), rorm::Error> {
+        let update = rorm::update(exe, OpenIdProviderModel)
+            .set(
+                OpenIdProviderModel.display_name,
+                valid(&provider.display_name),
+            )
+            .set(
+                OpenIdProviderModel.discovery_url,
+                valid(&provider.discovery_url),
+            )
+            .set(OpenIdProviderModel.client_id, valid(&provider.client_id))
+            .set(
+                OpenIdProviderModel.client_secret,
+                valid(&provider.client_secret),
+            )
+            .set(
+                OpenIdProviderModel.identifying_claim,
+                valid(&provider.identifying_claim),
+            )
+            .set(
+                OpenIdProviderModel.admission,
+                valid(provider.admission.encode()),
+            );
+        let update = match forget_issuer {
+            true => update.set(OpenIdProviderModel.issuer, None),
+            false => update,
+        };
+        update
+            .condition(OpenIdProviderModel.uuid.equals(uuid))
+            .await?;
+        Ok(())
+    }
+
+    /// Activate or deactivate the provider named `slug`
+    ///
+    /// Returns `false` if there is no such provider.
+    #[instrument(name = "OpenIdProvider::set_active", skip(exe))]
+    pub(crate) async fn set_active(
+        exe: impl Executor<'_>,
+        slug: &str,
+        active: bool,
+    ) -> Result<bool, rorm::Error> {
+        let affected = rorm::update(exe, OpenIdProviderModel)
+            .set(OpenIdProviderModel.active, active)
+            .condition(OpenIdProviderModel.slug.equals(slug))
+            .await?;
+        Ok(affected > 0)
+    }
+
+    /// Whether an External identity references the provider `uuid`
+    #[instrument(name = "OpenIdProvider::is_referenced", skip(exe))]
+    pub(crate) async fn is_referenced(
+        exe: impl Executor<'_>,
+        uuid: Uuid,
+    ) -> Result<bool, rorm::Error> {
+        let reference = rorm::query(exe, ExternalIdentityModel.uuid)
+            .condition(ExternalIdentityModel.provider.equals(uuid))
+            .optional()
+            .await?;
+        Ok(reference.is_some())
+    }
+
+    /// Delete the provider `uuid`
+    ///
+    /// Fails with a foreign key violation while an External identity references it.
+    #[instrument(name = "OpenIdProvider::delete", skip(exe))]
+    pub(crate) async fn delete(exe: impl Executor<'_>, uuid: Uuid) -> Result<(), rorm::Error> {
+        rorm::delete(exe, OpenIdProviderModel)
+            .condition(OpenIdProviderModel.uuid.equals(uuid))
+            .await?;
+        Ok(())
     }
 
     /// Store the issuer the first discovery of the provider `uuid` stated
@@ -270,6 +354,7 @@ impl From<OpenIdProviderModel> for OpenIdProvider {
             identifying_claim: value.identifying_claim.into_inner(),
             admission: Admission::decode(&value.admission)
                 .unwrap_or_else(|| unreachable!("only the Admission's own encoding is written")),
+            active: value.active,
         }
     }
 }

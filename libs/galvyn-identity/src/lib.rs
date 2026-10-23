@@ -59,6 +59,10 @@ pub use self::oidc::BoundExternalIdentity;
 pub use self::oidc::CliAdmission;
 #[cfg(feature = "oidc")]
 pub use self::oidc::DEFAULT_IDENTIFYING_CLAIM;
+#[cfg(feature = "oidc")]
+pub use self::oidc::DeleteOpenIdProviderError;
+#[cfg(feature = "oidc")]
+pub use self::oidc::EditOpenIdProviderError;
 #[cfg(all(feature = "oidc", feature = "test-support"))]
 pub use self::oidc::EnrollExternalIdentityError;
 #[cfg(feature = "oidc")]
@@ -88,9 +92,13 @@ pub use self::oidc::OpenAdmission;
 #[cfg(feature = "oidc")]
 pub use self::oidc::OpenIdProvider;
 #[cfg(feature = "oidc")]
+pub use self::oidc::OpenIdProviderEdit;
+#[cfg(feature = "oidc")]
 pub use self::oidc::PendingExternalIdentity;
 #[cfg(all(feature = "oidc", feature = "test-support"))]
 pub use self::oidc::Tamper;
+#[cfg(feature = "oidc")]
+pub use self::oidc::openid_provider_admin_routes;
 #[cfg(feature = "passkey")]
 pub use self::passkey::BeginLoginError;
 #[cfg(feature = "passkey")]

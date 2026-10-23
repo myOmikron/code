@@ -44,6 +44,12 @@ pub struct OpenIdProviderModel {
     /// Who the provider admits on their first OIDC login, see `Admission`
     pub admission: MaxStr<16>,
 
+    /// Whether people may log in through the provider
+    ///
+    /// A deactivated provider keeps its External identities.
+    #[rorm(default = true)]
+    pub active: bool,
+
     /// The point in time the provider was added
     #[rorm(auto_create_time)]
     pub created_at: OffsetDateTime,
@@ -71,6 +77,8 @@ pub struct OpenIdProviderInsertPatch {
     pub identifying_claim: MaxStr<64>,
     /// Who the provider admits on their first OIDC login
     pub admission: MaxStr<16>,
+    /// Whether people may log in through the provider
+    pub active: bool,
 }
 
 /// A person as one OpenID provider knows them, bound to an external [`IdentityModel`]
