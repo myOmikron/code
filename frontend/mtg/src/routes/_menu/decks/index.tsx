@@ -6,11 +6,11 @@ import {
     CubeIcon,
     FolderIcon,
     FolderMinusIcon,
-    LinkIcon,
     MagnifyingGlassIcon,
     PencilSquareIcon,
     PrinterIcon,
     RectangleStackIcon,
+    ShareIcon,
     TrashIcon,
 } from "@heroicons/react/20/solid";
 import clsx from "clsx";
@@ -24,7 +24,6 @@ import type {
     DeckOverviewResponse,
     FormatRulesResponse,
     SharedWithMeDeckResponse,
-    Visibility,
 } from "src/api/generated";
 import { DeckDeleteDialog } from "src/components/deck-delete-dialog";
 import { DeckFolderDialog } from "src/components/deck-folder-dialog";
@@ -34,12 +33,7 @@ import { DeckLeaveDialog } from "src/components/deck-leave-dialog";
 import { useDeckLabels } from "src/components/deck-labels";
 import { ContextMenu, useContextMenu } from "src/components/context-menu";
 import type { ContextMenuSection } from "src/components/context-menu";
-import {
-    DeckTile,
-    VISIBILITY_ICON as DECK_VISIBILITY_ICON,
-    VISIBILITY_LABEL as DECK_VISIBILITY_LABEL,
-    VISIBILITY_ORDER as DECK_VISIBILITY_ORDER,
-} from "src/components/deck-tile";
+import { DeckTile } from "src/components/deck-tile";
 import { RequireAccount } from "src/components/require-account";
 import { useAccount } from "src/context/account";
 import { ShareDialog } from "src/components/share-dialog";
@@ -47,7 +41,6 @@ import { useFolderCollapse } from "src/utils/deck-folder-collapse";
 import { byFolder, folderLabel } from "src/utils/deck-folders";
 import { deckCardsRoute } from "src/utils/deck-rights";
 import { formatCurrency } from "src/utils/format";
-import { deckShareTarget } from "src/utils/share-targets";
 import { useShortcuts } from "src/utils/use-shortcuts";
 import { useShortcutHelpOpen } from "src/context/shortcut-help-context";
 
@@ -78,6 +71,7 @@ export const Route = createFileRoute("/_menu/decks/")({
  */
 function RouteComponent() {
     const [t] = useTranslation("deck");
+    const [tg] = useTranslation();
     const { decks, formats, folders, shared } = Route.useLoaderData();
     const router = useRouter();
     const navigate = useNavigate();
@@ -137,19 +131,6 @@ function RouteComponent() {
      * @returns a promise resolving once the loader has finished
      */
     const refresh = () => router.invalidate();
-
-    /**
-     * Writes a deck's visibility straight from its menu
-     *
-     * @param overview the deck to change
-     * @param visibility the visibility to switch to
-     */
-    async function changeVisibility(overview: DeckOverviewResponse, visibility: Visibility) {
-        if (overview.deck.visibility === visibility) return;
-        await Api.decks.setVisibility(overview.deck.uuid, visibility);
-        notify.success(t("toast.visibility-changed"));
-        await refresh();
-    }
 
     /**
      * Files a deck onto another shelf, or takes it off every one of them
@@ -285,8 +266,8 @@ function RouteComponent() {
                     },
                     {
                         key: "share",
-                        label: t("button.share-deck"),
-                        icon: <LinkIcon />,
+                        label: tg("button.share-ellipsis"),
+                        icon: <ShareIcon />,
                         shortcut: "S",
                         onSelect: () => setSharing(overview),
                     },
@@ -298,21 +279,6 @@ function RouteComponent() {
                         onSelect: () => setDialog({ deck: overview }),
                     },
                 ],
-            },
-            {
-                key: "visibility",
-                heading: t("label.visibility"),
-                items: DECK_VISIBILITY_ORDER.filter((visibility) => visibility !== overview.deck.visibility).map(
-                    (visibility) => {
-                        const Icon = DECK_VISIBILITY_ICON[visibility];
-                        return {
-                            key: visibility,
-                            label: t(DECK_VISIBILITY_LABEL[visibility]),
-                            icon: <Icon />,
-                            onSelect: () => void changeVisibility(overview, visibility),
-                        };
-                    },
-                ),
             },
             {
                 key: "folder",
@@ -564,8 +530,18 @@ function RouteComponent() {
                 />
 
                 <ShareDialog
-                    target={sharing === null ? null : deckShareTarget(sharing.deck)}
-                    description={t("description.share-link")}
+                    subject={
+                        sharing === null
+                            ? null
+                            : {
+                                  kind: "decks",
+                                  uuid: sharing.deck.uuid,
+                                  visibility: sharing.deck.visibility,
+                                  shareToken: sharing.deck.share_token ?? null,
+                                  owner: true,
+                              }
+                    }
+                    linkDescription={t("description.share-link")}
                     onClose={() => setSharing(null)}
                     onChanged={refresh}
                 />

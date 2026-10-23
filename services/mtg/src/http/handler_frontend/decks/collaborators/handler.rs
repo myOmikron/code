@@ -1,5 +1,10 @@
+use std::sync::LazyLock;
+use std::time::Duration;
+
 use galvyn::core::Module;
 use galvyn::core::re_exports::axum::extract::Path;
+use galvyn::core::re_exports::axum::extract::Query;
+use galvyn::core::stuff::api_error::ApiError;
 use galvyn::core::stuff::api_error::ApiResult;
 use galvyn::core::stuff::api_error::FormErrors;
 use galvyn::core::stuff::api_json::ApiJson;
@@ -9,11 +14,15 @@ use galvyn::post;
 use galvyn::put;
 use galvyn::rorm::Database;
 
+use crate::http::handler_frontend::decks::collaborators::schema::CollaboratorCandidateResponse;
+use crate::http::handler_frontend::decks::collaborators::schema::CollaboratorCandidatesResponse;
 use crate::http::handler_frontend::decks::collaborators::schema::DeckCollaboratorResponse;
+use crate::http::handler_frontend::decks::collaborators::schema::DeckOwnerResponse;
 use crate::http::handler_frontend::decks::collaborators::schema::ListDeckCollaboratorsResponse;
 use crate::http::handler_frontend::decks::collaborators::schema::ListSharedWithMeResponse;
 use crate::http::handler_frontend::decks::collaborators::schema::PutDeckCollaboratorErrors;
 use crate::http::handler_frontend::decks::collaborators::schema::PutDeckCollaboratorRequest;
+use crate::http::handler_frontend::decks::collaborators::schema::SearchCollaboratorCandidatesQuery;
 use crate::http::handler_frontend::decks::collaborators::schema::SharedWithMeDeckResponse;
 use crate::http::handler_frontend::decks::handler::denied;
 use crate::http::handler_frontend::decks::handler::granted;
@@ -27,6 +36,23 @@ use crate::models::deck::access::DeckOperation;
 use crate::models::deck::access::DeckRole;
 use crate::models::deck::collaborator::DeckCollaborator;
 use crate::models::deck::listing::DeckSummary;
+use crate::utils::account_budget::AccountBudget;
+
+/// Unknown usernames a caller may try to name per hour
+///
+/// Only failed names count: role changes and Undo name known Accounts.
+static UNKNOWN_USERNAMES: LazyLock<AccountBudget> =
+    LazyLock::new(|| AccountBudget::new(20, Duration::from_secs(60 * 60)));
+
+/// Username searches a caller may run per hour, about one per typed letter
+static CANDIDATE_SEARCHES: LazyLock<AccountBudget> =
+    LazyLock::new(|| AccountBudget::new(120, Duration::from_secs(60 * 60)));
+
+/// How many Accounts a username search answers with at most
+const CANDIDATE_LIMIT: u64 = 10;
+
+/// How many characters a username search needs before it searches
+const CANDIDATE_MIN_CHARS: usize = 2;
 
 /// The decks other Accounts named the caller on, alphabetically by name
 ///
@@ -62,7 +88,7 @@ pub async fn get_decks_shared_with_me(
     }))
 }
 
-/// The Collaborators of a deck, alphabetically by username
+/// The owner and the Collaborators of a deck, the latter alphabetically by username
 ///
 /// The owner and every Collaborator read it.
 #[get("/{deck}/collaborators")]
@@ -82,10 +108,17 @@ pub async fn list_deck_collaborators(
         .await?,
     )?;
     let collaborators = DeckCollaborator::get_all(&mut tx, &grant).await?;
+    let owner = Account::get_by_uuid(&mut tx, grant.owner())
+        .await?
+        .ok_or_else(|| ApiError::server_error("Deck owner vanished"))?;
 
     tx.commit().await?;
 
     Ok(ApiJson(ListDeckCollaboratorsResponse {
+        owner: DeckOwnerResponse {
+            account: owner.uuid,
+            username: owner.username.as_str().to_string(),
+        },
         collaborators: collaborators
             .into_iter()
             .map(DeckCollaboratorResponse::from)
@@ -97,6 +130,8 @@ pub async fn list_deck_collaborators(
 ///
 /// Naming an Account that is already on the deck changes its level, so it is
 /// on the deck once. The owner and the Tombstone cannot be named.
+///
+/// Unknown usernames are capped per caller, see [`UNKNOWN_USERNAMES`].
 #[put("/{deck}/collaborators")]
 pub async fn put_deck_collaborator(
     account: Account,
@@ -122,7 +157,11 @@ pub async fn put_deck_collaborator(
     let Some(named) = named else {
         tx.rollback().await?;
         let mut errors = FormErrors::<PutDeckCollaboratorErrors>::new();
-        errors.unknown_username = true;
+        if UNKNOWN_USERNAMES.take(account.uuid) {
+            errors.unknown_username = true;
+        } else {
+            errors.too_many_unknown_usernames = true;
+        }
         return errors.fail();
     };
     if named.uuid == grant.owner() {
@@ -140,6 +179,61 @@ pub async fn put_deck_collaborator(
         account: named.uuid,
         username: named.username.as_str().to_string(),
         level,
+    }))
+}
+
+/// Accounts whose username starts with what the owner typed, to name on a deck
+///
+/// Answers with up to ten Accounts, the caller among them if it matches,
+/// alphabetically by username. Fewer than two characters search nothing.
+/// Searches are capped per caller, see [`CANDIDATE_SEARCHES`]; past the cap
+/// the answer is empty and says so.
+#[get("/{deck}/collaborators/candidates")]
+pub async fn search_collaborator_candidates(
+    account: Account,
+    Path(deck_uuid): Path<DeckUuid>,
+    Query(SearchCollaboratorCandidatesQuery { query }): Query<SearchCollaboratorCandidatesQuery>,
+) -> ApiResult<ApiJson<CollaboratorCandidatesResponse>> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    granted(
+        Deck::authorize(
+            &mut tx,
+            deck_uuid,
+            account.uuid,
+            DeckOperation::ManageCollaborators,
+        )
+        .await?,
+    )?;
+
+    let prefix = query.trim();
+    if prefix.chars().count() < CANDIDATE_MIN_CHARS {
+        tx.commit().await?;
+        return Ok(ApiJson(CollaboratorCandidatesResponse {
+            accounts: Vec::new(),
+            too_many_searches: false,
+        }));
+    }
+    if !CANDIDATE_SEARCHES.take(account.uuid) {
+        tx.commit().await?;
+        return Ok(ApiJson(CollaboratorCandidatesResponse {
+            accounts: Vec::new(),
+            too_many_searches: true,
+        }));
+    }
+    let found = Account::search_by_username_prefix(&mut tx, prefix, CANDIDATE_LIMIT).await?;
+
+    tx.commit().await?;
+
+    Ok(ApiJson(CollaboratorCandidatesResponse {
+        accounts: found
+            .into_iter()
+            .map(|(account, username)| CollaboratorCandidateResponse {
+                account,
+                username: username.as_str().to_string(),
+            })
+            .collect(),
+        too_many_searches: false,
     }))
 }
 

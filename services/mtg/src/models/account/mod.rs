@@ -316,6 +316,36 @@ impl Account {
         Ok(account.map(Account::from))
     }
 
+    /// Up to `limit` Accounts whose username starts with `prefix`, case ignored,
+    /// alphabetically by username
+    ///
+    /// Reads at most `limit` rows from the `account_username_prefix` index:
+    /// a prefix matching more Accounts answers with the first of them in index
+    /// order, and the caller types more of the name. Skips the tombstone like
+    /// [`Self::get_by_username`].
+    #[instrument(name = "Account::search_by_username_prefix", skip(tx))]
+    pub async fn search_by_username_prefix(
+        tx: &mut Transaction,
+        prefix: &str,
+        limit: u64,
+    ) -> Result<Vec<(AccountUuid, Username)>, rorm::Error> {
+        let pattern = overview::prefix_pattern(prefix);
+        let rows = rorm::query(tx, (AccountModel.uuid, AccountModel.username))
+            .condition(rorm::and![
+                AccountModel.username_normalized.like(pattern.as_str()),
+                AccountModel.tombstone.equals(false),
+            ])
+            .limit(limit)
+            .all()
+            .await?;
+        let mut accounts: Vec<_> = rows
+            .into_iter()
+            .map(|(uuid, username)| (AccountUuid(uuid), Username::new_from_field(username)))
+            .collect();
+        accounts.sort_by_key(|(_, username)| username.normalized());
+        Ok(accounts)
+    }
+
     /// Fetch an account by its email address
     ///
     /// Skips the tombstone for the same reason [`Self::get_by_username`] does.

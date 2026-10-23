@@ -13,4 +13,5 @@ pub fn initialize_routes() -> GalvynRouter {
         .handler(handler::list_deck_collaborators)
         .handler(handler::put_deck_collaborator)
         .handler(handler::remove_deck_collaborator)
+        .handler(handler::search_collaborator_candidates)
 }

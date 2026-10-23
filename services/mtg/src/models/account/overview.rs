@@ -228,7 +228,7 @@ impl AccountDetail {
 }
 
 /// A `LIKE` pattern matching everything starting with `search`, case ignored
-fn prefix_pattern(search: &str) -> String {
+pub(super) fn prefix_pattern(search: &str) -> String {
     let mut pattern = String::with_capacity(search.len() + 1);
     for char in search.to_lowercase().chars() {
         if matches!(char, '%' | '_' | '\\') {

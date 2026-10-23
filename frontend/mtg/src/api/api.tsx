@@ -255,6 +255,8 @@ export const Api = {
         rotateShareToken: async (uuid: UUID) => handleError(defaultApi.rotateDeckShareToken({ deck: uuid })),
         collaborators: {
             list: async (deck: UUID) => handleError(defaultApi.listDeckCollaborators({ deck })),
+            candidates: async (deck: UUID, query: string) =>
+                quietly(defaultApi.searchCollaboratorCandidates({ deck, query })),
             put: async (deck: UUID, username: string, level: CollaboratorLevel) =>
                 handleError(defaultApi.putDeckCollaborator({ deck, PutDeckCollaboratorRequest: { username, level } })),
             remove: async (deck: UUID, account: UUID) =>
@@ -558,6 +560,30 @@ async function orGone<T>(promise: Promise<T>): Promise<T | null> {
     } catch (error) {
         if (error instanceof ResponseError && error.response.status === 400) return null;
         return handleError(Promise.reject(error));
+    }
+}
+
+/**
+ * Answers `null` where a request that only helps along failed
+ *
+ * Suggestions while typing are fetched in the background: when one of them
+ * fails, the field still takes what is typed, so the page stays where it is
+ * instead of landing on the error screen. An expired session still goes to the
+ * login like everywhere else.
+ *
+ * @param promise the raw call, unreported
+ *
+ * @returns what came back, or `null` where the request failed
+ */
+async function quietly<T>(promise: Promise<T>): Promise<T | null> {
+    try {
+        return await promise;
+    } catch (error) {
+        if (error instanceof ResponseError && error.response.status === 401) {
+            return handleError(Promise.reject(error));
+        }
+        console.error("Request failed quietly", error);
+        return null;
     }
 }
 

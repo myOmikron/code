@@ -86,11 +86,6 @@ export function CollectionDialog({ open, collection, onClose, onSaved }: Collect
                 }
 
                 await Api.collections.update(collection.uuid, { name, description, color, icon });
-                // Its own endpoint, and only worth calling when it actually
-                // changed: switching away from `Unlisted` revokes the share link.
-                if (visibility !== collection.visibility) {
-                    await Api.collections.setVisibility(collection.uuid, visibility);
-                }
                 form.reset();
                 onSaved(null);
             },
@@ -216,36 +211,38 @@ export function CollectionDialog({ open, collection, onClose, onSaved }: Collect
                             )}
                         </form.Subscribe>
 
-                        <form.Field name={"visibility"}>
-                            {(fieldApi) => (
-                                <Field>
-                                    <Label>{t("label.visibility")}</Label>
-                                    <Listbox value={fieldApi.state.value} onChange={fieldApi.handleChange}>
-                                        <ListboxOption value={Visibility.Private}>
-                                            <LockClosedIcon />
-                                            <ListboxLabel>{t("label.visibility-private")}</ListboxLabel>
-                                            <ListboxDescription>
-                                                {t("description.visibility-private")}
-                                            </ListboxDescription>
-                                        </ListboxOption>
-                                        <ListboxOption value={Visibility.Unlisted}>
-                                            <LinkIcon />
-                                            <ListboxLabel>{t("label.visibility-unlisted")}</ListboxLabel>
-                                            <ListboxDescription>
-                                                {t("description.visibility-unlisted")}
-                                            </ListboxDescription>
-                                        </ListboxOption>
-                                        <ListboxOption value={Visibility.Public}>
-                                            <GlobeAltIcon />
-                                            <ListboxLabel>{t("label.visibility-public")}</ListboxLabel>
-                                            <ListboxDescription>
-                                                {t("description.visibility-public")}
-                                            </ListboxDescription>
-                                        </ListboxOption>
-                                    </Listbox>
-                                </Field>
-                            )}
-                        </form.Field>
+                        {collection === null && (
+                            <form.Field name={"visibility"}>
+                                {(fieldApi) => (
+                                    <Field>
+                                        <Label>{t("label.visibility")}</Label>
+                                        <Listbox value={fieldApi.state.value} onChange={fieldApi.handleChange}>
+                                            <ListboxOption value={Visibility.Private}>
+                                                <LockClosedIcon />
+                                                <ListboxLabel>{t("label.visibility-private")}</ListboxLabel>
+                                                <ListboxDescription>
+                                                    {t("description.visibility-private")}
+                                                </ListboxDescription>
+                                            </ListboxOption>
+                                            <ListboxOption value={Visibility.Unlisted}>
+                                                <LinkIcon />
+                                                <ListboxLabel>{t("label.visibility-unlisted")}</ListboxLabel>
+                                                <ListboxDescription>
+                                                    {t("description.visibility-unlisted")}
+                                                </ListboxDescription>
+                                            </ListboxOption>
+                                            <ListboxOption value={Visibility.Public}>
+                                                <GlobeAltIcon />
+                                                <ListboxLabel>{t("label.visibility-public")}</ListboxLabel>
+                                                <ListboxDescription>
+                                                    {t("description.visibility-public")}
+                                                </ListboxDescription>
+                                            </ListboxOption>
+                                        </Listbox>
+                                    </Field>
+                                )}
+                            </form.Field>
+                        )}
                     </FieldGroup>
                 </DialogBody>
                 <DialogActions>

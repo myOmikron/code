@@ -1,9 +1,9 @@
 import {
     ArchiveBoxIcon,
     ArrowTopRightOnSquareIcon,
-    LinkIcon,
     PencilSquareIcon,
     RectangleStackIcon,
+    ShareIcon,
     TrashIcon,
 } from "@heroicons/react/20/solid";
 import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
@@ -22,15 +22,14 @@ import { PrimaryButton } from "src/components/primary-button";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
-import type { CollectionOverviewResponse, Visibility } from "src/api/generated";
+import type { CollectionOverviewResponse } from "src/api/generated";
 import { CollectionDialog } from "src/components/collection-dialog";
-import { CollectionTile, VISIBILITY_ICON, VISIBILITY_LABEL, VISIBILITY_ORDER } from "src/components/collection-tile";
+import { CollectionTile } from "src/components/collection-tile";
 import { ContextMenu, useContextMenu } from "src/components/context-menu";
 import type { ContextMenuSection } from "src/components/context-menu";
 import { RequireAccount } from "src/components/require-account";
 import { ShareDialog } from "src/components/share-dialog";
 import { formatCurrency } from "src/utils/format";
-import { collectionShareTarget } from "src/utils/share-targets";
 import { useShortcuts } from "src/utils/use-shortcuts";
 import { useShortcutHelpOpen } from "src/context/shortcut-help-context";
 
@@ -101,19 +100,6 @@ function RouteComponent() {
     const refresh = () => router.invalidate();
 
     /**
-     * Writes a collection's visibility straight from the badge menu
-     *
-     * @param overview the collection to change
-     * @param visibility the visibility to switch to
-     */
-    async function changeVisibility(overview: CollectionOverviewResponse, visibility: Visibility) {
-        if (overview.collection.visibility === visibility) return;
-        await Api.collections.setVisibility(overview.collection.uuid, visibility);
-        notify.success(t("toast.visibility-changed"));
-        await refresh();
-    }
-
-    /**
      * Deletes a collection after the confirmation was accepted
      *
      * @param overview the collection to delete
@@ -169,8 +155,8 @@ function RouteComponent() {
                     open,
                     {
                         key: "share",
-                        label: t("button.share-collection"),
-                        icon: <LinkIcon />,
+                        label: tg("button.share-ellipsis"),
+                        icon: <ShareIcon />,
                         onSelect: () => setSharing(overview),
                     },
                     {
@@ -180,21 +166,6 @@ function RouteComponent() {
                         onSelect: () => setDialog({ collection: overview }),
                     },
                 ],
-            },
-            {
-                key: "visibility",
-                heading: t("label.visibility"),
-                items: VISIBILITY_ORDER.filter((visibility) => visibility !== overview.collection.visibility).map(
-                    (visibility) => {
-                        const Icon = VISIBILITY_ICON[visibility];
-                        return {
-                            key: visibility,
-                            label: t(VISIBILITY_LABEL[visibility]),
-                            icon: <Icon />,
-                            onSelect: () => void changeVisibility(overview, visibility),
-                        };
-                    },
-                ),
             },
             {
                 key: "delete",
@@ -321,8 +292,18 @@ function RouteComponent() {
                 />
 
                 <ShareDialog
-                    target={sharing === null ? null : collectionShareTarget(sharing.collection)}
-                    description={t("description.share-link")}
+                    subject={
+                        sharing === null
+                            ? null
+                            : {
+                                  kind: "collections",
+                                  uuid: sharing.collection.uuid,
+                                  visibility: sharing.collection.visibility,
+                                  shareToken: sharing.collection.share_token ?? null,
+                                  owner: true,
+                              }
+                    }
+                    linkDescription={t("description.share-link")}
                     onClose={() => setSharing(null)}
                     onChanged={refresh}
                 />

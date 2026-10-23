@@ -6160,8 +6160,8 @@
         },
         "/api/frontend/v1/decks/{deck}/collaborators": {
             "get": {
-                "summary": "The Collaborators of a deck, alphabetically by username",
-                "description": "The Collaborators of a deck, alphabetically by username\n\nThe owner and every Collaborator read it.",
+                "summary": "The owner and the Collaborators of a deck, the latter alphabetically by username",
+                "description": "The owner and the Collaborators of a deck, the latter alphabetically by username\n\nThe owner and every Collaborator read it.",
                 "operationId": "list_deck_collaborators",
                 "parameters": [
                     {
@@ -6221,7 +6221,7 @@
             },
             "put": {
                 "summary": "Name an Account on a deck by its username, or change the level it is named at",
-                "description": "Name an Account on a deck by its username, or change the level it is named at\n\nNaming an Account that is already on the deck changes its level, so it is\non the deck once. The owner and the Tombstone cannot be named.",
+                "description": "Name an Account on a deck by its username, or change the level it is named at\n\nNaming an Account that is already on the deck changes its level, so it is\non the deck once. The owner and the Tombstone cannot be named.\n\nUnknown usernames are capped per caller, see [`UNKNOWN_USERNAMES`].",
                 "operationId": "put_deck_collaborator",
                 "parameters": [
                     {
@@ -6328,6 +6328,81 @@
                             "application/json": {
                                 "schema": {
                                     "nullable": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/decks/{deck}/collaborators/candidates": {
+            "get": {
+                "summary": "Accounts whose username starts with what the owner typed, to name on a deck",
+                "description": "Accounts whose username starts with what the owner typed, to name on a deck\n\nAnswers with up to ten Accounts, the caller among them if it matches,\nalphabetically by username. Fewer than two characters search nothing.\nSearches are capped per caller, see [`CANDIDATE_SEARCHES`]; past the cap\nthe answer is empty and says so.",
+                "operationId": "search_collaborator_candidates",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "deck",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of the [`Deck`] model. To have better distinguishable types.",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    },
+                    {
+                        "in": "query",
+                        "name": "query",
+                        "schema": {
+                            "description": "The start of a username, case ignored",
+                            "allOf": [
+                                {
+                                    "$ref": "#/components/schemas/MaxStr_32"
+                                }
+                            ]
+                        },
+                        "style": "form"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CollaboratorCandidatesResponse"
                                 }
                             }
                         }
@@ -11025,6 +11100,49 @@
                     "username"
                 ]
             },
+            "CollaboratorCandidateResponse": {
+                "description": "An Account whose username starts with what the owner typed",
+                "type": "object",
+                "properties": {
+                    "account": {
+                        "description": "The Account",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/AccountUuid"
+                            }
+                        ]
+                    },
+                    "username": {
+                        "description": "The Account's username as it is now",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "account",
+                    "username"
+                ]
+            },
+            "CollaboratorCandidatesResponse": {
+                "description": "The Accounts whose username starts with what the owner typed",
+                "type": "object",
+                "properties": {
+                    "accounts": {
+                        "description": "Up to ten Accounts, alphabetically by username",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/CollaboratorCandidateResponse"
+                        }
+                    },
+                    "too_many_searches": {
+                        "description": "The caller searched too often lately, so nothing was searched",
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "accounts",
+                    "too_many_searches"
+                ]
+            },
             "CollaboratorLevel": {
                 "description": "What the owner lets a Collaborator do with the deck",
                 "oneOf": [
@@ -12560,6 +12678,28 @@
                     "commanders",
                     "deck",
                     "price_eur_cents"
+                ]
+            },
+            "DeckOwnerResponse": {
+                "description": "The Account owning a deck",
+                "type": "object",
+                "properties": {
+                    "account": {
+                        "description": "The Account",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/AccountUuid"
+                            }
+                        ]
+                    },
+                    "username": {
+                        "description": "The Account's username as it is now",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "account",
+                    "username"
                 ]
             },
             "DeckPointEntryResponse": {
@@ -14394,7 +14534,7 @@
                 ]
             },
             "ListDeckCollaboratorsResponse": {
-                "description": "The Collaborators of a deck, alphabetically by username",
+                "description": "The owner and the Collaborators of a deck, the latter alphabetically by username",
                 "type": "object",
                 "properties": {
                     "collaborators": {
@@ -14403,10 +14543,19 @@
                         "items": {
                             "$ref": "#/components/schemas/DeckCollaboratorResponse"
                         }
+                    },
+                    "owner": {
+                        "description": "The owner, which the list leaves out",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DeckOwnerResponse"
+                            }
+                        ]
                     }
                 },
                 "required": [
-                    "collaborators"
+                    "collaborators",
+                    "owner"
                 ]
             },
             "ListDeckFoldersResponse": {
@@ -15723,6 +15872,10 @@
                         "description": "The username is the caller's own, which owns the deck",
                         "type": "boolean"
                     },
+                    "too_many_unknown_usernames": {
+                        "description": "The caller named too many unknown usernames lately, so this one was not looked up",
+                        "type": "boolean"
+                    },
                     "unknown_username": {
                         "description": "No Account goes by this username",
                         "type": "boolean"
@@ -15730,6 +15883,7 @@
                 },
                 "required": [
                     "own_account",
+                    "too_many_unknown_usernames",
                     "unknown_username"
                 ]
             },

@@ -48,6 +48,8 @@ docs/CardFinish.md
 docs/CardRarity.md
 docs/ChooseUsernameErrors.md
 docs/ChooseUsernameRequest.md
+docs/CollaboratorCandidateResponse.md
+docs/CollaboratorCandidatesResponse.md
 docs/CollaboratorLevel.md
 docs/CollectionEntryResponse.md
 docs/CollectionOverviewResponse.md
@@ -78,6 +80,7 @@ docs/DeckFolderKind.md
 docs/DeckFolderResponse.md
 docs/DeckHistoryResponse.md
 docs/DeckOverviewResponse.md
+docs/DeckOwnerResponse.md
 docs/DeckPointEntryResponse.md
 docs/DeckPointResponse.md
 docs/DeckResponse.md

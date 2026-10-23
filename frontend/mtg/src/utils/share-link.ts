@@ -22,6 +22,18 @@ export function shareLink(kind: ShareKind, token: string): string {
 }
 
 /**
+ * The link a public deck or collection is found under by anyone
+ *
+ * @param kind what is public
+ * @param uuid which one it is
+ *
+ * @returns the absolute url
+ */
+export function publicLink(kind: ShareKind, uuid: string): string {
+    return `${window.location.origin}/global/${kind}/${uuid}`;
+}
+
+/**
  * Whether a failed request means the link itself no longer resolves
  *
  * @param error what the request rejected with

@@ -12,9 +12,9 @@ import {
     ExclamationTriangleIcon,
     FolderIcon,
     FolderMinusIcon,
-    LinkIcon,
     PencilSquareIcon,
     PrinterIcon,
+    ShareIcon,
     TrashIcon,
     UserGroupIcon,
     UsersIcon,
@@ -40,8 +40,6 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import { DeckBracketPicker } from "src/components/deck-bracket-picker";
-import { DeckCollaboratorListDialog } from "src/components/deck-collaborator-list-dialog";
-import { DeckCollaboratorsDialog } from "src/components/deck-collaborators-dialog";
 import { DeckDialog } from "src/components/deck-dialog";
 import { DeckDeleteDialog } from "src/components/deck-delete-dialog";
 import { DeckDissolveDialog } from "src/components/deck-dissolve-dialog";
@@ -55,7 +53,6 @@ import { useChromeBare } from "src/context/chrome-context";
 import { ShareDialog } from "src/components/share-dialog";
 import { folderLabel } from "src/utils/deck-folders";
 import { commanderColors, letters, ruleZeroCount } from "src/utils/deck-rules";
-import { deckShareTarget } from "src/utils/share-targets";
 import { driftCopies } from "src/utils/deck-drift";
 import { deckCardsRoute, deckRights } from "src/utils/deck-rights";
 
@@ -109,7 +106,7 @@ function RouteComponent() {
     const router = useRouter();
     const navigate = useNavigate();
     const [sharing, setSharing] = useState(false);
-    const [collaborating, setCollaborating] = useState(false);
+    const [collaborators, setCollaborators] = useState(0);
     const [leaving, setLeaving] = useState(false);
     const [importing, setImporting] = useState(false);
     const [exporting, setExporting] = useState(false);
@@ -163,6 +160,20 @@ function RouteComponent() {
             gone = true;
         };
     }, [deckUuid]);
+
+    useEffect(() => {
+        if (sharing || !rights.owner) return;
+        let gone = false;
+        Api.decks.collaborators
+            .list(deckUuid)
+            .then((list) => {
+                if (!gone) setCollaborators(list.collaborators.length);
+            })
+            .catch(() => undefined);
+        return () => {
+            gone = true;
+        };
+    }, [deckUuid, sharing, rights.owner]);
 
     /**
      * Records which bracket the deck claims
@@ -261,24 +272,34 @@ function RouteComponent() {
                                         {t("label.drift", { count: drifted })}
                                     </BadgeButton>
                                 )}
-                                {rights.owner && (
+                                {rights.owner ? (
                                     <BadgeButton
                                         color={"zinc"}
                                         className={ACTION_RING}
                                         onClick={() => setSharing(true)}
                                     >
-                                        <LinkIcon className={"size-3.5"} />
+                                        <ShareIcon className={"size-3.5"} />
                                         {t("button.share-deck")}
+                                        {collaborators > 0 && (
+                                            <span
+                                                className={"flex items-center gap-0.5"}
+                                                title={t("label.collaborator-count", { count: collaborators })}
+                                            >
+                                                <UsersIcon className={"size-3.5"} />
+                                                {collaborators}
+                                            </span>
+                                        )}
+                                    </BadgeButton>
+                                ) : (
+                                    <BadgeButton
+                                        color={"zinc"}
+                                        className={ACTION_RING}
+                                        onClick={() => setSharing(true)}
+                                    >
+                                        <UsersIcon className={"size-3.5"} />
+                                        {t("button.people")}
                                     </BadgeButton>
                                 )}
-                                <BadgeButton
-                                    color={"zinc"}
-                                    className={ACTION_RING}
-                                    onClick={() => setCollaborating(true)}
-                                >
-                                    <UsersIcon className={"size-3.5"} />
-                                    {t("button.collaborators")}
-                                </BadgeButton>
                                 <BadgeButton color={"zinc"} className={ACTION_RING} onClick={() => setEditing(true)}>
                                     <PencilSquareIcon className={"size-3.5"} />
                                     {t("button.edit-deck")}
@@ -445,21 +466,24 @@ function RouteComponent() {
                 />
 
                 <ShareDialog
-                    target={sharing ? deckShareTarget(deck) : null}
-                    description={t("description.share-link")}
+                    subject={
+                        sharing
+                            ? {
+                                  kind: "decks",
+                                  uuid: deckUuid,
+                                  visibility: deck.visibility,
+                                  shareToken: deck.share_token ?? null,
+                                  owner: rights.owner,
+                              }
+                            : null
+                    }
+                    linkDescription={t("description.share-link")}
                     onClose={() => setSharing(false)}
                     onChanged={() => router.invalidate()}
-                />
-
-                {/* The owner manages the Collaborators, an Editor reads who they are */}
-                <DeckCollaboratorsDialog
-                    deckUuid={collaborating && rights.owner ? deckUuid : null}
-                    onClose={() => setCollaborating(false)}
-                />
-
-                <DeckCollaboratorListDialog
-                    deckUuid={collaborating && !rights.owner ? deckUuid : null}
-                    onClose={() => setCollaborating(false)}
+                    onLeave={() => {
+                        setSharing(false);
+                        setLeaving(true);
+                    }}
                 />
 
                 <DeckLeaveDialog

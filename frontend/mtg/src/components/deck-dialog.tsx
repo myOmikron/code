@@ -102,9 +102,6 @@ export function DeckDialog({ open, deck, formats, folders, onClose, onSaved }: D
                 }
 
                 await Api.decks.update(deck.uuid, { name, description: text, format });
-                if (ownsShelf && visibility !== deck.visibility) {
-                    await Api.decks.setVisibility(deck.uuid, visibility);
-                }
                 if (ownsShelf && filed !== (deck.folder ?? null)) {
                     await Api.decks.setFolder(deck.uuid, filed);
                 }
@@ -302,7 +299,7 @@ export function DeckDialog({ open, deck, formats, folders, onClose, onSaved }: D
                             </form.Field>
                         )}
 
-                        {ownsShelf && (
+                        {deck === null && (
                             <form.Field name={"visibility"}>
                                 {(fieldApi) => (
                                     <Field>

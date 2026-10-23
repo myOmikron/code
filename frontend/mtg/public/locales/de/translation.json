@@ -1,7 +1,6 @@
 {
     "accessibility": {
-        "card-image": "{{name}}, {{setName}}",
-        "open-share-link": "Link in neuem Tab öffnen"
+        "card-image": "{{name}}, {{setName}}"
     },
     "button": {
         "add-hovered-card": "Karte unter dem Zeiger hinzufügen",
@@ -10,7 +9,6 @@
         "close": "Schließen",
         "continue-with-provider": "Weiter mit {{provider}}",
         "copy-share-link": "Kopieren",
-        "create-share-link": "Link erstellen",
         "create-watch-list": "Merkliste anlegen",
         "delete-session": "Ablage löschen",
         "delete-watch-list": "Merkliste löschen",
@@ -21,14 +19,15 @@
         "flip-card": "Karte umdrehen",
         "imprint": "Impressum",
         "install-app": "Installieren",
+        "leave-deck": "Deck verlassen",
         "new-session": "Neue Session",
         "new-share-link": "Neuen Link erzeugen",
         "open-watch-list": "Merkliste öffnen",
         "privacy": "Datenschutz",
         "redo": "Wiederholen",
-        "revoke-share-link": "Link zurückziehen",
         "scan": "Scannen",
         "search-watch-list": "Karte suchen",
+        "share-ellipsis": "Teilen…",
         "show-watch-copies": "Exemplare zeigen",
         "start-scanning": "Scannen starten",
         "switch-watch-view": "Ansicht wechseln",
@@ -38,12 +37,14 @@
         "undo": "Rückgängig"
     },
     "description": {
+        "access-ends-link": "Der aktuelle Link funktioniert dann endgültig nicht mehr.",
+        "access-private": "Nur du.",
+        "access-private-people": "Nur du und die Personen oben.",
+        "access-public": "In deinem öffentlichen Profil, für alle auffindbar.",
+        "access-unlisted": "Ohne Konto. Nicht in deinem Profil.",
         "delete-session": "„{{name}}“ und alles, was darin noch nicht einsortiert ist, wird gelöscht. Bereits einsortierte Karten bleiben in ihrer Sammlung.",
         "install-ios-add": "Wähle „Zum Home-Bildschirm“.",
         "install-ios-share": "Tippe unten in der Leiste auf „Teilen“.",
-        "share-link-none": "Das ist noch nicht über einen Link freigegeben. Mit einem Link sieht jeder, der ihn hat, den Inhalt.",
-        "share-link-replaces-public": "Es ist derzeit öffentlich. Ein Link stellt es auf „Über Link“ um, es steht dann nicht mehr in deinem öffentlichen Profil.",
-        "share-link-rotate": "Ein neuer Link macht den alten sofort ungültig. Zurückziehen setzt die Sammlung auf privat.",
         "username": "Wird öffentlich angezeigt. 3 bis 32 Zeichen; erlaubt sind Buchstaben, Ziffern, Unterstrich, Bindestrich und Punkt, das erste Zeichen muss ein Buchstabe oder eine Ziffer sein."
     },
     "error": {
@@ -56,12 +57,17 @@
     },
     "heading": {
         "delete-session": "Ablage löschen",
+        "general-access": "Allgemeiner Zugriff",
         "install-app": "Planarium als App",
         "nothing-scanned": "Noch nichts gescannt",
+        "people": "Personen",
         "share": "Teilen",
         "something-went-wrong": "Da ging etwas schief"
     },
     "label": {
+        "access-private": "Privat",
+        "access-public": "Öffentlich",
+        "access-unlisted": "Alle mit dem Link",
         "cards_one": "{{amount}} Karte",
         "cards_other": "{{amount}} Karten",
         "condition-excellent": "Excellent",
@@ -100,8 +106,7 @@
         "session-expired": "Sitzung abgelaufen, bitte erneut anmelden",
         "share-link-copied": "Link kopiert",
         "share-link-copy-failed": "Der Link konnte nicht kopiert werden.",
-        "share-link-created": "Link erstellt",
-        "share-link-revoked": "Link zurückgezogen",
-        "share-link-rotated": "Neuer Link erzeugt"
+        "share-link-rotated": "Neuer Link erzeugt",
+        "visibility-changed": "Zugriff geändert"
     }
 }

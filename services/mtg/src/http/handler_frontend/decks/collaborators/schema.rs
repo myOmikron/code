@@ -20,9 +20,20 @@ pub struct DeckCollaboratorResponse {
     pub level: CollaboratorLevel,
 }
 
-/// The Collaborators of a deck, alphabetically by username
+/// The Account owning a deck
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct DeckOwnerResponse {
+    /// The Account
+    pub account: AccountUuid,
+    /// The Account's username as it is now
+    pub username: String,
+}
+
+/// The owner and the Collaborators of a deck, the latter alphabetically by username
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct ListDeckCollaboratorsResponse {
+    /// The owner, which the list leaves out
+    pub owner: DeckOwnerResponse,
     /// The Collaborators
     pub collaborators: Vec<DeckCollaboratorResponse>,
 }
@@ -54,6 +65,31 @@ pub struct PutDeckCollaboratorRequest {
     pub level: CollaboratorLevel,
 }
 
+/// What the owner typed while looking for an Account to name on a deck
+#[derive(Debug, Clone, Deserialize, JsonSchema)]
+pub struct SearchCollaboratorCandidatesQuery {
+    /// The start of a username, case ignored
+    pub query: MaxStr<32>,
+}
+
+/// An Account whose username starts with what the owner typed
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct CollaboratorCandidateResponse {
+    /// The Account
+    pub account: AccountUuid,
+    /// The Account's username as it is now
+    pub username: String,
+}
+
+/// The Accounts whose username starts with what the owner typed
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct CollaboratorCandidatesResponse {
+    /// Up to ten Accounts, alphabetically by username
+    pub accounts: Vec<CollaboratorCandidateResponse>,
+    /// The caller searched too often lately, so nothing was searched
+    pub too_many_searches: bool,
+}
+
 /// Why an Account could not be named on a deck
 #[derive(Debug, Clone, Default, Serialize, JsonSchema)]
 pub struct PutDeckCollaboratorErrors {
@@ -61,6 +97,9 @@ pub struct PutDeckCollaboratorErrors {
     pub unknown_username: bool,
     /// The username is the caller's own, which owns the deck
     pub own_account: bool,
+    /// The caller named too many unknown usernames lately, so this one was
+    /// not looked up
+    pub too_many_unknown_usernames: bool,
 }
 
 impl From<DeckCollaborator> for DeckCollaboratorResponse {

@@ -121,12 +121,12 @@
         --btn-icon: var(--color-accent);
     }
 
-    .data-focus\:bg-blue-500[data-focus]:not([data-disabled]) {
+    .data-focus\:bg-blue-500[data-focus] {
         background-color: var(--color-lime-300);
         color: var(--color-lime-950);
     }
 
-    .data-focus\:bg-blue-500[data-focus]:not([data-disabled]) :is(span, svg, kbd) {
+    .data-focus\:bg-blue-500[data-focus] :is(span, svg, kbd, [data-slot="description"]) {
         color: var(--color-lime-950);
     }
 
@@ -138,8 +138,14 @@
         outline-color: var(--color-lime-500);
     }
 
-    .data-focus\:after\:ring-blue-500[data-focus]::after {
+    .data-focus\:after\:ring-blue-500[data-focus]::after,
+    :is(.sm\:focus-within\:after\:ring-blue-500, .sm\:after\:focus-within\:ring-blue-500):focus-within::after,
+    .has-data-focus\:after\:ring-blue-500:has([data-focus])::after {
         --tw-ring-color: var(--color-lime-500);
+    }
+
+    .group[data-focus] .group-data-focus\:outline-blue-500 {
+        outline-color: var(--color-lime-500);
     }
 
     :is(.data-hover\:decoration-zinc-950, .dark\:data-hover\:decoration-white)[data-hover] {

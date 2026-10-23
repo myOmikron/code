@@ -1,10 +1,4 @@
-import {
-    ArrowPathIcon,
-    ArrowTopRightOnSquareIcon,
-    CheckIcon,
-    ClipboardIcon,
-    LinkIcon,
-} from "@heroicons/react/20/solid";
+import { ArrowPathIcon, ArrowRightStartOnRectangleIcon, CheckIcon, ClipboardIcon } from "@heroicons/react/20/solid";
 import {
     Button,
     Description,
@@ -12,41 +6,64 @@ import {
     DialogActions,
     DialogBody,
     DialogTitle,
-    Divider,
-    Field,
     Input,
     Label,
-    Text,
+    Radio,
+    RadioField,
+    RadioGroup,
+    Subheading,
     notify,
 } from "components";
-import { PrimaryButton } from "src/components/primary-button";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { shareLink } from "src/utils/share-link";
+import { Api } from "src/api/api";
+import { Visibility } from "src/api/generated";
+import { DeckPeople } from "src/components/deck-people";
+import { publicLink, shareLink } from "src/utils/share-link";
 import type { ShareKind } from "src/utils/share-link";
 
 /** How long the copy button stays ticked after a successful copy */
 const COPIED_FEEDBACK_MS = 1500;
 
+/** The writes General access makes, per kind of thing shared */
+const ACCESS: Record<
+    ShareKind,
+    {
+        setVisibility: (uuid: string, visibility: Visibility) => Promise<unknown>;
+        shareToken: (uuid: string) => Promise<string | null>;
+        rotate: (uuid: string) => Promise<string>;
+    }
+> = {
+    decks: {
+        setVisibility: Api.decks.setVisibility,
+        shareToken: async (uuid) => (await Api.decks.get(uuid)).share_token ?? null,
+        rotate: async (uuid) => (await Api.decks.rotateShareToken(uuid)).share_token,
+    },
+    collections: {
+        setVisibility: Api.collections.setVisibility,
+        shareToken: async (uuid) => (await Api.collections.get(uuid)).share_token ?? null,
+        rotate: async (uuid) => (await Api.collections.rotateShareToken(uuid)).share_token,
+    },
+};
+
+/** The Visibilities in the order they are offered */
+const VISIBILITIES: Array<Visibility> = [Visibility.Private, Visibility.Unlisted, Visibility.Public];
+
 /**
- * What is being shared, and how it is opened, replaced and withdrawn
+ * What is being shared, as the page behind the dialog knows it
  */
-export type ShareTarget = {
-    /** What kind of thing this is, which decides the shape of the link */
+export type ShareSubject = {
+    /** Whether a deck or a collection, which decides the links and the People section */
     kind: ShareKind;
-    /** Which one it is, so a reopened dialog is told apart from a rebuilt one */
-    id: string;
-    /** The secret it is shared through, or `null` while it is not shared */
+    /** Which one it is */
+    uuid: string;
+    /** Who can see it today */
+    visibility: Visibility;
+    /** The secret of its Share link, `null` while it is not Unlisted */
     shareToken: string | null;
-    /** Whether it is public today, which creating a link would end */
-    isPublic: boolean;
-    /** Opens it to anyone holding the link; answers with the minted secret */
-    enable: () => Promise<string | null>;
-    /** Mints a fresh secret, stopping every link handed out so far */
-    rotate: () => Promise<string>;
-    /** Takes it back to private, which drops the secret */
-    revoke: () => Promise<void>;
+    /** Whether the reader owns it; a Collaborator gets the read-only People view */
+    owner: boolean;
 };
 
 /**
@@ -54,52 +71,80 @@ export type ShareTarget = {
  */
 export type ShareDialogProps = {
     /** What to share, or `null` to keep the dialog closed */
-    target: ShareTarget | null;
-    /** One sentence on what holding this link reveals */
-    description: ReactNode;
+    subject: ShareSubject | null;
+    /** One sentence on what holding the Share link reveals */
+    linkDescription: ReactNode;
     /** Called when the dialog should close */
     onClose: () => void;
-    /** Called after the link was created, replaced or withdrawn */
+    /** Called after the Visibility or the Share link changed */
     onChanged: () => void | Promise<void>;
+    /** Offered to a Collaborator: leaving the deck, confirmed by the caller */
+    onLeave?: () => void;
 };
 
 /**
- * The link something is shared through: shown, copied, replaced, withdrawn.
+ * The one Share window: who a deck is shared with, and who else can see it.
+ *
+ * Decks get the People section (the owner manages them, a Collaborator reads
+ * them) and General access; collections only the latter.
  *
  * @returns the dialog
  */
-export function ShareDialog({ target, description, onClose, onChanged }: ShareDialogProps) {
+export function ShareDialog({ subject, linkDescription, onClose, onChanged, onLeave }: ShareDialogProps) {
     const [tg] = useTranslation();
 
+    const [visibility, setVisibility] = useState<Visibility>(Visibility.Private);
     const [shareToken, setShareToken] = useState<string | null>(null);
     const [busy, setBusy] = useState(false);
     const [copied, setCopied] = useState(false);
 
-    // Keyed on which thing is being shared, not on the target object: that one
-    // is rebuilt on every render of the page behind the dialog, and the copy it
-    // carries still says "not shared" right after the link was minted — the
-    // page has only just been told to reload. Re-seeding on it would throw the
-    // fresh token away and put the dialog back on its opening screen.
-    const showing = target === null ? null : `${target.kind}:${target.id}`;
+    const showing = subject === null ? null : `${subject.kind}:${subject.uuid}`;
     useEffect(() => {
-        setShareToken(target?.shareToken ?? null);
+        setVisibility(subject?.visibility ?? Visibility.Private);
+        setShareToken(subject?.shareToken ?? null);
         setCopied(false);
     }, [showing]);
 
-    const link = target === null || shareToken === null ? null : shareLink(target.kind, shareToken);
+    const owner = subject?.owner ?? false;
+    const link =
+        subject === null
+            ? null
+            : visibility === Visibility.Unlisted && shareToken !== null
+              ? shareLink(subject.kind, shareToken)
+              : visibility === Visibility.Public
+                ? publicLink(subject.kind, subject.uuid)
+                : null;
 
     /**
-     * Runs one of the target's writes, then lets the page behind catch up
+     * Saves a new Visibility, learning the Share link it minted
      *
-     * @param write what to run
-     * @param toast what to say once it went through
+     * @param next the Visibility to switch to
      */
-    async function run(write: () => Promise<string | null | void>, toast: string) {
+    async function choose(next: Visibility) {
+        if (subject === null || next === visibility) return;
         setBusy(true);
         try {
-            const token = await write();
-            setShareToken(typeof token === "string" ? token : null);
-            notify.success(toast);
+            const access = ACCESS[subject.kind];
+            await access.setVisibility(subject.uuid, next);
+            const token = next === Visibility.Unlisted ? await access.shareToken(subject.uuid) : null;
+            setVisibility(next);
+            setShareToken(token);
+            notify.success(tg("toast.visibility-changed"));
+            await onChanged();
+        } finally {
+            setBusy(false);
+        }
+    }
+
+    /**
+     * Mints a fresh Share link, stopping the one handed out so far
+     */
+    async function rotate() {
+        if (subject === null) return;
+        setBusy(true);
+        try {
+            setShareToken(await ACCESS[subject.kind].rotate(subject.uuid));
+            notify.success(tg("toast.share-link-rotated"));
             await onChanged();
         } finally {
             setBusy(false);
@@ -111,7 +156,6 @@ export function ShareDialog({ target, description, onClose, onChanged }: ShareDi
      */
     async function copy() {
         if (link === null) return;
-
         try {
             await navigator.clipboard.writeText(link);
             setCopied(true);
@@ -122,87 +166,122 @@ export function ShareDialog({ target, description, onClose, onChanged }: ShareDi
         }
     }
 
-    return (
-        <Dialog open={target !== null} onClose={onClose}>
-            <DialogTitle>{tg("heading.share")}</DialogTitle>
-            <DialogBody>
-                {link === null ? (
-                    <div className={"flex flex-col gap-4"}>
-                        <Text>{tg("description.share-link-none")}</Text>
-                        {target?.isPublic === true && <Text>{tg("description.share-link-replaces-public")}</Text>}
-                        <div>
-                            <PrimaryButton
-                                disabled={busy}
-                                onClick={() =>
-                                    void (target !== null && run(target.enable, tg("toast.share-link-created")))
-                                }
-                            >
-                                <LinkIcon />
-                                {tg("button.create-share-link")}
-                            </PrimaryButton>
-                        </div>
-                    </div>
-                ) : (
-                    <div className={"flex flex-col gap-6"}>
-                        <Field>
-                            <Label>{tg("label.share-link")}</Label>
-                            <div className={"flex flex-col gap-2 sm:flex-row sm:items-start"}>
-                                <Input
-                                    readOnly={true}
-                                    value={link}
-                                    aria-label={tg("label.share-link")}
-                                    onFocus={(event) => event.target.select()}
-                                    className={"min-w-0 sm:flex-1"}
-                                />
-                                <div className={"flex shrink-0 gap-2"}>
-                                    <Button outline={true} onClick={() => void copy()}>
-                                        {copied ? <CheckIcon /> : <ClipboardIcon />}
-                                        {tg("button.copy-share-link")}
-                                    </Button>
-                                    <Button
-                                        outline={true}
-                                        external={true}
-                                        href={link}
-                                        target={"_blank"}
-                                        aria-label={tg("accessibility.open-share-link")}
-                                    >
-                                        <ArrowTopRightOnSquareIcon />
-                                    </Button>
-                                </div>
-                            </div>
-                            <Description>{description}</Description>
-                        </Field>
+    /**
+     * What a Visibility is called in the Share window
+     *
+     * @param option the Visibility
+     *
+     * @returns its label
+     */
+    function accessLabel(option: Visibility): string {
+        switch (option) {
+            case Visibility.Private:
+                return tg("label.access-private");
+            case Visibility.Unlisted:
+                return tg("label.access-unlisted");
+            case Visibility.Public:
+                return tg("label.access-public");
+        }
+    }
 
-                        <Divider />
-
-                        <div className={"flex flex-col gap-3"}>
-                            <div className={"flex flex-wrap gap-2"}>
-                                <Button
-                                    outline={true}
-                                    disabled={busy}
-                                    onClick={() =>
-                                        void (target !== null && run(target.rotate, tg("toast.share-link-rotated")))
-                                    }
-                                >
-                                    <ArrowPathIcon />
-                                    {tg("button.new-share-link")}
-                                </Button>
-                                <Button
-                                    color={"red"}
-                                    disabled={busy}
-                                    onClick={() =>
-                                        void (target !== null && run(target.revoke, tg("toast.share-link-revoked")))
-                                    }
-                                >
-                                    {tg("button.revoke-share-link")}
-                                </Button>
-                            </div>
-                            <Description>{tg("description.share-link-rotate")}</Description>
-                        </div>
-                    </div>
+    /**
+     * What choosing a Visibility means, and what it ends for good
+     *
+     * @param option the Visibility offered
+     *
+     * @returns the lines under the option
+     */
+    function consequences(option: Visibility): ReactNode {
+        const what =
+            option === Visibility.Private
+                ? subject?.kind === "decks"
+                    ? tg("description.access-private-people")
+                    : tg("description.access-private")
+                : option === Visibility.Unlisted
+                  ? tg("description.access-unlisted")
+                  : tg("description.access-public");
+        const endsLink = visibility === Visibility.Unlisted && option !== Visibility.Unlisted && shareToken !== null;
+        return (
+            <>
+                {what}
+                {endsLink && (
+                    <span className={"mt-1 block text-amber-700 dark:text-amber-400"}>
+                        {tg("description.access-ends-link")}
+                    </span>
                 )}
+            </>
+        );
+    }
+
+    return (
+        <Dialog open={subject !== null} onClose={onClose} size={"xl"}>
+            <DialogTitle>{owner ? tg("heading.share") : tg("heading.people")}</DialogTitle>
+            <DialogBody>
+                <div className={"flex flex-col gap-8"}>
+                    {subject?.kind === "decks" && <DeckPeople deckUuid={subject.uuid} owner={owner} />}
+
+                    {owner && (
+                        <section className={"flex flex-col gap-4"}>
+                            <Subheading>{tg("heading.general-access")}</Subheading>
+                            <RadioGroup
+                                value={visibility}
+                                onChange={(next: string) => {
+                                    const picked = VISIBILITIES.find((option) => option === next);
+                                    if (picked !== undefined) void choose(picked);
+                                }}
+                                disabled={busy}
+                                aria-label={tg("heading.general-access")}
+                            >
+                                {VISIBILITIES.map((option) => (
+                                    <RadioField key={option}>
+                                        <Radio value={option} color={"lime"} />
+                                        <Label>{accessLabel(option)}</Label>
+                                        <Description>{consequences(option)}</Description>
+                                    </RadioField>
+                                ))}
+                            </RadioGroup>
+
+                            {link !== null && (
+                                <div className={"flex flex-col gap-2"}>
+                                    <div className={"flex gap-2"}>
+                                        <Input
+                                            readOnly={true}
+                                            value={link}
+                                            aria-label={tg("label.share-link")}
+                                            onFocus={(event) => event.target.select()}
+                                            className={"min-w-0 flex-1"}
+                                        />
+                                        <Button outline={true} onClick={() => void copy()} className={"shrink-0"}>
+                                            {copied ? <CheckIcon /> : <ClipboardIcon />}
+                                            {tg("button.copy-share-link")}
+                                        </Button>
+                                        {visibility === Visibility.Unlisted && (
+                                            <Button
+                                                outline={true}
+                                                disabled={busy}
+                                                onClick={() => void rotate()}
+                                                aria-label={tg("button.new-share-link")}
+                                                title={tg("button.new-share-link")}
+                                                className={"shrink-0"}
+                                            >
+                                                <ArrowPathIcon />
+                                            </Button>
+                                        )}
+                                    </div>
+                                    {visibility === Visibility.Unlisted && <Description>{linkDescription}</Description>}
+                                </div>
+                            )}
+                        </section>
+                    )}
+                </div>
             </DialogBody>
             <DialogActions>
+                {!owner && onLeave !== undefined && (
+                    <Button color={"red"} onClick={onLeave} className={"sm:mr-auto"}>
+                        <ArrowRightStartOnRectangleIcon />
+                        {tg("button.leave-deck")}
+                    </Button>
+                )}
                 <Button plain onClick={onClose}>
                     {tg("button.close")}
                 </Button>

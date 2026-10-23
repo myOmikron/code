@@ -373,7 +373,6 @@
         "tag-deleted": "Tag „{{name}}“ gelöscht",
         "tags-created_one": "1 Tag angelegt",
         "tags-created_other": "{{count}} Tags angelegt",
-        "unknown-card-link": "Diese Karte kennt Scryfall nicht.",
-        "visibility-changed": "Sichtbarkeit geändert"
+        "unknown-card-link": "Diese Karte kennt Scryfall nicht."
     }
 }

@@ -1,7 +1,6 @@
 {
     "accessibility": {
-        "card-image": "{{name}}, {{setName}}",
-        "open-share-link": "Open the link in a new tab"
+        "card-image": "{{name}}, {{setName}}"
     },
     "button": {
         "add-hovered-card": "Add the card under the pointer",
@@ -10,7 +9,6 @@
         "close": "Close",
         "continue-with-provider": "Continue with {{provider}}",
         "copy-share-link": "Copy",
-        "create-share-link": "Create link",
         "create-watch-list": "Create watch list",
         "delete-session": "Delete staging area",
         "delete-watch-list": "Delete watch list",
@@ -21,14 +19,15 @@
         "flip-card": "Flip card",
         "imprint": "Legal notice",
         "install-app": "Install",
+        "leave-deck": "Leave deck",
         "new-session": "New session",
         "new-share-link": "New link",
         "open-watch-list": "Open watch list",
         "privacy": "Privacy",
         "redo": "Redo",
-        "revoke-share-link": "Withdraw link",
         "scan": "Scan",
         "search-watch-list": "Search card",
+        "share-ellipsis": "Share…",
         "show-watch-copies": "Show copies",
         "start-scanning": "Start scanning",
         "switch-watch-view": "Switch view",
@@ -38,12 +37,14 @@
         "undo": "Undo"
     },
     "description": {
+        "access-ends-link": "The current link stops working for good.",
+        "access-private": "Only you.",
+        "access-private-people": "Only you and the people above.",
+        "access-public": "On your public profile, findable by anyone.",
+        "access-unlisted": "No account needed. Not on your profile.",
         "delete-session": "“{{name}}” and everything still staged in it will be deleted. Cards already filed stay in their collection.",
         "install-ios-add": "Choose “Add to Home Screen”.",
         "install-ios-share": "Tap “Share” in the bar below.",
-        "share-link-none": "This is not shared through a link yet. With one, anybody holding it can see the contents.",
-        "share-link-replaces-public": "It is public at the moment. Creating a link switches it to link only, so it no longer stands in your public profile.",
-        "share-link-rotate": "A new link stops the old one right away. Withdrawing it sets the collection back to private.",
         "username": "Shown publicly. 3 to 32 characters; letters, digits, underscore, hyphen and dot are allowed, and the first character has to be a letter or a digit."
     },
     "error": {
@@ -56,12 +57,17 @@
     },
     "heading": {
         "delete-session": "Delete staging area",
+        "general-access": "General access",
         "install-app": "Planarium as an app",
         "nothing-scanned": "Nothing scanned yet",
+        "people": "People",
         "share": "Share",
         "something-went-wrong": "Something went wrong"
     },
     "label": {
+        "access-private": "Private",
+        "access-public": "Public",
+        "access-unlisted": "Anyone with the link",
         "cards_one": "{{amount}} card",
         "cards_other": "{{amount}} cards",
         "condition-excellent": "Excellent",
@@ -100,8 +106,7 @@
         "session-expired": "Session expired, please sign in again",
         "share-link-copied": "Link copied",
         "share-link-copy-failed": "The link could not be copied.",
-        "share-link-created": "Link created",
-        "share-link-revoked": "Link withdrawn",
-        "share-link-rotated": "New link created"
+        "share-link-rotated": "New link created",
+        "visibility-changed": "Access changed"
     }
 }

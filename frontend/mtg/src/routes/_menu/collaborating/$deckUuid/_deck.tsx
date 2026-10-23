@@ -10,11 +10,11 @@ import { Badge, BadgeButton, EmptyState, Tab, TabLayout, TabMenu } from "compone
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
-import { DeckCollaboratorListDialog } from "src/components/deck-collaborator-list-dialog";
 import { DeckLeaveDialog } from "src/components/deck-leave-dialog";
 import { ExportDeckDialog } from "src/components/export-deck-dialog";
 import { useDeckLabels } from "src/components/deck-labels";
 import { RequireAccount } from "src/components/require-account";
+import { ShareDialog } from "src/components/share-dialog";
 import i18n from "src/i18n";
 import { deckCardsRoute } from "src/utils/deck-rights";
 
@@ -97,7 +97,7 @@ function RouteComponent() {
                                 </BadgeButton>
                                 <BadgeButton color={"zinc"} className={ACTION_RING} onClick={() => setListing(true)}>
                                     <UsersIcon className={"size-3.5"} />
-                                    {t("button.collaborators")}
+                                    {t("button.people")}
                                 </BadgeButton>
                                 <BadgeButton color={"zinc"} className={ACTION_RING} onClick={() => setLeaving(true)}>
                                     <ArrowRightStartOnRectangleIcon className={"size-3.5"} />
@@ -122,7 +122,26 @@ function RouteComponent() {
 
                 <ExportDeckDialog open={exporting} source={{ deckUuid }} onClose={() => setExporting(false)} />
 
-                <DeckCollaboratorListDialog deckUuid={listing ? deckUuid : null} onClose={() => setListing(false)} />
+                <ShareDialog
+                    subject={
+                        listing
+                            ? {
+                                  kind: "decks",
+                                  uuid: deckUuid,
+                                  visibility: deck.visibility,
+                                  shareToken: null,
+                                  owner: false,
+                              }
+                            : null
+                    }
+                    linkDescription={t("description.share-link")}
+                    onClose={() => setListing(false)}
+                    onChanged={() => undefined}
+                    onLeave={() => {
+                        setListing(false);
+                        setLeaving(true);
+                    }}
+                />
 
                 <DeckLeaveDialog
                     deck={leaving ? { uuid: deckUuid, name: deck.name } : null}

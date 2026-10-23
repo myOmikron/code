@@ -8,6 +8,7 @@ Why an Account could not be named on a deck
 Name | Type
 ------------ | -------------
 `own_account` | boolean
+`too_many_unknown_usernames` | boolean
 `unknown_username` | boolean
 
 

@@ -52,7 +52,7 @@ export function useShortcuts(shortcuts: Shortcuts, enabled = true, insideDialogs
          * @param event the keydown
          */
         function onKeyDown(event: KeyboardEvent) {
-            if (event.altKey) return;
+            if (event.altKey || typeof event.key !== "string") return;
 
             const key = event.key.toLowerCase();
             const modified = event.ctrlKey || event.metaKey;

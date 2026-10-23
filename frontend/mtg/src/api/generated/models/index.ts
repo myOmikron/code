@@ -1279,6 +1279,44 @@ export interface ChooseUsernameRequest {
      */
     username: any;
 }
+/**
+ * An Account whose username starts with what the owner typed
+ * @export
+ * @interface CollaboratorCandidateResponse
+ */
+export interface CollaboratorCandidateResponse {
+    /**
+     * The Account
+     * @type {string}
+     * @memberof CollaboratorCandidateResponse
+     */
+    account: string;
+    /**
+     * The Account's username as it is now
+     * @type {string}
+     * @memberof CollaboratorCandidateResponse
+     */
+    username: string;
+}
+/**
+ * The Accounts whose username starts with what the owner typed
+ * @export
+ * @interface CollaboratorCandidatesResponse
+ */
+export interface CollaboratorCandidatesResponse {
+    /**
+     * Up to ten Accounts, alphabetically by username
+     * @type {Array<CollaboratorCandidateResponse>}
+     * @memberof CollaboratorCandidatesResponse
+     */
+    accounts: Array<CollaboratorCandidateResponse>;
+    /**
+     * The caller searched too often lately, so nothing was searched
+     * @type {boolean}
+     * @memberof CollaboratorCandidatesResponse
+     */
+    too_many_searches: boolean;
+}
 
 /**
  * What the owner lets a Collaborator do with the deck
@@ -2613,6 +2651,25 @@ export interface DeckOverviewResponse {
      * @memberof DeckOverviewResponse
      */
     price_eur_cents: number;
+}
+/**
+ * The Account owning a deck
+ * @export
+ * @interface DeckOwnerResponse
+ */
+export interface DeckOwnerResponse {
+    /**
+     * The Account
+     * @type {string}
+     * @memberof DeckOwnerResponse
+     */
+    account: string;
+    /**
+     * The Account's username as it is now
+     * @type {string}
+     * @memberof DeckOwnerResponse
+     */
+    username: string;
 }
 /**
  * One Deck entry a deck held at an earlier point
@@ -4282,7 +4339,7 @@ export interface ListDeckCardsResponse {
     tags: Array<DeckTagResponse>;
 }
 /**
- * The Collaborators of a deck, alphabetically by username
+ * The owner and the Collaborators of a deck, the latter alphabetically by username
  * @export
  * @interface ListDeckCollaboratorsResponse
  */
@@ -4293,6 +4350,12 @@ export interface ListDeckCollaboratorsResponse {
      * @memberof ListDeckCollaboratorsResponse
      */
     collaborators: Array<DeckCollaboratorResponse>;
+    /**
+     * The owner, which the list leaves out
+     * @type {DeckOwnerResponse}
+     * @memberof ListDeckCollaboratorsResponse
+     */
+    owner: DeckOwnerResponse;
 }
 /**
  * Every folder an account keeps
@@ -5483,6 +5546,12 @@ export interface PutDeckCollaboratorErrors {
      * @memberof PutDeckCollaboratorErrors
      */
     own_account: boolean;
+    /**
+     * The caller named too many unknown usernames lately, so this one was not looked up
+     * @type {boolean}
+     * @memberof PutDeckCollaboratorErrors
+     */
+    too_many_unknown_usernames: boolean;
     /**
      * No Account goes by this username
      * @type {boolean}

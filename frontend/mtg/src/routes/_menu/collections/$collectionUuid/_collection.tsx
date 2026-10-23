@@ -3,9 +3,9 @@ import {
     ArchiveBoxXMarkIcon,
     CameraIcon,
     ChevronLeftIcon,
-    LinkIcon,
     PencilSquareIcon,
     RectangleStackIcon,
+    ShareIcon,
     TrashIcon,
 } from "@heroicons/react/20/solid";
 import {
@@ -29,7 +29,6 @@ import { RequireAccount } from "src/components/require-account";
 import { useScannerSessions } from "src/context/scanner-session-context";
 import { ShareDialog } from "src/components/share-dialog";
 import i18n from "src/i18n";
-import { collectionShareTarget } from "src/utils/share-targets";
 import { useShortcuts } from "src/utils/use-shortcuts";
 import { useShortcutHelpOpen } from "src/context/shortcut-help-context";
 
@@ -183,7 +182,7 @@ function RouteComponent() {
                                             className={ACTION_RING}
                                             onClick={() => setSharing(true)}
                                         >
-                                            <LinkIcon className={"size-3.5"} />
+                                            <ShareIcon className={"size-3.5"} />
                                             {t("button.share-collection")}
                                         </BadgeButton>
                                         <BadgeButton
@@ -225,8 +224,18 @@ function RouteComponent() {
                 </TabLayout>
 
                 <ShareDialog
-                    target={sharing ? collectionShareTarget(collection) : null}
-                    description={t("description.share-link")}
+                    subject={
+                        sharing
+                            ? {
+                                  kind: "collections",
+                                  uuid: collection.uuid,
+                                  visibility: collection.visibility,
+                                  shareToken: collection.share_token ?? null,
+                                  owner: true,
+                              }
+                            : null
+                    }
+                    linkDescription={t("description.share-link")}
                     onClose={() => setSharing(false)}
                     onChanged={() => router.invalidate()}
                 />

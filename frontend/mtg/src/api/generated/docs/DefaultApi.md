@@ -87,7 +87,7 @@ All URIs are relative to *http://localhost*
 | [**listCollectionEntries**](DefaultApi.md#listcollectionentries) | **GET** /api/frontend/v1/collections/{collection}/entries | List every stack filed in a collection |
 | [**listCollectionOnLoan**](DefaultApi.md#listcollectiononloan) | **GET** /api/frontend/v1/collections/{collection}/on-loan | Count a collection\&#39;s statistics |
 | [**listDeckCards**](DefaultApi.md#listdeckcards) | **GET** /api/frontend/v1/decks/{deck}/cards | Every card of a deck, with the catalog data and the tags on it |
-| [**listDeckCollaborators**](DefaultApi.md#listdeckcollaborators) | **GET** /api/frontend/v1/decks/{deck}/collaborators | The Collaborators of a deck, alphabetically by username |
+| [**listDeckCollaborators**](DefaultApi.md#listdeckcollaborators) | **GET** /api/frontend/v1/decks/{deck}/collaborators | The owner and the Collaborators of a deck, the latter alphabetically by username |
 | [**listOpenidProviders**](DefaultApi.md#listopenidproviders) | **GET** /api/frontend/v1/auth/oidc/providers | List the OpenID providers people may log in through |
 | [**listPasskeys**](DefaultApi.md#listpasskeys) | **GET** /api/frontend/v1/accounts/passkeys | List the passkeys of the logged-in account |
 | [**listPublicCollectionCards**](DefaultApi.md#listpubliccollectioncards) | **GET** /api/frontend/v1/explore/collections/{collection}/cards | List a page of a public collection\&#39;s cards, sorted and filtered |
@@ -113,6 +113,7 @@ All URIs are relative to *http://localhost*
 | [**returnDeckCards**](DefaultApi.md#returndeckcardsoperation) | **POST** /api/frontend/v1/decks/{deck}/sourcing/return | Sort copies out of the deck back into a collection |
 | [**rotateDeckShareToken**](DefaultApi.md#rotatedecksharetoken) | **POST** /api/frontend/v1/decks/{deck}/share-token | Mint a fresh secret for a deck\&#39;s share link |
 | [**rotateShareToken**](DefaultApi.md#rotatesharetoken) | **POST** /api/frontend/v1/collections/{collection}/share-token | Mint a fresh secret for a collection\&#39;s share link |
+| [**searchCollaboratorCandidates**](DefaultApi.md#searchcollaboratorcandidates) | **GET** /api/frontend/v1/decks/{deck}/collaborators/candidates | Accounts whose username starts with what the owner typed, to name on a deck |
 | [**searchMpcfillArt**](DefaultApi.md#searchmpcfillart) | **POST** /api/frontend/v1/mpcfill/search | The art MPCFill has for these cards |
 | [**searchPublicDecks**](DefaultApi.md#searchpublicdecks) | **GET** /api/frontend/v1/explore/decks | Search the decks their owners put on show |
 | [**setDeckAdvisorSettings**](DefaultApi.md#setdeckadvisorsettings) | **PUT** /api/frontend/v1/decks/{deck}/advisor-settings | Replace this deck\&#39;s advisor settings |
@@ -5984,9 +5985,9 @@ No authorization required
 
 > ListDeckCollaboratorsResponse listDeckCollaborators(deck)
 
-The Collaborators of a deck, alphabetically by username
+The owner and the Collaborators of a deck, the latter alphabetically by username
 
-The Collaborators of a deck, alphabetically by username  The owner and every Collaborator read it.
+The owner and the Collaborators of a deck, the latter alphabetically by username  The owner and every Collaborator read it.
 
 ### Example
 
@@ -6857,7 +6858,7 @@ No authorization required
 
 Name an Account on a deck by its username, or change the level it is named at
 
-Name an Account on a deck by its username, or change the level it is named at  Naming an Account that is already on the deck changes its level, so it is on the deck once. The owner and the Tombstone cannot be named.
+Name an Account on a deck by its username, or change the level it is named at  Naming an Account that is already on the deck changes its level, so it is on the deck once. The owner and the Tombstone cannot be named.  Unknown usernames are capped per caller, see [&#x60;UNKNOWN_USERNAMES&#x60;].
 
 ### Example
 
@@ -7830,6 +7831,79 @@ example().catch(console.error);
 ### Return type
 
 [**RotateShareTokenResponse**](RotateShareTokenResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## searchCollaboratorCandidates
+
+> CollaboratorCandidatesResponse searchCollaboratorCandidates(deck, query)
+
+Accounts whose username starts with what the owner typed, to name on a deck
+
+Accounts whose username starts with what the owner typed, to name on a deck  Answers with up to ten Accounts, the caller among them if it matches, alphabetically by username. Fewer than two characters search nothing. Searches are capped per caller, see [&#x60;CANDIDATE_SEARCHES&#x60;]; past the cap the answer is empty and says so.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { SearchCollaboratorCandidatesRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    deck: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string (optional)
+    query: ...,
+  } satisfies SearchCollaboratorCandidatesRequest;
+
+  try {
+    const data = await api.searchCollaboratorCandidates(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **deck** | `string` |  | [Defaults to `undefined`] |
+| **query** | `string` |  | [Optional] [Defaults to `undefined`] |
+
+### Return type
+
+[**CollaboratorCandidatesResponse**](CollaboratorCandidatesResponse.md)
 
 ### Authorization
 

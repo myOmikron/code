@@ -14,20 +14,10 @@ import { COLLECTION_FILL, collectionColor } from "src/utils/collection-style";
 import { formatCurrency } from "src/utils/format";
 
 /** What each visibility is drawn with */
-export const VISIBILITY_ICON: Record<Visibility, ComponentType<{ className?: string }>> = {
+const VISIBILITY_ICON: Record<Visibility, ComponentType<{ className?: string }>> = {
     Public: GlobeAltIcon,
     Unlisted: LinkIcon,
     Private: LockClosedIcon,
-};
-
-/** The menu's order, from closed to open */
-export const VISIBILITY_ORDER: Array<Visibility> = [Visibility.Private, Visibility.Unlisted, Visibility.Public];
-
-/** What each visibility is called, as translation keys */
-export const VISIBILITY_LABEL: Record<Visibility, string> = {
-    Public: "label.visibility-public",
-    Unlisted: "label.visibility-unlisted",
-    Private: "label.visibility-private",
 };
 
 /**

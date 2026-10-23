@@ -506,6 +506,113 @@ fn an_unknown_username_gets_its_own_error() {
 }
 
 #[test]
+fn unknown_usernames_are_limited_per_account() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        fixture.add_friend("Viewer").await;
+
+        for _ in 0..20 {
+            let body = fixture.add("nobody-by-this-name", "Viewer").await;
+            assert_eq!(body["error"]["unknown_username"], true, "{body}");
+            assert_eq!(body["error"]["too_many_unknown_usernames"], false, "{body}");
+            fixture.add_friend("Editor").await;
+        }
+
+        let body = fixture.add("nobody-by-this-name", "Viewer").await;
+        assert_eq!(body["result"], "Err", "{body}");
+        assert_eq!(body["error"]["too_many_unknown_usernames"], true, "{body}");
+        assert_eq!(body["error"]["unknown_username"], false, "{body}");
+
+        fixture.remove_friend().await;
+        fixture.add_friend("Viewer").await;
+        let stranger = create_account(Role::Member).await;
+        let body = fixture.add(&stranger.username, "Editor").await;
+        assert_eq!(body["username"], stranger.username.as_str(), "{body}");
+        assert_eq!(fixture.list().await.len(), 2);
+
+        let mut other = Fixture::new().await;
+        let body = other.add("nobody-by-this-name", "Viewer").await;
+        assert_eq!(body["error"]["unknown_username"], true, "{body}");
+    });
+}
+
+/// What a username search for `query` answers the owner with
+async fn candidates(fixture: &mut Fixture, query: &str) -> Value {
+    let url = fixture.url(&format!("collaborators/candidates?query={query}"));
+    fixture.owner.get(&url).await.ok_json()
+}
+
+/// The usernames among a username search's answer
+fn usernames(body: &Value) -> Vec<String> {
+    body["accounts"]
+        .as_array()
+        .expect("a list of accounts")
+        .iter()
+        .map(|account| account["username"].as_str().expect("username").to_string())
+        .collect()
+}
+
+#[test]
+fn a_username_search_finds_accounts_by_prefix_ignoring_case() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        let prefix = fixture.friend.username[..10].to_uppercase();
+
+        let body = candidates(&mut fixture, &prefix).await;
+        assert_eq!(body["too_many_searches"], false, "{body}");
+        assert_eq!(usernames(&body), vec![fixture.friend.username.clone()]);
+        assert_eq!(
+            body["accounts"][0]["account"],
+            fixture.friend.uuid.into_inner().to_string()
+        );
+
+        let body = candidates(&mut fixture, "u").await;
+        assert!(usernames(&body).is_empty(), "{body}");
+
+        let body = candidates(&mut fixture, "%25").await;
+        assert!(usernames(&body).is_empty(), "{body}");
+    });
+}
+
+#[test]
+fn username_searches_are_limited_per_account() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        let prefix = fixture.friend.username.clone();
+
+        for _ in 0..120 {
+            let body = candidates(&mut fixture, &prefix).await;
+            assert_eq!(body["too_many_searches"], false, "{body}");
+        }
+        let body = candidates(&mut fixture, &prefix).await;
+        assert_eq!(body["too_many_searches"], true, "{body}");
+        assert!(usernames(&body).is_empty(), "{body}");
+
+        let body = candidates(&mut fixture, "u").await;
+        assert_eq!(body["too_many_searches"], false, "{body}");
+
+        let mut other = Fixture::new().await;
+        let body = candidates(&mut other, &prefix).await;
+        assert_eq!(usernames(&body), vec![prefix]);
+    });
+}
+
+#[test]
+fn only_the_owner_searches_usernames() {
+    run(async {
+        let mut fixture = Fixture::new().await;
+        fixture.add_friend("Editor").await;
+        let mut friend = TestClient::logged_in(&fixture.friend).await;
+        let operations = [Operation::new(
+            Method::GET,
+            "collaborators/candidates?query=ab",
+            Value::Null,
+        )];
+        assert_all_denied(&mut friend, &fixture.deck, &operations).await;
+    });
+}
+
+#[test]
 fn the_tombstone_cannot_be_added() {
     run(async {
         let mut fixture = Fixture::new().await;
@@ -1291,6 +1398,16 @@ fn any_collaborator_reads_the_collaborator_list() {
                 .ok_json();
             let list = body["collaborators"].as_array().expect("collaborators");
             assert_eq!(list.len(), 2, "{body}");
+            assert_eq!(
+                body["owner"]["username"],
+                fixture.account.username.as_str(),
+                "{body}"
+            );
+            assert_eq!(
+                body["owner"]["account"],
+                fixture.account.uuid.into_inner().to_string(),
+                "{body}"
+            );
             let level_of = |username: &str| {
                 list.iter()
                     .find(|entry| entry["username"] == username)

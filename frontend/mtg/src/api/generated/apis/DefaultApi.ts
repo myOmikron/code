@@ -36,6 +36,7 @@ import type {
     CardFinish,
     CardRarity,
     ChooseUsernameRequest,
+    CollaboratorCandidatesResponse,
     CollectionEntryResponse,
     CollectionOverviewResponse,
     CollectionResponse,
@@ -604,6 +605,11 @@ export interface RotateDeckShareTokenRequest {
 
 export interface RotateShareTokenRequest {
     collection: string;
+}
+
+export interface SearchCollaboratorCandidatesRequest {
+    deck: string;
+    query?: string;
 }
 
 export interface SearchMpcfillArtRequest {
@@ -4791,8 +4797,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * The Collaborators of a deck, alphabetically by username  The owner and every Collaborator read it.
-     * The Collaborators of a deck, alphabetically by username
+     * The owner and the Collaborators of a deck, the latter alphabetically by username  The owner and every Collaborator read it.
+     * The owner and the Collaborators of a deck, the latter alphabetically by username
      */
     async listDeckCollaboratorsRaw(requestParameters: ListDeckCollaboratorsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListDeckCollaboratorsResponse>> {
         const requestOptions = await this.listDeckCollaboratorsRequestOpts(requestParameters);
@@ -4802,8 +4808,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * The Collaborators of a deck, alphabetically by username  The owner and every Collaborator read it.
-     * The Collaborators of a deck, alphabetically by username
+     * The owner and the Collaborators of a deck, the latter alphabetically by username  The owner and every Collaborator read it.
+     * The owner and the Collaborators of a deck, the latter alphabetically by username
      */
     async listDeckCollaborators(requestParameters: ListDeckCollaboratorsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListDeckCollaboratorsResponse> {
         const response = await this.listDeckCollaboratorsRaw(requestParameters, initOverrides);
@@ -5416,7 +5422,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Name an Account on a deck by its username, or change the level it is named at  Naming an Account that is already on the deck changes its level, so it is on the deck once. The owner and the Tombstone cannot be named.
+     * Name an Account on a deck by its username, or change the level it is named at  Naming an Account that is already on the deck changes its level, so it is on the deck once. The owner and the Tombstone cannot be named.  Unknown usernames are capped per caller, see [`UNKNOWN_USERNAMES`].
      * Name an Account on a deck by its username, or change the level it is named at
      */
     async putDeckCollaboratorRaw(requestParameters: PutDeckCollaboratorOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PutDeckCollaborator200Response>> {
@@ -5427,7 +5433,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Name an Account on a deck by its username, or change the level it is named at  Naming an Account that is already on the deck changes its level, so it is on the deck once. The owner and the Tombstone cannot be named.
+     * Name an Account on a deck by its username, or change the level it is named at  Naming an Account that is already on the deck changes its level, so it is on the deck once. The owner and the Tombstone cannot be named.  Unknown usernames are capped per caller, see [`UNKNOWN_USERNAMES`].
      * Name an Account on a deck by its username, or change the level it is named at
      */
     async putDeckCollaborator(requestParameters: PutDeckCollaboratorOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PutDeckCollaborator200Response> {
@@ -6072,6 +6078,57 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async rotateShareToken(requestParameters: RotateShareTokenRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<RotateShareTokenResponse> {
         const response = await this.rotateShareTokenRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for searchCollaboratorCandidates without sending the request
+     */
+    async searchCollaboratorCandidatesRequestOpts(requestParameters: SearchCollaboratorCandidatesRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['deck'] == null) {
+            throw new runtime.RequiredError(
+                'deck',
+                'Required parameter "deck" was null or undefined when calling searchCollaboratorCandidates().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['query'] != null) {
+            queryParameters['query'] = requestParameters['query'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/decks/{deck}/collaborators/candidates`;
+        urlPath = urlPath.replace('{deck}', encodeURIComponent(String(requestParameters['deck'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Accounts whose username starts with what the owner typed, to name on a deck  Answers with up to ten Accounts, the caller among them if it matches, alphabetically by username. Fewer than two characters search nothing. Searches are capped per caller, see [`CANDIDATE_SEARCHES`]; past the cap the answer is empty and says so.
+     * Accounts whose username starts with what the owner typed, to name on a deck
+     */
+    async searchCollaboratorCandidatesRaw(requestParameters: SearchCollaboratorCandidatesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CollaboratorCandidatesResponse>> {
+        const requestOptions = await this.searchCollaboratorCandidatesRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Accounts whose username starts with what the owner typed, to name on a deck  Answers with up to ten Accounts, the caller among them if it matches, alphabetically by username. Fewer than two characters search nothing. Searches are capped per caller, see [`CANDIDATE_SEARCHES`]; past the cap the answer is empty and says so.
+     * Accounts whose username starts with what the owner typed, to name on a deck
+     */
+    async searchCollaboratorCandidates(requestParameters: SearchCollaboratorCandidatesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CollaboratorCandidatesResponse> {
+        const response = await this.searchCollaboratorCandidatesRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

@@ -373,7 +373,6 @@
         "tag-deleted": "Tag “{{name}}” deleted",
         "tags-created_one": "1 tag created",
         "tags-created_other": "{{count}} tags created",
-        "unknown-card-link": "Scryfall does not know that card.",
-        "visibility-changed": "Visibility changed"
+        "unknown-card-link": "Scryfall does not know that card."
     }
 }
