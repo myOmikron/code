@@ -57,7 +57,7 @@ pub enum LoginMethod {
 }
 
 impl LoginMethod {
-    /// Whether the Identity holds External identities
+    /// Whether the Identity holds an External identity
     pub fn is_external(&self) -> bool {
         matches!(self, LoginMethod::External { .. })
     }

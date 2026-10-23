@@ -1,0 +1,75 @@
+[Migration]
+Hash = "14037284719027847688"
+Initial = false
+Dependency = 54
+Replaces = []
+
+[[Migration.Operations]]
+Type = "DeleteIndex"
+Model = "external_identity"
+
+[Migration.Operations.Index]
+Columns = ["identity"]
+
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+CREATE TABLE external_identity_aside AS SELECT * FROM external_identity;
+DELETE FROM external_identity;
+"""
+
+[[Migration.Operations]]
+Type = "DeleteField"
+Model = "external_identity"
+Name = "identity"
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "external_identity"
+
+[Migration.Operations.Field]
+Name = "identity"
+Type = "uuid"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "foreign_key"
+
+[Migration.Operations.Field.Annotations.Value]
+TableName = "identity"
+ColumnName = "uuid"
+OnDelete = "Cascade"
+OnUpdate = "Cascade"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "unique"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "libs/galvyn-identity/src/oidc/db.rs"
+Line = 90
+Column = 9
+
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+INSERT INTO external_identity (uuid, identity, provider, issuer, value, provider_value, created_at)
+SELECT uuid, identity, provider, issuer, value, provider_value, created_at
+FROM external_identity_aside;
+DROP TABLE external_identity_aside;
+"""

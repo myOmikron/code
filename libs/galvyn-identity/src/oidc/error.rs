@@ -96,6 +96,8 @@ pub enum BindError {
 pub enum EnrollExternalIdentityError {
     /// The Identity is local: it holds Passkeys
     LocalIdentity,
+    /// The Identity is external already: it holds its one External identity
+    ExternalIdentity,
     /// The External identity is bound already
     AlreadyBound,
     /// No OpenID provider has the slug

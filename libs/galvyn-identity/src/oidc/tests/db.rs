@@ -23,6 +23,7 @@ use crate::oidc::NewOpenIdProvider;
 use crate::oidc::OidcLoginOutcome;
 use crate::oidc::PendingExternalIdentity;
 use crate::oidc::error::BindError;
+use crate::oidc::error::EnrollExternalIdentityError;
 use crate::oidc::error::FinishOidcLoginError;
 use crate::session::logged_in;
 use crate::testing::database;
@@ -445,6 +446,34 @@ fn an_external_identity_enrolled_without_ceremony_logs_in() {
 }
 
 #[test]
+fn an_external_identity_holds_at_most_one_external_identity() {
+    run(async {
+        database().await;
+        let fake = FakeOpenIdProvider::start().await;
+        let fixture = module(&fake, Admission::InviteOnly).await;
+        let _ = log_in(&fixture, &fake, &session(), alice()).await;
+        let mut tx = Database::global().start_transaction().await.unwrap();
+        let identity = fixture.module.create_identity(&mut tx).await.unwrap();
+        fixture
+            .module
+            .enroll_external_identity_without_ceremony(&mut tx, identity, &fixture.slug, "first")
+            .await
+            .unwrap();
+
+        let second = fixture
+            .module
+            .enroll_external_identity_without_ceremony(&mut tx, identity, &fixture.slug, "second")
+            .await;
+        tx.rollback().await.unwrap();
+
+        assert!(
+            matches!(second, Err(EnrollExternalIdentityError::ExternalIdentity)),
+            "{second:?}"
+        );
+    });
+}
+
+#[test]
 fn external_logins_name_only_the_external_identities() {
     run(async {
         database().await;
@@ -491,6 +520,7 @@ mod local_or_external {
     use super::module;
     use super::signed_up;
     use crate::FinishDeviceEnrollmentError;
+    use crate::FinishEnrollmentError;
     use crate::oidc::Admission;
     use crate::oidc::FakeOpenIdProvider;
     use crate::oidc::error::EnrollExternalIdentityError;
@@ -520,6 +550,41 @@ mod local_or_external {
             assert!(matches!(
                 finished,
                 Err(FinishDeviceEnrollmentError::ExternalIdentity)
+            ));
+        });
+    }
+
+    #[test]
+    fn passkey_link_enrollment_for_an_external_identity_is_refused() {
+        run(async {
+            database().await;
+            let fake = FakeOpenIdProvider::start().await;
+            let fixture = module(&fake, Admission::Open).await;
+            let identity = signed_up(&fixture, &fake, &alice()).await;
+            let mut tx = Database::global().start_transaction().await.unwrap();
+            let link = fixture
+                .module
+                .issue_registration_link(&mut tx, identity)
+                .await
+                .unwrap();
+            tx.commit().await.unwrap();
+            let (_, token) = link.query_pairs().find(|(key, _)| key == "token").unwrap();
+            let opened = fixture.module.open_registration_link(&token).await.unwrap();
+            let session = session();
+
+            fixture
+                .module
+                .begin_link_enrollment(&session, &opened, "alice")
+                .await
+                .unwrap();
+            let finished = fixture
+                .module
+                .finish_link_enrollment(&session, &token, serde_json::json!({}), None)
+                .await;
+
+            assert!(matches!(
+                finished,
+                Err(FinishEnrollmentError::ExternalIdentity)
             ));
         });
     }

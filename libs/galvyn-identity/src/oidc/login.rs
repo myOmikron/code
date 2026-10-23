@@ -516,9 +516,14 @@ async fn admit(
 
 /// Whether `error` is a clash on an External identity's provider and value
 pub(super) fn unique_violation(error: &rorm::Error) -> bool {
+    violates(error, PROVIDER_VALUE_UNIQUE)
+}
+
+/// Whether `error` is a clash on the unique constraint named `constraint`
+pub(super) fn violates(error: &rorm::Error, constraint: &str) -> bool {
     match error {
         rorm::Error::SqlxError(error) => error.as_database_error().is_some_and(|error| {
-            error.is_unique_violation() && error.constraint() == Some(PROVIDER_VALUE_UNIQUE)
+            error.is_unique_violation() && error.constraint() == Some(constraint)
         }),
         _ => false,
     }

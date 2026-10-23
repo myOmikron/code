@@ -21,6 +21,10 @@ use crate::models::IdentityUuid;
 /// Postgres' name for the unique constraint on an External identity's provider and value
 pub(super) const PROVIDER_VALUE_UNIQUE: &str = "external_identity_provider_value_key";
 
+/// Postgres' name for the unique constraint on an External identity's Identity
+#[cfg(feature = "test-support")]
+pub(super) const IDENTITY_UNIQUE: &str = "external_identity_identity_key";
+
 /// Postgres' name for the unique constraint on an OpenID provider's slug
 pub(super) const SLUG_UNIQUE: &str = "openid_provider_slug_key";
 
@@ -74,7 +78,7 @@ impl ExternalIdentity {
     /// Bind this External identity to `identity`
     ///
     /// Fails with a unique violation on [`PROVIDER_VALUE_UNIQUE`] if it is
-    /// bound already.
+    /// bound already, and on [`IDENTITY_UNIQUE`] if `identity` holds one.
     #[instrument(name = "ExternalIdentity::insert", skip(exe))]
     pub(super) async fn insert(
         &self,
@@ -94,7 +98,7 @@ impl ExternalIdentity {
         Ok(())
     }
 
-    /// The login of one of `identity`'s External identities, if it has any
+    /// The login of `identity`'s External identity, if it has one
     #[instrument(name = "ExternalIdentity::login_of", skip(exe))]
     pub(crate) async fn login_of(
         exe: impl Executor<'_>,

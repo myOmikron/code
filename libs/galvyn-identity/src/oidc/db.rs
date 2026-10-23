@@ -83,9 +83,10 @@ pub struct ExternalIdentityModel {
 
     /// The external Identity this External identity is bound to
     ///
-    /// Indexed: the login method of an Identity filters on it, and Postgres
-    /// does not index a foreign key on its own.
-    #[rorm(index, on_delete = "Cascade", on_update = "Cascade")]
+    /// Unique: an external Identity holds exactly one External identity. Its
+    /// unique index also serves the login method of an Identity, which
+    /// filters on it.
+    #[rorm(unique, on_delete = "Cascade", on_update = "Cascade")]
     pub identity: ForeignModel<IdentityModel>,
 
     /// The OpenID provider vouching for the person

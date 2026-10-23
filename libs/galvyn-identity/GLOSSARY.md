@@ -5,7 +5,7 @@ How a person proves who they are to a service in this repo: with a Passkey or th
 ## Language
 
 **Identity**:
-The anchor a person's login methods hang off. It is either local (it holds Passkeys) or external (it holds External identities), never both. It carries no name, role or contact data; those belong to the service's Account.
+The anchor a person's login methods hang off. It is either local (it holds Passkeys) or external (it holds exactly one External identity), never both. It carries no name, role or contact data; those belong to the service's Account.
 _Avoid_: user, principal
 
 **Account**:
