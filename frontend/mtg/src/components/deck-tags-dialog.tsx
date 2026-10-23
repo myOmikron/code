@@ -286,7 +286,7 @@ export function DeckTagsDialog({
                         {scoped && (
                             <SwitchField>
                                 <Label className={"text-xs!"}>{t("label.tag-global")}</Label>
-                                <Switch name={"tag-global"} color={"emerald"} checked={global} onChange={setGlobal} />
+                                <Switch name={"tag-global"} color={"lime"} checked={global} onChange={setGlobal} />
                             </SwitchField>
                         )}
                         {missing.length > 0 && (
@@ -433,7 +433,7 @@ function TagForm({ tag, onSave, onCancel, scope }: TagFormProps) {
             {scope === "both" && (
                 <SwitchField>
                     <Label className={"text-xs!"}>{t("label.tag-global")}</Label>
-                    <Switch name={"tag-global"} color={"emerald"} checked={global} onChange={setGlobal} />
+                    <Switch name={"tag-global"} color={"lime"} checked={global} onChange={setGlobal} />
                 </SwitchField>
             )}
         </div>

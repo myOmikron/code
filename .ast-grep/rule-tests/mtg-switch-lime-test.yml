@@ -1,0 +1,25 @@
+id: mtg-switch-lime
+valid:
+  - |
+    const a = <Switch color={"lime"} checked={on} onChange={setOn} />;
+  - |
+    const a = (
+        <Switch
+            name={"free-mulligan"}
+            color={"lime"}
+            checked={on}
+            onChange={setOn}
+        />
+    );
+  # SwitchField is a wrapper, not a Switch
+  - |
+    const a = <SwitchField className={"mt-4"}><Label>x</Label></SwitchField>;
+invalid:
+  - |
+    const a = <Switch color={"emerald"} checked={on} onChange={setOn} />;
+  - |
+    const a = <Switch color="blue" checked={on} />;
+  - |
+    const a = <Switch checked={on} onChange={setOn} />;
+  - |
+    const a = <Switch color={"emerald"}>{children}</Switch>;

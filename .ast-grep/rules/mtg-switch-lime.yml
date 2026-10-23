@@ -1,0 +1,19 @@
+# Every Switch in the mtg frontend is lime (CODING_STANDARDS.md, Switches).
+id: mtg-switch-lime
+language: tsx
+severity: error
+message: A Switch in mtg uses `color={"lime"}`
+note: Set `color={"lime"}` on this Switch.
+files:
+  - frontend/mtg/src/**/*.tsx
+rule:
+  any:
+    - kind: jsx_self_closing_element
+    - kind: jsx_opening_element
+  has:
+    field: name
+    regex: ^Switch$
+  not:
+    has:
+      kind: jsx_attribute
+      regex: ^color=\{"lime"\}$

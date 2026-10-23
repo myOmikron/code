@@ -249,7 +249,7 @@ function RouteComponent() {
                             <SwitchField>
                                 <Label>{t("label.remember-me")}</Label>
                                 <Switch
-                                    color={"blue"}
+                                    color={"lime"}
                                     checked={fieldApi.state.value}
                                     onChange={(checked) => fieldApi.handleChange(checked)}
                                 />

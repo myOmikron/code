@@ -1,0 +1,46 @@
+id: mtg-switch-lime
+snapshots:
+  ? |
+    const a = <Switch checked={on} onChange={setOn} />;
+  : labels:
+    - source: <Switch checked={on} onChange={setOn} />
+      style: primary
+      start: 10
+      end: 50
+    - source: Switch
+      style: secondary
+      start: 11
+      end: 17
+  ? |
+    const a = <Switch color="blue" checked={on} />;
+  : labels:
+    - source: <Switch color="blue" checked={on} />
+      style: primary
+      start: 10
+      end: 46
+    - source: Switch
+      style: secondary
+      start: 11
+      end: 17
+  ? |
+    const a = <Switch color={"emerald"} checked={on} onChange={setOn} />;
+  : labels:
+    - source: <Switch color={"emerald"} checked={on} onChange={setOn} />
+      style: primary
+      start: 10
+      end: 68
+    - source: Switch
+      style: secondary
+      start: 11
+      end: 17
+  ? |
+    const a = <Switch color={"emerald"}>{children}</Switch>;
+  : labels:
+    - source: <Switch color={"emerald"}>
+      style: primary
+      start: 10
+      end: 36
+    - source: Switch
+      style: secondary
+      start: 11
+      end: 17

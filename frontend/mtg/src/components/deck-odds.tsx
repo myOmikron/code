@@ -98,12 +98,7 @@ export function DeckOddsPanel({ deckId, odds, tags }: DeckOddsPanelProps) {
 
                 <SwitchField className={"mt-4"}>
                     <Label className={"text-xs!"}>{t("label.free-mulligan")}</Label>
-                    <Switch
-                        name={"free-mulligan"}
-                        color={"emerald"}
-                        checked={freeMulligan}
-                        onChange={setFreeMulligan}
-                    />
+                    <Switch name={"free-mulligan"} color={"lime"} checked={freeMulligan} onChange={setFreeMulligan} />
                 </SwitchField>
 
                 {chosen !== "lands" ? (
