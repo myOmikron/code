@@ -480,13 +480,18 @@ pub struct ShopDay {
     pub pickup_date: Date,
     /// When orders for the day close
     pub deadline: OffsetDateTime,
+    /// The Bakery address, fresh for this test so its Bakery mails are its own
+    pub bakery: String,
+    /// The copy address, fresh for this test
+    pub copy: String,
     _exclusive: MutexGuard<'static, ()>,
 }
 
 /// Takes the open pickup day for the calling test, freshly without orders
 ///
-/// Waits for the test holding it before. The Review Window is reset to 0,
-/// stored pickup days and all orders are dropped first, so the rule produces the same untouched day again and a
+/// Waits for the test holding it before. The Review Window is reset to 0 and
+/// the Bakery and copy address to fresh ones, stored pickup days and all
+/// orders are dropped first, so the rule produces the same untouched day again and a
 /// previous test's frozen day does not use up the upcoming ones.
 /// Every test that places orders or calls [`tick`] takes it.
 pub async fn shop_day() -> ShopDay {
@@ -500,15 +505,19 @@ pub async fn shop_day() -> ShopDay {
         .await
         .expect("start a transaction");
     let settings = ShopSettings::get(&mut tx).await.expect("read the settings");
+    let bakery = format!("baeckerei-{}@example.com", Uuid::new_v4().simple());
+    let copy = format!("kopie-{}@example.com", Uuid::new_v4().simple());
     ShopSettings::set(
         &mut tx,
         ShopSettings {
             review_window_minutes: 0,
+            bakery_email: Some(MaxStr::new(bakery.clone()).expect("short address")),
+            copy_email: Some(MaxStr::new(copy.clone()).expect("short address")),
             ..settings
         },
     )
     .await
-    .expect("reset the review window");
+    .expect("reset the review window and the addresses");
     tx.commit().await.expect("commit");
 
     sqlx::query(r#"TRUNCATE "orderitem", "order", "pickupday""#)
@@ -529,6 +538,8 @@ pub async fn shop_day() -> ShopDay {
     ShopDay {
         pickup_date,
         deadline,
+        bakery,
+        copy,
         _exclusive: exclusive,
     }
 }

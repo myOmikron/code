@@ -41,6 +41,12 @@ pub struct ShopSettingsModel {
     /// Url of the shop's privacy policy, shown in the public footer
     pub privacy_url: Option<MaxStr<512>>,
 
+    /// Where the Bakery order goes at the Dispatch; no Dispatch while unset
+    pub bakery_email: Option<MaxStr<255>>,
+
+    /// The Nachbarschaftshilfe's address, in CC of the Bakery order
+    pub copy_email: Option<MaxStr<255>>,
+
     /// The point in time the settings were last changed
     #[rorm(auto_create_time, auto_update_time)]
     pub updated_at: OffsetDateTime,
@@ -64,4 +70,8 @@ pub struct ShopSettingsInsertPatch {
     pub imprint_url: Option<MaxStr<512>>,
     /// Url of the shop's privacy policy
     pub privacy_url: Option<MaxStr<512>>,
+    /// Where the Bakery order goes
+    pub bakery_email: Option<MaxStr<255>>,
+    /// In CC of the Bakery order
+    pub copy_email: Option<MaxStr<255>>,
 }

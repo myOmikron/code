@@ -12,6 +12,7 @@ Name | Type
 `dispatch_due` | string
 `dispatched_at` | string
 `locked` | boolean
+`not_dispatched_reason` | [NotDispatchedReason](NotDispatchedReason.md)
 `order_count` | number
 `pickup_date` | string
 `positions` | [Array&lt;ProcurementPosition&gt;](ProcurementPosition.md)

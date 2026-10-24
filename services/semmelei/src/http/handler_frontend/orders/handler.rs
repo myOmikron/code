@@ -23,6 +23,7 @@ use crate::http::handler_frontend::orders::schema::FullOrder;
 use crate::http::handler_frontend::orders::schema::FullOrderPosition;
 use crate::http::handler_frontend::orders::schema::ListOrdersQuery;
 use crate::http::handler_frontend::orders::schema::ListOrdersResponse;
+use crate::http::handler_frontend::orders::schema::NotDispatchedReason;
 use crate::http::handler_frontend::orders::schema::ProcurementPosition;
 use crate::http::handler_frontend::orders::schema::ProcurementSummary;
 use crate::http::handler_frontend::orders::schema::UpdateOrderItemPackedRequest;
@@ -216,11 +217,22 @@ pub async fn get_procurement_summary(
         .map(|p| p.price_cents * p.total_quantity)
         .sum();
 
+    let not_dispatched_reason = if day.dispatched_at.is_none()
+        && !day.closed
+        && day.is_locked(now)
+        && settings.bakery_email.is_none()
+    {
+        NotDispatchedReason::NoBakeryAddress
+    } else {
+        NotDispatchedReason::None
+    };
+
     Ok(ApiJson(ProcurementSummary {
         pickup_date: SchemaDate(day.pickup_date),
         deadline: SchemaDateTime(day.deadline_at),
         dispatch_due: SchemaDateTime(schedule::dispatch_due(&settings, day.deadline_at)),
         dispatched_at: day.dispatched_at.map(SchemaDateTime),
+        not_dispatched_reason,
         locked: day.is_locked(now),
         closed: day.closed,
         order_count: orders.len() as i64,

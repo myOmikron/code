@@ -39,7 +39,8 @@
         "pickup-day-unknown": "There is no pickup day on this date.",
         "closing-clear": "Every order was collected and paid for.",
         "done-count": "{{done}} of {{total}} orders done",
-        "state-review": "Review window"
+        "state-review": "Review window",
+        "state-not-dispatched": "Not sent"
     },
     "button": {
         "mark-ready": "Ready for pickup",
@@ -63,7 +64,8 @@
         "procurement-review": "Review window until {{date}}. Admins can still cancel orders, then the list goes to the bakery.",
         "procurement-dispatched_one": "Sent to the bakery at {{date}}. This list is binding ({{count}} order).",
         "procurement-dispatched_other": "Sent to the bakery at {{date}}. This list is binding ({{count}} orders).",
-        "confirm-cancel-dispatched": "Order {{code}} by {{name}} will be cancelled. The order was already sent to the bakery and stays as it is."
+        "confirm-cancel-dispatched": "Order {{code}} by {{name}} will be cancelled. The order was already sent to the bakery and stays as it is.",
+        "procurement-no-bakery-address": "Not sent: no bakery address. As soon as an admin sets one, the order goes out; until then, please order from the bakery by hand."
     },
     "error": {
         "passkey-failed": "That didn't work. Please try again.",

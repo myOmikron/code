@@ -212,6 +212,25 @@ export interface ApiErrorResponse {
     trace_id: string;
 }
 /**
+ * Where the Bakery order goes at the Dispatch
+ * @export
+ * @interface BakeryAddresses
+ */
+export interface BakeryAddresses {
+    /**
+     * The Bakery's mail address; no pickup day is Dispatched while unset
+     * @type {string}
+     * @memberof BakeryAddresses
+     */
+    bakery_email?: string | null;
+    /**
+     * The Nachbarschaftshilfe's mail address, in CC of the Bakery order
+     * @type {string}
+     * @memberof BakeryAddresses
+     */
+    copy_email?: string | null;
+}
+/**
  * Request to create or update a category
  * @export
  * @interface CategoryRequest
@@ -752,6 +771,25 @@ export interface NewsPostRequest {
 }
 
 /**
+ * What keeps a frozen pickup day from being Dispatched
+ * 
+ * Reported from the freeze on, not only once the Dispatch is due, so Verkauf learns during the Review Window that the order will not go out.
+ * @export
+ */
+export const NotDispatchedReason = {
+    /**
+    * Nothing: the day is open, waits for its Dispatch time, was Dispatched or called off
+    */
+    None: 'None',
+    /**
+    * No Bakery address is set, so the Dispatch waits for one
+    */
+    NoBakeryAddress: 'NoBakeryAddress'
+} as const;
+export type NotDispatchedReason = typeof NotDispatchedReason[keyof typeof NotDispatchedReason];
+
+
+/**
  * The language every mail about an order is written in
  * 
  * Taken from the UI the customer ordered in and stored with the order: the confirmation mail goes out at the deadline, without a request to ask.
@@ -966,6 +1004,12 @@ export interface ProcurementSummary {
      */
     locked: boolean;
     /**
+     * Why a frozen day is not Dispatched (yet)
+     * @type {NotDispatchedReason}
+     * @memberof ProcurementSummary
+     */
+    not_dispatched_reason: NotDispatchedReason;
+    /**
      * How many orders the summary covers (cancelled ones excluded)
      * @type {number}
      * @memberof ProcurementSummary
@@ -990,6 +1034,8 @@ export interface ProcurementSummary {
      */
     total_cents: number;
 }
+
+
 /**
  * A category as shown in the public shop
  * @export

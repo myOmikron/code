@@ -39,7 +39,8 @@
         "pickup-day-unknown": "Für diesen Tag gibt es keinen Abholtermin.",
         "closing-clear": "Alle Bestellungen sind abgeholt und kassiert.",
         "done-count": "{{done}} von {{total}} Bestellungen erledigt",
-        "state-review": "Prüfzeit"
+        "state-review": "Prüfzeit",
+        "state-not-dispatched": "Nicht versendet"
     },
     "button": {
         "mark-ready": "Abholbereit",
@@ -63,7 +64,8 @@
         "procurement-review": "Prüfzeit bis {{date}}. Admins können noch Bestellungen stornieren, danach geht die Liste an die Bäckerei.",
         "procurement-dispatched_one": "An die Bäckerei versendet um {{date}}. Diese Liste ist verbindlich ({{count}} Bestellung).",
         "procurement-dispatched_other": "An die Bäckerei versendet um {{date}}. Diese Liste ist verbindlich ({{count}} Bestellungen).",
-        "confirm-cancel-dispatched": "Die Bestellung {{code}} von {{name}} wird storniert. Die Bestellung an die Bäckerei ist schon versendet und ändert sich dadurch nicht."
+        "confirm-cancel-dispatched": "Die Bestellung {{code}} von {{name}} wird storniert. Die Bestellung an die Bäckerei ist schon versendet und ändert sich dadurch nicht.",
+        "procurement-no-bakery-address": "Nicht versendet: keine Bäckerei-Adresse. Sobald ein Admin sie einträgt, geht die Bestellung raus; bis dahin bitte von Hand bei der Bäckerei bestellen."
     },
     "error": {
         "passkey-failed": "Das hat nicht geklappt. Bitte versuche es erneut.",

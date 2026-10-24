@@ -1,4 +1,4 @@
-//! The shop's global settings: which weekday is pickup day, and when orders close
+//! The shop's global settings: which weekday is pickup day, when orders close, where the Bakery order goes
 
 use galvyn::core::re_exports::schemars;
 use galvyn::core::re_exports::schemars::JsonSchema;
@@ -103,6 +103,14 @@ pub struct ShopSettings {
 
     /// Url of the shop's privacy policy, shown in the public footer while set
     pub privacy_url: Option<MaxStr<512>>,
+
+    /// Where the Bakery order goes at the Dispatch
+    ///
+    /// While unset, no pickup day is Dispatched: an order is never sent into the void.
+    pub bakery_email: Option<MaxStr<255>>,
+
+    /// The Nachbarschaftshilfe's address, in CC of the Bakery order while set
+    pub copy_email: Option<MaxStr<255>>,
 }
 
 impl Default for ShopSettings {
@@ -115,6 +123,8 @@ impl Default for ShopSettings {
             review_window_minutes: 0,
             imprint_url: None,
             privacy_url: None,
+            bakery_email: None,
+            copy_email: None,
         }
     }
 }
@@ -152,6 +162,11 @@ impl ShopSettings {
             )
             .set(ShopSettingsModel.imprint_url, settings.imprint_url.clone())
             .set(ShopSettingsModel.privacy_url, settings.privacy_url.clone())
+            .set(
+                ShopSettingsModel.bakery_email,
+                settings.bakery_email.clone(),
+            )
+            .set(ShopSettingsModel.copy_email, settings.copy_email.clone())
             .condition(ShopSettingsModel.uuid.equals(SETTINGS_UUID))
             .await?;
 
@@ -165,6 +180,8 @@ impl ShopSettings {
                     review_window_minutes: settings.review_window_minutes,
                     imprint_url: settings.imprint_url,
                     privacy_url: settings.privacy_url,
+                    bakery_email: settings.bakery_email,
+                    copy_email: settings.copy_email,
                 })
                 .await?;
         }
@@ -182,6 +199,8 @@ impl From<ShopSettingsModel> for ShopSettings {
             review_window_minutes: value.review_window_minutes,
             imprint_url: value.imprint_url,
             privacy_url: value.privacy_url,
+            bakery_email: value.bakery_email,
+            copy_email: value.copy_email,
         }
     }
 }

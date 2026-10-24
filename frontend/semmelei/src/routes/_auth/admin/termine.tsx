@@ -29,6 +29,7 @@ import {
 } from "components";
 import { Api } from "src/api/api";
 import { AdminPickupDay, ScheduleWeekday } from "src/api/generated";
+import { BakeryAddressesForm } from "src/components/bakery-addresses-form";
 import { PickupDayDialog } from "src/components/pickup-day-dialog";
 import { formatDate, formatDateTime } from "src/utils/dates";
 
@@ -143,6 +144,8 @@ function Termine() {
                     </FieldGroup>
                 </Fieldset>
             </div>
+
+            <BakeryAddressesForm />
 
             <div className={"flex flex-col gap-4"}>
                 <Subheading>{t("heading.upcoming-pickup-days")}</Subheading>

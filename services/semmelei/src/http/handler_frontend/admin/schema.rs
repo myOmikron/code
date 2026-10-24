@@ -140,6 +140,15 @@ pub struct ScheduleSchema {
     pub review_window_minutes: i32,
 }
 
+/// Where the Bakery order goes at the Dispatch
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct BakeryAddresses {
+    /// The Bakery's mail address; no pickup day is Dispatched while unset
+    pub bakery_email: Option<MaxStr<255>>,
+    /// The Nachbarschaftshilfe's mail address, in CC of the Bakery order
+    pub copy_email: Option<MaxStr<255>>,
+}
+
 /// A single upcoming pickup day, rule and override already applied
 #[derive(Serialize, JsonSchema)]
 pub struct AdminPickupDay {

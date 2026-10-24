@@ -82,6 +82,8 @@ function Procurement() {
                         <Badge color={"red"}>{t("label.state-closed")}</Badge>
                     ) : summary.dispatched_at ? (
                         <Badge color={"green"}>{t("label.state-final")}</Badge>
+                    ) : summary.not_dispatched_reason === "NoBakeryAddress" ? (
+                        <Badge color={"red"}>{t("label.state-not-dispatched")}</Badge>
                     ) : summary.locked ? (
                         <Badge color={"amber"}>{t("label.state-review")}</Badge>
                     ) : (
@@ -100,9 +102,11 @@ function Procurement() {
                               date: formatDateTime(summary.dispatched_at),
                               count: summary.order_count,
                           })
-                        : summary.locked
-                          ? t("description.procurement-review", { date: formatDateTime(summary.dispatch_due) })
-                          : t("description.procurement-open", { date: formatDateTime(summary.deadline) })}
+                        : summary.not_dispatched_reason === "NoBakeryAddress"
+                          ? t("description.procurement-no-bakery-address")
+                          : summary.locked
+                            ? t("description.procurement-review", { date: formatDateTime(summary.dispatch_due) })
+                            : t("description.procurement-open", { date: formatDateTime(summary.deadline) })}
                 </Text>
             )}
 
