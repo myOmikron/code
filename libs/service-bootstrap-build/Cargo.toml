@@ -8,7 +8,7 @@ publish = false
 # Default crates to parse, process and output rust code
 proc-macro2 = "1.0" # Token trees
 quote = "1.0" # Templating engine for token tress
-syn = "2.0" # Full AST
+syn = "3.0" # Full AST
 prettyplease = { version = "0.2" } # AST formatter
 
 tonic-build = { version = "0.14.0" }
