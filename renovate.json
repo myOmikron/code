@@ -199,6 +199,12 @@
       "matchPackageNames": ["neo4j"],
       "versioning": "regex:^(?<major>\\d{4})\\.(?<minor>\\d{2})(\\.(?<patch>\\d+))?-(?<compatibility>community)$",
       "automerge": false
+    },
+    {
+      "description": "The mtg scanner assets are built and pinned by hand (just mtg-assets), the package is private to Renovate",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["ghcr.io/myomikron/mtg/assets"],
+      "enabled": false
     }
   ]
 }
