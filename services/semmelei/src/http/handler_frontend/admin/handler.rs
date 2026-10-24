@@ -661,10 +661,7 @@ pub async fn update_legal_settings(
 #[get("/bakery")]
 pub async fn get_bakery_addresses() -> ApiResult<ApiJson<BakeryAddresses>> {
     let settings = ShopSettings::get(Database::global()).await?;
-    Ok(ApiJson(BakeryAddresses {
-        bakery_email: settings.bakery_email,
-        copy_email: settings.copy_email,
-    }))
+    Ok(ApiJson(BakeryAddresses::from(settings)))
 }
 
 /// Change the Bakery and copy address
@@ -685,10 +682,7 @@ pub async fn update_bakery_addresses(
     ShopSettings::set(&mut tx, settings.clone()).await?;
     tx.commit().await?;
 
-    Ok(ApiJson(BakeryAddresses {
-        bakery_email: settings.bakery_email,
-        copy_email: settings.copy_email,
-    }))
+    Ok(ApiJson(BakeryAddresses::from(settings)))
 }
 
 /// Trim an optional address, take a blank one as unset, refuse anything but a bare address

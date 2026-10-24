@@ -28,8 +28,6 @@ use crate::http::handler_frontend::orders::schema::ProcurementPosition;
 use crate::http::handler_frontend::orders::schema::ProcurementSummary;
 use crate::http::handler_frontend::orders::schema::UpdateOrderItemPackedRequest;
 use crate::http::handler_frontend::orders::schema::UpdateOrderStatusRequest;
-use crate::models::Item;
-use crate::models::ItemUuid;
 use crate::models::Order;
 use crate::models::OrderItem;
 use crate::models::OrderItemUuid;
@@ -38,6 +36,7 @@ use crate::models::OrderUuid;
 use crate::models::PickupDay;
 use crate::models::PickupDayUuid;
 use crate::models::ShopSettings;
+use crate::utils::bakery;
 use crate::utils::mail;
 use crate::utils::mail::MailPosition;
 use crate::utils::mail::OrderMail;
@@ -46,7 +45,7 @@ use crate::utils::schedule;
 /// Convert an [`Order`] and its positions into the staff schema
 async fn full_order(
     exe: impl Executor<'_>,
-    order: Order,
+    order: &Order,
     pickup_day: &PickupDay,
     now: OffsetDateTime,
 ) -> ApiResult<FullOrder> {
@@ -70,11 +69,11 @@ async fn full_order(
         pickup_date: SchemaDate(pickup_day.pickup_date),
         locked: pickup_day.is_locked(now),
         dispatched: pickup_day.dispatched_at.is_some(),
-        first_name: order.first_name.map(|n| n.to_string()),
+        first_name: order.first_name.as_ref().map(|n| n.to_string()),
         last_name: order.last_name.to_string(),
-        phone: order.phone.map(|p| p.to_string()),
-        email: order.email.map(|e| e.to_string()),
-        note: order.note.map(|n| n.to_string()),
+        phone: order.phone.as_ref().map(|p| p.to_string()),
+        email: order.email.as_ref().map(|e| e.to_string()),
+        note: order.note.as_ref().map(|n| n.to_string()),
         early_pickup: order.early_pickup,
         positions,
         total_cents,
@@ -120,7 +119,7 @@ pub async fn list_orders(
         {
             continue;
         }
-        result.push(full_order(&mut tx, order, day, now).await?);
+        result.push(full_order(&mut tx, &order, day, now).await?);
     }
     tx.commit().await?;
 
@@ -139,7 +138,7 @@ pub async fn get_order_detail(Path(uuid): Path<OrderUuid>) -> ApiResult<ApiJson<
         .await?
         .ok_or(ApiError::bad_request("Unknown order"))?;
     let day = pickup_day_of(&mut tx, &order).await?;
-    let full = full_order(&mut tx, order, &day, now).await?;
+    let full = full_order(&mut tx, &order, &day, now).await?;
     tx.commit().await?;
     Ok(ApiJson(full))
 }
@@ -168,11 +167,7 @@ pub async fn get_procurement_summary(
         .filter(|order| order.status != OrderStatus::Cancelled)
         .collect();
 
-    let numbers: HashMap<ItemUuid, String> = Item::get_all(&mut tx)
-        .await?
-        .into_iter()
-        .filter_map(|item| Some((item.uuid, item.bakery_article_number?.to_string())))
-        .collect();
+    let numbers = bakery::article_numbers(&mut tx).await?;
 
     // Sum per item name — the snapshot, not the catalog entry: a renamed or
     // deleted item must not change what an existing order asked for.
@@ -217,11 +212,7 @@ pub async fn get_procurement_summary(
         .map(|p| p.price_cents * p.total_quantity)
         .sum();
 
-    let not_dispatched_reason = if day.dispatched_at.is_none()
-        && !day.closed
-        && day.is_locked(now)
-        && settings.bakery_email.is_none()
-    {
+    let not_dispatched_reason = if day.awaits_bakery_address(&settings, now) {
         NotDispatchedReason::NoBakeryAddress
     } else {
         NotDispatchedReason::None
@@ -269,28 +260,16 @@ pub async fn update_order_status(
         .iter()
         .map(MailPosition::from)
         .collect();
-    let customer_name = order.display_name();
-    let pickup_code = order.pickup_code.to_string();
-    let email = order.email.as_ref().map(ToString::to_string);
-    let language = order.language;
-    let full = full_order(&mut tx, order, &day, schedule::now()).await?;
+    let full = full_order(&mut tx, &order, &day, schedule::now()).await?;
     tx.commit().await?;
 
     if request.status == OrderStatus::Cancelled {
-        info!(order.pickup_code = %pickup_code, "Order cancelled by staff");
-        let mail = OrderMail {
-            pickup_code: &pickup_code,
-            customer_name: &customer_name,
-            email: email.as_deref(),
-            language,
-            pickup_date: day.pickup_date,
-            deadline: day.deadline_at,
-            positions: &positions,
-        };
+        info!(order.pickup_code = %order.pickup_code, "Order cancelled by staff");
+        let mail = OrderMail::for_order(&order, &day, &positions);
         if let Err(error) = mail::send_order_cancelled_by_staff(&mail).await {
             error!(
                 error = %error,
-                order.pickup_code = %pickup_code,
+                order.pickup_code = %order.pickup_code,
                 "Failed to queue the cancellation mail"
             );
         }

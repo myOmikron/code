@@ -22,8 +22,10 @@ use time::Weekday;
 use tracing::instrument;
 use url::Url;
 
+use crate::models::Order;
 use crate::models::OrderItem;
 use crate::models::OrderLanguage;
+use crate::models::PickupDay;
 use crate::proto;
 use crate::utils::bakery;
 
@@ -136,13 +138,14 @@ impl From<&OrderItem> for MailPosition {
 
 /// Everything a mail about an order needs
 ///
-/// Spelled out rather than taking an [`Order`](crate::models::Order): the mail
-/// after placing an order is sent before it is read back from the database.
+/// Spelled out rather than taking an [`Order`]: the mail after placing an
+/// order is sent before it is read back from the database. A stored order
+/// goes through [`OrderMail::for_order`].
 pub struct OrderMail<'a> {
     /// The customer-facing order code
     pub pickup_code: &'a str,
     /// The customer's name
-    pub customer_name: &'a str,
+    pub customer_name: String,
     /// The customer's email address — no address, no mail
     pub email: Option<&'a str>,
     /// The language the mail is written in
@@ -155,7 +158,20 @@ pub struct OrderMail<'a> {
     pub positions: &'a [MailPosition],
 }
 
-impl OrderMail<'_> {
+impl<'a> OrderMail<'a> {
+    /// The mail about a stored order of `day`
+    pub fn for_order(order: &'a Order, day: &PickupDay, positions: &'a [MailPosition]) -> Self {
+        Self {
+            pickup_code: &order.pickup_code,
+            customer_name: order.display_name(),
+            email: order.email.as_deref(),
+            language: order.language,
+            pickup_date: day.pickup_date,
+            deadline: day.deadline_at,
+            positions,
+        }
+    }
+
     /// Total over all positions in euro cents
     fn total_cents(&self) -> i64 {
         self.positions
@@ -313,7 +329,7 @@ pub async fn send_order_received(mail: &OrderMail<'_>) -> Result<(), MailError> 
     };
     let code = mail.pickup_code;
     let link = order_link(code).map(String::from).unwrap_or_default();
-    let name = one_line(mail.customer_name);
+    let name = one_line(&mail.customer_name);
     let positions = mail.position_lines();
     let total = format_price(mail.total_cents(), mail.language);
     let pickup = format_date(mail.pickup_date, mail.language);
@@ -380,7 +396,7 @@ pub async fn send_order_confirmed(mail: &OrderMail<'_>) -> Result<(), MailError>
     };
     let code = mail.pickup_code;
     let link = order_link(code).map(String::from).unwrap_or_default();
-    let name = one_line(mail.customer_name);
+    let name = one_line(&mail.customer_name);
     let positions = mail.position_lines();
     let total = format_price(mail.total_cents(), mail.language);
     let pickup = format_date(mail.pickup_date, mail.language);
@@ -442,7 +458,7 @@ pub async fn send_order_cancelled_by_staff(mail: &OrderMail<'_>) -> Result<(), M
         return Ok(());
     };
     let code = mail.pickup_code;
-    let name = one_line(mail.customer_name);
+    let name = one_line(&mail.customer_name);
     let pickup = format_date(mail.pickup_date, mail.language);
 
     let (subject, text_body) = match mail.language {
@@ -481,7 +497,7 @@ pub async fn send_order_cancelled(mail: &OrderMail<'_>) -> Result<(), MailError>
         return Ok(());
     };
     let code = mail.pickup_code;
-    let name = one_line(mail.customer_name);
+    let name = one_line(&mail.customer_name);
     let pickup = format_date(mail.pickup_date, mail.language);
 
     let (subject, text_body) = match mail.language {

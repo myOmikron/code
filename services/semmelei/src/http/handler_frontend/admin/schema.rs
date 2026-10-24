@@ -13,6 +13,7 @@ use crate::models::CategoryUuid;
 use crate::models::ItemUuid;
 use crate::models::Role;
 use crate::models::ScheduleWeekday;
+use crate::models::ShopSettings;
 use crate::utils::wall_clock::WallClock;
 
 /// Request to create or update a category
@@ -147,6 +148,15 @@ pub struct BakeryAddresses {
     pub bakery_email: Option<MaxStr<255>>,
     /// The Nachbarschaftshilfe's mail address, in CC of the Bakery order
     pub copy_email: Option<MaxStr<255>>,
+}
+
+impl From<ShopSettings> for BakeryAddresses {
+    fn from(settings: ShopSettings) -> Self {
+        Self {
+            bakery_email: settings.bakery_email,
+            copy_email: settings.copy_email,
+        }
+    }
 }
 
 /// A single upcoming pickup day, rule and override already applied
