@@ -85,8 +85,8 @@ catalogs:
       specifier: ^5.1.1
       version: 5.1.1
     tesseract.js-core:
-      specifier: ^5.1.1
-      version: 5.1.1
+      specifier: ^6.0.0
+      version: 6.1.2
   devDependencies:
     '@eslint/js':
       specifier: 10.0.1
@@ -546,7 +546,7 @@ importers:
         version: 5.1.1
       tesseract.js-core:
         specifier: catalog:dependencies
-        version: 5.1.1
+        version: 6.1.2
     devDependencies:
       '@eslint/js':
         specifier: catalog:devDependencies
@@ -5147,6 +5147,9 @@ packages:
 
   tesseract.js-core@5.1.1:
     resolution: {integrity: sha512-KX3bYSU5iGcO1XJa+QGPbi+Zjo2qq6eBhNjSGR5E5q0JtzkoipJKOUQD7ph8kFyteCEfEQ0maWLu8MCXtvX5uQ==}
+
+  tesseract.js-core@6.1.2:
+    resolution: {integrity: sha512-pv4GjmramjdObhDyR1q85Td8X60Puu/lGQn7Kw2id05LLgHhAcWgnz6xSdMCSxBMWjQDmMyDXPTC2aqADdpiow==}
 
   tesseract.js@5.1.1:
     resolution: {integrity: sha512-lzVl/Ar3P3zhpUT31NjqeCo1f+D5+YfpZ5J62eo2S14QNVOmHBTtbchHm/YAbOOOzCegFnKf4B3Qih9LuldcYQ==}
@@ -10264,6 +10267,8 @@ snapshots:
       source-map-support: 0.5.21
 
   tesseract.js-core@5.1.1: {}
+
+  tesseract.js-core@6.1.2: {}
 
   tesseract.js@5.1.1:
     dependencies:
