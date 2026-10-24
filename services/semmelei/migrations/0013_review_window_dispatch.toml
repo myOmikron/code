@@ -1,0 +1,39 @@
+[Migration]
+Hash = "4080628481302063555"
+Initial = false
+Dependency = 12
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "pickupday"
+
+[Migration.Operations.Field]
+Name = "dispatched_at"
+Type = "datetime"
+Annotations = []
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/semmelei/src/models/pickup_day/db.rs"
+Line = 53
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "shopsettings"
+
+[Migration.Operations.Field]
+Name = "review_window_minutes"
+Type = "int32"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "default_value"
+Value = 0
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/semmelei/src/models/settings/db.rs"
+Line = 33
+Column = 9

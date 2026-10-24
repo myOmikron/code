@@ -41,6 +41,9 @@ pub struct PickupDay {
 
     /// When the confirmation mails for this day went out
     pub confirmations_sent_at: Option<OffsetDateTime>,
+
+    /// When the day was Dispatched
+    pub dispatched_at: Option<OffsetDateTime>,
 }
 
 /// Wrapper for the primary key of the [`PickupDay`] model.
@@ -153,14 +156,44 @@ impl PickupDay {
         now: OffsetDateTime,
     ) -> Result<Vec<PickupDay>, rorm::Error> {
         let days = rorm::query(exe, PickupDayModel)
-            .condition(PickupDayModel.deadline_at.less_equals(now))
+            .condition(rorm::and!(
+                PickupDayModel.deadline_at.less_equals(now),
+                PickupDayModel.locked_at.equals(None::<OffsetDateTime>)
+            ))
             .all()
             .await?;
-        Ok(days
+        Ok(days.into_iter().map(PickupDay::from).collect())
+    }
+
+    /// Fetch every day past its Deadline that still waits for its Dispatch
+    ///
+    /// Waiting means: not called off and not Dispatched yet. Days whose
+    /// confirmations went out before the Dispatch existed count as Dispatched,
+    /// so the first tick after the upgrade does not send them again. Whether
+    /// the Dispatch is due already is [`schedule::dispatch_due`]'s call.
+    ///
+    /// [`schedule::dispatch_due`]: crate::utils::schedule::dispatch_due
+    #[instrument(name = "PickupDay::get_awaiting_dispatch", skip(exe))]
+    pub async fn get_awaiting_dispatch(
+        exe: impl Executor<'_>,
+        now: OffsetDateTime,
+    ) -> Result<Vec<PickupDay>, rorm::Error> {
+        let mut days: Vec<PickupDay> = rorm::query(exe, PickupDayModel)
+            .condition(rorm::and!(
+                PickupDayModel.deadline_at.less_equals(now),
+                PickupDayModel.closed.equals(false),
+                PickupDayModel.dispatched_at.equals(None::<OffsetDateTime>),
+                PickupDayModel
+                    .confirmations_sent_at
+                    .equals(None::<OffsetDateTime>)
+            ))
+            .all()
+            .await?
             .into_iter()
             .map(PickupDay::from)
-            .filter(|day| day.locked_at.is_none() || day.confirmations_sent_at.is_none())
-            .collect())
+            .collect();
+        days.sort_by_key(|day| day.deadline_at);
+        Ok(days)
     }
 
     /// Fetch the pickup day for `rule_date`, creating it from the rule if needed
@@ -196,6 +229,7 @@ impl PickupDay {
             closed: default.closed,
             locked_at: None,
             confirmations_sent_at: None,
+            dispatched_at: None,
         })
     }
 
@@ -237,6 +271,20 @@ impl PickupDay {
         Ok(affected > 0)
     }
 
+    /// Record that the day was Dispatched
+    #[instrument(name = "PickupDay::set_dispatched", skip(exe))]
+    pub async fn set_dispatched(
+        exe: impl Executor<'_>,
+        uuid: PickupDayUuid,
+        now: OffsetDateTime,
+    ) -> Result<bool, rorm::Error> {
+        let affected = rorm::update(exe, PickupDayModel)
+            .set(PickupDayModel.dispatched_at, Some(now))
+            .condition(PickupDayModel.uuid.equals(uuid.0))
+            .await?;
+        Ok(affected > 0)
+    }
+
     /// Record that the confirmation mails for this day were handed to the gateway
     #[instrument(name = "PickupDay::set_confirmations_sent", skip(exe))]
     pub async fn set_confirmations_sent(
@@ -262,6 +310,7 @@ impl From<PickupDayModel> for PickupDay {
             closed: value.closed,
             locked_at: value.locked_at,
             confirmations_sent_at: value.confirmations_sent_at,
+            dispatched_at: value.dispatched_at,
         }
     }
 }

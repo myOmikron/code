@@ -379,6 +379,14 @@ export interface FullOrder {
      */
     created_at: string;
     /**
+     * Whether the order's pickup day was Dispatched: the Bakery has it
+     * 
+     * Staff may still cancel the order; what went to the Bakery stays as it is.
+     * @type {boolean}
+     * @memberof FullOrder
+     */
+    dispatched: boolean;
+    /**
      * Whether the customer wants to pick the order up early in the day
      * @type {boolean}
      * @memberof FullOrder
@@ -403,7 +411,7 @@ export interface FullOrder {
      */
     last_name: string;
     /**
-     * Whether the order is frozen: the bakery has it, the customer cannot cancel
+     * Whether the order is frozen: the customer can no longer cancel it
      * @type {boolean}
      * @memberof FullOrder
      */
@@ -851,12 +859,6 @@ export interface PickupDayChangeResponse {
      */
     cancelled_orders: number;
     /**
-     * How many confirmation mails were queued by freezing the day
-     * @type {number}
-     * @memberof PickupDayChangeResponse
-     */
-    confirmed_orders: number;
-    /**
      * The day after the change
      * @type {AdminPickupDay}
      * @memberof PickupDayChangeResponse
@@ -946,7 +948,19 @@ export interface ProcurementSummary {
      */
     deadline: string;
     /**
-     * Whether the day is frozen — only then the list is final
+     * The point in time the day is Dispatched: its Deadline plus the Review Window
+     * @type {string}
+     * @memberof ProcurementSummary
+     */
+    dispatch_due: string;
+    /**
+     * When the day was Dispatched; from then on the list is final
+     * @type {string}
+     * @memberof ProcurementSummary
+     */
+    dispatched_at?: string | null;
+    /**
+     * Whether the day is frozen: customers can no longer order or cancel
      * @type {boolean}
      * @memberof ProcurementSummary
      */
@@ -1206,6 +1220,12 @@ export interface ScheduleSchema {
      * @memberof ScheduleSchema
      */
     pickup_weekday: ScheduleWeekday;
+    /**
+     * Minutes from a pickup day's Deadline to its Dispatch, 0 or more
+     * @type {number}
+     * @memberof ScheduleSchema
+     */
+    review_window_minutes: number;
 }
 
 

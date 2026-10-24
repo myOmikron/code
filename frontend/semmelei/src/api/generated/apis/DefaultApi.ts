@@ -1294,7 +1294,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * What has to be procured for one pickup day  The bakery order: every position of every non-cancelled order of that day, summed per item. Final once the day is frozen.
+     * What has to be procured for one pickup day  The bakery order: every position of every non-cancelled order of that day, summed per item. Final once the day is Dispatched.
      * What has to be procured for one pickup day
      */
     async getProcurementSummaryRaw(requestParameters: GetProcurementSummaryRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ProcurementSummary>> {
@@ -1305,7 +1305,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * What has to be procured for one pickup day  The bakery order: every position of every non-cancelled order of that day, summed per item. Final once the day is frozen.
+     * What has to be procured for one pickup day  The bakery order: every position of every non-cancelled order of that day, summed per item. Final once the day is Dispatched.
      * What has to be procured for one pickup day
      */
     async getProcurementSummary(requestParameters: GetProcurementSummaryRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ProcurementSummary> {
@@ -1700,7 +1700,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Freeze a pickup day right now, before its deadline  Runs the same path the deadline job runs, confirmation mails included.
+     * Freeze a pickup day right now, before its deadline  Runs the same path the deadline job runs. The Dispatch stays where it is: the confirmations go out at the Deadline plus the Review Window.
      * Freeze a pickup day right now, before its deadline
      */
     async lockPickupDayRaw(requestParameters: LockPickupDayRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PickupDayChangeResponse>> {
@@ -1711,7 +1711,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Freeze a pickup day right now, before its deadline  Runs the same path the deadline job runs, confirmation mails included.
+     * Freeze a pickup day right now, before its deadline  Runs the same path the deadline job runs. The Dispatch stays where it is: the confirmations go out at the Deadline plus the Review Window.
      * Freeze a pickup day right now, before its deadline
      */
     async lockPickupDay(requestParameters: LockPickupDayRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PickupDayChangeResponse> {
@@ -2372,7 +2372,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Change an order\'s status  Allowed transitions: `Open -> Ready -> PickedUp`; `Open | Ready -> Cancelled`.
+     * Change an order\'s status  Allowed transitions: `Open -> Ready -> PickedUp`; `Open | Ready -> Cancelled`. A cancelled order\'s customer gets a mail, also after the Dispatch.
      * Change an order\'s status
      */
     async updateOrderStatusRaw(requestParameters: UpdateOrderStatusOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FullOrder>> {
@@ -2383,7 +2383,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Change an order\'s status  Allowed transitions: `Open -> Ready -> PickedUp`; `Open | Ready -> Cancelled`.
+     * Change an order\'s status  Allowed transitions: `Open -> Ready -> PickedUp`; `Open | Ready -> Cancelled`. A cancelled order\'s customer gets a mail, also after the Dispatch.
      * Change an order\'s status
      */
     async updateOrderStatus(requestParameters: UpdateOrderStatusOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FullOrder> {

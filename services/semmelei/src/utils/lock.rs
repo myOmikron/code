@@ -1,6 +1,8 @@
-//! Freezing a pickup day, and the job that does it on time
+//! Freezing and Dispatching a pickup day, and the job that does both on time
 //!
-//! Freezing is idempotent on purpose: the deadline job, a restart after a
+//! Freezing happens at the Deadline (or earlier, by an Admin) and only ends
+//! ordering. The Dispatch follows at the end of the Review Window and sends
+//! the binding confirmations. Both are idempotent: the job, a restart after a
 //! downtime and the admin's "freeze now" button all end up here, and a
 //! customer must not get the same confirmation mail twice.
 
@@ -19,6 +21,7 @@ use crate::models::Order;
 use crate::models::OrderItem;
 use crate::models::OrderStatus;
 use crate::models::PickupDay;
+use crate::models::ShopSettings;
 use crate::utils::mail;
 use crate::utils::mail::MailPosition;
 use crate::utils::mail::OrderMail;
@@ -30,18 +33,50 @@ use crate::utils::schedule;
 /// and cheap enough to just run — no wake-up scheduling to get wrong.
 const TICK: Duration = Duration::from_secs(60);
 
-/// Freeze a pickup day and send out the binding confirmations
+/// Freeze a pickup day: customers can no longer order or cancel
 ///
-/// Returns how many confirmation mails were queued. Does nothing if the day
-/// was already frozen *and* its mails already went out.
+/// Sends nothing, the confirmations go out with the Dispatch. Returns whether
+/// the day was frozen just now.
 #[instrument(name = "lock::lock_pickup_day", skip(tx, day), fields(pickup_date = %day.pickup_date))]
 pub async fn lock_pickup_day(
     tx: &mut Transaction,
     day: &PickupDay,
     now: OffsetDateTime,
-) -> Result<i64, galvyn::rorm::Error> {
+) -> Result<bool, galvyn::rorm::Error> {
     let newly_locked = PickupDay::lock(&mut *tx, day.uuid, now).await?;
+    if newly_locked {
+        info!(pickup_date = %day.pickup_date, "Froze pickup day");
+    }
+    Ok(newly_locked)
+}
 
+/// Dispatch a pickup day: mark it Dispatched, then send the binding confirmations
+///
+/// The caller picks days that are due; see [`schedule::dispatch_due`].
+#[instrument(name = "lock::dispatch_pickup_day", skip(tx, day), fields(pickup_date = %day.pickup_date))]
+pub async fn dispatch_pickup_day(
+    tx: &mut Transaction,
+    day: &PickupDay,
+    now: OffsetDateTime,
+) -> Result<(), galvyn::rorm::Error> {
+    PickupDay::set_dispatched(&mut *tx, day.uuid, now).await?;
+    let confirmed = send_confirmations(tx, day, now).await?;
+    info!(
+        pickup_date = %day.pickup_date,
+        mails = confirmed,
+        "Dispatched pickup day"
+    );
+    Ok(())
+}
+
+/// Send the binding confirmations of a pickup day, at most once
+///
+/// Returns how many confirmation mails were queued; none if they already went out.
+async fn send_confirmations(
+    tx: &mut Transaction,
+    day: &PickupDay,
+    now: OffsetDateTime,
+) -> Result<i64, galvyn::rorm::Error> {
     if day.confirmations_sent_at.is_some() {
         return Ok(0);
     }
@@ -80,15 +115,6 @@ pub async fn lock_pickup_day(
                 "Failed to queue the confirmation mail"
             ),
         }
-    }
-
-    if newly_locked || sent > 0 {
-        info!(
-            pickup_date = %day.pickup_date,
-            orders = orders.len(),
-            mails = sent,
-            "Froze pickup day"
-        );
     }
 
     Ok(sent)
@@ -146,9 +172,9 @@ pub async fn cancel_pickup_day(
 
 /// Run the deadline job until the process ends
 ///
-/// Every tick freezes the days whose deadline has passed. Days that came due
-/// while the service was down are caught by the same query, so a restart is
-/// all it takes to recover.
+/// Every tick freezes the days whose deadline has passed and Dispatches the
+/// days whose Review Window is over. Days that came due while the service was
+/// down are caught by the same queries, so a restart is all it takes to recover.
 pub async fn run_deadline_job() {
     loop {
         if let Err(error) = tick(schedule::now()).await {
@@ -160,7 +186,7 @@ pub async fn run_deadline_job() {
     }
 }
 
-/// One pass over the days that are due to be frozen at `now`
+/// One pass over the days that are due to be frozen or Dispatched at `now`
 ///
 /// The job passes the clock; tests pass the point in time they want to see.
 #[instrument(name = "lock::tick", level = "debug")]
@@ -169,6 +195,13 @@ pub async fn tick(now: OffsetDateTime) -> Result<(), Box<dyn std::error::Error +
 
     for day in PickupDay::get_due_for_lock(&mut tx, now).await? {
         lock_pickup_day(&mut tx, &day, now).await?;
+    }
+
+    let settings = ShopSettings::get(&mut tx).await?;
+    for day in PickupDay::get_awaiting_dispatch(&mut tx, now).await? {
+        if schedule::dispatch_due(&settings, day.deadline_at) <= now {
+            dispatch_pickup_day(&mut tx, &day, now).await?;
+        }
     }
 
     tx.commit().await?;

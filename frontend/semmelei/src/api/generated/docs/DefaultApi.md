@@ -1706,7 +1706,7 @@ No authorization required
 
 What has to be procured for one pickup day
 
-What has to be procured for one pickup day  The bakery order: every position of every non-cancelled order of that day, summed per item. Final once the day is frozen.
+What has to be procured for one pickup day  The bakery order: every position of every non-cancelled order of that day, summed per item. Final once the day is Dispatched.
 
 ### Example
 
@@ -2345,7 +2345,7 @@ No authorization required
 
 Freeze a pickup day right now, before its deadline
 
-Freeze a pickup day right now, before its deadline  Runs the same path the deadline job runs, confirmation mails included.
+Freeze a pickup day right now, before its deadline  Runs the same path the deadline job runs. The Dispatch stays where it is: the confirmations go out at the Deadline plus the Review Window.
 
 ### Example
 
@@ -3378,7 +3378,7 @@ No authorization required
 
 Change an order\&#39;s status
 
-Change an order\&#39;s status  Allowed transitions: &#x60;Open -&gt; Ready -&gt; PickedUp&#x60;; &#x60;Open | Ready -&gt; Cancelled&#x60;.
+Change an order\&#39;s status  Allowed transitions: &#x60;Open -&gt; Ready -&gt; PickedUp&#x60;; &#x60;Open | Ready -&gt; Cancelled&#x60;. A cancelled order\&#39;s customer gets a mail, also after the Dispatch.
 
 ### Example
 

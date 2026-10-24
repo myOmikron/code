@@ -38,7 +38,8 @@
         "procurement-empty": "Für diesen Termin liegen keine Bestellungen vor.",
         "pickup-day-unknown": "Für diesen Tag gibt es keinen Abholtermin.",
         "closing-clear": "Alle Bestellungen sind abgeholt und kassiert.",
-        "done-count": "{{done}} von {{total}} Bestellungen erledigt"
+        "done-count": "{{done}} von {{total}} Bestellungen erledigt",
+        "state-review": "Prüfzeit"
     },
     "button": {
         "mark-ready": "Abholbereit",
@@ -57,9 +58,12 @@
         "confirm-picked-up": "Die Bestellung {{code}} wird abgeschlossen.",
         "confirm-delete-passkey": "Du kannst dich mit diesem Gerät danach nicht mehr anmelden.",
         "scan": "Halte den QR-Code des Kunden vor die Kamera. Ohne Kamera tippst du den Abholcode ein.",
-        "procurement-final": "Bestellschluss ist vorbei — diese Liste ist verbindlich ({{count}} Bestellungen).",
-        "procurement-preliminary": "Vorläufig: bis {{date}} können noch Bestellungen dazukommen oder wegfallen.",
-        "closing-open": "Diese Bestellungen sind vorbereitet, aber weder abgeholt noch bezahlt. Ruf die Kunden an, bevor du zumachst."
+        "closing-open": "Diese Bestellungen sind vorbereitet, aber weder abgeholt noch bezahlt. Ruf die Kunden an, bevor du zumachst.",
+        "procurement-open": "Bestellung offen bis {{date}}. Bis dahin können noch Bestellungen dazukommen oder wegfallen.",
+        "procurement-review": "Prüfzeit bis {{date}}. Admins können noch Bestellungen stornieren, danach geht die Liste an die Bäckerei.",
+        "procurement-dispatched_one": "An die Bäckerei versendet um {{date}}. Diese Liste ist verbindlich ({{count}} Bestellung).",
+        "procurement-dispatched_other": "An die Bäckerei versendet um {{date}}. Diese Liste ist verbindlich ({{count}} Bestellungen).",
+        "confirm-cancel-dispatched": "Die Bestellung {{code}} von {{name}} wird storniert. Die Bestellung an die Bäckerei ist schon versendet und ändert sich dadurch nicht."
     },
     "error": {
         "passkey-failed": "Das hat nicht geklappt. Bitte versuche es erneut.",

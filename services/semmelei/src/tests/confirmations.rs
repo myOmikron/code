@@ -15,7 +15,7 @@ use crate::tests::harness::shop_day;
 use crate::tests::harness::tick;
 
 /// Creates an orderable Item and returns its uuid
-async fn item() -> String {
+pub(super) async fn item() -> String {
     let mut admin = TestClient::logged_in(&create_account(Role::Admin).await).await;
     admin
         .json(
@@ -37,12 +37,12 @@ async fn item() -> String {
 }
 
 /// A mail address no other test uses
-fn unique_email() -> String {
+pub(super) fn unique_email() -> String {
     format!("kunde-{}@example.com", Uuid::new_v4().simple())
 }
 
 /// Places an order for the open pickup day and returns its pickup code
-async fn order(email: &str) -> String {
+pub(super) async fn order(email: &str) -> String {
     let item = item().await;
     TestClient::new()
         .json(
@@ -62,7 +62,7 @@ async fn order(email: &str) -> String {
 }
 
 /// The subjects of the binding confirmations `email` got
-fn confirmations(email: &str) -> Vec<String> {
+pub(super) fn confirmations(email: &str) -> Vec<String> {
     mails()
         .sent_to(email)
         .into_iter()
@@ -72,7 +72,7 @@ fn confirmations(email: &str) -> Vec<String> {
 }
 
 /// The subject of the binding confirmation for `pickup_code`
-fn confirmation_subject(pickup_code: &str) -> String {
+pub(super) fn confirmation_subject(pickup_code: &str) -> String {
     format!("Vorbestellung {pickup_code} ist verbindlich")
 }
 

@@ -28,6 +28,10 @@ pub struct ShopSettingsModel {
     /// Wall-clock time (Europe/Berlin) orders close at
     pub deadline_time: Time,
 
+    /// Minutes between a pickup day's Deadline and its Dispatch
+    #[rorm(default = 0)]
+    pub review_window_minutes: i32,
+
     /// Url of the shop's imprint, shown in the public footer
     ///
     /// Lives in the database, not in the config: the operator maintains it
@@ -54,6 +58,8 @@ pub struct ShopSettingsInsertPatch {
     pub deadline_offset_days: i16,
     /// Wall-clock time (Europe/Berlin) orders close at
     pub deadline_time: Time,
+    /// Minutes between a pickup day's Deadline and its Dispatch
+    pub review_window_minutes: i32,
     /// Url of the shop's imprint
     pub imprint_url: Option<MaxStr<512>>,
     /// Url of the shop's privacy policy

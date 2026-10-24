@@ -421,6 +421,7 @@ pub async fn get_schedule() -> ApiResult<ApiJson<ScheduleSchema>> {
         pickup_weekday: settings.pickup_weekday,
         deadline_offset_days: settings.deadline_offset_days,
         deadline_time: WallClock(settings.deadline_time),
+        review_window_minutes: settings.review_window_minutes,
     }))
 }
 
@@ -440,6 +441,12 @@ pub async fn update_schedule(
         ));
     }
 
+    if request.review_window_minutes < 0 {
+        return Err(ApiError::bad_request(
+            "The review window cannot be negative",
+        ));
+    }
+
     let mut tx = Database::global().start_transaction().await?;
     // Only the schedule fields are replaced; the legal links live in the same
     // row and are owned by another form.
@@ -447,6 +454,7 @@ pub async fn update_schedule(
         pickup_weekday: request.pickup_weekday,
         deadline_offset_days: request.deadline_offset_days,
         deadline_time: request.deadline_time.0,
+        review_window_minutes: request.review_window_minutes,
         ..ShopSettings::get(&mut tx).await?
     };
     ShopSettings::set(&mut tx, settings.clone()).await?;
@@ -456,6 +464,7 @@ pub async fn update_schedule(
         pickup_weekday: settings.pickup_weekday,
         deadline_offset_days: settings.deadline_offset_days,
         deadline_time: WallClock(settings.deadline_time),
+        review_window_minutes: settings.review_window_minutes,
     }))
 }
 
@@ -549,13 +558,13 @@ pub async fn update_pickup_day(
     Ok(ApiJson(PickupDayChangeResponse {
         day: schema,
         cancelled_orders,
-        confirmed_orders: 0,
     }))
 }
 
 /// Freeze a pickup day right now, before its deadline
 ///
-/// Runs the same path the deadline job runs, confirmation mails included.
+/// Runs the same path the deadline job runs. The Dispatch stays where it is:
+/// the confirmations go out at the Deadline plus the Review Window.
 #[post("/pickup-days/{rule_date}/lock")]
 pub async fn lock_pickup_day(
     Path(rule_date): Path<SchemaDate>,
@@ -576,7 +585,7 @@ pub async fn lock_pickup_day(
     }
 
     let day = schedule::materialize(&mut tx, &resolved).await?;
-    let confirmed_orders = lock::lock_pickup_day(&mut tx, &day, now).await?;
+    lock::lock_pickup_day(&mut tx, &day, now).await?;
 
     let frozen = ResolvedPickupDay {
         uuid: Some(day.uuid),
@@ -593,7 +602,6 @@ pub async fn lock_pickup_day(
     Ok(ApiJson(PickupDayChangeResponse {
         day: schema,
         cancelled_orders: 0,
-        confirmed_orders,
     }))
 }
 

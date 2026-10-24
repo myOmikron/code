@@ -50,7 +50,9 @@ use galvyn::rorm::fields::types::MaxStr;
 use galvyn_identity::IdentityModule;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
+use time::Date;
 use time::OffsetDateTime;
+use time::format_description::well_known::Iso8601;
 use time::format_description::well_known::Rfc3339;
 use tokio::runtime::Runtime;
 use tokio::sync::MutexGuard;
@@ -63,6 +65,7 @@ use crate::ModuleSetups;
 use crate::config::Config;
 use crate::models::Account;
 use crate::models::Role;
+use crate::models::ShopSettings;
 use crate::proto::mail_v1::SendEmail;
 use crate::utils::lock;
 use crate::utils::mail::MailError;
@@ -473,6 +476,8 @@ pub async fn tick(now: OffsetDateTime) {
 /// Pickup days are shared by the whole binary, and [`tick`] at a made-up time
 /// freezes them for everyone, so each test that orders takes the day for itself.
 pub struct ShopDay {
+    /// The date the day's orders are picked up on, also its rule date
+    pub pickup_date: Date,
     /// When orders for the day close
     pub deadline: OffsetDateTime,
     _exclusive: MutexGuard<'static, ()>,
@@ -480,8 +485,8 @@ pub struct ShopDay {
 
 /// Takes the open pickup day for the calling test, freshly without orders
 ///
-/// Waits for the test holding it before. Stored pickup days and all orders are
-/// dropped first, so the rule produces the same untouched day again and a
+/// Waits for the test holding it before. The Review Window is reset to 0,
+/// stored pickup days and all orders are dropped first, so the rule produces the same untouched day again and a
 /// previous test's frozen day does not use up the upcoming ones.
 /// Every test that places orders or calls [`tick`] takes it.
 pub async fn shop_day() -> ShopDay {
@@ -490,18 +495,39 @@ pub async fn shop_day() -> ShopDay {
     App::get().await;
     mails().set_failing(false);
 
+    let mut tx = Database::global()
+        .start_transaction()
+        .await
+        .expect("start a transaction");
+    let settings = ShopSettings::get(&mut tx).await.expect("read the settings");
+    ShopSettings::set(
+        &mut tx,
+        ShopSettings {
+            review_window_minutes: 0,
+            ..settings
+        },
+    )
+    .await
+    .expect("reset the review window");
+    tx.commit().await.expect("commit");
+
     sqlx::query(r#"TRUNCATE "orderitem", "order", "pickupday""#)
         .execute(Database::global().as_pool())
         .await
         .expect("drop the orders and pickup days");
 
     let window = TestClient::new().get(&api("shop/pickup")).await.ok_json();
+    let pickup_date = window["pickup_date"]
+        .as_str()
+        .map(|date| Date::parse(date, &Iso8601::DATE).expect("an iso date"))
+        .expect("a pickup day is open");
     let deadline = window["deadline"]
         .as_str()
         .map(|deadline| OffsetDateTime::parse(deadline, &Rfc3339).expect("an rfc3339 time"))
         .expect("a pickup day is open");
 
     ShopDay {
+        pickup_date,
         deadline,
         _exclusive: exclusive,
     }
