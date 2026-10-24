@@ -214,7 +214,7 @@ services:
     # Calendar-versioned releases superseded the 5.x line. Pinned to a minor so
     # a store-format change never arrives unannounced; the corpus re-ingests in
     # ~8s, so upgrading is a `down -v` away rather than a store migration.
-    image: neo4j:2026.06-community
+    image: neo4j:2026.10.1-community
     environment:
       # Only NEO4J_AUTH here: the entrypoint parses every other NEO4J_* var as
       # a config setting and hard-fails on unknown names.
