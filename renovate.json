@@ -55,12 +55,11 @@
       "depNameTemplate": "org.openapitools:openapi-generator-cli"
     }
   ],
-  // main requires no status checks (the workflows are path-filtered), so GitHub's
-  // auto-merge would not wait for CI; Renovate merges itself once all checks that ran passed
-  "platformAutomerge": false,
+  // GitHub merges each PR once the required ci-gate check passes, independent of Renovate's
+  // runs, which stop after two automerges each
+  "platformAutomerge": true,
   "automergeType": "pr",
-  // GitHub signs squash commits (main requires signatures); branches need not be up to date,
-  // so one run merges every green PR instead of one per run
+  // GitHub signs squash commits (main requires signatures); branches need not be up to date
   "automergeStrategy": "squash",
   "rebaseWhen": "conflicted",
   "packageRules": [
