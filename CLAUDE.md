@@ -170,8 +170,8 @@ mtg query cost). A review applies all of it; read the sections a change touches 
   clients. On PRs only for frontends whose backend crates or gen-api inputs changed
   (`tools/gen-api/changed-frontends.py`), on `main` for all
 - Renovate runs self-hosted (`.github/workflows/renovate.yaml`, config in `renovate.json`)
-  as a GitHub App, so its commits are signed. Image refs (`FROM`, compose `image:`)
-  carry full versions and are found by Renovate's own managers. Only versions no
+  as a GitHub App, so its commits are signed. Image refs (`FROM`, compose `image:`,
+  `runs-on:`) carry full versions and are found by Renovate's own managers. Only versions no
   manager sees (ARG/ENV/`toolchain:` in workflows and Dockerfiles) carry a
   `# renovate:` comment, directly above the assignment it pins. JSON pins cannot carry
   one and get a custom manager in `renovate.json` instead (the generator in `openapitools.json`)
