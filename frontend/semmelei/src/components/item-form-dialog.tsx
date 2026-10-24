@@ -191,7 +191,7 @@ export function ItemFormDialog(props: ItemFormDialogProps) {
                             <form.Field name={"bakeryArticleNumber"}>
                                 {(fieldApi) => (
                                     <Field>
-                                        <Label>{t("label.bakery-article-number")}</Label>
+                                        <Label>{tg("label.bakery-article-number")}</Label>
                                         <Input
                                             maxLength={32}
                                             value={fieldApi.state.value}

@@ -4,3 +4,4 @@ mod confirmations;
 pub mod harness;
 mod items;
 mod news_posts;
+mod procurement;

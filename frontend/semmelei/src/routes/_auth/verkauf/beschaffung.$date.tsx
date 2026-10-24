@@ -55,9 +55,16 @@ function Procurement() {
     function download() {
         if (summary === undefined || summary === "not-found") return;
         const csv = toCsv([
-            [t("label.item"), t("label.quantity"), t("label.orders"), t("label.unit-price")],
+            [
+                t("label.item"),
+                tg("label.bakery-article-number"),
+                t("label.quantity"),
+                t("label.orders"),
+                t("label.unit-price"),
+            ],
             ...summary.positions.map((p) => [
                 p.name,
+                p.bakery_article_numbers.join(", "),
                 p.total_quantity,
                 p.order_count,
                 (p.price_cents / 100).toFixed(2).replace(".", ","),
@@ -99,6 +106,7 @@ function Procurement() {
                     <TableHead>
                         <TableRow>
                             <TableHeader>{t("label.item")}</TableHeader>
+                            <TableHeader>{tg("label.bakery-article-number")}</TableHeader>
                             <TableHeader>{t("label.quantity")}</TableHeader>
                             <TableHeader>{t("label.orders")}</TableHeader>
                             <TableHeader>{t("label.sum")}</TableHeader>
@@ -108,6 +116,11 @@ function Procurement() {
                         {summary.positions.map((position) => (
                             <TableRow key={position.name}>
                                 <TableCell>{position.name}</TableCell>
+                                <TableCell>
+                                    {position.bakery_article_numbers.length === 0
+                                        ? "–"
+                                        : position.bakery_article_numbers.join(", ")}
+                                </TableCell>
                                 <TableCell className={"text-lg font-semibold"}>{position.total_quantity}</TableCell>
                                 <TableCell>{position.order_count}</TableCell>
                                 <TableCell>{formatPrice(position.price_cents * position.total_quantity)}</TableCell>
@@ -115,6 +128,7 @@ function Procurement() {
                         ))}
                         <TableRow>
                             <TableCell className={"font-semibold"}>{t("label.total")}</TableCell>
+                            <TableCell />
                             <TableCell />
                             <TableCell />
                             <TableCell className={"font-semibold"}>{formatPrice(summary.total_cents)}</TableCell>
