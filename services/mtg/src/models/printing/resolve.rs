@@ -424,20 +424,23 @@ fn coordinate_statement(count: usize, strict: bool) -> String {
 /// card ends up written in half the exports there are — "Fire" for what the
 /// catalog calls "Fire // Ice".
 ///
-/// A playable card beats a token of the same name. The catalog deliberately
-/// holds tokens — they are products people file in collections — and since
-/// Bloomburrow's Offspring mechanic they share their card's exact name:
-/// "Manifold Mouse" is both a card and its own copy token, and the token's
-/// set released the same day. The advisor's fill resolved the token and put
-/// a non-card in a deck. `legal_formats` is the discriminator because it is
-/// what "a real card" means here — a token is legal nowhere — and it is a
-/// preference rather than a filter so an export that genuinely names only a
-/// token (or an un-set card, legal in none of the tracked formats) still
-/// resolves instead of vanishing from the import.
+/// The rest of the order is the card's Default printing (see the glossary),
+/// since a name alone says nothing about which printing was meant:
 ///
-/// Below that, the oldest printing wins, since a name alone says nothing
-/// about which one was meant and the first printing is the one people mean
-/// by the card.
+/// 1. A playable card beats a token of the same name. The tokens of
+///    Bloomburrow's Offspring mechanic share their card's exact name ("Manifold
+///    Mouse" is both), and `legal_formats` tells them apart because a token is
+///    legal nowhere. It is a preference rather than a filter, so an export
+///    that names only a token or an un-set card still resolves.
+/// 2. A printing that exists without foil beats a foil-only one. A card made
+///    only in foil therefore gets its newest printing, which the deck reads
+///    as foil.
+/// 3. The newest release wins, then the cheapest non-foil price with
+///    unpriced printings last, then the lowest collector number.
+///
+/// A printing released after today is never picked: it is not a card anyone
+/// can have yet. A printing without a release date is kept, behind the dated
+/// ones.
 fn name_statement(count: usize, strict: bool) -> String {
     let rows = pair_rows(count);
     let lang = count * 2 + 1;
@@ -452,10 +455,13 @@ fn name_statement(count: usize, strict: bool) -> String {
          FROM (VALUES {rows}) AS v(asked_left, asked_right) \
          JOIN printing p \
            ON {name} AND (v.asked_right = '' OR p.set_code = v.asked_right) \
+          AND (p.released_at IS NULL OR p.released_at <= CURRENT_DATE) \
          ORDER BY v.asked_left, v.asked_right, \
                   (p.lang = ${lang}) DESC, (p.lang = 'en') DESC, \
                   (p.legal_formats <> '') DESC, \
-                  p.released_at ASC NULLS LAST, p.collector_number_sort ASC, p.id ASC"
+                  ('nonfoil' = ANY(string_to_array(p.finishes, ','))) DESC, \
+                  p.released_at DESC NULLS LAST, p.price_eur ASC NULLS LAST, \
+                  p.collector_number_sort ASC, p.id ASC"
     )
 }
 
@@ -519,19 +525,25 @@ mod tests {
     }
 
     #[test]
-    fn a_playable_card_outranks_a_token_of_the_same_name() {
-        // Offspring tokens share their card's exact name, and "oldest printing
-        // wins" resolved the token: the fill put a "Manifold Mouse" token into
-        // a deck. The legality preference must sit above the release-date
-        // tiebreak — and below the language keys, which stay in charge.
+    fn the_name_lookup_ranks_by_the_default_printing() {
         for strict in [true, false] {
             let statement = super::name_statement(1, strict);
-            let legality = statement
-                .find("(p.legal_formats <> '') DESC")
-                .expect("the name lookup no longer prefers playable cards");
-            let released = statement.find("p.released_at ASC").unwrap();
-            let english = statement.find("(p.lang = 'en') DESC").unwrap();
-            assert!(english < legality && legality < released);
+            let position = |key: &str| {
+                statement
+                    .find(key)
+                    .unwrap_or_else(|| panic!("the name lookup no longer orders by {key}"))
+            };
+            let keys = [
+                "(p.lang = 'en') DESC",
+                "(p.legal_formats <> '') DESC",
+                "('nonfoil' = ANY(string_to_array(p.finishes, ','))) DESC",
+                "p.released_at DESC NULLS LAST",
+                "p.price_eur ASC NULLS LAST",
+                "p.collector_number_sort ASC",
+            ];
+            let positions: Vec<usize> = keys.iter().map(|key| position(key)).collect();
+            assert!(positions.is_sorted(), "{statement}");
+            assert!(statement.contains("p.released_at <= CURRENT_DATE"));
         }
     }
 

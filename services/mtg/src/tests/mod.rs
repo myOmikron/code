@@ -6,6 +6,7 @@ mod admin_rename;
 mod bracket_flags;
 mod collaborators;
 mod deck_history;
+mod default_printing;
 mod deletion;
 mod external_accounts;
 pub mod harness;
