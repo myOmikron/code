@@ -38,7 +38,7 @@
     "@tailwindcss/vite": "catalog:devDependencies",
     "@tanstack/react-form": "catalog:dependencies",
     "@tanstack/react-router": "catalog:dependencies",
-    "@types/node": "24.13.2",
+    "@types/node": "24.19.2",
     "@types/react": "catalog:devDependencies",
     "@types/react-dom": "catalog:devDependencies",
     "@vitejs/plugin-react": "6.1.2",
