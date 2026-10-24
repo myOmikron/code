@@ -145,7 +145,7 @@ base64 = { version = "~0.23" }
 feiertage = { version = "~0.2.0" }
 
 # Date and time types
-time = { version = ">=0.3, <0.3.52", features = ["serde-well-known", "serde-human-readable"] }
+time = { version = ">=0.3, <0.3.56", features = ["serde-well-known", "serde-human-readable"] }
 
 # Timezone support for `time`
 time-tz = { version = "~2" }
