@@ -4218,7 +4218,6 @@ dependencies = [
 name = "semmelei"
 version = "0.1.0"
 dependencies = [
- "async-nats",
  "base64 0.23.1",
  "clap",
  "galvyn",

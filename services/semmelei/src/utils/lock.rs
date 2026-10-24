@@ -151,7 +151,7 @@ pub async fn cancel_pickup_day(
 /// all it takes to recover.
 pub async fn run_deadline_job() {
     loop {
-        if let Err(error) = tick().await {
+        if let Err(error) = tick(schedule::now()).await {
             // Never give up the loop: the next tick may well succeed, and a
             // silent stop would mean nobody ever gets a confirmation again.
             error!(error = %error, "Deadline job tick failed");
@@ -160,10 +160,11 @@ pub async fn run_deadline_job() {
     }
 }
 
-/// One pass over the days that are due to be frozen
+/// One pass over the days that are due to be frozen at `now`
+///
+/// The job passes the clock; tests pass the point in time they want to see.
 #[instrument(name = "lock::tick", level = "debug")]
-async fn tick() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    let now = schedule::now();
+pub async fn tick(now: OffsetDateTime) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let mut tx = Database::global().start_transaction().await?;
 
     for day in PickupDay::get_due_for_lock(&mut tx, now).await? {
