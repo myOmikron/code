@@ -202,7 +202,7 @@ services:
     # Pinned to a minor so a store-format change never arrives unannounced;
     # the corpus re-ingests in seconds, so upgrading is wiping vol-neo4j-*
     # and re-running the ingest rather than a store migration.
-    image: neo4j:2026.06-community
+    image: neo4j:2026.10.1-community
     restart: unless-stopped
     environment:
       # Only NEO4J_AUTH here: the entrypoint parses every other NEO4J_* var as
