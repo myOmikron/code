@@ -11,12 +11,18 @@ All URIs are relative to *http://localhost*
 | [**addWatchListEntry**](DefaultApi.md#addwatchlistentryoperation) | **POST** /api/frontend/v1/watch-lists/{list}/entries | Put a card on a watch list |
 | [**adminDeleteAccount**](DefaultApi.md#admindeleteaccountoperation) | **DELETE** /api/frontend/v1/admin/accounts/{uuid} | Delete an Account |
 | [**adminGetAccount**](DefaultApi.md#admingetaccount) | **GET** /api/frontend/v1/admin/accounts/{uuid} | One Account with its card and passkey counts |
+| [**adminGetBugReport**](DefaultApi.md#admingetbugreport) | **GET** /api/frontend/v1/admin/bug-reports/{number} | One Bug report with its text, diagnostics and image references |
+| [**adminGetBugReportImage**](DefaultApi.md#admingetbugreportimage) | **GET** /api/frontend/v1/admin/bug-reports/{number}/images/{image} | One image of a Bug report |
 | [**adminGetStatistics**](DefaultApi.md#admingetstatistics) | **GET** /api/frontend/v1/admin/statistics | The newest Statistics snapshot and the last 30 days of them |
 | [**adminGetSyncs**](DefaultApi.md#admingetsyncs) | **GET** /api/frontend/v1/admin/syncs | The state of the catalog and price guide syncs, with their recent Sync runs |
 | [**adminListAccounts**](DefaultApi.md#adminlistaccounts) | **GET** /api/frontend/v1/admin/accounts | List Accounts, newest first |
+| [**adminListBugReports**](DefaultApi.md#adminlistbugreports) | **GET** /api/frontend/v1/admin/bug-reports | List Bug reports, newest first, the open ones unless asked otherwise |
 | [**adminListLog**](DefaultApi.md#adminlistlog) | **GET** /api/frontend/v1/admin/log | List the Admin log, newest first |
 | [**adminLockAccount**](DefaultApi.md#adminlockaccountoperation) | **POST** /api/frontend/v1/admin/accounts/{uuid}/lock | Lock an Account |
+| [**adminMarkBugReportDone**](DefaultApi.md#adminmarkbugreportdone) | **POST** /api/frontend/v1/admin/bug-reports/{number}/done | Mark a Bug report done, recording the Admin and the time |
 | [**adminRenameAccount**](DefaultApi.md#adminrenameaccountoperation) | **PUT** /api/frontend/v1/admin/accounts/{uuid}/username | Rename an Account |
+| [**adminReopenBugReport**](DefaultApi.md#adminreopenbugreport) | **POST** /api/frontend/v1/admin/bug-reports/{number}/reopen | Open a done Bug report again |
+| [**adminSetBugReportNote**](DefaultApi.md#adminsetbugreportnoteoperation) | **PUT** /api/frontend/v1/admin/bug-reports/{number}/note | Set the Admins\&#39; internal note on a Bug report, an empty note removes it |
 | [**adminSetRole**](DefaultApi.md#adminsetroleoperation) | **PUT** /api/frontend/v1/admin/accounts/{uuid}/role | Change an Account\&#39;s Role |
 | [**adminUnlockAccount**](DefaultApi.md#adminunlockaccountoperation) | **POST** /api/frontend/v1/admin/accounts/{uuid}/unlock | Lift an Account\&#39;s Lock |
 | [**assignCollectionEntryTag**](DefaultApi.md#assigncollectionentrytag) | **POST** /api/frontend/v1/collections/{collection}/entries/{entry}/tags/{tag} | Put a card-wide tag on a stack |
@@ -116,6 +122,7 @@ All URIs are relative to *http://localhost*
 | [**searchCollaboratorCandidates**](DefaultApi.md#searchcollaboratorcandidates) | **GET** /api/frontend/v1/decks/{deck}/collaborators/candidates | Accounts whose username starts with what the owner typed, to name on a deck |
 | [**searchMpcfillArt**](DefaultApi.md#searchmpcfillart) | **POST** /api/frontend/v1/mpcfill/search | The art MPCFill has for these cards |
 | [**searchPublicDecks**](DefaultApi.md#searchpublicdecks) | **GET** /api/frontend/v1/explore/decks | Search the decks their owners put on show |
+| [**sendBugReport**](DefaultApi.md#sendbugreportoperation) | **POST** /api/frontend/v1/bug-reports | Send a Bug report |
 | [**setDeckAdvisorSettings**](DefaultApi.md#setdeckadvisorsettings) | **PUT** /api/frontend/v1/decks/{deck}/advisor-settings | Replace this deck\&#39;s advisor settings |
 | [**setDeckBracket**](DefaultApi.md#setdeckbracketoperation) | **PUT** /api/frontend/v1/decks/{deck}/bracket | Say which Commander bracket the deck is built to |
 | [**setDeckCheckpoint**](DefaultApi.md#setdeckcheckpointoperation) | **PUT** /api/frontend/v1/decks/{deck}/history/{change}/checkpoint | Name one of the deck\&#39;s Deck changes with a Deck checkpoint, or rename its |
@@ -657,6 +664,149 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## adminGetBugReport
+
+> AdminBugReportDetail adminGetBugReport(number)
+
+One Bug report with its text, diagnostics and image references
+
+One Bug report with its text, diagnostics and image references
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { AdminGetBugReportRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // number
+    number: 789,
+  } satisfies AdminGetBugReportRequest;
+
+  try {
+    const data = await api.adminGetBugReport(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **number** | `number` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**AdminBugReportDetail**](AdminBugReportDetail.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## adminGetBugReportImage
+
+> adminGetBugReportImage(number, image)
+
+One image of a Bug report
+
+One image of a Bug report
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { AdminGetBugReportImageRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // number
+    number: 789,
+    // string
+    image: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies AdminGetBugReportImageRequest;
+
+  try {
+    const data = await api.adminGetBugReportImage(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **number** | `number` |  | [Defaults to `undefined`] |
+| **image** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+`void` (Empty response body)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `image/*`, `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## adminGetStatistics
 
 > AdminStatisticsResponse adminGetStatistics()
@@ -863,6 +1013,82 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## adminListBugReports
+
+> AdminListBugReportsResponse adminListBugReports(after, filter, limit)
+
+List Bug reports, newest first, the open ones unless asked otherwise
+
+List Bug reports, newest first, the open ones unless asked otherwise
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { AdminListBugReportsRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // number (optional)
+    after: ...,
+    // AdminBugReportFilter (optional)
+    filter: ...,
+    // number (optional)
+    limit: 56,
+  } satisfies AdminListBugReportsRequest;
+
+  try {
+    const data = await api.adminListBugReports(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **after** | `number` |  | [Optional] [Defaults to `undefined`] |
+| **filter** | [](.md) |  | [Optional] [Defaults to `undefined`] [Enum: Open, Done, All] |
+| **limit** | `number` |  | [Optional] [Defaults to `50`] |
+
+### Return type
+
+[**AdminListBugReportsResponse**](AdminListBugReportsResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## adminListLog
 
 > AdminListLogResponse adminListLog(account, after, limit)
@@ -1012,6 +1238,76 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## adminMarkBugReportDone
+
+> any adminMarkBugReportDone(number)
+
+Mark a Bug report done, recording the Admin and the time
+
+Mark a Bug report done, recording the Admin and the time
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { AdminMarkBugReportDoneRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // number
+    number: 789,
+  } satisfies AdminMarkBugReportDoneRequest;
+
+  try {
+    const data = await api.adminMarkBugReportDone(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **number** | `number` |  | [Defaults to `undefined`] |
+
+### Return type
+
+**any**
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## adminRenameAccount
 
 > FormErrorResponseForAdminRenameAccountErrors adminRenameAccount(uuid, AdminRenameAccountRequest)
@@ -1063,6 +1359,149 @@ example().catch(console.error);
 ### Return type
 
 [**FormErrorResponseForAdminRenameAccountErrors**](FormErrorResponseForAdminRenameAccountErrors.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## adminReopenBugReport
+
+> any adminReopenBugReport(number)
+
+Open a done Bug report again
+
+Open a done Bug report again  What a purge removed stays removed.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { AdminReopenBugReportRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // number
+    number: 789,
+  } satisfies AdminReopenBugReportRequest;
+
+  try {
+    const data = await api.adminReopenBugReport(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **number** | `number` |  | [Defaults to `undefined`] |
+
+### Return type
+
+**any**
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## adminSetBugReportNote
+
+> any adminSetBugReportNote(number, AdminSetBugReportNoteRequest)
+
+Set the Admins\&#39; internal note on a Bug report, an empty note removes it
+
+Set the Admins\&#39; internal note on a Bug report, an empty note removes it
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { AdminSetBugReportNoteOperationRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // number
+    number: 789,
+    // AdminSetBugReportNoteRequest (optional)
+    AdminSetBugReportNoteRequest: ...,
+  } satisfies AdminSetBugReportNoteOperationRequest;
+
+  try {
+    const data = await api.adminSetBugReportNote(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **number** | `number` |  | [Defaults to `undefined`] |
+| **AdminSetBugReportNoteRequest** | [AdminSetBugReportNoteRequest](AdminSetBugReportNoteRequest.md) |  | [Optional] |
+
+### Return type
+
+**any**
 
 ### Authorization
 
@@ -8073,6 +8512,79 @@ No authorization required
 ### HTTP request headers
 
 - **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## sendBugReport
+
+> SendBugReport200Response sendBugReport(report, images)
+
+Send a Bug report
+
+Send a Bug report  A multipart body: the &#x60;report&#x60; part as json and up to three &#x60;images&#x60;. Every Admin is mailed a notice without diagnostics or images; a mail that fails is logged and does not fail the send.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { SendBugReportOperationRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // SendBugReportRequest | The [`SendBugReportRequest`] as json
+    report: ...,
+    // Array<Blob> | JPEG, PNG or WebP images of at most 5 MB each (optional)
+    images: /path/to/file.txt,
+  } satisfies SendBugReportOperationRequest;
+
+  try {
+    const data = await api.sendBugReport(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **report** | [SendBugReportRequest](SendBugReportRequest.md) | The [&#x60;SendBugReportRequest&#x60;] as json | [Defaults to `undefined`] |
+| **images** | `Array<Blob>` | JPEG, PNG or WebP images of at most 5 MB each | [Optional] |
+
+### Return type
+
+[**SendBugReport200Response**](SendBugReport200Response.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `multipart/form-data`
 - **Accept**: `application/json`
 
 

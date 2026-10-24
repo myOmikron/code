@@ -1,0 +1,351 @@
+[Migration]
+Hash = "7698080118751795276"
+Initial = false
+Dependency = 53
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateModel"
+Name = "bug_report"
+
+[[Migration.Operations.Fields]]
+Name = "id"
+Type = "int64"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "auto_increment"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "primary_key"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/bug_report/db.rs"
+Line = 29
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "created_at"
+Type = "datetime"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "auto_create_time"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/bug_report/db.rs"
+Line = 35
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "text"
+Type = "text"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 20000
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/bug_report/db.rs"
+Line = 49
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "route"
+Type = "text"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 2048
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/bug_report/db.rs"
+Line = 52
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "release"
+Type = "text"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 64
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/bug_report/db.rs"
+Line = 55
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "user_agent"
+Type = "text"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 1024
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/bug_report/db.rs"
+Line = 58
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "viewport"
+Type = "text"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 32
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/bug_report/db.rs"
+Line = 61
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "language"
+Type = "text"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 64
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/bug_report/db.rs"
+Line = 64
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "diagnostics"
+Type = "binary"
+Annotations = []
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/bug_report/db.rs"
+Line = 67
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "state"
+Type = "text"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 255
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/bug_report/db.rs"
+Line = 74
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "done_at"
+Type = "datetime"
+Annotations = []
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/bug_report/db.rs"
+Line = 81
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "note"
+Type = "text"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 4096
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/bug_report/db.rs"
+Line = 84
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "purged_at"
+Type = "datetime"
+Annotations = []
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/bug_report/db.rs"
+Line = 87
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateModel"
+Name = "bug_report_image"
+
+[[Migration.Operations.Fields]]
+Name = "uuid"
+Type = "uuid"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "primary_key"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/bug_report/db.rs"
+Line = 120
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "position"
+Type = "int16"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/bug_report/db.rs"
+Line = 127
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "content_type"
+Type = "text"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 32
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/bug_report/db.rs"
+Line = 130
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "data"
+Type = "binary"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/bug_report/db.rs"
+Line = 133
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "bug_report_image"
+
+[Migration.Operations.Field]
+Name = "bug_report"
+Type = "int64"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "foreign_key"
+
+[Migration.Operations.Field.Annotations.Value]
+TableName = "bug_report"
+ColumnName = "id"
+OnDelete = "Cascade"
+OnUpdate = "Cascade"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/bug_report/db.rs"
+Line = 124
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "bug_report"
+
+[Migration.Operations.Field]
+Name = "reporter"
+Type = "uuid"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "foreign_key"
+
+[Migration.Operations.Field.Annotations.Value]
+TableName = "account"
+ColumnName = "uuid"
+OnDelete = "Cascade"
+OnUpdate = "Cascade"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/bug_report/db.rs"
+Line = 46
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "bug_report"
+
+[Migration.Operations.Field]
+Name = "done_by"
+Type = "uuid"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "foreign_key"
+
+[Migration.Operations.Field.Annotations.Value]
+TableName = "account"
+ColumnName = "uuid"
+OnDelete = "SetNull"
+OnUpdate = "Cascade"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/bug_report/db.rs"
+Line = 78
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateIndex"
+Model = "bug_report"
+
+[Migration.Operations.Index]
+Name = "bug_report_state"
+Columns = [
+    "state",
+    "id",
+]
+
+[[Migration.Operations]]
+Type = "CreateIndex"
+Model = "bug_report"
+
+[Migration.Operations.Index]
+Name = "bug_report_reporter"
+Columns = [
+    "reporter",
+    "created_at",
+]
+
+[[Migration.Operations]]
+Type = "CreateIndex"
+Model = "bug_report_image"
+
+[Migration.Operations.Index]
+Columns = ["bug_report"]
