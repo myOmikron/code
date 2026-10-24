@@ -65,7 +65,7 @@ catalogs:
     prettier: 3.8.4
     prettier-plugin-tailwindcss: 0.8.0
     sharp: ^0.34.5
-    stream-json: ^1.9.1
+    stream-json: ^3.0.0
     tailwindcss: 4.3.1
     typescript: 6.0.3
     typescript-eslint: 8.62.0
