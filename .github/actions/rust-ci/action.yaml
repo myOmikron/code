@@ -52,7 +52,7 @@ runs:
     - name: Install Rust stable
       uses: dtolnay/rust-toolchain@efa25f7f19611383d5b0ccf2d1c8914531636bf9
       with:
-        toolchain: "1.96.0"
+        toolchain: "1.99.1"
         components: clippy
 
     # changed-crates.py uses pathlib.PurePath.full_match, which requires
