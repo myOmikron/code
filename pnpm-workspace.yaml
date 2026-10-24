@@ -57,7 +57,7 @@ catalogs:
     '@types/react-dom': 19.2.3
     '@vitejs/plugin-react': 6.0.3
     '@vitejs/plugin-react-swc': 4.3.3
-    esbuild: 0.28.1
+    esbuild: 0.28.2
     eslint: 10.13.0
     onnxruntime-node: 1.30.0
     eslint-plugin-jsdoc: 65.3.11
