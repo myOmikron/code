@@ -20,6 +20,7 @@ All URIs are relative to *http://localhost*
 | [**finishAddPasskey**](DefaultApi.md#finishaddpasskeyoperation) | **POST** /api/frontend/v1/auth/passkeys/finish | Finish adding another passkey to the logged-in account |
 | [**finishLogin**](DefaultApi.md#finishloginoperation) | **POST** /api/frontend/v1/auth/login/finish | Finish a passkey login |
 | [**finishRegistration**](DefaultApi.md#finishregistrationoperation) | **POST** /api/frontend/v1/auth/register/finish | Finish an invite-based passkey registration |
+| [**getBakeryAddresses**](DefaultApi.md#getbakeryaddresses) | **GET** /api/frontend/v1/admin/bakery | Get where the Bakery order goes at the Dispatch |
 | [**getCategories**](DefaultApi.md#getcategories) | **GET** /api/frontend/v1/shop/categories | List all categories |
 | [**getItems**](DefaultApi.md#getitems) | **GET** /api/frontend/v1/shop/items | List all currently orderable items |
 | [**getLegalLinks**](DefaultApi.md#getlegallinks) | **GET** /api/frontend/v1/shop/legal | The shop\&#39;s imprint and privacy policy links |
@@ -48,6 +49,7 @@ All URIs are relative to *http://localhost*
 | [**startRegistration**](DefaultApi.md#startregistrationoperation) | **POST** /api/frontend/v1/auth/register/start | Start an invite-based passkey registration |
 | [**test**](DefaultApi.md#test) | **GET** /api/frontend/v1/auth/test | Cheap probe whether the session is logged in |
 | [**updateAccount**](DefaultApi.md#updateaccountoperation) | **PUT** /api/frontend/v1/admin/accounts/{uuid} | Update a staff account |
+| [**updateBakeryAddresses**](DefaultApi.md#updatebakeryaddresses) | **PUT** /api/frontend/v1/admin/bakery | Change the Bakery and copy address |
 | [**updateCategory**](DefaultApi.md#updatecategory) | **PUT** /api/frontend/v1/admin/categories/{uuid} | Rename a category |
 | [**updateItem**](DefaultApi.md#updateitem) | **PUT** /api/frontend/v1/admin/items/{uuid} | Update an item |
 | [**updateLegalSettings**](DefaultApi.md#updatelegalsettings) | **PUT** /api/frontend/v1/admin/legal | Change the imprint and privacy policy links |
@@ -1166,6 +1168,68 @@ No authorization required
 ### HTTP request headers
 
 - **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## getBakeryAddresses
+
+> BakeryAddresses getBakeryAddresses()
+
+Get where the Bakery order goes at the Dispatch
+
+Get where the Bakery order goes at the Dispatch
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { GetBakeryAddressesRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  try {
+    const data = await api.getBakeryAddresses();
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+This endpoint does not need any parameter.
+
+### Return type
+
+[**BakeryAddresses**](BakeryAddresses.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
 - **Accept**: `application/json`
 
 
@@ -2988,6 +3052,76 @@ example().catch(console.error);
 ### Return type
 
 `void` (Empty response body)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## updateBakeryAddresses
+
+> BakeryAddresses updateBakeryAddresses(BakeryAddresses)
+
+Change the Bakery and copy address
+
+Change the Bakery and copy address  An empty value unsets the address. Without a Bakery address no pickup day is Dispatched; setting one Dispatches the waiting days on the next tick.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { UpdateBakeryAddressesRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // BakeryAddresses (optional)
+    BakeryAddresses: ...,
+  } satisfies UpdateBakeryAddressesRequest;
+
+  try {
+    const data = await api.updateBakeryAddresses(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **BakeryAddresses** | [BakeryAddresses](BakeryAddresses.md) |  | [Optional] |
+
+### Return type
+
+[**BakeryAddresses**](BakeryAddresses.md)
 
 ### Authorization
 

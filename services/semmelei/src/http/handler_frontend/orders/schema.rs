@@ -96,6 +96,18 @@ pub struct ProcurementPosition {
     pub bakery_article_numbers: Vec<String>,
 }
 
+/// What keeps a frozen pickup day from being Dispatched
+///
+/// Reported from the freeze on, not only once the Dispatch is due, so Verkauf
+/// learns during the Review Window that the order will not go out.
+#[derive(Serialize, JsonSchema, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NotDispatchedReason {
+    /// Nothing: the day is open, waits for its Dispatch time, was Dispatched or called off
+    None,
+    /// No Bakery address is set, so the Dispatch waits for one
+    NoBakeryAddress,
+}
+
 /// What has to be procured for one pickup day
 #[derive(Serialize, JsonSchema)]
 pub struct ProcurementSummary {
@@ -107,6 +119,8 @@ pub struct ProcurementSummary {
     pub dispatch_due: SchemaDateTime,
     /// When the day was Dispatched; from then on the list is final
     pub dispatched_at: Option<SchemaDateTime>,
+    /// Why a frozen day is not Dispatched (yet)
+    pub not_dispatched_reason: NotDispatchedReason,
     /// Whether the day is frozen: customers can no longer order or cancel
     pub locked: bool,
     /// Whether the day was called off

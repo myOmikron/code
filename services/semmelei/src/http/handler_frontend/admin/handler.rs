@@ -22,6 +22,7 @@ use time::OffsetDateTime;
 use crate::http::handler_frontend::admin::schema::AccountSchema;
 use crate::http::handler_frontend::admin::schema::AdminItem;
 use crate::http::handler_frontend::admin::schema::AdminPickupDay;
+use crate::http::handler_frontend::admin::schema::BakeryAddresses;
 use crate::http::handler_frontend::admin::schema::CategoryRequest;
 use crate::http::handler_frontend::admin::schema::CreateAccountRequest;
 use crate::http::handler_frontend::admin::schema::InviteResponse;
@@ -650,4 +651,62 @@ pub async fn update_legal_settings(
         imprint_url: settings.imprint_url,
         privacy_url: settings.privacy_url,
     }))
+}
+
+// ------------- //
+//    Bakery     //
+// ------------- //
+
+/// Get where the Bakery order goes at the Dispatch
+#[get("/bakery")]
+pub async fn get_bakery_addresses() -> ApiResult<ApiJson<BakeryAddresses>> {
+    let settings = ShopSettings::get(Database::global()).await?;
+    Ok(ApiJson(BakeryAddresses {
+        bakery_email: settings.bakery_email,
+        copy_email: settings.copy_email,
+    }))
+}
+
+/// Change the Bakery and copy address
+///
+/// An empty value unsets the address. Without a Bakery address no pickup day
+/// is Dispatched; setting one Dispatches the waiting days on the next tick.
+#[put("/bakery")]
+pub async fn update_bakery_addresses(
+    ApiJson(request): ApiJson<BakeryAddresses>,
+) -> ApiResult<ApiJson<BakeryAddresses>> {
+    let bakery_email = bare_email_or_none(request.bakery_email)?;
+    let copy_email = bare_email_or_none(request.copy_email)?;
+
+    let mut tx = Database::global().start_transaction().await?;
+    let mut settings = ShopSettings::get(&mut tx).await?;
+    settings.bakery_email = bakery_email;
+    settings.copy_email = copy_email;
+    ShopSettings::set(&mut tx, settings.clone()).await?;
+    tx.commit().await?;
+
+    Ok(ApiJson(BakeryAddresses {
+        bakery_email: settings.bakery_email,
+        copy_email: settings.copy_email,
+    }))
+}
+
+/// Trim an optional address, take a blank one as unset, refuse anything but a bare address
+///
+/// The address becomes a recipient of a mail with the whole order attached,
+/// so it gets the same narrow check as a customer's.
+fn bare_email_or_none(email: Option<MaxStr<255>>) -> ApiResult<Option<MaxStr<255>>> {
+    let Some(email) = email else {
+        return Ok(None);
+    };
+    let trimmed = email.trim();
+    if trimmed.is_empty() {
+        return Ok(None);
+    }
+    if !validate::is_bare_email(trimmed) {
+        return Err(ApiError::bad_request("Not a valid mail address"));
+    }
+    MaxStr::new(trimmed.to_string())
+        .map(Some)
+        .map_err(|_| ApiError::server_error("A trimmed address cannot be longer"))
 }

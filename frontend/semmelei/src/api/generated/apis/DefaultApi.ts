@@ -16,6 +16,7 @@ import * as runtime from '../runtime';
 import type {
     AdminNewsPost,
     ApiErrorResponse,
+    BakeryAddresses,
     CategoryRequest,
     CreateAccountRequest,
     CreateOrderRequest,
@@ -165,6 +166,10 @@ export interface StartRegistrationOperationRequest {
 export interface UpdateAccountOperationRequest {
     uuid: string;
     UpdateAccountRequest?: UpdateAccountRequest;
+}
+
+export interface UpdateBakeryAddressesRequest {
+    BakeryAddresses?: BakeryAddresses;
 }
 
 export interface UpdateCategoryRequest {
@@ -928,6 +933,45 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async finishRegistration(requestParameters: FinishRegistrationOperationRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
         await this.finishRegistrationRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * Creates request options for getBakeryAddresses without sending the request
+     */
+    async getBakeryAddressesRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/admin/bakery`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Get where the Bakery order goes at the Dispatch
+     * Get where the Bakery order goes at the Dispatch
+     */
+    async getBakeryAddressesRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BakeryAddresses>> {
+        const requestOptions = await this.getBakeryAddressesRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Get where the Bakery order goes at the Dispatch
+     * Get where the Bakery order goes at the Dispatch
+     */
+    async getBakeryAddresses(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BakeryAddresses> {
+        const response = await this.getBakeryAddressesRaw(initOverrides);
+        return await response.value();
     }
 
     /**
@@ -2100,6 +2144,48 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async updateAccount(requestParameters: UpdateAccountOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
         await this.updateAccountRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * Creates request options for updateBakeryAddresses without sending the request
+     */
+    async updateBakeryAddressesRequestOpts(requestParameters: UpdateBakeryAddressesRequest): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/admin/bakery`;
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['BakeryAddresses'],
+        };
+    }
+
+    /**
+     * Change the Bakery and copy address  An empty value unsets the address. Without a Bakery address no pickup day is Dispatched; setting one Dispatches the waiting days on the next tick.
+     * Change the Bakery and copy address
+     */
+    async updateBakeryAddressesRaw(requestParameters: UpdateBakeryAddressesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BakeryAddresses>> {
+        const requestOptions = await this.updateBakeryAddressesRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Change the Bakery and copy address  An empty value unsets the address. Without a Bakery address no pickup day is Dispatched; setting one Dispatches the waiting days on the next tick.
+     * Change the Bakery and copy address
+     */
+    async updateBakeryAddresses(requestParameters: UpdateBakeryAddressesRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BakeryAddresses> {
+        const response = await this.updateBakeryAddressesRaw(requestParameters, initOverrides);
+        return await response.value();
     }
 
     /**

@@ -25,6 +25,7 @@ use url::Url;
 use crate::models::OrderItem;
 use crate::models::OrderLanguage;
 use crate::proto;
+use crate::utils::bakery;
 
 /// Error returned when a mail could not be handed to the gateway
 #[derive(Debug)]
@@ -271,6 +272,32 @@ async fn publish(to: &str, subject: &str, text_body: String) -> Result<(), MailE
         subject: subject.to_string(),
         text_body,
         ..Default::default()
+    })
+    .await
+}
+
+/// Send the Bakery order of a pickup day, the CSV attached
+///
+/// Always German: it goes to the Bakery, whatever language the customers
+/// ordered in. Resolves once the gateway's stream acknowledged the mail.
+#[instrument(name = "mail::send_bakery_order", skip(csv))]
+pub async fn send_bakery_order(
+    to: &str,
+    cc: Option<&str>,
+    pickup_date: Date,
+    csv: Vec<u8>,
+) -> Result<(), MailError> {
+    let pickup = format_date(pickup_date, OrderLanguage::De);
+    send(proto::mail_v1::SendEmail {
+        to: to.to_string(),
+        cc: cc.into_iter().map(String::from).collect(),
+        subject: format!("Bestellung Nachbarschaftshilfe für {pickup}"),
+        text_body: format!("Anbei unsere Bestellung für die Abholung am {pickup}.\n"),
+        attachments: vec![proto::mail_v1::Attachment {
+            filename: bakery::filename(pickup_date),
+            content_type: bakery::CONTENT_TYPE.to_string(),
+            content: csv,
+        }],
     })
     .await
 }

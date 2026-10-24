@@ -2536,6 +2536,111 @@
                 }
             }
         },
+        "/api/frontend/v1/admin/bakery": {
+            "get": {
+                "summary": "Get where the Bakery order goes at the Dispatch",
+                "description": "Get where the Bakery order goes at the Dispatch",
+                "operationId": "get_bakery_addresses",
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/BakeryAddresses"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "summary": "Change the Bakery and copy address",
+                "description": "Change the Bakery and copy address\n\nAn empty value unsets the address. Without a Bakery address no pickup day\nis Dispatched; setting one Dispatches the waiting days on the next tick.",
+                "operationId": "update_bakery_addresses",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/BakeryAddresses"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/BakeryAddresses"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/frontend/v1/admin/news-posts": {
             "get": {
                 "summary": "List all News Posts, Drafts included, newest first",
@@ -3210,6 +3315,30 @@
                     "trace_id"
                 ]
             },
+            "BakeryAddresses": {
+                "description": "Where the Bakery order goes at the Dispatch",
+                "type": "object",
+                "properties": {
+                    "bakery_email": {
+                        "nullable": true,
+                        "description": "The Bakery's mail address; no pickup day is Dispatched while unset",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_255"
+                            }
+                        ]
+                    },
+                    "copy_email": {
+                        "nullable": true,
+                        "description": "The Nachbarschaftshilfe's mail address, in CC of the Bakery order",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_255"
+                            }
+                        ]
+                    }
+                }
+            },
             "CategoryRequest": {
                 "description": "Request to create or update a category",
                 "type": "object",
@@ -3878,6 +4007,25 @@
                 "type": "string",
                 "format": "uuid"
             },
+            "NotDispatchedReason": {
+                "description": "What keeps a frozen pickup day from being Dispatched\n\nReported from the freeze on, not only once the Dispatch is due, so Verkauf learns during the Review Window that the order will not go out.",
+                "oneOf": [
+                    {
+                        "description": "Nothing: the day is open, waits for its Dispatch time, was Dispatched or called off",
+                        "type": "string",
+                        "enum": [
+                            "None"
+                        ]
+                    },
+                    {
+                        "description": "No Bakery address is set, so the Dispatch waits for one",
+                        "type": "string",
+                        "enum": [
+                            "NoBakeryAddress"
+                        ]
+                    }
+                ]
+            },
             "OrderItemUuid": {
                 "description": "Wrapper for the primary key of the [`OrderItem`] model. To have better distinguishable types.",
                 "type": "string",
@@ -4136,6 +4284,14 @@
                         "description": "Whether the day is frozen: customers can no longer order or cancel",
                         "type": "boolean"
                     },
+                    "not_dispatched_reason": {
+                        "description": "Why a frozen day is not Dispatched (yet)",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/NotDispatchedReason"
+                            }
+                        ]
+                    },
                     "order_count": {
                         "description": "How many orders the summary covers (cancelled ones excluded)",
                         "type": "integer",
@@ -4167,6 +4323,7 @@
                     "deadline",
                     "dispatch_due",
                     "locked",
+                    "not_dispatched_reason",
                     "order_count",
                     "pickup_date",
                     "positions",

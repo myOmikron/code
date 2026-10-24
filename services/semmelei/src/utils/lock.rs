@@ -2,7 +2,7 @@
 //!
 //! Freezing happens at the Deadline (or earlier, by an Admin) and only ends
 //! ordering. The Dispatch follows at the end of the Review Window and sends
-//! the binding confirmations. Both are idempotent: the job, a restart after a
+//! the Bakery order and the binding confirmations. Both are idempotent: the job, a restart after a
 //! downtime and the admin's "freeze now" button all end up here, and a
 //! customer must not get the same confirmation mail twice.
 
@@ -16,12 +16,14 @@ use tokio::time::sleep;
 use tracing::error;
 use tracing::info;
 use tracing::instrument;
+use tracing::warn;
 
 use crate::models::Order;
 use crate::models::OrderItem;
 use crate::models::OrderStatus;
 use crate::models::PickupDay;
 use crate::models::ShopSettings;
+use crate::utils::bakery;
 use crate::utils::mail;
 use crate::utils::mail::MailPosition;
 use crate::utils::mail::OrderMail;
@@ -50,19 +52,55 @@ pub async fn lock_pickup_day(
     Ok(newly_locked)
 }
 
-/// Dispatch a pickup day: mark it Dispatched, then send the binding confirmations
+/// Dispatch a pickup day: send the Bakery order, mark it Dispatched, then send the binding confirmations
 ///
-/// The caller picks days that are due; see [`schedule::dispatch_due`].
-#[instrument(name = "lock::dispatch_pickup_day", skip(tx, day), fields(pickup_date = %day.pickup_date))]
+/// The caller picks days that are due; see [`schedule::dispatch_due`]. Without
+/// a Bakery address, or when the Bakery mail could not be handed over, the day
+/// stays as it is and the next tick tries again.
+#[instrument(name = "lock::dispatch_pickup_day", skip(tx, day, settings), fields(pickup_date = %day.pickup_date))]
 pub async fn dispatch_pickup_day(
     tx: &mut Transaction,
     day: &PickupDay,
+    settings: &ShopSettings,
     now: OffsetDateTime,
 ) -> Result<(), galvyn::rorm::Error> {
+    let Some(bakery_email) = &settings.bakery_email else {
+        warn!(
+            pickup_date = %day.pickup_date,
+            "No Bakery address set, the Dispatch waits for one"
+        );
+        return Ok(());
+    };
+
+    let lines = bakery::bakery_order(tx, day).await?;
+    if !lines.is_empty() {
+        // Send first and mark only after the ack: the opposite of the customer
+        // mails below. A failed hand-over leaves the day unmarked, so the next
+        // tick sends again; a crash between the ack and the commit sends twice.
+        // A duplicate order the Bakery can spot is the lesser failure than a
+        // lost one, which means no rolls on the counter on pickup day.
+        if let Err(error) = mail::send_bakery_order(
+            bakery_email,
+            settings.copy_email.as_deref(),
+            day.pickup_date,
+            bakery::render_csv(&lines),
+        )
+        .await
+        {
+            error!(
+                error = %error,
+                pickup_date = %day.pickup_date,
+                "Failed to hand over the Bakery order, retrying on the next tick"
+            );
+            return Ok(());
+        }
+    }
+
     PickupDay::set_dispatched(&mut *tx, day.uuid, now).await?;
     let confirmed = send_confirmations(tx, day, now).await?;
     info!(
         pickup_date = %day.pickup_date,
+        bakery_lines = lines.len(),
         mails = confirmed,
         "Dispatched pickup day"
     );
@@ -200,7 +238,7 @@ pub async fn tick(now: OffsetDateTime) -> Result<(), Box<dyn std::error::Error +
     let settings = ShopSettings::get(&mut tx).await?;
     for day in PickupDay::get_awaiting_dispatch(&mut tx, now).await? {
         if schedule::dispatch_due(&settings, day.deadline_at) <= now {
-            dispatch_pickup_day(&mut tx, &day, now).await?;
+            dispatch_pickup_day(&mut tx, &day, &settings, now).await?;
         }
     }
 
