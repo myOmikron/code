@@ -619,6 +619,9 @@ export type PrintingSearchPage = {
  * deliberately treated as opaque: it carries the page number and every search
  * option Scryfall needs to keep the result order stable.
  *
+ * Of several `prefer:` directives in the query only the last one is sent, so a
+ * caller's default in front of what was typed gives way to a typed one.
+ *
  * @param query the Scryfall query used for the first page
  * @param signal aborts an in-flight search
  * @param unique one row per print run, or one per card
@@ -648,7 +651,11 @@ export async function searchPrintingPage(
         // rejects as an unknown keyword.
         const sortDirective = /(^|\s)(?:sort|order):([a-z][a-z-]*)(?=\s|$)/gi;
         const sort = [...trimmed.matchAll(sortDirective)].at(-1)?.[2]?.toLowerCase();
-        const filters = sort === undefined ? trimmed : trimmed.replace(sortDirective, "$1").trim();
+        const sorted = sort === undefined ? trimmed : trimmed.replace(sortDirective, "$1").trim();
+        const preferDirective = /(^|\s)prefer:([a-z][a-z-]*)(?=\s|$)/gi;
+        const prefer = [...sorted.matchAll(preferDirective)].at(-1)?.[2];
+        const filters =
+            prefer === undefined ? sorted : `${sorted.replace(preferDirective, "$1").trim()} prefer:${prefer}`.trim();
 
         url.searchParams.set("q", filters);
         url.searchParams.set("unique", unique);
