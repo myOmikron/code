@@ -8,6 +8,10 @@
 //! `TEST_POSTGRES_USER` and `TEST_POSTGRES_PASSWORD`, defaulting to `localhost:5432`
 //! where the dev infra stack publishes `test-postgres` (`just dev infra up -d --wait test-postgres`).
 //!
+//! Mails do not leave the process: they land in the [`RecordingMailSink`] behind
+//! [`mails`]. The deadline job does not run on its own either; [`tick`] runs one
+//! pass of it at a chosen point in time.
+//!
 //! Ported from `services/mtg/src/tests/harness.rs`. Login runs no WebAuthn
 //! ceremony: [`TestClient::log_in`] goes through a test-only route that marks the
 //! session logged in (`galvyn-identity`'s `test-support` feature).
@@ -16,7 +20,10 @@ use std::collections::HashMap;
 use std::future::Future;
 use std::net::IpAddr;
 use std::net::Ipv4Addr;
+use std::sync::Arc;
 use std::sync::LazyLock;
+use std::sync::Mutex;
+use std::sync::atomic::AtomicBool;
 use std::sync::atomic::AtomicU32;
 use std::sync::atomic::Ordering;
 
@@ -43,7 +50,10 @@ use galvyn::rorm::fields::types::MaxStr;
 use galvyn_identity::IdentityModule;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
+use time::OffsetDateTime;
+use time::format_description::well_known::Rfc3339;
 use tokio::runtime::Runtime;
+use tokio::sync::MutexGuard;
 use tokio::sync::OnceCell;
 use tower::ServiceExt;
 use url::Url;
@@ -53,6 +63,11 @@ use crate::ModuleSetups;
 use crate::config::Config;
 use crate::models::Account;
 use crate::models::Role;
+use crate::proto::mail_v1::SendEmail;
+use crate::utils::lock;
+use crate::utils::mail::MailError;
+use crate::utils::mail::MailSink;
+use crate::utils::mail::SendFuture;
 
 /// Prefix of every database the harness creates
 const DATABASE_PREFIX: &str = "semmelei_test_";
@@ -110,6 +125,7 @@ impl App {
                     database_driver: driver,
                 },
                 nats: None,
+                mail: mails(),
             },
         )
         .await
@@ -394,4 +410,99 @@ pub async fn create_account(role: Role) -> TestAccount {
     tx.commit().await.expect("commit");
 
     TestAccount { username }
+}
+
+/// Records the mails the service sends instead of handing them to NATS
+///
+/// Shared by all tests of the binary, so a test picks its own mails out by
+/// recipient ([`RecordingMailSink::sent_to`]) rather than counting all of them.
+#[derive(Default)]
+pub struct RecordingMailSink {
+    sent: Mutex<Vec<SendEmail>>,
+    failing: AtomicBool,
+}
+
+impl RecordingMailSink {
+    /// Every mail that went out, in order
+    pub fn sent(&self) -> Vec<SendEmail> {
+        self.sent.lock().expect("not poisoned").clone()
+    }
+
+    /// The mails that went out to `to` or had it in CC, in order
+    pub fn sent_to(&self, to: &str) -> Vec<SendEmail> {
+        self.sent()
+            .into_iter()
+            .filter(|mail| mail.to == to || mail.cc.iter().any(|cc| cc == to))
+            .collect()
+    }
+
+    /// Let every following send fail like a missing JetStream ack, or succeed again
+    ///
+    /// A failed send is not recorded: that mail never left.
+    pub fn set_failing(&self, failing: bool) {
+        self.failing.store(failing, Ordering::SeqCst);
+    }
+}
+
+impl MailSink for RecordingMailSink {
+    fn send(&self, mail: SendEmail) -> SendFuture<'_> {
+        Box::pin(async move {
+            if self.failing.load(Ordering::SeqCst) {
+                return Err(MailError::new("simulated: no ack from JetStream"));
+            }
+            self.sent.lock().expect("not poisoned").push(mail);
+            Ok(())
+        })
+    }
+}
+
+/// The mails the service sent
+pub fn mails() -> Arc<RecordingMailSink> {
+    static SINK: LazyLock<Arc<RecordingMailSink>> = LazyLock::new(Arc::default);
+    SINK.clone()
+}
+
+/// Runs one pass of the deadline job as if the clock showed `now`
+pub async fn tick(now: OffsetDateTime) {
+    App::get().await;
+    lock::tick(now).await.expect("the tick succeeds");
+}
+
+/// The pickup day orders currently go to, held exclusively by one test
+///
+/// Pickup days are shared by the whole binary, and [`tick`] at a made-up time
+/// freezes them for everyone, so each test that orders takes the day for itself.
+pub struct ShopDay {
+    /// When orders for the day close
+    pub deadline: OffsetDateTime,
+    _exclusive: MutexGuard<'static, ()>,
+}
+
+/// Takes the open pickup day for the calling test, freshly without orders
+///
+/// Waits for the test holding it before. Stored pickup days and all orders are
+/// dropped first, so the rule produces the same untouched day again and a
+/// previous test's frozen day does not use up the upcoming ones.
+/// Every test that places orders or calls [`tick`] takes it.
+pub async fn shop_day() -> ShopDay {
+    static EXCLUSIVE: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+    let exclusive = EXCLUSIVE.lock().await;
+    App::get().await;
+    mails().set_failing(false);
+
+    sqlx::query(r#"TRUNCATE "orderitem", "order", "pickupday""#)
+        .execute(Database::global().as_pool())
+        .await
+        .expect("drop the orders and pickup days");
+
+    let window = TestClient::new().get(&api("shop/pickup")).await.ok_json();
+    let deadline = window["deadline"]
+        .as_str()
+        .map(|deadline| OffsetDateTime::parse(deadline, &Rfc3339).expect("an rfc3339 time"))
+        .expect("a pickup day is open");
+
+    ShopDay {
+        deadline,
+        _exclusive: exclusive,
+    }
 }

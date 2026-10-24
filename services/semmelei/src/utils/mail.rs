@@ -3,7 +3,14 @@
 //! Nothing here talks SMTP: a mail is a NATS message, and the gateway owns
 //! delivery. A failed publish must never take an order down with it — the
 //! callers log it and carry on.
+//!
+//! The mails leave through a [`MailSink`], so the tests can record them
+//! instead of needing a NATS server.
 
+use std::fmt;
+use std::future::Future;
+use std::pin::Pin;
+use std::sync::Arc;
 use std::sync::OnceLock;
 
 use galvyn::core::Module;
@@ -20,22 +27,79 @@ use crate::models::OrderLanguage;
 use crate::proto;
 
 /// Error returned when a mail could not be handed to the gateway
-pub type MailError = async_nats::jetstream::context::PublishError;
+#[derive(Debug)]
+pub struct MailError(Box<dyn std::error::Error + Send + Sync>);
 
-/// The origin customer links are built from
+impl MailError {
+    /// Wrap whatever kept the mail from leaving
+    pub fn new(error: impl Into<Box<dyn std::error::Error + Send + Sync>>) -> Self {
+        Self(error.into())
+    }
+}
+
+impl fmt::Display for MailError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+impl std::error::Error for MailError {}
+
+/// The future a [`MailSink`] answers with
+pub type SendFuture<'a> = Pin<Box<dyn Future<Output = Result<(), MailError>> + Send + 'a>>;
+
+/// Where outgoing mails are handed over
+///
+/// Takes the gateway's message as is, CC and attachments included, so a new
+/// kind of mail never needs a change here.
+pub trait MailSink: Send + Sync {
+    /// Hand the mail over, resolving once it was accepted
+    fn send(&self, mail: proto::mail_v1::SendEmail) -> SendFuture<'_>;
+}
+
+/// The production sink: publishes to the gateway's NATS subject
+///
+/// Resolves once JetStream acknowledged the message, so `Ok` means the mail
+/// is stored and the gateway will deliver it.
+pub struct NatsMailSink;
+
+impl MailSink for NatsMailSink {
+    fn send(&self, mail: proto::mail_v1::SendEmail) -> SendFuture<'_> {
+        Box::pin(async move {
+            Nats::global()
+                .publish(nats_subjects::mail::v1::SEND, mail)
+                .await
+                .map_err(MailError::new)?;
+            Ok(())
+        })
+    }
+}
+
+/// What outgoing mails need, set once at startup
 ///
 /// Mails are also sent by the deadline job, which has no request to read the
-/// host from — so the configured origin is stashed once at startup.
-static PUBLIC_ORIGIN: OnceLock<Url> = OnceLock::new();
+/// host from, so the configured origin is stashed here.
+struct Mailer {
+    /// The origin customer links are built from
+    public_origin: Url,
+    /// Where the mails go
+    sink: Arc<dyn MailSink>,
+}
 
-/// Remember the public origin for the links in outgoing mails
-pub fn init(public_origin: Url) {
-    let _ = PUBLIC_ORIGIN.set(public_origin);
+/// The [`Mailer`], once [`init`] ran
+static MAILER: OnceLock<Mailer> = OnceLock::new();
+
+/// Remember the public origin for the links in outgoing mails and the sink they leave through
+pub fn init(public_origin: Url, sink: Arc<dyn MailSink>) {
+    let _ = MAILER.set(Mailer {
+        public_origin,
+        sink,
+    });
 }
 
 /// The link a customer opens to see their order
 fn order_link(pickup_code: &str) -> Option<Url> {
-    let mut link = PUBLIC_ORIGIN.get()?.clone();
+    let mut link = MAILER.get()?.public_origin.clone();
     link.set_path(&format!("/order/{pickup_code}"));
     Some(link)
 }
@@ -193,19 +257,22 @@ fn month_name(month: Month) -> &'static str {
 }
 
 /// Hand a mail to the gateway
+pub async fn send(mail: proto::mail_v1::SendEmail) -> Result<(), MailError> {
+    let mailer = MAILER
+        .get()
+        .ok_or_else(|| MailError::new("no mail sink was set up"))?;
+    mailer.sink.send(mail).await
+}
+
+/// Hand a plain-text mail to a single recipient to the gateway
 async fn publish(to: &str, subject: &str, text_body: String) -> Result<(), MailError> {
-    Nats::global()
-        .publish(
-            nats_subjects::mail::v1::SEND,
-            proto::mail_v1::SendEmail {
-                to: to.to_string(),
-                subject: subject.to_string(),
-                text_body,
-                ..Default::default()
-            },
-        )
-        .await?;
-    Ok(())
+    send(proto::mail_v1::SendEmail {
+        to: to.to_string(),
+        subject: subject.to_string(),
+        text_body,
+        ..Default::default()
+    })
+    .await
 }
 
 /// Confirm that an order arrived — sent right after it was placed
