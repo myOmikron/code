@@ -13,6 +13,7 @@ use time::OffsetDateTime;
 use tracing::instrument;
 use uuid::Uuid;
 
+use crate::models::ShopSettings;
 use crate::models::pickup_day::db::PickupDayInsertPatch;
 use crate::models::pickup_day::db::PickupDayModel;
 
@@ -78,6 +79,14 @@ impl PickupDay {
     /// Whether the day is frozen: explicitly locked or past its deadline
     pub fn is_locked(&self, now: OffsetDateTime) -> bool {
         self.locked_at.is_some() || now >= self.deadline_at
+    }
+
+    /// Whether the day is frozen but its Dispatch waits for a Bakery address
+    pub fn awaits_bakery_address(&self, settings: &ShopSettings, now: OffsetDateTime) -> bool {
+        self.dispatched_at.is_none()
+            && !self.closed
+            && self.is_locked(now)
+            && settings.bakery_email.is_none()
     }
 
     /// Fetch every stored pickup day, oldest first
@@ -167,10 +176,8 @@ impl PickupDay {
 
     /// Fetch every day past its Deadline that still waits for its Dispatch
     ///
-    /// Waiting means: not called off and not Dispatched yet. Days whose
-    /// confirmations went out before the Dispatch existed count as Dispatched,
-    /// so the first tick after the upgrade does not send them again. Whether
-    /// the Dispatch is due already is [`schedule::dispatch_due`]'s call.
+    /// Waiting means: not called off and not Dispatched yet. Whether the
+    /// Dispatch is due already is [`schedule::dispatch_due`]'s call.
     ///
     /// [`schedule::dispatch_due`]: crate::utils::schedule::dispatch_due
     #[instrument(name = "PickupDay::get_awaiting_dispatch", skip(exe))]
@@ -182,10 +189,7 @@ impl PickupDay {
             .condition(rorm::and!(
                 PickupDayModel.deadline_at.less_equals(now),
                 PickupDayModel.closed.equals(false),
-                PickupDayModel.dispatched_at.equals(None::<OffsetDateTime>),
-                PickupDayModel
-                    .confirmations_sent_at
-                    .equals(None::<OffsetDateTime>)
+                PickupDayModel.dispatched_at.equals(None::<OffsetDateTime>)
             ))
             .all()
             .await?

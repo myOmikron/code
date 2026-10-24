@@ -56,14 +56,14 @@ pub async fn lock_pickup_day(
 ///
 /// The caller picks days that are due; see [`schedule::dispatch_due`]. Without
 /// a Bakery address, or when the Bakery mail could not be handed over, the day
-/// stays as it is and the next tick tries again.
-#[instrument(name = "lock::dispatch_pickup_day", skip(tx, day, settings), fields(pickup_date = %day.pickup_date))]
+/// stays as it is and the next tick tries again. Each day is its own unit: the
+/// marks are committed before the first confirmation leaves.
+#[instrument(name = "lock::dispatch_pickup_day", skip(day, settings), fields(pickup_date = %day.pickup_date))]
 pub async fn dispatch_pickup_day(
-    tx: &mut Transaction,
     day: &PickupDay,
     settings: &ShopSettings,
     now: OffsetDateTime,
-) -> Result<(), galvyn::rorm::Error> {
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let Some(bakery_email) = &settings.bakery_email else {
         warn!(
             pickup_date = %day.pickup_date,
@@ -72,13 +72,13 @@ pub async fn dispatch_pickup_day(
         return Ok(());
     };
 
-    let lines = bakery::bakery_order(tx, day).await?;
+    let mut tx = Database::global().start_transaction().await?;
+    let lines = bakery::bakery_order(&mut tx, day).await?;
+    tx.commit().await?;
+
     if !lines.is_empty() {
-        // Send first and mark only after the ack: the opposite of the customer
-        // mails below. A failed hand-over leaves the day unmarked, so the next
-        // tick sends again; a crash between the ack and the commit sends twice.
-        // A duplicate order the Bakery can spot is the lesser failure than a
-        // lost one, which means no rolls on the counter on pickup day.
+        // Mark only after the ack: a lost Bakery order is worse than a
+        // duplicate one, so a crash before the commit sends it again.
         if let Err(error) = mail::send_bakery_order(
             bakery_email,
             settings.copy_email.as_deref(),
@@ -96,8 +96,13 @@ pub async fn dispatch_pickup_day(
         }
     }
 
-    PickupDay::set_dispatched(&mut *tx, day.uuid, now).await?;
-    let confirmed = send_confirmations(tx, day, now).await?;
+    let mut tx = Database::global().start_transaction().await?;
+    PickupDay::set_dispatched(&mut tx, day.uuid, now).await?;
+    PickupDay::set_confirmations_sent(&mut tx, day.uuid, now).await?;
+    let confirmations = confirmations_of(&mut tx, day).await?;
+    tx.commit().await?;
+
+    let confirmed = send_confirmations(&confirmations, day).await;
     info!(
         pickup_date = %day.pickup_date,
         bakery_lines = lines.len(),
@@ -107,45 +112,34 @@ pub async fn dispatch_pickup_day(
     Ok(())
 }
 
-/// Send the binding confirmations of a pickup day, at most once
-///
-/// Returns how many confirmation mails were queued; none if they already went out.
-async fn send_confirmations(
+/// The non-cancelled orders of a pickup day with their positions, for the confirmations
+async fn confirmations_of(
     tx: &mut Transaction,
     day: &PickupDay,
-    now: OffsetDateTime,
-) -> Result<i64, galvyn::rorm::Error> {
-    if day.confirmations_sent_at.is_some() {
-        return Ok(0);
-    }
-
-    // Mark before sending: a crash mid-loop must not queue every mail again
-    // on the next tick. Losing a mail is the better failure than spamming.
-    PickupDay::set_confirmations_sent(&mut *tx, day.uuid, now).await?;
-
-    let orders: Vec<Order> = Order::get_by_pickup_day(&mut *tx, day.uuid)
-        .await?
-        .into_iter()
-        .filter(|order| order.status != OrderStatus::Cancelled)
-        .collect();
-
-    let mut sent = 0;
-    for order in &orders {
+) -> Result<Vec<(Order, Vec<MailPosition>)>, galvyn::rorm::Error> {
+    let mut confirmations = Vec::new();
+    for order in Order::get_by_pickup_day(&mut *tx, day.uuid).await? {
+        if order.status == OrderStatus::Cancelled {
+            continue;
+        }
         let positions: Vec<MailPosition> = OrderItem::get_by_order(&mut *tx, order.uuid)
             .await?
             .iter()
             .map(MailPosition::from)
             .collect();
-        let mail = OrderMail {
-            pickup_code: &order.pickup_code,
-            customer_name: &order.display_name(),
-            email: order.email.as_deref(),
-            language: order.language,
-            pickup_date: day.pickup_date,
-            deadline: day.deadline_at,
-            positions: &positions,
-        };
-        match mail::send_order_confirmed(&mail).await {
+        confirmations.push((order, positions));
+    }
+    Ok(confirmations)
+}
+
+/// Send the binding confirmations of a pickup day
+///
+/// Runs after the day is marked, so a crash mid-loop loses mails rather than
+/// sending them twice. Returns how many confirmation mails were queued.
+async fn send_confirmations(confirmations: &[(Order, Vec<MailPosition>)], day: &PickupDay) -> i64 {
+    let mut sent = 0;
+    for (order, positions) in confirmations {
+        match mail::send_order_confirmed(&OrderMail::for_order(order, day, positions)).await {
             Ok(()) => sent += 1,
             Err(error) => error!(
                 error = %error,
@@ -154,8 +148,7 @@ async fn send_confirmations(
             ),
         }
     }
-
-    Ok(sent)
+    sent
 }
 
 /// Cancel every open order of a pickup day and tell the customers
@@ -182,16 +175,9 @@ pub async fn cancel_pickup_day(
             .iter()
             .map(MailPosition::from)
             .collect();
-        let mail = OrderMail {
-            pickup_code: &order.pickup_code,
-            customer_name: &order.display_name(),
-            email: order.email.as_deref(),
-            language: order.language,
-            pickup_date: day.pickup_date,
-            deadline: day.deadline_at,
-            positions: &positions,
-        };
-        if let Err(error) = mail::send_order_cancelled(&mail).await {
+        if let Err(error) =
+            mail::send_order_cancelled(&OrderMail::for_order(order, day, &positions)).await
+        {
             error!(
                 error = %error,
                 order.pickup_code = %order.pickup_code,
@@ -230,18 +216,23 @@ pub async fn run_deadline_job() {
 #[instrument(name = "lock::tick", level = "debug")]
 pub async fn tick(now: OffsetDateTime) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let mut tx = Database::global().start_transaction().await?;
-
     for day in PickupDay::get_due_for_lock(&mut tx, now).await? {
         lock_pickup_day(&mut tx, &day, now).await?;
     }
-
     let settings = ShopSettings::get(&mut tx).await?;
-    for day in PickupDay::get_awaiting_dispatch(&mut tx, now).await? {
-        if schedule::dispatch_due(&settings, day.deadline_at) <= now {
-            dispatch_pickup_day(&mut tx, &day, &settings, now).await?;
+    let awaiting = PickupDay::get_awaiting_dispatch(&mut tx, now).await?;
+    tx.commit().await?;
+
+    for day in awaiting {
+        if schedule::dispatch_due(&settings, day.deadline_at) <= now
+            && let Err(error) = dispatch_pickup_day(&day, &settings, now).await
+        {
+            error!(
+                error = %error,
+                pickup_date = %day.pickup_date,
+                "Failed to Dispatch pickup day, retrying on the next tick"
+            );
         }
     }
-
-    tx.commit().await?;
     Ok(())
 }

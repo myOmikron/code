@@ -4,6 +4,7 @@ use std::collections::BTreeMap;
 use std::collections::HashMap;
 
 use galvyn::rorm;
+use galvyn::rorm::db::Executor;
 use galvyn::rorm::db::transaction::Transaction;
 use time::Date;
 use tracing::instrument;
@@ -130,6 +131,17 @@ pub fn filename(pickup_date: Date) -> String {
     format!("bestellung-{pickup_date}.csv")
 }
 
+/// The live Bakery Article Number of every Item that has one
+pub async fn article_numbers(
+    exe: impl Executor<'_>,
+) -> Result<HashMap<ItemUuid, String>, rorm::Error> {
+    Ok(Item::get_all(exe)
+        .await?
+        .into_iter()
+        .filter_map(|item| Some((item.uuid, item.bakery_article_number?.to_string())))
+        .collect())
+}
+
 /// The Bakery order of a pickup day, from all its non-cancelled orders
 ///
 /// The article number is read live through each position's Item link (#84):
@@ -140,11 +152,7 @@ pub async fn bakery_order(
     tx: &mut Transaction,
     day: &PickupDay,
 ) -> Result<Vec<BakeryLine>, rorm::Error> {
-    let numbers: HashMap<ItemUuid, String> = Item::get_all(&mut *tx)
-        .await?
-        .into_iter()
-        .filter_map(|item| Some((item.uuid, item.bakery_article_number?.to_string())))
-        .collect();
+    let numbers = article_numbers(&mut *tx).await?;
 
     let mut positions: Vec<(String, OrderItem)> = Vec::new();
     for order in Order::get_by_pickup_day(&mut *tx, day.uuid).await? {

@@ -3,6 +3,7 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 import {
     Badge,
+    BadgeProps,
     Button,
     EmptyState,
     Heading,
@@ -51,6 +52,42 @@ function Procurement() {
         );
     }
 
+    /** Where the day stands: one badge and, unless called off, one line of text */
+    const state = ((): { color: BadgeProps["color"]; badge: string; description?: string } => {
+        if (summary.closed) {
+            return { color: "red", badge: t("label.state-closed") };
+        }
+        if (summary.dispatched_at) {
+            return {
+                color: "green",
+                badge: t("label.state-final"),
+                description: t("description.procurement-dispatched", {
+                    date: formatDateTime(summary.dispatched_at),
+                    count: summary.order_count,
+                }),
+            };
+        }
+        if (summary.not_dispatched_reason === "NoBakeryAddress") {
+            return {
+                color: "red",
+                badge: t("label.state-not-dispatched"),
+                description: t("description.procurement-no-bakery-address"),
+            };
+        }
+        if (summary.locked) {
+            return {
+                color: "amber",
+                badge: t("label.state-review"),
+                description: t("description.procurement-review", { date: formatDateTime(summary.dispatch_due) }),
+            };
+        }
+        return {
+            color: "amber",
+            badge: t("label.state-preliminary"),
+            description: t("description.procurement-open", { date: formatDateTime(summary.deadline) }),
+        };
+    })();
+
     /** Download the list as a CSV for the bakery */
     function download() {
         if (summary === undefined || summary === "not-found") return;
@@ -78,37 +115,14 @@ function Procurement() {
             <div className={"flex flex-wrap items-center justify-between gap-3"}>
                 <Heading>{t("heading.procurement", { date: formatDate(summary.pickup_date) })}</Heading>
                 <div className={"flex items-center gap-2"}>
-                    {summary.closed ? (
-                        <Badge color={"red"}>{t("label.state-closed")}</Badge>
-                    ) : summary.dispatched_at ? (
-                        <Badge color={"green"}>{t("label.state-final")}</Badge>
-                    ) : summary.not_dispatched_reason === "NoBakeryAddress" ? (
-                        <Badge color={"red"}>{t("label.state-not-dispatched")}</Badge>
-                    ) : summary.locked ? (
-                        <Badge color={"amber"}>{t("label.state-review")}</Badge>
-                    ) : (
-                        <Badge color={"amber"}>{t("label.state-preliminary")}</Badge>
-                    )}
+                    <Badge color={state.color}>{state.badge}</Badge>
                     <Button onClick={download} disabled={summary.positions.length === 0}>
                         {t("button.download-csv")}
                     </Button>
                 </div>
             </div>
 
-            {!summary.closed && (
-                <Text>
-                    {summary.dispatched_at
-                        ? t("description.procurement-dispatched", {
-                              date: formatDateTime(summary.dispatched_at),
-                              count: summary.order_count,
-                          })
-                        : summary.not_dispatched_reason === "NoBakeryAddress"
-                          ? t("description.procurement-no-bakery-address")
-                          : summary.locked
-                            ? t("description.procurement-review", { date: formatDateTime(summary.dispatch_due) })
-                            : t("description.procurement-open", { date: formatDateTime(summary.deadline) })}
-                </Text>
-            )}
+            {state.description && <Text>{state.description}</Text>}
 
             {summary.positions.length === 0 ? (
                 <EmptyState title={t("label.procurement-empty")} />

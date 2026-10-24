@@ -19,6 +19,19 @@ Line = 53
 Column = 9
 
 [[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+UPDATE pickupday SET dispatched_at = confirmations_sent_at WHERE confirmations_sent_at IS NOT NULL;
+"""
+MySQL = """
+UPDATE pickupday SET dispatched_at = confirmations_sent_at WHERE confirmations_sent_at IS NOT NULL;
+"""
+Postgres = """
+UPDATE "pickupday" SET "dispatched_at" = "confirmations_sent_at" WHERE "confirmations_sent_at" IS NOT NULL;
+"""
+
+[[Migration.Operations]]
 Type = "CreateField"
 Model = "shopsettings"
 
