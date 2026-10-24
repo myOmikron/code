@@ -1,10 +1,14 @@
 //! External Accounts in recovery, signup and Deletion
 
+use galvyn::core::Module;
 use galvyn::core::re_exports::axum::http::Method;
+use galvyn::rorm::Database;
+use galvyn_identity::DeleteHook;
 use serde_json::Value;
 use serde_json::json;
 
 use crate::models::account::Account;
+use crate::models::account::AccountDeleteHook;
 use crate::models::account::Role;
 use crate::tests::harness::TestClient;
 use crate::tests::harness::api;
@@ -153,5 +157,21 @@ fn me_tells_an_external_account_from_a_local_one() {
 
         assert_eq!(local["external"], false, "{local}");
         assert_eq!(external["external"], true, "{external}");
+    });
+}
+
+#[test]
+fn the_delete_hook_deletes_the_account_of_an_identity() {
+    run(async {
+        let account = external_account().await;
+
+        let mut tx = Database::global().start_transaction().await.unwrap();
+        AccountDeleteHook
+            .delete(&mut tx, account.identity)
+            .await
+            .unwrap();
+        tx.commit().await.unwrap();
+
+        assert!(account_named(account.username.as_str()).await.is_none());
     });
 }

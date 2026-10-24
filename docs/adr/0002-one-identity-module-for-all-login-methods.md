@@ -8,6 +8,8 @@ The login page asks the module's listing (mounted by the service, no login neede
 
 An open provider admits a person on their first OIDC login in one of two ways the service picks: the module creates the Identity with its External identity and asks a service hook, which creates the Account in the same transaction or declines and leaves nothing behind; or the External identity stays pending in the session until the service binds it inside the transaction that creates its Account. The pending bind exists for services that ask the person something first, like mtg's username step, which a synchronous hook cannot do.
 
+Deleting a provider that still vouches for people is a bulk delete for GDPR requests, typed out with its display name. In one transaction it calls the service's delete hook per affected Identity (the module's setup names it once, as how the service deletes a single person; mtg deletes the Account as on a self-deletion), then removes the External identities, the Identities and the provider; a failing hook rolls all of it back. Without a hook the service's foreign keys on the Identity decide what goes along.
+
 ## Considered Options
 
 - A separate `galvyn-oidc` module next to `galvyn-passkeys`: OIDC would hang off an Identity owned by a module named after a different login method, or the Identity would need a third base crate.

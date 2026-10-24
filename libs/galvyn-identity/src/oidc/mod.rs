@@ -26,6 +26,7 @@ pub use self::cli::CliAdmission;
 pub use self::error::AddOpenIdProviderError;
 pub use self::error::BeginOidcLoginError;
 pub use self::error::BindError;
+pub use self::error::BulkDeleteOpenIdProviderError;
 pub use self::error::DeleteOpenIdProviderError;
 pub use self::error::EditOpenIdProviderError;
 #[cfg(feature = "test-support")]

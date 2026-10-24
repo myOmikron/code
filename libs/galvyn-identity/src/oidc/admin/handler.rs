@@ -13,6 +13,8 @@ use galvyn::put;
 use galvyn::rorm::Database;
 use galvyn::rorm::fields::types::MaxStr;
 
+use super::schema::AdminBulkDeleteOpenIdProviderErrors;
+use super::schema::AdminBulkDeleteOpenIdProviderRequest;
 use super::schema::AdminCreateOpenIdProviderErrors;
 use super::schema::AdminCreateOpenIdProviderRequest;
 use super::schema::AdminDeleteOpenIdProviderErrors;
@@ -24,6 +26,7 @@ use crate::IdentityModule;
 use crate::oidc::NewOpenIdProvider;
 use crate::oidc::OpenIdProviderEdit;
 use crate::oidc::error::AddOpenIdProviderError;
+use crate::oidc::error::BulkDeleteOpenIdProviderError;
 use crate::oidc::error::DeleteOpenIdProviderError;
 use crate::oidc::error::EditOpenIdProviderError;
 
@@ -155,5 +158,41 @@ pub async fn admin_delete_openid_provider(
             errors.fail()
         }
         DeleteOpenIdProviderError::Internal(error) => Err(error.into()),
+    }
+}
+
+/// Delete an OpenID provider with everyone it vouches for, for GDPR requests
+///
+/// The admin types the provider's display name to confirm. Per affected
+/// Identity the service's delete hook deletes or anonymizes the Account,
+/// then the External identities, the Identities and the provider go, all in
+/// one transaction.
+#[delete("/{slug}/bulk")]
+pub async fn admin_bulk_delete_openid_provider(
+    Path(slug): Path<MaxStr<64>>,
+    ApiJson(request): ApiJson<AdminBulkDeleteOpenIdProviderRequest>,
+) -> ApiResult<ApiJson<()>, AdminBulkDeleteOpenIdProviderErrors> {
+    let mut tx = Database::global().start_transaction().await?;
+    let deleted = IdentityModule::global()
+        .bulk_delete_openid_provider(&mut tx, &slug, &request.name)
+        .await;
+    let refused = match deleted {
+        Ok(()) => {
+            tx.commit().await?;
+            return Ok(ApiJson(()));
+        }
+        Err(error) => error,
+    };
+    tx.rollback().await?;
+    match refused {
+        BulkDeleteOpenIdProviderError::UnknownProvider => {
+            Err(ApiError::bad_request("Unknown provider"))
+        }
+        BulkDeleteOpenIdProviderError::NameMismatch => {
+            let mut errors = FormErrors::<AdminBulkDeleteOpenIdProviderErrors>::new();
+            errors.name_mismatch = true;
+            errors.fail()
+        }
+        BulkDeleteOpenIdProviderError::Internal(error) => Err(error.into()),
     }
 }

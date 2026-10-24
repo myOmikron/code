@@ -28,6 +28,7 @@ use crate::testing::run;
 
 mod admin;
 mod admission;
+mod bulk_delete;
 mod db;
 mod providers;
 

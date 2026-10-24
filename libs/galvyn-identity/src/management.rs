@@ -2,6 +2,9 @@
 
 #[cfg(feature = "oidc")]
 use std::collections::HashMap;
+use std::fmt;
+use std::future::Future;
+use std::pin::Pin;
 
 use galvyn::core::Module;
 use galvyn::core::re_exports::time::Duration;
@@ -41,6 +44,29 @@ impl OpenLink {
     /// The Identity the link enrolls a login method for
     pub fn identity(&self) -> IdentityUuid {
         self.identity
+    }
+}
+
+/// How the service deletes a single person, Account and all
+///
+/// Set in [`IdentitySetup::delete_hook`](crate::IdentitySetup::delete_hook).
+/// The module calls it wherever it deletes people itself: per Identity on a
+/// bulk delete of an OpenID provider.
+pub trait DeleteHook: Send + Sync + 'static {
+    /// Delete or anonymize the Account of `identity` in `tx`
+    ///
+    /// The hook may delete `identity` itself; the module deletes it after the
+    /// hook either way. An error rolls `tx` back.
+    fn delete<'a>(
+        &'a self,
+        tx: &'a mut Transaction,
+        identity: IdentityUuid,
+    ) -> Pin<Box<dyn Future<Output = Result<(), CoreApiError>> + Send + 'a>>;
+}
+
+impl fmt::Debug for dyn DeleteHook {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("DeleteHook(..)")
     }
 }
 

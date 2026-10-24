@@ -1,9 +1,13 @@
 //! Accounts, each signing in as one [`Identity`]
 
+use std::future::Future;
+use std::pin::Pin;
+
 use galvyn::core::Module;
 use galvyn::core::re_exports::schemars;
 use galvyn::core::re_exports::schemars::JsonSchema;
 use galvyn::core::re_exports::time::OffsetDateTime;
+use galvyn::core::stuff::api_error::core::CoreApiError;
 use galvyn::rorm;
 use galvyn::rorm::db::Executor;
 use galvyn::rorm::db::executor::All;
@@ -13,6 +17,7 @@ use galvyn::rorm::db::transaction::Transaction;
 use galvyn::rorm::fields::types::ForeignModelByField;
 use galvyn::rorm::fields::types::MaxStr;
 use galvyn::rorm::prelude::ForeignModel;
+use galvyn_identity::DeleteHook;
 #[cfg(doc)]
 use galvyn_identity::Identity;
 use galvyn_identity::IdentityModule;
@@ -652,6 +657,27 @@ impl Account {
         IdentityModule::global()
             .delete_identity(&mut *tx, account.identity)
             .await
+    }
+}
+
+/// Deletes the Account of an Identity the Identity module deletes, e.g. on a
+/// bulk delete of an OpenID provider
+///
+/// The same Deletion as a self-deletion: public decks go to the Tombstone.
+pub struct AccountDeleteHook;
+
+impl DeleteHook for AccountDeleteHook {
+    fn delete<'a>(
+        &'a self,
+        tx: &'a mut Transaction,
+        identity: IdentityUuid,
+    ) -> Pin<Box<dyn Future<Output = Result<(), CoreApiError>> + Send + 'a>> {
+        Box::pin(async move {
+            if let Some(account) = Account::get_by_identity(&mut *tx, identity).await? {
+                Account::delete(&mut *tx, account.uuid, DeletionMode::Tombstone).await?;
+            }
+            Ok(())
+        })
     }
 }
 

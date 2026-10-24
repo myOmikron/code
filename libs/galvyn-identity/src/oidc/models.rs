@@ -304,6 +304,34 @@ impl OpenIdProvider {
         Ok(reference.is_some())
     }
 
+    /// The Identities whose External identity references the provider `uuid`
+    #[instrument(name = "OpenIdProvider::identities", skip(exe))]
+    pub(crate) async fn identities(
+        exe: impl Executor<'_>,
+        uuid: Uuid,
+    ) -> Result<Vec<IdentityUuid>, rorm::Error> {
+        let identities = rorm::query(exe, ExternalIdentityModel.identity)
+            .condition(ExternalIdentityModel.provider.equals(uuid))
+            .all()
+            .await?;
+        Ok(identities
+            .into_iter()
+            .map(IdentityUuid::new_from_field)
+            .collect())
+    }
+
+    /// Delete every External identity referencing the provider `uuid`
+    #[instrument(name = "OpenIdProvider::delete_external_identities", skip(exe))]
+    pub(crate) async fn delete_external_identities(
+        exe: impl Executor<'_>,
+        uuid: Uuid,
+    ) -> Result<(), rorm::Error> {
+        rorm::delete(exe, ExternalIdentityModel)
+            .condition(ExternalIdentityModel.provider.equals(uuid))
+            .await?;
+        Ok(())
+    }
+
     /// Delete the provider `uuid`
     ///
     /// Fails with a foreign key violation while an External identity references it.

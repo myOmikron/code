@@ -54,6 +54,20 @@ pub enum DeleteOpenIdProviderError {
     Internal(CoreApiError),
 }
 
+/// Failure of [`IdentityModule::bulk_delete_openid_provider`](crate::IdentityModule::bulk_delete_openid_provider)
+///
+/// On any of them the transaction has to be rolled back.
+#[derive(Debug)]
+pub enum BulkDeleteOpenIdProviderError {
+    /// No OpenID provider has the slug
+    UnknownProvider,
+    /// The typed confirmation is not the provider's display name
+    NameMismatch,
+    /// Something unrelated to the request broke, or the service's
+    /// [`DeleteHook`](crate::DeleteHook) failed
+    Internal(CoreApiError),
+}
+
 /// Failure of [`IdentityModule::begin_oidc_login`](crate::IdentityModule::begin_oidc_login)
 #[derive(Debug)]
 pub enum BeginOidcLoginError {
@@ -140,6 +154,7 @@ internal_from!(
     AddOpenIdProviderError,
     EditOpenIdProviderError,
     DeleteOpenIdProviderError,
+    BulkDeleteOpenIdProviderError,
     BeginOidcLoginError,
     FinishOidcLoginError,
     BindError

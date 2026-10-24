@@ -1,5 +1,7 @@
 //! Everything a service configures about [`IdentityModule`](super::IdentityModule)
 
+use std::sync::Arc;
+
 use galvyn::core::re_exports::time::Duration;
 use tower_sessions::Expiry;
 use url::Url;
@@ -27,6 +29,12 @@ pub struct IdentitySetup {
     /// How long a remembered session survives without being used
     pub remember_me: Duration,
 
+    /// How the service deletes a single person, `None` to delete only the Identity
+    ///
+    /// Without a hook the service's foreign keys on the Identity decide what
+    /// goes with the person.
+    pub delete_hook: Option<Arc<dyn super::DeleteHook>>,
+
     /// Setup of Passkey login
     #[cfg(feature = "passkey")]
     pub passkey: super::PasskeySetup,
@@ -43,6 +51,7 @@ impl Default for IdentitySetup {
             registration_link_path: String::new(),
             registration_link_validity: Duration::days(7),
             remember_me: Duration::days(30),
+            delete_hook: None,
             #[cfg(feature = "passkey")]
             passkey: super::PasskeySetup::default(),
             #[cfg(feature = "oidc")]

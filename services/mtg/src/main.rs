@@ -4,6 +4,7 @@ use std::io;
 use std::net::Ipv4Addr;
 use std::net::SocketAddr;
 use std::num::NonZeroU64;
+use std::sync::Arc;
 use std::time::Duration;
 
 use clap::Parser;
@@ -37,6 +38,7 @@ use crate::cli::Command;
 use crate::config::Config;
 use crate::http::FrontendApi;
 use crate::models::account::Account;
+use crate::models::account::AccountDeleteHook;
 use crate::models::account::Role;
 use crate::models::account::Username;
 use crate::models::admin_log::AdminActor;
@@ -142,6 +144,7 @@ pub async fn init_modules(
         .register_module::<IdentityModule>(IdentitySetup {
             public_origin: Some(config.public_origin.clone()),
             registration_link_path: "/auth/register".to_string(),
+            delete_hook: Some(Arc::new(AccountDeleteHook)),
             passkey: PasskeySetup {
                 rp_name: "MTG".to_string(),
             },

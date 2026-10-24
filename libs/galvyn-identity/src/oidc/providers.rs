@@ -6,6 +6,7 @@ use galvyn::rorm::db::transaction::Transaction;
 use galvyn::rorm::db::transaction::TransactionError;
 
 use super::error::AddOpenIdProviderError;
+use super::error::BulkDeleteOpenIdProviderError;
 use super::error::DeleteOpenIdProviderError;
 use super::error::EditOpenIdProviderError;
 use super::models::SLUG_UNIQUE;
@@ -14,6 +15,7 @@ use super::provider::OpenIdProvider;
 use super::provider::OpenIdProviderEdit;
 use super::provider::issuer_of;
 use crate::IdentityModule;
+use crate::models::Identity;
 
 impl IdentityModule {
     /// Add `provider` to the module's tables
@@ -193,6 +195,41 @@ impl IdentityModule {
                 true => DeleteOpenIdProviderError::Referenced,
                 false => DeleteOpenIdProviderError::Internal(error.into()),
             })
+    }
+
+    /// Delete the OpenID provider named `slug` in `tx` with everyone it vouches for
+    ///
+    /// For GDPR requests. `name` confirms it: the provider's display name,
+    /// ignoring surrounding whitespace and ASCII case. Per Identity whose
+    /// External identity references the provider it first calls the
+    /// service's [`DeleteHook`](crate::DeleteHook), then deletes the External
+    /// identities, the Identities and the provider. On an error `tx` has to
+    /// be rolled back, so a failing hook undoes the whole bulk delete.
+    pub async fn bulk_delete_openid_provider(
+        &self,
+        tx: &mut Transaction,
+        slug: &str,
+        name: &str,
+    ) -> Result<(), BulkDeleteOpenIdProviderError> {
+        let Some(stored) = OpenIdProvider::get_by_slug(&mut *tx, slug).await? else {
+            return Err(BulkDeleteOpenIdProviderError::UnknownProvider);
+        };
+        if !name.trim().eq_ignore_ascii_case(&stored.display_name) {
+            return Err(BulkDeleteOpenIdProviderError::NameMismatch);
+        }
+
+        let identities = OpenIdProvider::identities(&mut *tx, stored.uuid).await?;
+        if let Some(hook) = &self.delete_hook {
+            for identity in &identities {
+                hook.delete(&mut *tx, *identity).await?;
+            }
+        }
+        OpenIdProvider::delete_external_identities(&mut *tx, stored.uuid).await?;
+        for identity in identities {
+            Identity::delete(&mut *tx, identity).await?;
+        }
+        OpenIdProvider::delete(&mut *tx, stored.uuid).await?;
+        Ok(())
     }
 }
 

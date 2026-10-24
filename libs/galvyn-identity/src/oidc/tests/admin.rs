@@ -111,7 +111,7 @@ fn every_handler_has_its_own_operation_id() {
     ids.sort_unstable();
     ids.dedup();
     assert_eq!(ids.len(), count);
-    assert_eq!(count, 6);
+    assert_eq!(count, 7);
 }
 
 #[test]

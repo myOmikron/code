@@ -31,6 +31,9 @@
     )
 )]
 
+#[cfg(feature = "oidc")]
+use std::sync::Arc;
+
 use galvyn::core::InitError;
 use galvyn::core::Module;
 use galvyn::core::PreInitError;
@@ -41,6 +44,7 @@ pub use self::error::LinkError;
 pub use self::error::OpenLinkError;
 pub use self::login_methods::EnabledLoginMethod;
 pub use self::login_methods::login_methods_routes;
+pub use self::management::DeleteHook;
 pub use self::management::OpenLink;
 pub use self::middleware::AuthRequiredLayer;
 pub use self::models::Identity;
@@ -60,6 +64,8 @@ pub use self::oidc::BeginOidcLoginError;
 pub use self::oidc::BindError;
 #[cfg(feature = "oidc")]
 pub use self::oidc::BoundExternalIdentity;
+#[cfg(feature = "oidc")]
+pub use self::oidc::BulkDeleteOpenIdProviderError;
 #[cfg(feature = "oidc")]
 pub use self::oidc::CliAdmission;
 #[cfg(feature = "oidc")]
@@ -153,6 +159,9 @@ pub struct IdentityModule {
     /// How the module reaches the OpenID providers
     #[cfg(feature = "oidc")]
     oidc: oidc::OpenIdProviders,
+    /// How the service deletes a single person
+    #[cfg(feature = "oidc")]
+    delete_hook: Option<Arc<dyn DeleteHook>>,
 }
 
 /// What [`IdentityModule`] prepares before the database is up
@@ -165,6 +174,9 @@ pub struct Prepared {
     /// How the module reaches the OpenID providers
     #[cfg(feature = "oidc")]
     oidc: oidc::OpenIdProviders,
+    /// How the service deletes a single person
+    #[cfg(feature = "oidc")]
+    delete_hook: Option<Arc<dyn DeleteHook>>,
 }
 
 impl Module for IdentityModule {
@@ -176,12 +188,16 @@ impl Module for IdentityModule {
         let passkey = setup.passkey.clone();
         #[cfg(feature = "oidc")]
         let oidc = setup.oidc.clone();
+        #[cfg(feature = "oidc")]
+        let delete_hook = setup.delete_hook.clone();
         let settings = Settings::new(setup)?;
         Ok(Prepared {
             #[cfg(feature = "passkey")]
             webauthn: passkey::build_webauthn(&settings.public_origin, &passkey)?,
             #[cfg(feature = "oidc")]
             oidc: oidc::build_providers(&settings.public_origin, oidc)?,
+            #[cfg(feature = "oidc")]
+            delete_hook,
             settings,
         })
     }
@@ -205,6 +221,8 @@ impl IdentityModule {
             webauthn: prepared.webauthn,
             #[cfg(feature = "oidc")]
             oidc: prepared.oidc,
+            #[cfg(feature = "oidc")]
+            delete_hook: prepared.delete_hook,
         }
     }
 }

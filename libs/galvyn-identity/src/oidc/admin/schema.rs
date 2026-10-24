@@ -134,6 +134,20 @@ pub struct AdminDeleteOpenIdProviderErrors {
     pub referenced: bool,
 }
 
+/// Request to delete an OpenID provider with everyone it vouches for
+#[derive(Debug, Clone, Deserialize, JsonSchema)]
+pub struct AdminBulkDeleteOpenIdProviderRequest {
+    /// The provider's display name, typed to confirm
+    pub name: MaxStr<255>,
+}
+
+/// Why an OpenID provider could not be bulk deleted
+#[derive(Debug, Default, Serialize, JsonSchema)]
+pub struct AdminBulkDeleteOpenIdProviderErrors {
+    /// The typed name is not the provider's display name
+    pub name_mismatch: bool,
+}
+
 impl From<AdminOpenIdProviderAdmission> for Admission {
     fn from(value: AdminOpenIdProviderAdmission) -> Self {
         match value {

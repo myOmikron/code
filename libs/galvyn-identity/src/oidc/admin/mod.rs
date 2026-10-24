@@ -18,4 +18,5 @@ pub fn openid_provider_admin_routes() -> GalvynRouter {
         .handler(handler::admin_deactivate_openid_provider)
         .handler(handler::admin_reactivate_openid_provider)
         .handler(handler::admin_delete_openid_provider)
+        .handler(handler::admin_bulk_delete_openid_provider)
 }
