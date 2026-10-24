@@ -19,7 +19,7 @@ jobs:
     timeout-minutes: 100
     steps:
       - name: Wait for the triggered checks
-        uses: poseidon/wait-for-status-checks@35355dfd353a6f7e300915580198f35a8cc8b547 # v0.7.0
+        uses: poseidon/wait-for-status-checks@e7e24423722c5b8e97a6dd5848827d2a412f812d # v0.7.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           # the path-filtered workflows register their check runs shortly after the PR event
