@@ -1,0 +1,29 @@
+# The required status check of main: waits for every check run a PR triggered and fails if one
+# fails. The other workflows are path-filtered, so none of them can be required on its own, and
+# Renovate's platformAutomerge relies on this check to hold the merge until CI is green.
+name: CI gate
+
+on:
+  pull_request:
+
+concurrency:
+  group: ci-gate-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  checks: read
+
+jobs:
+  ci-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 100
+    steps:
+      - name: Wait for the triggered checks
+        uses: poseidon/wait-for-status-checks@35355dfd353a6f7e300915580198f35a8cc8b547 # v0.7.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          # the path-filtered workflows register their check runs shortly after the PR event
+          delay: 30s
+          # GITHUB_TOKEN allows 1000 requests per hour, shared by every open PR's gate
+          interval: 60s
+          timeout: 5400s

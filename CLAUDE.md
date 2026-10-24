@@ -162,6 +162,9 @@ mtg query cost). A review applies all of it; read the sections a change touches 
   action `.github/actions/rust-ci` and scopes clippy/build/test on PRs to crates
   affected by the diff (`tools/changed-crates.py`); it also runs taplo, `ast-grep scan`
   and `cargo doc`. `tools/ci-image` mirrors it for local runs (`just run-ci-image`)
+- `ci-gate.yaml` is the one required check of `main`: it waits for every check run a PR
+  triggered, since the path-filtered workflows cannot be required themselves. Renovate
+  automerges through GitHub's auto-merge and so waits on it
 - Dockerfile changes are build-checked by `docker-build.yaml`
 - `gen-api.yaml` is the drift check: it runs gen-api and fails on any diff in specs or
   clients. On PRs only for frontends whose backend crates or gen-api inputs changed
