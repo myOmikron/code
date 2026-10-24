@@ -4451,7 +4451,7 @@ dependencies = [
  "prost-build",
  "prost-types",
  "quote",
- "syn 2.0.119",
+ "syn 3.0.3",
  "tonic-build",
 ]
 
