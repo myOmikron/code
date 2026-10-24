@@ -157,7 +157,7 @@ bytes = { version = "~1" }
 sha2 = { version = "~0.11.0" }
 
 # Argon2id password hashing (PHC string format)
-argon2 = { version = "~0.5" }
+argon2 = { version = "~0.6.0" }
 
 # URL parsing following RFC 3986
 url = { version = "~2", features = ["serde"] }
