@@ -2,7 +2,7 @@ name: semmelei
 
 services:
   traefik:
-    image: traefik:v3.7.15
+    image: traefik:v3.7.16
     restart: unless-stopped
     ports:
       - "80:80"
