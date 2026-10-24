@@ -143,8 +143,8 @@ catalogs:
       specifier: ^1.9.1
       version: 1.9.1
     tailwindcss:
-      specifier: 4.3.1
-      version: 4.3.1
+      specifier: 4.3.3
+      version: 4.3.3
     typescript:
       specifier: 6.0.3
       version: 6.0.3
@@ -259,7 +259,7 @@ importers:
         version: 11.1.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       tailwindcss:
         specifier: catalog:devDependencies
-        version: 4.3.1
+        version: 4.3.3
       typescript:
         specifier: catalog:devDependencies
         version: 6.0.3
@@ -362,7 +362,7 @@ importers:
         version: 0.8.0(prettier@3.8.4)
       tailwindcss:
         specifier: catalog:devDependencies
-        version: 4.3.1
+        version: 4.3.3
       typescript:
         specifier: catalog:devDependencies
         version: 6.0.3
@@ -459,7 +459,7 @@ importers:
         version: 0.8.0(prettier@3.8.4)
       tailwindcss:
         specifier: catalog:devDependencies
-        version: 4.3.1
+        version: 4.3.3
       typescript:
         specifier: catalog:devDependencies
         version: 6.0.3
@@ -604,7 +604,7 @@ importers:
         version: 1.9.1
       tailwindcss:
         specifier: catalog:devDependencies
-        version: 4.3.1
+        version: 4.3.3
       typescript:
         specifier: catalog:devDependencies
         version: 6.0.3
@@ -731,7 +731,7 @@ importers:
         version: 0.8.0(prettier@3.8.4)
       tailwindcss:
         specifier: catalog:devDependencies
-        version: 4.3.1
+        version: 4.3.3
       typescript:
         specifier: catalog:devDependencies
         version: 6.0.3
@@ -4884,9 +4884,6 @@ packages:
 
   tabbable@6.5.0:
     resolution: {integrity: sha512-wieBHXygIm7OyQOu5hQlkk62/WyCFYGlWg7L6/ZCUZwx0o398Zkn4pVmMyfYhfMG8kGrj/Krt8eIk6UKC6VzwA==}
-
-  tailwindcss@4.3.1:
-    resolution: {integrity: sha512-hk+TB1m+K8CYNrP6rjQaq/Y+4Zylwpa87mLYBKCunwnnQ9p+fHb7kmSfGqyEJoxF/O6CDyABWVFEafNSYKll+Q==}
 
   tailwindcss@4.3.3:
     resolution: {integrity: sha512-gOhV3P7ufE62QDGg1zVaTgCR+EtPv92k2nIhVcVKcLmxT1sUBsQGhnZj175j+MqRt4zLF7ic+sCYjfhxMxj7YQ==}
@@ -9768,8 +9765,6 @@ snapshots:
   svg-parser@2.0.4: {}
 
   tabbable@6.5.0: {}
-
-  tailwindcss@4.3.1: {}
 
   tailwindcss@4.3.3: {}
 
