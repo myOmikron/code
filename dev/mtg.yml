@@ -32,7 +32,7 @@ services:
 
   # Joins the tailnet and owns the network namespace traefik runs in.
   tailscale:
-    image: tailscale/tailscale:v1.102.2
+    image: tailscale/tailscale:v1.104.1
     cap_add:
       - NET_ADMIN
     environment:
