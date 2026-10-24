@@ -416,31 +416,31 @@ fn coordinate_statement(count: usize, strict: bool) -> String {
 
 /// Looks printings up by name, optionally narrowed to a set
 ///
-/// The empty set code stands for "any set" — spelling that as a condition
+/// The empty set code stands for "any set". Spelling that as a condition
 /// rather than as a second statement keeps one query per language group.
 ///
 /// The strict pass asks for the name as the catalog spells it. The loose one
 /// matches it against the front half of a two-part name, which is how a split
-/// card ends up written in half the exports there are — "Fire" for what the
+/// card ends up written in half the exports there are: "Fire" for what the
 /// catalog calls "Fire // Ice".
 ///
 /// The rest of the order is the card's Default printing (see the glossary),
 /// since a name alone says nothing about which printing was meant:
 ///
-/// 1. A playable card beats a token of the same name. The tokens of
+/// 1. A printing that exists without foil beats a foil-only one, so a
+///    foil-only printing is only picked for a card made in nothing else. Such
+///    a card gets its newest printing, which is filed as foil.
+/// 2. A playable card beats a token of the same name. The tokens of
 ///    Bloomburrow's Offspring mechanic share their card's exact name ("Manifold
 ///    Mouse" is both), and `legal_formats` tells them apart because a token is
 ///    legal nowhere. It is a preference rather than a filter, so an export
 ///    that names only a token or an un-set card still resolves.
-/// 2. A printing that exists without foil beats a foil-only one. A card made
-///    only in foil therefore gets its newest printing, which the deck reads
-///    as foil.
 /// 3. The newest release wins, then the cheapest non-foil price with
 ///    unpriced printings last, then the lowest collector number.
 ///
-/// A printing released after today is never picked: it is not a card anyone
-/// can have yet. A printing without a release date is kept, behind the dated
-/// ones.
+/// By name alone, a printing released after today is never picked: it is not
+/// a card anyone can have yet. A lookup naming a set may still find one. A
+/// printing without a release date is kept, behind the dated ones.
 fn name_statement(count: usize, strict: bool) -> String {
     let rows = pair_rows(count);
     let lang = count * 2 + 1;
@@ -455,11 +455,11 @@ fn name_statement(count: usize, strict: bool) -> String {
          FROM (VALUES {rows}) AS v(asked_left, asked_right) \
          JOIN printing p \
            ON {name} AND (v.asked_right = '' OR p.set_code = v.asked_right) \
-          AND (p.released_at IS NULL OR p.released_at <= CURRENT_DATE) \
+          AND (v.asked_right <> '' OR p.released_at IS NULL OR p.released_at <= CURRENT_DATE) \
          ORDER BY v.asked_left, v.asked_right, \
                   (p.lang = ${lang}) DESC, (p.lang = 'en') DESC, \
-                  (p.legal_formats <> '') DESC, \
                   ('nonfoil' = ANY(string_to_array(p.finishes, ','))) DESC, \
+                  (p.legal_formats <> '') DESC, \
                   p.released_at DESC NULLS LAST, p.price_eur ASC NULLS LAST, \
                   p.collector_number_sort ASC, p.id ASC"
     )
@@ -535,15 +535,17 @@ mod tests {
             };
             let keys = [
                 "(p.lang = 'en') DESC",
-                "(p.legal_formats <> '') DESC",
                 "('nonfoil' = ANY(string_to_array(p.finishes, ','))) DESC",
+                "(p.legal_formats <> '') DESC",
                 "p.released_at DESC NULLS LAST",
                 "p.price_eur ASC NULLS LAST",
                 "p.collector_number_sort ASC",
             ];
             let positions: Vec<usize> = keys.iter().map(|key| position(key)).collect();
             assert!(positions.is_sorted(), "{statement}");
-            assert!(statement.contains("p.released_at <= CURRENT_DATE"));
+            assert!(statement.contains(
+                "(v.asked_right <> '' OR p.released_at IS NULL OR p.released_at <= CURRENT_DATE)"
+            ));
         }
     }
 
