@@ -60,7 +60,7 @@ catalogs:
     esbuild: 0.28.1
     eslint: 10.13.0
     onnxruntime-node: 1.30.0
-    eslint-plugin-jsdoc: 63.3.3
+    eslint-plugin-jsdoc: 65.3.11
     eslint-plugin-react-refresh: 0.5.7
     prettier: 3.8.4
     prettier-plugin-tailwindcss: 0.8.1
