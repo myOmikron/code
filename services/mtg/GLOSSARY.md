@@ -76,6 +76,10 @@ _Avoid_: actual bracket, real bracket
 One line of a deck: a printing in a zone, foil or not, proxy or not, with a quantity of at least one. A deck holds at most one Deck entry per printing, zone, foil and proxy; an edit that makes two alike merges them, and an entry whose quantity drops to zero is gone.
 _Avoid_: slot, deck card, line
 
+**Default printing**:
+The printing a card gets when it is added to a deck by its name alone: the newest already released printing that is legal somewhere and exists without foil, and of equally new ones the cheapest without foil, printings with a price before those without. A card that exists only in foil gets its newest printing, in foil. It is only a starting point; the printing can be changed afterwards. A named set and collector number, or a foil marker in an import, wins over it, and a card already in the same zone keeps the printing it has there.
+_Avoid_: preferred printing, standard print
+
 **Deck change**:
 One step in a deck's Deck history: what the owner or an Editor did to its Deck entries or to its name, description, format, colors, bracket, rule-zero exceptions or size. Tags, folder, visibility, sharing and the deck's collection are not part of it. An import, a fill, a swap or a move between zones is one Deck change. Changes to the same Deck entry, or to the same field, made in quick succession become one Deck change, unless a Deck checkpoint names it. Creating the deck is its first Deck change; a deck that existed before Deck histories begins with its state at that time. Undo, redo and resetting to an earlier point are Deck changes of their own, so the Deck history only ever grows.
 _Avoid_: revision, edit, version
