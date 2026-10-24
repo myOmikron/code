@@ -6,6 +6,11 @@ yanked = "deny"
 ignore = [
     # rsa implementation vulnerable to Marvin attack, a side-channel timing attack; fix is included in rsa v0.10 (currently a release candidate)
     "RUSTSEC-2023-0071", # openidconnect depends on rsa
+
+    # crypto-bigint 0.5 is not constant-time; fix is in 0.7.6, which needs elliptic-curve 0.14.
+    # openidconnect 4.0.1 and jsonwebtoken 11.1 (both latest) still pin p256/p384 0.13.
+    # We only sign with RS256, EC code only verifies public signatures, so no secret is involved.
+    "RUSTSEC-2026-0387",
 ]
 
 [licenses]
