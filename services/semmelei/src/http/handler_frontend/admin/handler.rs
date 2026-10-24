@@ -15,6 +15,7 @@ use galvyn::post;
 use galvyn::put;
 use galvyn::rorm::Database;
 use galvyn::rorm::db::Executor;
+use galvyn::rorm::fields::types::MaxStr;
 use galvyn_identity::IdentityModule;
 use time::OffsetDateTime;
 
@@ -135,6 +136,7 @@ pub async fn list_items() -> ApiResult<ApiJson<ListAdminItemsResponse>> {
                 additional_info: i.additional_info.map(|info| info.to_string()),
                 category: i.category,
                 active: i.active,
+                bakery_article_number: i.bakery_article_number.map(|number| number.to_string()),
                 image_version: (i.image_version != 0).then_some(i.image_version),
                 created_at: SchemaDateTime(i.created_at),
             })
@@ -155,6 +157,16 @@ async fn validate_item(request: ItemRequest) -> ApiResult<ItemData> {
     {
         return Err(ApiError::bad_request("Unknown category"));
     }
+    let bakery_article_number = match request
+        .bakery_article_number
+        .as_ref()
+        .map(|number| number.trim())
+    {
+        None | Some("") => None,
+        Some(number) => Some(MaxStr::new(number.to_string()).map_err(|_| {
+            ApiError::bad_request("Bakery article number must be at most 32 bytes")
+        })?),
+    };
     Ok(ItemData {
         name: request.name,
         price_cents: request.price_cents,
@@ -163,6 +175,7 @@ async fn validate_item(request: ItemRequest) -> ApiResult<ItemData> {
             .filter(|info| !info.trim().is_empty()),
         category: request.category,
         active: request.active,
+        bakery_article_number,
     })
 }
 

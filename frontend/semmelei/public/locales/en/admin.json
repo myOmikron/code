@@ -29,6 +29,7 @@
         "price": "Price",
         "price-euro": "Price (€)",
         "additional-info": "Additional information",
+        "bakery-article-number": "Article number (bakery)",
         "category": "Category",
         "no-category": "No category",
         "active": "Orderable",
@@ -89,6 +90,7 @@
         "preview": "Preview"
     },
     "description": {
+        "bakery-article-number": "The number the bakery lists the item under. Leave empty if the item does not come from the bakery. Not visible to customers.",
         "additional-info": "For example allergens, ingredients, or notes. Customers can view this through the information icon.",
         "invite": "Send this link to the person. They use it to set up their passkey (valid for 7 days, single use).",
         "confirm-delete-item": "\"{{name}}\" will be deleted. Existing orders stay unchanged. Tip: prefer deactivating items.",

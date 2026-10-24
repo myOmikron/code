@@ -58,6 +58,12 @@ export interface AdminItem {
      */
     additional_info?: string | null;
     /**
+     * The number the Bakery orders the item under, unset if it has none
+     * @type {string}
+     * @memberof AdminItem
+     */
+    bakery_article_number?: string | null;
+    /**
      * The category the item belongs to
      * @type {string}
      * @memberof AdminItem
@@ -527,6 +533,14 @@ export interface ItemRequest {
      * @memberof ItemRequest
      */
     additional_info?: string | null;
+    /**
+     * The number the Bakery orders the item under (at most 32 bytes after trimming)
+     * 
+     * Surrounding whitespace is trimmed; blank or unset means the item has none.
+     * @type {string}
+     * @memberof ItemRequest
+     */
+    bakery_article_number?: string | null;
     /**
      * The category the item belongs to
      * @type {string}

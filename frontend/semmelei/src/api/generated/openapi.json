@@ -3024,6 +3024,11 @@
                         "description": "Optional customer-facing details such as allergens or ingredients",
                         "type": "string"
                     },
+                    "bakery_article_number": {
+                        "nullable": true,
+                        "description": "The number the Bakery orders the item under, unset if it has none",
+                        "type": "string"
+                    },
                     "category": {
                         "nullable": true,
                         "description": "The category the item belongs to",
@@ -3568,6 +3573,15 @@
                         "allOf": [
                             {
                                 "$ref": "#/components/schemas/MaxStr_2048"
+                            }
+                        ]
+                    },
+                    "bakery_article_number": {
+                        "nullable": true,
+                        "description": "The number the Bakery orders the item under (at most 32 bytes after trimming)\n\nSurrounding whitespace is trimmed; blank or unset means the item has none.",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_255"
                             }
                         ]
                     },

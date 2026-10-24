@@ -37,6 +37,8 @@ pub struct AdminItem {
     pub category: Option<CategoryUuid>,
     /// Whether the item is currently orderable
     pub active: bool,
+    /// The number the Bakery orders the item under, unset if it has none
+    pub bakery_article_number: Option<String>,
     /// Cache-busting version of the item's image, unset if there is none
     pub image_version: Option<i64>,
     /// The point in time the item was created
@@ -63,6 +65,10 @@ pub struct ItemRequest {
     pub category: Option<CategoryUuid>,
     /// Whether the item is currently orderable
     pub active: bool,
+    /// The number the Bakery orders the item under (at most 32 bytes after trimming)
+    ///
+    /// Surrounding whitespace is trimmed; blank or unset means the item has none.
+    pub bakery_article_number: Option<MaxStr<255>>,
 }
 
 /// A staff account as shown to admins
