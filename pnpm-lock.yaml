@@ -42,12 +42,12 @@ catalogs:
     clsx:
       specifier: ^2.1.1
       version: 2.1.1
-    i18next:
-      specifier: ^26.3.4
-      version: 26.3.6
     i18next-browser-languagedetector:
       specifier: ^8.2.1
       version: 8.2.1
+    i18next-http-backend:
+      specifier: ^4.0.0
+      version: 4.0.2
     jsqr:
       specifier: ^1.4.0
       version: 1.4.0
@@ -72,9 +72,6 @@ catalogs:
     react-dom:
       specifier: ^19.2.7
       version: 19.2.8
-    react-i18next:
-      specifier: ^17.0.8
-      version: 17.0.10
     react-markdown:
       specifier: ^10.1.0
       version: 10.1.0
@@ -232,7 +229,7 @@ importers:
         version: 17.13.0
       i18next:
         specifier: catalog:dependencies
-        version: 26.3.6(typescript@6.0.3)
+        version: 26.4.7(typescript@6.0.3)
       motion:
         specifier: catalog:dependencies
         version: 12.42.2(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -250,7 +247,7 @@ importers:
         version: 19.2.8(react@19.2.8)
       react-i18next:
         specifier: catalog:dependencies
-        version: 17.0.10(i18next@26.3.6(typescript@6.0.3))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@6.0.3)
+        version: 17.0.21(i18next@26.4.7(typescript@6.0.3))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@6.0.3)
       react-toastify:
         specifier: catalog:dependencies
         version: 11.1.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -298,7 +295,7 @@ importers:
         version: 2.1.1
       i18next:
         specifier: catalog:dependencies
-        version: 26.3.6(typescript@6.0.3)
+        version: 26.4.7(typescript@6.0.3)
       i18next-browser-languagedetector:
         specifier: catalog:dependencies
         version: 8.2.1
@@ -316,7 +313,7 @@ importers:
         version: 19.2.8(react@19.2.8)
       react-i18next:
         specifier: catalog:dependencies
-        version: 17.0.10(i18next@26.3.6(typescript@6.0.3))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@6.0.3)
+        version: 17.0.21(i18next@26.4.7(typescript@6.0.3))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@6.0.3)
       react-toastify:
         specifier: catalog:dependencies
         version: 11.1.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -395,7 +392,7 @@ importers:
         version: link:../../components
       i18next:
         specifier: catalog:dependencies
-        version: 26.3.6(typescript@6.0.3)
+        version: 26.4.7(typescript@6.0.3)
       i18next-browser-languagedetector:
         specifier: catalog:dependencies
         version: 8.2.1
@@ -413,7 +410,7 @@ importers:
         version: 19.2.8(react@19.2.8)
       react-i18next:
         specifier: catalog:dependencies
-        version: 17.0.10(i18next@26.3.6(typescript@6.0.3))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@6.0.3)
+        version: 17.0.21(i18next@26.4.7(typescript@6.0.3))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@6.0.3)
       react-toastify:
         specifier: catalog:dependencies
         version: 11.1.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -516,7 +513,7 @@ importers:
         version: link:../../components
       i18next:
         specifier: catalog:dependencies
-        version: 26.3.6(typescript@6.0.3)
+        version: 26.4.7(typescript@6.0.3)
       i18next-browser-languagedetector:
         specifier: catalog:dependencies
         version: 8.2.1
@@ -537,7 +534,7 @@ importers:
         version: 19.2.8(react@19.2.8)
       react-i18next:
         specifier: catalog:dependencies
-        version: 17.0.10(i18next@26.3.6(typescript@6.0.3))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@6.0.3)
+        version: 17.0.21(i18next@26.4.7(typescript@6.0.3))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@6.0.3)
       react-toastify:
         specifier: catalog:dependencies
         version: 11.1.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -652,7 +649,7 @@ importers:
         version: link:../../components
       i18next:
         specifier: catalog:dependencies
-        version: 26.3.6(typescript@6.0.3)
+        version: 26.4.7(typescript@6.0.3)
       i18next-browser-languagedetector:
         specifier: catalog:dependencies
         version: 8.2.1
@@ -682,7 +679,7 @@ importers:
         version: 19.2.8(react@19.2.8)
       react-i18next:
         specifier: catalog:dependencies
-        version: 17.0.10(i18next@26.3.6(typescript@6.0.3))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@6.0.3)
+        version: 17.0.21(i18next@26.4.7(typescript@6.0.3))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@6.0.3)
       react-markdown:
         specifier: catalog:dependencies
         version: 10.1.0(@types/react@19.2.15)(react@19.2.8)
@@ -3807,8 +3804,8 @@ packages:
   html-entities@2.6.0:
     resolution: {integrity: sha512-kig+rMn/QOVRvr7c86gQ8lWXq+Hkv6CbAH1hLu+RG338StTpE8Z0b44SDVaqVu7HGKf27frdmUYEs9hTUX/cLQ==}
 
-  html-parse-stringify@3.0.1:
-    resolution: {integrity: sha512-KknJ50kTInJ7qIScF3jeaFRpMpE8/lfiTdzf/twXyPBLAGrLRTmkz3AdTnKeh40X8k9L2fdYwEp/42WGXIRGcg==}
+  html-parse-stringify@4.0.1:
+    resolution: {integrity: sha512-0zHsZJrK7S3K2aucXWL6ycoYJ/iNtIcFHC/nYQgFklPtrv5LpJctIiSCroWZWeuoXvuyFdzp6KzjJQ+OT5MfFw==}
 
   html-url-attributes@3.0.1:
     resolution: {integrity: sha512-ol6UPyBWqsrO6EJySPz2O7ZSr856WDrEzM5zMqp+FJJLGMW35cLYmmZnl0vztAZxRUoNZJFTCohfjuIJ8I4QBQ==}
@@ -3832,8 +3829,8 @@ packages:
     resolution: {integrity: sha512-oay62dIB2kL7+WHzoUXBjWfL3+mwijD3pQkQkIEaRLhy6kjXxUhrRenV0gInwlCASAaJaDy94+XvYizK+cAGdA==}
     engines: {node: '>=18'}
 
-  i18next@26.3.6:
-    resolution: {integrity: sha512-Bu5Z2nAXgfVyM8xvW3jk9EKRIuX37PudsrBViThNFx7CR7aaYTpP01cxNB/E4c4UUzTDiAZRstEhsRfPOL/8xA==}
+  i18next@26.4.7:
+    resolution: {integrity: sha512-p/3hqy6EcuqRs6wNwBYwGGC1fzBJSMxV9zMuN814ab/7QjdZbXfjXwuPZdQbngX6KDOTxM01uUiZyqmMB8ghZg==}
     peerDependencies:
       typescript: ^5 || ^6 || ^7
     peerDependenciesMeta:
@@ -4741,8 +4738,8 @@ packages:
     peerDependencies:
       react: ^19.2.8
 
-  react-i18next@17.0.10:
-    resolution: {integrity: sha512-XneHftyYA774MJkkccSkZ5oKrUpCnXIPmxio3wemqrVzCRLWiGXOMbIzObrer03fNDEnm8g8R5yYls4HcE+esg==}
+  react-i18next@17.0.21:
+    resolution: {integrity: sha512-bcOTaZQKsNb4KKIc+T6Dx1Cf0x3UTV5io8X1PyaC38oOeNEbU5CNkW+5QmOGEyDSEbK/QC2kLXOgL9zeCIxR3g==}
     peerDependencies:
       i18next: '>= 26.2.0'
       react: '>= 16.8.0'
@@ -5377,6 +5374,11 @@ packages:
     peerDependencies:
       react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
 
+  use-sync-external-store@1.7.0:
+    resolution: {integrity: sha512-6L+EeigHMQhdaIPNIFUKwfWJSwWFQ8gJbJ2DLOs5sDIegTwR9fRxvnM3uciHKjIZhFz+KAv2emhWMRvDmMcY8A==}
+    peerDependencies:
+      react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+
   vfile-message@4.0.3:
     resolution: {integrity: sha512-QTHzsGd1EhbZs4AsQ20JX1rC3cOlt/IWJruk893DfLRr57lcnOeMaWG4K0JrRta4mIJZKth2Au3mM3u03/JWKw==}
 
@@ -5524,10 +5526,6 @@ packages:
         optional: true
       jsdom:
         optional: true
-
-  void-elements@3.1.0:
-    resolution: {integrity: sha512-Dhxzh5HZuiHQhbvTW9AMetFfBHDMYpo23Uo9btPXgdYP+3T5S+p+jgNy7spra+veYhBP2dCSgxR/i2Y02h5/6w==}
-    engines: {node: '>=0.10.0'}
 
   wasm-feature-detect@1.8.0:
     resolution: {integrity: sha512-zksaLKM2fVlnB5jQQDqKXXwYHLQUVH9es+5TOOHwGOVJOCeRBCiPjwSg+3tN2AdTCzjgli4jijCH290kXb/zWQ==}
@@ -8771,9 +8769,7 @@ snapshots:
 
   html-entities@2.6.0: {}
 
-  html-parse-stringify@3.0.1:
-    dependencies:
-      void-elements: 3.1.0
+  html-parse-stringify@4.0.1: {}
 
   html-url-attributes@3.0.1: {}
 
@@ -8808,7 +8804,7 @@ snapshots:
 
   i18next-http-backend@4.0.2: {}
 
-  i18next@26.3.6(typescript@6.0.3):
+  i18next@26.4.7(typescript@6.0.3):
     optionalDependencies:
       typescript: 6.0.3
 
@@ -9699,13 +9695,13 @@ snapshots:
       react: 19.2.8
       scheduler: 0.27.0
 
-  react-i18next@17.0.10(i18next@26.3.6(typescript@6.0.3))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@6.0.3):
+  react-i18next@17.0.21(i18next@26.4.7(typescript@6.0.3))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@6.0.3):
     dependencies:
-      '@babel/runtime': 7.29.7
-      html-parse-stringify: 3.0.1
-      i18next: 26.3.6(typescript@6.0.3)
+      '@babel/runtime': 7.29.10
+      html-parse-stringify: 4.0.1
+      i18next: 26.4.7(typescript@6.0.3)
       react: 19.2.8
-      use-sync-external-store: 1.6.0(react@19.2.8)
+      use-sync-external-store: 1.7.0(react@19.2.8)
     optionalDependencies:
       react-dom: 19.2.8(react@19.2.8)
       typescript: 6.0.3
@@ -10486,6 +10482,10 @@ snapshots:
     dependencies:
       react: 19.2.8
 
+  use-sync-external-store@1.7.0(react@19.2.8):
+    dependencies:
+      react: 19.2.8
+
   vfile-message@4.0.3:
     dependencies:
       '@types/unist': 3.0.3
@@ -10636,8 +10636,6 @@ snapshots:
       - terser
       - tsx
       - yaml
-
-  void-elements@3.1.0: {}
 
   wasm-feature-detect@1.8.0: {}
 
