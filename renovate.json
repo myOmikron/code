@@ -55,11 +55,14 @@
       "depNameTemplate": "org.openapitools:openapi-generator-cli"
     }
   ],
-  // disabled because of renovate bug
+  // main requires no status checks (the workflows are path-filtered), so GitHub's
+  // auto-merge would not wait for CI; Renovate merges itself once all checks that ran passed
   "platformAutomerge": false,
   "automergeType": "pr",
-  "automergeStrategy": "fast-forward",
-  "rebaseWhen": "behind-base-branch",
+  // GitHub signs squash commits (main requires signatures); branches need not be up to date,
+  // so one run merges every green PR instead of one per run
+  "automergeStrategy": "squash",
+  "rebaseWhen": "conflicted",
   "packageRules": [
     {
       "description": "Automerge Rust patch updates of all crates; Cargo.lock changes run the full workspace CI",
