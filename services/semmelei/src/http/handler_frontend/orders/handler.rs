@@ -1,5 +1,6 @@
 //! Handlers of the staff order endpoints
 
+use std::collections::BTreeSet;
 use std::collections::HashMap;
 
 use galvyn::core::Module;
@@ -24,6 +25,8 @@ use crate::http::handler_frontend::orders::schema::ProcurementPosition;
 use crate::http::handler_frontend::orders::schema::ProcurementSummary;
 use crate::http::handler_frontend::orders::schema::UpdateOrderItemPackedRequest;
 use crate::http::handler_frontend::orders::schema::UpdateOrderStatusRequest;
+use crate::models::Item;
+use crate::models::ItemUuid;
 use crate::models::Order;
 use crate::models::OrderItem;
 use crate::models::OrderItemUuid;
@@ -156,27 +159,44 @@ pub async fn get_procurement_summary(
         .filter(|order| order.status != OrderStatus::Cancelled)
         .collect();
 
+    let numbers: HashMap<ItemUuid, String> = Item::get_all(&mut tx)
+        .await?
+        .into_iter()
+        .filter_map(|item| Some((item.uuid, item.bakery_article_number?.to_string())))
+        .collect();
+
     // Sum per item name — the snapshot, not the catalog entry: a renamed or
     // deleted item must not change what an existing order asked for.
-    let mut totals: HashMap<String, ProcurementPosition> = HashMap::new();
+    let mut totals: HashMap<String, (ProcurementPosition, BTreeSet<String>)> = HashMap::new();
     for order in &orders {
         for position in OrderItem::get_by_order(&mut tx, order.uuid).await? {
-            let entry = totals
-                .entry(position.name.to_string())
-                .or_insert(ProcurementPosition {
+            let (entry, line_numbers) = totals.entry(position.name.to_string()).or_insert((
+                ProcurementPosition {
                     name: position.name.to_string(),
                     total_quantity: 0,
                     order_count: 0,
                     price_cents: position.price_cents,
-                });
+                    bakery_article_numbers: Vec::new(),
+                },
+                BTreeSet::new(),
+            ));
             entry.total_quantity += position.quantity;
             entry.order_count += 1;
+            if let Some(number) = position.item.and_then(|item| numbers.get(&item)) {
+                line_numbers.insert(number.clone());
+            }
         }
     }
 
     tx.commit().await?;
 
-    let mut positions: Vec<ProcurementPosition> = totals.into_values().collect();
+    let mut positions: Vec<ProcurementPosition> = totals
+        .into_values()
+        .map(|(mut position, line_numbers)| {
+            position.bakery_article_numbers = line_numbers.into_iter().collect();
+            position
+        })
+        .collect();
     // Most units first, ties alphabetically — the list is read while packing
     positions.sort_by(|a, b| {
         b.total_quantity

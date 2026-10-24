@@ -895,6 +895,14 @@ export interface PickupWindowResponse {
  */
 export interface ProcurementPosition {
     /**
+     * The distinct Bakery Article Numbers of the line's Items, sorted
+     * 
+     * Read live from the Items: deleted Items and Items without a number add none.
+     * @type {Array<string>}
+     * @memberof ProcurementPosition
+     */
+    bakery_article_numbers: Array<string>;
+    /**
      * Item name (snapshot at order time)
      * @type {string}
      * @memberof ProcurementPosition

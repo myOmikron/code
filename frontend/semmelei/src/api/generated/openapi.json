@@ -4065,6 +4065,13 @@
                 "description": "One item summed over every order of a pickup day",
                 "type": "object",
                 "properties": {
+                    "bakery_article_numbers": {
+                        "description": "The distinct Bakery Article Numbers of the line's Items, sorted\n\nRead live from the Items: deleted Items and Items without a number add none.",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
                     "name": {
                         "description": "Item name (snapshot at order time)",
                         "type": "string"
@@ -4086,6 +4093,7 @@
                     }
                 },
                 "required": [
+                    "bakery_article_numbers",
                     "name",
                     "order_count",
                     "price_cents",

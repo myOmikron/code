@@ -86,6 +86,10 @@ pub struct ProcurementPosition {
     pub order_count: i64,
     /// Price per unit in euro cents (snapshot at order time)
     pub price_cents: i64,
+    /// The distinct Bakery Article Numbers of the line's Items, sorted
+    ///
+    /// Read live from the Items: deleted Items and Items without a number add none.
+    pub bakery_article_numbers: Vec<String>,
 }
 
 /// What has to be procured for one pickup day

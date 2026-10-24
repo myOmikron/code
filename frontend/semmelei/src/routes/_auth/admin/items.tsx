@@ -78,7 +78,7 @@ function Items() {
                             <TableHeader className={"w-16"} />
                             <TableHeader>{t("label.name")}</TableHeader>
                             <TableHeader>{t("label.price")}</TableHeader>
-                            <TableHeader>{t("label.bakery-article-number")}</TableHeader>
+                            <TableHeader>{tg("label.bakery-article-number")}</TableHeader>
                             <TableHeader>{t("label.category")}</TableHeader>
                             <TableHeader>{t("label.active")}</TableHeader>
                             <TableHeader />
