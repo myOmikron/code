@@ -4,6 +4,7 @@ mod admin;
 mod admin_log;
 mod admin_rename;
 mod bracket_flags;
+mod bug_reports;
 mod collaborators;
 mod deck_history;
 mod default_printing;

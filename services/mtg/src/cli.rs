@@ -83,6 +83,15 @@ pub enum Command {
         #[clap(long, value_name = "MINUTES")]
         every_minutes: Option<NonZeroU64>,
     },
+    /// Purge images and diagnostics of Bug reports done for more than 90 days
+    ///
+    /// Keeps their text, note and metadata. One shot like the syncs unless
+    /// `--every-minutes` keeps it running as its own service.
+    PurgeBugReports {
+        /// Keep running and purge this often, in minutes, instead of exiting
+        #[clap(long, value_name = "MINUTES")]
+        every_minutes: Option<NonZeroU64>,
+    },
     /// Report whether the server is up, for the container's healthcheck
     ///
     /// Connects to the listener on loopback and exits non-zero if nothing
@@ -174,5 +183,31 @@ mod tests {
         assert!(
             Cli::try_parse_from(["mtg", "snapshot-statistics", "--every-minutes", "0"]).is_err()
         );
+    }
+
+    #[test]
+    fn purge_bug_reports_runs_once_without_an_interval() {
+        let cli = Cli::try_parse_from(["mtg", "purge-bug-reports"]).expect("valid arguments");
+        assert!(matches!(
+            cli.command,
+            Command::PurgeBugReports {
+                every_minutes: None
+            }
+        ));
+    }
+
+    #[test]
+    fn purge_bug_reports_takes_an_interval_in_minutes() {
+        let cli = Cli::try_parse_from(["mtg", "purge-bug-reports", "--every-minutes", "720"])
+            .expect("valid arguments");
+        let Command::PurgeBugReports { every_minutes } = cli.command else {
+            panic!("parsed another subcommand");
+        };
+        assert_eq!(every_minutes.map(|minutes| minutes.get()), Some(720));
+    }
+
+    #[test]
+    fn purge_bug_reports_refuses_a_zero_interval() {
+        assert!(Cli::try_parse_from(["mtg", "purge-bug-reports", "--every-minutes", "0"]).is_err());
     }
 }

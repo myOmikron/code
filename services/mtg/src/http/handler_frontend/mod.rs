@@ -3,10 +3,12 @@
 use galvyn::core::GalvynRouter;
 
 use crate::http::middleware::admin_required::AdminRequiredLayer;
+use crate::http::middleware::trace_id::TraceIdLayer;
 
 pub mod accounts;
 pub mod admin;
 pub mod auth;
+pub mod bug_reports;
 pub mod collections;
 pub mod decks;
 pub mod explore;
@@ -29,6 +31,7 @@ pub fn initialize_routes() -> GalvynRouter {
         )
         .nest("/auth", auth::initialize_routes())
         .nest("/auth/oidc", oidc::initialize_routes())
+        .nest("/bug-reports", bug_reports::initialize_routes())
         .nest("/collections", collections::initialize_routes())
         .nest("/decks", decks::initialize_routes())
         .nest("/explore", explore::initialize_routes())
@@ -39,4 +42,5 @@ pub fn initialize_routes() -> GalvynRouter {
         .nest("/shared", shared::initialize_routes())
         .nest("/tags", tags::initialize_routes())
         .nest("/watch-lists", watch_lists::initialize_routes())
+        .wrap(TraceIdLayer)
 }

@@ -8,11 +8,15 @@ docs/AddWatchListEntryRequest.md
 docs/AdminAccount.md
 docs/AdminAccountDetail.md
 docs/AdminAccountLock.md
+docs/AdminBugReport.md
+docs/AdminBugReportDetail.md
+docs/AdminBugReportFilter.md
 docs/AdminCatalogStamp.md
 docs/AdminCatalogSync.md
 docs/AdminDeleteAccountErrors.md
 docs/AdminDeleteAccountRequest.md
 docs/AdminListAccountsResponse.md
+docs/AdminListBugReportsResponse.md
 docs/AdminListLogResponse.md
 docs/AdminLockAccountErrors.md
 docs/AdminLockAccountRequest.md
@@ -28,6 +32,7 @@ docs/AdminPriceGuideStamp.md
 docs/AdminPriceGuideSync.md
 docs/AdminRenameAccountErrors.md
 docs/AdminRenameAccountRequest.md
+docs/AdminSetBugReportNoteRequest.md
 docs/AdminSetRoleErrors.md
 docs/AdminSetRoleRequest.md
 docs/AdminStatisticsResponse.md
@@ -43,6 +48,9 @@ docs/BracketFlagsEntryResponse.md
 docs/BracketFlagsRequest.md
 docs/BracketFlagsResponse.md
 docs/BracketRulesResponse.md
+docs/BugReportAccount.md
+docs/BugReportImageInfo.md
+docs/BugReportState.md
 docs/CardCondition.md
 docs/CardFinish.md
 docs/CardRarity.md
@@ -135,6 +143,7 @@ docs/FormErrorResponseForPutDeckCollaboratorErrors.md
 docs/FormErrorResponseForRegistrationErrors.md
 docs/FormErrorResponseForRenameAccountErrors.md
 docs/FormErrorResponseForRenamePasskeyErrors.md
+docs/FormErrorResponseForSendBugReportErrors.md
 docs/FormErrorResponseForSignupErrors.md
 docs/FormErrorResponseForStartLoginErrors.md
 docs/FormErrorResponseForStartOidcLoginErrors.md
@@ -216,6 +225,10 @@ docs/ScannerSessionDetailResponse.md
 docs/ScannerSessionEntryResponse.md
 docs/ScannerSessionResponse.md
 docs/SearchPublicDecksResponse.md
+docs/SendBugReport200Response.md
+docs/SendBugReportErrors.md
+docs/SendBugReportRequest.md
+docs/SendBugReportResponse.md
 docs/SetAdvisorSettingsRequest.md
 docs/SetBucketResponse.md
 docs/SetCollectionVisibilityRequest.md
