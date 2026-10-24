@@ -136,6 +136,8 @@ pub struct ScheduleSchema {
     pub deadline_offset_days: i16,
     /// Wall-clock time (Europe/Berlin) orders close at, `13:00:00`
     pub deadline_time: WallClock,
+    /// Minutes from a pickup day's Deadline to its Dispatch, 0 or more
+    pub review_window_minutes: i32,
 }
 
 /// A single upcoming pickup day, rule and override already applied
@@ -186,6 +188,4 @@ pub struct PickupDayChangeResponse {
     pub day: AdminPickupDay,
     /// How many orders were cancelled by calling the day off
     pub cancelled_orders: i64,
-    /// How many confirmation mails were queued by freezing the day
-    pub confirmed_orders: i64,
 }

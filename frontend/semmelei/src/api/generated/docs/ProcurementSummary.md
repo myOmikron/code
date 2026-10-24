@@ -9,6 +9,8 @@ Name | Type
 ------------ | -------------
 `closed` | boolean
 `deadline` | string
+`dispatch_due` | string
+`dispatched_at` | string
 `locked` | boolean
 `order_count` | number
 `pickup_date` | string

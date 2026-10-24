@@ -16,6 +16,8 @@ use galvyn::patch;
 use galvyn::rorm::Database;
 use galvyn::rorm::db::Executor;
 use time::OffsetDateTime;
+use tracing::error;
+use tracing::info;
 
 use crate::http::handler_frontend::orders::schema::FullOrder;
 use crate::http::handler_frontend::orders::schema::FullOrderPosition;
@@ -34,6 +36,10 @@ use crate::models::OrderStatus;
 use crate::models::OrderUuid;
 use crate::models::PickupDay;
 use crate::models::PickupDayUuid;
+use crate::models::ShopSettings;
+use crate::utils::mail;
+use crate::utils::mail::MailPosition;
+use crate::utils::mail::OrderMail;
 use crate::utils::schedule;
 
 /// Convert an [`Order`] and its positions into the staff schema
@@ -62,6 +68,7 @@ async fn full_order(
         status: order.status,
         pickup_date: SchemaDate(pickup_day.pickup_date),
         locked: pickup_day.is_locked(now),
+        dispatched: pickup_day.dispatched_at.is_some(),
         first_name: order.first_name.map(|n| n.to_string()),
         last_name: order.last_name.to_string(),
         phone: order.phone.map(|p| p.to_string()),
@@ -139,7 +146,7 @@ pub async fn get_order_detail(Path(uuid): Path<OrderUuid>) -> ApiResult<ApiJson<
 /// What has to be procured for one pickup day
 ///
 /// The bakery order: every position of every non-cancelled order of that day,
-/// summed per item. Final once the day is frozen.
+/// summed per item. Final once the day is Dispatched.
 #[get("/pickup-days/{date}/summary")]
 pub async fn get_procurement_summary(
     Path(date): Path<SchemaDate>,
@@ -152,6 +159,7 @@ pub async fn get_procurement_summary(
     let day = PickupDay::get_by_pickup_date(&mut tx, date)
         .await?
         .ok_or(ApiError::bad_request("Unknown pickup day"))?;
+    let settings = ShopSettings::get(&mut tx).await?;
 
     let orders: Vec<Order> = Order::get_by_pickup_day(&mut tx, day.uuid)
         .await?
@@ -211,6 +219,8 @@ pub async fn get_procurement_summary(
     Ok(ApiJson(ProcurementSummary {
         pickup_date: SchemaDate(day.pickup_date),
         deadline: SchemaDateTime(day.deadline_at),
+        dispatch_due: SchemaDateTime(schedule::dispatch_due(&settings, day.deadline_at)),
+        dispatched_at: day.dispatched_at.map(SchemaDateTime),
         locked: day.is_locked(now),
         closed: day.closed,
         order_count: orders.len() as i64,
@@ -222,6 +232,7 @@ pub async fn get_procurement_summary(
 /// Change an order's status
 ///
 /// Allowed transitions: `Open -> Ready -> PickedUp`; `Open | Ready -> Cancelled`.
+/// A cancelled order's customer gets a mail, also after the Dispatch.
 #[patch("/orders/{uuid}")]
 pub async fn update_order_status(
     Path(uuid): Path<OrderUuid>,
@@ -241,8 +252,38 @@ pub async fn update_order_status(
     order.status = request.status;
 
     let day = pickup_day_of(&mut tx, &order).await?;
+    let positions: Vec<MailPosition> = OrderItem::get_by_order(&mut tx, order.uuid)
+        .await?
+        .iter()
+        .map(MailPosition::from)
+        .collect();
+    let customer_name = order.display_name();
+    let pickup_code = order.pickup_code.to_string();
+    let email = order.email.as_ref().map(ToString::to_string);
+    let language = order.language;
     let full = full_order(&mut tx, order, &day, schedule::now()).await?;
     tx.commit().await?;
+
+    if request.status == OrderStatus::Cancelled {
+        info!(order.pickup_code = %pickup_code, "Order cancelled by staff");
+        let mail = OrderMail {
+            pickup_code: &pickup_code,
+            customer_name: &customer_name,
+            email: email.as_deref(),
+            language,
+            pickup_date: day.pickup_date,
+            deadline: day.deadline_at,
+            positions: &positions,
+        };
+        if let Err(error) = mail::send_order_cancelled_by_staff(&mail).await {
+            error!(
+                error = %error,
+                order.pickup_code = %pickup_code,
+                "Failed to queue the cancellation mail"
+            );
+        }
+    }
+
     Ok(ApiJson(full))
 }
 

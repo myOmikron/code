@@ -46,8 +46,12 @@ pub struct FullOrder {
     pub status: OrderStatus,
     /// The day the order is picked up on
     pub pickup_date: SchemaDate,
-    /// Whether the order is frozen: the bakery has it, the customer cannot cancel
+    /// Whether the order is frozen: the customer can no longer cancel it
     pub locked: bool,
+    /// Whether the order's pickup day was Dispatched: the Bakery has it
+    ///
+    /// Staff may still cancel the order; what went to the Bakery stays as it is.
+    pub dispatched: bool,
     /// The customer's first name, if given
     pub first_name: Option<String>,
     /// The customer's last name
@@ -99,7 +103,11 @@ pub struct ProcurementSummary {
     pub pickup_date: SchemaDate,
     /// The point in time orders close
     pub deadline: SchemaDateTime,
-    /// Whether the day is frozen — only then the list is final
+    /// The point in time the day is Dispatched: its Deadline plus the Review Window
+    pub dispatch_due: SchemaDateTime,
+    /// When the day was Dispatched; from then on the list is final
+    pub dispatched_at: Option<SchemaDateTime>,
+    /// Whether the day is frozen: customers can no longer order or cancel
     pub locked: bool,
     /// Whether the day was called off
     pub closed: bool,

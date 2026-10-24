@@ -1105,7 +1105,7 @@
             },
             "patch": {
                 "summary": "Change an order's status",
-                "description": "Change an order's status\n\nAllowed transitions: `Open -> Ready -> PickedUp`; `Open | Ready -> Cancelled`.",
+                "description": "Change an order's status\n\nAllowed transitions: `Open -> Ready -> PickedUp`; `Open | Ready -> Cancelled`.\nA cancelled order's customer gets a mail, also after the Dispatch.",
                 "operationId": "update_order_status",
                 "parameters": [
                     {
@@ -1176,7 +1176,7 @@
         "/api/frontend/v1/verkauf/pickup-days/{date}/summary": {
             "get": {
                 "summary": "What has to be procured for one pickup day",
-                "description": "What has to be procured for one pickup day\n\nThe bakery order: every position of every non-cancelled order of that day,\nsummed per item. Final once the day is frozen.",
+                "description": "What has to be procured for one pickup day\n\nThe bakery order: every position of every non-cancelled order of that day,\nsummed per item. Final once the day is Dispatched.",
                 "operationId": "get_procurement_summary",
                 "parameters": [
                     {
@@ -2372,7 +2372,7 @@
         "/api/frontend/v1/admin/pickup-days/{rule_date}/lock": {
             "post": {
                 "summary": "Freeze a pickup day right now, before its deadline",
-                "description": "Freeze a pickup day right now, before its deadline\n\nRuns the same path the deadline job runs, confirmation mails included.",
+                "description": "Freeze a pickup day right now, before its deadline\n\nRuns the same path the deadline job runs. The Dispatch stays where it is:\nthe confirmations go out at the Deadline plus the Review Window.",
                 "operationId": "lock_pickup_day",
                 "parameters": [
                     {
@@ -3412,6 +3412,10 @@
                             }
                         ]
                     },
+                    "dispatched": {
+                        "description": "Whether the order's pickup day was Dispatched: the Bakery has it\n\nStaff may still cancel the order; what went to the Bakery stays as it is.",
+                        "type": "boolean"
+                    },
                     "early_pickup": {
                         "description": "Whether the customer wants to pick the order up early in the day",
                         "type": "boolean"
@@ -3431,7 +3435,7 @@
                         "type": "string"
                     },
                     "locked": {
-                        "description": "Whether the order is frozen: the bakery has it, the customer cannot cancel",
+                        "description": "Whether the order is frozen: the customer can no longer cancel it",
                         "type": "boolean"
                     },
                     "note": {
@@ -3487,6 +3491,7 @@
                 },
                 "required": [
                     "created_at",
+                    "dispatched",
                     "early_pickup",
                     "last_name",
                     "locked",
@@ -4008,11 +4013,6 @@
                         "type": "integer",
                         "format": "int64"
                     },
-                    "confirmed_orders": {
-                        "description": "How many confirmation mails were queued by freezing the day",
-                        "type": "integer",
-                        "format": "int64"
-                    },
                     "day": {
                         "description": "The day after the change",
                         "allOf": [
@@ -4024,7 +4024,6 @@
                 },
                 "required": [
                     "cancelled_orders",
-                    "confirmed_orders",
                     "day"
                 ]
             },
@@ -4116,8 +4115,25 @@
                             }
                         ]
                     },
+                    "dispatch_due": {
+                        "description": "The point in time the day is Dispatched: its Deadline plus the Review Window",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDateTime"
+                            }
+                        ]
+                    },
+                    "dispatched_at": {
+                        "nullable": true,
+                        "description": "When the day was Dispatched; from then on the list is final",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDateTime"
+                            }
+                        ]
+                    },
                     "locked": {
-                        "description": "Whether the day is frozen — only then the list is final",
+                        "description": "Whether the day is frozen: customers can no longer order or cancel",
                         "type": "boolean"
                     },
                     "order_count": {
@@ -4149,6 +4165,7 @@
                 "required": [
                     "closed",
                     "deadline",
+                    "dispatch_due",
                     "locked",
                     "order_count",
                     "pickup_date",
@@ -4400,12 +4417,18 @@
                                 "$ref": "#/components/schemas/ScheduleWeekday"
                             }
                         ]
+                    },
+                    "review_window_minutes": {
+                        "description": "Minutes from a pickup day's Deadline to its Dispatch, 0 or more",
+                        "type": "integer",
+                        "format": "int32"
                     }
                 },
                 "required": [
                     "deadline_offset_days",
                     "deadline_time",
-                    "pickup_weekday"
+                    "pickup_weekday",
+                    "review_window_minutes"
                 ]
             },
             "ScheduleWeekday": {

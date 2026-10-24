@@ -80,8 +80,10 @@ function Procurement() {
                 <div className={"flex items-center gap-2"}>
                     {summary.closed ? (
                         <Badge color={"red"}>{t("label.state-closed")}</Badge>
-                    ) : summary.locked ? (
+                    ) : summary.dispatched_at ? (
                         <Badge color={"green"}>{t("label.state-final")}</Badge>
+                    ) : summary.locked ? (
+                        <Badge color={"amber"}>{t("label.state-review")}</Badge>
                     ) : (
                         <Badge color={"amber"}>{t("label.state-preliminary")}</Badge>
                     )}
@@ -91,13 +93,18 @@ function Procurement() {
                 </div>
             </div>
 
-            {/* Until the deadline the list still moves — say so, so nobody
-                orders at the bakery off a preliminary number. */}
-            <Text>
-                {summary.locked
-                    ? t("description.procurement-final", { count: summary.order_count })
-                    : t("description.procurement-preliminary", { date: formatDateTime(summary.deadline) })}
-            </Text>
+            {!summary.closed && (
+                <Text>
+                    {summary.dispatched_at
+                        ? t("description.procurement-dispatched", {
+                              date: formatDateTime(summary.dispatched_at),
+                              count: summary.order_count,
+                          })
+                        : summary.locked
+                          ? t("description.procurement-review", { date: formatDateTime(summary.dispatch_due) })
+                          : t("description.procurement-open", { date: formatDateTime(summary.deadline) })}
+                </Text>
+            )}
 
             {summary.positions.length === 0 ? (
                 <EmptyState title={t("label.procurement-empty")} />

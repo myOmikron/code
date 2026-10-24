@@ -46,6 +46,7 @@ function Termine() {
     const [weekday, setWeekday] = React.useState<ScheduleWeekday>("Saturday");
     const [offsetDays, setOffsetDays] = React.useState(1);
     const [deadlineTime, setDeadlineTime] = React.useState("16:00");
+    const [reviewWindow, setReviewWindow] = React.useState(0);
     const [savingRule, setSavingRule] = React.useState(false);
     const [days, setDays] = React.useState<AdminPickupDay[]>();
     const [editing, setEditing] = React.useState<AdminPickupDay>();
@@ -61,6 +62,7 @@ function Termine() {
             setOffsetDays(schedule.deadline_offset_days);
             // The API sends `HH:MM:SS`, the time input wants `HH:MM`
             setDeadlineTime(schedule.deadline_time.slice(0, 5));
+            setReviewWindow(schedule.review_window_minutes);
         });
         fetchDays();
     }, [fetchDays]);
@@ -73,6 +75,7 @@ function Termine() {
                 pickup_weekday: weekday,
                 deadline_offset_days: offsetDays,
                 deadline_time: `${deadlineTime}:00`,
+                review_window_minutes: reviewWindow,
             });
             notify.success(t("toast.schedule-saved"));
             fetchDays();
@@ -120,6 +123,18 @@ function Termine() {
                                 value={deadlineTime}
                                 onChange={(e) => setDeadlineTime(e.target.value)}
                             />
+                        </Field>
+
+                        <Field>
+                            <Label>{t("label.review-window")}</Label>
+                            <Input
+                                type={"number"}
+                                min={0}
+                                step={1}
+                                value={reviewWindow}
+                                onChange={(e) => setReviewWindow(Math.max(0, Math.floor(Number(e.target.value))))}
+                            />
+                            <Description>{t("description.review-window")}</Description>
                         </Field>
 
                         <PrimaryButton loading={savingRule} onClick={saveRule} className={"self-start"}>
@@ -191,8 +206,8 @@ function Termine() {
                 open={locking !== undefined}
                 onClose={() => setLocking(undefined)}
                 onConfirm={async () => {
-                    const result = await Api.admin.schedule.lockDay(locking!.rule_date);
-                    notify.success(t("toast.day-locked", { count: result.confirmed_orders }));
+                    await Api.admin.schedule.lockDay(locking!.rule_date);
+                    notify.success(t("toast.day-locked"));
                     setLocking(undefined);
                     fetchDays();
                 }}

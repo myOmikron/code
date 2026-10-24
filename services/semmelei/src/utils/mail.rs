@@ -406,6 +406,47 @@ pub async fn send_order_confirmed(mail: &OrderMail<'_>) -> Result<(), MailError>
     publish(to, &subject, text_body).await
 }
 
+/// Tell a customer that staff cancelled their order
+///
+/// The pickup day itself still takes place; only this one order is off.
+#[instrument(name = "mail::send_order_cancelled_by_staff", skip(mail))]
+pub async fn send_order_cancelled_by_staff(mail: &OrderMail<'_>) -> Result<(), MailError> {
+    let Some(to) = mail.email else {
+        return Ok(());
+    };
+    let code = mail.pickup_code;
+    let name = one_line(mail.customer_name);
+    let pickup = format_date(mail.pickup_date, mail.language);
+
+    let (subject, text_body) = match mail.language {
+        OrderLanguage::De => (
+            format!("Vorbestellung {code} storniert"),
+            format!(
+                "Hallo {name},\n\
+                 \n\
+                 deine Vorbestellung {code} für die Abholung am {pickup} wurde\n\
+                 von der Nachbarschaftshilfe storniert. Es entstehen dir keine\n\
+                 Kosten.\n\
+                 \n\
+                 Bei Fragen melde dich gern bei uns im Laden.\n",
+            ),
+        ),
+        OrderLanguage::En => (
+            format!("Pre-order {code} cancelled"),
+            format!(
+                "Hello {name},\n\
+                 \n\
+                 your pre-order {code} for pickup on {pickup} was cancelled\n\
+                 by the Nachbarschaftshilfe, at no cost to you.\n\
+                 \n\
+                 If you have any questions, just ask us in the shop.\n",
+            ),
+        ),
+    };
+
+    publish(to, &subject, text_body).await
+}
+
 /// Tell a customer their pickup day was called off
 #[instrument(name = "mail::send_order_cancelled", skip(mail))]
 pub async fn send_order_cancelled(mail: &OrderMail<'_>) -> Result<(), MailError> {
