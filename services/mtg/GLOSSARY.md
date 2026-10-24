@@ -116,6 +116,10 @@ _Avoid_: changelog entry, entry, change
 All Release notes of the Releases, shown newest first on the "What's new" page (Neuigkeiten). Releases without a Release note are left out.
 _Avoid_: changelog, history, news feed
 
+**Bug report**:
+A signed-in Account's message that something in mtg does not work, in their own words, with what the app knew at that moment attached. Only for faults, never for wishes. Admins read it; the reporter hears nothing back beyond a thank-you and its reference.
+_Avoid_: feedback, ticket, issue
+
 ## Relationships
 
 - An **Account** has exactly one **Role**, and at most one **Lock** at a time
@@ -127,6 +131,7 @@ _Avoid_: changelog, history, news feed
 - A deck has any number of **Collaborators**, each Account at most once, as a **Viewer** or an **Editor**; deleting the deck or the Account removes the Collaborator
 - A **Collaborator** sees the deck whatever its Visibility; Visibility and the Share link work the same with or without Collaborators
 - A **Release** has any number of **Release notes**; pending ones belong to the next Release cut with `just release`
+- A **Bug report** belongs to the Account that sent it and goes with it on any **Deletion**; it is open until an **Admin** marks it done
 - Undoing or resetting a **Deck change** restores **Deck entries** without their card tags, and never moves cards of the deck's collection
 
 ## Flagged ambiguities
