@@ -17,7 +17,7 @@ import {
 import { gridColumns, stepHighlight } from "src/utils/grid-nav";
 import { usePreloadImages } from "src/utils/use-preload-image";
 import { QUERY_SYNTAX, correctCardWords, fuzzyCardName, searchPrintingPage } from "src/utils/scryfall";
-import type { Printing } from "src/utils/scryfall";
+import type { Printing, ScryfallPrefer } from "src/utils/scryfall";
 import { useFlippedCards } from "src/utils/use-flipped-cards";
 
 /** How long typing has to pause before a search goes out */
@@ -87,7 +87,7 @@ export type CardSearchPanelProps = {
     /** Whether a card comes back once or once per print run */
     unique?: "prints" | "cards";
     /** Which printing a hit shows, as Scryfall's `prefer:`, unless the query names its own */
-    prefer?: string;
+    prefer?: ScryfallPrefer;
     /** Fixes the result grid to two columns instead of choosing responsively */
     twoColumns?: boolean;
     /** Controls placed immediately below the search field */
