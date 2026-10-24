@@ -606,11 +606,40 @@ export async function searchAllPrintings(
     return all;
 }
 
+/** Which printing of a card a search shows, as Scryfall's `prefer:` spells it */
+export type ScryfallPrefer =
+    | "oldest"
+    | "newest"
+    | "usd-low"
+    | "usd-high"
+    | "eur-low"
+    | "eur-high"
+    | "tix-low"
+    | "tix-high"
+    | "promo"
+    | "default"
+    | "atypical"
+    | "universesbeyond";
+
 /** One page of card-search results and Scryfall's opaque cursor to the next */
 export type PrintingSearchPage = {
     printings: Printing[];
     nextPage: string | null;
 };
+
+/**
+ * Takes every `keyword:value` directive out of a query
+ *
+ * @param query the query
+ * @param keywords the directive's spellings, as a regex alternation
+ *
+ * @returns the value of the last directive, and the query without any of them
+ */
+function lastDirective(query: string, keywords: string): { value: string | undefined; rest: string } {
+    const directive = new RegExp(`(^|\\s)(?:${keywords}):([a-z][a-z-]*)(?=\\s|$)`, "gi");
+    const value = [...query.matchAll(directive)].at(-1)?.[2];
+    return { value, rest: value === undefined ? query : query.replace(directive, "$1").trim() };
+}
 
 /**
  * Searches one page of Scryfall printings.
@@ -649,13 +678,11 @@ export async function searchPrintingPage(
         // a default sort in front of what was typed, and typing another has to
         // override it rather than leave a directive in `q` Scryfall's API
         // rejects as an unknown keyword.
-        const sortDirective = /(^|\s)(?:sort|order):([a-z][a-z-]*)(?=\s|$)/gi;
-        const sort = [...trimmed.matchAll(sortDirective)].at(-1)?.[2]?.toLowerCase();
-        const sorted = sort === undefined ? trimmed : trimmed.replace(sortDirective, "$1").trim();
-        const preferDirective = /(^|\s)prefer:([a-z][a-z-]*)(?=\s|$)/gi;
-        const prefer = [...sorted.matchAll(preferDirective)].at(-1)?.[2];
+        const sorting = lastDirective(trimmed, "sort|order");
+        const sort = sorting.value?.toLowerCase();
+        const preferring = lastDirective(sorting.rest, "prefer");
         const filters =
-            prefer === undefined ? sorted : `${sorted.replace(preferDirective, "$1").trim()} prefer:${prefer}`.trim();
+            preferring.value === undefined ? preferring.rest : `${preferring.rest} prefer:${preferring.value}`.trim();
 
         url.searchParams.set("q", filters);
         url.searchParams.set("unique", unique);

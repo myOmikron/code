@@ -69,6 +69,7 @@ import { usePointerCard } from "src/utils/use-pointer-card";
 import { useShortcutHelpOpen } from "src/context/shortcut-help-context";
 import { DeckTagWritableContext } from "src/context/deck-tag-writable-context";
 import { deckRights, tagWritable } from "src/utils/deck-rights";
+import { defaultFoil } from "src/utils/default-finish";
 
 /**
  * The zones the search's "already in" filter looks through.
@@ -582,11 +583,13 @@ function RouteComponent() {
     /**
      * Files one copy of a printing into the current zone
      *
+     * A new Deck entry is foil when the printing was only made foil.
+     *
      * @param printing the card to file
      * @param anyPrinting whether a Deck entry of the same card in another
      *   printing takes the copy, as it does for a hit of the search
      *
-     * @returns whether the card was actually filed — `false` when the zone's
+     * @returns whether the card was actually filed: `false` when the zone's
      *   own rules rejected it, so a caller that also toasts on success knows
      *   not to follow a rejection with one
      */
@@ -607,7 +610,12 @@ function RouteComponent() {
 
         await serial(async () => {
             if (existing === undefined) {
-                await Api.decks.cards.add(deckUuid, { printing: printing.id, quantity: 1, zone });
+                await Api.decks.cards.add(deckUuid, {
+                    printing: printing.id,
+                    quantity: 1,
+                    zone,
+                    foil: defaultFoil(printing.finishes),
+                });
             } else {
                 await Api.decks.cards.update(deckUuid, existing.uuid, { quantity: existing.quantity + 1 });
             }
