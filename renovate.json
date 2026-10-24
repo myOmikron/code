@@ -9,6 +9,13 @@
   "schedule": ["before 6am on monday"],
   "prConcurrentLimit": 10,
   "platformCommit": "enabled",
+  // supply chain cooldown: a compromised release is usually yanked within days;
+  // vulnerability fixes skip it (vulnerabilityAlerts defaults to minimumReleaseAge null)
+  "minimumReleaseAge": "7 days",
+  "internalChecksFilter": "strict",
+  // GitHub alerts need Dependabot alerts enabled and read access for the app;
+  // OSV works without either, but only covers direct dependencies
+  "osvVulnerabilityAlerts": true,
   "lockFileMaintenance": {
     "enabled": true,
     "schedule": ["before 6am on monday"]
@@ -55,7 +62,13 @@
   "rebaseWhen": "behind-base-branch",
   "packageRules": [
     {
-      "description": "Automerge Rust patch and minor updates of stable crates",
+      "description": "Automerge Rust patch updates of all crates; Cargo.lock changes run the full workspace CI",
+      "matchManagers": ["cargo"],
+      "matchUpdateTypes": ["patch"],
+      "automerge": true
+    },
+    {
+      "description": "Automerge Rust minor updates of stable crates",
       "matchManagers": ["cargo"],
       "matchPackageNames": [
         "serde",
@@ -77,7 +90,7 @@
         "time-tz",
         "tower-http"
       ],
-      "matchUpdateTypes": ["patch", "minor"],
+      "matchUpdateTypes": ["minor"],
       "automerge": true
     },
     {
