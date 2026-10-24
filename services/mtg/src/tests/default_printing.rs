@@ -301,6 +301,55 @@ fn a_card_only_printed_in_the_future_is_not_placed() {
 }
 
 #[test]
+fn a_named_set_still_finds_a_printing_released_in_the_future() {
+    run(async {
+        let mut client = member().await;
+        let name = unique("Previewed In Set");
+        let future = file(
+            &name,
+            Print {
+                released: "2999-01-01",
+                ..Print::default()
+            },
+        )
+        .await;
+
+        let found = resolve(&mut client, json!({ "name": name, "set_code": "tdp" })).await;
+        assert_eq!(found, Some(future));
+    });
+}
+
+#[test]
+fn a_non_foil_printing_legal_nowhere_beats_a_legal_foil_only_one() {
+    run(async {
+        let mut client = member().await;
+        let name = unique("Foil Never Picked");
+        let nonfoil = file(
+            &name,
+            Print {
+                released: "2015-01-01",
+                number: "1",
+                legal: false,
+                ..Print::default()
+            },
+        )
+        .await;
+        file(
+            &name,
+            Print {
+                released: "2024-01-01",
+                number: "2",
+                finishes: &["foil"],
+                ..Print::default()
+            },
+        )
+        .await;
+
+        assert_eq!(by_name(&mut client, &name).await, Some(nonfoil));
+    });
+}
+
+#[test]
 fn a_foil_only_printing_loses_to_an_older_non_foil_one() {
     run(async {
         let mut client = member().await;

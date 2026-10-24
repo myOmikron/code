@@ -77,7 +77,7 @@ One line of a deck: a printing in a zone, foil or not, proxy or not, with a quan
 _Avoid_: slot, deck card, line
 
 **Default printing**:
-The printing a card gets when it is added to a deck by its name alone: the newest already released printing that is legal somewhere and exists without foil, and of equally new ones the cheapest without foil, printings with a price before those without. A card that exists only in foil gets its newest printing, in foil. It is only a starting point; the printing can be changed afterwards. A named set and collector number, or a foil marker in an import, wins over it, and a card already in the same zone keeps the printing it has there.
+The printing a card gets when it is added to a deck by its name alone: the newest already released printing that exists without foil and is legal somewhere, existing without foil counting first, so a foil-only printing is never chosen while another one exists; of equally new ones the cheapest without foil, printings with a price before those without, and then the lowest collector number. A card that exists only in foil gets its newest printing, filed as foil. It is only a starting point; the printing can be changed afterwards. A printing id, a named set and collector number, or a foil marker in an import wins over it, and a card already in the same zone keeps the printing it has there.
 _Avoid_: preferred printing, standard print
 
 **Deck change**:
