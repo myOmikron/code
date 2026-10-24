@@ -320,11 +320,11 @@ fn a_named_set_still_finds_a_printing_released_in_the_future() {
 }
 
 #[test]
-fn a_non_foil_printing_legal_nowhere_beats_a_legal_foil_only_one() {
+fn a_legal_foil_only_printing_beats_a_token_without_foil() {
     run(async {
         let mut client = member().await;
-        let name = unique("Foil Never Picked");
-        let nonfoil = file(
+        let name = unique("Token Never Picked");
+        file(
             &name,
             Print {
                 released: "2015-01-01",
@@ -334,7 +334,7 @@ fn a_non_foil_printing_legal_nowhere_beats_a_legal_foil_only_one() {
             },
         )
         .await;
-        file(
+        let foil = file(
             &name,
             Print {
                 released: "2024-01-01",
@@ -345,7 +345,7 @@ fn a_non_foil_printing_legal_nowhere_beats_a_legal_foil_only_one() {
         )
         .await;
 
-        assert_eq!(by_name(&mut client, &name).await, Some(nonfoil));
+        assert_eq!(by_name(&mut client, &name).await, Some(foil));
     });
 }
 

@@ -427,14 +427,14 @@ fn coordinate_statement(count: usize, strict: bool) -> String {
 /// The rest of the order is the card's Default printing (see the glossary),
 /// since a name alone says nothing about which printing was meant:
 ///
-/// 1. A printing that exists without foil beats a foil-only one, so a
-///    foil-only printing is only picked for a card made in nothing else. Such
-///    a card gets its newest printing, which is filed as foil.
-/// 2. A playable card beats a token of the same name. The tokens of
-///    Bloomburrow's Offspring mechanic share their card's exact name ("Manifold
-///    Mouse" is both), and `legal_formats` tells them apart because a token is
-///    legal nowhere. It is a preference rather than a filter, so an export
-///    that names only a token or an un-set card still resolves.
+/// 1. A legal printing that exists without foil beats everything else.
+/// 2. Of the rest, a playable card beats a token of the same name. The tokens
+///    of Bloomburrow's Offspring mechanic share their card's exact name
+///    ("Manifold Mouse" is both), and `legal_formats` tells them apart because
+///    a token is legal nowhere. A card made only in foil therefore gets its
+///    newest legal printing, which is filed as foil. Legality is a preference
+///    rather than a filter, so an export that names only a token or an un-set
+///    card still resolves, a printing without foil first.
 /// 3. The newest release wins, then the cheapest non-foil price with
 ///    unpriced printings last, then the lowest collector number.
 ///
@@ -458,8 +458,10 @@ fn name_statement(count: usize, strict: bool) -> String {
           AND (v.asked_right <> '' OR p.released_at IS NULL OR p.released_at <= CURRENT_DATE) \
          ORDER BY v.asked_left, v.asked_right, \
                   (p.lang = ${lang}) DESC, (p.lang = 'en') DESC, \
-                  ('nonfoil' = ANY(string_to_array(p.finishes, ','))) DESC, \
+                  (p.legal_formats <> '' \
+                   AND 'nonfoil' = ANY(string_to_array(p.finishes, ','))) DESC, \
                   (p.legal_formats <> '') DESC, \
+                  ('nonfoil' = ANY(string_to_array(p.finishes, ','))) DESC, \
                   p.released_at DESC NULLS LAST, p.price_eur ASC NULLS LAST, \
                   p.collector_number_sort ASC, p.id ASC"
     )
@@ -535,8 +537,9 @@ mod tests {
             };
             let keys = [
                 "(p.lang = 'en') DESC",
-                "('nonfoil' = ANY(string_to_array(p.finishes, ','))) DESC",
+                "AND 'nonfoil' = ANY(string_to_array(p.finishes, ','))) DESC",
                 "(p.legal_formats <> '') DESC",
+                "('nonfoil' = ANY(string_to_array(p.finishes, ','))) DESC",
                 "p.released_at DESC NULLS LAST",
                 "p.price_eur ASC NULLS LAST",
                 "p.collector_number_sort ASC",
