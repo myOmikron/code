@@ -22,10 +22,10 @@ catalogs:
     '@tanstack/react-query': ^5.102.3
     '@tanstack/react-router': ^1.170.17
     '@tanstack/react-table': ^9.0.0
-    '@zxcvbn-ts/core': ^3.0.4
-    '@zxcvbn-ts/language-common': ^3.0.4
-    '@zxcvbn-ts/language-de': ^3.0.2
-    '@zxcvbn-ts/language-en': ^3.0.2
+    '@zxcvbn-ts/core': ^4.0.0
+    '@zxcvbn-ts/language-common': ^4.0.0
+    '@zxcvbn-ts/language-de': ^4.0.0
+    '@zxcvbn-ts/language-en': ^4.0.0
     clsx: ^2.1.1
     i18next: ^26.3.4
     i18next-browser-languagedetector: ^8.2.1
