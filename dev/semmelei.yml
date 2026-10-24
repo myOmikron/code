@@ -11,7 +11,7 @@ name: semmelei
 
 services:
   traefik:
-    image: traefik:v3.7.15
+    image: traefik:v3.7.16
     # Shares the tailscale container's network namespace, so it answers on the
     # tailnet address and can reach the internal CA. Ports are published by
     # that container — a namespace has one owner.
