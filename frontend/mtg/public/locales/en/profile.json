@@ -22,6 +22,7 @@
         "delete-account": "Deletes your account along with its passkeys, collections, watch lists and every deck that is not public. Public decklists stay readable, with nobody named as their builder.",
         "delete-account-confirm": "There is no way back. Your account, your passkeys, your collections, your watch lists and every deck you kept to yourself are gone afterwards.",
         "delete-account-decks": "Your public decklists stay reachable under their links. Nobody is named as their builder afterwards.",
+        "delete-account-tournaments": "In tournaments you stay on as a guest under your current username. A co-organizer takes over the tournaments you own; without one, public and unlisted tournaments stay reachable without an owner and private ones are deleted.",
         "foil-tilt": "The sheen on foil cards follows how you tilt your device, the way a card held in the hand catches the light.",
         "language": "Applies to the interface. Card names come from Scryfall and are unaffected.",
         "passkeys": "These devices can sign you in. Add a passkey per device — if you lose one, the others still get you in.",

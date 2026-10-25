@@ -3,7 +3,15 @@ import type { AdminStatisticsSnapshot } from "src/api/generated";
 import { ChartTooltip } from "src/components/charts/chart-card";
 
 /** A count of a Statistics snapshot that can be drawn over time */
-export type StatisticsCount = "accounts" | "collections" | "decks" | "public_decks" | "cards" | "open_scanner_sessions";
+export type StatisticsCount =
+    | "accounts"
+    | "collections"
+    | "decks"
+    | "public_decks"
+    | "cards"
+    | "open_scanner_sessions"
+    | "tournaments"
+    | "finished_tournaments";
 
 /**
  * The properties for {@link StatisticsCurve}

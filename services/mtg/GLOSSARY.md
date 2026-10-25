@@ -49,7 +49,7 @@ One attempt of the catalog sync or the price guide sync: when it started, how lo
 _Avoid_: job, import
 
 **Statistics snapshot**:
-Service-wide counts taken at one point in time by the `snapshot-statistics` subcommand: Accounts, collections, decks, public decks, cards and open scanner sessions. Kept forever; the admin dashboard only ever shows snapshots, never live counts.
+Service-wide counts taken at one point in time by the `snapshot-statistics` subcommand: Accounts, collections, decks, public decks, cards, open scanner sessions, Tournaments and Finished Tournaments. Kept forever; the admin dashboard only ever shows snapshots, never live counts.
 _Avoid_: metrics, report
 
 **Open scanner session**:
@@ -226,7 +226,7 @@ _Avoid_: status, phase, closed, completed
 - A **Tournament** has one **Table size** and one **Ruleset** fitting it: MTR for 2, TopDeck or Multiplayer Addendum for 3 to 5
 - A **Round** has **Matches**; a **Match** has one **Seat** per Participant and at most one **Result**; a Participant plays at most one Match per Round, or has a **Bye**
 - A **Participant** has at most one **Registered deck**, made from one of its Account's decks; when it becomes a copy, a **Deck checkpoint** named after the Tournament marks that **Deck change** in the deck's **Deck history**. Renaming or removing that Deck checkpoint, or deleting the deck, leaves the Registered deck as it is
-- **Deletion** of an Account turns its Participants into **Guests**, passes the Tournaments it owns to a Co-organizer, else hands a public or unlisted one to the **Tombstone** and deletes a private one; its Registered decks stay
+- **Deletion** of an Account turns its Participants into **Guests**, passes the Tournaments it owns to a Co-organizer, else hands a public or unlisted one to the **Tombstone** and deletes a private one (a full Deletion deletes those too); its Registered decks stay. The Guests keep the Participants' names and places, so Matches and standings stay intact; the Co-organizer taking over is the one named first
 - A locked Account (**Lock**) reports and disputes no **Result**; Organizers do it for it, as for a **Guest**
 - A **Statistics snapshot** counts Tournaments, all and **Finished** ones
 

@@ -1,7 +1,7 @@
 //! Statistics snapshots: service-wide counts taken by `snapshot-statistics`
 //!
 //! Taking one is the only read in the service that walks whole tables: one
-//! sequential scan each of `account`, `collection`, `deck` and
+//! sequential scan each of `account`, `collection`, `deck`, `tournament` and
 //! `collection_stock`, plus the scanner session entries, once per interval in
 //! its own container. Nothing on a request path counts; the admin dashboard
 //! reads the stored rows through the `taken_at` index.
@@ -19,6 +19,7 @@ use uuid::Uuid;
 use crate::models::row::decode;
 use crate::models::statistics::db::StatisticsSnapshotInsertPatch;
 use crate::models::statistics::db::StatisticsSnapshotModel;
+use crate::models::tournament::TournamentState;
 use crate::models::visibility::Visibility;
 
 pub mod db;
@@ -47,6 +48,10 @@ pub struct StatisticsSnapshot {
     pub cards: i64,
     /// Scanner sessions holding at least one card not yet filed
     pub open_scanner_sessions: i64,
+    /// Tournaments in any state, the Tombstone's included
+    pub tournaments: i64,
+    /// Tournaments that are Finished
+    pub finished_tournaments: i64,
 }
 
 /// One statement for all counts, so they agree with each other
@@ -55,12 +60,15 @@ const COUNTS: &str = "\
       (SELECT count(*) FROM collection WHERE deck IS NULL) AS collections, \
       d.decks, d.public_decks, \
       (SELECT COALESCE(SUM(free + sleeved), 0)::bigint FROM collection_stock) AS cards, \
-      (SELECT count(DISTINCT scanner_session) FROM scanner_session_entry) AS open_scanner_sessions \
+      (SELECT count(DISTINCT scanner_session) FROM scanner_session_entry) AS open_scanner_sessions, \
+      t.tournaments, t.finished_tournaments \
     FROM \
       (SELECT count(*) AS accounts, count(*) FILTER (WHERE created_at > $1) AS new_accounts \
        FROM account WHERE NOT tombstone) a, \
       (SELECT count(*) AS decks, count(*) FILTER (WHERE visibility = $2) AS public_decks \
-       FROM deck) d";
+       FROM deck) d, \
+      (SELECT count(*) AS tournaments, count(*) FILTER (WHERE state = $3) AS finished_tournaments \
+       FROM tournament) t";
 
 impl StatisticsSnapshot {
     /// Count everything and store the result as a new snapshot
@@ -73,6 +81,7 @@ impl StatisticsSnapshot {
                 vec![
                     Value::TimeOffsetDateTime(taken_at - NEW_ACCOUNT_WINDOW),
                     Value::String(Visibility::Public.as_str()),
+                    Value::String(TournamentState::Finished.as_str()),
                 ],
             )
             .await?;
@@ -91,6 +100,8 @@ impl StatisticsSnapshot {
             public_decks: count("public_decks")?,
             cards: count("cards")?,
             open_scanner_sessions: count("open_scanner_sessions")?,
+            tournaments: count("tournaments")?,
+            finished_tournaments: count("finished_tournaments")?,
         };
         let snapshot = rorm::insert(&mut *tx, StatisticsSnapshotModel)
             .single(&patch)
@@ -135,6 +146,8 @@ impl From<StatisticsSnapshotModel> for StatisticsSnapshot {
             public_decks: model.public_decks,
             cards: model.cards,
             open_scanner_sessions: model.open_scanner_sessions,
+            tournaments: model.tournaments,
+            finished_tournaments: model.finished_tournaments,
         }
     }
 }

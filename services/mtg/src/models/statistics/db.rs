@@ -29,6 +29,16 @@ pub struct StatisticsSnapshotModel {
     pub cards: i64,
     /// Open scanner sessions
     pub open_scanner_sessions: i64,
+    /// Tournaments, in any state
+    ///
+    /// Zero in the snapshots taken before Tournaments were counted.
+    #[rorm(default = 0)]
+    pub tournaments: i64,
+    /// Finished Tournaments
+    ///
+    /// Zero in the snapshots taken before Tournaments were counted.
+    #[rorm(default = 0)]
+    pub finished_tournaments: i64,
 }
 
 /// Insert patch for [`StatisticsSnapshotModel`]
@@ -53,4 +63,8 @@ pub struct StatisticsSnapshotInsertPatch {
     pub cards: i64,
     /// Open scanner sessions
     pub open_scanner_sessions: i64,
+    /// Tournaments
+    pub tournaments: i64,
+    /// Finished Tournaments
+    pub finished_tournaments: i64,
 }

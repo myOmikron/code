@@ -584,6 +584,8 @@ fn report_snapshot(snapshot: StatisticsSnapshot) {
         public_decks = snapshot.public_decks,
         cards = snapshot.cards,
         open_scanner_sessions = snapshot.open_scanner_sessions,
+        tournaments = snapshot.tournaments,
+        finished_tournaments = snapshot.finished_tournaments,
         "Took a statistics snapshot"
     );
 }

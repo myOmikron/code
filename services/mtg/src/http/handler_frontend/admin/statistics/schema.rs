@@ -36,6 +36,10 @@ pub struct AdminStatisticsSnapshot {
     pub cards: i64,
     /// Scanner sessions holding at least one card not yet filed
     pub open_scanner_sessions: i64,
+    /// Tournaments in any state; zero before Tournaments were counted
+    pub tournaments: i64,
+    /// Finished Tournaments; zero before Tournaments were counted
+    pub finished_tournaments: i64,
 }
 
 impl From<StatisticsSnapshot> for AdminStatisticsSnapshot {
@@ -50,6 +54,8 @@ impl From<StatisticsSnapshot> for AdminStatisticsSnapshot {
             public_decks: value.public_decks,
             cards: value.cards,
             open_scanner_sessions: value.open_scanner_sessions,
+            tournaments: value.tournaments,
+            finished_tournaments: value.finished_tournaments,
         }
     }
 }

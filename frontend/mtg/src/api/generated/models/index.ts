@@ -913,6 +913,12 @@ export interface AdminStatisticsSnapshot {
      */
     decks: number;
     /**
+     * Finished Tournaments; zero before Tournaments were counted
+     * @type {number}
+     * @memberof AdminStatisticsSnapshot
+     */
+    finished_tournaments: number;
+    /**
      * Accounts created in the 7 days before `taken_at`
      */
     new_accounts: number;
@@ -928,6 +934,12 @@ export interface AdminStatisticsSnapshot {
      * When the counts were taken
      */
     taken_at: string;
+    /**
+     * Tournaments in any state; zero before Tournaments were counted
+     * @type {number}
+     * @memberof AdminStatisticsSnapshot
+     */
+    tournaments: number;
     /**
      * Primary key
      */

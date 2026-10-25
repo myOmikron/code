@@ -36,6 +36,7 @@ use crate::models::admin_log::AdminLogEntry;
 use crate::models::admin_log::NewAdminLogEntry;
 use crate::models::collection::Collection;
 use crate::models::deck::Deck;
+use crate::models::tournament::Tournament;
 pub(in crate::models) mod db;
 pub mod extractor;
 pub mod overview;
@@ -637,7 +638,9 @@ impl Account {
     /// goes with it through the cascades on the foreign keys: passkeys,
     /// registration links, collections, watch lists, folders, tags, its places
     /// as a Collaborator on other decks, its Bug reports, and every deck it did
-    /// not put on show.
+    /// not put on show. Its Participants turn into Guests and the Tournaments
+    /// it owns pass on, see `Tournament::part_with_account`; a full Deletion
+    /// takes the ones that would go to the tombstone.
     ///
     /// Returns `false` if the account does not exist.
     #[instrument(name = "Account::delete", skip(tx))]
@@ -652,10 +655,17 @@ impl Account {
 
         // Before the delete, not after: the cascade would otherwise take the
         // decks along with everything else.
-        if mode == DeletionMode::Tombstone {
-            let tombstone = Self::tombstone(&mut *tx).await?;
+        let tombstone = match mode {
+            DeletionMode::Tombstone => Some(Self::tombstone(&mut *tx).await?),
+            DeletionMode::Full => None,
+        };
+        if let Some(tombstone) = tombstone {
             Deck::hand_over_public(&mut *tx, uuid, tombstone).await?;
         }
+
+        // Before the delete as well: the Tournaments it owns hold the account
+        // back, and its Participants would go with the cascade.
+        Tournament::part_with_account(&mut *tx, uuid, &account.username, tombstone).await?;
 
         // Also before the delete, see `Collection::delete_all_of_account`.
         Collection::delete_all_of_account(&mut *tx, uuid).await?;

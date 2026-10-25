@@ -141,8 +141,9 @@ pub struct TournamentParticipantModel {
 
     /// The Account playing, `None` for a Guest
     ///
-    /// Cascading for now: turning a deleted Account's Participants into
-    /// Guests named by its last username is the Deletion's job.
+    /// The Deletion turns a deleted Account's Participants into Guests named
+    /// by its last username before the Account goes, so the cascade finds
+    /// none; see `Tournament::part_with_account`.
     #[rorm(index, on_update = "Cascade", on_delete = "Cascade")]
     pub account: Option<ForeignModel<AccountModel>>,
 

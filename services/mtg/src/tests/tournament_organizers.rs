@@ -50,7 +50,7 @@ impl WithCoOrganizer {
 }
 
 /// The url of a Tournament's Organizers
-fn organizers_url(fixture: &Fixture) -> Url {
+pub(super) fn organizers_url(fixture: &Fixture) -> Url {
     api(&format!("tournaments/{}/organizers", fixture.tournament))
 }
 
@@ -69,7 +69,7 @@ fn handover_url(tournament: &str) -> Url {
 }
 
 /// Names `username` a Co-organizer at `url`, returning the body
-async fn add(client: &mut TestClient, url: &Url, username: &str) -> Value {
+pub(super) async fn add(client: &mut TestClient, url: &Url, username: &str) -> Value {
     client
         .json(Method::POST, url, &json!({ "username": username }))
         .await
@@ -77,7 +77,7 @@ async fn add(client: &mut TestClient, url: &Url, username: &str) -> Value {
 }
 
 /// Offers the Tournament to `username`, returning the body
-async fn offer(client: &mut TestClient, tournament: &str, username: &str) -> Value {
+pub(super) async fn offer(client: &mut TestClient, tournament: &str, username: &str) -> Value {
     client
         .json(
             Method::PUT,
@@ -95,7 +95,7 @@ async fn answer(client: &mut TestClient, tournament: &str, answer: &str) -> Test
 }
 
 /// The usernames of the Co-organizers in a list of Organizers
-fn co_organizer_names(body: &Value) -> Vec<String> {
+pub(super) fn co_organizer_names(body: &Value) -> Vec<String> {
     body["co_organizers"]
         .as_array()
         .expect("a list of co-organizers")

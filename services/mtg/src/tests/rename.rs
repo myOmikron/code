@@ -13,6 +13,14 @@ use crate::tests::harness::api;
 use crate::tests::harness::create_account;
 use crate::tests::harness::run;
 use crate::tests::passkeys::enroll;
+use crate::tests::tournament_organizers::add;
+use crate::tests::tournament_organizers::co_organizer_names;
+use crate::tests::tournament_organizers::organizers_url;
+use crate::tests::tournament_participants::add_account;
+use crate::tests::tournament_participants::names;
+use crate::tests::tournament_participants::roster;
+use crate::tests::tournament_rounds::Event;
+use crate::tests::tournaments::Fixture;
 
 /// Renames the account behind `client` to `username`
 async fn rename(client: &mut TestClient, username: &str) -> TestResponse {
@@ -171,5 +179,75 @@ fn renaming_needs_a_session() {
     run(async {
         let response = rename(&mut TestClient::new(), &fresh_username()).await;
         assert_eq!(response.status, StatusCode::UNAUTHORIZED);
+    });
+}
+
+#[test]
+fn a_tournament_shows_the_new_usernames_after_a_rename() {
+    run(async {
+        let mut fixture = Fixture::new("Public").await;
+        let player = create_account(Role::Member).await;
+        let co_organizer = create_account(Role::Member).await;
+        add_account(&mut fixture.owner, &fixture.tournament, &player.username).await;
+        let url = organizers_url(&fixture);
+        add(&mut fixture.owner, &url, &co_organizer.username).await;
+
+        let [owner_name, player_name, co_organizer_name] = [(); 3].map(|()| fresh_username());
+        rename(&mut fixture.owner, &owner_name).await.ok_json();
+        let mut as_player = TestClient::logged_in(&player).await;
+        rename(&mut as_player, &player_name).await.ok_json();
+        let mut as_co_organizer = TestClient::logged_in(&co_organizer).await;
+        rename(&mut as_co_organizer, &co_organizer_name)
+            .await
+            .ok_json();
+
+        let body = TestClient::new().get(&fixture.url()).await.ok_json();
+        assert_eq!(body["owner"], owner_name.as_str(), "{body}");
+        let body = roster(&mut TestClient::new(), &fixture.tournament).await;
+        assert_eq!(names(&body), [player_name.as_str()], "{body}");
+        let organizers = fixture.owner.get(&url).await.ok_json();
+        assert_eq!(organizers["owner"]["username"], owner_name.as_str());
+        assert_eq!(
+            co_organizer_names(&organizers),
+            [co_organizer_name.as_str()],
+            "{organizers}"
+        );
+    });
+}
+
+/// The standings line of `participant`
+fn line<'a>(standings: &'a Value, participant: &str) -> &'a Value {
+    standings["standings"]
+        .as_array()
+        .expect("standings")
+        .iter()
+        .find(|line| line["participant"] == participant)
+        .expect("a line")
+}
+
+#[test]
+fn the_standings_show_the_new_username_after_a_rename() {
+    run(async {
+        let player = create_account(Role::Member).await;
+        let mut event = Event::new("One", 1).await;
+        let participant = event.add_account(&player.username).await;
+        event.play_round().await;
+        let new = fresh_username();
+
+        rename(&mut TestClient::logged_in(&player).await, &new)
+            .await
+            .ok_json();
+
+        let standings = event.standings().await;
+        assert_eq!(
+            line(&standings, &participant)["name"],
+            new.as_str(),
+            "{standings}"
+        );
+        assert_eq!(
+            line(&standings, &participant)["guest"],
+            false,
+            "{standings}"
+        );
     });
 }

@@ -1,0 +1,45 @@
+[Migration]
+Hash = "805523457507707026"
+Initial = false
+Dependency = 58
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "statistics_snapshot"
+
+[Migration.Operations.Field]
+Name = "tournaments"
+Type = "int64"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "default_value"
+Value = 0
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/statistics/db.rs"
+Line = 36
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "statistics_snapshot"
+
+[Migration.Operations.Field]
+Name = "finished_tournaments"
+Type = "int64"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "default_value"
+Value = 0
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/statistics/db.rs"
+Line = 41
+Column = 9
