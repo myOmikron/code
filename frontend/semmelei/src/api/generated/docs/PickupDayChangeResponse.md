@@ -8,7 +8,6 @@ What a change to a pickup day did
 Name | Type
 ------------ | -------------
 `cancelled_orders` | number
-`confirmed_orders` | number
 `day` | [AdminPickupDay](AdminPickupDay.md)
 
 

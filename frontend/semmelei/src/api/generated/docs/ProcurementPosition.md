@@ -7,6 +7,7 @@ One item summed over every order of a pickup day
 
 Name | Type
 ------------ | -------------
+`bakery_article_numbers` | Array&lt;string&gt;
 `name` | string
 `order_count` | number
 `price_cents` | number

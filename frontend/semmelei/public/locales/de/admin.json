@@ -20,7 +20,8 @@
         "legal": "Rechtliches",
         "news-posts": "Beiträge",
         "create-news-post": "Neuer Beitrag",
-        "confirm-delete-news-post": "Beitrag löschen?"
+        "confirm-delete-news-post": "Beitrag löschen?",
+        "bakery": "Bäckerei"
     },
     "label": {
         "items-empty": "Noch keine Artikel angelegt.",
@@ -67,7 +68,10 @@
         "placeholder-heading": "Überschrift",
         "placeholder-list": "Listenpunkt",
         "placeholder-link": "Linktext",
-        "preview": "Vorschau"
+        "preview": "Vorschau",
+        "review-window": "Prüfzeit (Minuten)",
+        "bakery-email": "Adresse der Bäckerei",
+        "copy-email": "Kopie an"
     },
     "button": {
         "nav-orders": "Bestellungen",
@@ -89,6 +93,7 @@
         "preview": "Vorschau"
     },
     "description": {
+        "bakery-article-number": "Die Nummer, unter der die Bäckerei den Artikel führt. Leer lassen, wenn der Artikel nicht von der Bäckerei kommt. Für Kunden nicht sichtbar.",
         "additional-info": "Zum Beispiel Allergene, Zutaten oder Hinweise. Diese Angabe ist für Kunden über das Info-Symbol sichtbar.",
         "invite": "Schicke diesen Link an die Person. Damit richtet sie ihren Passkey ein (7 Tage gültig, einmal verwendbar).",
         "confirm-delete-item": "\"{{name}}\" wird gelöscht. Bestehende Bestellungen bleiben unverändert. Tipp: Artikel lieber deaktivieren.",
@@ -101,13 +106,17 @@
         "close-pickup-day": "Ein abgesagter Termin nimmt keine Bestellungen an, der Shop springt auf den nächsten.",
         "close-cancels-orders_one": "Achtung: {{count}} Bestellung wird storniert und der Kunde per Mail informiert.",
         "close-cancels-orders_other": "Achtung: {{count}} Bestellungen werden storniert und die Kunden per Mail informiert.",
-        "confirm-lock-day_one": "Der Termin wird sofort verbindlich. {{count}} Kunde bekommt die Bestätigungsmail, neue Bestellungen sind danach nicht mehr möglich.",
-        "confirm-lock-day_other": "Der Termin wird sofort verbindlich. {{count}} Kunden bekommen die Bestätigungsmail, neue Bestellungen sind danach nicht mehr möglich.",
+        "confirm-lock-day_one": "Neue Bestellungen und Stornierungen durch Kunden sind danach nicht mehr möglich. Die Bestätigung an {{count}} Kunden geht wie geplant zum Bestellversand raus.",
+        "confirm-lock-day_other": "Neue Bestellungen und Stornierungen durch Kunden sind danach nicht mehr möglich. Die Bestätigungen an {{count}} Kunden gehen wie geplant zum Bestellversand raus.",
         "legal": "Diese beiden Links stehen im Footer des öffentlichen Shops. Leer lassen blendet den jeweiligen Link aus — für einen öffentlichen Shop sind beide allerdings Pflicht.",
         "imprint-url": "Vollständige Adresse inklusive https://, zum Beispiel die Impressumsseite des Vereins.",
         "privacy-url": "Die Datenschutzerklärung muss beschreiben, was dieser Shop mit den Bestelldaten macht.",
         "draft": "Nur für Admins sichtbar.",
-        "confirm-delete-news-post": "\"{{title}}\" wird endgültig gelöscht."
+        "confirm-delete-news-post": "\"{{title}}\" wird endgültig gelöscht.",
+        "review-window": "So lange nach dem Bestellschluss können Admins Bestellungen noch stornieren. Danach geht die Bestellung an die Bäckerei und die Kunden bekommen ihre Bestätigung. 0 heißt: direkt zum Bestellschluss.",
+        "bakery": "Zum Bestellversand geht die Beschaffung als CSV an diese Adresse. Solange keine Adresse eingetragen ist, wird nichts versendet und die Kunden bekommen keine Bestätigung.",
+        "bakery-email": "Die Bestellung geht als CSV-Anhang an diese Adresse.",
+        "copy-email": "Bekommt die Bestellung in Kopie (CC), damit ihr seht, was an die Bäckerei ging. Leer lassen schickt keine Kopie."
     },
     "error": {
         "name-required": "Name wird benötigt",
@@ -130,12 +139,12 @@
     },
     "toast": {
         "schedule-saved": "Regel gespeichert",
-        "day-locked_one": "Termin eingefroren, {{count}} Bestätigung verschickt",
-        "day-locked_other": "Termin eingefroren, {{count}} Bestätigungen verschickt",
         "legal-saved": "Links gespeichert",
         "news-post-saved": "Beitrag gespeichert",
         "news-post-published": "Beitrag veröffentlicht",
         "news-post-withdrawn": "Beitrag zurückgezogen, er ist wieder ein Entwurf",
-        "news-post-deleted": "Beitrag gelöscht"
+        "news-post-deleted": "Beitrag gelöscht",
+        "day-locked": "Termin eingefroren",
+        "bakery-saved": "Adressen gespeichert"
     }
 }

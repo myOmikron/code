@@ -35,7 +35,7 @@ services:
 
   # The inbox every dev mail lands in: http://localhost:8025
   mailpit:
-    image: axllent/mailpit:v1.30.7
+    image: axllent/mailpit:v1.31.6
     networks: [ net-dev ]
     ports:
       - "8025:8025"

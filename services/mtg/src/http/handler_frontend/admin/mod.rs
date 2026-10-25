@@ -7,6 +7,7 @@
 use galvyn::core::GalvynRouter;
 
 pub mod accounts;
+pub mod bug_reports;
 pub mod log;
 pub mod statistics;
 pub mod syncs;
@@ -28,6 +29,7 @@ pub fn page_limit(requested: u32) -> u32 {
 pub fn initialize_routes() -> GalvynRouter {
     GalvynRouter::new()
         .nest("/accounts", accounts::initialize_routes())
+        .nest("/bug-reports", bug_reports::initialize_routes())
         .nest("/log", log::initialize_routes())
         .nest("/statistics", statistics::initialize_routes())
         .nest("/syncs", syncs::initialize_routes())
