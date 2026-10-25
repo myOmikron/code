@@ -19,11 +19,15 @@ import type {
     AddScannerSessionEntryRequest,
     AddWatchListEntryRequest,
     AdminAccountDetail,
+    AdminBugReportDetail,
+    AdminBugReportFilter,
     AdminDeleteAccountRequest,
     AdminListAccountsResponse,
+    AdminListBugReportsResponse,
     AdminListLogResponse,
     AdminLockAccountRequest,
     AdminRenameAccountRequest,
+    AdminSetBugReportNoteRequest,
     AdminSetRoleRequest,
     AdminStatisticsResponse,
     AdminSyncsResponse,
@@ -129,6 +133,8 @@ import type {
     ScannerSessionEntryResponse,
     ScannerSessionResponse,
     SearchPublicDecksResponse,
+    SendBugReport200Response,
+    SendBugReportRequest,
     SetAdvisorSettingsRequest,
     SetCollectionVisibilityRequest,
     SetDeckBracketRequest,
@@ -200,12 +206,27 @@ export interface AdminGetAccountRequest {
     uuid: string;
 }
 
+export interface AdminGetBugReportRequest {
+    number: number;
+}
+
+export interface AdminGetBugReportImageRequest {
+    number: number;
+    image: string;
+}
+
 export interface AdminListAccountsRequest {
     after?: string | null;
     limit?: number;
     locked?: boolean | null;
     role?: Role | null;
     search?: string | null;
+}
+
+export interface AdminListBugReportsRequest {
+    after?: number | null;
+    filter?: AdminBugReportFilter;
+    limit?: number;
 }
 
 export interface AdminListLogRequest {
@@ -219,9 +240,22 @@ export interface AdminLockAccountOperationRequest {
     AdminLockAccountRequest?: AdminLockAccountRequest;
 }
 
+export interface AdminMarkBugReportDoneRequest {
+    number: number;
+}
+
 export interface AdminRenameAccountOperationRequest {
     uuid: string;
     AdminRenameAccountRequest?: AdminRenameAccountRequest;
+}
+
+export interface AdminReopenBugReportRequest {
+    number: number;
+}
+
+export interface AdminSetBugReportNoteOperationRequest {
+    number: number;
+    AdminSetBugReportNoteRequest?: AdminSetBugReportNoteRequest;
 }
 
 export interface AdminSetRoleOperationRequest {
@@ -625,6 +659,11 @@ export interface SearchPublicDecksRequest {
     owner?: string | null;
     search?: string | null;
     sort?: PublicDeckSort;
+}
+
+export interface SendBugReportOperationRequest {
+    report: SendBugReportRequest;
+    images?: Array<Blob> | null;
 }
 
 export interface SetDeckAdvisorSettingsRequest {
@@ -1147,6 +1186,107 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for adminGetBugReport without sending the request
+     */
+    async adminGetBugReportRequestOpts(requestParameters: AdminGetBugReportRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['number'] == null) {
+            throw new runtime.RequiredError(
+                'number',
+                'Required parameter "number" was null or undefined when calling adminGetBugReport().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/admin/bug-reports/{number}`;
+        urlPath = urlPath.replace('{number}', encodeURIComponent(String(requestParameters['number'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * One Bug report with its text, diagnostics and image references
+     * One Bug report with its text, diagnostics and image references
+     */
+    async adminGetBugReportRaw(requestParameters: AdminGetBugReportRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<AdminBugReportDetail>> {
+        const requestOptions = await this.adminGetBugReportRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * One Bug report with its text, diagnostics and image references
+     * One Bug report with its text, diagnostics and image references
+     */
+    async adminGetBugReport(requestParameters: AdminGetBugReportRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AdminBugReportDetail> {
+        const response = await this.adminGetBugReportRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for adminGetBugReportImage without sending the request
+     */
+    async adminGetBugReportImageRequestOpts(requestParameters: AdminGetBugReportImageRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['number'] == null) {
+            throw new runtime.RequiredError(
+                'number',
+                'Required parameter "number" was null or undefined when calling adminGetBugReportImage().'
+            );
+        }
+
+        if (requestParameters['image'] == null) {
+            throw new runtime.RequiredError(
+                'image',
+                'Required parameter "image" was null or undefined when calling adminGetBugReportImage().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/admin/bug-reports/{number}/images/{image}`;
+        urlPath = urlPath.replace('{number}', encodeURIComponent(String(requestParameters['number'])));
+        urlPath = urlPath.replace('{image}', encodeURIComponent(String(requestParameters['image'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * One image of a Bug report
+     * One image of a Bug report
+     */
+    async adminGetBugReportImageRaw(requestParameters: AdminGetBugReportImageRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.adminGetBugReportImageRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * One image of a Bug report
+     * One image of a Bug report
+     */
+    async adminGetBugReportImage(requestParameters: AdminGetBugReportImageRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.adminGetBugReportImageRaw(requestParameters, initOverrides);
+    }
+
+    /**
      * Creates request options for adminGetStatistics without sending the request
      */
     async adminGetStatisticsRequestOpts(): Promise<runtime.RequestOpts> {
@@ -1284,6 +1424,57 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for adminListBugReports without sending the request
+     */
+    async adminListBugReportsRequestOpts(requestParameters: AdminListBugReportsRequest): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        if (requestParameters['after'] != null) {
+            queryParameters['after'] = requestParameters['after'];
+        }
+
+        if (requestParameters['filter'] != null) {
+            queryParameters['filter'] = requestParameters['filter'];
+        }
+
+        if (requestParameters['limit'] != null) {
+            queryParameters['limit'] = requestParameters['limit'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/admin/bug-reports`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * List Bug reports, newest first, the open ones unless asked otherwise
+     * List Bug reports, newest first, the open ones unless asked otherwise
+     */
+    async adminListBugReportsRaw(requestParameters: AdminListBugReportsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<AdminListBugReportsResponse>> {
+        const requestOptions = await this.adminListBugReportsRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * List Bug reports, newest first, the open ones unless asked otherwise
+     * List Bug reports, newest first, the open ones unless asked otherwise
+     */
+    async adminListBugReports(requestParameters: AdminListBugReportsRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AdminListBugReportsResponse> {
+        const response = await this.adminListBugReportsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for adminListLog without sending the request
      */
     async adminListLogRequestOpts(requestParameters: AdminListLogRequest): Promise<runtime.RequestOpts> {
@@ -1385,6 +1576,57 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for adminMarkBugReportDone without sending the request
+     */
+    async adminMarkBugReportDoneRequestOpts(requestParameters: AdminMarkBugReportDoneRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['number'] == null) {
+            throw new runtime.RequiredError(
+                'number',
+                'Required parameter "number" was null or undefined when calling adminMarkBugReportDone().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/admin/bug-reports/{number}/done`;
+        urlPath = urlPath.replace('{number}', encodeURIComponent(String(requestParameters['number'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Mark a Bug report done, recording the Admin and the time
+     * Mark a Bug report done, recording the Admin and the time
+     */
+    async adminMarkBugReportDoneRaw(requestParameters: AdminMarkBugReportDoneRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
+        const requestOptions = await this.adminMarkBugReportDoneRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<any>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     * Mark a Bug report done, recording the Admin and the time
+     * Mark a Bug report done, recording the Admin and the time
+     */
+    async adminMarkBugReportDone(requestParameters: AdminMarkBugReportDoneRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
+        const response = await this.adminMarkBugReportDoneRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for adminRenameAccount without sending the request
      */
     async adminRenameAccountRequestOpts(requestParameters: AdminRenameAccountOperationRequest): Promise<runtime.RequestOpts> {
@@ -1431,6 +1673,111 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async adminRenameAccount(requestParameters: AdminRenameAccountOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FormErrorResponseForAdminRenameAccountErrors> {
         const response = await this.adminRenameAccountRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for adminReopenBugReport without sending the request
+     */
+    async adminReopenBugReportRequestOpts(requestParameters: AdminReopenBugReportRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['number'] == null) {
+            throw new runtime.RequiredError(
+                'number',
+                'Required parameter "number" was null or undefined when calling adminReopenBugReport().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/admin/bug-reports/{number}/reopen`;
+        urlPath = urlPath.replace('{number}', encodeURIComponent(String(requestParameters['number'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Open a done Bug report again  What a purge removed stays removed.
+     * Open a done Bug report again
+     */
+    async adminReopenBugReportRaw(requestParameters: AdminReopenBugReportRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
+        const requestOptions = await this.adminReopenBugReportRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<any>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     * Open a done Bug report again  What a purge removed stays removed.
+     * Open a done Bug report again
+     */
+    async adminReopenBugReport(requestParameters: AdminReopenBugReportRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
+        const response = await this.adminReopenBugReportRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for adminSetBugReportNote without sending the request
+     */
+    async adminSetBugReportNoteRequestOpts(requestParameters: AdminSetBugReportNoteOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['number'] == null) {
+            throw new runtime.RequiredError(
+                'number',
+                'Required parameter "number" was null or undefined when calling adminSetBugReportNote().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/admin/bug-reports/{number}/note`;
+        urlPath = urlPath.replace('{number}', encodeURIComponent(String(requestParameters['number'])));
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['AdminSetBugReportNoteRequest'],
+        };
+    }
+
+    /**
+     * Set the Admins\' internal note on a Bug report, an empty note removes it
+     * Set the Admins\' internal note on a Bug report, an empty note removes it
+     */
+    async adminSetBugReportNoteRaw(requestParameters: AdminSetBugReportNoteOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
+        const requestOptions = await this.adminSetBugReportNoteRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<any>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     * Set the Admins\' internal note on a Bug report, an empty note removes it
+     * Set the Admins\' internal note on a Bug report, an empty note removes it
+     */
+    async adminSetBugReportNote(requestParameters: AdminSetBugReportNoteOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
+        const response = await this.adminSetBugReportNoteRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -6242,6 +6589,80 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async searchPublicDecks(requestParameters: SearchPublicDecksRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SearchPublicDecksResponse> {
         const response = await this.searchPublicDecksRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for sendBugReport without sending the request
+     */
+    async sendBugReportRequestOpts(requestParameters: SendBugReportOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['report'] == null) {
+            throw new runtime.RequiredError(
+                'report',
+                'Required parameter "report" was null or undefined when calling sendBugReport().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        const consumes: runtime.Consume[] = [
+            { contentType: 'multipart/form-data' },
+        ];
+        // @ts-ignore: canConsumeForm may be unused
+        const canConsumeForm = runtime.canConsumeForm(consumes);
+
+        let formParams: { append(param: string, value: any): any };
+        let useForm = false;
+        // use FormData to transmit files using content-type "multipart/form-data"
+        useForm = canConsumeForm;
+        if (useForm) {
+            formParams = new FormData();
+        } else {
+            formParams = new URLSearchParams();
+        }
+
+        if (requestParameters['images'] != null) {
+            requestParameters['images'].forEach((element) => {
+                formParams.append('images', element as any);
+            })
+        }
+
+        if (requestParameters['report'] != null) {
+
+            formParams.append('report', new Blob([JSON.stringify(requestParameters['report'])], { type: "application/json", }));
+        }
+
+
+        let urlPath = `/api/frontend/v1/bug-reports`;
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: formParams,
+        };
+    }
+
+    /**
+     * Send a Bug report  A multipart body: the `report` part as json and up to three `images`. Every Admin is mailed a notice without diagnostics or images; a mail that fails is logged and does not fail the send.
+     * Send a Bug report
+     */
+    async sendBugReportRaw(requestParameters: SendBugReportOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SendBugReport200Response>> {
+        const requestOptions = await this.sendBugReportRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Send a Bug report  A multipart body: the `report` part as json and up to three `images`. Every Admin is mailed a notice without diagnostics or images; a mail that fails is logged and does not fail the send.
+     * Send a Bug report
+     */
+    async sendBugReport(requestParameters: SendBugReportOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SendBugReport200Response> {
+        const response = await this.sendBugReportRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

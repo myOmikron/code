@@ -147,6 +147,24 @@ services:
       webserver:
         condition: service_healthy
 
+  bug-report-purge:
+    image: ghcr.io/myomikron/mtg/webserver:${MTG_VERSION:?}
+    restart: unless-stopped
+    command: [ "purge-bug-reports", "--every-minutes", "720" ]
+    environment:
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=mtg
+      - POSTGRES_USER=mtg
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?}
+      - PUBLIC_ORIGIN=https://${DOMAIN:?}
+      - GRAPH_URL=http://graph:8000
+      - LISTEN_ADDRESS=127.0.0.1
+      - LISTEN_PORT=8080
+    depends_on:
+      webserver:
+        condition: service_healthy
+
   mail-gateway:
     image: ghcr.io/myomikron/mail-gateway/webserver:${MAIL_GATEWAY_VERSION:?}
     restart: unless-stopped

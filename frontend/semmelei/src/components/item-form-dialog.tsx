@@ -83,6 +83,7 @@ export function ItemFormDialog(props: ItemFormDialogProps) {
         name: props.editing?.name ?? "",
         price: props.editing ? (props.editing.price_cents / 100).toFixed(2).replace(".", ",") : "",
         additionalInfo: props.editing?.additional_info ?? "",
+        bakeryArticleNumber: props.editing?.bakery_article_number ?? "",
         category: props.editing?.category ?? ("" as UUID | ""),
         active: props.editing?.active ?? true,
     });
@@ -102,6 +103,7 @@ export function ItemFormDialog(props: ItemFormDialogProps) {
                 name: value.name.trim(),
                 price_cents: parsePriceCents(value.price)!,
                 additional_info: value.additionalInfo.trim() || null,
+                bakery_article_number: value.bakeryArticleNumber.trim() || null,
                 category: value.category === "" ? null : value.category,
                 active: value.active,
             };
@@ -183,6 +185,19 @@ export function ItemFormDialog(props: ItemFormDialogProps) {
                                             onChange={(e) => fieldApi.handleChange(e.target.value)}
                                         />
                                         <Description>{t("description.additional-info")}</Description>
+                                    </Field>
+                                )}
+                            </form.Field>
+                            <form.Field name={"bakeryArticleNumber"}>
+                                {(fieldApi) => (
+                                    <Field>
+                                        <Label>{tg("label.bakery-article-number")}</Label>
+                                        <Input
+                                            maxLength={32}
+                                            value={fieldApi.state.value}
+                                            onChange={(e) => fieldApi.handleChange(e.target.value)}
+                                        />
+                                        <Description>{t("description.bakery-article-number")}</Description>
                                     </Field>
                                 )}
                             </form.Field>

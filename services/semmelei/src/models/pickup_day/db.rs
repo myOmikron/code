@@ -46,6 +46,12 @@ pub struct PickupDayModel {
     /// does not silently swallow the mails.
     pub confirmations_sent_at: Option<OffsetDateTime>,
 
+    /// When the day was Dispatched
+    ///
+    /// The only Dispatch state stored: when it is due follows from the
+    /// Deadline and the current Review Window.
+    pub dispatched_at: Option<OffsetDateTime>,
+
     /// The orders placed for this day
     pub orders: BackRef<field!(OrderModel.pickup_day)>,
 
