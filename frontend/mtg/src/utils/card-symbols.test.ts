@@ -1,3 +1,4 @@
+/// <reference types="node" />
 import { readFileSync, readdirSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { cardSymbolUrl } from "./card-symbols";
