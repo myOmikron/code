@@ -1,4 +1,3 @@
-import { Link } from "@tanstack/react-router";
 import { Badge, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "components";
 import { useTranslation } from "react-i18next";
 import { BugReportState } from "src/api/generated";
@@ -14,7 +13,7 @@ export type AdminBugReportTableProps = {
 };
 
 /**
- * Bug reports with number, reporter, time, route and Release, each linking to its detail page
+ * Bug reports with number, reporter, time, route and Release, each row linking to its detail page
  *
  * @returns the table
  */
@@ -35,16 +34,13 @@ export function AdminBugReportTable({ reports }: AdminBugReportTableProps) {
             </TableHead>
             <TableBody>
                 {reports.map((report) => (
-                    <TableRow key={report.number}>
-                        <TableCell className={"font-medium tabular-nums"}>
-                            <Link
-                                to={"/admin/bug-reports/$number"}
-                                params={{ number: String(report.number) }}
-                                className={"hover:text-(--color-accent) hover:underline"}
-                            >
-                                #{report.number}
-                            </Link>
-                        </TableCell>
+                    <TableRow
+                        key={report.number}
+                        href={"/admin/bug-reports/$number"}
+                        params={{ number: String(report.number) }}
+                        title={`#${report.number}`}
+                    >
+                        <TableCell className={"font-medium tabular-nums"}>#{report.number}</TableCell>
                         <TableCell className={"whitespace-nowrap tabular-nums"}>
                             {formatDateTime(report.created_at)}
                         </TableCell>
