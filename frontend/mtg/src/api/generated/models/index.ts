@@ -1137,6 +1137,12 @@ export interface AdminStatisticsSnapshot {
      */
     decks: number;
     /**
+     * Finished Tournaments; zero before Tournaments were counted
+     * @type {number}
+     * @memberof AdminStatisticsSnapshot
+     */
+    finished_tournaments: number;
+    /**
      * Accounts created in the 7 days before `taken_at`
      * @type {number}
      * @memberof AdminStatisticsSnapshot
@@ -1160,6 +1166,12 @@ export interface AdminStatisticsSnapshot {
      * @memberof AdminStatisticsSnapshot
      */
     taken_at: string;
+    /**
+     * Tournaments in any state; zero before Tournaments were counted
+     * @type {number}
+     * @memberof AdminStatisticsSnapshot
+     */
+    tournaments: number;
     /**
      * Primary key
      * @type {string}

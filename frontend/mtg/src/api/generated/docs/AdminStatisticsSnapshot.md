@@ -11,10 +11,12 @@ Name | Type
 `cards` | number
 `collections` | number
 `decks` | number
+`finished_tournaments` | number
 `new_accounts` | number
 `open_scanner_sessions` | number
 `public_decks` | number
 `taken_at` | string
+`tournaments` | number
 `uuid` | string
 
 

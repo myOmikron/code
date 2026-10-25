@@ -22,6 +22,7 @@
         "delete-account": "Löscht dein Konto samt Passkeys, Sammlungen, Merklisten und allen Decks, die nicht öffentlich sind. Öffentliche Decklisten bleiben abrufbar, ohne dich als Ersteller.",
         "delete-account-confirm": "Das lässt sich nicht rückgängig machen. Dein Konto, deine Passkeys, deine Sammlungen, deine Merklisten und alle nicht öffentlichen Decks sind danach weg.",
         "delete-account-decks": "Deine öffentlichen Decklisten bleiben unter ihren Links erreichbar. Als Ersteller steht dort danach niemand mehr.",
+        "delete-account-tournaments": "In Turnieren spielst du danach als Gast unter deinem jetzigen Benutzernamen weiter. Deine eigenen Turniere übernimmt ein Mitorganisator; ohne einen bleiben öffentliche und nicht gelistete Turniere ohne Besitzer erreichbar, private werden gelöscht.",
         "foil-tilt": "Der Glanz auf Foil-Karten folgt der Neigung deines Geräts, so wie eine Karte in der Hand ins Licht gehalten wird.",
         "language": "Gilt für die Oberfläche. Kartennamen kommen von Scryfall und bleiben davon unberührt.",
         "passkeys": "Mit diesen Geräten kannst du dich anmelden. Lege für jedes Gerät einen eigenen Passkey an — geht eines verloren, kommst du mit den anderen weiterhin rein.",

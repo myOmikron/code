@@ -18,24 +18,24 @@ use crate::tests::tournaments::create;
 use crate::tests::tournaments::settings;
 
 /// An Owner running a one-on-one Tournament of Guests, and a stranger watching it
-struct Event {
+pub(super) struct Event {
     /// Logged in as the Owner
-    owner: TestClient,
+    pub(super) owner: TestClient,
     /// Logged in as an Account unrelated to the Tournament
     stranger: TestClient,
     /// The Tournament's uuid
-    tournament: String,
+    pub(super) tournament: String,
     /// The settings it was created with
     settings: Value,
-    /// The Guests' Participant uuids, in the order they were added
-    players: Vec<String>,
+    /// The Participant uuids, in the order they were added
+    pub(super) players: Vec<String>,
     /// The games that win a Match
     games_to_win: i64,
 }
 
 impl Event {
     /// A public MTR Tournament played best of `best_of` with `players` Guests
-    async fn new(best_of: &str, players: usize) -> Self {
+    pub(super) async fn new(best_of: &str, players: usize) -> Self {
         let owner_account = create_account(Role::Member).await;
         let mut owner = TestClient::logged_in(&owner_account).await;
         let mut request = settings("Public");
@@ -71,6 +71,19 @@ impl Event {
         let body = self
             .owner
             .json(Method::POST, &url, &json!({ "name": name }))
+            .await
+            .ok_json();
+        let uuid = body["uuid"].as_str().expect("uuid").to_string();
+        self.players.push(uuid.clone());
+        uuid
+    }
+
+    /// Add the Account named `username` as the Owner, returning its Participant uuid
+    pub(super) async fn add_account(&mut self, username: &str) -> String {
+        let url = self.url("participants/accounts");
+        let body = self
+            .owner
+            .json(Method::POST, &url, &json!({ "username": username }))
             .await
             .ok_json();
         let uuid = body["uuid"].as_str().expect("uuid").to_string();
@@ -124,13 +137,13 @@ impl Event {
     }
 
     /// The Rounds as the Owner reads them
-    async fn rounds(&mut self) -> Value {
+    pub(super) async fn rounds(&mut self) -> Value {
         let url = self.url("rounds");
         self.owner.get(&url).await.ok_json()
     }
 
     /// The standings as the Owner reads them
-    async fn standings(&mut self) -> Value {
+    pub(super) async fn standings(&mut self) -> Value {
         let url = self.url("standings");
         self.owner.get(&url).await.ok_json()
     }
@@ -143,7 +156,7 @@ impl Event {
     }
 
     /// Pair and start the next Round, then let Seat 1 win every Match in it without losing a game
-    async fn play_round(&mut self) -> Value {
+    pub(super) async fn play_round(&mut self) -> Value {
         let number = self.pair().await["number"].as_i64().expect("a number");
         self.start(number).await;
         let rounds = self.rounds().await;
@@ -177,7 +190,7 @@ fn matches(round: &Value) -> Vec<&Value> {
 }
 
 /// Who sits in a Match or a Bye, as Participant uuids
-fn seated(played: &Value) -> Vec<String> {
+pub(super) fn seated(played: &Value) -> Vec<String> {
     played["seats"]
         .as_array()
         .expect("a list of seats")

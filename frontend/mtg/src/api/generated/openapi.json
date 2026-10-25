@@ -13730,6 +13730,11 @@
                         "type": "integer",
                         "format": "int64"
                     },
+                    "finished_tournaments": {
+                        "description": "Finished Tournaments; zero before Tournaments were counted",
+                        "type": "integer",
+                        "format": "int64"
+                    },
                     "new_accounts": {
                         "description": "Accounts created in the 7 days before `taken_at`",
                         "type": "integer",
@@ -13753,6 +13758,11 @@
                             }
                         ]
                     },
+                    "tournaments": {
+                        "description": "Tournaments in any state; zero before Tournaments were counted",
+                        "type": "integer",
+                        "format": "int64"
+                    },
                     "uuid": {
                         "description": "Primary key",
                         "type": "string",
@@ -13764,10 +13774,12 @@
                     "cards",
                     "collections",
                     "decks",
+                    "finished_tournaments",
                     "new_accounts",
                     "open_scanner_sessions",
                     "public_decks",
                     "taken_at",
+                    "tournaments",
                     "uuid"
                 ]
             },

@@ -98,6 +98,7 @@ export function DeleteAccountDialog({ open, username, onClose, onDeleted }: Dele
             <DialogBody>
                 <div className={"flex flex-col gap-4"}>
                     <Text>{t("description.delete-account-decks")}</Text>
+                    <Text>{t("description.delete-account-tournaments")}</Text>
                     <Field>
                         <Label>{t("label.delete-account-confirm", { username })}</Label>
                         <Input

@@ -1,4 +1,11 @@
-import { BookOpenIcon, CameraIcon, RectangleStackIcon, Square2StackIcon, UsersIcon } from "@heroicons/react/20/solid";
+import {
+    BookOpenIcon,
+    CameraIcon,
+    RectangleStackIcon,
+    Square2StackIcon,
+    TrophyIcon,
+    UsersIcon,
+} from "@heroicons/react/20/solid";
 import { createFileRoute } from "@tanstack/react-router";
 import { EmptyState, StatTile, Text } from "components";
 import { useTranslation } from "react-i18next";
@@ -38,12 +45,14 @@ function RouteComponent() {
         { count: "public_decks", label: t("label.public-decks") },
         { count: "cards", label: t("label.cards") },
         { count: "open_scanner_sessions", label: t("label.open-scanner-sessions") },
+        { count: "tournaments", label: t("label.tournaments") },
+        { count: "finished_tournaments", label: t("label.finished-tournaments") },
     ];
 
     return (
         <div className={"flex flex-col gap-6"}>
             <Text>{t("label.taken-at", { time: formatDateTime(newest.taken_at) })}</Text>
-            <div className={"grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5"}>
+            <div className={"grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3"}>
                 <StatTile
                     icon={<UsersIcon className={"size-5"} />}
                     label={t("label.accounts")}
@@ -70,6 +79,12 @@ function RouteComponent() {
                     icon={<CameraIcon className={"size-5"} />}
                     label={t("label.open-scanner-sessions")}
                     value={number(newest.open_scanner_sessions)}
+                />
+                <StatTile
+                    icon={<TrophyIcon className={"size-5"} />}
+                    label={t("label.tournaments")}
+                    value={number(newest.tournaments)}
+                    sub={t("label.finished-tournaments-of", { count: newest.finished_tournaments })}
                 />
             </div>
             <div className={"grid grid-cols-1 gap-4 lg:grid-cols-2"}>

@@ -1,6 +1,7 @@
 //! Statistics snapshots and the admin page that shows them
 
 use galvyn::core::Module;
+use galvyn::core::re_exports::time::OffsetDateTime;
 use galvyn::rorm::Database;
 use galvyn::rorm::db::Executor;
 use galvyn::rorm::db::executor::All;
@@ -27,12 +28,16 @@ use crate::models::scanner_session::ScannerSessionEntry;
 use crate::models::scanner_session::ScannerSessionEntryInsert;
 use crate::models::scanner_session::ScannerSessionInsert;
 use crate::models::statistics::StatisticsSnapshot;
+use crate::models::tournament::Tournament;
+use crate::models::tournament::settings::TournamentSettings;
 use crate::models::visibility::Visibility;
 use crate::tests::harness::App;
 use crate::tests::harness::TestClient;
 use crate::tests::harness::api;
 use crate::tests::harness::create_account;
 use crate::tests::harness::run;
+use crate::tournament::ruleset::Ruleset;
+use crate::tournament::ruleset::TableSize;
 
 fn text<const N: usize>(value: &str) -> MaxStr<N> {
     MaxStr::new(value.to_string()).expect("short text")
@@ -102,6 +107,28 @@ async fn create_session(tx: &mut Transaction, owner: AccountUuid) -> ScannerSess
     )
     .await
     .expect("create the session")
+}
+
+async fn create_tournament(tx: &mut Transaction, owner: AccountUuid) -> Tournament {
+    Tournament::create(
+        tx,
+        owner,
+        TournamentSettings {
+            name: text("Friday Night Commander"),
+            description: None,
+            location: None,
+            starts_at: OffsetDateTime::now_utc(),
+            table_size: TableSize::new(4).expect("a Table size"),
+            ruleset: Ruleset::TopDeck,
+            format: None,
+            visibility: Visibility::Private,
+            participant_limit: None,
+            self_sign_up: false,
+            best_of: None,
+        },
+    )
+    .await
+    .expect("create the tournament")
 }
 
 #[test]
@@ -188,6 +215,16 @@ fn a_snapshot_counts_what_the_accounts_own() {
         .await
         .expect("scan a card");
 
+        create_tournament(&mut tx, owner).await;
+        let finished = create_tournament(&mut tx, veteran).await;
+        (&mut tx)
+            .execute::<All>(
+                "UPDATE tournament SET state = 'Finished' WHERE uuid = $1".to_string(),
+                vec![Value::Uuid(finished.uuid.into_inner())],
+            )
+            .await
+            .expect("finish the tournament");
+
         let after = StatisticsSnapshot::take(&mut tx)
             .await
             .expect("take a snapshot");
@@ -212,6 +249,8 @@ fn a_snapshot_counts_what_the_accounts_own() {
             after.open_scanner_sessions - before.open_scanner_sessions,
             1
         );
+        assert_eq!(after.tournaments - before.tournaments, 2);
+        assert_eq!(after.finished_tournaments - before.finished_tournaments, 1);
         assert!(after.taken_at >= before.taken_at);
     });
 }
@@ -256,6 +295,11 @@ fn an_admin_sees_the_newest_snapshot_and_the_last_30_days() {
         assert!(uuids.contains(&recent.uuid.to_string().as_str()));
         assert!(!uuids.contains(&old.uuid.to_string().as_str()));
         assert_eq!(body["newest"]["accounts"], recent.accounts);
+        assert_eq!(body["newest"]["tournaments"], recent.tournaments);
+        assert_eq!(
+            body["newest"]["finished_tournaments"],
+            recent.finished_tournaments
+        );
         assert!(body["newest"]["taken_at"].is_string());
     });
 }

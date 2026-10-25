@@ -28,7 +28,11 @@ fn below(tournament: &str, path: &str) -> Url {
 }
 
 /// Adds the Account named `username` as an Organizer would, returning the body
-async fn add_account(client: &mut TestClient, tournament: &str, username: &str) -> Value {
+pub(super) async fn add_account(
+    client: &mut TestClient,
+    tournament: &str,
+    username: &str,
+) -> Value {
     client
         .json(
             Method::POST,
@@ -40,7 +44,7 @@ async fn add_account(client: &mut TestClient, tournament: &str, username: &str) 
 }
 
 /// Adds a Guest as an Organizer would, returning the body
-async fn add_guest(client: &mut TestClient, tournament: &str, name: &str) -> Value {
+pub(super) async fn add_guest(client: &mut TestClient, tournament: &str, name: &str) -> Value {
     client
         .json(
             Method::POST,
@@ -60,7 +64,7 @@ async fn sign_up(client: &mut TestClient, tournament: &str) -> Value {
 }
 
 /// The participant list as `client` reads it
-async fn roster(client: &mut TestClient, tournament: &str) -> Value {
+pub(super) async fn roster(client: &mut TestClient, tournament: &str) -> Value {
     client
         .get(&below(tournament, "participants"))
         .await
@@ -68,7 +72,7 @@ async fn roster(client: &mut TestClient, tournament: &str) -> Value {
 }
 
 /// The names on a participant list, in its order
-fn names(body: &Value) -> Vec<String> {
+pub(super) fn names(body: &Value) -> Vec<String> {
     body["participants"]
         .as_array()
         .expect("a list of participants")
@@ -99,7 +103,7 @@ async fn player() -> (TestAccount, TestClient) {
 }
 
 /// Moves the Tournament past Registration, as starting the first Round will
-async fn start(fixture: &Fixture) {
+pub(super) async fn start(fixture: &Fixture) {
     let uuid: Uuid = fixture.tournament.parse().expect("a uuid");
     let mut tx = Database::global()
         .start_transaction()

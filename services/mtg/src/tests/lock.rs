@@ -12,6 +12,13 @@ use crate::tests::harness::TestClient;
 use crate::tests::harness::api;
 use crate::tests::harness::create_account;
 use crate::tests::harness::run;
+use crate::tests::tournament_organizers::add;
+use crate::tests::tournament_organizers::organizers_url;
+use crate::tests::tournament_participants::add_account;
+use crate::tests::tournament_participants::names;
+use crate::tests::tournament_participants::roster;
+use crate::tests::tournaments::Fixture;
+use crate::tests::tournaments::settings;
 
 /// Locks `account` as the Admin behind `client`, returning the response body
 pub(super) async fn lock(client: &mut TestClient, account: &TestAccount, reason: &str) -> Value {
@@ -312,5 +319,63 @@ fn lock_unlock_and_role_change_land_in_the_admin_log() {
             assert_eq!(entry["admin_username"], admin.username.as_str());
             assert_eq!(entry["account_username"], member.username.as_str());
         }
+    });
+}
+
+#[test]
+fn a_locked_owners_tournament_stays_public_and_its_co_organizer_runs_it() {
+    run(async {
+        let admin = create_account(Role::Admin).await;
+        let mut fixture = Fixture::new("Public").await;
+        let co_organizer = create_account(Role::Member).await;
+        let url = organizers_url(&fixture);
+        add(&mut fixture.owner, &url, &co_organizer.username).await;
+
+        let owner = &fixture.owner_account;
+        lock(&mut TestClient::logged_in(&admin).await, owner, "Spam").await;
+
+        let body = TestClient::new().get(&fixture.url()).await.ok_json();
+        assert_eq!(
+            body["owner"],
+            fixture.owner_account.username.as_str(),
+            "{body}"
+        );
+        let mut request = settings("Public");
+        request["name"] = json!("Run by the Co-organizer");
+        let url = fixture.url();
+        let response = fixture.owner.json(Method::PUT, &url, &request).await;
+        assert_eq!(response.status, StatusCode::UNAUTHORIZED);
+        let body = TestClient::logged_in(&co_organizer)
+            .await
+            .json(Method::PUT, &url, &request)
+            .await
+            .ok_json();
+        assert_eq!(body["name"], "Run by the Co-organizer", "{body}");
+    });
+}
+
+#[test]
+fn a_locked_participant_stays_on_the_roster_but_cannot_withdraw() {
+    run(async {
+        let admin = create_account(Role::Admin).await;
+        let mut fixture = Fixture::new("Public").await;
+        let member = create_account(Role::Member).await;
+        add_account(&mut fixture.owner, &fixture.tournament, &member.username).await;
+        let mut session = TestClient::logged_in(&member).await;
+
+        lock(&mut TestClient::logged_in(&admin).await, &member, "Spam").await;
+
+        let body = roster(&mut fixture.owner, &fixture.tournament).await;
+        assert_eq!(names(&body), [member.username.as_str()], "{body}");
+        let response = session
+            .json(
+                Method::DELETE,
+                &api(&format!("tournaments/{}/sign-up", fixture.tournament)),
+                &json!({}),
+            )
+            .await;
+        assert_eq!(response.status, StatusCode::UNAUTHORIZED);
+        let body = roster(&mut fixture.owner, &fixture.tournament).await;
+        assert_eq!(names(&body), [member.username.as_str()], "{body}");
     });
 }
