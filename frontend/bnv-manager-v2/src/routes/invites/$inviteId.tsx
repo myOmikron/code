@@ -9,7 +9,6 @@ import { Button, PrimaryButton } from "src/components/base/button";
 import { Text } from "src/components/base/text";
 import { Heading } from "src/components/base/heading";
 import React, { lazy, Suspense } from "react";
-import { zxcvbn } from "@zxcvbn-ts/core";
 import { EyeIcon, EyeSlashIcon } from "@heroicons/react/20/solid";
 import { AuthLayout } from "src/components/base/auth-layout";
 import InviteError from "src/components/error/invite-error";
@@ -66,7 +65,9 @@ export default function Invite(props: InviteProps) {
                         name={"password"}
                         validators={{
                             onChangeAsync: async ({ value }) => {
-                                if (value !== "" && zxcvbn(value).score < 3) {
+                                // the estimator ships with the lazily loaded strength bar
+                                const { zxcvbn } = await import("src/components/base/pw-strength");
+                                if (value !== "" && zxcvbn.check(value).score < 3) {
                                     return t("error.stronger-password");
                                 }
                                 return undefined;

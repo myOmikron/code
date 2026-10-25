@@ -3,10 +3,11 @@ import { InformationCircleIcon } from "@heroicons/react/20/solid";
 import * as zxcvbnCommonPackage from "@zxcvbn-ts/language-common";
 import * as zxcvbnEnPackage from "@zxcvbn-ts/language-en";
 import * as zxcvbnDePackage from "@zxcvbn-ts/language-de";
-import { zxcvbn, zxcvbnOptions } from "@zxcvbn-ts/core";
+import { ZxcvbnFactory } from "@zxcvbn-ts/core";
 import { useTranslation } from "react-i18next";
 
-const options = {
+/** The password strength estimator, with the common, English and German dictionaries */
+export const zxcvbn = new ZxcvbnFactory({
     dictionary: {
         ...zxcvbnCommonPackage.dictionary,
         ...zxcvbnEnPackage.dictionary,
@@ -14,8 +15,7 @@ const options = {
     },
     graphs: zxcvbnCommonPackage.adjacencyGraphs,
     translations: zxcvbnEnPackage.translations,
-};
-zxcvbnOptions.setOptions(options);
+});
 
 /**
  * The properties for {@link PasswordStrength}
@@ -33,9 +33,9 @@ export default function PasswordStrength(props: PasswordStrengthProps) {
 
     const { password } = props;
 
-    const { score, crackTimesSeconds } = zxcvbn(password);
+    const { score, crackTimes } = zxcvbn.check(password);
 
-    const seconds = crackTimesSeconds.offlineSlowHashing1e4PerSecond;
+    const seconds = crackTimes.offlineSlowHashingXPerSecond.seconds;
 
     const century = 315360000;
     const year = 31536000;
