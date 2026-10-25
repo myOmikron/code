@@ -9,7 +9,7 @@ publish = false
 proc-macro2 = "1.0" # Token trees
 quote = "1.0" # Templating engine for token tress
 syn = "3.0" # Full AST
-prettyplease = { version = "0.2" } # AST formatter
+prettyplease = { version = "0.3" } # AST formatter
 
 tonic-build = { version = "0.14.0" }
 prost-build = { version = "0.14" }
