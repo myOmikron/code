@@ -5,6 +5,9 @@ use galvyn::core::session;
 use galvyn::openapi::OpenapiRouterExt;
 use tower_http::CompressionLevel;
 use tower_http::compression::CompressionLayer;
+use tower_http::trace::DefaultMakeSpan;
+use tower_http::trace::TraceLayer;
+use tracing::Level;
 
 pub mod handler_frontend;
 pub mod handler_graph;
@@ -17,6 +20,9 @@ pub struct FrontendApi;
 pub fn initialize_routes() -> GalvynRouter {
     routes()
         .layer(session::layer())
+        // Outside the session layer and at INFO, so the request span is the root of the
+        // trace instead of the session layer's `call` span
+        .layer(TraceLayer::new_for_http().make_span_with(DefaultMakeSpan::new().level(Level::INFO)))
         // Outermost, so it also covers the openapi documents. A collection's
         // entries are a few hundred bytes of json per stack and a big one runs
         // to five figures of stacks — the same payload compresses to about a
