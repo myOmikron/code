@@ -287,6 +287,151 @@ export interface AdminAccountLock {
     reason: string;
 }
 /**
+ * A Bug report as the list shows it
+ * @export
+ * @interface AdminBugReport
+ */
+export interface AdminBugReport {
+    /**
+     * When it was sent
+     * @type {string}
+     * @memberof AdminBugReport
+     */
+    created_at: string;
+    /**
+     * The running number
+     * @type {number}
+     * @memberof AdminBugReport
+     */
+    number: number;
+    /**
+     * Whether its images and diagnostics were purged
+     * @type {boolean}
+     * @memberof AdminBugReport
+     */
+    purged: boolean;
+    /**
+     * The Release the app was running
+     * @type {string}
+     * @memberof AdminBugReport
+     */
+    release: string;
+    /**
+     * Who sent it
+     * @type {BugReportAccount}
+     * @memberof AdminBugReport
+     */
+    reporter: BugReportAccount;
+    /**
+     * The route the app was on
+     * @type {string}
+     * @memberof AdminBugReport
+     */
+    route: string;
+    /**
+     * Open or done
+     * @type {BugReportState}
+     * @memberof AdminBugReport
+     */
+    state: BugReportState;
+}
+
+
+/**
+ * A Bug report with everything it holds
+ * @export
+ * @interface AdminBugReportDetail
+ */
+export interface AdminBugReportDetail {
+    /**
+     * The diagnostics document the app built, `None` once purged
+     * @type {any}
+     * @memberof AdminBugReportDetail
+     */
+    diagnostics?: any | null;
+    /**
+     * When it was marked done
+     * @type {string}
+     * @memberof AdminBugReportDetail
+     */
+    done_at?: string | null;
+    /**
+     * The Admin that marked it done, `None` while open or once that Admin is deleted
+     * @type {BugReportAccount}
+     * @memberof AdminBugReportDetail
+     */
+    done_by?: BugReportAccount | null;
+    /**
+     * Its images, in the order they were sent, empty once purged
+     * @type {Array<BugReportImageInfo>}
+     * @memberof AdminBugReportDetail
+     */
+    images: Array<BugReportImageInfo>;
+    /**
+     * The browser's language
+     * @type {string}
+     * @memberof AdminBugReportDetail
+     */
+    language: string;
+    /**
+     * The Admins' internal note
+     * @type {string}
+     * @memberof AdminBugReportDetail
+     */
+    note?: string | null;
+    /**
+     * When its images and diagnostics were purged
+     * @type {string}
+     * @memberof AdminBugReportDetail
+     */
+    purged_at?: string | null;
+    /**
+     * What the list shows
+     * @type {AdminBugReport}
+     * @memberof AdminBugReportDetail
+     */
+    report: AdminBugReport;
+    /**
+     * What went wrong, in the player's words
+     * @type {string}
+     * @memberof AdminBugReportDetail
+     */
+    text: string;
+    /**
+     * The browser's user agent
+     * @type {string}
+     * @memberof AdminBugReportDetail
+     */
+    user_agent: string;
+    /**
+     * The browser window's size
+     * @type {string}
+     * @memberof AdminBugReportDetail
+     */
+    viewport: string;
+}
+
+/**
+ * Which Bug reports the list shows
+ * @export
+ */
+export const AdminBugReportFilter = {
+    /**
+    * The open ones
+    */
+    Open: 'Open',
+    /**
+    * The done ones
+    */
+    Done: 'Done',
+    /**
+    * All of them
+    */
+    All: 'All'
+} as const;
+export type AdminBugReportFilter = typeof AdminBugReportFilter[keyof typeof AdminBugReportFilter];
+
+/**
  * The file the catalog was last read from
  * @export
  * @interface AdminCatalogStamp
@@ -382,6 +527,25 @@ export interface AdminListAccountsResponse {
      * @memberof AdminListAccountsResponse
      */
     next_cursor?: string | null;
+}
+/**
+ * One page of Bug reports, newest first
+ * @export
+ * @interface AdminListBugReportsResponse
+ */
+export interface AdminListBugReportsResponse {
+    /**
+     * Pass as `after` for the next page, `None` on the last one
+     * @type {number}
+     * @memberof AdminListBugReportsResponse
+     */
+    next_cursor?: number | null;
+    /**
+     * The Bug reports
+     * @type {Array<AdminBugReport>}
+     * @memberof AdminListBugReportsResponse
+     */
+    reports: Array<AdminBugReport>;
 }
 /**
  * One page of the Admin log, newest first
@@ -757,6 +921,19 @@ export interface AdminRenameAccountRequest {
 }
 
 
+/**
+ * Request to set the Admins' note on a Bug report
+ * @export
+ * @interface AdminSetBugReportNoteRequest
+ */
+export interface AdminSetBugReportNoteRequest {
+    /**
+     * The note, empty to remove it
+     * @type {string}
+     * @memberof AdminSetBugReportNoteRequest
+     */
+    note: string;
+}
 /**
  * Why a Role could not be changed
  * @export
@@ -1139,6 +1316,61 @@ export interface BracketRulesResponse {
     slug: string;
 }
 
+
+/**
+ * An Account named by a Bug report
+ * @export
+ * @interface BugReportAccount
+ */
+export interface BugReportAccount {
+    /**
+     * Its current username
+     * @type {string}
+     * @memberof BugReportAccount
+     */
+    username: string;
+    /**
+     * Primary key
+     * @type {string}
+     * @memberof BugReportAccount
+     */
+    uuid: string;
+}
+/**
+ * An image of a Bug report, without its bytes
+ * @export
+ * @interface BugReportImageInfo
+ */
+export interface BugReportImageInfo {
+    /**
+     * The image's media type
+     * @type {string}
+     * @memberof BugReportImageInfo
+     */
+    content_type: string;
+    /**
+     * Primary key
+     * @type {string}
+     * @memberof BugReportImageInfo
+     */
+    uuid: string;
+}
+
+/**
+ * Whether a Bug report still needs an Admin's attention
+ * @export
+ */
+export const BugReportState = {
+    /**
+    * Not looked into yet, or reopened
+    */
+    Open: 'Open',
+    /**
+    * Marked done by an Admin
+    */
+    Done: 'Done'
+} as const;
+export type BugReportState = typeof BugReportState[keyof typeof BugReportState];
 
 
 /**
@@ -4078,6 +4310,27 @@ export interface FormErrorResponseForRenamePasskeyErrors {
 /**
  * The response that is sent in a case of an error the caller should present his user
  * @export
+ * @interface FormErrorResponseForSendBugReportErrors
+ */
+export interface FormErrorResponseForSendBugReportErrors {
+    /**
+     * The actual error struct
+     * @type {SendBugReportErrors}
+     * @memberof FormErrorResponseForSendBugReportErrors
+     */
+    error: SendBugReportErrors;
+    /**
+     * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
+     * @type {ErrorConstant}
+     * @memberof FormErrorResponseForSendBugReportErrors
+     */
+    result: ErrorConstant;
+}
+
+
+/**
+ * The response that is sent in a case of an error the caller should present his user
+ * @export
  * @interface FormErrorResponseForSignupErrors
  */
 export interface FormErrorResponseForSignupErrors {
@@ -6248,6 +6501,123 @@ export interface SearchPublicDecksResponse {
      * @memberof SearchPublicDecksResponse
      */
     total: number;
+}
+/**
+ * @type SendBugReport200Response
+ * 
+ * @export
+ */
+export type SendBugReport200Response = FormErrorResponseForSendBugReportErrors | SendBugReportResponse;
+/**
+ * Why a Bug report could not be sent
+ * @export
+ * @interface SendBugReportErrors
+ */
+export interface SendBugReportErrors {
+    /**
+     * A part sent as an image is no JPEG, PNG or WebP
+     * @type {boolean}
+     * @memberof SendBugReportErrors
+     */
+    image_invalid: boolean;
+    /**
+     * An image is larger than 5 MB
+     * @type {boolean}
+     * @memberof SendBugReportErrors
+     */
+    image_too_large: boolean;
+    /**
+     * The Account sent 15 Bug reports within the last hour
+     * @type {boolean}
+     * @memberof SendBugReportErrors
+     */
+    rate_limited: boolean;
+    /**
+     * The `report` part is missing, larger than 512 KB or not the expected json
+     * @type {boolean}
+     * @memberof SendBugReportErrors
+     */
+    report_invalid: boolean;
+    /**
+     * The text is empty or too short
+     * @type {boolean}
+     * @memberof SendBugReportErrors
+     */
+    text_missing: boolean;
+    /**
+     * The text has more than 5000 characters
+     * @type {boolean}
+     * @memberof SendBugReportErrors
+     */
+    text_too_long: boolean;
+    /**
+     * More than three images
+     * @type {boolean}
+     * @memberof SendBugReportErrors
+     */
+    too_many_images: boolean;
+}
+/**
+ * The `report` part of a Bug report: what the player wrote and what the app knew
+ * @export
+ * @interface SendBugReportRequest
+ */
+export interface SendBugReportRequest {
+    /**
+     * The diagnostics document the app built, stored as is
+     * @type {any}
+     * @memberof SendBugReportRequest
+     */
+    diagnostics: any | null;
+    /**
+     * The browser's language
+     * @type {string}
+     * @memberof SendBugReportRequest
+     */
+    language: string;
+    /**
+     * The Release the app was running
+     * @type {string}
+     * @memberof SendBugReportRequest
+     */
+    release: string;
+    /**
+     * The route the app was on
+     * @type {string}
+     * @memberof SendBugReportRequest
+     */
+    route: string;
+    /**
+     * What went wrong, in the player's words
+     * @type {string}
+     * @memberof SendBugReportRequest
+     */
+    text: string;
+    /**
+     * The browser's user agent
+     * @type {string}
+     * @memberof SendBugReportRequest
+     */
+    user_agent: string;
+    /**
+     * The browser window's size, as `<width>x<height>`
+     * @type {string}
+     * @memberof SendBugReportRequest
+     */
+    viewport: string;
+}
+/**
+ * A sent Bug report
+ * @export
+ * @interface SendBugReportResponse
+ */
+export interface SendBugReportResponse {
+    /**
+     * Its running number, for the player to quote
+     * @type {number}
+     * @memberof SendBugReportResponse
+     */
+    number: number;
 }
 /**
  * Request to replace a deck's advisor settings

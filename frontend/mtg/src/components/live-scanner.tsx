@@ -1,6 +1,7 @@
 import {
     AdjustmentsHorizontalIcon,
     ArrowLeftIcon,
+    BugAntIcon,
     Cog6ToothIcon,
     RectangleStackIcon,
     SparklesIcon,
@@ -29,6 +30,7 @@ import type { SearchTip } from "src/scanner/scan-tip";
 import {
     inspectScanDownload,
     keepScanDataStored,
+    lastScanCrop,
     loadScanner,
     resetLiveTracking,
     scanLiveFrame,
@@ -47,6 +49,10 @@ import { useScanScope } from "src/context/scan-scope-context";
 import { useCamera } from "src/utils/use-camera";
 import { loadScanLanguage, saveScanLanguage } from "src/utils/scan-language";
 import { toCardRecord } from "src/utils/scanned-card";
+import { BugReportDialog } from "src/components/bug-report-dialog";
+import { useAccount } from "src/context/account";
+import type { ReportStart, ScannerRecognition } from "src/utils/diagnostics";
+import { shrinkImage } from "src/utils/shrink-image";
 
 /**
  * The properties for {@link LiveScanner}
@@ -117,6 +123,39 @@ const TIPS: Record<SearchTip, string> = {
  * second copy of the same card is never booked.
  */
 const EMPTY_FRAMES_BEFORE_REST = 2;
+
+/** Recognitions a Bug report from the scanner carries */
+const RECOGNITIONS_KEPT = 3;
+
+/**
+ * What a frame that reached the recogniser tells a Bug report
+ *
+ * @param result the frame's result
+ * @returns the recognition, `null` for a frame that never reached the recogniser
+ */
+function recognitionOf(result: LiveFrameResult): ScannerRecognition | null {
+    if (result.candidates.length === 0 && !result.title) return null;
+    const outcome = result.outcome?.status === "recognised" ? result.outcome : null;
+    return {
+        ocr_text: result.title,
+        ocr_model: result.ocrModel,
+        path: result.named ? "name" : "embedding",
+        candidates: result.candidates.map((candidate) => ({
+            name: candidate.name,
+            set: candidate.set,
+            collector_number: candidate.collectorNumber,
+            score: candidate.score,
+        })),
+        chosen: outcome
+            ? {
+                  name: outcome.printing.name,
+                  set: outcome.printing.set,
+                  collector_number: outcome.printing.collectorNumber,
+                  inliers: outcome.inliers,
+              }
+            : null,
+    };
+}
 
 /** The one canvas every still is drawn through, rather than one per recognised card. */
 let stillCanvas: HTMLCanvasElement | null = null;
@@ -219,6 +258,9 @@ export function LiveScanner({ session }: LiveScannerProps) {
     const sampleCanvas = useRef<HTMLCanvasElement | null>(null);
     const nextScanDelay = useRef(250);
     const cropCanvas = useRef<HTMLCanvasElement | null>(null);
+    const recognitions = useRef<ScannerRecognition[]>([]);
+    const [report, setReport] = useState<ReportStart | null>(null);
+    const signedIn = useAccount().account !== null;
     diagnosticsRef.current = diagnostics;
 
     // A scanner reached by a session's url fills that session. Without this the cards would go
@@ -323,6 +365,8 @@ export function LiveScanner({ session }: LiveScannerProps) {
                         ...detection,
                         crop: null,
                         preview: null,
+                        candidates: [],
+                        named: false,
                         outcome: null,
                         title: "",
                         ocrError: "",
@@ -346,6 +390,8 @@ export function LiveScanner({ session }: LiveScannerProps) {
                 return;
             }
             setFrame(result);
+            const recognition = recognitionOf(result);
+            if (recognition) recognitions.current = [...recognitions.current, recognition].slice(-RECOGNITIONS_KEPT);
             setHint(scanHint.current.observe(result.shortcomings[0] ?? null, performance.now()));
 
             if (result.crop) {
@@ -449,7 +495,7 @@ export function LiveScanner({ session }: LiveScannerProps) {
         const visibility = () => {
             scheduleGeneration += 1;
             window.clearTimeout(timer);
-            running.current = !document.hidden && !settings && !staging && !diagnostics;
+            running.current = !document.hidden && !settings && !staging && !diagnostics && report === null;
             if (!running.current) {
                 scanGeneration.current += 1;
                 resetLiveTracking();
@@ -481,7 +527,14 @@ export function LiveScanner({ session }: LiveScannerProps) {
             window.clearInterval(tipClock);
             document.removeEventListener("visibilitychange", visibility);
         };
-    }, [camera.active, status, step, settings, staging, diagnostics]);
+    }, [camera.active, status, step, settings, staging, diagnostics, report]);
+
+    const startReport = async () => {
+        const bitmap = await lastScanCrop().catch(() => null);
+        const crop = bitmap ? await shrinkImage(bitmap).catch(() => null) : null;
+        bitmap?.close();
+        setReport({ kind: "scanner", recognitions: recognitions.current, crop });
+    };
 
     const confirmed = frame?.outcome?.status === "recognised" ? frame.outcome : null;
     const preview = frame?.preview ?? null;
@@ -592,6 +645,17 @@ export function LiveScanner({ session }: LiveScannerProps) {
                                     <Cog6ToothIcon className="size-5" />
                                 </button>
 
+                                {signedIn ? (
+                                    <button
+                                        type="button"
+                                        aria-label={tg("button.report-bug")}
+                                        onClick={() => void startReport()}
+                                        className="rounded-full bg-black/55 p-2 text-white/70 ring-1 ring-white/10 backdrop-blur hover:text-lime-300"
+                                    >
+                                        <BugAntIcon className="size-5" />
+                                    </button>
+                                ) : null}
+
                                 <button
                                     type="button"
                                     aria-label={t("button.open-diagnostics")}
@@ -678,6 +742,8 @@ export function LiveScanner({ session }: LiveScannerProps) {
                     frame={frame}
                     cropRef={cropCanvas}
                 />
+
+                {report ? <BugReportDialog open={true} onClose={() => setReport(null)} start={report} /> : null}
 
                 {error ? (
                     <p className="absolute inset-x-3 bottom-20 z-30 rounded-lg bg-red-950/90 px-3 py-2 text-sm text-red-200 ring-1 ring-red-500/30">

@@ -3,7 +3,14 @@
 //! Nothing here talks SMTP: a mail is a NATS message, and the gateway owns
 //! delivery. A failed publish must never take an order down with it — the
 //! callers log it and carry on.
+//!
+//! The mails leave through a [`MailSink`], so the tests can record them
+//! instead of needing a NATS server.
 
+use std::fmt;
+use std::future::Future;
+use std::pin::Pin;
+use std::sync::Arc;
 use std::sync::OnceLock;
 
 use galvyn::core::Module;
@@ -15,27 +22,87 @@ use time::Weekday;
 use tracing::instrument;
 use url::Url;
 
+use crate::models::Order;
 use crate::models::OrderItem;
 use crate::models::OrderLanguage;
+use crate::models::PickupDay;
 use crate::proto;
+use crate::utils::bakery;
 
 /// Error returned when a mail could not be handed to the gateway
-pub type MailError = async_nats::jetstream::context::PublishError;
+#[derive(Debug)]
+pub struct MailError(Box<dyn std::error::Error + Send + Sync>);
 
-/// The origin customer links are built from
+impl MailError {
+    /// Wrap whatever kept the mail from leaving
+    pub fn new(error: impl Into<Box<dyn std::error::Error + Send + Sync>>) -> Self {
+        Self(error.into())
+    }
+}
+
+impl fmt::Display for MailError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+impl std::error::Error for MailError {}
+
+/// The future a [`MailSink`] answers with
+pub type SendFuture<'a> = Pin<Box<dyn Future<Output = Result<(), MailError>> + Send + 'a>>;
+
+/// Where outgoing mails are handed over
+///
+/// Takes the gateway's message as is, CC and attachments included, so a new
+/// kind of mail never needs a change here.
+pub trait MailSink: Send + Sync {
+    /// Hand the mail over, resolving once it was accepted
+    fn send(&self, mail: proto::mail_v1::SendEmail) -> SendFuture<'_>;
+}
+
+/// The production sink: publishes to the gateway's NATS subject
+///
+/// Resolves once JetStream acknowledged the message, so `Ok` means the mail
+/// is stored and the gateway will deliver it.
+pub struct NatsMailSink;
+
+impl MailSink for NatsMailSink {
+    fn send(&self, mail: proto::mail_v1::SendEmail) -> SendFuture<'_> {
+        Box::pin(async move {
+            Nats::global()
+                .publish(nats_subjects::mail::v1::SEND, mail)
+                .await
+                .map_err(MailError::new)?;
+            Ok(())
+        })
+    }
+}
+
+/// What outgoing mails need, set once at startup
 ///
 /// Mails are also sent by the deadline job, which has no request to read the
-/// host from — so the configured origin is stashed once at startup.
-static PUBLIC_ORIGIN: OnceLock<Url> = OnceLock::new();
+/// host from, so the configured origin is stashed here.
+struct Mailer {
+    /// The origin customer links are built from
+    public_origin: Url,
+    /// Where the mails go
+    sink: Arc<dyn MailSink>,
+}
 
-/// Remember the public origin for the links in outgoing mails
-pub fn init(public_origin: Url) {
-    let _ = PUBLIC_ORIGIN.set(public_origin);
+/// The [`Mailer`], once [`init`] ran
+static MAILER: OnceLock<Mailer> = OnceLock::new();
+
+/// Remember the public origin for the links in outgoing mails and the sink they leave through
+pub fn init(public_origin: Url, sink: Arc<dyn MailSink>) {
+    let _ = MAILER.set(Mailer {
+        public_origin,
+        sink,
+    });
 }
 
 /// The link a customer opens to see their order
 fn order_link(pickup_code: &str) -> Option<Url> {
-    let mut link = PUBLIC_ORIGIN.get()?.clone();
+    let mut link = MAILER.get()?.public_origin.clone();
     link.set_path(&format!("/order/{pickup_code}"));
     Some(link)
 }
@@ -71,13 +138,14 @@ impl From<&OrderItem> for MailPosition {
 
 /// Everything a mail about an order needs
 ///
-/// Spelled out rather than taking an [`Order`](crate::models::Order): the mail
-/// after placing an order is sent before it is read back from the database.
+/// Spelled out rather than taking an [`Order`]: the mail after placing an
+/// order is sent before it is read back from the database. A stored order
+/// goes through [`OrderMail::for_order`].
 pub struct OrderMail<'a> {
     /// The customer-facing order code
     pub pickup_code: &'a str,
     /// The customer's name
-    pub customer_name: &'a str,
+    pub customer_name: String,
     /// The customer's email address — no address, no mail
     pub email: Option<&'a str>,
     /// The language the mail is written in
@@ -90,7 +158,20 @@ pub struct OrderMail<'a> {
     pub positions: &'a [MailPosition],
 }
 
-impl OrderMail<'_> {
+impl<'a> OrderMail<'a> {
+    /// The mail about a stored order of `day`
+    pub fn for_order(order: &'a Order, day: &PickupDay, positions: &'a [MailPosition]) -> Self {
+        Self {
+            pickup_code: &order.pickup_code,
+            customer_name: order.display_name(),
+            email: order.email.as_deref(),
+            language: order.language,
+            pickup_date: day.pickup_date,
+            deadline: day.deadline_at,
+            positions,
+        }
+    }
+
     /// Total over all positions in euro cents
     fn total_cents(&self) -> i64 {
         self.positions
@@ -193,19 +274,48 @@ fn month_name(month: Month) -> &'static str {
 }
 
 /// Hand a mail to the gateway
+pub async fn send(mail: proto::mail_v1::SendEmail) -> Result<(), MailError> {
+    let mailer = MAILER
+        .get()
+        .ok_or_else(|| MailError::new("no mail sink was set up"))?;
+    mailer.sink.send(mail).await
+}
+
+/// Hand a plain-text mail to a single recipient to the gateway
 async fn publish(to: &str, subject: &str, text_body: String) -> Result<(), MailError> {
-    Nats::global()
-        .publish(
-            nats_subjects::mail::v1::SEND,
-            proto::mail_v1::SendEmail {
-                to: to.to_string(),
-                subject: subject.to_string(),
-                text_body,
-                ..Default::default()
-            },
-        )
-        .await?;
-    Ok(())
+    send(proto::mail_v1::SendEmail {
+        to: to.to_string(),
+        subject: subject.to_string(),
+        text_body,
+        ..Default::default()
+    })
+    .await
+}
+
+/// Send the Bakery order of a pickup day, the CSV attached
+///
+/// Always German: it goes to the Bakery, whatever language the customers
+/// ordered in. Resolves once the gateway's stream acknowledged the mail.
+#[instrument(name = "mail::send_bakery_order", skip(csv))]
+pub async fn send_bakery_order(
+    to: &str,
+    cc: Option<&str>,
+    pickup_date: Date,
+    csv: Vec<u8>,
+) -> Result<(), MailError> {
+    let pickup = format_date(pickup_date, OrderLanguage::De);
+    send(proto::mail_v1::SendEmail {
+        to: to.to_string(),
+        cc: cc.into_iter().map(String::from).collect(),
+        subject: format!("Bestellung Nachbarschaftshilfe für {pickup}"),
+        text_body: format!("Anbei unsere Bestellung für die Abholung am {pickup}.\n"),
+        attachments: vec![proto::mail_v1::Attachment {
+            filename: bakery::filename(pickup_date),
+            content_type: bakery::CONTENT_TYPE.to_string(),
+            content: csv,
+        }],
+    })
+    .await
 }
 
 /// Confirm that an order arrived — sent right after it was placed
@@ -219,7 +329,7 @@ pub async fn send_order_received(mail: &OrderMail<'_>) -> Result<(), MailError> 
     };
     let code = mail.pickup_code;
     let link = order_link(code).map(String::from).unwrap_or_default();
-    let name = one_line(mail.customer_name);
+    let name = one_line(&mail.customer_name);
     let positions = mail.position_lines();
     let total = format_price(mail.total_cents(), mail.language);
     let pickup = format_date(mail.pickup_date, mail.language);
@@ -286,7 +396,7 @@ pub async fn send_order_confirmed(mail: &OrderMail<'_>) -> Result<(), MailError>
     };
     let code = mail.pickup_code;
     let link = order_link(code).map(String::from).unwrap_or_default();
-    let name = one_line(mail.customer_name);
+    let name = one_line(&mail.customer_name);
     let positions = mail.position_lines();
     let total = format_price(mail.total_cents(), mail.language);
     let pickup = format_date(mail.pickup_date, mail.language);
@@ -339,6 +449,47 @@ pub async fn send_order_confirmed(mail: &OrderMail<'_>) -> Result<(), MailError>
     publish(to, &subject, text_body).await
 }
 
+/// Tell a customer that staff cancelled their order
+///
+/// The pickup day itself still takes place; only this one order is off.
+#[instrument(name = "mail::send_order_cancelled_by_staff", skip(mail))]
+pub async fn send_order_cancelled_by_staff(mail: &OrderMail<'_>) -> Result<(), MailError> {
+    let Some(to) = mail.email else {
+        return Ok(());
+    };
+    let code = mail.pickup_code;
+    let name = one_line(&mail.customer_name);
+    let pickup = format_date(mail.pickup_date, mail.language);
+
+    let (subject, text_body) = match mail.language {
+        OrderLanguage::De => (
+            format!("Vorbestellung {code} storniert"),
+            format!(
+                "Hallo {name},\n\
+                 \n\
+                 deine Vorbestellung {code} für die Abholung am {pickup} wurde\n\
+                 von der Nachbarschaftshilfe storniert. Es entstehen dir keine\n\
+                 Kosten.\n\
+                 \n\
+                 Bei Fragen melde dich gern bei uns im Laden.\n",
+            ),
+        ),
+        OrderLanguage::En => (
+            format!("Pre-order {code} cancelled"),
+            format!(
+                "Hello {name},\n\
+                 \n\
+                 your pre-order {code} for pickup on {pickup} was cancelled\n\
+                 by the Nachbarschaftshilfe, at no cost to you.\n\
+                 \n\
+                 If you have any questions, just ask us in the shop.\n",
+            ),
+        ),
+    };
+
+    publish(to, &subject, text_body).await
+}
+
 /// Tell a customer their pickup day was called off
 #[instrument(name = "mail::send_order_cancelled", skip(mail))]
 pub async fn send_order_cancelled(mail: &OrderMail<'_>) -> Result<(), MailError> {
@@ -346,7 +497,7 @@ pub async fn send_order_cancelled(mail: &OrderMail<'_>) -> Result<(), MailError>
         return Ok(());
     };
     let code = mail.pickup_code;
-    let name = one_line(mail.customer_name);
+    let name = one_line(&mail.customer_name);
     let pickup = format_date(mail.pickup_date, mail.language);
 
     let (subject, text_body) = match mail.language {

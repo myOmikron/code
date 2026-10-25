@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
     detectDelimiter,
+    filedFinish,
     parseAmount,
     parseCollectionCsv,
     parseCondition,
@@ -102,11 +103,29 @@ describe("parseCondition", () => {
 
 describe("parseFinish", () => {
     it("understands every spelling the trackers use", () => {
-        expect(parseFinish("")).toBe("Nonfoil");
         expect(parseFinish("Normal")).toBe("Nonfoil");
         expect(parseFinish("foil")).toBe("Foil");
         expect(parseFinish("true")).toBe("Foil");
         expect(parseFinish("Etched")).toBe("Etched");
+    });
+
+    it("leaves an empty cell to the printing", () => {
+        expect(parseFinish("")).toBeNull();
+    });
+});
+
+describe("filedFinish", () => {
+    it("files a row without a finish in its printing's plain finish", () => {
+        expect(filedFinish({ finish: null }, ["nonfoil", "foil"])).toBe("Nonfoil");
+    });
+
+    it("files a row without a finish as foil when its printing exists only in foil", () => {
+        expect(filedFinish({ finish: null }, ["foil"])).toBe("Foil");
+    });
+
+    it("keeps the finish the row names", () => {
+        expect(filedFinish({ finish: "Nonfoil" }, ["foil"])).toBe("Nonfoil");
+        expect(filedFinish({ finish: "Etched" }, ["nonfoil", "etched"])).toBe("Etched");
     });
 });
 
@@ -123,7 +142,7 @@ describe("parseCollectionCsv", () => {
             collectorNumber: "161",
             quantity: 4,
             condition: "NearMint",
-            finish: "Nonfoil",
+            finish: null,
             purchasePriceCents: 150,
         });
         expect(rows[1]).toMatchObject({ finish: "Foil", condition: "Good", purchasePriceCents: 1230 });

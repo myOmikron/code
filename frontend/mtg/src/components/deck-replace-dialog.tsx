@@ -16,6 +16,7 @@ import { Printing } from "src/utils/scryfall";
 import { useAdvisorSettings } from "src/utils/use-advisor-settings";
 import { useBracketMarks } from "src/utils/use-bracket-marks";
 import { useSuggestionCards } from "src/utils/use-suggestion-cards";
+import { defaultFoil } from "src/utils/default-finish";
 
 /**
  * The properties for {@link DeckReplaceDialog}
@@ -179,7 +180,11 @@ export function DeckReplaceDialog({
         if (card === null || printing === undefined) return;
         setBusy(true);
         try {
-            await Api.decks.cards.swap(deckUuid, card.uuid, { printing: printing.id, quantity: 1 });
+            await Api.decks.cards.swap(deckUuid, card.uuid, {
+                printing: printing.id,
+                quantity: 1,
+                foil: defaultFoil(printing.finishes),
+            });
             notify.success(t("toast.card-replaced", { name: card.card?.name ?? "", replacement: name }));
             onReplaced();
             onClose();

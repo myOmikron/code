@@ -25,6 +25,7 @@
         "administration": "Administration"
     },
     "label": {
+        "bakery-article-number": "Article number (bakery)",
         "app-name": "Semmelei",
         "status-open": "Open",
         "status-ready": "Ready for pickup",

@@ -24,7 +24,7 @@ RUN rustup component add clippy
 RUN rustup toolchain install nightly --profile minimal --component rustfmt
 
 # renovate: datasource=github-releases depName=EmbarkStudios/cargo-deny versioning=semver
-ARG CARGO_DENY_VERSION=0.19.4
+ARG CARGO_DENY_VERSION=0.20.2
 RUN <<EOF
 set -e
 curl -fsSL "https://github.com/EmbarkStudios/cargo-deny/releases/download/${CARGO_DENY_VERSION}/cargo-deny-${CARGO_DENY_VERSION}-x86_64-unknown-linux-musl.tar.gz" \

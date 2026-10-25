@@ -5,6 +5,7 @@ docs/AdminItem.md
 docs/AdminNewsPost.md
 docs/AdminPickupDay.md
 docs/ApiErrorResponse.md
+docs/BakeryAddresses.md
 docs/CategoryRequest.md
 docs/CreateAccountRequest.md
 docs/CreateOrderRequest.md
@@ -29,6 +30,7 @@ docs/ListPickupDaysResponse.md
 docs/ListPublishedNewsPostsResponse.md
 docs/MeResponse.md
 docs/NewsPostRequest.md
+docs/NotDispatchedReason.md
 docs/OrderLanguage.md
 docs/OrderPositionRequest.md
 docs/OrderStatus.md

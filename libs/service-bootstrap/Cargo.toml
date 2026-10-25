@@ -39,6 +39,9 @@ rand = { version = "~0.8" }
 
 tower-http = { workspace = true, features = ["catch-panic"] }
 
+# The router under galvyn, for the route template the request span is named after
+axum = { workspace = true, features = ["matched-path"] }
+
 # Core http types and traits
 http = { version = "~1" }
 http-body = { version = "~1", optional = true }
@@ -46,6 +49,9 @@ http-body = { version = "~1", optional = true }
 # Grpc implementation
 tonic = { version = "~0.14", features = ["server"], optional = true }
 tonic-prost = { version = "~0.14", optional = true }
+
+[dev-dependencies]
+tower = { version = "~0.5", features = ["util"] }
 
 [build-dependencies]
 service-bootstrap-build = { workspace = true }

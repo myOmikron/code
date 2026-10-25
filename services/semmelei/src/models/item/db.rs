@@ -36,6 +36,11 @@ pub struct ItemModel {
     /// Whether the item is currently orderable (shown in the shop)
     pub active: bool,
 
+    /// The number the Bakery orders the item under, staff only
+    ///
+    /// Not unique: several items may map to the same Bakery article.
+    pub bakery_article_number: Option<MaxStr<32>>,
+
     /// Product photo (processed server-side into a bounded jpeg)
     pub image: Option<Vec<u8>>,
 
@@ -66,6 +71,8 @@ pub struct ItemMetaPatch {
     pub category: Option<ForeignModel<CategoryModel>>,
     /// Whether the item is currently orderable
     pub active: bool,
+    /// The number the Bakery orders the item under
+    pub bakery_article_number: Option<MaxStr<32>>,
     /// Cache-busting version of the image (0 = none)
     pub image_version: i64,
     /// The point in time the item was created
@@ -88,6 +95,8 @@ pub struct ItemInsertPatch {
     pub category: Option<ForeignModel<CategoryModel>>,
     /// Whether the item is currently orderable
     pub active: bool,
+    /// The number the Bakery orders the item under
+    pub bakery_article_number: Option<MaxStr<32>>,
     /// Product photo
     pub image: Option<Vec<u8>>,
     /// Cache-busting version of `image`

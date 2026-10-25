@@ -40,6 +40,7 @@ function RouteComponent() {
                 {t("description.registration-mail", LEGAL)}
             </LegalSection>
             <LegalSection title={t("heading.contact-mail")}>{t("description.contact-mail")}</LegalSection>
+            <LegalSection title={t("heading.bug-reports")}>{t("description.bug-reports")}</LegalSection>
             <LegalSection title={t("heading.session")}>{t("description.session")}</LegalSection>
             <LegalSection title={t("heading.content")}>{t("description.content")}</LegalSection>
             <LegalSection title={t("heading.publishing")}>{t("description.publishing")}</LegalSection>

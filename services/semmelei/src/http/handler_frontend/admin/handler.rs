@@ -15,12 +15,14 @@ use galvyn::post;
 use galvyn::put;
 use galvyn::rorm::Database;
 use galvyn::rorm::db::Executor;
+use galvyn::rorm::fields::types::MaxStr;
 use galvyn_identity::IdentityModule;
 use time::OffsetDateTime;
 
 use crate::http::handler_frontend::admin::schema::AccountSchema;
 use crate::http::handler_frontend::admin::schema::AdminItem;
 use crate::http::handler_frontend::admin::schema::AdminPickupDay;
+use crate::http::handler_frontend::admin::schema::BakeryAddresses;
 use crate::http::handler_frontend::admin::schema::CategoryRequest;
 use crate::http::handler_frontend::admin::schema::CreateAccountRequest;
 use crate::http::handler_frontend::admin::schema::InviteResponse;
@@ -135,6 +137,7 @@ pub async fn list_items() -> ApiResult<ApiJson<ListAdminItemsResponse>> {
                 additional_info: i.additional_info.map(|info| info.to_string()),
                 category: i.category,
                 active: i.active,
+                bakery_article_number: i.bakery_article_number.map(|number| number.to_string()),
                 image_version: (i.image_version != 0).then_some(i.image_version),
                 created_at: SchemaDateTime(i.created_at),
             })
@@ -155,6 +158,16 @@ async fn validate_item(request: ItemRequest) -> ApiResult<ItemData> {
     {
         return Err(ApiError::bad_request("Unknown category"));
     }
+    let bakery_article_number = match request
+        .bakery_article_number
+        .as_ref()
+        .map(|number| number.trim())
+    {
+        None | Some("") => None,
+        Some(number) => Some(MaxStr::new(number.to_string()).map_err(|_| {
+            ApiError::bad_request("Bakery article number must be at most 32 bytes")
+        })?),
+    };
     Ok(ItemData {
         name: request.name,
         price_cents: request.price_cents,
@@ -163,6 +176,7 @@ async fn validate_item(request: ItemRequest) -> ApiResult<ItemData> {
             .filter(|info| !info.trim().is_empty()),
         category: request.category,
         active: request.active,
+        bakery_article_number,
     })
 }
 
@@ -408,6 +422,7 @@ pub async fn get_schedule() -> ApiResult<ApiJson<ScheduleSchema>> {
         pickup_weekday: settings.pickup_weekday,
         deadline_offset_days: settings.deadline_offset_days,
         deadline_time: WallClock(settings.deadline_time),
+        review_window_minutes: settings.review_window_minutes,
     }))
 }
 
@@ -427,6 +442,12 @@ pub async fn update_schedule(
         ));
     }
 
+    if request.review_window_minutes < 0 {
+        return Err(ApiError::bad_request(
+            "The review window cannot be negative",
+        ));
+    }
+
     let mut tx = Database::global().start_transaction().await?;
     // Only the schedule fields are replaced; the legal links live in the same
     // row and are owned by another form.
@@ -434,6 +455,7 @@ pub async fn update_schedule(
         pickup_weekday: request.pickup_weekday,
         deadline_offset_days: request.deadline_offset_days,
         deadline_time: request.deadline_time.0,
+        review_window_minutes: request.review_window_minutes,
         ..ShopSettings::get(&mut tx).await?
     };
     ShopSettings::set(&mut tx, settings.clone()).await?;
@@ -443,6 +465,7 @@ pub async fn update_schedule(
         pickup_weekday: settings.pickup_weekday,
         deadline_offset_days: settings.deadline_offset_days,
         deadline_time: WallClock(settings.deadline_time),
+        review_window_minutes: settings.review_window_minutes,
     }))
 }
 
@@ -536,13 +559,13 @@ pub async fn update_pickup_day(
     Ok(ApiJson(PickupDayChangeResponse {
         day: schema,
         cancelled_orders,
-        confirmed_orders: 0,
     }))
 }
 
 /// Freeze a pickup day right now, before its deadline
 ///
-/// Runs the same path the deadline job runs, confirmation mails included.
+/// Runs the same path the deadline job runs. The Dispatch stays where it is:
+/// the confirmations go out at the Deadline plus the Review Window.
 #[post("/pickup-days/{rule_date}/lock")]
 pub async fn lock_pickup_day(
     Path(rule_date): Path<SchemaDate>,
@@ -563,7 +586,7 @@ pub async fn lock_pickup_day(
     }
 
     let day = schedule::materialize(&mut tx, &resolved).await?;
-    let confirmed_orders = lock::lock_pickup_day(&mut tx, &day, now).await?;
+    lock::lock_pickup_day(&mut tx, &day, now).await?;
 
     let frozen = ResolvedPickupDay {
         uuid: Some(day.uuid),
@@ -580,7 +603,6 @@ pub async fn lock_pickup_day(
     Ok(ApiJson(PickupDayChangeResponse {
         day: schema,
         cancelled_orders: 0,
-        confirmed_orders,
     }))
 }
 
@@ -629,4 +651,56 @@ pub async fn update_legal_settings(
         imprint_url: settings.imprint_url,
         privacy_url: settings.privacy_url,
     }))
+}
+
+// ------------- //
+//    Bakery     //
+// ------------- //
+
+/// Get where the Bakery order goes at the Dispatch
+#[get("/bakery")]
+pub async fn get_bakery_addresses() -> ApiResult<ApiJson<BakeryAddresses>> {
+    let settings = ShopSettings::get(Database::global()).await?;
+    Ok(ApiJson(BakeryAddresses::from(settings)))
+}
+
+/// Change the Bakery and copy address
+///
+/// An empty value unsets the address. Without a Bakery address no pickup day
+/// is Dispatched; setting one Dispatches the waiting days on the next tick.
+#[put("/bakery")]
+pub async fn update_bakery_addresses(
+    ApiJson(request): ApiJson<BakeryAddresses>,
+) -> ApiResult<ApiJson<BakeryAddresses>> {
+    let bakery_email = bare_email_or_none(request.bakery_email)?;
+    let copy_email = bare_email_or_none(request.copy_email)?;
+
+    let mut tx = Database::global().start_transaction().await?;
+    let mut settings = ShopSettings::get(&mut tx).await?;
+    settings.bakery_email = bakery_email;
+    settings.copy_email = copy_email;
+    ShopSettings::set(&mut tx, settings.clone()).await?;
+    tx.commit().await?;
+
+    Ok(ApiJson(BakeryAddresses::from(settings)))
+}
+
+/// Trim an optional address, take a blank one as unset, refuse anything but a bare address
+///
+/// The address becomes a recipient of a mail with the whole order attached,
+/// so it gets the same narrow check as a customer's.
+fn bare_email_or_none(email: Option<MaxStr<255>>) -> ApiResult<Option<MaxStr<255>>> {
+    let Some(email) = email else {
+        return Ok(None);
+    };
+    let trimmed = email.trim();
+    if trimmed.is_empty() {
+        return Ok(None);
+    }
+    if !validate::is_bare_email(trimmed) {
+        return Err(ApiError::bad_request("Not a valid mail address"));
+    }
+    MaxStr::new(trimmed.to_string())
+        .map(Some)
+        .map_err(|_| ApiError::server_error("A trimmed address cannot be longer"))
 }
