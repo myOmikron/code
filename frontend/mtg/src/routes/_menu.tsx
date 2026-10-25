@@ -31,6 +31,7 @@ import { ArchiveBoxIcon, QueueListIcon } from "@heroicons/react/24/solid";
 import {
     ArrowDownTrayIcon,
     ArrowLeftStartOnRectangleIcon,
+    BugAntIcon,
     CameraIcon,
     GlobeAltIcon,
     HeartIcon,
@@ -45,6 +46,7 @@ import { Role } from "src/api/generated";
 import { Suspense, useMemo, useState } from "react";
 import { useInstall } from "src/context/install-context";
 import { AppFooter } from "src/components/app-footer";
+import { BugReportDialog } from "src/components/bug-report-dialog";
 import { ShortcutHelpDialog } from "src/components/shortcut-help-dialog";
 import { UnreadDot } from "src/components/unread-dot";
 import { useUnreadReleaseNotes } from "src/utils/use-release-notes";
@@ -55,6 +57,10 @@ import type { ShortcutHelp, ShortcutRow } from "src/context/shortcut-help-contex
 import { useFullscreen } from "src/utils/use-fullscreen";
 import { useShortcuts } from "src/utils/use-shortcuts";
 import { useWatchListAlarms } from "src/utils/use-watch-list-alarms";
+import type { ReportStart } from "src/utils/diagnostics";
+
+/** Where a Bug report from the menu starts */
+const MENU_START: ReportStart = { kind: "menu" };
 
 export const Route = createFileRoute("/_menu")({
     component: RouteComponent,
@@ -71,6 +77,7 @@ function RouteComponent() {
     const [t] = useTranslation("menu");
     const [tg] = useTranslation();
     const [helping, setHelping] = useState(false);
+    const [reporting, setReporting] = useState(false);
 
     const navigate = useNavigate();
 
@@ -238,6 +245,10 @@ function RouteComponent() {
                                                 <UserIcon />
                                                 <DropdownLabel>{t("label.profile-settings")}</DropdownLabel>
                                             </DropdownItem>
+                                            <DropdownItem onClick={() => setReporting(true)}>
+                                                <BugAntIcon />
+                                                <DropdownLabel>{tg("button.report-bug")}</DropdownLabel>
+                                            </DropdownItem>
                                             <DropdownItem
                                                 onClick={async () => {
                                                     await me.logout();
@@ -335,6 +346,10 @@ function RouteComponent() {
                                                 <UserIcon />
                                                 <SidebarLabel>{t("label.profile-settings")}</SidebarLabel>
                                             </SidebarItem>
+                                            <SidebarItem onClick={() => setReporting(true)}>
+                                                <BugAntIcon />
+                                                <SidebarLabel>{tg("button.report-bug")}</SidebarLabel>
+                                            </SidebarItem>
                                             <SidebarItem
                                                 onClick={async () => {
                                                     await me.logout();
@@ -365,6 +380,9 @@ function RouteComponent() {
                     </Suspense>
                 </StackedLayout>
                 <ShortcutHelpDialog open={helping} shortcuts={shortcuts} onClose={() => setHelping(false)} />
+                {loggedIn ? (
+                    <BugReportDialog open={reporting} onClose={() => setReporting(false)} start={MENU_START} />
+                ) : null}
             </ShortcutHelpProvider>
         </ChromeProvider>
     );

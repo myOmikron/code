@@ -1,5 +1,6 @@
 //! Helpers that are neither http handlers nor database models
 
+pub mod bakery;
 pub mod lock;
 pub mod mail;
 pub mod schedule;

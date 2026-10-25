@@ -58,6 +58,12 @@ export interface AdminItem {
      */
     additional_info?: string | null;
     /**
+     * The number the Bakery orders the item under, unset if it has none
+     * @type {string}
+     * @memberof AdminItem
+     */
+    bakery_article_number?: string | null;
+    /**
      * The category the item belongs to
      * @type {string}
      * @memberof AdminItem
@@ -204,6 +210,25 @@ export interface ApiErrorResponse {
      * @memberof ApiErrorResponse
      */
     trace_id: string;
+}
+/**
+ * Where the Bakery order goes at the Dispatch
+ * @export
+ * @interface BakeryAddresses
+ */
+export interface BakeryAddresses {
+    /**
+     * The Bakery's mail address; no pickup day is Dispatched while unset
+     * @type {string}
+     * @memberof BakeryAddresses
+     */
+    bakery_email?: string | null;
+    /**
+     * The Nachbarschaftshilfe's mail address, in CC of the Bakery order
+     * @type {string}
+     * @memberof BakeryAddresses
+     */
+    copy_email?: string | null;
 }
 /**
  * Request to create or update a category
@@ -373,6 +398,14 @@ export interface FullOrder {
      */
     created_at: string;
     /**
+     * Whether the order's pickup day was Dispatched: the Bakery has it
+     * 
+     * Staff may still cancel the order; what went to the Bakery stays as it is.
+     * @type {boolean}
+     * @memberof FullOrder
+     */
+    dispatched: boolean;
+    /**
      * Whether the customer wants to pick the order up early in the day
      * @type {boolean}
      * @memberof FullOrder
@@ -397,7 +430,7 @@ export interface FullOrder {
      */
     last_name: string;
     /**
-     * Whether the order is frozen: the bakery has it, the customer cannot cancel
+     * Whether the order is frozen: the customer can no longer cancel it
      * @type {boolean}
      * @memberof FullOrder
      */
@@ -527,6 +560,14 @@ export interface ItemRequest {
      * @memberof ItemRequest
      */
     additional_info?: string | null;
+    /**
+     * The number the Bakery orders the item under (at most 32 bytes after trimming)
+     * 
+     * Surrounding whitespace is trimmed; blank or unset means the item has none.
+     * @type {string}
+     * @memberof ItemRequest
+     */
+    bakery_article_number?: string | null;
     /**
      * The category the item belongs to
      * @type {string}
@@ -730,6 +771,25 @@ export interface NewsPostRequest {
 }
 
 /**
+ * What keeps a frozen pickup day from being Dispatched
+ * 
+ * Reported from the freeze on, not only once the Dispatch is due, so Verkauf learns during the Review Window that the order will not go out.
+ * @export
+ */
+export const NotDispatchedReason = {
+    /**
+    * Nothing: the day is open, waits for its Dispatch time, was Dispatched or called off
+    */
+    None: 'None',
+    /**
+    * No Bakery address is set, so the Dispatch waits for one
+    */
+    NoBakeryAddress: 'NoBakeryAddress'
+} as const;
+export type NotDispatchedReason = typeof NotDispatchedReason[keyof typeof NotDispatchedReason];
+
+
+/**
  * The language every mail about an order is written in
  * 
  * Taken from the UI the customer ordered in and stored with the order: the confirmation mail goes out at the deadline, without a request to ask.
@@ -837,12 +897,6 @@ export interface PickupDayChangeResponse {
      */
     cancelled_orders: number;
     /**
-     * How many confirmation mails were queued by freezing the day
-     * @type {number}
-     * @memberof PickupDayChangeResponse
-     */
-    confirmed_orders: number;
-    /**
      * The day after the change
      * @type {AdminPickupDay}
      * @memberof PickupDayChangeResponse
@@ -880,6 +934,14 @@ export interface PickupWindowResponse {
  * @interface ProcurementPosition
  */
 export interface ProcurementPosition {
+    /**
+     * The distinct Bakery Article Numbers of the line's Items, sorted
+     * 
+     * Read live from the Items: deleted Items and Items without a number add none.
+     * @type {Array<string>}
+     * @memberof ProcurementPosition
+     */
+    bakery_article_numbers: Array<string>;
     /**
      * Item name (snapshot at order time)
      * @type {string}
@@ -924,11 +986,29 @@ export interface ProcurementSummary {
      */
     deadline: string;
     /**
-     * Whether the day is frozen — only then the list is final
+     * The point in time the day is Dispatched: its Deadline plus the Review Window
+     * @type {string}
+     * @memberof ProcurementSummary
+     */
+    dispatch_due: string;
+    /**
+     * When the day was Dispatched; from then on the list is final
+     * @type {string}
+     * @memberof ProcurementSummary
+     */
+    dispatched_at?: string | null;
+    /**
+     * Whether the day is frozen: customers can no longer order or cancel
      * @type {boolean}
      * @memberof ProcurementSummary
      */
     locked: boolean;
+    /**
+     * Why a frozen day is not Dispatched (yet)
+     * @type {NotDispatchedReason}
+     * @memberof ProcurementSummary
+     */
+    not_dispatched_reason: NotDispatchedReason;
     /**
      * How many orders the summary covers (cancelled ones excluded)
      * @type {number}
@@ -954,6 +1034,8 @@ export interface ProcurementSummary {
      */
     total_cents: number;
 }
+
+
 /**
  * A category as shown in the public shop
  * @export
@@ -1184,6 +1266,12 @@ export interface ScheduleSchema {
      * @memberof ScheduleSchema
      */
     pickup_weekday: ScheduleWeekday;
+    /**
+     * Minutes from a pickup day's Deadline to its Dispatch, 0 or more
+     * @type {number}
+     * @memberof ScheduleSchema
+     */
+    review_window_minutes: number;
 }
 
 

@@ -289,7 +289,7 @@ pub async fn create_order(
         .collect();
     if let Err(error) = mail::send_order_received(&OrderMail {
         pickup_code: &pickup_code,
-        customer_name: &customer_name,
+        customer_name,
         email: email.as_deref(),
         language: request.language,
         pickup_date: pickup_day.pickup_date,

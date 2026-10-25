@@ -16,6 +16,7 @@ import * as runtime from '../runtime';
 import type {
     AdminNewsPost,
     ApiErrorResponse,
+    BakeryAddresses,
     CategoryRequest,
     CreateAccountRequest,
     CreateOrderRequest,
@@ -165,6 +166,10 @@ export interface StartRegistrationOperationRequest {
 export interface UpdateAccountOperationRequest {
     uuid: string;
     UpdateAccountRequest?: UpdateAccountRequest;
+}
+
+export interface UpdateBakeryAddressesRequest {
+    BakeryAddresses?: BakeryAddresses;
 }
 
 export interface UpdateCategoryRequest {
@@ -931,6 +936,45 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for getBakeryAddresses without sending the request
+     */
+    async getBakeryAddressesRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/admin/bakery`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Get where the Bakery order goes at the Dispatch
+     * Get where the Bakery order goes at the Dispatch
+     */
+    async getBakeryAddressesRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BakeryAddresses>> {
+        const requestOptions = await this.getBakeryAddressesRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Get where the Bakery order goes at the Dispatch
+     * Get where the Bakery order goes at the Dispatch
+     */
+    async getBakeryAddresses(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BakeryAddresses> {
+        const response = await this.getBakeryAddressesRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for getCategories without sending the request
      */
     async getCategoriesRequestOpts(): Promise<runtime.RequestOpts> {
@@ -1294,7 +1338,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * What has to be procured for one pickup day  The bakery order: every position of every non-cancelled order of that day, summed per item. Final once the day is frozen.
+     * What has to be procured for one pickup day  The bakery order: every position of every non-cancelled order of that day, summed per item. Final once the day is Dispatched.
      * What has to be procured for one pickup day
      */
     async getProcurementSummaryRaw(requestParameters: GetProcurementSummaryRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ProcurementSummary>> {
@@ -1305,7 +1349,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * What has to be procured for one pickup day  The bakery order: every position of every non-cancelled order of that day, summed per item. Final once the day is frozen.
+     * What has to be procured for one pickup day  The bakery order: every position of every non-cancelled order of that day, summed per item. Final once the day is Dispatched.
      * What has to be procured for one pickup day
      */
     async getProcurementSummary(requestParameters: GetProcurementSummaryRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ProcurementSummary> {
@@ -1700,7 +1744,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Freeze a pickup day right now, before its deadline  Runs the same path the deadline job runs, confirmation mails included.
+     * Freeze a pickup day right now, before its deadline  Runs the same path the deadline job runs. The Dispatch stays where it is: the confirmations go out at the Deadline plus the Review Window.
      * Freeze a pickup day right now, before its deadline
      */
     async lockPickupDayRaw(requestParameters: LockPickupDayRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PickupDayChangeResponse>> {
@@ -1711,7 +1755,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Freeze a pickup day right now, before its deadline  Runs the same path the deadline job runs, confirmation mails included.
+     * Freeze a pickup day right now, before its deadline  Runs the same path the deadline job runs. The Dispatch stays where it is: the confirmations go out at the Deadline plus the Review Window.
      * Freeze a pickup day right now, before its deadline
      */
     async lockPickupDay(requestParameters: LockPickupDayRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PickupDayChangeResponse> {
@@ -2103,6 +2147,48 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for updateBakeryAddresses without sending the request
+     */
+    async updateBakeryAddressesRequestOpts(requestParameters: UpdateBakeryAddressesRequest): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/admin/bakery`;
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['BakeryAddresses'],
+        };
+    }
+
+    /**
+     * Change the Bakery and copy address  An empty value unsets the address. Without a Bakery address no pickup day is Dispatched; setting one Dispatches the waiting days on the next tick.
+     * Change the Bakery and copy address
+     */
+    async updateBakeryAddressesRaw(requestParameters: UpdateBakeryAddressesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BakeryAddresses>> {
+        const requestOptions = await this.updateBakeryAddressesRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Change the Bakery and copy address  An empty value unsets the address. Without a Bakery address no pickup day is Dispatched; setting one Dispatches the waiting days on the next tick.
+     * Change the Bakery and copy address
+     */
+    async updateBakeryAddresses(requestParameters: UpdateBakeryAddressesRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BakeryAddresses> {
+        const response = await this.updateBakeryAddressesRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for updateCategory without sending the request
      */
     async updateCategoryRequestOpts(requestParameters: UpdateCategoryRequest): Promise<runtime.RequestOpts> {
@@ -2372,7 +2458,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Change an order\'s status  Allowed transitions: `Open -> Ready -> PickedUp`; `Open | Ready -> Cancelled`.
+     * Change an order\'s status  Allowed transitions: `Open -> Ready -> PickedUp`; `Open | Ready -> Cancelled`. A cancelled order\'s customer gets a mail, also after the Dispatch.
      * Change an order\'s status
      */
     async updateOrderStatusRaw(requestParameters: UpdateOrderStatusOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FullOrder>> {
@@ -2383,7 +2469,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Change an order\'s status  Allowed transitions: `Open -> Ready -> PickedUp`; `Open | Ready -> Cancelled`.
+     * Change an order\'s status  Allowed transitions: `Open -> Ready -> PickedUp`; `Open | Ready -> Cancelled`. A cancelled order\'s customer gets a mail, also after the Dispatch.
      * Change an order\'s status
      */
     async updateOrderStatus(requestParameters: UpdateOrderStatusOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FullOrder> {

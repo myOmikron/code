@@ -17,9 +17,6 @@ nats-subjects = { workspace = true }
 # Protobuf (de)serialization of NATS payloads
 prost = { workspace = true }
 
-# NATS client, for the `PublishError` the mail helper returns
-async-nats = { workspace = true }
-
 # Cli parser
 clap = { workspace = true }
 
