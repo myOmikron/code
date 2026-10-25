@@ -160,6 +160,9 @@ fn only_rulesets_fitting_the_table_size_are_taken() {
             let mut request = settings("Private");
             request["table_size"] = json!(table_size);
             request["ruleset"] = json!(ruleset);
+            if table_size == 2 {
+                request["best_of"] = json!("Three");
+            }
             let body = client
                 .json(Method::POST, &api("tournaments"), &request)
                 .await
@@ -325,6 +328,7 @@ fn the_owner_changes_the_settings() {
         request["name"] = json!("Saturday Duels");
         request["table_size"] = json!(2);
         request["ruleset"] = json!("Mtr");
+        request["best_of"] = json!("Three");
         request["format"] = json!("modern");
         request["location"] = Value::Null;
 
