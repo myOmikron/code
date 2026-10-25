@@ -4442,7 +4442,7 @@ dependencies = [
  "prometheus",
  "prost",
  "prost-types",
- "rand 0.8.7",
+ "rand 0.10.3",
  "reqwest 0.13.5",
  "rustls",
  "secrecy",
