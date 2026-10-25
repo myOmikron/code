@@ -33,6 +33,18 @@ describe("searchPrintings", () => {
         expect(url.searchParams.get("dir")).toBe("auto");
     });
 
+    it("lets a typed prefer directive override a default one in front of it", async () => {
+        const fetch = vi.fn(
+            async (_input: RequestInfo | URL) => new Response(JSON.stringify({ data: [] }), { status: 200 }),
+        );
+        vi.stubGlobal("fetch", fetch);
+
+        await searchPrintings("prefer:newest f:commander lightning bolt prefer:oldest", undefined, "cards");
+
+        const url = new URL(String(fetch.mock.calls[0]?.[0]));
+        expect(url.searchParams.get("q")).toBe("f:commander lightning bolt prefer:oldest");
+    });
+
     it("returns Scryfall's cursor for the next result page", async () => {
         const nextPage = "https://api.scryfall.com/cards/search?q=t%3Ainstant&page=2";
         const fetch = vi.fn(

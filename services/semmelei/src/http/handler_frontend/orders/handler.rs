@@ -1,5 +1,6 @@
 //! Handlers of the staff order endpoints
 
+use std::collections::BTreeSet;
 use std::collections::HashMap;
 
 use galvyn::core::Module;
@@ -15,11 +16,14 @@ use galvyn::patch;
 use galvyn::rorm::Database;
 use galvyn::rorm::db::Executor;
 use time::OffsetDateTime;
+use tracing::error;
+use tracing::info;
 
 use crate::http::handler_frontend::orders::schema::FullOrder;
 use crate::http::handler_frontend::orders::schema::FullOrderPosition;
 use crate::http::handler_frontend::orders::schema::ListOrdersQuery;
 use crate::http::handler_frontend::orders::schema::ListOrdersResponse;
+use crate::http::handler_frontend::orders::schema::NotDispatchedReason;
 use crate::http::handler_frontend::orders::schema::ProcurementPosition;
 use crate::http::handler_frontend::orders::schema::ProcurementSummary;
 use crate::http::handler_frontend::orders::schema::UpdateOrderItemPackedRequest;
@@ -31,12 +35,17 @@ use crate::models::OrderStatus;
 use crate::models::OrderUuid;
 use crate::models::PickupDay;
 use crate::models::PickupDayUuid;
+use crate::models::ShopSettings;
+use crate::utils::bakery;
+use crate::utils::mail;
+use crate::utils::mail::MailPosition;
+use crate::utils::mail::OrderMail;
 use crate::utils::schedule;
 
 /// Convert an [`Order`] and its positions into the staff schema
 async fn full_order(
     exe: impl Executor<'_>,
-    order: Order,
+    order: &Order,
     pickup_day: &PickupDay,
     now: OffsetDateTime,
 ) -> ApiResult<FullOrder> {
@@ -59,11 +68,12 @@ async fn full_order(
         status: order.status,
         pickup_date: SchemaDate(pickup_day.pickup_date),
         locked: pickup_day.is_locked(now),
-        first_name: order.first_name.map(|n| n.to_string()),
+        dispatched: pickup_day.dispatched_at.is_some(),
+        first_name: order.first_name.as_ref().map(|n| n.to_string()),
         last_name: order.last_name.to_string(),
-        phone: order.phone.map(|p| p.to_string()),
-        email: order.email.map(|e| e.to_string()),
-        note: order.note.map(|n| n.to_string()),
+        phone: order.phone.as_ref().map(|p| p.to_string()),
+        email: order.email.as_ref().map(|e| e.to_string()),
+        note: order.note.as_ref().map(|n| n.to_string()),
         early_pickup: order.early_pickup,
         positions,
         total_cents,
@@ -109,7 +119,7 @@ pub async fn list_orders(
         {
             continue;
         }
-        result.push(full_order(&mut tx, order, day, now).await?);
+        result.push(full_order(&mut tx, &order, day, now).await?);
     }
     tx.commit().await?;
 
@@ -128,7 +138,7 @@ pub async fn get_order_detail(Path(uuid): Path<OrderUuid>) -> ApiResult<ApiJson<
         .await?
         .ok_or(ApiError::bad_request("Unknown order"))?;
     let day = pickup_day_of(&mut tx, &order).await?;
-    let full = full_order(&mut tx, order, &day, now).await?;
+    let full = full_order(&mut tx, &order, &day, now).await?;
     tx.commit().await?;
     Ok(ApiJson(full))
 }
@@ -136,7 +146,7 @@ pub async fn get_order_detail(Path(uuid): Path<OrderUuid>) -> ApiResult<ApiJson<
 /// What has to be procured for one pickup day
 ///
 /// The bakery order: every position of every non-cancelled order of that day,
-/// summed per item. Final once the day is frozen.
+/// summed per item. Final once the day is Dispatched.
 #[get("/pickup-days/{date}/summary")]
 pub async fn get_procurement_summary(
     Path(date): Path<SchemaDate>,
@@ -149,6 +159,7 @@ pub async fn get_procurement_summary(
     let day = PickupDay::get_by_pickup_date(&mut tx, date)
         .await?
         .ok_or(ApiError::bad_request("Unknown pickup day"))?;
+    let settings = ShopSettings::get(&mut tx).await?;
 
     let orders: Vec<Order> = Order::get_by_pickup_day(&mut tx, day.uuid)
         .await?
@@ -156,27 +167,40 @@ pub async fn get_procurement_summary(
         .filter(|order| order.status != OrderStatus::Cancelled)
         .collect();
 
+    let numbers = bakery::article_numbers(&mut tx).await?;
+
     // Sum per item name — the snapshot, not the catalog entry: a renamed or
     // deleted item must not change what an existing order asked for.
-    let mut totals: HashMap<String, ProcurementPosition> = HashMap::new();
+    let mut totals: HashMap<String, (ProcurementPosition, BTreeSet<String>)> = HashMap::new();
     for order in &orders {
         for position in OrderItem::get_by_order(&mut tx, order.uuid).await? {
-            let entry = totals
-                .entry(position.name.to_string())
-                .or_insert(ProcurementPosition {
+            let (entry, line_numbers) = totals.entry(position.name.to_string()).or_insert((
+                ProcurementPosition {
                     name: position.name.to_string(),
                     total_quantity: 0,
                     order_count: 0,
                     price_cents: position.price_cents,
-                });
+                    bakery_article_numbers: Vec::new(),
+                },
+                BTreeSet::new(),
+            ));
             entry.total_quantity += position.quantity;
             entry.order_count += 1;
+            if let Some(number) = position.item.and_then(|item| numbers.get(&item)) {
+                line_numbers.insert(number.clone());
+            }
         }
     }
 
     tx.commit().await?;
 
-    let mut positions: Vec<ProcurementPosition> = totals.into_values().collect();
+    let mut positions: Vec<ProcurementPosition> = totals
+        .into_values()
+        .map(|(mut position, line_numbers)| {
+            position.bakery_article_numbers = line_numbers.into_iter().collect();
+            position
+        })
+        .collect();
     // Most units first, ties alphabetically — the list is read while packing
     positions.sort_by(|a, b| {
         b.total_quantity
@@ -188,9 +212,18 @@ pub async fn get_procurement_summary(
         .map(|p| p.price_cents * p.total_quantity)
         .sum();
 
+    let not_dispatched_reason = if day.awaits_bakery_address(&settings, now) {
+        NotDispatchedReason::NoBakeryAddress
+    } else {
+        NotDispatchedReason::None
+    };
+
     Ok(ApiJson(ProcurementSummary {
         pickup_date: SchemaDate(day.pickup_date),
         deadline: SchemaDateTime(day.deadline_at),
+        dispatch_due: SchemaDateTime(schedule::dispatch_due(&settings, day.deadline_at)),
+        dispatched_at: day.dispatched_at.map(SchemaDateTime),
+        not_dispatched_reason,
         locked: day.is_locked(now),
         closed: day.closed,
         order_count: orders.len() as i64,
@@ -202,6 +235,7 @@ pub async fn get_procurement_summary(
 /// Change an order's status
 ///
 /// Allowed transitions: `Open -> Ready -> PickedUp`; `Open | Ready -> Cancelled`.
+/// A cancelled order's customer gets a mail, also after the Dispatch.
 #[patch("/orders/{uuid}")]
 pub async fn update_order_status(
     Path(uuid): Path<OrderUuid>,
@@ -221,8 +255,26 @@ pub async fn update_order_status(
     order.status = request.status;
 
     let day = pickup_day_of(&mut tx, &order).await?;
-    let full = full_order(&mut tx, order, &day, schedule::now()).await?;
+    let positions: Vec<MailPosition> = OrderItem::get_by_order(&mut tx, order.uuid)
+        .await?
+        .iter()
+        .map(MailPosition::from)
+        .collect();
+    let full = full_order(&mut tx, &order, &day, schedule::now()).await?;
     tx.commit().await?;
+
+    if request.status == OrderStatus::Cancelled {
+        info!(order.pickup_code = %order.pickup_code, "Order cancelled by staff");
+        let mail = OrderMail::for_order(&order, &day, &positions);
+        if let Err(error) = mail::send_order_cancelled_by_staff(&mail).await {
+            error!(
+                error = %error,
+                order.pickup_code = %order.pickup_code,
+                "Failed to queue the cancellation mail"
+            );
+        }
+    }
+
     Ok(ApiJson(full))
 }
 

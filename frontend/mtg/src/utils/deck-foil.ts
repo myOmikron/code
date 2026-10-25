@@ -8,9 +8,7 @@
  */
 
 import type { CardFinish, DeckCardResponse } from "src/api/generated";
-
-/** How Scryfall spells the finishes */
-const NONFOIL = "nonfoil";
+import { defaultFoil } from "src/utils/default-finish";
 
 /** The shiny ones, in the order they are preferred */
 const SHINY = ["foil", "etched"];
@@ -34,8 +32,7 @@ export function canFoil(card: DeckCardResponse): boolean {
  * @returns whether there is nothing else to sleeve
  */
 export function onlyFoil(card: DeckCardResponse): boolean {
-    const finishes = card.card?.finishes ?? [];
-    return finishes.length > 0 && !finishes.includes(NONFOIL);
+    return defaultFoil(card.card?.finishes ?? []);
 }
 
 /**
