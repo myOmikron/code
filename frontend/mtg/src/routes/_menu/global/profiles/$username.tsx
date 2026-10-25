@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import { PublicCollectionTile } from "src/components/public-collection-tile";
 import { PublicDeckTile } from "src/components/public-deck-tile";
+import { TournamentList } from "src/components/tournament-list";
 import i18n from "src/i18n";
 import { formatDate } from "src/utils/format";
 import { isNotPublic } from "src/utils/public-page";
@@ -17,6 +18,7 @@ export const Route = createFileRoute("/_menu/global/profiles/$username")({
             i18n.loadNamespaces("deck"),
             i18n.loadNamespaces("collection"),
             i18n.loadNamespaces("global"),
+            i18n.loadNamespaces("tournament"),
         ]);
         try {
             const [profile] = await Promise.all([Api.explore.profiles.get(params.username), strings]);
@@ -56,7 +58,7 @@ function RouteComponent() {
         );
     }
 
-    const empty = profile.decks.length === 0 && profile.collections.length === 0;
+    const empty = profile.decks.length === 0 && profile.collections.length === 0 && profile.tournaments.length === 0;
 
     return (
         <div className={"flex flex-col gap-8"}>
@@ -100,6 +102,16 @@ function RouteComponent() {
                                     <PublicCollectionTile key={collection.uuid} collection={collection} />
                                 ))}
                             </ul>
+                        </div>
+                    )}
+
+                    {profile.tournaments.length > 0 && (
+                        <div className={"flex flex-col gap-4"}>
+                            <div className={"flex flex-col gap-1"}>
+                                <Subheading>{t("heading.profile-tournaments")}</Subheading>
+                                <Text>{t("label.tournament-count", { count: profile.tournaments.length })}</Text>
+                            </div>
+                            <TournamentList tournaments={profile.tournaments} showOwner={true} />
                         </div>
                     )}
                 </>

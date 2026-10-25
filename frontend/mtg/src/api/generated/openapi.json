@@ -9566,9 +9566,53 @@
         },
         "/api/frontend/v1/tournaments": {
             "get": {
-                "summary": "The public Tournaments, latest start first",
-                "description": "The public Tournaments, latest start first",
+                "summary": "The public Tournaments, narrowed down by the filters given",
+                "description": "The public Tournaments, narrowed down by the filters given\n\nUpcoming ones come soonest first, past and unfiltered ones latest first.",
                 "operationId": "list_public_tournaments",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "format",
+                        "schema": {
+                            "nullable": true,
+                            "description": "Only Tournaments of this format, a slug from the deck formats",
+                            "allOf": [
+                                {
+                                    "$ref": "#/components/schemas/MaxStr_32"
+                                }
+                            ]
+                        },
+                        "style": "form"
+                    },
+                    {
+                        "in": "query",
+                        "name": "location",
+                        "schema": {
+                            "nullable": true,
+                            "description": "Only Tournaments whose location contains this text, case ignored",
+                            "allOf": [
+                                {
+                                    "$ref": "#/components/schemas/MaxStr_255"
+                                }
+                            ]
+                        },
+                        "style": "form"
+                    },
+                    {
+                        "in": "query",
+                        "name": "timeframe",
+                        "schema": {
+                            "nullable": true,
+                            "description": "Only upcoming (soonest first) or only past (latest first) Tournaments",
+                            "allOf": [
+                                {
+                                    "$ref": "#/components/schemas/Timeframe"
+                                }
+                            ]
+                        },
+                        "style": "form"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "",
@@ -9938,8 +9982,8 @@
         },
         "/api/frontend/v1/tournaments/mine": {
             "get": {
-                "summary": "The Tournaments the logged-in Account owns, latest start first",
-                "description": "The Tournaments the logged-in Account owns, latest start first",
+                "summary": "The Tournaments the logged-in Account organizes and the ones it plays in",
+                "description": "The Tournaments the logged-in Account organizes and the ones it plays in\n\nPrivate and unlisted ones included: the Account has its part in each.",
                 "operationId": "get_my_tournaments",
                 "responses": {
                     "200": {
@@ -9947,7 +9991,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/ListTournamentsResponse"
+                                    "$ref": "#/components/schemas/MyTournamentsResponse"
                                 }
                             }
                         }
@@ -17303,6 +17347,30 @@
                     "results"
                 ]
             },
+            "MyTournamentsResponse": {
+                "description": "The Tournaments an Account runs and the ones it plays in",
+                "type": "object",
+                "properties": {
+                    "organizing": {
+                        "description": "The Tournaments it organizes, as Owner or Co-organizer, latest start first",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/TournamentSummaryResponse"
+                        }
+                    },
+                    "participating": {
+                        "description": "The Tournaments it takes part in as a Participant, latest start first",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/TournamentSummaryResponse"
+                        }
+                    }
+                },
+                "required": [
+                    "organizing",
+                    "participating"
+                ]
+            },
             "NewCollectionEntry": {
                 "description": "A stack to file into a collection",
                 "type": "object",
@@ -17997,6 +18065,13 @@
                             "$ref": "#/components/schemas/PublicDeckResponse"
                         }
                     },
+                    "tournaments": {
+                        "description": "The public Tournaments it owns or plays in, latest start first",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/TournamentSummaryResponse"
+                        }
+                    },
                     "username": {
                         "description": "The account's login handle and display name",
                         "type": "string"
@@ -18006,6 +18081,7 @@
                     "collections",
                     "created_at",
                     "decks",
+                    "tournaments",
                     "username"
                 ]
             },
@@ -20115,6 +20191,25 @@
                         }
                     }
                 }
+            },
+            "Timeframe": {
+                "description": "Whether a Tournament is still ahead or already over\n\nA running Tournament is upcoming and a finished or cancelled one is past, whatever their start. One still in Registration is upcoming until its start has passed.",
+                "oneOf": [
+                    {
+                        "description": "Not started yet or running now, the soonest start first",
+                        "type": "string",
+                        "enum": [
+                            "Upcoming"
+                        ]
+                    },
+                    {
+                        "description": "Over, or never started although its start has passed, the latest start first",
+                        "type": "string",
+                        "enum": [
+                            "Past"
+                        ]
+                    }
+                ]
             },
             "TimelinePointResponse": {
                 "description": "One point of the acquisition timeline",

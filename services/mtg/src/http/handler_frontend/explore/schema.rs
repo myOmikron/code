@@ -6,6 +6,7 @@ use serde::Serialize;
 
 use crate::http::handler_frontend::collections::schema::RarityCountsResponse;
 use crate::http::handler_frontend::decks::schema::DeckCommanderResponse;
+use crate::http::handler_frontend::tournaments::schema::TournamentSummaryResponse;
 use crate::models::collection::CollectionUuid;
 use crate::models::collection::listing::CollectionSummary;
 use crate::models::deck::DeckUuid;
@@ -127,6 +128,8 @@ pub struct PublicProfileResponse {
     pub decks: Vec<PublicDeckResponse>,
     /// The collections it put on show, alphabetically
     pub collections: Vec<PublicCollectionResponse>,
+    /// The public Tournaments it owns or plays in, latest start first
+    pub tournaments: Vec<TournamentSummaryResponse>,
 }
 
 impl From<PublicDeck> for PublicDeckResponse {

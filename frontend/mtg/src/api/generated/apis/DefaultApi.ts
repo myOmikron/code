@@ -114,6 +114,7 @@ import type {
     MpcFillCardbacksResponse,
     MpcFillSearchRequest,
     MpcFillSearchResponse,
+    MyTournamentsResponse,
     PlayerCandidatesResponse,
     PriceHistoryResponse,
     PrintingLanguagesResponse,
@@ -167,6 +168,7 @@ import type {
     StartRegistrationRequest,
     SwapDeckCardRequest,
     TakeDeckCardsRequest,
+    Timeframe,
     TournamentResponse,
     TournamentSettingsRequest,
     UpdateCollectionEntryRequest,
@@ -992,6 +994,12 @@ export interface ListPublicDeckCardsRequest {
      * 
      */
     deck: string;
+}
+
+export interface ListPublicTournamentsRequest {
+    format?: string | null;
+    location?: string | null;
+    timeframe?: Timeframe | null;
 }
 
 export interface ListSharedCollectionCardsRequest {
@@ -5230,10 +5238,10 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * The Tournaments the logged-in Account owns, latest start first
-     * The Tournaments the logged-in Account owns, latest start first
+     * The Tournaments the logged-in Account organizes and the ones it plays in  Private and unlisted ones included: the Account has its part in each.
+     * The Tournaments the logged-in Account organizes and the ones it plays in
      */
-    async getMyTournamentsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListTournamentsResponse>> {
+    async getMyTournamentsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MyTournamentsResponse>> {
         const requestOptions = await this.getMyTournamentsRequestOpts();
         const response = await this.request(requestOptions, initOverrides);
 
@@ -5241,10 +5249,10 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * The Tournaments the logged-in Account owns, latest start first
-     * The Tournaments the logged-in Account owns, latest start first
+     * The Tournaments the logged-in Account organizes and the ones it plays in  Private and unlisted ones included: the Account has its part in each.
+     * The Tournaments the logged-in Account organizes and the ones it plays in
      */
-    async getMyTournaments(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListTournamentsResponse> {
+    async getMyTournaments(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MyTournamentsResponse> {
         const response = await this.getMyTournamentsRaw(initOverrides);
         return await response.value();
     }
@@ -6529,8 +6537,20 @@ export class DefaultApi extends runtime.BaseAPI {
     /**
      * Creates request options for listPublicTournaments without sending the request
      */
-    async listPublicTournamentsRequestOpts(): Promise<runtime.RequestOpts> {
+    async listPublicTournamentsRequestOpts(requestParameters: ListPublicTournamentsRequest): Promise<runtime.RequestOpts> {
         const queryParameters: any = {};
+
+        if (requestParameters['format'] != null) {
+            queryParameters['format'] = requestParameters['format'];
+        }
+
+        if (requestParameters['location'] != null) {
+            queryParameters['location'] = requestParameters['location'];
+        }
+
+        if (requestParameters['timeframe'] != null) {
+            queryParameters['timeframe'] = requestParameters['timeframe'];
+        }
 
         const headerParameters: runtime.HTTPHeaders = {};
 
@@ -6546,22 +6566,22 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * The public Tournaments, latest start first
-     * The public Tournaments, latest start first
+     * The public Tournaments, narrowed down by the filters given  Upcoming ones come soonest first, past and unfiltered ones latest first.
+     * The public Tournaments, narrowed down by the filters given
      */
-    async listPublicTournamentsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListTournamentsResponse>> {
-        const requestOptions = await this.listPublicTournamentsRequestOpts();
+    async listPublicTournamentsRaw(requestParameters: ListPublicTournamentsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListTournamentsResponse>> {
+        const requestOptions = await this.listPublicTournamentsRequestOpts(requestParameters);
         const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response);
     }
 
     /**
-     * The public Tournaments, latest start first
-     * The public Tournaments, latest start first
+     * The public Tournaments, narrowed down by the filters given  Upcoming ones come soonest first, past and unfiltered ones latest first.
+     * The public Tournaments, narrowed down by the filters given
      */
-    async listPublicTournaments(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListTournamentsResponse> {
-        const response = await this.listPublicTournamentsRaw(initOverrides);
+    async listPublicTournaments(requestParameters: ListPublicTournamentsRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListTournamentsResponse> {
+        const response = await this.listPublicTournamentsRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

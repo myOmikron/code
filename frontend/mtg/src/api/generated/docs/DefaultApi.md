@@ -78,7 +78,7 @@ All URIs are relative to *http://localhost*
 | [**getDeckSourcing**](DefaultApi.md#getdecksourcing) | **GET** /api/frontend/v1/decks/{deck}/sourcing | What the deck asks for, what is in it, and where the rest could come from |
 | [**getDecksSharedWithMe**](DefaultApi.md#getdeckssharedwithme) | **GET** /api/frontend/v1/decks/shared-with-me | The decks other Accounts named the caller on, alphabetically by name |
 | [**getMpcfillCardbacks**](DefaultApi.md#getmpcfillcardbacks) | **GET** /api/frontend/v1/mpcfill/cardbacks | The card backs MPCFill offers |
-| [**getMyTournaments**](DefaultApi.md#getmytournaments) | **GET** /api/frontend/v1/tournaments/mine | The Tournaments the logged-in Account owns, latest start first |
+| [**getMyTournaments**](DefaultApi.md#getmytournaments) | **GET** /api/frontend/v1/tournaments/mine | The Tournaments the logged-in Account organizes and the ones it plays in |
 | [**getPendingOidcLogin**](DefaultApi.md#getpendingoidclogin) | **GET** /api/frontend/v1/auth/oidc/pending | The session\&#39;s OIDC login waiting for its username step |
 | [**getPriceHistory**](DefaultApi.md#getpricehistory) | **GET** /api/frontend/v1/printings/{printing}/price-history | What a card has cost over time |
 | [**getPrintingLanguages**](DefaultApi.md#getprintinglanguages) | **GET** /api/frontend/v1/printings/{printing}/languages | Every language the same card exists in |
@@ -105,7 +105,7 @@ All URIs are relative to *http://localhost*
 | [**listPasskeys**](DefaultApi.md#listpasskeys) | **GET** /api/frontend/v1/accounts/passkeys | List the passkeys of the logged-in account |
 | [**listPublicCollectionCards**](DefaultApi.md#listpubliccollectioncards) | **GET** /api/frontend/v1/explore/collections/{collection}/cards | List a page of a public collection\&#39;s cards, sorted and filtered |
 | [**listPublicDeckCards**](DefaultApi.md#listpublicdeckcards) | **GET** /api/frontend/v1/explore/decks/{deck}/cards | Every card of a public deck, with the catalog data and the tags on it |
-| [**listPublicTournaments**](DefaultApi.md#listpublictournaments) | **GET** /api/frontend/v1/tournaments | The public Tournaments, latest start first |
+| [**listPublicTournaments**](DefaultApi.md#listpublictournaments) | **GET** /api/frontend/v1/tournaments | The public Tournaments, narrowed down by the filters given |
 | [**listSharedCollectionCards**](DefaultApi.md#listsharedcollectioncards) | **GET** /api/frontend/v1/shared/collections/{token}/cards | List a page of a shared collection\&#39;s cards, sorted and filtered |
 | [**listSharedDeckCards**](DefaultApi.md#listshareddeckcards) | **GET** /api/frontend/v1/shared/decks/{token}/cards | Every card of a shared deck, with the catalog data and the tags on it |
 | [**listSharedTournamentParticipants**](DefaultApi.md#listsharedtournamentparticipants) | **GET** /api/frontend/v1/shared/tournaments/{token}/participants | The Participants of the Tournament a share link points at |
@@ -5377,11 +5377,11 @@ No authorization required
 
 ## getMyTournaments
 
-> ListTournamentsResponse getMyTournaments()
+> MyTournamentsResponse getMyTournaments()
 
-The Tournaments the logged-in Account owns, latest start first
+The Tournaments the logged-in Account organizes and the ones it plays in
 
-The Tournaments the logged-in Account owns, latest start first
+The Tournaments the logged-in Account organizes and the ones it plays in  Private and unlisted ones included: the Account has its part in each.
 
 ### Example
 
@@ -5414,7 +5414,7 @@ This endpoint does not need any parameter.
 
 ### Return type
 
-[**ListTournamentsResponse**](ListTournamentsResponse.md)
+[**MyTournamentsResponse**](MyTournamentsResponse.md)
 
 ### Authorization
 
@@ -7287,11 +7287,11 @@ No authorization required
 
 ## listPublicTournaments
 
-> ListTournamentsResponse listPublicTournaments()
+> ListTournamentsResponse listPublicTournaments(format, location, timeframe)
 
-The public Tournaments, latest start first
+The public Tournaments, narrowed down by the filters given
 
-The public Tournaments, latest start first
+The public Tournaments, narrowed down by the filters given  Upcoming ones come soonest first, past and unfiltered ones latest first.
 
 ### Example
 
@@ -7306,8 +7306,17 @@ async function example() {
   console.log("🚀 Testing  SDK...");
   const api = new DefaultApi();
 
+  const body = {
+    // string (optional)
+    format: ...,
+    // string (optional)
+    location: ...,
+    // Timeframe (optional)
+    timeframe: ...,
+  } satisfies ListPublicTournamentsRequest;
+
   try {
-    const data = await api.listPublicTournaments();
+    const data = await api.listPublicTournaments(body);
     console.log(data);
   } catch (error) {
     console.error(error);
@@ -7320,7 +7329,12 @@ example().catch(console.error);
 
 ### Parameters
 
-This endpoint does not need any parameter.
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **format** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **location** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **timeframe** | [](.md) |  | [Optional] [Defaults to `undefined`] [Enum: Upcoming, Past] |
 
 ### Return type
 

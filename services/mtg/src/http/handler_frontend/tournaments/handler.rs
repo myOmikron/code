@@ -1,5 +1,7 @@
 use galvyn::core::Module;
 use galvyn::core::re_exports::axum::extract::Path;
+use galvyn::core::re_exports::axum::extract::Query;
+use galvyn::core::re_exports::time::OffsetDateTime;
 use galvyn::core::stuff::api_error::ApiError;
 use galvyn::core::stuff::api_error::ApiResult;
 use galvyn::core::stuff::api_json::ApiJson;
@@ -9,7 +11,9 @@ use galvyn::post;
 use galvyn::put;
 use galvyn::rorm::Database;
 
+use crate::http::handler_frontend::tournaments::schema::ListPublicTournamentsQuery;
 use crate::http::handler_frontend::tournaments::schema::ListTournamentsResponse;
+use crate::http::handler_frontend::tournaments::schema::MyTournamentsResponse;
 use crate::http::handler_frontend::tournaments::schema::TournamentResponse;
 use crate::http::handler_frontend::tournaments::schema::TournamentSettingsErrors;
 use crate::http::handler_frontend::tournaments::schema::TournamentSettingsRequest;
@@ -19,14 +23,21 @@ use crate::models::account::extractor::Viewer;
 use crate::models::tournament::Tournament;
 use crate::models::tournament::TournamentUuid;
 use crate::models::tournament::listing::ListedTournament;
+use crate::models::tournament::listing::OverviewFilter;
 use crate::models::tournament::settings::TournamentSettings;
 
-/// The public Tournaments, latest start first
+/// The public Tournaments, narrowed down by the filters given
+///
+/// Upcoming ones come soonest first, past and unfiltered ones latest first.
 #[get("/")]
-pub async fn list_public_tournaments() -> ApiResult<ApiJson<ListTournamentsResponse>> {
+pub async fn list_public_tournaments(
+    Query(query): Query<ListPublicTournamentsQuery>,
+) -> ApiResult<ApiJson<ListTournamentsResponse>> {
+    let filter = OverviewFilter::from(query);
+
     let mut tx = Database::global().start_transaction().await?;
 
-    let tournaments = ListedTournament::public(&mut tx).await?;
+    let tournaments = ListedTournament::public(&mut tx, &filter, OffsetDateTime::now_utc()).await?;
 
     tx.commit().await?;
 
@@ -64,19 +75,26 @@ pub async fn get_tournament(
     Ok(ApiJson(TournamentResponse::new(tournament, owner, role)))
 }
 
-/// The Tournaments the logged-in Account owns, latest start first
+/// The Tournaments the logged-in Account organizes and the ones it plays in
+///
+/// Private and unlisted ones included: the Account has its part in each.
 #[get("/mine")]
-pub async fn get_my_tournaments(account: Account) -> ApiResult<ApiJson<ListTournamentsResponse>> {
+pub async fn get_my_tournaments(account: Account) -> ApiResult<ApiJson<MyTournamentsResponse>> {
     let mut tx = Database::global().start_transaction().await?;
 
-    let tournaments = Tournament::owned_by(&mut tx, account.uuid).await?;
+    let organizing = ListedTournament::organized_by(&mut tx, account.uuid).await?;
+    let participating = ListedTournament::played_in_by(&mut tx, account.uuid).await?;
 
     tx.commit().await?;
 
-    Ok(ApiJson(ListTournamentsResponse {
-        tournaments: tournaments
+    Ok(ApiJson(MyTournamentsResponse {
+        organizing: organizing
             .into_iter()
-            .map(|tournament| TournamentSummaryResponse::new(tournament, Some(&account.username)))
+            .map(TournamentSummaryResponse::from)
+            .collect(),
+        participating: participating
+            .into_iter()
+            .map(TournamentSummaryResponse::from)
             .collect(),
     }))
 }

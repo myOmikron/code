@@ -21,6 +21,7 @@
         "profile-collections": "Sammlungen",
         "profile-decks": "Decks",
         "profile-empty": "Nichts veröffentlicht",
+        "profile-tournaments": "Turniere",
         "public-decks": "Decks entdecken",
         "unknown-profile": "Unbekanntes Profil"
     },
@@ -41,6 +42,8 @@
         "sort-cards": "Kartenzahl",
         "sort-created": "Neueste zuerst",
         "sort-name": "Name",
-        "sort-price": "Wert"
+        "sort-price": "Wert",
+        "tournament-count_one": "1 Turnier",
+        "tournament-count_other": "{{count}} Turniere"
     }
 }

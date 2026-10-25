@@ -24,6 +24,7 @@ use crate::http::handler_frontend::explore::schema::SearchPublicDecksResponse;
 use crate::http::handler_frontend::shared::schema::redact_entry;
 use crate::http::handler_frontend::shared::schema::redact_slot;
 use crate::http::handler_frontend::shared::schema::redact_statistics;
+use crate::http::handler_frontend::tournaments::schema::TournamentSummaryResponse;
 use crate::models::account::Account;
 use crate::models::account::Username;
 use crate::models::collection::Collection;
@@ -40,6 +41,7 @@ use crate::models::deck::discovery::PublicDeckPage;
 use crate::models::deck::discovery::PublicDeckQuery;
 use crate::models::deck::listing::ListedSlot;
 use crate::models::deck::tag::DeckTag;
+use crate::models::tournament::listing::ListedTournament;
 use crate::models::visibility::Visibility;
 
 /// How many decks a profile page leads with
@@ -161,6 +163,7 @@ pub async fn get_public_profile(
     } else {
         CollectionSummary::read_for_account(&mut tx, account.uuid).await?
     };
+    let tournaments = ListedTournament::on_profile(&mut tx, account.uuid).await?;
 
     tx.commit().await?;
 
@@ -175,6 +178,10 @@ pub async fn get_public_profile(
                 let summary = summaries.remove(&collection.uuid);
                 PublicCollectionResponse::new(collection, owner.clone(), summary)
             })
+            .collect(),
+        tournaments: tournaments
+            .into_iter()
+            .map(TournamentSummaryResponse::from)
             .collect(),
     }))
 }
