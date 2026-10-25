@@ -1,12 +1,12 @@
 import React from "react";
 import { clsx } from "clsx";
 import { Text } from "./text";
-import { zxcvbn, zxcvbnOptions } from "@zxcvbn-ts/core";
+import { ZxcvbnFactory, type ZxcvbnResult } from "@zxcvbn-ts/core";
 import { useTranslation } from "react-i18next";
 
 /**
- * Lazily loads zxcvbn's (multi-megabyte) language dictionaries and configures
- * the estimator, exactly once.
+ * Lazily loads zxcvbn's (multi-megabyte) language dictionaries and builds the
+ * estimator from them, exactly once.
  *
  * Kept out of the module's top level on purpose: importing the dictionaries
  * eagerly would pull them into every bundle that touches the component barrel —
@@ -14,26 +14,27 @@ import { useTranslation } from "react-i18next";
  * `import()` lets bundlers split them into a separate chunk fetched only when a
  * password is actually evaluated.
  */
-let optionsPromise: Promise<void> | undefined;
-function loadZxcvbnOptions(): Promise<void> {
-    if (optionsPromise === undefined) {
-        optionsPromise = Promise.all([
+let zxcvbnPromise: Promise<ZxcvbnFactory> | undefined;
+function loadZxcvbn(): Promise<ZxcvbnFactory> {
+    if (zxcvbnPromise === undefined) {
+        zxcvbnPromise = Promise.all([
             import("@zxcvbn-ts/language-common"),
             import("@zxcvbn-ts/language-en"),
             import("@zxcvbn-ts/language-de"),
-        ]).then(([common, en, de]) => {
-            zxcvbnOptions.setOptions({
-                dictionary: {
-                    ...common.dictionary,
-                    ...en.dictionary,
-                    ...de.dictionary,
-                },
-                graphs: common.adjacencyGraphs,
-                translations: en.translations,
-            });
-        });
+        ]).then(
+            ([common, en, de]) =>
+                new ZxcvbnFactory({
+                    dictionary: {
+                        ...common.dictionary,
+                        ...en.dictionary,
+                        ...de.dictionary,
+                    },
+                    graphs: common.adjacencyGraphs,
+                    translations: en.translations,
+                }),
+        );
     }
-    return optionsPromise;
+    return zxcvbnPromise;
 }
 
 /**
@@ -60,12 +61,12 @@ export function PasswordStrength(props: PasswordStrengthProps) {
     const { password } = props;
     const [tg] = useTranslation();
 
-    const [result, setResult] = React.useState<ReturnType<typeof zxcvbn> | undefined>(undefined);
+    const [result, setResult] = React.useState<ZxcvbnResult | undefined>(undefined);
 
     React.useEffect(() => {
         let cancelled = false;
-        loadZxcvbnOptions().then(() => {
-            if (!cancelled) setResult(zxcvbn(password));
+        loadZxcvbn().then((zxcvbn) => {
+            if (!cancelled) setResult(zxcvbn.check(password));
         });
         return () => {
             cancelled = true;
@@ -73,7 +74,7 @@ export function PasswordStrength(props: PasswordStrengthProps) {
     }, [password]);
 
     const score = result?.score;
-    const seconds = result?.crackTimesSeconds.offlineSlowHashing1e4PerSecond;
+    const seconds = result?.crackTimes.offlineSlowHashingXPerSecond.seconds;
 
     const century = 315360000;
     const year = 31536000;

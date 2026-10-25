@@ -10,7 +10,6 @@ import { Input } from "src/components/base/input";
 import { Button, PrimaryButton } from "src/components/base/button";
 import { Api } from "src/api/api";
 import { EyeIcon, EyeSlashIcon } from "@heroicons/react/20/solid";
-import { zxcvbn } from "@zxcvbn-ts/core";
 import React, { lazy, Suspense } from "react";
 import { toast } from "react-toastify";
 import ACCOUNT_CONTEXT from "src/context/account";
@@ -103,16 +102,19 @@ export default function ProfileSecurity(props: ProfileSecurityProps) {
                         <form.Field
                             name={"password"}
                             validators={{
-                                onChange: ({ value }) => {
+                                onChangeAsync: async ({ value }) => {
+                                    // the estimator ships with the lazily loaded strength bar
+                                    const { zxcvbn } = await import("src/components/base/pw-strength");
                                     if (
                                         value !== "" &&
-                                        zxcvbn(value, [account.account.username, account.account.display_name]).score <
-                                            3
+                                        zxcvbn.check(value, [account.account.username, account.account.display_name])
+                                            .score < 3
                                     ) {
                                         return t("error.stronger-password");
                                     }
                                     return undefined;
                                 },
+                                onChangeAsyncDebounceMs: 300,
                             }}
                         >
                             {(fieldApi) => (
