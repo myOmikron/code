@@ -12,6 +12,9 @@ galvyn = { workspace = true, default-features = true, features = ["rorm-postgres
 # Identity, passkey and OIDC login
 galvyn-identity = { workspace = true, features = ["passkey", "oidc"] }
 
+# Multipart uploads of Bug reports, which `galvyn` does not parse
+axum = { workspace = true }
+
 # Response compression — a collection's entries run to megabytes of json
 tower-http = { workspace = true }
 

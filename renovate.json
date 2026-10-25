@@ -9,6 +9,13 @@
   "schedule": ["before 6am on monday"],
   "prConcurrentLimit": 10,
   "platformCommit": "enabled",
+  // supply chain cooldown: a compromised release is usually yanked within days;
+  // vulnerability fixes skip it (vulnerabilityAlerts defaults to minimumReleaseAge null)
+  "minimumReleaseAge": "7 days",
+  "internalChecksFilter": "strict",
+  // GitHub alerts need Dependabot alerts enabled and read access for the app;
+  // OSV works without either, but only covers direct dependencies
+  "osvVulnerabilityAlerts": true,
   "lockFileMaintenance": {
     "enabled": true,
     "schedule": ["before 6am on monday"]
@@ -48,14 +55,22 @@
       "depNameTemplate": "org.openapitools:openapi-generator-cli"
     }
   ],
-  // disabled because of renovate bug
-  "platformAutomerge": false,
+  // GitHub merges each PR once the required ci-gate check passes, independent of Renovate's
+  // runs, which stop after two automerges each
+  "platformAutomerge": true,
   "automergeType": "pr",
-  "automergeStrategy": "fast-forward",
-  "rebaseWhen": "behind-base-branch",
+  // GitHub signs squash commits (main requires signatures); branches need not be up to date
+  "automergeStrategy": "squash",
+  "rebaseWhen": "conflicted",
   "packageRules": [
     {
-      "description": "Automerge Rust patch and minor updates of stable crates",
+      "description": "Automerge Rust patch updates of all crates; Cargo.lock changes run the full workspace CI",
+      "matchManagers": ["cargo"],
+      "matchUpdateTypes": ["patch"],
+      "automerge": true
+    },
+    {
+      "description": "Automerge Rust minor updates of stable crates",
       "matchManagers": ["cargo"],
       "matchPackageNames": [
         "serde",
@@ -77,7 +92,7 @@
         "time-tz",
         "tower-http"
       ],
-      "matchUpdateTypes": ["patch", "minor"],
+      "matchUpdateTypes": ["minor"],
       "automerge": true
     },
     {
@@ -186,6 +201,12 @@
       "matchPackageNames": ["neo4j"],
       "versioning": "regex:^(?<major>\\d{4})\\.(?<minor>\\d{2})(\\.(?<patch>\\d+))?-(?<compatibility>community)$",
       "automerge": false
+    },
+    {
+      "description": "The mtg scanner assets are built and pinned by hand (just mtg-assets), the package is private to Renovate",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["ghcr.io/myomikron/mtg/assets"],
+      "enabled": false
     }
   ]
 }
