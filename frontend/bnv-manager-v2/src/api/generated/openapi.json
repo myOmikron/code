@@ -949,7 +949,7 @@
                         "schema": {
                             "description": "Limit for pagination",
                             "type": "integer",
-                            "minimum": 0,
+                            "minimum": 0.0,
                             "format": "uint64"
                         },
                         "style": "form"
@@ -960,7 +960,7 @@
                         "schema": {
                             "description": "Offset for pagination",
                             "type": "integer",
-                            "minimum": 0,
+                            "minimum": 0.0,
                             "format": "uint64"
                         },
                         "style": "form"
@@ -1044,7 +1044,7 @@
                         "schema": {
                             "description": "Limit for pagination",
                             "type": "integer",
-                            "minimum": 0,
+                            "minimum": 0.0,
                             "format": "uint64"
                         },
                         "style": "form"
@@ -1055,7 +1055,7 @@
                         "schema": {
                             "description": "Offset for pagination",
                             "type": "integer",
-                            "minimum": 0,
+                            "minimum": 0.0,
                             "format": "uint64"
                         },
                         "style": "form"
@@ -1961,7 +1961,7 @@
                         "schema": {
                             "description": "Limit for pagination",
                             "type": "integer",
-                            "minimum": 0,
+                            "minimum": 0.0,
                             "format": "uint64"
                         },
                         "style": "form"
@@ -1972,7 +1972,7 @@
                         "schema": {
                             "description": "Offset for pagination",
                             "type": "integer",
-                            "minimum": 0,
+                            "minimum": 0.0,
                             "format": "uint64"
                         },
                         "style": "form"
@@ -2545,7 +2545,7 @@
                             "nullable": true,
                             "description": "Seconds since the last login, beyond that the login page is shown again",
                             "type": "integer",
-                            "minimum": 0,
+                            "minimum": 0.0,
                             "format": "uint64"
                         },
                         "style": "form"
@@ -3127,7 +3127,7 @@
                     "admin_count": {
                         "description": "The number of admins in the club",
                         "type": "integer",
-                        "minimum": 0,
+                        "minimum": 0.0,
                         "format": "uint64"
                     },
                     "created_at": {
@@ -3141,7 +3141,7 @@
                     "member_count": {
                         "description": "The number of members in the club",
                         "type": "integer",
-                        "minimum": 0,
+                        "minimum": 0.0,
                         "format": "uint64"
                     },
                     "modified_at": {
@@ -3285,7 +3285,7 @@
                     "valid_days": {
                         "description": "The point in time the invite expires",
                         "type": "integer",
-                        "minimum": 1,
+                        "minimum": 1.0,
                         "format": "uint8"
                     }
                 },
@@ -3327,7 +3327,7 @@
                     "valid_days": {
                         "description": "The point in time the invite expires",
                         "type": "integer",
-                        "minimum": 1,
+                        "minimum": 1.0,
                         "format": "uint8"
                     }
                 },
@@ -3626,7 +3626,7 @@
                     "bytes_used": {
                         "description": "Total bytes used across all mailboxes",
                         "type": "integer",
-                        "minimum": 0,
+                        "minimum": 0.0,
                         "format": "uint64"
                     },
                     "domain": {
@@ -3636,25 +3636,25 @@
                     "mailboxes_max": {
                         "description": "Maximum number of mailboxes allowed",
                         "type": "integer",
-                        "minimum": 0,
+                        "minimum": 0.0,
                         "format": "uint64"
                     },
                     "mailboxes_used": {
                         "description": "Number of mailboxes in the domain",
                         "type": "integer",
-                        "minimum": 0,
+                        "minimum": 0.0,
                         "format": "uint64"
                     },
                     "messages": {
                         "description": "Total number of messages",
                         "type": "integer",
-                        "minimum": 0,
+                        "minimum": 0.0,
                         "format": "uint64"
                     },
                     "quota": {
                         "description": "Maximum quota for the domain in bytes",
                         "type": "integer",
-                        "minimum": 0,
+                        "minimum": 0.0,
                         "format": "uint64"
                     }
                 },
@@ -3697,7 +3697,7 @@
                     "valid_days": {
                         "description": "The point in time the invite expires",
                         "type": "integer",
-                        "minimum": 1,
+                        "minimum": 1.0,
                         "format": "uint8"
                     }
                 },
@@ -4143,19 +4143,19 @@
                     "messages": {
                         "description": "Number of messages",
                         "type": "integer",
-                        "minimum": 0,
+                        "minimum": 0.0,
                         "format": "uint64"
                     },
                     "quota": {
                         "description": "Quota limit in bytes",
                         "type": "integer",
-                        "minimum": 0,
+                        "minimum": 0.0,
                         "format": "uint64"
                     },
                     "quota_used": {
                         "description": "Used quota in bytes",
                         "type": "integer",
-                        "minimum": 0,
+                        "minimum": 0.0,
                         "format": "uint64"
                     }
                 },
@@ -4284,13 +4284,13 @@
                     "limit": {
                         "description": "The limit this page was requested with",
                         "type": "integer",
-                        "minimum": 0,
+                        "minimum": 0.0,
                         "format": "uint64"
                     },
                     "offset": {
                         "description": "The offset this page was requested with",
                         "type": "integer",
-                        "minimum": 0,
+                        "minimum": 0.0,
                         "format": "uint64"
                     },
                     "total": {
@@ -4320,13 +4320,13 @@
                     "limit": {
                         "description": "The limit this page was requested with",
                         "type": "integer",
-                        "minimum": 0,
+                        "minimum": 0.0,
                         "format": "uint64"
                     },
                     "offset": {
                         "description": "The offset this page was requested with",
                         "type": "integer",
-                        "minimum": 0,
+                        "minimum": 0.0,
                         "format": "uint64"
                     },
                     "total": {
@@ -4757,7 +4757,7 @@
                     "expires_in": {
                         "description": "Seconds until the access token expires",
                         "type": "integer",
-                        "minimum": 0,
+                        "minimum": 0.0,
                         "format": "uint"
                     },
                     "id_token": {

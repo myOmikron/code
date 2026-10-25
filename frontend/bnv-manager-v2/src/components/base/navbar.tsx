@@ -38,8 +38,7 @@ export const NavbarItem = forwardRef(function NavbarItem(
         children,
         ...props
     }: { current?: boolean; className?: string; children: React.ReactNode } & (
-        | Omit<Headless.ButtonProps, "className">
-        | Omit<LinkProps, "className" | "render">
+        Omit<Headless.ButtonProps, "className"> | Omit<LinkProps, "className" | "render">
     ),
     ref: React.ForwardedRef<HTMLButtonElement>,
 ) {

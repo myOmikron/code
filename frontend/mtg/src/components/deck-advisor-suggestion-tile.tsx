@@ -80,9 +80,10 @@ export type DeckAdvisorSuggestionTileProps = {
 function headline(suggestion: Suggestion) {
     return suggestion.provenance
         .filter((entry) => entry.score > 0)
-        .reduce<
-            (typeof suggestion.provenance)[number] | undefined
-        >((best, entry) => (best === undefined || entry.score > best.score ? entry : best), undefined);
+        .reduce<(typeof suggestion.provenance)[number] | undefined>(
+            (best, entry) => (best === undefined || entry.score > best.score ? entry : best),
+            undefined,
+        );
 }
 
 /**

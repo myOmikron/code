@@ -165,8 +165,7 @@ type CurrentUserDetails = {
 export async function signalUsername(rpId: string, userId: string, username: string): Promise<void> {
     const signal = (
         globalThis.PublicKeyCredential as
-            | { signalCurrentUserDetails?: (details: CurrentUserDetails) => Promise<void> }
-            | undefined
+            { signalCurrentUserDetails?: (details: CurrentUserDetails) => Promise<void> } | undefined
     )?.signalCurrentUserDetails;
     if (signal === undefined) return;
     try {

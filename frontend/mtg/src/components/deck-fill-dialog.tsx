@@ -54,10 +54,7 @@ export type DeckFillDialogProps = {
 
 /** What the dialog knows right now */
 type FillState =
-    | { state: "solving" }
-    | { state: "ready"; result: FillResult }
-    | { state: "busy" }
-    | { state: "failed" };
+    { state: "solving" } | { state: "ready"; result: FillResult } | { state: "busy" } | { state: "failed" };
 
 /**
  * Fills the last open slots of the deck with the CP-SAT solver.

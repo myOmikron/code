@@ -4065,7 +4065,7 @@
                     "quantity": {
                         "description": "How many units to order (1..=99)",
                         "type": "integer",
-                        "minimum": 0,
+                        "minimum": 0.0,
                         "format": "uint32"
                     }
                 },
