@@ -11,6 +11,7 @@
  */
 
 import type { CardCondition, CardFinish } from "src/api/generated";
+import { defaultFinish } from "src/utils/default-finish";
 
 /** One card as an export file describes it */
 export type ImportRow = {
@@ -26,8 +27,8 @@ export type ImportRow = {
     quantity: number;
     /** The grade, defaulting to near mint when the file says nothing */
     condition: CardCondition;
-    /** The finish, defaulting to non-foil */
-    finish: CardFinish;
+    /** The finish, `null` when the file does not say and the printing decides */
+    finish: CardFinish | null;
     /** What was paid per copy in cents, `null` when not recorded */
     purchasePriceCents: number | null;
     /** The day the card was acquired as `YYYY-MM-DD`, `null` when not recorded */
@@ -85,7 +86,7 @@ const CONDITIONS: Array<[string[], CardCondition]> = [
 const FINISHES: Array<[string[], CardFinish]> = [
     [["etched", "foil etched", "etched foil"], "Etched"],
     [["foil", "true", "yes", "1", "ja"], "Foil"],
-    [["", "normal", "nonfoil", "non foil", "regular", "false", "no", "0", "nein"], "Nonfoil"],
+    [["normal", "nonfoil", "non foil", "regular", "false", "no", "0", "nein"], "Nonfoil"],
 ];
 
 /** The delimiters worth guessing between — German exports use semicolons */
@@ -241,14 +242,29 @@ export function parseCondition(value: string): CardCondition {
  *
  * @param value the raw cell
  *
- * @returns the finish, non-foil when the wording is unknown or absent
+ * @returns the finish, non-foil when the wording is unknown, `null` when the
+ *   cell is empty
  */
-export function parseFinish(value: string): CardFinish {
+export function parseFinish(value: string): CardFinish | null {
     const key = normalise(value);
+    if (key === "") return null;
     for (const [spellings, finish] of FINISHES) {
         if (spellings.includes(key)) return finish;
     }
     return "Nonfoil";
+}
+
+/**
+ * The finish a row's copies are filed in
+ *
+ * @param row the row
+ * @param row.finish the finish the file names, `null` for none
+ * @param finishes the finishes of the printing the row was placed on
+ *
+ * @returns the row's own finish, else the printing's {@link defaultFinish}
+ */
+export function filedFinish(row: Pick<ImportRow, "finish">, finishes: ReadonlyArray<string>): CardFinish {
+    return row.finish ?? defaultFinish(finishes);
 }
 
 /**

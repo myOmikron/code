@@ -169,10 +169,13 @@ function OrderDetail() {
                     setConfirm(undefined);
                 }}
                 title={t("heading.confirm-cancel")}
-                description={t("description.confirm-cancel", {
-                    code: order.pickup_code,
-                    name: formatCounterName(order),
-                })}
+                description={t(
+                    order.dispatched ? "description.confirm-cancel-dispatched" : "description.confirm-cancel",
+                    {
+                        code: order.pickup_code,
+                        name: formatCounterName(order),
+                    },
+                )}
             />
             <ConfirmDialog
                 open={confirm === "picked-up"}

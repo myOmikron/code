@@ -30,4 +30,6 @@ pub fn initialize_routes() -> GalvynRouter {
         .handler(handler::lock_pickup_day)
         .handler(handler::get_legal_settings)
         .handler(handler::update_legal_settings)
+        .handler(handler::get_bakery_addresses)
+        .handler(handler::update_bakery_addresses)
 }

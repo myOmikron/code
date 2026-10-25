@@ -72,9 +72,10 @@ const LIMIT = 60;
  * stay a name-and-rules-text lookup. A restriction that will not compile
  * raises {@link PoolQueryInvalidError} carrying the service's message.
  *
- * The graph knows cards by oracle identity and usually carries a Scryfall
- * printing id; hits without one are placed by name through the service's own
- * catalog. A hit neither can place is dropped — it could not be filed anyway.
+ * Every hit is placed by name through the service's own catalog, which
+ * answers its Default printing; the printing the graph carries is only the
+ * fallback for a name the catalog cannot place. A hit neither can place is
+ * dropped, as it could not be filed anyway.
  *
  * @param filters the graph filters, at least one set
  * @param text free text or Scryfall-style query syntax, empty for none
@@ -111,23 +112,13 @@ export async function searchGraphPrintings(
         throw (await asPoolQueryError(error)) ?? error;
     }
 
-    // Most hits carry their Scryfall id; the stragglers are placed by name.
-    const unplaced = results.filter((result) => result.scryfall_id == null);
-    const placed = new Map<string, string>();
-    if (unplaced.length > 0) {
-        const lookups = await resolveLookups(
-            unplaced.map((result) => ({ name: result.name })),
-            undefined,
-            true,
-        );
-        unplaced.forEach((result, index) => {
-            const found = lookups[index];
-            if (found !== null) placed.set(result.oracle_id, found.id);
-        });
-    }
-
+    const lookups = await resolveLookups(
+        results.map((result) => ({ name: result.name })),
+        undefined,
+        true,
+    );
     const ids = results
-        .map((result) => result.scryfall_id ?? placed.get(result.oracle_id))
+        .map((result, index) => lookups[index]?.id ?? result.scryfall_id ?? undefined)
         .filter((id): id is string => id !== undefined);
     const printings = await resolvePrintings(ids);
     return ids.map((id) => printings.get(id)).filter((printing): printing is Printing => printing !== undefined);

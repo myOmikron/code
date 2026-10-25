@@ -20,7 +20,8 @@
         "legal": "Legal",
         "news-posts": "Posts",
         "create-news-post": "New post",
-        "confirm-delete-news-post": "Delete post?"
+        "confirm-delete-news-post": "Delete post?",
+        "bakery": "Bakery"
     },
     "label": {
         "items-empty": "No items yet.",
@@ -67,7 +68,10 @@
         "placeholder-heading": "Heading",
         "placeholder-list": "List item",
         "placeholder-link": "Link text",
-        "preview": "Preview"
+        "preview": "Preview",
+        "review-window": "Review window (minutes)",
+        "bakery-email": "Bakery address",
+        "copy-email": "Copy to"
     },
     "button": {
         "nav-orders": "Orders",
@@ -89,6 +93,7 @@
         "preview": "Preview"
     },
     "description": {
+        "bakery-article-number": "The number the bakery lists the item under. Leave empty if the item does not come from the bakery. Not visible to customers.",
         "additional-info": "For example allergens, ingredients, or notes. Customers can view this through the information icon.",
         "invite": "Send this link to the person. They use it to set up their passkey (valid for 7 days, single use).",
         "confirm-delete-item": "\"{{name}}\" will be deleted. Existing orders stay unchanged. Tip: prefer deactivating items.",
@@ -101,13 +106,17 @@
         "close-pickup-day": "A called-off day takes no orders, the shop moves on to the next one.",
         "close-cancels-orders_one": "Careful: {{count}} order will be cancelled and its customer informed by mail.",
         "close-cancels-orders_other": "Careful: {{count}} orders will be cancelled and their customers informed by mail.",
-        "confirm-lock-day_one": "The day becomes binding immediately. {{count}} customer gets the confirmation mail, no new orders afterwards.",
-        "confirm-lock-day_other": "The day becomes binding immediately. {{count}} customers get the confirmation mail, no new orders afterwards.",
+        "confirm-lock-day_one": "No new orders and no cancellations by customers afterwards. The confirmation to {{count}} customer goes out at the dispatch as planned.",
+        "confirm-lock-day_other": "No new orders and no cancellations by customers afterwards. The confirmations to {{count}} customers go out at the dispatch as planned.",
         "legal": "Both links appear in the public shop footer. Leaving one empty hides it — for a public shop both are mandatory though.",
         "imprint-url": "Full address including https://, for example the association’s imprint page.",
         "privacy-url": "The privacy policy has to describe what this shop does with the order data.",
         "draft": "Only visible to admins.",
-        "confirm-delete-news-post": "\"{{title}}\" will be deleted for good."
+        "confirm-delete-news-post": "\"{{title}}\" will be deleted for good.",
+        "review-window": "For this long after the order deadline, admins can still cancel orders. Then the order goes to the bakery and customers get their confirmation. 0 means right at the deadline.",
+        "bakery": "At the dispatch, the procurement goes to this address as a CSV. While no address is set, nothing is sent and customers get no confirmation.",
+        "bakery-email": "The order goes to this address as a CSV attachment.",
+        "copy-email": "Gets the order in copy (CC), so you see what went to the bakery. Leave empty to send no copy."
     },
     "error": {
         "name-required": "Name is required",
@@ -130,12 +139,12 @@
     },
     "toast": {
         "schedule-saved": "Rule saved",
-        "day-locked_one": "Day frozen, {{count}} confirmation sent",
-        "day-locked_other": "Day frozen, {{count}} confirmations sent",
         "legal-saved": "Links saved",
         "news-post-saved": "Post saved",
         "news-post-published": "Post published",
         "news-post-withdrawn": "Post withdrawn, it is a draft again",
-        "news-post-deleted": "Post deleted"
+        "news-post-deleted": "Post deleted",
+        "day-locked": "Day frozen",
+        "bakery-saved": "Addresses saved"
     }
 }

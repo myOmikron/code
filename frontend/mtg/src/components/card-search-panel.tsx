@@ -17,7 +17,7 @@ import {
 import { gridColumns, stepHighlight } from "src/utils/grid-nav";
 import { usePreloadImages } from "src/utils/use-preload-image";
 import { QUERY_SYNTAX, correctCardWords, fuzzyCardName, searchPrintingPage } from "src/utils/scryfall";
-import type { Printing } from "src/utils/scryfall";
+import type { Printing, ScryfallPrefer } from "src/utils/scryfall";
 import { useFlippedCards } from "src/utils/use-flipped-cards";
 
 /** How long typing has to pause before a search goes out */
@@ -86,6 +86,8 @@ export type CardSearchPanelProps = {
     onRemove?: (printing: Printing) => void;
     /** Whether a card comes back once or once per print run */
     unique?: "prints" | "cards";
+    /** Which printing a hit shows, as Scryfall's `prefer:`, unless the query names its own */
+    prefer?: ScryfallPrefer;
     /** Fixes the result grid to two columns instead of choosing responsively */
     twoColumns?: boolean;
     /** Controls placed immediately below the search field */
@@ -149,6 +151,7 @@ export function CardSearchPanel({
     markOf,
     onRemove,
     unique = "prints",
+    prefer,
     twoColumns = false,
     toolbar,
     stickySearch = false,
@@ -197,7 +200,11 @@ export function CardSearchPanel({
     const identityKey = (graphIdentity ?? []).join("");
 
     const held = constraints.filter((constraint) => constraint.fixed === true || !off.includes(constraint.key));
-    const asked = [...held.map((constraint) => constraint.query ?? ""), query.trim()]
+    const asked = [
+        prefer === undefined ? "" : `prefer:${prefer}`,
+        ...held.map((constraint) => constraint.query ?? ""),
+        query.trim(),
+    ]
         .filter((part) => part !== "")
         .join(" ");
     // What still hides hits, which is not the same as what is switched on: a
