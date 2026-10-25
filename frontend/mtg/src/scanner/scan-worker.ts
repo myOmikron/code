@@ -44,6 +44,7 @@ type IncomingMessage =
           viewAspect?: number;
       }
     | { type: "reset"; id: number }
+    | { type: "crop"; id: number }
     | { type: "printings"; id: number; name: string }
     | { type: "sets"; id: number };
 
@@ -65,6 +66,7 @@ type OutgoingMessage =
     | { type: "scanned"; id: number; report: ScanReport }
     | { type: "printings"; id: number; printings: IndexedPrinting[] }
     | { type: "sets"; id: number; sets: { code: string; name: string; cardCount: number }[] }
+    | { type: "crop"; id: number; crop: ImageBitmap | null }
     | {
           type: "live";
           id: number;
@@ -92,6 +94,10 @@ type OutgoingMessage =
           shortcomings: Shortcoming[];
           /** The leading candidate by embedding alone, shown while the answer is still forming */
           preview: { name: string; set: string; collectorNumber: string; score: number } | null;
+          /** The best five candidates, best first */
+          candidates: { name: string; set: string; collectorNumber: string; score: number }[];
+          /** Whether the candidates came from the name rather than from the picture */
+          named: boolean;
           /** Set once the frame was confirmed; absent while the cheap half is still running */
           outcome: ScanOutcome | null;
           milliseconds: number;
@@ -117,6 +123,8 @@ const variants = createVariantSelector();
 let named = false;
 let attempts = 0;
 let trackingGeneration = 0;
+/** The rectified crop of the last frame that reached the model, for a Bug report */
+let lastCrop: RgbaImage | null = null;
 // Counted so the crop variants can be spread over frames rather than all tried in each one.
 
 /**
@@ -308,6 +316,12 @@ worker.onmessage = async (event) => {
             return;
         }
 
+        if (message.type === "crop") {
+            const crop = lastCrop ? toBitmap(lastCrop) : null;
+            worker.postMessage({ type: "crop", id: message.id, crop }, crop ? [crop] : []);
+            return;
+        }
+
         if (message.type === "printings") {
             if (!index) throw new Error("Der Scanner ist noch nicht bereit.");
             worker.postMessage({ type: "printings", id: message.id, printings: index.printingsNamed(message.name) });
@@ -347,6 +361,7 @@ worker.onmessage = async (event) => {
                 const key = leader ? `${leader.printing.id}/${leader.printing.face}` : null;
 
                 if (!skipped) named = preview.named;
+                if (!skipped && preview.crops.length > 0) lastCrop = preview.crops[0];
 
                 // An isolated match must not become a collection entry. All backends require
                 // agreement across frames before geometric verification, including WASM.
@@ -390,6 +405,13 @@ worker.onmessage = async (event) => {
                                   score: leader.score,
                               }
                             : null,
+                        candidates: preview.candidates.slice(0, 5).map((candidate) => ({
+                            name: candidate.printing.name,
+                            set: candidate.printing.set,
+                            collectorNumber: candidate.printing.collectorNumber,
+                            score: candidate.score,
+                        })),
+                        named: preview.named,
                         outcome,
                         milliseconds: performance.now() - started,
                         attempts,

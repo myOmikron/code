@@ -1,4 +1,4 @@
-//! The shop's global settings: which weekday is pickup day, and when orders close
+//! The shop's global settings: which weekday is pickup day, when orders close, where the Bakery order goes
 
 use galvyn::core::re_exports::schemars;
 use galvyn::core::re_exports::schemars::JsonSchema;
@@ -93,11 +93,24 @@ pub struct ShopSettings {
     /// Wall-clock time (Europe/Berlin) orders close at
     pub deadline_time: Time,
 
+    /// Minutes between a pickup day's Deadline and its Dispatch, never negative
+    ///
+    /// Admins use it to look over the day's orders before the Bakery gets them.
+    pub review_window_minutes: i32,
+
     /// Url of the shop's imprint, shown in the public footer while set
     pub imprint_url: Option<MaxStr<512>>,
 
     /// Url of the shop's privacy policy, shown in the public footer while set
     pub privacy_url: Option<MaxStr<512>>,
+
+    /// Where the Bakery order goes at the Dispatch
+    ///
+    /// While unset, no pickup day is Dispatched: an order is never sent into the void.
+    pub bakery_email: Option<MaxStr<255>>,
+
+    /// The Nachbarschaftshilfe's address, in CC of the Bakery order while set
+    pub copy_email: Option<MaxStr<255>>,
 }
 
 impl Default for ShopSettings {
@@ -107,8 +120,11 @@ impl Default for ShopSettings {
             deadline_offset_days: 1,
             deadline_time: Time::from_hms(16, 0, 0)
                 .unwrap_or_else(|_| unreachable!("16:00:00 is a valid time")),
+            review_window_minutes: 0,
             imprint_url: None,
             privacy_url: None,
+            bakery_email: None,
+            copy_email: None,
         }
     }
 }
@@ -140,8 +156,17 @@ impl ShopSettings {
                 settings.deadline_offset_days,
             )
             .set(ShopSettingsModel.deadline_time, settings.deadline_time)
+            .set(
+                ShopSettingsModel.review_window_minutes,
+                settings.review_window_minutes,
+            )
             .set(ShopSettingsModel.imprint_url, settings.imprint_url.clone())
             .set(ShopSettingsModel.privacy_url, settings.privacy_url.clone())
+            .set(
+                ShopSettingsModel.bakery_email,
+                settings.bakery_email.clone(),
+            )
+            .set(ShopSettingsModel.copy_email, settings.copy_email.clone())
             .condition(ShopSettingsModel.uuid.equals(SETTINGS_UUID))
             .await?;
 
@@ -152,8 +177,11 @@ impl ShopSettings {
                     pickup_weekday: settings.pickup_weekday,
                     deadline_offset_days: settings.deadline_offset_days,
                     deadline_time: settings.deadline_time,
+                    review_window_minutes: settings.review_window_minutes,
                     imprint_url: settings.imprint_url,
                     privacy_url: settings.privacy_url,
+                    bakery_email: settings.bakery_email,
+                    copy_email: settings.copy_email,
                 })
                 .await?;
         }
@@ -168,8 +196,11 @@ impl From<ShopSettingsModel> for ShopSettings {
             pickup_weekday: value.pickup_weekday,
             deadline_offset_days: value.deadline_offset_days,
             deadline_time: value.deadline_time,
+            review_window_minutes: value.review_window_minutes,
             imprint_url: value.imprint_url,
             privacy_url: value.privacy_url,
+            bakery_email: value.bakery_email,
+            copy_email: value.copy_email,
         }
     }
 }

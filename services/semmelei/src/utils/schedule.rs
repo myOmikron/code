@@ -118,6 +118,14 @@ pub fn deadline_from_rule(settings: &ShopSettings, pickup_date: Date) -> OffsetD
         .unwrap_or_else(|| PrimitiveDateTime::new(date, settings.deadline_time).assume_utc())
 }
 
+/// The point in time a pickup day with this Deadline is Dispatched
+///
+/// Computed from the current Review Window on every call rather than stored,
+/// so a changed Review Window applies to a day that is already in its window.
+pub fn dispatch_due(settings: &ShopSettings, deadline: OffsetDateTime) -> OffsetDateTime {
+    deadline + Duration::minutes(i64::from(settings.review_window_minutes))
+}
+
 /// Resolve the upcoming pickup days: rule dates with their overrides applied
 ///
 /// Days whose deadline already passed are dropped — they are history, and the
@@ -314,6 +322,26 @@ mod test {
             deadline_from_rule(&settings, date(2026, Month::August, 19)),
             local(2026, Month::August, 17, 12, 0)
         );
+    }
+
+    #[test]
+    fn dispatch_is_the_deadline_plus_the_review_window() {
+        let settings = ShopSettings {
+            review_window_minutes: 60,
+            deadline_time: Time::from_hms(13, 0, 0).expect("test time is valid"),
+            ..ShopSettings::default()
+        };
+        let deadline = deadline_from_rule(&settings, date(2026, Month::August, 15));
+        assert_eq!(
+            dispatch_due(&settings, deadline),
+            local(2026, Month::August, 14, 14, 0)
+        );
+    }
+
+    #[test]
+    fn without_a_review_window_the_dispatch_is_the_deadline() {
+        let deadline = local(2026, Month::August, 14, 16, 0);
+        assert_eq!(dispatch_due(&settings(), deadline), deadline);
     }
 
     /// A resolved day straight from the default rule

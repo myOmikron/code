@@ -2,10 +2,12 @@ import { redirect } from "@tanstack/react-router";
 import { SESSION_STORE } from "src/api/session";
 import { ERROR_STORE } from "src/context/error-context";
 import { isFormError } from "src/utils/error";
+import { DIAGNOSTICS } from "src/utils/diagnostics";
 import {
     AddDeckCardRequest,
     AddScannerSessionEntryRequest,
     AddWatchListEntryRequest,
+    AdminBugReportFilter,
     AdminListAccountsRequest,
     AdminListLogRequest,
     CollaboratorLevel,
@@ -33,6 +35,7 @@ import {
     ResponseError,
     Role,
     SearchPublicDecksRequest,
+    SendBugReportRequest,
     SetAdvisorSettingsRequest,
     SetDeckRuleZeroRequest,
     SignupRequest,
@@ -53,6 +56,7 @@ export type UUID = string;
 
 const configuration = new Configuration({
     basePath: window.location.origin,
+    middleware: [DIAGNOSTICS.middleware],
 });
 const defaultApi = new DefaultApi(configuration);
 
@@ -141,10 +145,23 @@ export const Api = {
         log: {
             list: async (query: AdminListLogRequest = {}) => handleError(defaultApi.adminListLog(query)),
         },
+        bugReports: {
+            list: async (filter: AdminBugReportFilter, after?: number) =>
+                handleError(defaultApi.adminListBugReports({ filter, after })),
+            get: async (number: number) => handleError(defaultApi.adminGetBugReport({ number })),
+            imageUrl: (number: number, image: UUID) => `/api/frontend/v1/admin/bug-reports/${number}/images/${image}`,
+            markDone: async (number: number) => handleError(defaultApi.adminMarkBugReportDone({ number })),
+            reopen: async (number: number) => handleError(defaultApi.adminReopenBugReport({ number })),
+            setNote: async (number: number, note: string) =>
+                handleError(defaultApi.adminSetBugReportNote({ number, AdminSetBugReportNoteRequest: { note } })),
+        },
         statistics: async () => handleError(defaultApi.adminGetStatistics()),
         syncs: {
             get: async () => handleError(defaultApi.adminGetSyncs()),
         },
+    },
+    bugReports: {
+        send: (report: SendBugReportRequest, images: Blob[]) => defaultApi.sendBugReport({ report, images }),
     },
     collections: {
         list: async () => handleError(defaultApi.getAllCollections()),

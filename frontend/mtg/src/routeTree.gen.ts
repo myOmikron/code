@@ -41,6 +41,8 @@ import { Route as MenuWatchListsIndexRouteImport } from './routes/_menu/watch-li
 import { Route as MenuWatchListsWatchListUuidRouteImport } from './routes/_menu/watch-lists/$watchListUuid'
 import { Route as MenuAdminAccountsIndexRouteImport } from './routes/_menu/admin/accounts/index'
 import { Route as MenuAdminAccountsAccountUuidRouteImport } from './routes/_menu/admin/accounts/$accountUuid'
+import { Route as MenuAdminBugReportsIndexRouteImport } from './routes/_menu/admin/bug-reports/index'
+import { Route as MenuAdminBugReportsNumberRouteImport } from './routes/_menu/admin/bug-reports/$number'
 import { Route as MenuCollaboratingDeckUuidDeckRouteImport } from './routes/_menu/collaborating/$deckUuid/_deck'
 import { Route as MenuCollectionsCollectionUuidCollectionRouteImport } from './routes/_menu/collections/$collectionUuid/_collection'
 import { Route as MenuDecksDeckUuidDeckRouteImport } from './routes/_menu/decks/$deckUuid/_deck'
@@ -243,6 +245,18 @@ const MenuAdminAccountsAccountUuidRoute =
   MenuAdminAccountsAccountUuidRouteImport.update({
     id: '/accounts/$accountUuid',
     path: '/accounts/$accountUuid',
+    getParentRoute: () => MenuAdminRoute,
+  } as any)
+const MenuAdminBugReportsIndexRoute =
+  MenuAdminBugReportsIndexRouteImport.update({
+    id: '/bug-reports/',
+    path: '/bug-reports/',
+    getParentRoute: () => MenuAdminRoute,
+  } as any)
+const MenuAdminBugReportsNumberRoute =
+  MenuAdminBugReportsNumberRouteImport.update({
+    id: '/bug-reports/$number',
+    path: '/bug-reports/$number',
     getParentRoute: () => MenuAdminRoute,
   } as any)
 const MenuCollaboratingDeckUuidDeckRoute =
@@ -524,6 +538,7 @@ export interface FileRoutesByFullPath {
   '/scan/': typeof MenuScanIndexRoute
   '/watch-lists/': typeof MenuWatchListsIndexRoute
   '/admin/accounts/$accountUuid': typeof MenuAdminAccountsAccountUuidRoute
+  '/admin/bug-reports/$number': typeof MenuAdminBugReportsNumberRoute
   '/collaborating/$deckUuid': typeof MenuCollaboratingDeckUuidDeckRouteWithChildren
   '/collections/$collectionUuid': typeof MenuCollectionsCollectionUuidCollectionRouteWithChildren
   '/decks/$deckUuid': typeof MenuDecksDeckUuidDeckRouteWithChildren
@@ -532,6 +547,7 @@ export interface FileRoutesByFullPath {
   '/profile/settings': typeof MenuProfileProfileSettingsRoute
   '/scan/staged/$sessionUuid': typeof MenuScanStagedSessionUuidRoute
   '/admin/accounts/': typeof MenuAdminAccountsIndexRoute
+  '/admin/bug-reports/': typeof MenuAdminBugReportsIndexRoute
   '/global/decks/': typeof MenuGlobalDecksIndexRoute
   '/profile/': typeof MenuProfileProfileIndexRoute
   '/scan/live/$sessionUuid': typeof CollectScanScanLiveSessionUuidRoute
@@ -594,11 +610,13 @@ export interface FileRoutesByTo {
   '/scan': typeof MenuScanIndexRoute
   '/watch-lists': typeof MenuWatchListsIndexRoute
   '/admin/accounts/$accountUuid': typeof MenuAdminAccountsAccountUuidRoute
+  '/admin/bug-reports/$number': typeof MenuAdminBugReportsNumberRoute
   '/global/profiles/$username': typeof MenuGlobalProfilesUsernameRoute
   '/profile/security': typeof MenuProfileProfileSecurityRoute
   '/profile/settings': typeof MenuProfileProfileSettingsRoute
   '/scan/staged/$sessionUuid': typeof MenuScanStagedSessionUuidRoute
   '/admin/accounts': typeof MenuAdminAccountsIndexRoute
+  '/admin/bug-reports': typeof MenuAdminBugReportsIndexRoute
   '/global/decks': typeof MenuGlobalDecksIndexRoute
   '/profile': typeof MenuProfileProfileIndexRoute
   '/scan/live/$sessionUuid': typeof CollectScanScanLiveSessionUuidRoute
@@ -664,6 +682,7 @@ export interface FileRoutesById {
   '/_menu/scan/': typeof MenuScanIndexRoute
   '/_menu/watch-lists/': typeof MenuWatchListsIndexRoute
   '/_menu/admin/accounts/$accountUuid': typeof MenuAdminAccountsAccountUuidRoute
+  '/_menu/admin/bug-reports/$number': typeof MenuAdminBugReportsNumberRoute
   '/_menu/collaborating/$deckUuid/_deck': typeof MenuCollaboratingDeckUuidDeckRouteWithChildren
   '/_menu/collections/$collectionUuid/_collection': typeof MenuCollectionsCollectionUuidCollectionRouteWithChildren
   '/_menu/decks/$deckUuid/_deck': typeof MenuDecksDeckUuidDeckRouteWithChildren
@@ -672,6 +691,7 @@ export interface FileRoutesById {
   '/_menu/profile/_profile/settings': typeof MenuProfileProfileSettingsRoute
   '/_menu/scan/staged/$sessionUuid': typeof MenuScanStagedSessionUuidRoute
   '/_menu/admin/accounts/': typeof MenuAdminAccountsIndexRoute
+  '/_menu/admin/bug-reports/': typeof MenuAdminBugReportsIndexRoute
   '/_menu/global/decks/': typeof MenuGlobalDecksIndexRoute
   '/_menu/profile/_profile/': typeof MenuProfileProfileIndexRoute
   '/_collect/_scan/scan/live/$sessionUuid': typeof CollectScanScanLiveSessionUuidRoute
@@ -739,6 +759,7 @@ export interface FileRouteTypes {
     | '/scan/'
     | '/watch-lists/'
     | '/admin/accounts/$accountUuid'
+    | '/admin/bug-reports/$number'
     | '/collaborating/$deckUuid'
     | '/collections/$collectionUuid'
     | '/decks/$deckUuid'
@@ -747,6 +768,7 @@ export interface FileRouteTypes {
     | '/profile/settings'
     | '/scan/staged/$sessionUuid'
     | '/admin/accounts/'
+    | '/admin/bug-reports/'
     | '/global/decks/'
     | '/profile/'
     | '/scan/live/$sessionUuid'
@@ -809,11 +831,13 @@ export interface FileRouteTypes {
     | '/scan'
     | '/watch-lists'
     | '/admin/accounts/$accountUuid'
+    | '/admin/bug-reports/$number'
     | '/global/profiles/$username'
     | '/profile/security'
     | '/profile/settings'
     | '/scan/staged/$sessionUuid'
     | '/admin/accounts'
+    | '/admin/bug-reports'
     | '/global/decks'
     | '/profile'
     | '/scan/live/$sessionUuid'
@@ -878,6 +902,7 @@ export interface FileRouteTypes {
     | '/_menu/scan/'
     | '/_menu/watch-lists/'
     | '/_menu/admin/accounts/$accountUuid'
+    | '/_menu/admin/bug-reports/$number'
     | '/_menu/collaborating/$deckUuid/_deck'
     | '/_menu/collections/$collectionUuid/_collection'
     | '/_menu/decks/$deckUuid/_deck'
@@ -886,6 +911,7 @@ export interface FileRouteTypes {
     | '/_menu/profile/_profile/settings'
     | '/_menu/scan/staged/$sessionUuid'
     | '/_menu/admin/accounts/'
+    | '/_menu/admin/bug-reports/'
     | '/_menu/global/decks/'
     | '/_menu/profile/_profile/'
     | '/_collect/_scan/scan/live/$sessionUuid'
@@ -1152,6 +1178,20 @@ declare module '@tanstack/react-router' {
       path: '/accounts/$accountUuid'
       fullPath: '/admin/accounts/$accountUuid'
       preLoaderRoute: typeof MenuAdminAccountsAccountUuidRouteImport
+      parentRoute: typeof MenuAdminRoute
+    }
+    '/_menu/admin/bug-reports/': {
+      id: '/_menu/admin/bug-reports/'
+      path: '/bug-reports'
+      fullPath: '/admin/bug-reports/'
+      preLoaderRoute: typeof MenuAdminBugReportsIndexRouteImport
+      parentRoute: typeof MenuAdminRoute
+    }
+    '/_menu/admin/bug-reports/$number': {
+      id: '/_menu/admin/bug-reports/$number'
+      path: '/bug-reports/$number'
+      fullPath: '/admin/bug-reports/$number'
+      preLoaderRoute: typeof MenuAdminBugReportsNumberRouteImport
       parentRoute: typeof MenuAdminRoute
     }
     '/_menu/collaborating/$deckUuid/_deck': {
@@ -1482,7 +1522,9 @@ interface MenuAdminRouteChildren {
   MenuAdminSyncsRoute: typeof MenuAdminSyncsRoute
   MenuAdminIndexRoute: typeof MenuAdminIndexRoute
   MenuAdminAccountsAccountUuidRoute: typeof MenuAdminAccountsAccountUuidRoute
+  MenuAdminBugReportsNumberRoute: typeof MenuAdminBugReportsNumberRoute
   MenuAdminAccountsIndexRoute: typeof MenuAdminAccountsIndexRoute
+  MenuAdminBugReportsIndexRoute: typeof MenuAdminBugReportsIndexRoute
 }
 
 const MenuAdminRouteChildren: MenuAdminRouteChildren = {
@@ -1491,7 +1533,9 @@ const MenuAdminRouteChildren: MenuAdminRouteChildren = {
   MenuAdminSyncsRoute: MenuAdminSyncsRoute,
   MenuAdminIndexRoute: MenuAdminIndexRoute,
   MenuAdminAccountsAccountUuidRoute: MenuAdminAccountsAccountUuidRoute,
+  MenuAdminBugReportsNumberRoute: MenuAdminBugReportsNumberRoute,
   MenuAdminAccountsIndexRoute: MenuAdminAccountsIndexRoute,
+  MenuAdminBugReportsIndexRoute: MenuAdminBugReportsIndexRoute,
 }
 
 const MenuAdminRouteWithChildren = MenuAdminRoute._addFileChildren(

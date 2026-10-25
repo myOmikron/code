@@ -22,5 +22,5 @@ export const LEGAL = {
     /** How long a registration link stays valid, in days */
     registrationDays: 7,
     /** The day the legal pages were last changed, as `YYYY-MM-DD` */
-    updated: "2026-08-30",
+    updated: "2026-10-24",
 };
