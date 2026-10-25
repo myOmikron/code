@@ -5427,6 +5427,25 @@ export interface MpcFillSearchResponse {
     results: Array<MpcFillArtResponse>;
 }
 /**
+ * The Tournaments an Account runs and the ones it plays in
+ * @export
+ * @interface MyTournamentsResponse
+ */
+export interface MyTournamentsResponse {
+    /**
+     * The Tournaments it organizes, as Owner or Co-organizer, latest start first
+     * @type {Array<TournamentSummaryResponse>}
+     * @memberof MyTournamentsResponse
+     */
+    organizing: Array<TournamentSummaryResponse>;
+    /**
+     * The Tournaments it takes part in as a Participant, latest start first
+     * @type {Array<TournamentSummaryResponse>}
+     * @memberof MyTournamentsResponse
+     */
+    participating: Array<TournamentSummaryResponse>;
+}
+/**
  * A stack to file into a collection
  * @export
  * @interface NewCollectionEntry
@@ -6057,6 +6076,12 @@ export interface PublicProfileResponse {
      * @memberof PublicProfileResponse
      */
     decks: Array<PublicDeckResponse>;
+    /**
+     * The public Tournaments it owns or plays in, latest start first
+     * @type {Array<TournamentSummaryResponse>}
+     * @memberof PublicProfileResponse
+     */
+    tournaments: Array<TournamentSummaryResponse>;
     /**
      * The account's login handle and display name
      * @type {string}
@@ -7979,6 +8004,25 @@ export interface ThemePrefs {
      */
     pinned?: Array<string>;
 }
+
+/**
+ * Whether a Tournament is still ahead or already over
+ * 
+ * A running Tournament is upcoming and a finished or cancelled one is past, whatever their start. One still in Registration is upcoming until its start has passed.
+ * @export
+ */
+export const Timeframe = {
+    /**
+    * Not started yet or running now, the soonest start first
+    */
+    Upcoming: 'Upcoming',
+    /**
+    * Over, or never started although its start has passed, the latest start first
+    */
+    Past: 'Past'
+} as const;
+export type Timeframe = typeof Timeframe[keyof typeof Timeframe];
+
 /**
  * One point of the acquisition timeline
  * @export

@@ -194,6 +194,7 @@ docs/MpcFillCardbacksResponse.md
 docs/MpcFillImageResponse.md
 docs/MpcFillSearchRequest.md
 docs/MpcFillSearchResponse.md
+docs/MyTournamentsResponse.md
 docs/NewCollectionEntry.md
 docs/OidcLoginFailure.md
 docs/OldestPrintingResponse.md
@@ -290,6 +291,7 @@ docs/SwapDeckCardRequest.md
 docs/SyncRunOutcome.md
 docs/TakeDeckCardsRequest.md
 docs/ThemePrefs.md
+docs/Timeframe.md
 docs/TimelinePointResponse.md
 docs/TopCardResponse.md
 docs/TournamentResponse.md

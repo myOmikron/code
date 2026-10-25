@@ -11,6 +11,8 @@ use crate::models::tournament::TournamentState;
 use crate::models::tournament::TournamentUuid;
 use crate::models::tournament::access::OrganizerRole;
 use crate::models::tournament::listing::ListedTournament;
+use crate::models::tournament::listing::OverviewFilter;
+use crate::models::tournament::listing::Timeframe;
 use crate::models::tournament::settings::RawTournamentSettings;
 use crate::models::tournament::settings::SettingsRefusal;
 use crate::models::visibility::Visibility;
@@ -203,4 +205,34 @@ impl From<ListedTournament> for TournamentSummaryResponse {
 pub struct ListTournamentsResponse {
     /// The Tournaments, latest start first
     pub tournaments: Vec<TournamentSummaryResponse>,
+}
+
+/// What the public overview narrows its Tournaments down to; every filter is optional
+#[derive(Debug, Clone, Deserialize, JsonSchema)]
+pub struct ListPublicTournamentsQuery {
+    /// Only upcoming (soonest first) or only past (latest first) Tournaments
+    pub timeframe: Option<Timeframe>,
+    /// Only Tournaments of this format, a slug from the deck formats
+    pub format: Option<MaxStr<32>>,
+    /// Only Tournaments whose location contains this text, case ignored
+    pub location: Option<MaxStr<255>>,
+}
+
+impl From<ListPublicTournamentsQuery> for OverviewFilter {
+    fn from(value: ListPublicTournamentsQuery) -> Self {
+        Self {
+            timeframe: value.timeframe,
+            format: value.format,
+            location: value.location.map(|location| location.to_string()),
+        }
+    }
+}
+
+/// The Tournaments an Account runs and the ones it plays in
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct MyTournamentsResponse {
+    /// The Tournaments it organizes, as Owner or Co-organizer, latest start first
+    pub organizing: Vec<TournamentSummaryResponse>,
+    /// The Tournaments it takes part in as a Participant, latest start first
+    pub participating: Vec<TournamentSummaryResponse>,
 }

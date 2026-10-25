@@ -10,6 +10,7 @@ Name | Type
 `collections` | [Array&lt;PublicCollectionResponse&gt;](PublicCollectionResponse.md)
 `created_at` | string
 `decks` | [Array&lt;PublicDeckResponse&gt;](PublicDeckResponse.md)
+`tournaments` | [Array&lt;TournamentSummaryResponse&gt;](TournamentSummaryResponse.md)
 `username` | string
 
 

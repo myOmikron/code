@@ -26,6 +26,7 @@ import {
     ImportDeckCardsRequest,
     ListCollectionCardsRequest,
     ListPublicCollectionCardsRequest,
+    ListPublicTournamentsRequest,
     ListSharedCollectionCardsRequest,
     MailLanguage,
     MeResponse,
@@ -526,7 +527,7 @@ export const Api = {
     // so the public ones skip `handleError` like `explore`. The writes answer
     // form errors for settings the Ruleset or Table size refuse.
     tournaments: {
-        listPublic: () => defaultApi.listPublicTournaments(),
+        listPublic: (query: ListPublicTournamentsRequest = {}) => defaultApi.listPublicTournaments(query),
         get: (tournament: UUID) => defaultApi.getTournament({ tournament }),
         mine: async () => handleError(defaultApi.getMyTournaments()),
         create: async (req: TournamentSettingsRequest) =>

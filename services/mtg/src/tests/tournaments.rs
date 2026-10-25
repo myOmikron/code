@@ -92,9 +92,8 @@ async fn sees(client: &mut TestClient, url: &Url) -> bool {
 }
 
 /// The uuids in a list of Tournaments
-fn uuids(body: &Value) -> Vec<String> {
-    body["tournaments"]
-        .as_array()
+pub(super) fn uuids(list: &Value) -> Vec<String> {
+    list.as_array()
         .expect("a list of tournaments")
         .iter()
         .map(|tournament| tournament["uuid"].as_str().expect("uuid").to_string())
@@ -239,7 +238,10 @@ fn a_public_tournament_is_seen_by_everyone_and_in_the_overview() {
         assert_eq!(as_stranger["share_token"], Value::Null, "{as_stranger}");
 
         let overview = anonymous.get(&api("tournaments")).await.ok_json();
-        assert!(uuids(&overview).contains(&fixture.tournament), "{overview}");
+        assert!(
+            uuids(&overview["tournaments"]).contains(&fixture.tournament),
+            "{overview}"
+        );
     });
 }
 
@@ -265,7 +267,7 @@ fn an_unlisted_tournament_is_seen_by_its_share_link_only() {
 
         let overview = anonymous.get(&api("tournaments")).await.ok_json();
         assert!(
-            !uuids(&overview).contains(&fixture.tournament),
+            !uuids(&overview["tournaments"]).contains(&fixture.tournament),
             "{overview}"
         );
     });
@@ -285,7 +287,7 @@ fn a_private_tournament_is_seen_by_its_owner_only() {
 
         let overview = anonymous.get(&api("tournaments")).await.ok_json();
         assert!(
-            !uuids(&overview).contains(&fixture.tournament),
+            !uuids(&overview["tournaments"]).contains(&fixture.tournament),
             "{overview}"
         );
     });
@@ -390,7 +392,10 @@ fn the_owner_deletes_the_tournament() {
 
         assert!(!sees(&mut fixture.owner, &url).await);
         let mine = fixture.owner.get(&api("tournaments/mine")).await.ok_json();
-        assert!(!uuids(&mine).contains(&fixture.tournament), "{mine}");
+        assert!(
+            !uuids(&mine["organizing"]).contains(&fixture.tournament),
+            "{mine}"
+        );
     });
 }
 
@@ -415,14 +420,14 @@ fn nobody_but_the_owner_deletes_the_tournament() {
 }
 
 #[test]
-fn my_tournaments_lists_the_ones_the_account_owns() {
+fn my_tournaments_lists_the_ones_the_account_organizes() {
     run(async {
         let mut fixture = Fixture::new("Private").await;
         let second = create(&mut fixture.owner, &settings("Public")).await;
         let second = second["uuid"].as_str().expect("uuid").to_string();
 
         let mine = fixture.owner.get(&api("tournaments/mine")).await.ok_json();
-        let listed = uuids(&mine);
+        let listed = uuids(&mine["organizing"]);
         assert_eq!(listed.len(), 2, "{mine}");
         assert!(listed.contains(&fixture.tournament), "{mine}");
         assert!(listed.contains(&second), "{mine}");
@@ -432,6 +437,6 @@ fn my_tournaments_lists_the_ones_the_account_owns() {
             .get(&api("tournaments/mine"))
             .await
             .ok_json();
-        assert!(uuids(&theirs).is_empty(), "{theirs}");
+        assert!(uuids(&theirs["organizing"]).is_empty(), "{theirs}");
     });
 }
