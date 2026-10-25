@@ -1717,6 +1717,12 @@ export interface CreateScannerSessionRequest {
     name: string;
 }
 /**
+ * @type CreateTournament200Response
+ * 
+ * @export
+ */
+export type CreateTournament200Response = FormErrorResponseForTournamentSettingsErrors | TournamentResponse;
+/**
  * Request to create a watch list
  * @export
  * @interface CreateWatchListRequest
@@ -3466,6 +3472,27 @@ export interface FormErrorResponseForStartOidcLoginErrors {
 
 
 /**
+ * The response that is sent in a case of an error the caller should present his user
+ * @export
+ * @interface FormErrorResponseForTournamentSettingsErrors
+ */
+export interface FormErrorResponseForTournamentSettingsErrors {
+    /**
+     * The actual error struct
+     * @type {TournamentSettingsErrors}
+     * @memberof FormErrorResponseForTournamentSettingsErrors
+     */
+    error: TournamentSettingsErrors;
+    /**
+     * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
+     * @type {ErrorConstant}
+     * @memberof FormErrorResponseForTournamentSettingsErrors
+     */
+    result: ErrorConstant;
+}
+
+
+/**
  * What a format asks of a deck built for it
  * @export
  * @interface FormatRulesResponse
@@ -3729,6 +3756,19 @@ export interface ListSharedWithMeResponse {
      * The decks
      */
     decks: Array<SharedWithMeDeckResponse>;
+}
+/**
+ * A list of Tournaments
+ * @export
+ * @interface ListTournamentsResponse
+ */
+export interface ListTournamentsResponse {
+    /**
+     * The Tournaments, latest start first
+     * @type {Array<TournamentSummaryResponse>}
+     * @memberof ListTournamentsResponse
+     */
+    tournaments: Array<TournamentSummaryResponse>;
 }
 /**
  * Every alarm that has gone off across an account's watch lists
@@ -4248,6 +4288,16 @@ export interface OnLoanResponse {
      */
     set_name?: string | null;
 }
+
+/**
+ * The Account the Tournament belongs to
+ * @export
+ */
+export const OrganizerRole = {
+    Owner: 'Owner'
+} as const;
+export type OrganizerRole = typeof OrganizerRole[keyof typeof OrganizerRole];
+
 /**
  * An OIDC login waiting for its username step
  * @export
@@ -4988,6 +5038,29 @@ export interface RotateShareTokenResponse {
      */
     share_token: string;
 }
+
+/**
+ * The published tournament rules a Tournament follows
+ * 
+ * A closed set, chosen per Tournament and never edited: Match points, Byes, smaller Matches and Tiebreakers all follow from it.
+ * @export
+ */
+export const Ruleset = {
+    /**
+    * The Magic Tournament Rules, one-on-one
+    */
+    Mtr: 'Mtr',
+    /**
+    * TopDeck&#39;s multiplayer rules: smaller Matches or Byes
+    */
+    TopDeck: 'TopDeck',
+    /**
+    * The Multiplayer Addendum to the MTR: smaller Matches, never a Bye
+    */
+    MultiplayerAddendum: 'MultiplayerAddendum'
+} as const;
+export type Ruleset = typeof Ruleset[keyof typeof Ruleset];
+
 /**
  * One session together with its staging area
  * @export
@@ -6034,6 +6107,275 @@ export interface TopCardResponse {
      */
     value_cents: number;
 }
+/**
+ * A Tournament as one reader sees it
+ * @export
+ * @interface TournamentResponse
+ */
+export interface TournamentResponse {
+    /**
+     * What Participants should know beforehand
+     * @type {string}
+     * @memberof TournamentResponse
+     */
+    description?: string | null;
+    /**
+     * The format played, `null` for any
+     * @type {string}
+     * @memberof TournamentResponse
+     */
+    format?: string | null;
+    /**
+     * Where it takes place, as free text
+     * @type {string}
+     * @memberof TournamentResponse
+     */
+    location?: string | null;
+    /**
+     * What the Tournament is called
+     * @type {string}
+     * @memberof TournamentResponse
+     */
+    name: string;
+    /**
+     * The part the reader plays in running it, `null` for none
+     * @type {OrganizerRole}
+     * @memberof TournamentResponse
+     */
+    organizer_role?: OrganizerRole | null;
+    /**
+     * Its Owner's username, `null` while the Tombstone holds it
+     * @type {string}
+     * @memberof TournamentResponse
+     */
+    owner?: string | null;
+    /**
+     * The Ruleset it follows
+     * @type {Ruleset}
+     * @memberof TournamentResponse
+     */
+    ruleset: Ruleset;
+    /**
+     * Secret of the share link while it is Unlisted, for its Organizers only
+     * @type {string}
+     * @memberof TournamentResponse
+     */
+    share_token?: string | null;
+    /**
+     * When it is announced to start
+     * @type {string}
+     * @memberof TournamentResponse
+     */
+    starts_at: string;
+    /**
+     * Where it stands
+     * @type {TournamentState}
+     * @memberof TournamentResponse
+     */
+    state: TournamentState;
+    /**
+     * How many Participants a full Match seats
+     * @type {number}
+     * @memberof TournamentResponse
+     */
+    table_size: number;
+    /**
+     * Primary key
+     * @type {string}
+     * @memberof TournamentResponse
+     */
+    uuid: string;
+    /**
+     * Who may see it
+     * @type {Visibility}
+     * @memberof TournamentResponse
+     */
+    visibility: Visibility;
+}
+
+
+/**
+ * Why a Tournament's settings were refused
+ * @export
+ * @interface TournamentSettingsErrors
+ */
+export interface TournamentSettingsErrors {
+    /**
+     * The Ruleset is not played at the Table size
+     * @type {boolean}
+     * @memberof TournamentSettingsErrors
+     */
+    ruleset_mismatch: boolean;
+    /**
+     * The Table size is outside 2 to 5
+     * @type {boolean}
+     * @memberof TournamentSettingsErrors
+     */
+    table_size_out_of_range: boolean;
+    /**
+     * The format is not one a deck can be built for
+     * @type {boolean}
+     * @memberof TournamentSettingsErrors
+     */
+    unknown_format: boolean;
+}
+/**
+ * Every setting of a Tournament, to create one or to replace its settings
+ * @export
+ * @interface TournamentSettingsRequest
+ */
+export interface TournamentSettingsRequest {
+    /**
+     * What Participants should know beforehand
+     * @type {string}
+     * @memberof TournamentSettingsRequest
+     */
+    description?: string | null;
+    /**
+     * The format played, a slug from the deck formats; `null` for any
+     * @type {string}
+     * @memberof TournamentSettingsRequest
+     */
+    format?: string | null;
+    /**
+     * Where it takes place, as free text
+     * @type {string}
+     * @memberof TournamentSettingsRequest
+     */
+    location?: string | null;
+    /**
+     * What the Tournament is called
+     * @type {string}
+     * @memberof TournamentSettingsRequest
+     */
+    name: string;
+    /**
+     * The Ruleset to follow: `Mtr` at 2, `TopDeck` or `MultiplayerAddendum` at 3 to 5
+     * @type {Ruleset}
+     * @memberof TournamentSettingsRequest
+     */
+    ruleset: Ruleset;
+    /**
+     * When it is announced to start: the date and the start time
+     * @type {string}
+     * @memberof TournamentSettingsRequest
+     */
+    starts_at: string;
+    /**
+     * How many Participants a full Match seats, 2 to 5
+     * @type {number}
+     * @memberof TournamentSettingsRequest
+     */
+    table_size: number;
+    /**
+     * Who may see the Tournament
+     * @type {Visibility}
+     * @memberof TournamentSettingsRequest
+     */
+    visibility: Visibility;
+}
+
+
+
+/**
+ * Where a Tournament stands
+ * 
+ * Registration, Swiss, Top cut, then Finished; Cancelled can follow any of them and keeps the Rounds played so far.
+ * @export
+ */
+export const TournamentState = {
+    /**
+    * Before the first Round starts
+    */
+    Registration: 'Registration',
+    /**
+    * While Swiss Rounds are played
+    */
+    Swiss: 'Swiss',
+    /**
+    * During the playoff
+    */
+    TopCut: 'TopCut',
+    /**
+    * Over, with its standings final
+    */
+    Finished: 'Finished',
+    /**
+    * Called off; the Rounds played so far stay
+    */
+    Cancelled: 'Cancelled'
+} as const;
+export type TournamentState = typeof TournamentState[keyof typeof TournamentState];
+
+/**
+ * A Tournament in a list
+ * @export
+ * @interface TournamentSummaryResponse
+ */
+export interface TournamentSummaryResponse {
+    /**
+     * The format played, `null` for any
+     * @type {string}
+     * @memberof TournamentSummaryResponse
+     */
+    format?: string | null;
+    /**
+     * Where it takes place, as free text
+     * @type {string}
+     * @memberof TournamentSummaryResponse
+     */
+    location?: string | null;
+    /**
+     * What the Tournament is called
+     * @type {string}
+     * @memberof TournamentSummaryResponse
+     */
+    name: string;
+    /**
+     * Its Owner's username, `null` while the Tombstone holds it
+     * @type {string}
+     * @memberof TournamentSummaryResponse
+     */
+    owner?: string | null;
+    /**
+     * The Ruleset it follows
+     * @type {Ruleset}
+     * @memberof TournamentSummaryResponse
+     */
+    ruleset: Ruleset;
+    /**
+     * When it is announced to start
+     * @type {string}
+     * @memberof TournamentSummaryResponse
+     */
+    starts_at: string;
+    /**
+     * Where it stands
+     * @type {TournamentState}
+     * @memberof TournamentSummaryResponse
+     */
+    state: TournamentState;
+    /**
+     * How many Participants a full Match seats
+     * @type {number}
+     * @memberof TournamentSummaryResponse
+     */
+    table_size: number;
+    /**
+     * Primary key
+     * @type {string}
+     * @memberof TournamentSummaryResponse
+     */
+    uuid: string;
+    /**
+     * Who may see it
+     * @type {Visibility}
+     * @memberof TournamentSummaryResponse
+     */
+    visibility: Visibility;
+}
+
+
 /**
  * Request to change some of a stack's fields
  * 

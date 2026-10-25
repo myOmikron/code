@@ -1,0 +1,74 @@
+{
+    "button": {
+        "create-tournament": "Create tournament",
+        "delete-tournament": "Delete",
+        "edit-tournament": "Edit",
+        "save-tournament": "Save"
+    },
+    "description": {
+        "delete-tournament": "\"{{name}}\" and everything in it will be deleted for good.",
+        "format": "Leave empty when any format is allowed.",
+        "no-my-tournaments": "Create a tournament to find it here again.",
+        "no-public-tournaments": "As soon as someone creates a public tournament, it shows up here.",
+        "not-visible": "This tournament does not exist, or you may not see it.",
+        "ruleset-mtr": "Magic Tournament Rules: a win is 3, a draw 1, a bye counts as 2-0.",
+        "ruleset-multiplayer-addendum": "Multiplayer Addendum: a win is 7, a draw 1, smaller tables instead of byes.",
+        "ruleset-top-deck": "TopDeck: a win is 5, a draw 1, at most one smaller table, then byes.",
+        "share-link": "Anyone with this link sees the tournament.",
+        "share-link-dead": "The link was withdrawn or the tournament deleted.",
+        "visibility-private": "Only you see the tournament.",
+        "visibility-public": "Anyone finds the tournament in the overview.",
+        "visibility-unlisted": "Anyone with the link sees the tournament."
+    },
+    "error": {
+        "ruleset-mismatch": "This ruleset does not fit the table size.",
+        "table-size-out-of-range": "A table seats 2 to 5 players.",
+        "unknown-format": "This format does not exist."
+    },
+    "heading": {
+        "create-tournament": "Create tournament",
+        "delete-tournament": "Delete tournament?",
+        "edit-tournament": "Edit tournament",
+        "my-tournaments": "My tournaments",
+        "no-my-tournaments": "No tournaments of your own yet",
+        "no-public-tournaments": "No public tournaments yet",
+        "not-visible": "Tournament not found",
+        "overview": "Overview",
+        "public-tournaments": "Public",
+        "share-link-dead": "Link no longer works",
+        "tournaments": "Tournaments"
+    },
+    "label": {
+        "description": "Description",
+        "format": "Format",
+        "format-any": "Any format",
+        "location": "Location",
+        "name": "Name",
+        "organized-by": "Organized by {{owner}}",
+        "ruleset": "Ruleset",
+        "ruleset-mtr": "MTR",
+        "ruleset-multiplayer-addendum": "Multiplayer Addendum",
+        "ruleset-top-deck": "TopDeck",
+        "share-link": "Share link",
+        "starts-at": "Starts",
+        "state": "State",
+        "state-cancelled": "Cancelled",
+        "state-finished": "Finished",
+        "state-registration": "Registration",
+        "state-swiss": "Swiss rounds",
+        "state-top-cut": "Top cut",
+        "table-size": "Table size",
+        "table-size-value_one": "{{count}} player at a table",
+        "table-size-value_other": "{{count}} players at a table",
+        "tombstone": "Deleted account",
+        "visibility": "Visibility",
+        "visibility-private": "Private",
+        "visibility-public": "Public",
+        "visibility-unlisted": "By link"
+    },
+    "toast": {
+        "tournament-created": "Tournament created",
+        "tournament-deleted": "Tournament deleted",
+        "tournament-saved": "Tournament saved"
+    }
+}

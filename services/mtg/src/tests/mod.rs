@@ -18,3 +18,4 @@ mod passkeys;
 mod rename;
 mod statistics;
 mod syncs;
+mod tournaments;

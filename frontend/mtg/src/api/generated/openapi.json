@@ -9141,6 +9141,66 @@
                 }
             }
         },
+        "/api/frontend/v1/shared/tournaments/{token}": {
+            "get": {
+                "summary": "Fetch the Tournament a share link points at",
+                "description": "Fetch the Tournament a share link points at\n\nAs anybody without a part in running it sees it: the link is the\nauthorization, not the reader, so even an Organizer gets no share link back.",
+                "operationId": "get_shared_tournament",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "token",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TournamentResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/frontend/v1/tags": {
             "get": {
                 "summary": "Every tag the account keeps for all of its decks and collections",
@@ -9340,6 +9400,365 @@
                             "application/json": {
                                 "schema": {
                                     "nullable": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/tournaments": {
+            "get": {
+                "summary": "The public Tournaments, latest start first",
+                "description": "The public Tournaments, latest start first",
+                "operationId": "list_public_tournaments",
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ListTournamentsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "summary": "Create a Tournament, owned by the logged-in Account",
+                "description": "Create a Tournament, owned by the logged-in Account",
+                "operationId": "create_tournament",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/TournamentSettingsRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "$ref": "#/components/schemas/TournamentResponse"
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/FormErrorResponse_for_TournamentSettingsErrors"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/tournaments/{tournament}": {
+            "get": {
+                "summary": "Fetch a Tournament by its id",
+                "description": "Fetch a Tournament by its id\n\nAnybody gets a public one; its Organizers get it whatever its Visibility.\nAn unlisted one is read through its share link, see `get_shared_tournament`.",
+                "operationId": "get_tournament",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tournament",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of a [`Tournament`]",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TournamentResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "summary": "Replace a Tournament's settings, as one of its Organizers",
+                "description": "Replace a Tournament's settings, as one of its Organizers",
+                "operationId": "update_tournament",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tournament",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of a [`Tournament`]",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/TournamentSettingsRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "$ref": "#/components/schemas/TournamentResponse"
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/FormErrorResponse_for_TournamentSettingsErrors"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "summary": "Delete a Tournament and everything in it, as its Owner",
+                "description": "Delete a Tournament and everything in it, as its Owner",
+                "operationId": "delete_tournament",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tournament",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of a [`Tournament`]",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "nullable": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/tournaments/mine": {
+            "get": {
+                "summary": "The Tournaments the logged-in Account owns, latest start first",
+                "description": "The Tournaments the logged-in Account owns, latest start first",
+                "operationId": "get_my_tournaments",
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ListTournamentsResponse"
                                 }
                             }
                         }
@@ -15081,6 +15500,32 @@
                     "result"
                 ]
             },
+            "FormErrorResponse_for_TournamentSettingsErrors": {
+                "description": "The response that is sent in a case of an error the caller should present his user",
+                "type": "object",
+                "properties": {
+                    "error": {
+                        "description": "The actual error struct",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/TournamentSettingsErrors"
+                            }
+                        ]
+                    },
+                    "result": {
+                        "description": "A constant `\"Err\"` used to differentiate this schema from any other \"Ok\" schema",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ErrorConstant"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "error",
+                    "result"
+                ]
+            },
             "FormatRulesResponse": {
                 "description": "What a format asks of a deck built for it",
                 "type": "object",
@@ -15478,6 +15923,22 @@
                     "decks"
                 ]
             },
+            "ListTournamentsResponse": {
+                "description": "A list of Tournaments",
+                "type": "object",
+                "properties": {
+                    "tournaments": {
+                        "description": "The Tournaments, latest start first",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/TournamentSummaryResponse"
+                        }
+                    }
+                },
+                "required": [
+                    "tournaments"
+                ]
+            },
             "ListWatchListAlarmsResponse": {
                 "description": "Every alarm that has gone off across an account's watch lists",
                 "type": "object",
@@ -15808,6 +16269,10 @@
             "MaxStr_1024": {
                 "type": "string",
                 "maxLength": 1024
+            },
+            "MaxStr_128": {
+                "type": "string",
+                "maxLength": 128
             },
             "MaxStr_16": {
                 "type": "string",
@@ -16233,6 +16698,18 @@
                     "deck_name",
                     "printing",
                     "quantity"
+                ]
+            },
+            "OrganizerRole": {
+                "description": "The part an Account plays in running a Tournament",
+                "oneOf": [
+                    {
+                        "description": "The Account the Tournament belongs to",
+                        "type": "string",
+                        "enum": [
+                            "Owner"
+                        ]
+                    }
                 ]
             },
             "PendingOidcLogin": {
@@ -17240,6 +17717,32 @@
                 },
                 "required": [
                     "share_token"
+                ]
+            },
+            "Ruleset": {
+                "description": "The published tournament rules a Tournament follows\n\nA closed set, chosen per Tournament and never edited: Match points, Byes, smaller Matches and Tiebreakers all follow from it.",
+                "oneOf": [
+                    {
+                        "description": "The Magic Tournament Rules, one-on-one",
+                        "type": "string",
+                        "enum": [
+                            "Mtr"
+                        ]
+                    },
+                    {
+                        "description": "TopDeck's multiplayer rules: smaller Matches or Byes",
+                        "type": "string",
+                        "enum": [
+                            "TopDeck"
+                        ]
+                    },
+                    {
+                        "description": "The Multiplayer Addendum to the MTR: smaller Matches, never a Bye",
+                        "type": "string",
+                        "enum": [
+                            "MultiplayerAddendum"
+                        ]
+                    }
                 ]
             },
             "ScannerSessionDetailResponse": {
@@ -18788,6 +19291,360 @@
                     "uuid",
                     "value_cents"
                 ]
+            },
+            "TournamentResponse": {
+                "description": "A Tournament as one reader sees it",
+                "type": "object",
+                "properties": {
+                    "description": {
+                        "nullable": true,
+                        "description": "What Participants should know beforehand",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_4096"
+                            }
+                        ]
+                    },
+                    "format": {
+                        "nullable": true,
+                        "description": "The format played, `null` for any",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_32"
+                            }
+                        ]
+                    },
+                    "location": {
+                        "nullable": true,
+                        "description": "Where it takes place, as free text",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_255"
+                            }
+                        ]
+                    },
+                    "name": {
+                        "description": "What the Tournament is called",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_128"
+                            }
+                        ]
+                    },
+                    "organizer_role": {
+                        "nullable": true,
+                        "description": "The part the reader plays in running it, `null` for none",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/OrganizerRole"
+                            }
+                        ]
+                    },
+                    "owner": {
+                        "nullable": true,
+                        "description": "Its Owner's username, `null` while the Tombstone holds it",
+                        "type": "string"
+                    },
+                    "ruleset": {
+                        "description": "The Ruleset it follows",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/Ruleset"
+                            }
+                        ]
+                    },
+                    "share_token": {
+                        "nullable": true,
+                        "description": "Secret of the share link while it is Unlisted, for its Organizers only",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_64"
+                            }
+                        ]
+                    },
+                    "starts_at": {
+                        "description": "When it is announced to start",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDateTime"
+                            }
+                        ]
+                    },
+                    "state": {
+                        "description": "Where it stands",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/TournamentState"
+                            }
+                        ]
+                    },
+                    "table_size": {
+                        "description": "How many Participants a full Match seats",
+                        "type": "integer",
+                        "format": "int16"
+                    },
+                    "uuid": {
+                        "description": "Primary key",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/TournamentUuid"
+                            }
+                        ]
+                    },
+                    "visibility": {
+                        "description": "Who may see it",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/Visibility"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "name",
+                    "ruleset",
+                    "starts_at",
+                    "state",
+                    "table_size",
+                    "uuid",
+                    "visibility"
+                ]
+            },
+            "TournamentSettingsErrors": {
+                "description": "Why a Tournament's settings were refused",
+                "type": "object",
+                "properties": {
+                    "ruleset_mismatch": {
+                        "description": "The Ruleset is not played at the Table size",
+                        "type": "boolean"
+                    },
+                    "table_size_out_of_range": {
+                        "description": "The Table size is outside 2 to 5",
+                        "type": "boolean"
+                    },
+                    "unknown_format": {
+                        "description": "The format is not one a deck can be built for",
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "ruleset_mismatch",
+                    "table_size_out_of_range",
+                    "unknown_format"
+                ]
+            },
+            "TournamentSettingsRequest": {
+                "description": "Every setting of a Tournament, to create one or to replace its settings",
+                "type": "object",
+                "properties": {
+                    "description": {
+                        "nullable": true,
+                        "description": "What Participants should know beforehand",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_4096"
+                            }
+                        ]
+                    },
+                    "format": {
+                        "nullable": true,
+                        "description": "The format played, a slug from the deck formats; `null` for any",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_32"
+                            }
+                        ]
+                    },
+                    "location": {
+                        "nullable": true,
+                        "description": "Where it takes place, as free text",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_255"
+                            }
+                        ]
+                    },
+                    "name": {
+                        "description": "What the Tournament is called",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_128"
+                            }
+                        ]
+                    },
+                    "ruleset": {
+                        "description": "The Ruleset to follow: `Mtr` at 2, `TopDeck` or `MultiplayerAddendum` at 3 to 5",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/Ruleset"
+                            }
+                        ]
+                    },
+                    "starts_at": {
+                        "description": "When it is announced to start: the date and the start time",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDateTime"
+                            }
+                        ]
+                    },
+                    "table_size": {
+                        "description": "How many Participants a full Match seats, 2 to 5",
+                        "type": "integer",
+                        "format": "int16"
+                    },
+                    "visibility": {
+                        "description": "Who may see the Tournament",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/Visibility"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "name",
+                    "ruleset",
+                    "starts_at",
+                    "table_size",
+                    "visibility"
+                ]
+            },
+            "TournamentState": {
+                "description": "Where a Tournament stands\n\nRegistration, Swiss, Top cut, then Finished; Cancelled can follow any of them and keeps the Rounds played so far.",
+                "oneOf": [
+                    {
+                        "description": "Before the first Round starts",
+                        "type": "string",
+                        "enum": [
+                            "Registration"
+                        ]
+                    },
+                    {
+                        "description": "While Swiss Rounds are played",
+                        "type": "string",
+                        "enum": [
+                            "Swiss"
+                        ]
+                    },
+                    {
+                        "description": "During the playoff",
+                        "type": "string",
+                        "enum": [
+                            "TopCut"
+                        ]
+                    },
+                    {
+                        "description": "Over, with its standings final",
+                        "type": "string",
+                        "enum": [
+                            "Finished"
+                        ]
+                    },
+                    {
+                        "description": "Called off; the Rounds played so far stay",
+                        "type": "string",
+                        "enum": [
+                            "Cancelled"
+                        ]
+                    }
+                ]
+            },
+            "TournamentSummaryResponse": {
+                "description": "A Tournament in a list",
+                "type": "object",
+                "properties": {
+                    "format": {
+                        "nullable": true,
+                        "description": "The format played, `null` for any",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_32"
+                            }
+                        ]
+                    },
+                    "location": {
+                        "nullable": true,
+                        "description": "Where it takes place, as free text",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_255"
+                            }
+                        ]
+                    },
+                    "name": {
+                        "description": "What the Tournament is called",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_128"
+                            }
+                        ]
+                    },
+                    "owner": {
+                        "nullable": true,
+                        "description": "Its Owner's username, `null` while the Tombstone holds it",
+                        "type": "string"
+                    },
+                    "ruleset": {
+                        "description": "The Ruleset it follows",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/Ruleset"
+                            }
+                        ]
+                    },
+                    "starts_at": {
+                        "description": "When it is announced to start",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDateTime"
+                            }
+                        ]
+                    },
+                    "state": {
+                        "description": "Where it stands",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/TournamentState"
+                            }
+                        ]
+                    },
+                    "table_size": {
+                        "description": "How many Participants a full Match seats",
+                        "type": "integer",
+                        "format": "int16"
+                    },
+                    "uuid": {
+                        "description": "Primary key",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/TournamentUuid"
+                            }
+                        ]
+                    },
+                    "visibility": {
+                        "description": "Who may see it",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/Visibility"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "name",
+                    "ruleset",
+                    "starts_at",
+                    "state",
+                    "table_size",
+                    "uuid",
+                    "visibility"
+                ]
+            },
+            "TournamentUuid": {
+                "description": "Wrapper for the primary key of a [`Tournament`]",
+                "type": "string",
+                "format": "uuid"
             },
             "UpdateCollectionEntryRequest": {
                 "description": "Request to change some of a stack's fields\n\nEvery field is optional and an omitted one is left alone. The two nullable ones are wrapped twice so that `null` can mean \"clear this\": with a single `Option` a cleared price and an untouched one arrive as the same value.",

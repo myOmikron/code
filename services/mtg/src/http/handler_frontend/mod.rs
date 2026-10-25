@@ -19,6 +19,7 @@ pub mod printings;
 pub mod scanner_sessions;
 pub mod shared;
 pub mod tags;
+pub mod tournaments;
 pub mod watch_lists;
 
 /// Initializes all routes for the frontend
@@ -41,6 +42,7 @@ pub fn initialize_routes() -> GalvynRouter {
         .nest("/scanner-sessions", scanner_sessions::initialize_routes())
         .nest("/shared", shared::initialize_routes())
         .nest("/tags", tags::initialize_routes())
+        .nest("/tournaments", tournaments::initialize_routes())
         .nest("/watch-lists", watch_lists::initialize_routes())
         .wrap(TraceIdLayer)
 }
