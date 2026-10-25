@@ -53,194 +53,419 @@ import type {
 } from '../models/index';
 
 export interface AcceptInviteRequest {
+    /**
+     * 
+     */
     uuid: string;
+    /**
+     * 
+     */
     AcceptInvite?: AcceptInvite;
 }
 
 export interface AssociateDomainOperationRequest {
+    /**
+     * 
+     */
     uuid: string;
+    /**
+     * 
+     */
     AssociateDomainRequest?: AssociateDomainRequest;
 }
 
 export interface AuthRequest {
+    /**
+     * 
+     */
     client_id?: string;
+    /**
+     * 
+     */
     code_challenge?: string | null;
+    /**
+     * 
+     */
     code_challenge_method?: string | null;
+    /**
+     * 
+     */
     max_age?: number | null;
+    /**
+     * 
+     */
     nonce?: string | null;
+    /**
+     * 
+     */
     prompt?: string | null;
+    /**
+     * 
+     */
     redirect_uri?: string;
+    /**
+     * 
+     */
     response_mode?: string | null;
+    /**
+     * 
+     */
     response_type?: string;
+    /**
+     * 
+     */
     scope?: string;
+    /**
+     * 
+     */
     state?: string | null;
 }
 
 export interface CreateClubOperationRequest {
+    /**
+     * 
+     */
     CreateClubRequest?: CreateClubRequest;
 }
 
 export interface CreateInviteRequest {
+    /**
+     * 
+     */
     CreateInviteRequestAdmin?: CreateInviteRequestAdmin;
 }
 
 export interface CreateMemberInviteOperationRequest {
+    /**
+     * 
+     */
     club_uuid: string;
+    /**
+     * 
+     */
     CreateMemberInviteRequest?: CreateMemberInviteRequest;
 }
 
 export interface CreateOidcClientOperationRequest {
+    /**
+     * 
+     */
     CreateOidcClientRequest?: CreateOidcClientRequest;
 }
 
 export interface DeleteClubRequest {
+    /**
+     * 
+     */
     uuid: string;
 }
 
 export interface DeleteClubAdminRequest {
+    /**
+     * 
+     */
     uuid: string;
 }
 
 export interface DeleteMemberRequest {
+    /**
+     * 
+     */
     club_uuid: string;
+    /**
+     * 
+     */
     member_uuid: string;
 }
 
 export interface DeleteOidcClientRequest {
+    /**
+     * 
+     */
     uuid: string;
 }
 
 export interface ExtendInviteExpiryRequest {
+    /**
+     * 
+     */
     uuid: string;
+    /**
+     * 
+     */
     ExtendInviteRequest?: ExtendInviteRequest;
 }
 
 export interface ExtendInviteExpiryAsClubAdminRequest {
+    /**
+     * 
+     */
     club_uuid: string;
+    /**
+     * 
+     */
     invite_uuid: string;
+    /**
+     * 
+     */
     ExtendInviteRequest?: ExtendInviteRequest;
 }
 
 export interface FinishAuthRequest {
+    /**
+     * 
+     */
     request_id?: string;
 }
 
 export interface GetClubRequest {
+    /**
+     * 
+     */
     uuid: string;
 }
 
 export interface GetClubAdminInvitesRequest {
+    /**
+     * 
+     */
     uuid: string;
 }
 
 export interface GetClubAdminsRequest {
+    /**
+     * 
+     */
     uuid: string;
+    /**
+     * 
+     */
     limit?: number;
+    /**
+     * 
+     */
     offset?: number;
+    /**
+     * 
+     */
     search?: string | null;
 }
 
 export interface GetClubAsClubAdminRequest {
+    /**
+     * 
+     */
     club_uuid: string;
 }
 
 export interface GetClubDomainsRequest {
+    /**
+     * 
+     */
     uuid: string;
 }
 
 export interface GetClubMemberInvitesRequest {
+    /**
+     * 
+     */
     uuid: string;
 }
 
 export interface GetClubMemberInvitesAsClubAdminRequest {
+    /**
+     * 
+     */
     club_uuid: string;
 }
 
 export interface GetClubMembersRequest {
+    /**
+     * 
+     */
     uuid: string;
+    /**
+     * 
+     */
     limit?: number;
+    /**
+     * 
+     */
     offset?: number;
+    /**
+     * 
+     */
     search?: string | null;
 }
 
 export interface GetClubMembersAsClubAdminRequest {
+    /**
+     * 
+     */
     club_uuid: string;
+    /**
+     * 
+     */
     limit?: number;
+    /**
+     * 
+     */
     offset?: number;
+    /**
+     * 
+     */
     search?: string | null;
 }
 
 export interface GetDashboardStatsRequest {
+    /**
+     * 
+     */
     uuid: string;
 }
 
 export interface GetDashboardStatsAsClubAdminRequest {
+    /**
+     * 
+     */
     club_uuid: string;
 }
 
 export interface GetInviteCommonRequest {
+    /**
+     * 
+     */
     uuid: string;
 }
 
 export interface GetTokenRequest {
+    /**
+     * Type of the grant, only `authorization_code` is supported
+     */
     grant_type: string;
+    /**
+     * Client id, required for `client_secret_post`
+     */
     client_id?: string | null;
+    /**
+     * Secret the client authenticates with in `client_secret_post`
+     */
     client_secret?: string | null;
+    /**
+     * Code to exchange for tokens
+     */
     code?: string | null;
+    /**
+     * PKCE code verifier (RFC 7636)
+     */
     code_verifier?: string | null;
+    /**
+     * Redirect uri of the authorization request
+     */
     redirect_uri?: string | null;
 }
 
 export interface ResetCredentialsRequest {
+    /**
+     * 
+     */
     uuid: string;
 }
 
 export interface ResetCredentialsAsClubAdminRequest {
+    /**
+     * 
+     */
     club_uuid: string;
+    /**
+     * 
+     */
     uuid: string;
 }
 
 export interface ResetPasswordOperationRequest {
+    /**
+     * 
+     */
     code: string;
+    /**
+     * 
+     */
     ResetPasswordRequest?: ResetPasswordRequest;
 }
 
 export interface ResetPasswordByUuidRequest {
+    /**
+     * 
+     */
     uuid: string;
+    /**
+     * 
+     */
     ResetPasswordRequest?: ResetPasswordRequest;
 }
 
 export interface RetractInviteRequest {
+    /**
+     * 
+     */
     uuid: string;
 }
 
 export interface RetractInviteAsClubAdminRequest {
+    /**
+     * 
+     */
     club_uuid: string;
+    /**
+     * 
+     */
     uuid: string;
 }
 
 export interface SetPasswordOperationRequest {
+    /**
+     * 
+     */
     SetPasswordRequest?: SetPasswordRequest;
 }
 
 export interface SignInOperationRequest {
+    /**
+     * 
+     */
     SignInRequest?: SignInRequest;
 }
 
 export interface UnassociateDomainOperationRequest {
+    /**
+     * 
+     */
     uuid: string;
+    /**
+     * 
+     */
     UnassociateDomainRequest?: UnassociateDomainRequest;
 }
 
 export interface UpdateMeOperationRequest {
+    /**
+     * 
+     */
     UpdateMeRequest?: UpdateMeRequest;
 }
 
 export interface VerifyCodeRequest {
+    /**
+     * 
+     */
     code: string;
 }
 
 export interface VerifyUuidRequest {
+    /**
+     * 
+     */
     uuid: string;
 }
 

@@ -173,646 +173,1399 @@ import type {
 } from '../models/index';
 
 export interface AcknowledgeWatchListAlarmRequest {
+    /**
+     * 
+     */
     list: string;
+    /**
+     * 
+     */
     entry: string;
 }
 
 export interface AddCollectionEntriesOperationRequest {
+    /**
+     * 
+     */
     collection: string;
+    /**
+     * 
+     */
     AddCollectionEntriesRequest?: AddCollectionEntriesRequest;
 }
 
 export interface AddDeckCardOperationRequest {
+    /**
+     * 
+     */
     deck: string;
+    /**
+     * 
+     */
     AddDeckCardRequest?: AddDeckCardRequest;
 }
 
 export interface AddScannerSessionEntryOperationRequest {
+    /**
+     * 
+     */
     session: string;
+    /**
+     * 
+     */
     AddScannerSessionEntryRequest?: AddScannerSessionEntryRequest;
 }
 
 export interface AddWatchListEntryOperationRequest {
+    /**
+     * 
+     */
     list: string;
+    /**
+     * 
+     */
     AddWatchListEntryRequest?: AddWatchListEntryRequest;
 }
 
 export interface AdminDeleteAccountOperationRequest {
+    /**
+     * 
+     */
     uuid: string;
+    /**
+     * 
+     */
     AdminDeleteAccountRequest?: AdminDeleteAccountRequest;
 }
 
 export interface AdminGetAccountRequest {
+    /**
+     * 
+     */
     uuid: string;
 }
 
 export interface AdminGetBugReportRequest {
+    /**
+     * 
+     */
     number: number;
 }
 
 export interface AdminGetBugReportImageRequest {
+    /**
+     * 
+     */
     number: number;
+    /**
+     * 
+     */
     image: string;
 }
 
 export interface AdminListAccountsRequest {
+    /**
+     * 
+     */
     after?: string | null;
+    /**
+     * 
+     */
     limit?: number;
+    /**
+     * 
+     */
     locked?: boolean | null;
+    /**
+     * 
+     */
     role?: Role | null;
+    /**
+     * 
+     */
     search?: string | null;
 }
 
 export interface AdminListBugReportsRequest {
+    /**
+     * 
+     */
     after?: number | null;
+    /**
+     * 
+     */
     filter?: AdminBugReportFilter;
+    /**
+     * 
+     */
     limit?: number;
 }
 
 export interface AdminListLogRequest {
+    /**
+     * 
+     */
     account?: string | null;
+    /**
+     * 
+     */
     after?: string | null;
+    /**
+     * 
+     */
     limit?: number;
 }
 
 export interface AdminLockAccountOperationRequest {
+    /**
+     * 
+     */
     uuid: string;
+    /**
+     * 
+     */
     AdminLockAccountRequest?: AdminLockAccountRequest;
 }
 
 export interface AdminMarkBugReportDoneRequest {
+    /**
+     * 
+     */
     number: number;
 }
 
 export interface AdminRenameAccountOperationRequest {
+    /**
+     * 
+     */
     uuid: string;
+    /**
+     * 
+     */
     AdminRenameAccountRequest?: AdminRenameAccountRequest;
 }
 
 export interface AdminReopenBugReportRequest {
+    /**
+     * 
+     */
     number: number;
 }
 
 export interface AdminSetBugReportNoteOperationRequest {
+    /**
+     * 
+     */
     number: number;
+    /**
+     * 
+     */
     AdminSetBugReportNoteRequest?: AdminSetBugReportNoteRequest;
 }
 
 export interface AdminSetRoleOperationRequest {
+    /**
+     * 
+     */
     uuid: string;
+    /**
+     * 
+     */
     AdminSetRoleRequest?: AdminSetRoleRequest;
 }
 
 export interface AdminUnlockAccountOperationRequest {
+    /**
+     * 
+     */
     uuid: string;
+    /**
+     * 
+     */
     AdminUnlockAccountRequest?: AdminUnlockAccountRequest;
 }
 
 export interface AssignCollectionEntryTagRequest {
+    /**
+     * 
+     */
     collection: string;
+    /**
+     * 
+     */
     entry: string;
+    /**
+     * 
+     */
     tag: string;
 }
 
 export interface AssignDeckCardTagRequest {
+    /**
+     * 
+     */
     deck: string;
+    /**
+     * 
+     */
     card: string;
+    /**
+     * 
+     */
     tag: string;
 }
 
 export interface AttachDeckCollectionRequest {
+    /**
+     * 
+     */
     deck: string;
 }
 
 export interface ChooseUsernameOperationRequest {
+    /**
+     * 
+     */
     ChooseUsernameRequest?: ChooseUsernameRequest;
 }
 
 export interface CreateCollectionOperationRequest {
+    /**
+     * 
+     */
     CreateCollectionRequest?: CreateCollectionRequest;
 }
 
 export interface CreateDeckOperationRequest {
+    /**
+     * 
+     */
     CreateDeckRequest?: CreateDeckRequest;
 }
 
 export interface CreateDeckFolderOperationRequest {
+    /**
+     * 
+     */
     CreateDeckFolderRequest?: CreateDeckFolderRequest;
 }
 
 export interface CreateDeckTagOperationRequest {
+    /**
+     * 
+     */
     deck: string;
+    /**
+     * 
+     */
     CreateDeckTagRequest?: CreateDeckTagRequest;
 }
 
 export interface CreateGlobalTagOperationRequest {
+    /**
+     * 
+     */
     CreateGlobalTagRequest?: CreateGlobalTagRequest;
 }
 
 export interface CreateScannerSessionOperationRequest {
+    /**
+     * 
+     */
     CreateScannerSessionRequest?: CreateScannerSessionRequest;
 }
 
 export interface CreateWatchListOperationRequest {
+    /**
+     * 
+     */
     CreateWatchListRequest?: CreateWatchListRequest;
 }
 
 export interface DeleteAccountOperationRequest {
+    /**
+     * 
+     */
     DeleteAccountRequest?: DeleteAccountRequest;
 }
 
 export interface DeleteCollectionRequest {
+    /**
+     * 
+     */
     collection: string;
 }
 
 export interface DeleteCollectionEntryRequest {
+    /**
+     * 
+     */
     collection: string;
+    /**
+     * 
+     */
     entry: string;
 }
 
 export interface DeleteDeckRequest {
+    /**
+     * 
+     */
     deck: string;
 }
 
 export interface DeleteDeckCardRequest {
+    /**
+     * 
+     */
     deck: string;
+    /**
+     * 
+     */
     card: string;
 }
 
 export interface DeleteDeckFolderRequest {
+    /**
+     * 
+     */
     folder: string;
 }
 
 export interface DeleteDeckTagRequest {
+    /**
+     * 
+     */
     deck: string;
+    /**
+     * 
+     */
     tag: string;
 }
 
 export interface DeleteGlobalTagRequest {
+    /**
+     * 
+     */
     tag: string;
 }
 
 export interface DeletePasskeyRequest {
+    /**
+     * 
+     */
     uuid: string;
 }
 
 export interface DeleteScannerSessionRequest {
+    /**
+     * 
+     */
     session: string;
 }
 
 export interface DeleteScannerSessionEntryRequest {
+    /**
+     * 
+     */
     session: string;
+    /**
+     * 
+     */
     entry: string;
 }
 
 export interface DeleteWatchListRequest {
+    /**
+     * 
+     */
     list: string;
 }
 
 export interface DeleteWatchListEntryRequest {
+    /**
+     * 
+     */
     list: string;
+    /**
+     * 
+     */
     entry: string;
 }
 
 export interface DetachDeckCollectionRequest {
+    /**
+     * 
+     */
     deck: string;
 }
 
 export interface FileScannerSessionOperationRequest {
+    /**
+     * 
+     */
     session: string;
+    /**
+     * 
+     */
     FileScannerSessionRequest?: FileScannerSessionRequest;
 }
 
 export interface FillDeckCollectionOperationRequest {
+    /**
+     * 
+     */
     deck: string;
+    /**
+     * 
+     */
     FillDeckCollectionRequest?: FillDeckCollectionRequest;
 }
 
 export interface FinishAddPasskeyOperationRequest {
+    /**
+     * 
+     */
     FinishAddPasskeyRequest?: FinishAddPasskeyRequest;
 }
 
 export interface FinishLoginOperationRequest {
+    /**
+     * 
+     */
     FinishLoginRequest?: FinishLoginRequest;
 }
 
 export interface FinishOidcLoginRequest {
+    /**
+     * 
+     */
     code?: string | null;
+    /**
+     * 
+     */
     error?: string | null;
+    /**
+     * 
+     */
     state?: string;
 }
 
 export interface FinishRegistrationOperationRequest {
+    /**
+     * 
+     */
     FinishRegistrationRequest?: FinishRegistrationRequest;
 }
 
 export interface GetBracketFlagsRequest {
+    /**
+     * 
+     */
     BracketFlagsRequest?: BracketFlagsRequest;
 }
 
 export interface GetCollectionRequest {
+    /**
+     * 
+     */
     collection: string;
 }
 
 export interface GetCollectionStatisticsRequest {
+    /**
+     * 
+     */
     collection: string;
 }
 
 export interface GetDeckRequest {
+    /**
+     * 
+     */
     deck: string;
 }
 
 export interface GetDeckAdvisorSettingsRequest {
+    /**
+     * 
+     */
     deck: string;
 }
 
 export interface GetDeckCollectionDriftRequest {
+    /**
+     * 
+     */
     deck: string;
 }
 
 export interface GetDeckHistoryRequest {
+    /**
+     * 
+     */
     deck: string;
+    /**
+     * 
+     */
     after?: string | null;
+    /**
+     * 
+     */
     limit?: number;
 }
 
 export interface GetDeckPointRequest {
+    /**
+     * 
+     */
     deck: string;
+    /**
+     * 
+     */
     change: string;
 }
 
 export interface GetDeckSourcingRequest {
+    /**
+     * 
+     */
     deck: string;
 }
 
 export interface GetPriceHistoryRequest {
+    /**
+     * 
+     */
     printing: string;
 }
 
 export interface GetPrintingLanguagesRequest {
+    /**
+     * 
+     */
     printing: string;
 }
 
 export interface GetPublicCollectionRequest {
+    /**
+     * 
+     */
     collection: string;
 }
 
 export interface GetPublicCollectionStatisticsRequest {
+    /**
+     * 
+     */
     collection: string;
 }
 
 export interface GetPublicDeckRequest {
+    /**
+     * 
+     */
     deck: string;
 }
 
 export interface GetPublicProfileRequest {
+    /**
+     * 
+     */
     username: string;
 }
 
 export interface GetScannerSessionRequest {
+    /**
+     * 
+     */
     session: string;
 }
 
 export interface GetSharedCollectionRequest {
+    /**
+     * 
+     */
     token: string;
 }
 
 export interface GetSharedCollectionStatisticsRequest {
+    /**
+     * 
+     */
     token: string;
 }
 
 export interface GetSharedDeckRequest {
+    /**
+     * 
+     */
     token: string;
 }
 
 export interface GetWatchListRequest {
+    /**
+     * 
+     */
     list: string;
 }
 
 export interface ImportDeckCardsOperationRequest {
+    /**
+     * 
+     */
     deck: string;
+    /**
+     * 
+     */
     ImportDeckCardsRequest?: ImportDeckCardsRequest;
 }
 
 export interface LeaveDeckRequest {
+    /**
+     * 
+     */
     deck: string;
 }
 
 export interface ListCollectionCardsRequest {
+    /**
+     * 
+     */
     collection: string;
+    /**
+     * 
+     */
     after?: string | null;
+    /**
+     * 
+     */
     condition?: CardCondition | null;
+    /**
+     * 
+     */
     descending?: boolean;
+    /**
+     * 
+     */
     finish?: CardFinish | null;
+    /**
+     * 
+     */
     limit?: number;
+    /**
+     * 
+     */
     offset?: number;
+    /**
+     * 
+     */
     printing?: string | null;
+    /**
+     * 
+     */
     rarity?: CardRarity | null;
+    /**
+     * 
+     */
     search?: string | null;
+    /**
+     * 
+     */
     sort?: EntrySort;
 }
 
 export interface ListCollectionEntriesRequest {
+    /**
+     * 
+     */
     collection: string;
 }
 
 export interface ListCollectionOnLoanRequest {
+    /**
+     * 
+     */
     collection: string;
 }
 
 export interface ListDeckCardsRequest {
+    /**
+     * 
+     */
     deck: string;
 }
 
 export interface ListDeckCollaboratorsRequest {
+    /**
+     * 
+     */
     deck: string;
 }
 
 export interface ListPublicCollectionCardsRequest {
+    /**
+     * 
+     */
     collection: string;
+    /**
+     * 
+     */
     after?: string | null;
+    /**
+     * 
+     */
     condition?: CardCondition | null;
+    /**
+     * 
+     */
     descending?: boolean;
+    /**
+     * 
+     */
     finish?: CardFinish | null;
+    /**
+     * 
+     */
     limit?: number;
+    /**
+     * 
+     */
     offset?: number;
+    /**
+     * 
+     */
     printing?: string | null;
+    /**
+     * 
+     */
     rarity?: CardRarity | null;
+    /**
+     * 
+     */
     search?: string | null;
+    /**
+     * 
+     */
     sort?: EntrySort;
 }
 
 export interface ListPublicDeckCardsRequest {
+    /**
+     * 
+     */
     deck: string;
 }
 
 export interface ListSharedCollectionCardsRequest {
+    /**
+     * 
+     */
     token: string;
+    /**
+     * 
+     */
     after?: string | null;
+    /**
+     * 
+     */
     condition?: CardCondition | null;
+    /**
+     * 
+     */
     descending?: boolean;
+    /**
+     * 
+     */
     finish?: CardFinish | null;
+    /**
+     * 
+     */
     limit?: number;
+    /**
+     * 
+     */
     offset?: number;
+    /**
+     * 
+     */
     printing?: string | null;
+    /**
+     * 
+     */
     rarity?: CardRarity | null;
+    /**
+     * 
+     */
     search?: string | null;
+    /**
+     * 
+     */
     sort?: EntrySort;
 }
 
 export interface ListSharedDeckCardsRequest {
+    /**
+     * 
+     */
     token: string;
 }
 
 export interface ListWatchListCopiesRequest {
+    /**
+     * 
+     */
     list: string;
+    /**
+     * 
+     */
     entry: string;
 }
 
 export interface ListWatchListEntriesRequest {
+    /**
+     * 
+     */
     list: string;
 }
 
 export interface MergeCollectionEntriesOperationRequest {
+    /**
+     * 
+     */
     collection: string;
+    /**
+     * 
+     */
     MergeCollectionEntriesRequest?: MergeCollectionEntriesRequest;
 }
 
 export interface PutDeckCollaboratorOperationRequest {
+    /**
+     * 
+     */
     deck: string;
+    /**
+     * 
+     */
     PutDeckCollaboratorRequest?: PutDeckCollaboratorRequest;
 }
 
 export interface ReadDeckUrlOperationRequest {
+    /**
+     * 
+     */
     ReadDeckUrlRequest?: ReadDeckUrlRequest;
 }
 
 export interface RecoverAccountOperationRequest {
+    /**
+     * 
+     */
     RecoverAccountRequest?: RecoverAccountRequest;
 }
 
 export interface RedoDeckChangeRequest {
+    /**
+     * 
+     */
     deck: string;
 }
 
 export interface RemoveDeckCheckpointRequest {
+    /**
+     * 
+     */
     deck: string;
+    /**
+     * 
+     */
     change: string;
 }
 
 export interface RemoveDeckCollaboratorRequest {
+    /**
+     * 
+     */
     deck: string;
+    /**
+     * 
+     */
     account: string;
 }
 
 export interface RenameAccountOperationRequest {
+    /**
+     * 
+     */
     RenameAccountRequest?: RenameAccountRequest;
 }
 
 export interface RenamePasskeyOperationRequest {
+    /**
+     * 
+     */
     uuid: string;
+    /**
+     * 
+     */
     RenamePasskeyRequest?: RenamePasskeyRequest;
 }
 
 export interface ResetDeckRequest {
+    /**
+     * 
+     */
     deck: string;
+    /**
+     * 
+     */
     change: string;
 }
 
 export interface ResolvePrintingsOperationRequest {
+    /**
+     * 
+     */
     ResolvePrintingsRequest?: ResolvePrintingsRequest;
 }
 
 export interface ReturnAllDeckCardsOperationRequest {
+    /**
+     * 
+     */
     deck: string;
+    /**
+     * 
+     */
     ReturnAllDeckCardsRequest?: ReturnAllDeckCardsRequest;
 }
 
 export interface ReturnDeckCardsOperationRequest {
+    /**
+     * 
+     */
     deck: string;
+    /**
+     * 
+     */
     ReturnDeckCardsRequest?: ReturnDeckCardsRequest;
 }
 
 export interface RotateDeckShareTokenRequest {
+    /**
+     * 
+     */
     deck: string;
 }
 
 export interface RotateShareTokenRequest {
+    /**
+     * 
+     */
     collection: string;
 }
 
 export interface SearchCollaboratorCandidatesRequest {
+    /**
+     * 
+     */
     deck: string;
+    /**
+     * 
+     */
     query?: string;
 }
 
 export interface SearchMpcfillArtRequest {
+    /**
+     * 
+     */
     MpcFillSearchRequest?: MpcFillSearchRequest;
 }
 
 export interface SearchPublicDecksRequest {
+    /**
+     * 
+     */
     bracket?: number | null;
+    /**
+     * 
+     */
     descending?: boolean;
+    /**
+     * 
+     */
     format?: string | null;
+    /**
+     * 
+     */
     limit?: number;
+    /**
+     * 
+     */
     offset?: number;
+    /**
+     * 
+     */
     owner?: string | null;
+    /**
+     * 
+     */
     search?: string | null;
+    /**
+     * 
+     */
     sort?: PublicDeckSort;
 }
 
 export interface SendBugReportOperationRequest {
+    /**
+     * The [`SendBugReportRequest`] as json
+     */
     report: SendBugReportRequest;
+    /**
+     * JPEG, PNG or WebP images of at most 5 MB each
+     */
     images?: Array<Blob> | null;
 }
 
 export interface SetDeckAdvisorSettingsRequest {
+    /**
+     * 
+     */
     deck: string;
+    /**
+     * 
+     */
     SetAdvisorSettingsRequest?: SetAdvisorSettingsRequest;
 }
 
 export interface SetDeckBracketOperationRequest {
+    /**
+     * 
+     */
     deck: string;
+    /**
+     * 
+     */
     SetDeckBracketRequest?: SetDeckBracketRequest;
 }
 
 export interface SetDeckCheckpointOperationRequest {
+    /**
+     * 
+     */
     deck: string;
+    /**
+     * 
+     */
     change: string;
+    /**
+     * 
+     */
     SetDeckCheckpointRequest?: SetDeckCheckpointRequest;
 }
 
 export interface SetDeckColorsOperationRequest {
+    /**
+     * 
+     */
     deck: string;
+    /**
+     * 
+     */
     SetDeckColorsRequest?: SetDeckColorsRequest;
 }
 
 export interface SetDeckFolderOperationRequest {
+    /**
+     * 
+     */
     deck: string;
+    /**
+     * 
+     */
     SetDeckFolderRequest?: SetDeckFolderRequest;
 }
 
 export interface SetDeckRuleZeroOperationRequest {
+    /**
+     * 
+     */
     deck: string;
+    /**
+     * 
+     */
     SetDeckRuleZeroRequest?: SetDeckRuleZeroRequest;
 }
 
 export interface SetVisibilityCollectionRequest {
+    /**
+     * 
+     */
     collection: string;
+    /**
+     * 
+     */
     SetCollectionVisibilityRequest?: SetCollectionVisibilityRequest;
 }
 
 export interface SetVisibilityDeckRequest {
+    /**
+     * 
+     */
     deck: string;
+    /**
+     * 
+     */
     SetDeckVisibilityRequest?: SetDeckVisibilityRequest;
 }
 
 export interface SignupOperationRequest {
+    /**
+     * 
+     */
     SignupRequest?: SignupRequest;
 }
 
 export interface SplitCollectionEntryOperationRequest {
+    /**
+     * 
+     */
     collection: string;
+    /**
+     * 
+     */
     entry: string;
+    /**
+     * 
+     */
     SplitCollectionEntryRequest?: SplitCollectionEntryRequest;
 }
 
 export interface StartLoginOperationRequest {
+    /**
+     * 
+     */
     StartLoginRequest?: StartLoginRequest;
 }
 
 export interface StartOidcLoginOperationRequest {
+    /**
+     * 
+     */
     StartOidcLoginRequest?: StartOidcLoginRequest;
 }
 
 export interface StartRegistrationOperationRequest {
+    /**
+     * 
+     */
     StartRegistrationRequest?: StartRegistrationRequest;
 }
 
 export interface SwapDeckCardOperationRequest {
+    /**
+     * 
+     */
     deck: string;
+    /**
+     * 
+     */
     card: string;
+    /**
+     * 
+     */
     SwapDeckCardRequest?: SwapDeckCardRequest;
 }
 
 export interface TakeDeckCardsOperationRequest {
+    /**
+     * 
+     */
     deck: string;
+    /**
+     * 
+     */
     TakeDeckCardsRequest?: TakeDeckCardsRequest;
 }
 
 export interface UnassignCollectionEntryTagRequest {
+    /**
+     * 
+     */
     collection: string;
+    /**
+     * 
+     */
     entry: string;
+    /**
+     * 
+     */
     tag: string;
 }
 
 export interface UnassignDeckCardTagRequest {
+    /**
+     * 
+     */
     deck: string;
+    /**
+     * 
+     */
     card: string;
+    /**
+     * 
+     */
     tag: string;
 }
 
 export interface UndoDeckChangeRequest {
+    /**
+     * 
+     */
     deck: string;
 }
 
 export interface UpdateCollectionOperationRequest {
+    /**
+     * 
+     */
     collection: string;
+    /**
+     * 
+     */
     UpdateCollectionRequest?: UpdateCollectionRequest;
 }
 
 export interface UpdateCollectionEntryOperationRequest {
+    /**
+     * 
+     */
     collection: string;
+    /**
+     * 
+     */
     entry: string;
+    /**
+     * 
+     */
     UpdateCollectionEntryRequest?: UpdateCollectionEntryRequest;
 }
 
 export interface UpdateDeckOperationRequest {
+    /**
+     * 
+     */
     deck: string;
+    /**
+     * 
+     */
     UpdateDeckRequest?: UpdateDeckRequest;
 }
 
 export interface UpdateDeckCardOperationRequest {
+    /**
+     * 
+     */
     deck: string;
+    /**
+     * 
+     */
     card: string;
+    /**
+     * 
+     */
     UpdateDeckCardRequest?: UpdateDeckCardRequest;
 }
 
 export interface UpdateDeckFolderOperationRequest {
+    /**
+     * 
+     */
     folder: string;
+    /**
+     * 
+     */
     UpdateDeckFolderRequest?: UpdateDeckFolderRequest;
 }
 
 export interface UpdateDeckTagOperationRequest {
+    /**
+     * 
+     */
     deck: string;
+    /**
+     * 
+     */
     tag: string;
+    /**
+     * 
+     */
     UpdateDeckTagRequest?: UpdateDeckTagRequest;
 }
 
 export interface UpdateGlobalTagOperationRequest {
+    /**
+     * 
+     */
     tag: string;
+    /**
+     * 
+     */
     UpdateGlobalTagRequest?: UpdateGlobalTagRequest;
 }
 
 export interface UpdateScannerSessionOperationRequest {
+    /**
+     * 
+     */
     session: string;
+    /**
+     * 
+     */
     UpdateScannerSessionRequest?: UpdateScannerSessionRequest;
 }
 
 export interface UpdateScannerSessionEntryOperationRequest {
+    /**
+     * 
+     */
     session: string;
+    /**
+     * 
+     */
     entry: string;
+    /**
+     * 
+     */
     UpdateScannerSessionEntryRequest?: UpdateScannerSessionEntryRequest;
 }
 
 export interface UpdateWatchListOperationRequest {
+    /**
+     * 
+     */
     list: string;
+    /**
+     * 
+     */
     UpdateWatchListRequest?: UpdateWatchListRequest;
 }
 
 export interface UpdateWatchListEntryOperationRequest {
+    /**
+     * 
+     */
     list: string;
+    /**
+     * 
+     */
     entry: string;
+    /**
+     * 
+     */
     UpdateWatchListEntryRequest?: UpdateWatchListEntryRequest;
 }
 

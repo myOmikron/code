@@ -6,8 +6,6 @@
 
 Name | Type
 ------------ | -------------
-`club` | string
-`club_name` | string
 `type` | string
 
 

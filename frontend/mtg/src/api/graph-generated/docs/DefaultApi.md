@@ -21,7 +21,7 @@ All URIs are relative to */api/graph*
 
 ## getFacets
 
-> { [key: string]: Array&lt;{ [key: string]: any | undefined; }&gt; | undefined; } getFacets()
+> { [key: string]: Array&lt;{ [key: string]: any | undefined | null; }&gt; | undefined; } getFacets()
 
 Get Facets
 
@@ -58,7 +58,7 @@ This endpoint does not need any parameter.
 
 ### Return type
 
-**{ [key: string]: Array<{ [key: string]: any | undefined; }> | undefined; }**
+**{ [key: string]: Array<{ [key: string]: any | undefined | null; }> | undefined; }**
 
 ### Authorization
 
