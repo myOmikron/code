@@ -11,6 +11,7 @@ use galvyn::ModuleBuilder;
 use galvyn::RouterBuilder;
 use galvyn::core::modules::database::DatabaseSetup;
 use galvyn::core::re_exports::rorm;
+use galvyn::core::re_exports::time::OffsetDateTime;
 use galvyn::error::GalvynError;
 use galvyn::rorm::Database;
 use galvyn::rorm::DatabaseConfiguration;
@@ -39,6 +40,7 @@ use crate::models::account::Account;
 use crate::models::account::Role;
 use crate::models::account::Username;
 use crate::models::admin_log::AdminActor;
+use crate::models::bug_report::BugReport;
 use crate::models::collection::stock::StockDrift;
 use crate::models::collection::stock::rebuild as rebuild_stock;
 use crate::models::statistics::StatisticsSnapshot;
@@ -99,6 +101,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
         }
         Command::SnapshotStatistics { every_minutes } => {
             snapshot_statistics_command(*every_minutes).await?;
+        }
+        Command::PurgeBugReports { every_minutes } => {
+            purge_bug_reports_command(*every_minutes).await?;
         }
         Command::Health => {
             health_command().await?;
@@ -521,6 +526,51 @@ async fn take_snapshot(database: &Database) -> Result<StatisticsSnapshot, Box<dy
     let snapshot = StatisticsSnapshot::take(&mut tx).await?;
     tx.commit().await?;
     Ok(snapshot)
+}
+
+/// Purge the attachments of long done Bug reports, once or on a loop
+async fn purge_bug_reports_command(
+    every_minutes: Option<NonZeroU64>,
+) -> Result<(), Box<dyn Error>> {
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("mtg=info,warn")),
+        )
+        .init();
+
+    let config = match config::load() {
+        Ok(config) => config,
+        Err(err) => return Err(Box::from(err)),
+    };
+
+    let database = Database::connect(DatabaseConfiguration::new(config.database_driver)).await?;
+
+    let Some(minutes) = every_minutes else {
+        let purged = purge_bug_reports(&database).await?;
+        info!(purged, "Purged done Bug reports");
+        database.close().await;
+        return Ok(());
+    };
+
+    let interval = Duration::from_secs(minutes.get().saturating_mul(60));
+    info!(minutes = minutes.get(), "Purging Bug reports on a loop");
+    loop {
+        match purge_bug_reports(&database).await {
+            Ok(purged) => info!(purged, "Purged done Bug reports"),
+            Err(error) => {
+                error!(error.display = %error, "Bug report purge failed, trying again later")
+            }
+        }
+        sleep(interval).await;
+    }
+}
+
+/// Purge the Bug reports done for longer than [`models::bug_report::PURGE_AFTER`]
+async fn purge_bug_reports(database: &Database) -> Result<u64, Box<dyn Error>> {
+    let mut tx = database.start_transaction().await?;
+    let purged = BugReport::purge(&mut tx, OffsetDateTime::now_utc()).await?;
+    tx.commit().await?;
+    Ok(purged)
 }
 
 /// Logs what a snapshot counted

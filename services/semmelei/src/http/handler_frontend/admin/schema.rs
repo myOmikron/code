@@ -13,6 +13,7 @@ use crate::models::CategoryUuid;
 use crate::models::ItemUuid;
 use crate::models::Role;
 use crate::models::ScheduleWeekday;
+use crate::models::ShopSettings;
 use crate::utils::wall_clock::WallClock;
 
 /// Request to create or update a category
@@ -37,6 +38,8 @@ pub struct AdminItem {
     pub category: Option<CategoryUuid>,
     /// Whether the item is currently orderable
     pub active: bool,
+    /// The number the Bakery orders the item under, unset if it has none
+    pub bakery_article_number: Option<String>,
     /// Cache-busting version of the item's image, unset if there is none
     pub image_version: Option<i64>,
     /// The point in time the item was created
@@ -63,6 +66,10 @@ pub struct ItemRequest {
     pub category: Option<CategoryUuid>,
     /// Whether the item is currently orderable
     pub active: bool,
+    /// The number the Bakery orders the item under (at most 32 bytes after trimming)
+    ///
+    /// Surrounding whitespace is trimmed; blank or unset means the item has none.
+    pub bakery_article_number: Option<MaxStr<255>>,
 }
 
 /// A staff account as shown to admins
@@ -130,6 +137,26 @@ pub struct ScheduleSchema {
     pub deadline_offset_days: i16,
     /// Wall-clock time (Europe/Berlin) orders close at, `13:00:00`
     pub deadline_time: WallClock,
+    /// Minutes from a pickup day's Deadline to its Dispatch, 0 or more
+    pub review_window_minutes: i32,
+}
+
+/// Where the Bakery order goes at the Dispatch
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct BakeryAddresses {
+    /// The Bakery's mail address; no pickup day is Dispatched while unset
+    pub bakery_email: Option<MaxStr<255>>,
+    /// The Nachbarschaftshilfe's mail address, in CC of the Bakery order
+    pub copy_email: Option<MaxStr<255>>,
+}
+
+impl From<ShopSettings> for BakeryAddresses {
+    fn from(settings: ShopSettings) -> Self {
+        Self {
+            bakery_email: settings.bakery_email,
+            copy_email: settings.copy_email,
+        }
+    }
 }
 
 /// A single upcoming pickup day, rule and override already applied
@@ -180,6 +207,4 @@ pub struct PickupDayChangeResponse {
     pub day: AdminPickupDay,
     /// How many orders were cancelled by calling the day off
     pub cancelled_orders: i64,
-    /// How many confirmation mails were queued by freezing the day
-    pub confirmed_orders: i64,
 }

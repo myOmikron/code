@@ -9,6 +9,7 @@ Name | Type
 ------------ | -------------
 `active` | boolean
 `additional_info` | string
+`bakery_article_number` | string
 `category` | string
 `name` | string
 `price_cents` | number

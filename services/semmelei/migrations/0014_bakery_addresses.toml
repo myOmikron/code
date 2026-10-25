@@ -1,0 +1,39 @@
+[Migration]
+Hash = "6173082531555243079"
+Initial = false
+Dependency = 13
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "shopsettings"
+
+[Migration.Operations.Field]
+Name = "bakery_email"
+Type = "text"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "max_length"
+Value = 255
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/semmelei/src/models/settings/db.rs"
+Line = 45
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "shopsettings"
+
+[Migration.Operations.Field]
+Name = "copy_email"
+Type = "text"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "max_length"
+Value = 255
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/semmelei/src/models/settings/db.rs"
+Line = 48
+Column = 9

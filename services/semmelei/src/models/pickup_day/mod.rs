@@ -13,6 +13,7 @@ use time::OffsetDateTime;
 use tracing::instrument;
 use uuid::Uuid;
 
+use crate::models::ShopSettings;
 use crate::models::pickup_day::db::PickupDayInsertPatch;
 use crate::models::pickup_day::db::PickupDayModel;
 
@@ -41,6 +42,9 @@ pub struct PickupDay {
 
     /// When the confirmation mails for this day went out
     pub confirmations_sent_at: Option<OffsetDateTime>,
+
+    /// When the day was Dispatched
+    pub dispatched_at: Option<OffsetDateTime>,
 }
 
 /// Wrapper for the primary key of the [`PickupDay`] model.
@@ -75,6 +79,14 @@ impl PickupDay {
     /// Whether the day is frozen: explicitly locked or past its deadline
     pub fn is_locked(&self, now: OffsetDateTime) -> bool {
         self.locked_at.is_some() || now >= self.deadline_at
+    }
+
+    /// Whether the day is frozen but its Dispatch waits for a Bakery address
+    pub fn awaits_bakery_address(&self, settings: &ShopSettings, now: OffsetDateTime) -> bool {
+        self.dispatched_at.is_none()
+            && !self.closed
+            && self.is_locked(now)
+            && settings.bakery_email.is_none()
     }
 
     /// Fetch every stored pickup day, oldest first
@@ -153,14 +165,39 @@ impl PickupDay {
         now: OffsetDateTime,
     ) -> Result<Vec<PickupDay>, rorm::Error> {
         let days = rorm::query(exe, PickupDayModel)
-            .condition(PickupDayModel.deadline_at.less_equals(now))
+            .condition(rorm::and!(
+                PickupDayModel.deadline_at.less_equals(now),
+                PickupDayModel.locked_at.equals(None::<OffsetDateTime>)
+            ))
             .all()
             .await?;
-        Ok(days
+        Ok(days.into_iter().map(PickupDay::from).collect())
+    }
+
+    /// Fetch every day past its Deadline that still waits for its Dispatch
+    ///
+    /// Waiting means: not called off and not Dispatched yet. Whether the
+    /// Dispatch is due already is [`schedule::dispatch_due`]'s call.
+    ///
+    /// [`schedule::dispatch_due`]: crate::utils::schedule::dispatch_due
+    #[instrument(name = "PickupDay::get_awaiting_dispatch", skip(exe))]
+    pub async fn get_awaiting_dispatch(
+        exe: impl Executor<'_>,
+        now: OffsetDateTime,
+    ) -> Result<Vec<PickupDay>, rorm::Error> {
+        let mut days: Vec<PickupDay> = rorm::query(exe, PickupDayModel)
+            .condition(rorm::and!(
+                PickupDayModel.deadline_at.less_equals(now),
+                PickupDayModel.closed.equals(false),
+                PickupDayModel.dispatched_at.equals(None::<OffsetDateTime>)
+            ))
+            .all()
+            .await?
             .into_iter()
             .map(PickupDay::from)
-            .filter(|day| day.locked_at.is_none() || day.confirmations_sent_at.is_none())
-            .collect())
+            .collect();
+        days.sort_by_key(|day| day.deadline_at);
+        Ok(days)
     }
 
     /// Fetch the pickup day for `rule_date`, creating it from the rule if needed
@@ -196,6 +233,7 @@ impl PickupDay {
             closed: default.closed,
             locked_at: None,
             confirmations_sent_at: None,
+            dispatched_at: None,
         })
     }
 
@@ -237,6 +275,20 @@ impl PickupDay {
         Ok(affected > 0)
     }
 
+    /// Record that the day was Dispatched
+    #[instrument(name = "PickupDay::set_dispatched", skip(exe))]
+    pub async fn set_dispatched(
+        exe: impl Executor<'_>,
+        uuid: PickupDayUuid,
+        now: OffsetDateTime,
+    ) -> Result<bool, rorm::Error> {
+        let affected = rorm::update(exe, PickupDayModel)
+            .set(PickupDayModel.dispatched_at, Some(now))
+            .condition(PickupDayModel.uuid.equals(uuid.0))
+            .await?;
+        Ok(affected > 0)
+    }
+
     /// Record that the confirmation mails for this day were handed to the gateway
     #[instrument(name = "PickupDay::set_confirmations_sent", skip(exe))]
     pub async fn set_confirmations_sent(
@@ -262,6 +314,7 @@ impl From<PickupDayModel> for PickupDay {
             closed: value.closed,
             locked_at: value.locked_at,
             confirmations_sent_at: value.confirmations_sent_at,
+            dispatched_at: value.dispatched_at,
         }
     }
 }
