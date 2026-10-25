@@ -22,6 +22,7 @@ use crate::http::handler_frontend::shared::schema::SharedDeckResponse;
 use crate::http::handler_frontend::shared::schema::redact_entry;
 use crate::http::handler_frontend::shared::schema::redact_slot;
 use crate::http::handler_frontend::shared::schema::redact_statistics;
+use crate::http::handler_frontend::tournaments::schema::TournamentResponse;
 use crate::models::account::Account;
 use crate::models::collection::Collection;
 use crate::models::collection::listing::EntryPage;
@@ -31,6 +32,7 @@ use crate::models::collection::statistics::CollectionStatistics;
 use crate::models::deck::Deck;
 use crate::models::deck::listing::ListedSlot;
 use crate::models::deck::tag::DeckTag;
+use crate::models::tournament::Tournament;
 
 /// Fetch the collection a share link points at
 #[get("/{token}")]
@@ -178,6 +180,27 @@ async fn resolve_deck(tx: &mut Transaction, token: &str) -> ApiResult<Deck> {
     Deck::get_by_share_token(tx, &token)
         .await?
         .ok_or_else(unknown_link)
+}
+
+/// Fetch the Tournament a share link points at
+///
+/// As anybody without a part in running it sees it: the link is the
+/// authorization, not the reader, so even an Organizer gets no share link back.
+#[get("/{token}")]
+pub async fn get_shared_tournament(
+    Path(token): Path<String>,
+) -> ApiResult<ApiJson<TournamentResponse>> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    let token = MaxStr::new(token).map_err(|_| unknown_link())?;
+    let tournament = Tournament::get_by_share_token(&mut tx, &token)
+        .await?
+        .ok_or_else(unknown_link)?;
+    let owner = tournament.owner_name(&mut tx).await?;
+
+    tx.commit().await?;
+
+    Ok(ApiJson(TournamentResponse::new(tournament, owner, None)))
 }
 
 /// Resolve a share token into the collection it unlocks

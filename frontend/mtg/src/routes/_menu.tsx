@@ -40,6 +40,7 @@ import {
     QuestionMarkCircleIcon,
     ShieldCheckIcon,
     SparklesIcon,
+    TrophyIcon,
     UserIcon,
 } from "@heroicons/react/20/solid";
 import { Role } from "src/api/generated";
@@ -145,6 +146,10 @@ function RouteComponent() {
                                 <NavbarItem href={"/global/decks"} title={t("label.decks")}>
                                     <GlobeAltIcon />
                                     <NavbarLabel className={"max-lg:sr-only"}>{t("label.decks")}</NavbarLabel>
+                                </NavbarItem>
+                                <NavbarItem href={"/tournaments"} title={t("label.tournaments")}>
+                                    <TrophyIcon />
+                                    <NavbarLabel className={"max-lg:sr-only"}>{t("label.tournaments")}</NavbarLabel>
                                 </NavbarItem>
                                 <NavbarItem href={"/game-utils"} title={t("label.game-utils")}>
                                     <HeartIcon />
@@ -288,6 +293,10 @@ function RouteComponent() {
                                     <SidebarItem href={"/global/decks"}>
                                         <GlobeAltIcon />
                                         <SidebarLabel>{t("label.decks")}</SidebarLabel>
+                                    </SidebarItem>
+                                    <SidebarItem href={"/tournaments"}>
+                                        <TrophyIcon />
+                                        <SidebarLabel>{t("label.tournaments")}</SidebarLabel>
                                     </SidebarItem>
                                     <SidebarItem href={"/game-utils"}>
                                         <HeartIcon />

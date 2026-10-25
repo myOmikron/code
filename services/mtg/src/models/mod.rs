@@ -15,5 +15,6 @@ pub mod scanner_session;
 pub mod share;
 pub mod statistics;
 pub mod sync_run;
+pub mod tournament;
 pub mod visibility;
 pub mod watch_list;

@@ -37,7 +37,7 @@ use crate::models::admin_log::NewAdminLogEntry;
 use crate::models::collection::Collection;
 use crate::models::deck::Deck;
 pub(in crate::models) mod db;
-mod extractor;
+pub mod extractor;
 pub mod overview;
 
 /// The login handle of an [`Account`]

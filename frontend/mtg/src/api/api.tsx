@@ -43,6 +43,7 @@ import {
     UpdateCollectionEntryRequest,
     UpdateCollectionRequest,
     SwapDeckCardRequest,
+    TournamentSettingsRequest,
     UpdateDeckCardRequest,
     UpdateDeckRequest,
     UpdateDeckTagRequest,
@@ -415,6 +416,9 @@ export const Api = {
             get: (token: string) => defaultApi.getSharedDeck({ token }),
             cards: (token: string) => defaultApi.listSharedDeckCards({ token }),
         },
+        tournaments: {
+            get: (token: string) => defaultApi.getSharedTournament({ token }),
+        },
         collections: {
             get: (token: string) => defaultApi.getSharedCollection({ token }),
             cards: (token: string, query: Omit<ListSharedCollectionCardsRequest, "token"> = {}) =>
@@ -515,6 +519,19 @@ export const Api = {
     // The cards an account is still after. Each entry carries its own two
     // switches, so how strictly a copy or a price counts is answered
     // server-side and the client is handed numbers rather than the whole shelf.
+    // Reads are open to anybody and answer 400 for what the reader may not see,
+    // so the public ones skip `handleError` like `explore`. The writes answer
+    // form errors for settings the Ruleset or Table size refuse.
+    tournaments: {
+        listPublic: () => defaultApi.listPublicTournaments(),
+        get: (tournament: UUID) => defaultApi.getTournament({ tournament }),
+        mine: async () => handleError(defaultApi.getMyTournaments()),
+        create: async (req: TournamentSettingsRequest) =>
+            handleError(defaultApi.createTournament({ TournamentSettingsRequest: req })),
+        update: async (tournament: UUID, req: TournamentSettingsRequest) =>
+            handleError(defaultApi.updateTournament({ tournament, TournamentSettingsRequest: req })),
+        delete: async (tournament: UUID) => handleError(defaultApi.deleteTournament({ tournament })),
+    },
     watchLists: {
         list: async () => handleError(defaultApi.getAllWatchLists()),
         create: async (req: CreateWatchListRequest) =>

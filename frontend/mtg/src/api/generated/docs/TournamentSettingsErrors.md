@@ -1,0 +1,17 @@
+
+# TournamentSettingsErrors
+
+Why a Tournament\'s settings were refused
+
+## Properties
+
+Name | Type
+------------ | -------------
+`ruleset_mismatch` | boolean
+`table_size_out_of_range` | boolean
+`unknown_format` | boolean
+
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+

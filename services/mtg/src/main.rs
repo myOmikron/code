@@ -62,6 +62,7 @@ pub mod http;
 pub mod models;
 pub mod modules;
 pub mod proto;
+pub mod tournament;
 pub mod utils;
 
 #[cfg(test)]

@@ -22,6 +22,20 @@ export function shareLink(kind: ShareKind, token: string): string {
 }
 
 /**
+ * The link to hand out for an unlisted Tournament
+ *
+ * Apart from {@link shareLink}: a Tournament's Visibility is one of its
+ * settings, not something the share dialog changes.
+ *
+ * @param token the secret
+ *
+ * @returns the absolute url
+ */
+export function tournamentShareLink(token: string): string {
+    return `${window.location.origin}/shared/tournaments/${token}`;
+}
+
+/**
  * The link a public deck or collection is found under by anyone
  *
  * @param kind what is public

@@ -74,6 +74,7 @@ docs/CreateDeckRequest.md
 docs/CreateDeckTagRequest.md
 docs/CreateGlobalTagRequest.md
 docs/CreateScannerSessionRequest.md
+docs/CreateTournament200Response.md
 docs/CreateWatchListRequest.md
 docs/DeckCardCatalogResponse.md
 docs/DeckCardResponse.md
@@ -147,6 +148,7 @@ docs/FormErrorResponseForSendBugReportErrors.md
 docs/FormErrorResponseForSignupErrors.md
 docs/FormErrorResponseForStartLoginErrors.md
 docs/FormErrorResponseForStartOidcLoginErrors.md
+docs/FormErrorResponseForTournamentSettingsErrors.md
 docs/FormatRulesResponse.md
 docs/GetPendingOidcLoginResponse.md
 docs/ImportDeckCardsRequest.md
@@ -164,6 +166,7 @@ docs/ListOpenIdProvidersResponse.md
 docs/ListPasskeysResponse.md
 docs/ListScannerSessionsResponse.md
 docs/ListSharedWithMeResponse.md
+docs/ListTournamentsResponse.md
 docs/ListWatchListAlarmsResponse.md
 docs/ListWatchListCopiesResponse.md
 docs/ListWatchListEntriesResponse.md
@@ -185,6 +188,7 @@ docs/NewCollectionEntry.md
 docs/OidcLoginFailure.md
 docs/OldestPrintingResponse.md
 docs/OnLoanResponse.md
+docs/OrganizerRole.md
 docs/PendingOidcLogin.md
 docs/PriceDayResponse.md
 docs/PriceHistoryResponse.md
@@ -221,6 +225,7 @@ docs/Role.md
 docs/RoleBansResponse.md
 docs/RotateDeckShareTokenResponse.md
 docs/RotateShareTokenResponse.md
+docs/Ruleset.md
 docs/ScannerSessionDetailResponse.md
 docs/ScannerSessionEntryResponse.md
 docs/ScannerSessionResponse.md
@@ -272,6 +277,11 @@ docs/TakeDeckCardsRequest.md
 docs/ThemePrefs.md
 docs/TimelinePointResponse.md
 docs/TopCardResponse.md
+docs/TournamentResponse.md
+docs/TournamentSettingsErrors.md
+docs/TournamentSettingsRequest.md
+docs/TournamentState.md
+docs/TournamentSummaryResponse.md
 docs/UpdateCollectionEntryRequest.md
 docs/UpdateCollectionRequest.md
 docs/UpdateDeckCardRequest.md

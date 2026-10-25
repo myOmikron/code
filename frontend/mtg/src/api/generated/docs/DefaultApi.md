@@ -35,6 +35,7 @@ All URIs are relative to *http://localhost*
 | [**createDeckTag**](DefaultApi.md#createdecktagoperation) | **POST** /api/frontend/v1/decks/{deck}/tags | Create a tag on a deck |
 | [**createGlobalTag**](DefaultApi.md#createglobaltagoperation) | **POST** /api/frontend/v1/tags | Create a tag that follows a card through every deck and every collection |
 | [**createScannerSession**](DefaultApi.md#createscannersessionoperation) | **POST** /api/frontend/v1/scanner-sessions | Start a new persisted scanner session |
+| [**createTournament**](DefaultApi.md#createtournament) | **POST** /api/frontend/v1/tournaments | Create a Tournament, owned by the logged-in Account |
 | [**createWatchList**](DefaultApi.md#createwatchlistoperation) | **POST** /api/frontend/v1/watch-lists | Start a new watch list |
 | [**deleteAccount**](DefaultApi.md#deleteaccountoperation) | **DELETE** /api/frontend/v1/accounts/me | Delete the logged-in account |
 | [**deleteCollection**](DefaultApi.md#deletecollection) | **DELETE** /api/frontend/v1/collections/{collection} |  |
@@ -47,6 +48,7 @@ All URIs are relative to *http://localhost*
 | [**deletePasskey**](DefaultApi.md#deletepasskey) | **DELETE** /api/frontend/v1/accounts/passkeys/{uuid} | Delete one of the logged-in account\&#39;s passkeys |
 | [**deleteScannerSession**](DefaultApi.md#deletescannersession) | **DELETE** /api/frontend/v1/scanner-sessions/{session} | Delete a session and its staging area |
 | [**deleteScannerSessionEntry**](DefaultApi.md#deletescannersessionentry) | **DELETE** /api/frontend/v1/scanner-sessions/{session}/entries/{entry} | Remove a staged stack |
+| [**deleteTournament**](DefaultApi.md#deletetournament) | **DELETE** /api/frontend/v1/tournaments/{tournament} | Delete a Tournament and everything in it, as its Owner |
 | [**deleteWatchList**](DefaultApi.md#deletewatchlist) | **DELETE** /api/frontend/v1/watch-lists/{list} | Throw a watch list away, taking every entry on it with it |
 | [**deleteWatchListEntry**](DefaultApi.md#deletewatchlistentry) | **DELETE** /api/frontend/v1/watch-lists/{list}/entries/{entry} | Take a card off a watch list |
 | [**detachDeckCollection**](DefaultApi.md#detachdeckcollection) | **DELETE** /api/frontend/v1/decks/{deck}/collection | Stop keeping them |
@@ -74,6 +76,7 @@ All URIs are relative to *http://localhost*
 | [**getDeckSourcing**](DefaultApi.md#getdecksourcing) | **GET** /api/frontend/v1/decks/{deck}/sourcing | What the deck asks for, what is in it, and where the rest could come from |
 | [**getDecksSharedWithMe**](DefaultApi.md#getdeckssharedwithme) | **GET** /api/frontend/v1/decks/shared-with-me | The decks other Accounts named the caller on, alphabetically by name |
 | [**getMpcfillCardbacks**](DefaultApi.md#getmpcfillcardbacks) | **GET** /api/frontend/v1/mpcfill/cardbacks | The card backs MPCFill offers |
+| [**getMyTournaments**](DefaultApi.md#getmytournaments) | **GET** /api/frontend/v1/tournaments/mine | The Tournaments the logged-in Account owns, latest start first |
 | [**getPendingOidcLogin**](DefaultApi.md#getpendingoidclogin) | **GET** /api/frontend/v1/auth/oidc/pending | The session\&#39;s OIDC login waiting for its username step |
 | [**getPriceHistory**](DefaultApi.md#getpricehistory) | **GET** /api/frontend/v1/printings/{printing}/price-history | What a card has cost over time |
 | [**getPrintingLanguages**](DefaultApi.md#getprintinglanguages) | **GET** /api/frontend/v1/printings/{printing}/languages | Every language the same card exists in |
@@ -85,6 +88,8 @@ All URIs are relative to *http://localhost*
 | [**getSharedCollection**](DefaultApi.md#getsharedcollection) | **GET** /api/frontend/v1/shared/collections/{token} | Fetch the collection a share link points at |
 | [**getSharedCollectionStatistics**](DefaultApi.md#getsharedcollectionstatistics) | **GET** /api/frontend/v1/shared/collections/{token}/statistics | Count a shared collection\&#39;s statistics |
 | [**getSharedDeck**](DefaultApi.md#getshareddeck) | **GET** /api/frontend/v1/shared/decks/{token} | Fetch the deck a share link points at |
+| [**getSharedTournament**](DefaultApi.md#getsharedtournament) | **GET** /api/frontend/v1/shared/tournaments/{token} | Fetch the Tournament a share link points at |
+| [**getTournament**](DefaultApi.md#gettournament) | **GET** /api/frontend/v1/tournaments/{tournament} | Fetch a Tournament by its id |
 | [**getWatchList**](DefaultApi.md#getwatchlist) | **GET** /api/frontend/v1/watch-lists/{list} | One watch list, without what is on it |
 | [**getWatchListAlarms**](DefaultApi.md#getwatchlistalarms) | **GET** /api/frontend/v1/watch-lists/alarms | Every alarm standing across the account\&#39;s watch lists |
 | [**importDeckCards**](DefaultApi.md#importdeckcardsoperation) | **POST** /api/frontend/v1/decks/{deck}/cards/import | Write a whole decklist into a deck |
@@ -98,6 +103,7 @@ All URIs are relative to *http://localhost*
 | [**listPasskeys**](DefaultApi.md#listpasskeys) | **GET** /api/frontend/v1/accounts/passkeys | List the passkeys of the logged-in account |
 | [**listPublicCollectionCards**](DefaultApi.md#listpubliccollectioncards) | **GET** /api/frontend/v1/explore/collections/{collection}/cards | List a page of a public collection\&#39;s cards, sorted and filtered |
 | [**listPublicDeckCards**](DefaultApi.md#listpublicdeckcards) | **GET** /api/frontend/v1/explore/decks/{deck}/cards | Every card of a public deck, with the catalog data and the tags on it |
+| [**listPublicTournaments**](DefaultApi.md#listpublictournaments) | **GET** /api/frontend/v1/tournaments | The public Tournaments, latest start first |
 | [**listSharedCollectionCards**](DefaultApi.md#listsharedcollectioncards) | **GET** /api/frontend/v1/shared/collections/{token}/cards | List a page of a shared collection\&#39;s cards, sorted and filtered |
 | [**listSharedDeckCards**](DefaultApi.md#listshareddeckcards) | **GET** /api/frontend/v1/shared/decks/{token}/cards | Every card of a shared deck, with the catalog data and the tags on it |
 | [**listWatchListCopies**](DefaultApi.md#listwatchlistcopies) | **GET** /api/frontend/v1/watch-lists/{list}/entries/{entry}/copies | Where the copies of one watched card are |
@@ -151,6 +157,7 @@ All URIs are relative to *http://localhost*
 | [**updateGlobalTag**](DefaultApi.md#updateglobaltagoperation) | **PUT** /api/frontend/v1/tags/{tag} | Rename a card-wide tag or change its marker |
 | [**updateScannerSession**](DefaultApi.md#updatescannersessionoperation) | **PUT** /api/frontend/v1/scanner-sessions/{session} | Rename a session or change its marker and preferred collection |
 | [**updateScannerSessionEntry**](DefaultApi.md#updatescannersessionentryoperation) | **PATCH** /api/frontend/v1/scanner-sessions/{session}/entries/{entry} | Adjust count, finish, signed state, paid price or printing |
+| [**updateTournament**](DefaultApi.md#updatetournament) | **PUT** /api/frontend/v1/tournaments/{tournament} | Replace a Tournament\&#39;s settings, as one of its Organizers |
 | [**updateWatchList**](DefaultApi.md#updatewatchlistoperation) | **PUT** /api/frontend/v1/watch-lists/{list} | Rename a watch list or change its marker |
 | [**updateWatchListEntry**](DefaultApi.md#updatewatchlistentryoperation) | **PUT** /api/frontend/v1/watch-lists/{list}/entries/{entry} | Change some of an entry\&#39;s fields, leaving the rest alone |
 
@@ -2383,6 +2390,76 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## createTournament
+
+> CreateTournament200Response createTournament(TournamentSettingsRequest)
+
+Create a Tournament, owned by the logged-in Account
+
+Create a Tournament, owned by the logged-in Account
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { CreateTournamentRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // TournamentSettingsRequest (optional)
+    TournamentSettingsRequest: ...,
+  } satisfies CreateTournamentRequest;
+
+  try {
+    const data = await api.createTournament(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **TournamentSettingsRequest** | [TournamentSettingsRequest](TournamentSettingsRequest.md) |  | [Optional] |
+
+### Return type
+
+[**CreateTournament200Response**](CreateTournament200Response.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## createWatchList
 
 > WatchListResponse createWatchList(CreateWatchListRequest)
@@ -3207,6 +3284,76 @@ example().catch(console.error);
 |------------- | ------------- | ------------- | -------------|
 | **session** | `string` |  | [Defaults to `undefined`] |
 | **entry** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+**any**
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## deleteTournament
+
+> any deleteTournament(tournament)
+
+Delete a Tournament and everything in it, as its Owner
+
+Delete a Tournament and everything in it, as its Owner
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { DeleteTournamentRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    tournament: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies DeleteTournamentRequest;
+
+  try {
+    const data = await api.deleteTournament(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **tournament** | `string` |  | [Defaults to `undefined`] |
 
 ### Return type
 
@@ -5073,6 +5220,68 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## getMyTournaments
+
+> ListTournamentsResponse getMyTournaments()
+
+The Tournaments the logged-in Account owns, latest start first
+
+The Tournaments the logged-in Account owns, latest start first
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { GetMyTournamentsRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  try {
+    const data = await api.getMyTournaments();
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+This endpoint does not need any parameter.
+
+### Return type
+
+[**ListTournamentsResponse**](ListTournamentsResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## getPendingOidcLogin
 
 > GetPendingOidcLoginResponse getPendingOidcLogin()
@@ -5813,6 +6022,146 @@ example().catch(console.error);
 ### Return type
 
 [**SharedDeckResponse**](SharedDeckResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## getSharedTournament
+
+> TournamentResponse getSharedTournament(token)
+
+Fetch the Tournament a share link points at
+
+Fetch the Tournament a share link points at  As anybody without a part in running it sees it: the link is the authorization, not the reader, so even an Organizer gets no share link back.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { GetSharedTournamentRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    token: token_example,
+  } satisfies GetSharedTournamentRequest;
+
+  try {
+    const data = await api.getSharedTournament(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **token** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**TournamentResponse**](TournamentResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## getTournament
+
+> TournamentResponse getTournament(tournament)
+
+Fetch a Tournament by its id
+
+Fetch a Tournament by its id  Anybody gets a public one; its Organizers get it whatever its Visibility. An unlisted one is read through its share link, see &#x60;get_shared_tournament&#x60;.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { GetTournamentRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    tournament: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies GetTournamentRequest;
+
+  try {
+    const data = await api.getTournament(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **tournament** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**TournamentResponse**](TournamentResponse.md)
 
 ### Authorization
 
@@ -6759,6 +7108,68 @@ example().catch(console.error);
 ### Return type
 
 [**ListDeckCardsResponse**](ListDeckCardsResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## listPublicTournaments
+
+> ListTournamentsResponse listPublicTournaments()
+
+The public Tournaments, latest start first
+
+The public Tournaments, latest start first
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { ListPublicTournamentsRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  try {
+    const data = await api.listPublicTournaments();
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+This endpoint does not need any parameter.
+
+### Return type
+
+[**ListTournamentsResponse**](ListTournamentsResponse.md)
 
 ### Authorization
 
@@ -10620,6 +11031,79 @@ example().catch(console.error);
 ### Return type
 
 [**ScannerSessionEntryResponse**](ScannerSessionEntryResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## updateTournament
+
+> CreateTournament200Response updateTournament(tournament, TournamentSettingsRequest)
+
+Replace a Tournament\&#39;s settings, as one of its Organizers
+
+Replace a Tournament\&#39;s settings, as one of its Organizers
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { UpdateTournamentRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    tournament: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // TournamentSettingsRequest (optional)
+    TournamentSettingsRequest: ...,
+  } satisfies UpdateTournamentRequest;
+
+  try {
+    const data = await api.updateTournament(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **tournament** | `string` |  | [Defaults to `undefined`] |
+| **TournamentSettingsRequest** | [TournamentSettingsRequest](TournamentSettingsRequest.md) |  | [Optional] |
+
+### Return type
+
+[**CreateTournament200Response**](CreateTournament200Response.md)
 
 ### Authorization
 
