@@ -2,6 +2,7 @@ apis/DefaultApi.ts
 apis/index.ts
 docs/AddAccountParticipantErrors.md
 docs/AddAccountParticipantRequest.md
+docs/AddCoOrganizerErrors.md
 docs/AddCollectionEntriesRequest.md
 docs/AddDeckCardRequest.md
 docs/AddGuestParticipantErrors.md
@@ -9,6 +10,7 @@ docs/AddGuestParticipantRequest.md
 docs/AddPasskeyErrors.md
 docs/AddScannerSessionEntryRequest.md
 docs/AddTournamentAccount200Response.md
+docs/AddTournamentCoOrganizer200Response.md
 docs/AddTournamentGuest200Response.md
 docs/AddWatchListEntryRequest.md
 docs/AdminAccount.md
@@ -136,6 +138,7 @@ docs/FinishLoginErrors.md
 docs/FinishLoginRequest.md
 docs/FinishRegistrationRequest.md
 docs/FormErrorResponseForAddAccountParticipantErrors.md
+docs/FormErrorResponseForAddCoOrganizerErrors.md
 docs/FormErrorResponseForAddGuestParticipantErrors.md
 docs/FormErrorResponseForAddPasskeyErrors.md
 docs/FormErrorResponseForAdminDeleteAccountErrors.md
@@ -148,6 +151,7 @@ docs/FormErrorResponseForDeleteAccountErrors.md
 docs/FormErrorResponseForDeletePasskeyErrors.md
 docs/FormErrorResponseForFinishLoginErrors.md
 docs/FormErrorResponseForMeErrors.md
+docs/FormErrorResponseForOfferHandoverErrors.md
 docs/FormErrorResponseForPutDeckCollaboratorErrors.md
 docs/FormErrorResponseForRegistrationErrors.md
 docs/FormErrorResponseForRenameAccountErrors.md
@@ -172,6 +176,7 @@ docs/ListFormatsResponse.md
 docs/ListGlobalTagsResponse.md
 docs/ListOnLoanResponse.md
 docs/ListOpenIdProvidersResponse.md
+docs/ListOrganizersResponse.md
 docs/ListParticipantsResponse.md
 docs/ListPasskeysResponse.md
 docs/ListScannerSessionsResponse.md
@@ -195,10 +200,14 @@ docs/MpcFillImageResponse.md
 docs/MpcFillSearchRequest.md
 docs/MpcFillSearchResponse.md
 docs/MyTournamentsResponse.md
+docs/NameAccountRequest.md
 docs/NewCollectionEntry.md
+docs/OfferHandoverErrors.md
+docs/OfferTournamentHandover200Response.md
 docs/OidcLoginFailure.md
 docs/OldestPrintingResponse.md
 docs/OnLoanResponse.md
+docs/OrganizerResponse.md
 docs/OrganizerRole.md
 docs/ParticipantResponse.md
 docs/PendingOidcLogin.md

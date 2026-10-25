@@ -10029,6 +10029,179 @@
                 }
             }
         },
+        "/api/frontend/v1/tournaments/handovers": {
+            "get": {
+                "summary": "The Tournaments offered to the logged-in Account to take over, latest start first",
+                "description": "The Tournaments offered to the logged-in Account to take over, latest start first",
+                "operationId": "get_tournament_handovers",
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ListTournamentsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/tournaments/{tournament}/handover/accept": {
+            "post": {
+                "summary": "Take over a Tournament offered to the logged-in Account",
+                "description": "Take over a Tournament offered to the logged-in Account\n\nIt becomes the Owner; the former Owner stays as a Co-organizer.",
+                "operationId": "accept_tournament_handover",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tournament",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of a [`Tournament`]",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TournamentResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/tournaments/{tournament}/handover/decline": {
+            "post": {
+                "summary": "Turn down a Tournament offered to the logged-in Account",
+                "description": "Turn down a Tournament offered to the logged-in Account\n\nEverything stays as it was, and the offer is gone.",
+                "operationId": "decline_tournament_handover",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tournament",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of a [`Tournament`]",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "nullable": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/frontend/v1/tournaments/{tournament}/sign-up": {
             "post": {
                 "summary": "Sign the logged-in Account up for a Tournament it sees by its id",
@@ -10110,6 +10283,213 @@
                             "description": "Wrapper for the primary key of a [`Tournament`]",
                             "type": "string",
                             "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "nullable": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/tournaments/{tournament}/organizers": {
+            "get": {
+                "summary": "Who runs a Tournament, and whom its Owner offered it to",
+                "description": "Who runs a Tournament, and whom its Owner offered it to\n\nEvery Organizer reads it.",
+                "operationId": "list_tournament_organizers",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tournament",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of a [`Tournament`]",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ListOrganizersResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "summary": "Name an Account a Co-organizer by its username, as one of the Organizers",
+                "description": "Name an Account a Co-organizer by its username, as one of the Organizers\n\nUnknown usernames are capped per caller, see [`UNKNOWN_USERNAMES`].",
+                "operationId": "add_tournament_co_organizer",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tournament",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of a [`Tournament`]",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/NameAccountRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "$ref": "#/components/schemas/OrganizerResponse"
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/FormErrorResponse_for_AddCoOrganizerErrors"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/tournaments/{tournament}/organizers/{account}": {
+            "delete": {
+                "summary": "Take a Co-organizer off a Tournament",
+                "description": "Take a Co-organizer off a Tournament\n\nThe Owner takes off any Co-organizer, a Co-organizer only itself.",
+                "operationId": "remove_tournament_co_organizer",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tournament",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/TournamentUuid"
+                        },
+                        "style": "simple"
+                    },
+                    {
+                        "in": "path",
+                        "name": "account",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/AccountUuid"
                         },
                         "style": "simple"
                     }
@@ -10421,6 +10801,144 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/PlayerCandidatesResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/tournaments/{tournament}/handover": {
+            "put": {
+                "summary": "Offer a Tournament to an Account by its username, as its Owner",
+                "description": "Offer a Tournament to an Account by its username, as its Owner\n\nReplaces a pending offer. Nothing changes until the Account accepts.\nUnknown usernames are capped per caller, see [`UNKNOWN_USERNAMES`].",
+                "operationId": "offer_tournament_handover",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tournament",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of a [`Tournament`]",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/NameAccountRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "$ref": "#/components/schemas/OrganizerResponse"
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/FormErrorResponse_for_OfferHandoverErrors"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "summary": "Withdraw the pending offer of a Tournament, as its Owner",
+                "description": "Withdraw the pending offer of a Tournament, as its Owner",
+                "operationId": "withdraw_tournament_handover",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tournament",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of a [`Tournament`]",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "nullable": true
                                 }
                             }
                         }
@@ -11273,6 +11791,34 @@
                 },
                 "required": [
                     "username"
+                ]
+            },
+            "AddCoOrganizerErrors": {
+                "description": "Why an Account could not be named a Co-organizer",
+                "type": "object",
+                "properties": {
+                    "already_co_organizer": {
+                        "description": "The Account is a Co-organizer already",
+                        "type": "boolean"
+                    },
+                    "owner": {
+                        "description": "The Account is the Owner",
+                        "type": "boolean"
+                    },
+                    "too_many_unknown_usernames": {
+                        "description": "The caller named too many unknown usernames lately, so this one was not looked up",
+                        "type": "boolean"
+                    },
+                    "unknown_username": {
+                        "description": "No Account goes by this username",
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "already_co_organizer",
+                    "owner",
+                    "too_many_unknown_usernames",
+                    "unknown_username"
                 ]
             },
             "AddCollectionEntriesRequest": {
@@ -15774,6 +16320,32 @@
                     "result"
                 ]
             },
+            "FormErrorResponse_for_AddCoOrganizerErrors": {
+                "description": "The response that is sent in a case of an error the caller should present his user",
+                "type": "object",
+                "properties": {
+                    "error": {
+                        "description": "The actual error struct",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/AddCoOrganizerErrors"
+                            }
+                        ]
+                    },
+                    "result": {
+                        "description": "A constant `\"Err\"` used to differentiate this schema from any other \"Ok\" schema",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ErrorConstant"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "error",
+                    "result"
+                ]
+            },
             "FormErrorResponse_for_AddGuestParticipantErrors": {
                 "description": "The response that is sent in a case of an error the caller should present his user",
                 "type": "object",
@@ -16069,6 +16641,32 @@
                         "allOf": [
                             {
                                 "$ref": "#/components/schemas/MeErrors"
+                            }
+                        ]
+                    },
+                    "result": {
+                        "description": "A constant `\"Err\"` used to differentiate this schema from any other \"Ok\" schema",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ErrorConstant"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "error",
+                    "result"
+                ]
+            },
+            "FormErrorResponse_for_OfferHandoverErrors": {
+                "description": "The response that is sent in a case of an error the caller should present his user",
+                "type": "object",
+                "properties": {
+                    "error": {
+                        "description": "The actual error struct",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/OfferHandoverErrors"
                             }
                         ]
                     },
@@ -16693,6 +17291,40 @@
                 },
                 "required": [
                     "providers"
+                ]
+            },
+            "ListOrganizersResponse": {
+                "description": "Who runs a Tournament, and whom its Owner offered it to",
+                "type": "object",
+                "properties": {
+                    "co_organizers": {
+                        "description": "The Co-organizers, alphabetically by username",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/OrganizerResponse"
+                        }
+                    },
+                    "handover": {
+                        "nullable": true,
+                        "description": "The Account the Tournament is offered to, `null` without a pending offer",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/OrganizerResponse"
+                            }
+                        ]
+                    },
+                    "owner": {
+                        "nullable": true,
+                        "description": "The Owner, `null` while the Tombstone holds it",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/OrganizerResponse"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "co_organizers"
                 ]
             },
             "ListParticipantsResponse": {
@@ -17371,6 +18003,23 @@
                     "participating"
                 ]
             },
+            "NameAccountRequest": {
+                "description": "Request naming an Account by its username",
+                "type": "object",
+                "properties": {
+                    "username": {
+                        "description": "Username of the Account, case ignored",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_255"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "username"
+                ]
+            },
             "NewCollectionEntry": {
                 "description": "A stack to file into a collection",
                 "type": "object",
@@ -17427,6 +18076,29 @@
                     "finish",
                     "printing",
                     "quantity"
+                ]
+            },
+            "OfferHandoverErrors": {
+                "description": "Why a Tournament could not be offered to an Account",
+                "type": "object",
+                "properties": {
+                    "own_account": {
+                        "description": "The username is the caller's own, which owns the Tournament",
+                        "type": "boolean"
+                    },
+                    "too_many_unknown_usernames": {
+                        "description": "The caller named too many unknown usernames lately, so this one was not looked up",
+                        "type": "boolean"
+                    },
+                    "unknown_username": {
+                        "description": "No Account goes by this username",
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "own_account",
+                    "too_many_unknown_usernames",
+                    "unknown_username"
                 ]
             },
             "OidcLoginFailure": {
@@ -17569,6 +18241,28 @@
                     "quantity"
                 ]
             },
+            "OrganizerResponse": {
+                "description": "One Organizer of a Tournament, or the Account it is offered to",
+                "type": "object",
+                "properties": {
+                    "account": {
+                        "description": "The Account, which is what removing a Co-organizer names",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/AccountUuid"
+                            }
+                        ]
+                    },
+                    "username": {
+                        "description": "The Account's username as it is now",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "account",
+                    "username"
+                ]
+            },
             "OrganizerRole": {
                 "description": "The part an Account plays in running a Tournament",
                 "oneOf": [
@@ -17577,6 +18271,13 @@
                         "type": "string",
                         "enum": [
                             "Owner"
+                        ]
+                    },
+                    {
+                        "description": "An Account named to run it with the Owner",
+                        "type": "string",
+                        "enum": [
+                            "CoOrganizer"
                         ]
                     }
                 ]

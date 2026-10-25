@@ -36,7 +36,7 @@ export const Route = createFileRoute("/_menu/tournaments/$tournamentUuid/_tourna
  * The frame around one Tournament: its name, who runs it, the tabs, and the
  * Organizers' actions.
  *
- * Organizers edit the settings; only the Owner deletes it.
+ * Organizers edit the settings and see who runs it; only the Owner deletes it.
  *
  * @returns the tabbed frame around the current tab
  */
@@ -109,6 +109,11 @@ function RouteComponent() {
                     <Tab href={"/tournaments/$tournamentUuid/participants"} params={{ tournamentUuid }}>
                         {t("heading.participants")}
                     </Tab>
+                    {role !== null && (
+                        <Tab href={"/tournaments/$tournamentUuid/organizers"} params={{ tournamentUuid }}>
+                            {t("heading.organizers")}
+                        </Tab>
+                    )}
                 </TabMenu>
             }
         >

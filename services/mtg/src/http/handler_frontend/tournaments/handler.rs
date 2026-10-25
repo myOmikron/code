@@ -22,6 +22,7 @@ use crate::models::account::Account;
 use crate::models::account::extractor::Viewer;
 use crate::models::tournament::Tournament;
 use crate::models::tournament::TournamentUuid;
+use crate::models::tournament::access::OrganizerRole;
 use crate::models::tournament::listing::ListedTournament;
 use crate::models::tournament::listing::OverviewFilter;
 use crate::models::tournament::settings::TournamentSettings;
@@ -66,12 +67,13 @@ pub async fn get_tournament(
         return Err(denied());
     };
     let owner = tournament.owner_name(&mut tx).await?;
+    let role = match viewer.account() {
+        Some(account) => tournament.organizer_role(&mut tx, account).await?,
+        None => None,
+    };
 
     tx.commit().await?;
 
-    let role = viewer
-        .account()
-        .and_then(|account| tournament.organizer_role(account));
     Ok(ApiJson(TournamentResponse::new(tournament, owner, role)))
 }
 
@@ -114,11 +116,10 @@ pub async fn create_tournament(
 
     tx.commit().await?;
 
-    let role = tournament.organizer_role(account.uuid);
     Ok(ApiJson(TournamentResponse::new(
         tournament,
         Some(account.username),
-        role,
+        Some(OrganizerRole::Owner),
     )))
 }
 
@@ -134,7 +135,8 @@ pub async fn update_tournament(
 
     let mut tx = Database::global().start_transaction().await?;
 
-    let Some(tournament) = Tournament::get_as_organizer(&mut tx, tournament, account.uuid).await?
+    let Some((tournament, role)) =
+        Tournament::get_with_role(&mut tx, tournament, account.uuid).await?
     else {
         tx.rollback().await?;
         return Err(denied());
@@ -144,8 +146,11 @@ pub async fn update_tournament(
 
     tx.commit().await?;
 
-    let role = tournament.organizer_role(account.uuid);
-    Ok(ApiJson(TournamentResponse::new(tournament, owner, role)))
+    Ok(ApiJson(TournamentResponse::new(
+        tournament,
+        owner,
+        Some(role),
+    )))
 }
 
 /// Delete a Tournament and everything in it, as its Owner

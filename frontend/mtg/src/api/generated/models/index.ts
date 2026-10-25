@@ -45,6 +45,37 @@ export interface AddAccountParticipantRequest {
     username: string;
 }
 /**
+ * Why an Account could not be named a Co-organizer
+ * @export
+ * @interface AddCoOrganizerErrors
+ */
+export interface AddCoOrganizerErrors {
+    /**
+     * The Account is a Co-organizer already
+     * @type {boolean}
+     * @memberof AddCoOrganizerErrors
+     */
+    already_co_organizer: boolean;
+    /**
+     * The Account is the Owner
+     * @type {boolean}
+     * @memberof AddCoOrganizerErrors
+     */
+    owner: boolean;
+    /**
+     * The caller named too many unknown usernames lately, so this one was not looked up
+     * @type {boolean}
+     * @memberof AddCoOrganizerErrors
+     */
+    too_many_unknown_usernames: boolean;
+    /**
+     * No Account goes by this username
+     * @type {boolean}
+     * @memberof AddCoOrganizerErrors
+     */
+    unknown_username: boolean;
+}
+/**
  * Request to file stacks into a collection
  * @export
  * @interface AddCollectionEntriesRequest
@@ -204,6 +235,12 @@ export interface AddScannerSessionEntryRequest {
  * @export
  */
 export type AddTournamentAccount200Response = FormErrorResponseForAddAccountParticipantErrors | ParticipantResponse;
+/**
+ * @type AddTournamentCoOrganizer200Response
+ * 
+ * @export
+ */
+export type AddTournamentCoOrganizer200Response = FormErrorResponseForAddCoOrganizerErrors | OrganizerResponse;
 /**
  * @type AddTournamentGuest200Response
  * 
@@ -4110,6 +4147,27 @@ export interface FormErrorResponseForAddAccountParticipantErrors {
 /**
  * The response that is sent in a case of an error the caller should present his user
  * @export
+ * @interface FormErrorResponseForAddCoOrganizerErrors
+ */
+export interface FormErrorResponseForAddCoOrganizerErrors {
+    /**
+     * The actual error struct
+     * @type {AddCoOrganizerErrors}
+     * @memberof FormErrorResponseForAddCoOrganizerErrors
+     */
+    error: AddCoOrganizerErrors;
+    /**
+     * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
+     * @type {ErrorConstant}
+     * @memberof FormErrorResponseForAddCoOrganizerErrors
+     */
+    result: ErrorConstant;
+}
+
+
+/**
+ * The response that is sent in a case of an error the caller should present his user
+ * @export
  * @interface FormErrorResponseForAddGuestParticipantErrors
  */
 export interface FormErrorResponseForAddGuestParticipantErrors {
@@ -4354,6 +4412,27 @@ export interface FormErrorResponseForMeErrors {
      * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
      * @type {ErrorConstant}
      * @memberof FormErrorResponseForMeErrors
+     */
+    result: ErrorConstant;
+}
+
+
+/**
+ * The response that is sent in a case of an error the caller should present his user
+ * @export
+ * @interface FormErrorResponseForOfferHandoverErrors
+ */
+export interface FormErrorResponseForOfferHandoverErrors {
+    /**
+     * The actual error struct
+     * @type {OfferHandoverErrors}
+     * @memberof FormErrorResponseForOfferHandoverErrors
+     */
+    error: OfferHandoverErrors;
+    /**
+     * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
+     * @type {ErrorConstant}
+     * @memberof FormErrorResponseForOfferHandoverErrors
      */
     result: ErrorConstant;
 }
@@ -4858,6 +4937,31 @@ export interface ListOpenIdProvidersResponse {
      * @memberof ListOpenIdProvidersResponse
      */
     providers: Array<SimpleOpenIdProvider>;
+}
+/**
+ * Who runs a Tournament, and whom its Owner offered it to
+ * @export
+ * @interface ListOrganizersResponse
+ */
+export interface ListOrganizersResponse {
+    /**
+     * The Co-organizers, alphabetically by username
+     * @type {Array<OrganizerResponse>}
+     * @memberof ListOrganizersResponse
+     */
+    co_organizers: Array<OrganizerResponse>;
+    /**
+     * The Account the Tournament is offered to, `null` without a pending offer
+     * @type {OrganizerResponse}
+     * @memberof ListOrganizersResponse
+     */
+    handover?: OrganizerResponse | null;
+    /**
+     * The Owner, `null` while the Tombstone holds it
+     * @type {OrganizerResponse}
+     * @memberof ListOrganizersResponse
+     */
+    owner?: OrganizerResponse | null;
 }
 /**
  * The Participants of a Tournament
@@ -5446,6 +5550,19 @@ export interface MyTournamentsResponse {
     participating: Array<TournamentSummaryResponse>;
 }
 /**
+ * Request naming an Account by its username
+ * @export
+ * @interface NameAccountRequest
+ */
+export interface NameAccountRequest {
+    /**
+     * Username of the Account, case ignored
+     * @type {string}
+     * @memberof NameAccountRequest
+     */
+    username: string;
+}
+/**
  * A stack to file into a collection
  * @export
  * @interface NewCollectionEntry
@@ -5496,6 +5613,37 @@ export interface NewCollectionEntry {
 }
 
 
+/**
+ * Why a Tournament could not be offered to an Account
+ * @export
+ * @interface OfferHandoverErrors
+ */
+export interface OfferHandoverErrors {
+    /**
+     * The username is the caller's own, which owns the Tournament
+     * @type {boolean}
+     * @memberof OfferHandoverErrors
+     */
+    own_account: boolean;
+    /**
+     * The caller named too many unknown usernames lately, so this one was not looked up
+     * @type {boolean}
+     * @memberof OfferHandoverErrors
+     */
+    too_many_unknown_usernames: boolean;
+    /**
+     * No Account goes by this username
+     * @type {boolean}
+     * @memberof OfferHandoverErrors
+     */
+    unknown_username: boolean;
+}
+/**
+ * @type OfferTournamentHandover200Response
+ * 
+ * @export
+ */
+export type OfferTournamentHandover200Response = FormErrorResponseForOfferHandoverErrors | OrganizerResponse;
 
 /**
  * Why an OIDC login was refused, as the callback names it to the login page
@@ -5621,13 +5769,39 @@ export interface OnLoanResponse {
      */
     set_name?: string | null;
 }
+/**
+ * One Organizer of a Tournament, or the Account it is offered to
+ * @export
+ * @interface OrganizerResponse
+ */
+export interface OrganizerResponse {
+    /**
+     * The Account, which is what removing a Co-organizer names
+     * @type {string}
+     * @memberof OrganizerResponse
+     */
+    account: string;
+    /**
+     * The Account's username as it is now
+     * @type {string}
+     * @memberof OrganizerResponse
+     */
+    username: string;
+}
 
 /**
- * The Account the Tournament belongs to
+ * The part an Account plays in running a Tournament
  * @export
  */
 export const OrganizerRole = {
-    Owner: 'Owner'
+    /**
+    * The Account the Tournament belongs to
+    */
+    Owner: 'Owner',
+    /**
+    * An Account named to run it with the Owner
+    */
+    CoOrganizer: 'CoOrganizer'
 } as const;
 export type OrganizerRole = typeof OrganizerRole[keyof typeof OrganizerRole];
 
