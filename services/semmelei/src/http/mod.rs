@@ -3,9 +3,6 @@
 use galvyn::core::GalvynRouter;
 use galvyn::core::session;
 use galvyn::openapi::OpenapiRouterExt;
-use tower_http::trace::DefaultMakeSpan;
-use tower_http::trace::TraceLayer;
-use tracing::Level;
 
 pub mod handler_frontend;
 pub mod middleware;
@@ -17,9 +14,7 @@ pub struct FrontendApi;
 pub fn initialize_routes() -> GalvynRouter {
     routes()
         .layer(session::layer())
-        // Outside the session layer and at INFO, so the request span is the root of the
-        // trace instead of the session layer's `call` span
-        .layer(TraceLayer::new_for_http().make_span_with(DefaultMakeSpan::new().level(Level::INFO)))
+        .layer(service_bootstrap::http::trace_layer())
 }
 
 /// Every route, without the layers around them
