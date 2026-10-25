@@ -2,6 +2,7 @@
 
 pub mod account;
 pub mod admin_log;
+pub mod bug_report;
 pub mod card_attributes;
 pub mod catalog;
 pub mod collection;

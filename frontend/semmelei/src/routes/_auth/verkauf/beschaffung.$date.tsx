@@ -3,6 +3,7 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 import {
     Badge,
+    BadgeProps,
     Button,
     EmptyState,
     Heading,
@@ -51,13 +52,56 @@ function Procurement() {
         );
     }
 
+    /** Where the day stands: one badge and, unless called off, one line of text */
+    const state = ((): { color: BadgeProps["color"]; badge: string; description?: string } => {
+        if (summary.closed) {
+            return { color: "red", badge: t("label.state-closed") };
+        }
+        if (summary.dispatched_at) {
+            return {
+                color: "green",
+                badge: t("label.state-final"),
+                description: t("description.procurement-dispatched", {
+                    date: formatDateTime(summary.dispatched_at),
+                    count: summary.order_count,
+                }),
+            };
+        }
+        if (summary.not_dispatched_reason === "NoBakeryAddress") {
+            return {
+                color: "red",
+                badge: t("label.state-not-dispatched"),
+                description: t("description.procurement-no-bakery-address"),
+            };
+        }
+        if (summary.locked) {
+            return {
+                color: "amber",
+                badge: t("label.state-review"),
+                description: t("description.procurement-review", { date: formatDateTime(summary.dispatch_due) }),
+            };
+        }
+        return {
+            color: "amber",
+            badge: t("label.state-preliminary"),
+            description: t("description.procurement-open", { date: formatDateTime(summary.deadline) }),
+        };
+    })();
+
     /** Download the list as a CSV for the bakery */
     function download() {
         if (summary === undefined || summary === "not-found") return;
         const csv = toCsv([
-            [t("label.item"), t("label.quantity"), t("label.orders"), t("label.unit-price")],
+            [
+                t("label.item"),
+                tg("label.bakery-article-number"),
+                t("label.quantity"),
+                t("label.orders"),
+                t("label.unit-price"),
+            ],
             ...summary.positions.map((p) => [
                 p.name,
+                p.bakery_article_numbers.join(", "),
                 p.total_quantity,
                 p.order_count,
                 (p.price_cents / 100).toFixed(2).replace(".", ","),
@@ -71,26 +115,14 @@ function Procurement() {
             <div className={"flex flex-wrap items-center justify-between gap-3"}>
                 <Heading>{t("heading.procurement", { date: formatDate(summary.pickup_date) })}</Heading>
                 <div className={"flex items-center gap-2"}>
-                    {summary.closed ? (
-                        <Badge color={"red"}>{t("label.state-closed")}</Badge>
-                    ) : summary.locked ? (
-                        <Badge color={"green"}>{t("label.state-final")}</Badge>
-                    ) : (
-                        <Badge color={"amber"}>{t("label.state-preliminary")}</Badge>
-                    )}
+                    <Badge color={state.color}>{state.badge}</Badge>
                     <Button onClick={download} disabled={summary.positions.length === 0}>
                         {t("button.download-csv")}
                     </Button>
                 </div>
             </div>
 
-            {/* Until the deadline the list still moves — say so, so nobody
-                orders at the bakery off a preliminary number. */}
-            <Text>
-                {summary.locked
-                    ? t("description.procurement-final", { count: summary.order_count })
-                    : t("description.procurement-preliminary", { date: formatDateTime(summary.deadline) })}
-            </Text>
+            {state.description && <Text>{state.description}</Text>}
 
             {summary.positions.length === 0 ? (
                 <EmptyState title={t("label.procurement-empty")} />
@@ -99,6 +131,7 @@ function Procurement() {
                     <TableHead>
                         <TableRow>
                             <TableHeader>{t("label.item")}</TableHeader>
+                            <TableHeader>{tg("label.bakery-article-number")}</TableHeader>
                             <TableHeader>{t("label.quantity")}</TableHeader>
                             <TableHeader>{t("label.orders")}</TableHeader>
                             <TableHeader>{t("label.sum")}</TableHeader>
@@ -108,6 +141,11 @@ function Procurement() {
                         {summary.positions.map((position) => (
                             <TableRow key={position.name}>
                                 <TableCell>{position.name}</TableCell>
+                                <TableCell>
+                                    {position.bakery_article_numbers.length === 0
+                                        ? "–"
+                                        : position.bakery_article_numbers.join(", ")}
+                                </TableCell>
                                 <TableCell className={"text-lg font-semibold"}>{position.total_quantity}</TableCell>
                                 <TableCell>{position.order_count}</TableCell>
                                 <TableCell>{formatPrice(position.price_cents * position.total_quantity)}</TableCell>
@@ -115,6 +153,7 @@ function Procurement() {
                         ))}
                         <TableRow>
                             <TableCell className={"font-semibold"}>{t("label.total")}</TableCell>
+                            <TableCell />
                             <TableCell />
                             <TableCell />
                             <TableCell className={"font-semibold"}>{formatPrice(summary.total_cents)}</TableCell>

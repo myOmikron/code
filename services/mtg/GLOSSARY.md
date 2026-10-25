@@ -76,6 +76,10 @@ _Avoid_: actual bracket, real bracket
 One line of a deck: a printing in a zone, foil or not, proxy or not, with a quantity of at least one. A deck holds at most one Deck entry per printing, zone, foil and proxy; an edit that makes two alike merges them, and an entry whose quantity drops to zero is gone.
 _Avoid_: slot, deck card, line
 
+**Default printing**:
+The printing a card gets when it is added to a deck by its name alone: the newest already released printing that exists without foil and is legal somewhere; of equally new ones the cheapest without foil, printings with a price before those without, and then the lowest collector number. A card that exists only in foil gets its newest legal printing, filed as foil; a token of the same name never wins over it. It is only a starting point; the printing can be changed afterwards. A printing id, a named set and collector number, or a foil marker in an import wins over it, and a card already in the same zone keeps the printing it has there.
+_Avoid_: preferred printing, standard print
+
 **Deck change**:
 One step in a deck's Deck history: what the owner or an Editor did to its Deck entries or to its name, description, format, colors, bracket, rule-zero exceptions or size. Tags, folder, visibility, sharing and the deck's collection are not part of it. An import, a fill, a swap or a move between zones is one Deck change. Changes to the same Deck entry, or to the same field, made in quick succession become one Deck change, unless a Deck checkpoint names it. Creating the deck is its first Deck change; a deck that existed before Deck histories begins with its state at that time. Undo, redo and resetting to an earlier point are Deck changes of their own, so the Deck history only ever grows.
 _Avoid_: revision, edit, version
@@ -112,6 +116,10 @@ _Avoid_: changelog entry, entry, change
 All Release notes of the Releases, shown newest first on the "What's new" page (Neuigkeiten). Releases without a Release note are left out.
 _Avoid_: changelog, history, news feed
 
+**Bug report**:
+A signed-in Account's message that something in mtg does not work, in their own words, with what the app knew at that moment attached. Only for faults, never for wishes. Admins read it; the reporter hears nothing back beyond a thank-you and its reference.
+_Avoid_: feedback, ticket, issue
+
 ## Relationships
 
 - An **Account** has exactly one **Role**, and at most one **Lock** at a time
@@ -123,6 +131,7 @@ _Avoid_: changelog, history, news feed
 - A deck has any number of **Collaborators**, each Account at most once, as a **Viewer** or an **Editor**; deleting the deck or the Account removes the Collaborator
 - A **Collaborator** sees the deck whatever its Visibility; Visibility and the Share link work the same with or without Collaborators
 - A **Release** has any number of **Release notes**; pending ones belong to the next Release cut with `just release`
+- A **Bug report** belongs to the Account that sent it and goes with it on any **Deletion**; it is open until an **Admin** marks it done
 - Undoing or resetting a **Deck change** restores **Deck entries** without their card tags, and never moves cards of the deck's collection
 
 ## Flagged ambiguities

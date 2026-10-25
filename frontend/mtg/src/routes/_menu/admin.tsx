@@ -25,6 +25,7 @@ function RouteComponent() {
                 tabs={
                     <TabMenu>
                         <Tab href={"/admin/accounts"}>{t("heading.accounts")}</Tab>
+                        <Tab href={"/admin/bug-reports"}>{t("heading.bug-reports")}</Tab>
                         <Tab href={"/admin/log"}>{t("heading.log")}</Tab>
                         <Tab href={"/admin/statistics"}>{t("heading.statistics")}</Tab>
                         <Tab href={"/admin/syncs"}>{t("heading.syncs")}</Tab>

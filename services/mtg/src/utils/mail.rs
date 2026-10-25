@@ -13,6 +13,7 @@ use tracing::instrument;
 use url::Url;
 
 use crate::models::account::Username;
+use crate::models::bug_report::BugReportNumber;
 use crate::proto;
 
 /// Error returned when a mail could not be handed to the gateway
@@ -215,6 +216,61 @@ pub async fn send_new_username(
         to: to.to_string(),
         subject: String::from(subject),
         text_body,
+        ..Default::default()
+    })
+    .await
+}
+
+/// What an Admin's notice of a new Bug report says
+#[derive(Debug, Clone, Copy)]
+pub struct BugReportNotice<'a> {
+    /// The running number
+    pub number: BugReportNumber,
+    /// The reporter's username
+    pub reporter: &'a Username,
+    /// The route the app was on
+    pub route: &'a str,
+    /// The Release the app was running
+    pub release: &'a str,
+    /// The player's text
+    pub text: &'a str,
+    /// The Bug report's page in the admin dashboard
+    pub link: &'a Url,
+}
+
+/// Tell an Admin about a new Bug report
+///
+/// In German, the app's primary language: the notice goes to an Admin, whose
+/// language no request carries. Diagnostics and images stay in the dashboard.
+#[instrument(name = "mail::send_bug_report_notice", skip(notice))]
+pub async fn send_bug_report_notice(
+    to: &MaxStr<255>,
+    notice: BugReportNotice<'_>,
+) -> Result<(), MailError> {
+    let BugReportNotice {
+        number,
+        reporter,
+        route,
+        release,
+        text,
+        link,
+    } = notice;
+    let number = number.into_inner();
+    let reporter = reporter.as_str();
+
+    queue(proto::mail_v1::SendEmail {
+        to: to.to_string(),
+        subject: format!("Fehlerbericht #{number} von {reporter}"),
+        text_body: format!(
+            "{reporter} hat den Fehlerbericht #{number} geschickt.\n\
+             \n\
+             Seite: {route}\n\
+             Release: {release}\n\
+             \n\
+             {text}\n\
+             \n\
+             Im Admin-Dashboard: {link}\n",
+        ),
         ..Default::default()
     })
     .await

@@ -41,6 +41,10 @@ import "src/utils/install-prompt";
 // Import i18n to initialize it
 import "src/i18n";
 
+import { installDiagnostics } from "src/utils/diagnostics";
+
+installDiagnostics();
+
 import { watchSystemTheme } from "src/utils/theme";
 import { watchFoilTilt } from "src/utils/foil-tilt";
 

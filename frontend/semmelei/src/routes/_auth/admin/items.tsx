@@ -55,6 +55,7 @@ function Items() {
             additional_info: item.additional_info ?? null,
             category: item.category ?? null,
             active,
+            bakery_article_number: item.bakery_article_number ?? null,
         });
         fetch();
     }
@@ -77,13 +78,14 @@ function Items() {
                             <TableHeader className={"w-16"} />
                             <TableHeader>{t("label.name")}</TableHeader>
                             <TableHeader>{t("label.price")}</TableHeader>
+                            <TableHeader>{tg("label.bakery-article-number")}</TableHeader>
                             <TableHeader>{t("label.category")}</TableHeader>
                             <TableHeader>{t("label.active")}</TableHeader>
                             <TableHeader />
                         </TableRow>
                     </TableHead>
                     {items === undefined ? (
-                        <TableBodySkeleton rows={4} cols={6} />
+                        <TableBodySkeleton rows={4} cols={7} />
                     ) : (
                         <TableBody>
                             {items.map((item) => (
@@ -113,6 +115,7 @@ function Items() {
                                     </TableCell>
                                     <TableCell>{item.name}</TableCell>
                                     <TableCell>{formatPrice(item.price_cents)}</TableCell>
+                                    <TableCell>{item.bakery_article_number ?? "–"}</TableCell>
                                     <TableCell>
                                         {categories.find((c) => c.uuid === item.category)?.name ?? "—"}
                                     </TableCell>
