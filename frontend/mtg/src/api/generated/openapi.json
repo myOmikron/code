@@ -1062,6 +1062,418 @@
                 }
             }
         },
+        "/api/frontend/v1/admin/bug-reports": {
+            "get": {
+                "summary": "List Bug reports, newest first, the open ones unless asked otherwise",
+                "description": "List Bug reports, newest first, the open ones unless asked otherwise",
+                "operationId": "admin_list_bug_reports",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "after",
+                        "schema": {
+                            "nullable": true,
+                            "description": "Continue after this Bug report, from a previous page's `next_cursor`",
+                            "allOf": [
+                                {
+                                    "$ref": "#/components/schemas/BugReportNumber"
+                                }
+                            ]
+                        },
+                        "style": "form"
+                    },
+                    {
+                        "in": "query",
+                        "name": "filter",
+                        "schema": {
+                            "description": "Which Bug reports to list, the open ones by default",
+                            "allOf": [
+                                {
+                                    "$ref": "#/components/schemas/AdminBugReportFilter"
+                                }
+                            ]
+                        },
+                        "style": "form"
+                    },
+                    {
+                        "in": "query",
+                        "name": "limit",
+                        "schema": {
+                            "description": "How many Bug reports to return, capped server-side",
+                            "default": 50,
+                            "type": "integer",
+                            "minimum": 0,
+                            "format": "uint32"
+                        },
+                        "style": "form"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AdminListBugReportsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/admin/bug-reports/{number}": {
+            "get": {
+                "summary": "One Bug report with its text, diagnostics and image references",
+                "description": "One Bug report with its text, diagnostics and image references",
+                "operationId": "admin_get_bug_report",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "number",
+                        "required": true,
+                        "schema": {
+                            "description": "The running number of a Bug report, shown as `#<n>`",
+                            "type": "integer",
+                            "format": "int64"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AdminBugReportDetail"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/admin/bug-reports/{number}/images/{image}": {
+            "get": {
+                "summary": "One image of a Bug report",
+                "description": "One image of a Bug report",
+                "operationId": "admin_get_bug_report_image",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "number",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/BugReportNumber"
+                        },
+                        "style": "simple"
+                    },
+                    {
+                        "in": "path",
+                        "name": "image",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/BugReportImageUuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "image/*": {}
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/admin/bug-reports/{number}/done": {
+            "post": {
+                "summary": "Mark a Bug report done, recording the Admin and the time",
+                "description": "Mark a Bug report done, recording the Admin and the time",
+                "operationId": "admin_mark_bug_report_done",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "number",
+                        "required": true,
+                        "schema": {
+                            "description": "The running number of a Bug report, shown as `#<n>`",
+                            "type": "integer",
+                            "format": "int64"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "nullable": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/admin/bug-reports/{number}/reopen": {
+            "post": {
+                "summary": "Open a done Bug report again",
+                "description": "Open a done Bug report again\n\nWhat a purge removed stays removed.",
+                "operationId": "admin_reopen_bug_report",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "number",
+                        "required": true,
+                        "schema": {
+                            "description": "The running number of a Bug report, shown as `#<n>`",
+                            "type": "integer",
+                            "format": "int64"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "nullable": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/admin/bug-reports/{number}/note": {
+            "put": {
+                "summary": "Set the Admins' internal note on a Bug report, an empty note removes it",
+                "description": "Set the Admins' internal note on a Bug report, an empty note removes it",
+                "operationId": "admin_set_bug_report_note",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "number",
+                        "required": true,
+                        "schema": {
+                            "description": "The running number of a Bug report, shown as `#<n>`",
+                            "type": "integer",
+                            "format": "int64"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AdminSetBugReportNoteRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "nullable": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/frontend/v1/admin/log": {
             "get": {
                 "summary": "List the Admin log, newest first",
@@ -1926,6 +2338,71 @@
                                         },
                                         {
                                             "$ref": "#/components/schemas/FormErrorResponse_for_ChooseUsernameErrors"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/bug-reports": {
+            "post": {
+                "summary": "Send a Bug report",
+                "description": "Send a Bug report\n\nA multipart body: the `report` part as json and up to three `images`.\nEvery Admin is mailed a notice without diagnostics or images; a mail that\nfails is logged and does not fail the send.",
+                "operationId": "send_bug_report",
+                "requestBody": {
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SendBugReportForm"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "$ref": "#/components/schemas/SendBugReportResponse"
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/FormErrorResponse_for_SendBugReportErrors"
                                         }
                                     ]
                                 }
@@ -9984,6 +10461,172 @@
                     "reason"
                 ]
             },
+            "AdminBugReport": {
+                "description": "A Bug report as the list shows it",
+                "type": "object",
+                "properties": {
+                    "created_at": {
+                        "description": "When it was sent",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDateTime"
+                            }
+                        ]
+                    },
+                    "number": {
+                        "description": "The running number",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/BugReportNumber"
+                            }
+                        ]
+                    },
+                    "purged": {
+                        "description": "Whether its images and diagnostics were purged",
+                        "type": "boolean"
+                    },
+                    "release": {
+                        "description": "The Release the app was running",
+                        "type": "string"
+                    },
+                    "reporter": {
+                        "description": "Who sent it",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/BugReportAccount"
+                            }
+                        ]
+                    },
+                    "route": {
+                        "description": "The route the app was on",
+                        "type": "string"
+                    },
+                    "state": {
+                        "description": "Open or done",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/BugReportState"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "created_at",
+                    "number",
+                    "purged",
+                    "release",
+                    "reporter",
+                    "route",
+                    "state"
+                ]
+            },
+            "AdminBugReportDetail": {
+                "description": "A Bug report with everything it holds",
+                "type": "object",
+                "properties": {
+                    "diagnostics": {
+                        "nullable": true,
+                        "description": "The diagnostics document the app built, `None` once purged"
+                    },
+                    "done_at": {
+                        "nullable": true,
+                        "description": "When it was marked done",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDateTime"
+                            }
+                        ]
+                    },
+                    "done_by": {
+                        "nullable": true,
+                        "description": "The Admin that marked it done, `None` while open or once that Admin is deleted",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/BugReportAccount"
+                            }
+                        ]
+                    },
+                    "images": {
+                        "description": "Its images, in the order they were sent, empty once purged",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/BugReportImageInfo"
+                        }
+                    },
+                    "language": {
+                        "description": "The browser's language",
+                        "type": "string"
+                    },
+                    "note": {
+                        "nullable": true,
+                        "description": "The Admins' internal note",
+                        "type": "string"
+                    },
+                    "purged_at": {
+                        "nullable": true,
+                        "description": "When its images and diagnostics were purged",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDateTime"
+                            }
+                        ]
+                    },
+                    "report": {
+                        "description": "What the list shows",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/AdminBugReport"
+                            }
+                        ]
+                    },
+                    "text": {
+                        "description": "What went wrong, in the player's words",
+                        "type": "string"
+                    },
+                    "user_agent": {
+                        "description": "The browser's user agent",
+                        "type": "string"
+                    },
+                    "viewport": {
+                        "description": "The browser window's size",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "images",
+                    "language",
+                    "report",
+                    "text",
+                    "user_agent",
+                    "viewport"
+                ]
+            },
+            "AdminBugReportFilter": {
+                "description": "Which Bug reports the list shows",
+                "oneOf": [
+                    {
+                        "description": "The open ones",
+                        "type": "string",
+                        "enum": [
+                            "Open"
+                        ]
+                    },
+                    {
+                        "description": "The done ones",
+                        "type": "string",
+                        "enum": [
+                            "Done"
+                        ]
+                    },
+                    {
+                        "description": "All of them",
+                        "type": "string",
+                        "enum": [
+                            "All"
+                        ]
+                    }
+                ]
+            },
             "AdminCatalogStamp": {
                 "description": "The file the catalog was last read from",
                 "type": "object",
@@ -10099,6 +10742,31 @@
                 },
                 "required": [
                     "accounts"
+                ]
+            },
+            "AdminListBugReportsResponse": {
+                "description": "One page of Bug reports, newest first",
+                "type": "object",
+                "properties": {
+                    "next_cursor": {
+                        "nullable": true,
+                        "description": "Pass as `after` for the next page, `None` on the last one",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/BugReportNumber"
+                            }
+                        ]
+                    },
+                    "reports": {
+                        "description": "The Bug reports",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/AdminBugReport"
+                        }
+                    }
+                },
+                "required": [
+                    "reports"
                 ]
             },
             "AdminListLogResponse": {
@@ -10490,6 +11158,23 @@
                 "required": [
                     "reason",
                     "username"
+                ]
+            },
+            "AdminSetBugReportNoteRequest": {
+                "description": "Request to set the Admins' note on a Bug report",
+                "type": "object",
+                "properties": {
+                    "note": {
+                        "description": "The note, empty to remove it",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_4096"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "note"
                 ]
             },
             "AdminSetRoleErrors": {
@@ -10931,6 +11616,79 @@
                     "mass_land_denial",
                     "number",
                     "slug"
+                ]
+            },
+            "BugReportAccount": {
+                "description": "An Account named by a Bug report",
+                "type": "object",
+                "properties": {
+                    "username": {
+                        "description": "Its current username",
+                        "type": "string"
+                    },
+                    "uuid": {
+                        "description": "Primary key",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/AccountUuid"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "username",
+                    "uuid"
+                ]
+            },
+            "BugReportImageInfo": {
+                "description": "An image of a Bug report, without its bytes",
+                "type": "object",
+                "properties": {
+                    "content_type": {
+                        "description": "The image's media type",
+                        "type": "string"
+                    },
+                    "uuid": {
+                        "description": "Primary key",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/BugReportImageUuid"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "content_type",
+                    "uuid"
+                ]
+            },
+            "BugReportImageUuid": {
+                "description": "Primary key of an image of a Bug report",
+                "type": "string",
+                "format": "uuid"
+            },
+            "BugReportNumber": {
+                "description": "The running number of a Bug report, shown as `#<n>`",
+                "type": "integer",
+                "format": "int64"
+            },
+            "BugReportState": {
+                "description": "Whether a Bug report still needs an Admin's attention",
+                "oneOf": [
+                    {
+                        "description": "Not looked into yet, or reopened",
+                        "type": "string",
+                        "enum": [
+                            "Open"
+                        ]
+                    },
+                    {
+                        "description": "Marked done by an Admin",
+                        "type": "string",
+                        "enum": [
+                            "Done"
+                        ]
+                    }
                 ]
             },
             "CardCondition": {
@@ -14219,6 +14977,32 @@
                     "result"
                 ]
             },
+            "FormErrorResponse_for_SendBugReportErrors": {
+                "description": "The response that is sent in a case of an error the caller should present his user",
+                "type": "object",
+                "properties": {
+                    "error": {
+                        "description": "The actual error struct",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SendBugReportErrors"
+                            }
+                        ]
+                    },
+                    "result": {
+                        "description": "A constant `\"Err\"` used to differentiate this schema from any other \"Ok\" schema",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ErrorConstant"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "error",
+                    "result"
+                ]
+            },
             "FormErrorResponse_for_SignupErrors": {
                 "description": "The response that is sent in a case of an error the caller should present his user",
                 "type": "object",
@@ -15029,6 +15813,10 @@
                 "type": "string",
                 "maxLength": 16
             },
+            "MaxStr_20000": {
+                "type": "string",
+                "maxLength": 20000
+            },
             "MaxStr_2048": {
                 "type": "string",
                 "maxLength": 2048
@@ -15040,6 +15828,10 @@
             "MaxStr_32": {
                 "type": "string",
                 "maxLength": 32
+            },
+            "MaxStr_4096": {
+                "type": "string",
+                "maxLength": 4096
             },
             "MaxStr_512": {
                 "type": "string",
@@ -16661,6 +17453,158 @@
                     "limit",
                     "offset",
                     "total"
+                ]
+            },
+            "SendBugReportErrors": {
+                "description": "Why a Bug report could not be sent",
+                "type": "object",
+                "properties": {
+                    "image_invalid": {
+                        "description": "A part sent as an image is no JPEG, PNG or WebP",
+                        "type": "boolean"
+                    },
+                    "image_too_large": {
+                        "description": "An image is larger than 5 MB",
+                        "type": "boolean"
+                    },
+                    "rate_limited": {
+                        "description": "The Account sent 15 Bug reports within the last hour",
+                        "type": "boolean"
+                    },
+                    "report_invalid": {
+                        "description": "The `report` part is missing, larger than 512 KB or not the expected json",
+                        "type": "boolean"
+                    },
+                    "text_missing": {
+                        "description": "The text is empty or too short",
+                        "type": "boolean"
+                    },
+                    "text_too_long": {
+                        "description": "The text has more than 5000 characters",
+                        "type": "boolean"
+                    },
+                    "too_many_images": {
+                        "description": "More than three images",
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "image_invalid",
+                    "image_too_large",
+                    "rate_limited",
+                    "report_invalid",
+                    "text_missing",
+                    "text_too_long",
+                    "too_many_images"
+                ]
+            },
+            "SendBugReportForm": {
+                "description": "A Bug report as the browser sends it: the `report` json and up to three `images`",
+                "type": "object",
+                "properties": {
+                    "images": {
+                        "nullable": true,
+                        "description": "JPEG, PNG or WebP images of at most 5 MB each",
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "format": "binary"
+                        }
+                    },
+                    "report": {
+                        "description": "The [`SendBugReportRequest`] as json",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SendBugReportRequest"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "report"
+                ]
+            },
+            "SendBugReportRequest": {
+                "description": "The `report` part of a Bug report: what the player wrote and what the app knew",
+                "type": "object",
+                "properties": {
+                    "diagnostics": {
+                        "description": "The diagnostics document the app built, stored as is"
+                    },
+                    "language": {
+                        "description": "The browser's language",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_64"
+                            }
+                        ]
+                    },
+                    "release": {
+                        "description": "The Release the app was running",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_64"
+                            }
+                        ]
+                    },
+                    "route": {
+                        "description": "The route the app was on",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_2048"
+                            }
+                        ]
+                    },
+                    "text": {
+                        "description": "What went wrong, in the player's words",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_20000"
+                            }
+                        ]
+                    },
+                    "user_agent": {
+                        "description": "The browser's user agent",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_1024"
+                            }
+                        ]
+                    },
+                    "viewport": {
+                        "description": "The browser window's size, as `<width>x<height>`",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_32"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "diagnostics",
+                    "language",
+                    "release",
+                    "route",
+                    "text",
+                    "user_agent",
+                    "viewport"
+                ]
+            },
+            "SendBugReportResponse": {
+                "description": "A sent Bug report",
+                "type": "object",
+                "properties": {
+                    "number": {
+                        "description": "Its running number, for the player to quote",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/BugReportNumber"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "number"
                 ]
             },
             "SetAdvisorSettingsRequest": {

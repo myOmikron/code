@@ -17,6 +17,7 @@ pub struct FrontendApi;
 pub fn initialize_routes() -> GalvynRouter {
     routes()
         .layer(session::layer())
+        .layer(service_bootstrap::http::trace_layer())
         // Outermost, so it also covers the openapi documents. A collection's
         // entries are a few hundred bytes of json per stack and a big one runs
         // to five figures of stacks — the same payload compresses to about a

@@ -1,0 +1,3 @@
+kind: improved
+de: Beim Deck- und Sammlungs-Import, im Deck-Berater und bei den Graph-Filtern der Kartensuche im Deck bekommt eine Karte ohne genannte Druckversion jetzt ihre neueste erschienene, legale Druckversion ohne Foil, von gleich neuen die günstigste. Gibt es die Karte nur in Foil, kommt sie auch als Foil ins Deck oder in die Sammlung.
+en: Deck and collection imports, the deck advisor and the graph filters of the deck's card search now give a card without a named printing its newest released, legal non-foil printing, the cheapest of equally new ones. A card that only exists in foil goes into the deck or collection as foil.

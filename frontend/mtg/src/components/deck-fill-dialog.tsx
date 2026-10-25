@@ -20,6 +20,7 @@ import { DeckTargets, bucketRanges, curvePoints, typeRanges } from "src/utils/de
 import { ThemePrefs } from "src/utils/deck-theme-prefs";
 import { useBracketFillMarks } from "src/utils/use-bracket-marks";
 import { useSuggestionCards } from "src/utils/use-suggestion-cards";
+import { defaultFoil } from "src/utils/default-finish";
 
 /**
  * The properties for {@link DeckFillDialog}
@@ -180,7 +181,12 @@ export function DeckFillDialog({
         setAccepting(true);
         try {
             await Api.decks.cards.import(deckUuid, {
-                cards: printings.map((printing) => ({ printing: printing.id, quantity: 1, zone: "Main" })),
+                cards: printings.map((printing) => ({
+                    printing: printing.id,
+                    quantity: 1,
+                    zone: "Main",
+                    foil: defaultFoil(printing.finishes),
+                })),
                 mode: "Fill",
             });
 

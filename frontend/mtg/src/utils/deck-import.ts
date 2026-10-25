@@ -9,6 +9,7 @@
 import { Api } from "src/api/api";
 import type { AddDeckCardRequest } from "src/api/generated";
 import type { DecklistRow } from "src/utils/decklist";
+import { defaultFoil } from "src/utils/default-finish";
 import { parseDecklist } from "src/utils/decklist";
 import { resolveLookups } from "src/utils/printing-catalog";
 
@@ -66,7 +67,7 @@ export async function importRows(
             printing: printing.id,
             quantity: row.quantity,
             zone: row.zone,
-            ...(row.foil === true ? { foil: true } : {}),
+            ...(row.foil === true || defaultFoil(printing.finishes) ? { foil: true } : {}),
         });
         copies += row.quantity;
     });

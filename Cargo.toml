@@ -123,6 +123,9 @@ strum = { version = "~0.28", features = ["derive"] }
 # Constant-time equals for crypto
 subtle = { version = "~2" }
 
+# The web framework under `galvyn`, for the extractors `galvyn` leaves switched off (multipart)
+axum = { version = "~0.8", default-features = false, features = ["multipart"] }
+
 # HTTP middleware for the `tower` ecosystem (used by `axum`/`galvyn`)
 tower-http = { version = "~0.7.0", features = ["trace", "compression-gzip", "compression-br"] }
 

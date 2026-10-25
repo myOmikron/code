@@ -1,0 +1,22 @@
+[Migration]
+Hash = "16214903574119520300"
+Initial = false
+Dependency = 11
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "item"
+
+[Migration.Operations.Field]
+Name = "bakery_article_number"
+Type = "text"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "max_length"
+Value = 32
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/semmelei/src/models/item/db.rs"
+Line = 42
+Column = 9

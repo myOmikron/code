@@ -12,7 +12,9 @@ pub struct FrontendApi;
 
 /// Initializes all routes
 pub fn initialize_routes() -> GalvynRouter {
-    routes().layer(session::layer())
+    routes()
+        .layer(session::layer())
+        .layer(service_bootstrap::http::trace_layer())
 }
 
 /// Every route, without the layers around them

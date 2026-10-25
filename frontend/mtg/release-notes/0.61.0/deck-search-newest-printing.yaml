@@ -1,0 +1,3 @@
+kind: improved
+de: Die Kartensuche im Deck zeigt und fügt die neueste Druckversion einer Karte hinzu. Liegt die Karte schon in der Zone, erhöht sich ihre Anzahl, auch wenn sie dort in einer anderen Druckversion liegt.
+en: The deck's card search shows and adds a card's newest printing. If the card is already in the zone, its quantity goes up, even when it lies there in another printing.
