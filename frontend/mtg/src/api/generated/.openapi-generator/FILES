@@ -1,9 +1,15 @@
 apis/DefaultApi.ts
 apis/index.ts
+docs/AddAccountParticipantErrors.md
+docs/AddAccountParticipantRequest.md
 docs/AddCollectionEntriesRequest.md
 docs/AddDeckCardRequest.md
+docs/AddGuestParticipantErrors.md
+docs/AddGuestParticipantRequest.md
 docs/AddPasskeyErrors.md
 docs/AddScannerSessionEntryRequest.md
+docs/AddTournamentAccount200Response.md
+docs/AddTournamentGuest200Response.md
 docs/AddWatchListEntryRequest.md
 docs/AdminAccount.md
 docs/AdminAccountDetail.md
@@ -129,6 +135,8 @@ docs/FinishAddPasskeyRequest.md
 docs/FinishLoginErrors.md
 docs/FinishLoginRequest.md
 docs/FinishRegistrationRequest.md
+docs/FormErrorResponseForAddAccountParticipantErrors.md
+docs/FormErrorResponseForAddGuestParticipantErrors.md
 docs/FormErrorResponseForAddPasskeyErrors.md
 docs/FormErrorResponseForAdminDeleteAccountErrors.md
 docs/FormErrorResponseForAdminLockAccountErrors.md
@@ -145,6 +153,7 @@ docs/FormErrorResponseForRegistrationErrors.md
 docs/FormErrorResponseForRenameAccountErrors.md
 docs/FormErrorResponseForRenamePasskeyErrors.md
 docs/FormErrorResponseForSendBugReportErrors.md
+docs/FormErrorResponseForSignUpErrors.md
 docs/FormErrorResponseForSignupErrors.md
 docs/FormErrorResponseForStartLoginErrors.md
 docs/FormErrorResponseForStartOidcLoginErrors.md
@@ -163,6 +172,7 @@ docs/ListFormatsResponse.md
 docs/ListGlobalTagsResponse.md
 docs/ListOnLoanResponse.md
 docs/ListOpenIdProvidersResponse.md
+docs/ListParticipantsResponse.md
 docs/ListPasskeysResponse.md
 docs/ListScannerSessionsResponse.md
 docs/ListSharedWithMeResponse.md
@@ -189,7 +199,10 @@ docs/OidcLoginFailure.md
 docs/OldestPrintingResponse.md
 docs/OnLoanResponse.md
 docs/OrganizerRole.md
+docs/ParticipantResponse.md
 docs/PendingOidcLogin.md
+docs/PlayerCandidateResponse.md
+docs/PlayerCandidatesResponse.md
 docs/PriceDayResponse.md
 docs/PriceHistoryResponse.md
 docs/PricePointResponse.md
@@ -246,6 +259,8 @@ docs/SetDeckVisibilityRequest.md
 docs/SharedCollectionResponse.md
 docs/SharedDeckResponse.md
 docs/SharedWithMeDeckResponse.md
+docs/SignUpErrors.md
+docs/SignUpForSharedTournament200Response.md
 docs/Signup200Response.md
 docs/SignupErrors.md
 docs/SignupRequest.md

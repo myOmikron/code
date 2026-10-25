@@ -14,7 +14,7 @@ use crate::tests::harness::create_account;
 use crate::tests::harness::run;
 
 /// Every setting of a Tournament, as a create or update request takes them
-fn settings(visibility: &str) -> Value {
+pub(super) fn settings(visibility: &str) -> Value {
     json!({
         "name": "Friday Night Commander",
         "description": "Bring a deck of bracket 3",
@@ -24,6 +24,8 @@ fn settings(visibility: &str) -> Value {
         "ruleset": "TopDeck",
         "format": "commander",
         "visibility": visibility,
+        "participant_limit": null,
+        "self_sign_up": false,
     })
 }
 

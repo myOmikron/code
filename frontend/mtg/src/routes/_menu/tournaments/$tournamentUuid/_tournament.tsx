@@ -106,6 +106,9 @@ function RouteComponent() {
                     >
                         {t("heading.overview")}
                     </Tab>
+                    <Tab href={"/tournaments/$tournamentUuid/participants"} params={{ tournamentUuid }}>
+                        {t("heading.participants")}
+                    </Tab>
                 </TabMenu>
             }
         >

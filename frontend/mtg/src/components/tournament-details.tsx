@@ -57,6 +57,18 @@ export function TournamentDetails({ tournament }: TournamentDetailsProps) {
                     {tournament.format == null ? t("label.format-any") : deckLabels.format(tournament.format)}
                 </DescriptionDetails>
 
+                <DescriptionTerm>{t("label.self-sign-up")}</DescriptionTerm>
+                <DescriptionDetails>
+                    {tournament.self_sign_up ? t("label.self-sign-up-on") : t("label.self-sign-up-off")}
+                </DescriptionDetails>
+
+                {tournament.participant_limit != null && (
+                    <>
+                        <DescriptionTerm>{t("label.participant-limit")}</DescriptionTerm>
+                        <DescriptionDetails>{tournament.participant_limit}</DescriptionDetails>
+                    </>
+                )}
+
                 <DescriptionTerm>{t("label.state")}</DescriptionTerm>
                 <DescriptionDetails>{labels.state(tournament.state)}</DescriptionDetails>
 

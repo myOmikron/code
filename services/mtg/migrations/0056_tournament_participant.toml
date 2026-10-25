@@ -1,0 +1,144 @@
+[Migration]
+Hash = "9978967621108610778"
+Initial = false
+Dependency = 55
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateModel"
+Name = "tournament_participant"
+
+[[Migration.Operations.Fields]]
+Name = "uuid"
+Type = "uuid"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "primary_key"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 123
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "guest_name"
+Type = "text"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 64
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 137
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "created_at"
+Type = "datetime"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "auto_create_time"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 141
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "tournament_participant"
+
+[Migration.Operations.Field]
+Name = "tournament"
+Type = "uuid"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "foreign_key"
+
+[Migration.Operations.Field.Annotations.Value]
+TableName = "tournament"
+ColumnName = "uuid"
+OnDelete = "Cascade"
+OnUpdate = "Cascade"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 127
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "tournament_participant"
+
+[Migration.Operations.Field]
+Name = "account"
+Type = "uuid"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "foreign_key"
+
+[Migration.Operations.Field.Annotations.Value]
+TableName = "account"
+ColumnName = "uuid"
+OnDelete = "Cascade"
+OnUpdate = "Cascade"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 134
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "tournament"
+
+[Migration.Operations.Field]
+Name = "participant_limit"
+Type = "int32"
+Annotations = []
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 66
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "tournament"
+
+[Migration.Operations.Field]
+Name = "self_sign_up"
+Type = "boolean"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "default_value"
+Value = false
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 70
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateIndex"
+Model = "tournament_participant"
+
+[Migration.Operations.Index]
+Columns = ["tournament"]
+
+[[Migration.Operations]]
+Type = "CreateIndex"
+Model = "tournament_participant"
+
+[Migration.Operations.Index]
+Columns = ["account"]

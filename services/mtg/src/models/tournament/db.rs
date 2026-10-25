@@ -62,6 +62,13 @@ pub struct TournamentModel {
     #[rorm(unique)]
     pub share_token: Option<MaxStr<64>>,
 
+    /// How many Participants self sign-up admits at most, `None` for no limit
+    pub participant_limit: Option<i32>,
+
+    /// Whether Accounts may sign up themselves
+    #[rorm(default = false)]
+    pub self_sign_up: bool,
+
     /// Where the Tournament stands
     #[rorm(default = "Registration")]
     pub state: TournamentState,
@@ -97,6 +104,60 @@ pub struct TournamentInsertPatch {
     pub visibility: Visibility,
     /// Secret of the share link
     pub share_token: Option<MaxStr<64>>,
+    /// How many Participants self sign-up admits at most
+    pub participant_limit: Option<i32>,
+    /// Whether Accounts may sign up themselves
+    pub self_sign_up: bool,
     /// Where the Tournament stands
     pub state: TournamentState,
+}
+
+/// A Participant of a Tournament: an Account or a Guest
+///
+/// Exactly one of [`Self::account`] and [`Self::guest_name`] is set.
+#[derive(Model, Debug)]
+#[rorm(rename = "tournament_participant")]
+pub struct TournamentParticipantModel {
+    /// Primary key; [`participant_key`] for an Account, so it is in a Tournament once
+    #[rorm(primary_key)]
+    pub uuid: Uuid,
+
+    /// The Tournament played in
+    #[rorm(index, on_update = "Cascade", on_delete = "Cascade")]
+    pub tournament: ForeignModel<TournamentModel>,
+
+    /// The Account playing, `None` for a Guest
+    ///
+    /// Cascading for now: turning a deleted Account's Participants into
+    /// Guests named by its last username is the Deletion's job.
+    #[rorm(index, on_update = "Cascade", on_delete = "Cascade")]
+    pub account: Option<ForeignModel<AccountModel>>,
+
+    /// The name an Organizer gave a Guest, `None` for an Account
+    pub guest_name: Option<MaxStr<64>>,
+
+    /// The point in time the Participant was added or signed up
+    #[rorm(auto_create_time)]
+    pub created_at: OffsetDateTime,
+}
+
+/// Insert patch for [`TournamentParticipantModel`]
+#[derive(Patch)]
+#[rorm(model = "TournamentParticipantModel")]
+pub struct TournamentParticipantInsertPatch {
+    /// Primary key
+    pub uuid: Uuid,
+    /// The Tournament played in
+    pub tournament: ForeignModel<TournamentModel>,
+    /// The Account playing
+    pub account: Option<ForeignModel<AccountModel>>,
+    /// The name of a Guest
+    pub guest_name: Option<MaxStr<64>>,
+}
+
+/// The primary key of an Account's Participant row in a Tournament
+///
+/// Derived from both, so a second insert of the same Account collides.
+pub fn participant_key(tournament: Uuid, account: Uuid) -> Uuid {
+    Uuid::new_v3(&tournament, account.as_bytes())
 }

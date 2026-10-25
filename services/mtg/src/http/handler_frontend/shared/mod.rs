@@ -29,6 +29,9 @@ pub fn initialize_routes() -> GalvynRouter {
         )
         .nest(
             "/tournaments",
-            GalvynRouter::new().handler(handler::get_shared_tournament),
+            GalvynRouter::new()
+                .handler(handler::get_shared_tournament)
+                .handler(handler::list_shared_tournament_participants)
+                .handler(handler::sign_up_for_shared_tournament),
         )
 }

@@ -35,6 +35,10 @@ pub struct TournamentSettingsRequest {
     pub format: Option<MaxStr<32>>,
     /// Who may see the Tournament
     pub visibility: Visibility,
+    /// How many Participants self sign-up admits at most, two or more; `null` for no limit
+    pub participant_limit: Option<i32>,
+    /// Whether Accounts may sign up themselves; only for a public or unlisted Tournament
+    pub self_sign_up: bool,
 }
 
 impl From<TournamentSettingsRequest> for RawTournamentSettings {
@@ -48,6 +52,8 @@ impl From<TournamentSettingsRequest> for RawTournamentSettings {
             ruleset: value.ruleset,
             format: value.format,
             visibility: value.visibility,
+            participant_limit: value.participant_limit,
+            self_sign_up: value.self_sign_up,
         }
     }
 }
@@ -61,6 +67,10 @@ pub struct TournamentSettingsErrors {
     pub ruleset_mismatch: bool,
     /// The format is not one a deck can be built for
     pub unknown_format: bool,
+    /// The participant limit is below two
+    pub participant_limit_too_small: bool,
+    /// Self sign-up is on for a private Tournament
+    pub self_sign_up_needs_visibility: bool,
 }
 
 impl From<SettingsRefusal> for TournamentSettingsErrors {
@@ -69,6 +79,8 @@ impl From<SettingsRefusal> for TournamentSettingsErrors {
             table_size_out_of_range: value.table_size_out_of_range,
             ruleset_mismatch: value.ruleset_mismatch,
             unknown_format: value.unknown_format,
+            participant_limit_too_small: value.participant_limit_too_small,
+            self_sign_up_needs_visibility: value.self_sign_up_needs_visibility,
         }
     }
 }
@@ -96,6 +108,10 @@ pub struct TournamentResponse {
     pub visibility: Visibility,
     /// Where it stands
     pub state: TournamentState,
+    /// How many Participants self sign-up admits at most, `null` for no limit
+    pub participant_limit: Option<i32>,
+    /// Whether Accounts may sign up themselves
+    pub self_sign_up: bool,
     /// Its Owner's username, `null` while the Tombstone holds it
     pub owner: Option<String>,
     /// The part the reader plays in running it, `null` for none
@@ -124,6 +140,8 @@ impl TournamentResponse {
             format: tournament.format,
             visibility: tournament.visibility,
             state: tournament.state,
+            participant_limit: tournament.participant_limit,
+            self_sign_up: tournament.self_sign_up,
             owner: owner.map(|owner| owner.as_str().to_string()),
             organizer_role,
             share_token: organizer_role.and(tournament.share_token),
