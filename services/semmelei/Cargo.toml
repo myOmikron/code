@@ -34,9 +34,6 @@ time-tz = { workspace = true }
 # Logging facade
 tracing = { workspace = true }
 
-# Request span around the session layer
-tower-http = { workspace = true }
-
 # Async
 tokio = { workspace = true }
 

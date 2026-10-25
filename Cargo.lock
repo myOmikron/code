@@ -4235,7 +4235,6 @@ dependencies = [
  "time-tz",
  "tokio",
  "tower",
- "tower-http 0.7.1",
  "tracing",
  "url",
  "uuid",
@@ -4432,6 +4431,7 @@ name = "service-bootstrap"
 version = "0.1.0"
 dependencies = [
  "async-nats",
+ "axum",
  "futures",
  "galvyn",
  "http",
@@ -4455,6 +4455,7 @@ dependencies = [
  "tokio",
  "tonic",
  "tonic-prost",
+ "tower",
  "tower-http 0.7.1",
  "tracing",
  "tracing-subscriber",

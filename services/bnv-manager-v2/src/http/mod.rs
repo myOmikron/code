@@ -4,9 +4,7 @@ use galvyn::core::GalvynRouter;
 use galvyn::core::session;
 use galvyn::openapi::OpenapiRouterExt;
 use tower::ServiceBuilder;
-use tower_http::trace::DefaultMakeSpan;
 use tower_http::trace::DefaultOnResponse;
-use tower_http::trace::TraceLayer;
 use tracing::Level;
 
 pub mod extractors;
@@ -24,8 +22,7 @@ pub struct FrontendApi;
 pub fn get_router() -> GalvynRouter {
     routes().layer(session::layer()).layer(
         ServiceBuilder::new().layer(
-            TraceLayer::new_for_http()
-                .make_span_with(DefaultMakeSpan::new().level(Level::INFO))
+            service_bootstrap::http::trace_layer()
                 .on_response(DefaultOnResponse::new().level(Level::INFO))
                 .on_failure(()),
         ),
