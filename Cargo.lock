@@ -265,6 +265,7 @@ dependencies = [
  "matchit 0.8.4",
  "memchr",
  "mime",
+ "multer",
  "percent-encoding",
  "pin-project-lite",
  "serde_core",
@@ -2638,6 +2639,7 @@ dependencies = [
  "anyhow",
  "async-compression",
  "async-nats",
+ "axum",
  "clap",
  "futures-util",
  "galvyn",
@@ -2662,6 +2664,23 @@ dependencies = [
  "tracing-subscriber",
  "url",
  "uuid",
+]
+
+[[package]]
+name = "multer"
+version = "3.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "83e87776546dc87511aa5ee218730c92b666d7264ab6ed41f9d215af9cd5224b"
+dependencies = [
+ "bytes",
+ "encoding_rs",
+ "futures-util",
+ "http",
+ "httparse",
+ "memchr",
+ "mime",
+ "spin",
+ "version_check",
 ]
 
 [[package]]
@@ -4199,7 +4218,6 @@ dependencies = [
 name = "semmelei"
 version = "0.1.0"
 dependencies = [
- "async-nats",
  "base64 0.23.1",
  "clap",
  "galvyn",
@@ -4413,6 +4431,7 @@ name = "service-bootstrap"
 version = "0.1.0"
 dependencies = [
  "async-nats",
+ "axum",
  "futures",
  "galvyn",
  "http",
@@ -4436,6 +4455,7 @@ dependencies = [
  "tokio",
  "tonic",
  "tonic-prost",
+ "tower",
  "tower-http 0.7.1",
  "tracing",
  "tracing-subscriber",

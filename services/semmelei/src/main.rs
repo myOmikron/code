@@ -6,6 +6,7 @@
 use std::error::Error;
 use std::io;
 use std::process::exit;
+use std::sync::Arc;
 
 use clap::Parser;
 use galvyn::Galvyn;
@@ -33,6 +34,8 @@ use crate::cli::Command;
 use crate::config::Config;
 use crate::models::Account;
 use crate::models::Role;
+use crate::utils::mail::MailSink;
+use crate::utils::mail::NatsMailSink;
 
 pub mod cli;
 pub mod config;
@@ -76,13 +79,12 @@ async fn run(
 ) -> Result<RouterBuilder, GalvynError> {
     migrate(config.database_driver.clone()).await?;
 
-    utils::mail::init(config.public_origin.clone());
-
     let mut builder = init_modules(
         &mut builder,
         ModuleSetups {
             config: config.clone(),
             nats: Some(NatsSetup::FromEnv),
+            mail: Arc::new(NatsMailSink),
         },
     )
     .await?;
@@ -104,6 +106,8 @@ pub struct ModuleSetups {
     ///
     /// Only mail goes through NATS, so tests can leave it out.
     pub nats: Option<NatsSetup>,
+    /// Where outgoing mails are handed over
+    pub mail: Arc<dyn MailSink>,
 }
 
 /// Registers and initializes all modules of the service
@@ -111,7 +115,8 @@ pub async fn init_modules(
     builder: &mut galvyn::ModuleBuilder,
     setups: ModuleSetups,
 ) -> Result<RouterBuilder, GalvynError> {
-    let ModuleSetups { config, nats } = setups;
+    let ModuleSetups { config, nats, mail } = setups;
+    utils::mail::init(config.public_origin.clone(), mail);
     builder
         .register_module::<Database>(DatabaseSetup::Custom(DatabaseConfiguration::new(
             config.database_driver.clone(),

@@ -59,6 +59,7 @@ import { cedhCockpitApplies, useDeckLines } from "src/utils/use-deck-lines";
 import { useDeckSwaps } from "src/utils/use-deck-swaps";
 import { useEdhrecWarm } from "src/utils/use-edhrec-warm";
 import { useSuggestionCards } from "src/utils/use-suggestion-cards";
+import { defaultFoil } from "src/utils/default-finish";
 
 /** The advisor's phases: trim (over target), build (under target), refine (at target) */
 export type AdvisorPhase = "trim" | "build" | "refine";
@@ -416,7 +417,12 @@ function RouteComponent() {
                     (slot) => slot.zone === "Main" && slot.card?.oracle_id === suggestion.oracle_id,
                 );
                 if (held === undefined) {
-                    await Api.decks.cards.add(deckUuid, { printing: printing.id, quantity, zone: "Main" });
+                    await Api.decks.cards.add(deckUuid, {
+                        printing: printing.id,
+                        quantity,
+                        zone: "Main",
+                        foil: defaultFoil(printing.finishes),
+                    });
                 } else {
                     await Api.decks.cards.update(deckUuid, held.uuid, { quantity: held.quantity + quantity });
                 }
@@ -458,7 +464,12 @@ function RouteComponent() {
             if (printing === undefined || maybeOracles.has(suggestion.oracle_id)) return;
             setBusyOracle(suggestion.oracle_id);
             try {
-                await Api.decks.cards.add(deckUuid, { printing: printing.id, quantity: 1, zone: "Maybe" });
+                await Api.decks.cards.add(deckUuid, {
+                    printing: printing.id,
+                    quantity: 1,
+                    zone: "Maybe",
+                    foil: defaultFoil(printing.finishes),
+                });
                 notify.success(t("toast.card-maybed", { name: suggestion.name }));
                 setBusyOracle(null);
                 await router.invalidate();
@@ -639,7 +650,11 @@ function RouteComponent() {
         }
         setBusyOracle(going.oracle_id);
         try {
-            await Api.decks.cards.swap(deckUuid, slot.uuid, { printing: printing.id, quantity: 1 });
+            await Api.decks.cards.swap(deckUuid, slot.uuid, {
+                printing: printing.id,
+                quantity: 1,
+                foil: defaultFoil(printing.finishes),
+            });
             notify.success(t("toast.card-swapped", { out: going.name, in: add.name }));
             defend(add.oracle_id);
             await router.invalidate();

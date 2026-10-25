@@ -46,8 +46,12 @@ pub struct FullOrder {
     pub status: OrderStatus,
     /// The day the order is picked up on
     pub pickup_date: SchemaDate,
-    /// Whether the order is frozen: the bakery has it, the customer cannot cancel
+    /// Whether the order is frozen: the customer can no longer cancel it
     pub locked: bool,
+    /// Whether the order's pickup day was Dispatched: the Bakery has it
+    ///
+    /// Staff may still cancel the order; what went to the Bakery stays as it is.
+    pub dispatched: bool,
     /// The customer's first name, if given
     pub first_name: Option<String>,
     /// The customer's last name
@@ -86,6 +90,22 @@ pub struct ProcurementPosition {
     pub order_count: i64,
     /// Price per unit in euro cents (snapshot at order time)
     pub price_cents: i64,
+    /// The distinct Bakery Article Numbers of the line's Items, sorted
+    ///
+    /// Read live from the Items: deleted Items and Items without a number add none.
+    pub bakery_article_numbers: Vec<String>,
+}
+
+/// What keeps a frozen pickup day from being Dispatched
+///
+/// Reported from the freeze on, not only once the Dispatch is due, so Verkauf
+/// learns during the Review Window that the order will not go out.
+#[derive(Serialize, JsonSchema, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NotDispatchedReason {
+    /// Nothing: the day is open, waits for its Dispatch time, was Dispatched or called off
+    None,
+    /// No Bakery address is set, so the Dispatch waits for one
+    NoBakeryAddress,
 }
 
 /// What has to be procured for one pickup day
@@ -95,7 +115,13 @@ pub struct ProcurementSummary {
     pub pickup_date: SchemaDate,
     /// The point in time orders close
     pub deadline: SchemaDateTime,
-    /// Whether the day is frozen — only then the list is final
+    /// The point in time the day is Dispatched: its Deadline plus the Review Window
+    pub dispatch_due: SchemaDateTime,
+    /// When the day was Dispatched; from then on the list is final
+    pub dispatched_at: Option<SchemaDateTime>,
+    /// Why a frozen day is not Dispatched (yet)
+    pub not_dispatched_reason: NotDispatchedReason,
+    /// Whether the day is frozen: customers can no longer order or cancel
     pub locked: bool,
     /// Whether the day was called off
     pub closed: bool,
