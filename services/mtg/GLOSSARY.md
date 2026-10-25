@@ -1,6 +1,6 @@
 # mtg
 
-Accounts, their collections and decks, and the admin dashboard that manages the Accounts. Login and Enrollment are the Identity context's (see `libs/galvyn-identity/GLOSSARY.md`).
+Accounts, their collections and decks, the Tournaments they run and play, and the admin dashboard that manages the Accounts. Login and Enrollment are the Identity context's (see `libs/galvyn-identity/GLOSSARY.md`).
 
 ## Language
 
@@ -120,6 +120,86 @@ _Avoid_: changelog, history, news feed
 A signed-in Account's message that something in mtg does not work, in their own words, with what the app knew at that moment attached. Only for faults, never for wishes. Admins read it; the reporter hears nothing back beyond a thank-you and its reference.
 _Avoid_: feedback, ticket, issue
 
+## Tournaments
+
+An event that Accounts run and play with their decks: Swiss Rounds, optionally followed by a Top cut. How Rounds are paired and ranked is in `docs/research/tournament-pairing.md`.
+
+**Tournament**:
+One event of Rounds played under one Ruleset at one Table size, with its name, date, place, Participants and settings. Either run live in mtg or entered afterwards, with every pairing and Result set by its Organizers. Leagues are not Tournaments.
+_Avoid_: event, league, competition
+
+**Owner**:
+The one Account a Tournament belongs to. Only the Owner deletes it, removes Co-organizers and hands it on to another Account, which becomes Owner once it accepts; the former Owner stays as a Co-organizer.
+_Avoid_: host, admin, TO (an Owner is unrelated to the Admin Role)
+
+**Co-organizer**:
+An Account the Owner named to run a Tournament with them. Does everything the Owner can except deleting it, removing Co-organizers and handing it on; can remove itself.
+_Avoid_: co-owner, judge, staff
+
+**Organizer**:
+The Owner or a Co-organizer of a Tournament, whoever runs it at the moment. An Organizer can also be a Participant of the same Tournament.
+_Avoid_: TO, admin, judge
+
+**Participant**:
+One player in a Tournament: an Account or a Guest. Stays in the standings with its Results after a Drop. In a Tournament with an entry fee it starts unpaid, and only Organizers see who has paid; an unpaid Participant counts towards the participant limit but is not paired.
+_Avoid_: player (alone), entrant, attendee, member
+
+**Guest**:
+A Participant without an Account, known only by the name an Organizer gave it. A deleted Account's Participants become Guests named by its last username.
+_Avoid_: anonymous player, unregistered user
+
+**Table size**:
+How many Participants a Match of a Tournament seats when it is full: 2 for one-on-one, 3 to 5 for multiplayer. Fixed per Tournament; a Match with fewer Participants is a **smaller Match**.
+_Avoid_: pod size, players per table
+
+**Ruleset**:
+The published tournament rules a Tournament follows for Match points, Byes, smaller Matches and Tiebreakers: **MTR** for one-on-one, **TopDeck** or **Multiplayer Addendum** for multiplayer. Chosen per Tournament from this closed set, never edited.
+_Avoid_: rules, scoring system, format (that is the deck format)
+
+**Round**:
+One turn of the Tournament in which every paired Participant plays one Match at the same time, in the Swiss part or in the Top cut. Its pairings are a preview only Organizers see until it starts; it ends when every Match has a Result and none is disputed.
+_Avoid_: turn (that is a turn within a game), pairing
+
+**Match**:
+The Participants playing each other in one Round at one numbered table, each in a Seat, until it has a Result. One-on-one Matches are best of one or best of three Games; a multiplayer Match is one Game.
+_Avoid_: pod, table, game (a Match can hold several Games)
+
+**Seat**:
+A Participant's place in a Match's turn order; Seat 1 takes the first turn.
+_Avoid_: position, turn order, play/draw
+
+**Result**:
+How a Match ended: the game score of a one-on-one Match (e.g. 2-1 or 1-1-1), or the winner or a draw of a multiplayer one. Counts as soon as one of its Participants or an Organizer reports it; another Participant of the Match can dispute it until the Round ends, and only an Organizer settles a disputed Result.
+_Avoid_: score, outcome, report
+
+**Match points**:
+The points a Participant earns per Match as its Ruleset sets them for a win, a draw, a loss and a Bye. The first ordering of the standings.
+_Avoid_: score, points (alone)
+
+**Bye**:
+A Round in which a Participant is paired with nobody and is scored as its Ruleset says, as a win. Never given under the Multiplayer Addendum, which plays smaller Matches instead.
+_Avoid_: free win, skip
+
+**Drop**:
+A Participant leaving a Tournament, by itself or through an Organizer: it is not paired again, and its Results so far stay in the standings and in its opponents' Tiebreakers.
+_Avoid_: withdrawal, removal (removing takes a Participant out before the first Round)
+
+**Tiebreaker**:
+A number the Ruleset defines to order Participants with equal Match points, such as opponents' Match-win percentage.
+_Avoid_: secondary score, resistance
+
+**Top cut**:
+The playoff after the Swiss Rounds among the best Participants of the standings, seeded by them: Top 4 or Top 8 single elimination one-on-one, one final Match multiplayer.
+_Avoid_: playoff, finals, bracket (that is how it is shown)
+
+**Registered deck**:
+The deck a Participant with an Account plays in a Tournament. Follows the deck until the first Round starts, or until a late Participant joins; from then on it is a copy of the deck's Deck entries that never changes with the deck and outlives it. Its list is hidden from other Participants until the Tournament is Finished, and shown afterwards only if its Participant shared it.
+_Avoid_: decklist, submitted deck, tournament deck
+
+**Tournament states**:
+Where a Tournament stands: **Registration** before the first Round starts, **Swiss** while Swiss Rounds are played, **Top cut** during the playoff, then **Finished**; **Cancelled** can follow any state and keeps the Rounds played so far.
+_Avoid_: status, phase, closed, completed
+
 ## Relationships
 
 - An **Account** has exactly one **Role**, and at most one **Lock** at a time
@@ -133,8 +213,18 @@ _Avoid_: feedback, ticket, issue
 - A **Release** has any number of **Release notes**; pending ones belong to the next Release cut with `just release`
 - A **Bug report** belongs to the Account that sent it and goes with it on any **Deletion**; it is open until an **Admin** marks it done
 - Undoing or resetting a **Deck change** restores **Deck entries** without their card tags, and never moves cards of the deck's collection
+- A **Tournament** has exactly one **Owner** and any number of **Co-organizers**, each an **Account**; an **Account** is at most one of the two
+- A **Participant** is exactly one **Account** or one **Guest**; an **Account** is at most one Participant per **Tournament**, and can be an **Organizer** of it at the same time
+- A **Tournament** has one **Table size** and one **Ruleset** fitting it: MTR for 2, TopDeck or Multiplayer Addendum for 3 to 5
+- A **Round** has **Matches**; a **Match** has one **Seat** per Participant and at most one **Result**; a Participant plays at most one Match per Round, or has a **Bye**
+- A **Participant** has at most one **Registered deck**, made from one of its Account's decks; when it becomes a copy, a **Deck checkpoint** named after the Tournament marks that **Deck change** in the deck's **Deck history**. Renaming or removing that Deck checkpoint, or deleting the deck, leaves the Registered deck as it is
+- **Deletion** of an Account turns its Participants into **Guests**, passes the Tournaments it owns to a Co-organizer, else hands a public or unlisted one to the **Tombstone** and deletes a private one; its Registered decks stay
+- A locked Account (**Lock**) reports and disputes no **Result**; Organizers do it for it, as for a **Guest**
+- A **Statistics snapshot** counts Tournaments, all and **Finished** ones
 
 ## Flagged ambiguities
 
 - "Collection" in Account counts means a collection on the shelf; a collection standing for a deck's cards belongs to the deck and is counted with it, not as a collection.
 - "Never counts the Tombstone" in a Statistics snapshot means the Tombstone is not an Account there. The public decks it holds are still decks on the site and counted as decks.
+- "Owner" of a deck is the Account that holds the deck; **Owner** with a capital O, in the Tournaments section, is the Account a Tournament belongs to. The two are unrelated: an Organizer never gains rights on a Participant's deck.
+- "Pod" is what multiplayer players and the Rulesets' documents call a **Match**; mtg says Match at every Table size.
