@@ -8,7 +8,6 @@ Name | Type
 ------------ | -------------
 `club` | string
 `club_name` | string
-`email` | string
 `type` | string
 
 

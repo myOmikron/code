@@ -58,159 +58,297 @@ import type {
 } from '../models/index';
 
 export interface CancelOrderRequest {
+    /**
+     * 
+     */
     pickup_code: string;
 }
 
 export interface CreateAccountOperationRequest {
+    /**
+     * 
+     */
     CreateAccountRequest?: CreateAccountRequest;
 }
 
 export interface CreateCategoryRequest {
+    /**
+     * 
+     */
     CategoryRequest?: CategoryRequest;
 }
 
 export interface CreateInviteRequest {
+    /**
+     * 
+     */
     uuid: string;
 }
 
 export interface CreateItemRequest {
+    /**
+     * 
+     */
     ItemRequest?: ItemRequest;
 }
 
 export interface CreateNewsPostRequest {
+    /**
+     * 
+     */
     NewsPostRequest?: NewsPostRequest;
 }
 
 export interface CreateOrderOperationRequest {
+    /**
+     * 
+     */
     CreateOrderRequest?: CreateOrderRequest;
 }
 
 export interface DeleteAccountRequest {
+    /**
+     * 
+     */
     uuid: string;
 }
 
 export interface DeleteCategoryRequest {
+    /**
+     * 
+     */
     uuid: string;
 }
 
 export interface DeleteItemRequest {
+    /**
+     * 
+     */
     uuid: string;
 }
 
 export interface DeleteItemImageRequest {
+    /**
+     * 
+     */
     uuid: string;
 }
 
 export interface DeleteNewsPostRequest {
+    /**
+     * 
+     */
     uuid: string;
 }
 
 export interface DeletePasskeyRequest {
+    /**
+     * 
+     */
     uuid: string;
 }
 
 export interface FinishAddPasskeyOperationRequest {
+    /**
+     * 
+     */
     FinishAddPasskeyRequest?: FinishAddPasskeyRequest;
 }
 
 export interface FinishLoginOperationRequest {
+    /**
+     * 
+     */
     FinishLoginRequest?: FinishLoginRequest;
 }
 
 export interface FinishRegistrationOperationRequest {
+    /**
+     * 
+     */
     FinishRegistrationRequest?: FinishRegistrationRequest;
 }
 
 export interface GetNewsPostRequest {
+    /**
+     * 
+     */
     uuid: string;
 }
 
 export interface GetOrderRequest {
+    /**
+     * 
+     */
     pickup_code: string;
 }
 
 export interface GetOrderDetailRequest {
+    /**
+     * 
+     */
     uuid: string;
 }
 
 export interface GetProcurementSummaryRequest {
+    /**
+     * 
+     */
     date: string;
 }
 
 export interface ListOrdersRequest {
+    /**
+     * 
+     */
     pickup_date?: string | null;
+    /**
+     * 
+     */
     status?: OrderStatus | null;
 }
 
 export interface LockPickupDayRequest {
+    /**
+     * 
+     */
     rule_date: string;
 }
 
 export interface PublishNewsPostRequest {
+    /**
+     * 
+     */
     uuid: string;
 }
 
 export interface SetItemImageOperationRequest {
+    /**
+     * 
+     */
     uuid: string;
+    /**
+     * 
+     */
     SetItemImageRequest?: SetItemImageRequest;
 }
 
 export interface StartLoginOperationRequest {
+    /**
+     * 
+     */
     StartLoginRequest?: StartLoginRequest;
 }
 
 export interface StartRegistrationOperationRequest {
+    /**
+     * 
+     */
     StartRegistrationRequest?: StartRegistrationRequest;
 }
 
 export interface UpdateAccountOperationRequest {
+    /**
+     * 
+     */
     uuid: string;
+    /**
+     * 
+     */
     UpdateAccountRequest?: UpdateAccountRequest;
 }
 
 export interface UpdateBakeryAddressesRequest {
+    /**
+     * 
+     */
     BakeryAddresses?: BakeryAddresses;
 }
 
 export interface UpdateCategoryRequest {
+    /**
+     * 
+     */
     uuid: string;
+    /**
+     * 
+     */
     CategoryRequest?: CategoryRequest;
 }
 
 export interface UpdateItemRequest {
+    /**
+     * 
+     */
     uuid: string;
+    /**
+     * 
+     */
     ItemRequest?: ItemRequest;
 }
 
 export interface UpdateLegalSettingsRequest {
+    /**
+     * 
+     */
     LegalLinks?: LegalLinks;
 }
 
 export interface UpdateNewsPostRequest {
+    /**
+     * 
+     */
     uuid: string;
+    /**
+     * 
+     */
     NewsPostRequest?: NewsPostRequest;
 }
 
 export interface UpdateOrderItemPackedOperationRequest {
+    /**
+     * 
+     */
     uuid: string;
+    /**
+     * 
+     */
     UpdateOrderItemPackedRequest?: UpdateOrderItemPackedRequest;
 }
 
 export interface UpdateOrderStatusOperationRequest {
+    /**
+     * 
+     */
     uuid: string;
+    /**
+     * 
+     */
     UpdateOrderStatusRequest?: UpdateOrderStatusRequest;
 }
 
 export interface UpdatePickupDayOperationRequest {
+    /**
+     * 
+     */
     rule_date: string;
+    /**
+     * 
+     */
     UpdatePickupDayRequest?: UpdatePickupDayRequest;
 }
 
 export interface UpdateScheduleRequest {
+    /**
+     * 
+     */
     ScheduleSchema?: ScheduleSchema;
 }
 
 export interface WithdrawNewsPostRequest {
+    /**
+     * 
+     */
     uuid: string;
 }
 

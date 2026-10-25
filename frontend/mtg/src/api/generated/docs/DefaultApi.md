@@ -8551,7 +8551,7 @@ async function example() {
     // SendBugReportRequest | The [`SendBugReportRequest`] as json
     report: ...,
     // Array<Blob> | JPEG, PNG or WebP images of at most 5 MB each (optional)
-    images: /path/to/file.txt,
+    images: [new Blob(['example file content'], { type: 'application/octet-stream' })],
   } satisfies SendBugReportOperationRequest;
 
   try {

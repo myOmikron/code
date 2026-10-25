@@ -37,42 +37,72 @@ import type {
 } from '../models/index';
 
 export interface PostCombosRequest {
+    /**
+     * 
+     */
     CombosRequest: CombosRequest;
 }
 
 export interface PostDiagnosticsRequest {
+    /**
+     * 
+     */
     DiagnosticsRequest: DiagnosticsRequest;
 }
 
 export interface PostFillRequest {
+    /**
+     * 
+     */
     FillRequest: FillRequest;
 }
 
 export interface PostLinesRequest {
+    /**
+     * 
+     */
     LinesRequest: LinesRequest;
 }
 
 export interface PostPoolQueryRequest {
+    /**
+     * 
+     */
     PoolQueryRequest: PoolQueryRequest;
 }
 
 export interface PostReplaceRequest {
+    /**
+     * 
+     */
     ReplaceRequest: ReplaceRequest;
 }
 
 export interface PostSearchRequest {
+    /**
+     * 
+     */
     SearchRequest: SearchRequest;
 }
 
 export interface PostSuggestionsRequest {
+    /**
+     * 
+     */
     SuggestionsRequest: SuggestionsRequest;
 }
 
 export interface PostSwapsRequest {
+    /**
+     * 
+     */
     SwapsRequest: SwapsRequest;
 }
 
 export interface PostWarmRequest {
+    /**
+     * 
+     */
     WarmRequest: WarmRequest;
 }
 
@@ -104,7 +134,7 @@ export class DefaultApi extends runtime.BaseAPI {
      * Filter values that actually have cards behind them.
      * Get Facets
      */
-    async getFacetsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<{ [key: string]: Array<{ [key: string]: any | undefined; }> | undefined; }>> {
+    async getFacetsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<{ [key: string]: Array<{ [key: string]: any | undefined | null; }> | undefined; }>> {
         const requestOptions = await this.getFacetsRequestOpts();
         const response = await this.request(requestOptions, initOverrides);
 
@@ -115,7 +145,7 @@ export class DefaultApi extends runtime.BaseAPI {
      * Filter values that actually have cards behind them.
      * Get Facets
      */
-    async getFacets(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<{ [key: string]: Array<{ [key: string]: any | undefined; }> | undefined; }> {
+    async getFacets(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<{ [key: string]: Array<{ [key: string]: any | undefined | null; }> | undefined; }> {
         const response = await this.getFacetsRaw(initOverrides);
         return await response.value();
     }
