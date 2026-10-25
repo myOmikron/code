@@ -158,6 +158,7 @@ export function AddCardsDialog({
                         onResults={onResults}
                         markOf={markOf}
                         unique={"cards"}
+                        prefer={"newest"}
                         twoColumns={twoColumns}
                         stickySearch={true}
                         hideInfoOnMobile={true}

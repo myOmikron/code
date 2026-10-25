@@ -4,6 +4,7 @@ import {
     DefaultApi,
     RequiredError,
     ResponseError,
+    type BakeryAddresses,
     type CreateAccountRequest,
     type CreateOrderRequest,
     type ItemRequest,
@@ -126,6 +127,11 @@ export const Api = {
         legal: {
             get: () => handleError(defaultApi.getLegalSettings()),
             update: (request: LegalLinks) => handleError(defaultApi.updateLegalSettings({ LegalLinks: request })),
+        },
+        bakery: {
+            get: () => handleError(defaultApi.getBakeryAddresses()),
+            update: (request: BakeryAddresses) =>
+                handleError(defaultApi.updateBakeryAddresses({ BakeryAddresses: request })),
         },
         schedule: {
             get: () => handleError(defaultApi.getSchedule()),

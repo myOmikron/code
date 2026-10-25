@@ -53,6 +53,7 @@ import { useBracketMarks } from "src/utils/use-bracket-marks";
 import { DeckReplaceDialog } from "src/components/deck-replace-dialog";
 import { advisorDeck, bracketSpeed, playedNames } from "src/utils/deck-advisor";
 import { useDeckCombos } from "src/utils/use-deck-combos";
+import { zoneEntryOf } from "src/utils/deck-entry";
 import { canFoil, onlyFoil } from "src/utils/deck-foil";
 import type { TagColor, TagIconName } from "src/utils/deck-tags";
 import { useShortcuts } from "src/utils/use-shortcuts";
@@ -68,6 +69,7 @@ import { usePointerCard } from "src/utils/use-pointer-card";
 import { useShortcutHelpOpen } from "src/context/shortcut-help-context";
 import { DeckTagWritableContext } from "src/context/deck-tag-writable-context";
 import { deckRights, tagWritable } from "src/utils/deck-rights";
+import { defaultFoil } from "src/utils/default-finish";
 
 /**
  * The zones the search's "already in" filter looks through.
@@ -581,13 +583,17 @@ function RouteComponent() {
     /**
      * Files one copy of a printing into the current zone
      *
-     * @param printing the card to file
+     * A new Deck entry is foil when the printing was only made foil.
      *
-     * @returns whether the card was actually filed — `false` when the zone's
+     * @param printing the card to file
+     * @param anyPrinting whether a Deck entry of the same card in another
+     *   printing takes the copy, as it does for a hit of the search
+     *
+     * @returns whether the card was actually filed: `false` when the zone's
      *   own rules rejected it, so a caller that also toasts on success knows
      *   not to follow a rejection with one
      */
-    async function add(printing: Printing): Promise<boolean> {
+    async function add(printing: Printing, anyPrinting: boolean = false): Promise<boolean> {
         if (deck.format === "commander" && zone === "Commander" && !canBeCommander(printing)) {
             notify.error(t("toast.not-a-commander"));
             return false;
@@ -595,14 +601,21 @@ function RouteComponent() {
         // A second copy raises the count of the slot that is already there
         // rather than opening another one beside it: two rows of the same card
         // in the same zone is never what was meant.
-        const existing = resolved.find((slot) => slot.zone === zone && slot.printing === printing.id);
+        const existing = anyPrinting
+            ? zoneEntryOf(resolved, zone, printing)
+            : resolved.find((slot) => slot.zone === zone && slot.printing === printing.id);
         if (existing !== undefined) {
             setPending((previous) => new Map(previous).set(existing.uuid, existing.quantity + 1));
         }
 
         await serial(async () => {
             if (existing === undefined) {
-                await Api.decks.cards.add(deckUuid, { printing: printing.id, quantity: 1, zone });
+                await Api.decks.cards.add(deckUuid, {
+                    printing: printing.id,
+                    quantity: 1,
+                    zone,
+                    foil: defaultFoil(printing.finishes),
+                });
             } else {
                 await Api.decks.cards.update(deckUuid, existing.uuid, { quantity: existing.quantity + 1 });
             }
@@ -617,9 +630,7 @@ function RouteComponent() {
      * @param printing the card to take out
      */
     async function subtract(printing: Printing) {
-        const slot =
-            resolved.find((entry) => entry.zone === zone && entry.printing === printing.id) ??
-            resolved.find((entry) => entry.zone === zone && entry.card?.name === printing.name);
+        const slot = zoneEntryOf(resolved, zone, printing);
         if (slot === undefined) return;
         await changeQuantity(slot, slot.quantity - 1);
     }
@@ -1198,7 +1209,7 @@ function RouteComponent() {
                     countOf={copiesOf}
                     includedOf={isIncluded}
                     onAdd={async (printing) => {
-                        await add(printing);
+                        await add(printing, true);
                     }}
                     onRemove={subtract}
                     onResults={setHits}

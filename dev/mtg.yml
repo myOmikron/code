@@ -32,7 +32,7 @@ services:
 
   # Joins the tailnet and owns the network namespace traefik runs in.
   tailscale:
-    image: tailscale/tailscale:v1.102.2
+    image: tailscale/tailscale:v1.104.1
     cap_add:
       - NET_ADMIN
     environment:
@@ -79,7 +79,7 @@ services:
   # The spec urls are same-origin paths, so the browser fetches them back
   # through traefik — no CORS, and no second host to configure.
   swagger:
-    image: swaggerapi/swagger-ui:v5.32.8
+    image: swaggerapi/swagger-ui:v5.33.3
     environment:
       - BASE_URL=/swagger-ui
       - 'URLS=[{ url: "/docs/frontend.json", name: "Frontend" }, { url: "/docs/openapi.json", name: "All routes" }]'
@@ -144,6 +144,21 @@ services:
 
   statistics-snapshot:
     command: [ "snapshot-statistics", "--every-minutes", "60" ]
+    env_file: [ common/env.common ]
+    environment:
+      - POSTGRES_HOST=postgres
+      - LISTEN_ADDRESS=127.0.0.1
+      - LISTEN_PORT=8080
+      - GRAPH_URL=http://graph:8000
+    depends_on:
+      webserver:
+        condition: service_healthy
+    build:
+      context: ..
+      dockerfile: services/mtg/Dockerfile
+
+  bug-report-purge:
+    command: [ "purge-bug-reports", "--every-minutes", "720" ]
     env_file: [ common/env.common ]
     environment:
       - POSTGRES_HOST=postgres

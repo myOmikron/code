@@ -8,6 +8,7 @@ An order as shown to staff (includes contact data)
 Name | Type
 ------------ | -------------
 `created_at` | string
+`dispatched` | boolean
 `early_pickup` | boolean
 `email` | string
 `first_name` | string

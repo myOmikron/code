@@ -15,7 +15,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import type { NewCollectionEntry } from "src/api/generated";
-import { parseCollectionCsv } from "src/utils/csv-import";
+import { filedFinish, parseCollectionCsv } from "src/utils/csv-import";
 import type { ImportFile } from "src/utils/csv-import";
 import { foldPriceCents } from "src/utils/prices";
 import { resolveLookups } from "src/utils/printing-catalog";
@@ -141,7 +141,8 @@ export function ImportCollectionDialog({ open, collectionUuid, onClose, onImport
                 }
 
                 cards += row.quantity;
-                const key = `${printing.id}|${row.condition}|${row.finish}`;
+                const finish = filedFinish(row, printing.finishes);
+                const key = `${printing.id}|${row.condition}|${finish}`;
                 const existing = stacks.get(key);
                 if (existing !== undefined) {
                     // Two lines of the file describing the same stack are one
@@ -159,7 +160,7 @@ export function ImportCollectionDialog({ open, collectionUuid, onClose, onImport
                     printing: printing.id,
                     quantity: row.quantity,
                     condition: row.condition,
-                    finish: row.finish,
+                    finish,
                     purchase_price_cents: row.purchasePriceCents,
                     acquired_at: row.acquiredAt,
                 });

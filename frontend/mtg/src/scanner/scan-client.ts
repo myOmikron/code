@@ -93,6 +93,8 @@ function ensureWorker(): Worker {
                 fromGuide: message.fromGuide ?? false,
                 timings: message.timings,
                 preview: message.preview,
+                candidates: message.candidates ?? [],
+                named: message.named ?? false,
                 outcome: message.outcome,
                 milliseconds: message.milliseconds,
                 attempts: message.attempts,
@@ -100,6 +102,7 @@ function ensureWorker(): Worker {
             } as never);
         else if (message.type === "printings") resolver.resolve(message.printings as never);
         else if (message.type === "sets") resolver.resolve(message.sets as never);
+        else if (message.type === "crop") resolver.resolve(message.crop as never);
         else resolver.resolve(message.report as never);
     };
     worker = created;
@@ -248,6 +251,10 @@ export type LiveFrameResult = {
     /** Which traineddata read the title */
     ocrModel: string;
     preview: { name: string; set: string; collectorNumber: string; score: number } | null;
+    /** The best five candidates, best first */
+    candidates: { name: string; set: string; collectorNumber: string; score: number }[];
+    /** Whether the candidates came from the name rather than from the picture */
+    named: boolean;
     /** Only set on frames where the answer was actually confirmed */
     outcome: ScanOutcome | null;
     milliseconds: number;
@@ -300,6 +307,15 @@ export function listPrintingsNamed(name: string): Promise<IndexedPrinting[]> {
  */
 export function listScanSets(): Promise<{ code: string; name: string; cardCount: number }[]> {
     return request<{ code: string; name: string; cardCount: number }[]>((id) => ({ type: "sets", id }));
+}
+
+/**
+ * The rectified crop of the last frame that reached the model, for a Bug report
+ *
+ * @returns the crop, `null` before the first such frame
+ */
+export function lastScanCrop(): Promise<ImageBitmap | null> {
+    return request<ImageBitmap | null>((id) => ({ type: "crop", id }));
 }
 
 /**
