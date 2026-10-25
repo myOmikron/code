@@ -15,7 +15,7 @@ galvyn-identity = { workspace = true, features = ["passkey", "oidc"] }
 # Multipart uploads of Bug reports, which `galvyn` does not parse
 axum = { workspace = true }
 
-# Response compression — a collection's entries run to megabytes of json
+# Response compression (a collection's entries run to megabytes of json) and the request span
 tower-http = { workspace = true }
 
 # Central NATS subject constants
