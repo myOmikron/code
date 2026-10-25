@@ -6,6 +6,7 @@
 
 Name | Type
 ------------ | -------------
+`best_of` | [BestOf](BestOf.md)
 `description` | string
 `format` | string
 `location` | string

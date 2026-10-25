@@ -39,6 +39,7 @@ import {
     SendBugReportRequest,
     SetAdvisorSettingsRequest,
     SetDeckRuleZeroRequest,
+    SetResultRequest,
     SignupRequest,
     SplitCollectionEntryRequest,
     UpdateCollectionEntryRequest,
@@ -422,6 +423,9 @@ export const Api = {
             participants: (token: string) => defaultApi.listSharedTournamentParticipants({ token }),
             // The way into an unlisted Tournament: its id alone does not let an Account in.
             signUp: async (token: string) => handleError(defaultApi.signUpForSharedTournament({ token })),
+            // Never a previewed Round: the link shows what anybody sees.
+            rounds: (token: string) => defaultApi.listSharedTournamentRounds({ token }),
+            standings: (token: string) => defaultApi.getSharedTournamentStandings({ token }),
         },
         collections: {
             get: (token: string) => defaultApi.getSharedCollection({ token }),
@@ -571,6 +575,31 @@ export const Api = {
             signUp: async (tournament: UUID) => handleError(defaultApi.signUpForTournament({ tournament })),
             withdraw: async (tournament: UUID) => handleError(defaultApi.withdrawTournamentSignUp({ tournament })),
         },
+        // Running it: Organizers pair a Round as a preview only they see, start
+        // it, set the Results and end it. The reads are open like `get`.
+        rounds: {
+            list: (tournament: UUID) => defaultApi.listTournamentRounds({ tournament }),
+            standings: (tournament: UUID) => defaultApi.getTournamentStandings({ tournament }),
+            pair: async (tournament: UUID) => handleError(defaultApi.pairTournamentRound({ tournament })),
+            discard: async (tournament: UUID, number: number) =>
+                handleError(defaultApi.discardTournamentRound({ tournament, number })),
+            start: async (tournament: UUID, number: number) =>
+                handleError(defaultApi.startTournamentRound({ tournament, number })),
+            end: async (tournament: UUID, number: number) =>
+                handleError(defaultApi.endTournamentRound({ tournament, number })),
+            // Also corrects a Result, at any time once the Round started.
+            setResult: async (tournament: UUID, match: UUID, req: SetResultRequest) =>
+                handleError(defaultApi.setTournamentMatchResult({ tournament, match, SetResultRequest: req })),
+            setSwissRounds: async (tournament: UUID, swissRounds: number) =>
+                handleError(
+                    defaultApi.setTournamentSwissRounds({
+                        tournament,
+                        SetSwissRoundsRequest: { swiss_rounds: swissRounds },
+                    }),
+                ),
+        },
+        // Keeps the Rounds played so far; only a previewed one goes.
+        cancel: async (tournament: UUID) => handleError(defaultApi.cancelTournament({ tournament })),
     },
     watchLists: {
         list: async () => handleError(defaultApi.getAllWatchLists()),

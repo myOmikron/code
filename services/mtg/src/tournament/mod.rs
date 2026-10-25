@@ -1,10 +1,24 @@
 //! The pairing and standings engine of the Tournaments
 //!
-//! Pure: no database, no clock, no randomness of its own. Given a Ruleset, the
-//! Participants and the Results so far, it answers what a Tournament asks of
-//! its rules: which Table sizes a Ruleset is played at, and later the next
-//! Round's Matches, the standings and the Top cut seeding. The models in
-//! [`crate::models::tournament`] read the rows, call in here and store what
-//! comes back. The rules behind it are in `docs/research/tournament-pairing.md`.
+//! Pure: no database, no clock, no randomness of its own. The models in
+//! [`crate::models::tournament`] read the rows into one
+//! [`record::TournamentRecord`] (the Ruleset, the Participants and the Rounds
+//! that started with their Results) and ask:
+//!
+//! - [`pairing::pair_next_round`]: the next Round's Matches with their Seats
+//!   and Byes, rolled from a seed the caller stores;
+//! - [`standings::standings`]: every Participant's Match points and place;
+//! - [`rounds::suggested_swiss_rounds`]: how many Swiss Rounds to play;
+//! - [`ruleset`]: what a Ruleset scores and which game scores a Match takes.
+//!
+//! Everything else (who met whom, who had a Bye, who sat where) the engine
+//! derives from the record, so a new rule reads the same input. The rules
+//! behind it are in `docs/research/tournament-pairing.md`.
 
+pub mod matching;
+pub mod pairing;
+pub mod record;
+pub mod rng;
+pub mod rounds;
 pub mod ruleset;
+pub mod standings;

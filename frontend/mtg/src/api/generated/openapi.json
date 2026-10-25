@@ -9328,6 +9328,126 @@
                 }
             }
         },
+        "/api/frontend/v1/shared/tournaments/{token}/rounds": {
+            "get": {
+                "summary": "The Rounds of the Tournament a share link points at",
+                "description": "The Rounds of the Tournament a share link points at\n\nNever a previewed one: the link shows what anybody sees.",
+                "operationId": "list_shared_tournament_rounds",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "token",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RoundsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/shared/tournaments/{token}/standings": {
+            "get": {
+                "summary": "The standings of the Tournament a share link points at",
+                "description": "The standings of the Tournament a share link points at",
+                "operationId": "get_shared_tournament_standings",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "token",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/StandingsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/frontend/v1/tags": {
             "get": {
                 "summary": "Every tag the account keeps for all of its decks and collections",
@@ -9783,7 +9903,7 @@
             },
             "put": {
                 "summary": "Replace a Tournament's settings, as one of its Organizers",
-                "description": "Replace a Tournament's settings, as one of its Organizers",
+                "description": "Replace a Tournament's settings, as one of its Organizers\n\nTable size, Ruleset and best-of stay as they are once the first Round started.",
                 "operationId": "update_tournament",
                 "parameters": [
                     {
@@ -9943,6 +10063,197 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/ListParticipantsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/tournaments/{tournament}/rounds": {
+            "get": {
+                "summary": "The Rounds of a Tournament the reader may see",
+                "description": "The Rounds of a Tournament the reader may see\n\nA previewed Round only shows to the Tournament's Organizers.",
+                "operationId": "list_tournament_rounds",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tournament",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of a [`Tournament`]",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RoundsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "summary": "Pair the next Round as a preview, as an Organizer",
+                "description": "Pair the next Round as a preview, as an Organizer\n\nRound 1 is paired at random, later Rounds by Match points without\nrematches. Only Organizers see the preview until it starts. Refused while\nanother Round is previewed or running and once every Swiss Round was paired.",
+                "operationId": "pair_tournament_round",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tournament",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of a [`Tournament`]",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "$ref": "#/components/schemas/PairedRoundResponse"
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/FormErrorResponse_for_RoundErrors"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/tournaments/{tournament}/standings": {
+            "get": {
+                "summary": "The standings of a Tournament: Match points from every Result so far",
+                "description": "The standings of a Tournament: Match points from every Result so far",
+                "operationId": "get_tournament_standings",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tournament",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of a [`Tournament`]",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/StandingsResponse"
                                 }
                             }
                         }
@@ -10801,6 +11112,462 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/PlayerCandidatesResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/tournaments/{tournament}/rounds/{number}": {
+            "delete": {
+                "summary": "Throw a previewed Round away, as an Organizer, to pair it again",
+                "description": "Throw a previewed Round away, as an Organizer, to pair it again",
+                "operationId": "discard_tournament_round",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tournament",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/TournamentUuid"
+                        },
+                        "style": "simple"
+                    },
+                    {
+                        "in": "path",
+                        "name": "number",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int16"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "nullable": true
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/FormErrorResponse_for_RoundErrors"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/tournaments/{tournament}/rounds/{number}/start": {
+            "post": {
+                "summary": "Start a previewed Round, as an Organizer: from now on everybody sees it",
+                "description": "Start a previewed Round, as an Organizer: from now on everybody sees it\n\nStarting Round 1 closes Registration and settles the number of Swiss Rounds.",
+                "operationId": "start_tournament_round",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tournament",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/TournamentUuid"
+                        },
+                        "style": "simple"
+                    },
+                    {
+                        "in": "path",
+                        "name": "number",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int16"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "nullable": true
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/FormErrorResponse_for_RoundErrors"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/tournaments/{tournament}/rounds/{number}/end": {
+            "post": {
+                "summary": "End a running Round once every Match has its Result, as an Organizer",
+                "description": "End a running Round once every Match has its Result, as an Organizer\n\nAfter the last Swiss Round the Tournament is Finished.",
+                "operationId": "end_tournament_round",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tournament",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/TournamentUuid"
+                        },
+                        "style": "simple"
+                    },
+                    {
+                        "in": "path",
+                        "name": "number",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int16"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "$ref": "#/components/schemas/TournamentStateResponse"
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/FormErrorResponse_for_RoundErrors"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/tournaments/{tournament}/matches/{match}/result": {
+            "put": {
+                "summary": "Set or correct the Result of a Match, as an Organizer",
+                "description": "Set or correct the Result of a Match, as an Organizer\n\nAny time once its Round started, also after the Tournament is over; the\nstandings follow, the pairings stay as they are.",
+                "operationId": "set_tournament_match_result",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tournament",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/TournamentUuid"
+                        },
+                        "style": "simple"
+                    },
+                    {
+                        "in": "path",
+                        "name": "match",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/MatchUuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SetResultRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "nullable": true
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/FormErrorResponse_for_SetResultErrors"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/tournaments/{tournament}/swiss-rounds": {
+            "put": {
+                "summary": "Set how many Swiss Rounds are played, as an Organizer",
+                "description": "Set how many Swiss Rounds are played, as an Organizer\n\nAt least as many as were paired. Set to the Rounds played once the last of\nthem ended, the Tournament is Finished.",
+                "operationId": "set_tournament_swiss_rounds",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tournament",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of a [`Tournament`]",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SetSwissRoundsRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "$ref": "#/components/schemas/TournamentStateResponse"
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/FormErrorResponse_for_SetSwissRoundsErrors"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/tournaments/{tournament}/cancel": {
+            "post": {
+                "summary": "Cancel a Tournament, as an Organizer",
+                "description": "Cancel a Tournament, as an Organizer\n\nAny time before it is Finished. A previewed Round goes; the Rounds played\nso far stay visible.",
+                "operationId": "cancel_tournament",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tournament",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of a [`Tournament`]",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "nullable": true
                                 }
                             }
                         }
@@ -13211,6 +13978,25 @@
                 },
                 "required": [
                     "trace_id"
+                ]
+            },
+            "BestOf": {
+                "description": "How many Games a one-on-one Match is played to",
+                "oneOf": [
+                    {
+                        "description": "One Game decides the Match",
+                        "type": "string",
+                        "enum": [
+                            "One"
+                        ]
+                    },
+                    {
+                        "description": "Whoever wins two Games first wins the Match",
+                        "type": "string",
+                        "enum": [
+                            "Three"
+                        ]
+                    }
                 ]
             },
             "BracketFlagsEntryResponse": {
@@ -16788,6 +17574,32 @@
                     "result"
                 ]
             },
+            "FormErrorResponse_for_RoundErrors": {
+                "description": "The response that is sent in a case of an error the caller should present his user",
+                "type": "object",
+                "properties": {
+                    "error": {
+                        "description": "The actual error struct",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/RoundErrors"
+                            }
+                        ]
+                    },
+                    "result": {
+                        "description": "A constant `\"Err\"` used to differentiate this schema from any other \"Ok\" schema",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ErrorConstant"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "error",
+                    "result"
+                ]
+            },
             "FormErrorResponse_for_SendBugReportErrors": {
                 "description": "The response that is sent in a case of an error the caller should present his user",
                 "type": "object",
@@ -16797,6 +17609,58 @@
                         "allOf": [
                             {
                                 "$ref": "#/components/schemas/SendBugReportErrors"
+                            }
+                        ]
+                    },
+                    "result": {
+                        "description": "A constant `\"Err\"` used to differentiate this schema from any other \"Ok\" schema",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ErrorConstant"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "error",
+                    "result"
+                ]
+            },
+            "FormErrorResponse_for_SetResultErrors": {
+                "description": "The response that is sent in a case of an error the caller should present his user",
+                "type": "object",
+                "properties": {
+                    "error": {
+                        "description": "The actual error struct",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SetResultErrors"
+                            }
+                        ]
+                    },
+                    "result": {
+                        "description": "A constant `\"Err\"` used to differentiate this schema from any other \"Ok\" schema",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ErrorConstant"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "error",
+                    "result"
+                ]
+            },
+            "FormErrorResponse_for_SetSwissRoundsErrors": {
+                "description": "The response that is sent in a case of an error the caller should present his user",
+                "type": "object",
+                "properties": {
+                    "error": {
+                        "description": "The actual error struct",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SetSwissRoundsErrors"
                             }
                         ]
                     },
@@ -17743,6 +18607,51 @@
                     "oracle_id"
                 ]
             },
+            "MatchResponse": {
+                "description": "One Match, or a Bye",
+                "type": "object",
+                "properties": {
+                    "result": {
+                        "nullable": true,
+                        "description": "Its Result, `null` while it has none and for a Bye",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ResultResponse"
+                            }
+                        ]
+                    },
+                    "seats": {
+                        "description": "Who plays, by Seat number",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/SeatResponse"
+                        }
+                    },
+                    "table_number": {
+                        "nullable": true,
+                        "description": "The number of its table, 1 for the top table; `null` for a Bye",
+                        "type": "integer",
+                        "format": "int16"
+                    },
+                    "uuid": {
+                        "description": "Primary key",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MatchUuid"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "seats",
+                    "uuid"
+                ]
+            },
+            "MatchUuid": {
+                "description": "Wrapper for the primary key of a [`Match`]",
+                "type": "string",
+                "format": "uuid"
+            },
             "MaxStr_1024": {
                 "type": "string",
                 "maxLength": 1024
@@ -18280,6 +19189,20 @@
                             "CoOrganizer"
                         ]
                     }
+                ]
+            },
+            "PairedRoundResponse": {
+                "description": "The Round just paired",
+                "type": "object",
+                "properties": {
+                    "number": {
+                        "description": "Its number",
+                        "type": "integer",
+                        "format": "int16"
+                    }
+                },
+                "required": [
+                    "number"
                 ]
             },
             "ParticipantResponse": {
@@ -19207,6 +20130,29 @@
                     "set_name"
                 ]
             },
+            "ResultResponse": {
+                "description": "The game score of a Match",
+                "type": "object",
+                "properties": {
+                    "games_drawn": {
+                        "description": "Games nobody won",
+                        "type": "integer",
+                        "format": "int16"
+                    },
+                    "games_won": {
+                        "description": "Games won per Seat, in Seat order",
+                        "type": "array",
+                        "items": {
+                            "type": "integer",
+                            "format": "int16"
+                        }
+                    }
+                },
+                "required": [
+                    "games_drawn",
+                    "games_won"
+                ]
+            },
             "ReturnAllDeckCardsRequest": {
                 "description": "Request to sort everything in the deck back where it came from",
                 "type": "object",
@@ -19370,6 +20316,139 @@
                 },
                 "required": [
                     "share_token"
+                ]
+            },
+            "RoundErrors": {
+                "description": "Why a Round could not be paired, started, ended or discarded",
+                "type": "object",
+                "properties": {
+                    "all_rounds_paired": {
+                        "description": "Every Swiss Round was paired",
+                        "type": "boolean"
+                    },
+                    "not_previewed": {
+                        "description": "No Round of that number is previewed",
+                        "type": "boolean"
+                    },
+                    "not_running": {
+                        "description": "No Round of that number is running",
+                        "type": "boolean"
+                    },
+                    "results_missing": {
+                        "description": "A Match of the Round has no Result yet",
+                        "type": "boolean"
+                    },
+                    "round_open": {
+                        "description": "A Round is previewed or running, so the next one waits",
+                        "type": "boolean"
+                    },
+                    "ruleset_not_paired": {
+                        "description": "mtg does not pair this Tournament's Ruleset yet",
+                        "type": "boolean"
+                    },
+                    "too_few_participants": {
+                        "description": "Fewer than two Participants can be paired",
+                        "type": "boolean"
+                    },
+                    "tournament_over": {
+                        "description": "The Tournament is Finished or Cancelled",
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "all_rounds_paired",
+                    "not_previewed",
+                    "not_running",
+                    "results_missing",
+                    "round_open",
+                    "ruleset_not_paired",
+                    "too_few_participants",
+                    "tournament_over"
+                ]
+            },
+            "RoundResponse": {
+                "description": "One Round",
+                "type": "object",
+                "properties": {
+                    "matches": {
+                        "description": "Its Matches by table number, then its Byes",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/MatchResponse"
+                        }
+                    },
+                    "number": {
+                        "description": "Its number, 1 for the first Round",
+                        "type": "integer",
+                        "format": "int16"
+                    },
+                    "state": {
+                        "description": "How far it got",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/RoundState"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "matches",
+                    "number",
+                    "state"
+                ]
+            },
+            "RoundState": {
+                "description": "How far a Round got",
+                "oneOf": [
+                    {
+                        "description": "Paired, seen by Organizers only, not played yet",
+                        "type": "string",
+                        "enum": [
+                            "Previewed"
+                        ]
+                    },
+                    {
+                        "description": "Started: its Matches are being played",
+                        "type": "string",
+                        "enum": [
+                            "Running"
+                        ]
+                    },
+                    {
+                        "description": "Over: every Match has its Result",
+                        "type": "string",
+                        "enum": [
+                            "Ended"
+                        ]
+                    }
+                ]
+            },
+            "RoundsResponse": {
+                "description": "The Rounds of a Tournament the reader may see, and how many are planned",
+                "type": "object",
+                "properties": {
+                    "rounds": {
+                        "description": "The Rounds, oldest first; a previewed one only for Organizers",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/RoundResponse"
+                        }
+                    },
+                    "suggested_swiss_rounds": {
+                        "nullable": true,
+                        "description": "How many Swiss Rounds mtg suggests for the Participants there are now; `null` for a Ruleset mtg does not pair yet",
+                        "type": "integer",
+                        "format": "int16"
+                    },
+                    "swiss_rounds": {
+                        "nullable": true,
+                        "description": "How many Swiss Rounds an Organizer set, or the first Round settled; `null` while the suggestion applies",
+                        "type": "integer",
+                        "format": "int16"
+                    }
+                },
+                "required": [
+                    "rounds"
                 ]
             },
             "Ruleset": {
@@ -19609,6 +20688,39 @@
                     "limit",
                     "offset",
                     "total"
+                ]
+            },
+            "SeatResponse": {
+                "description": "A Participant's Seat in a Match",
+                "type": "object",
+                "properties": {
+                    "guest": {
+                        "description": "Whether it is a Guest rather than an Account",
+                        "type": "boolean"
+                    },
+                    "name": {
+                        "description": "The Account's username as it is now, or the Guest's name",
+                        "type": "string"
+                    },
+                    "participant": {
+                        "description": "Who sits there",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ParticipantUuid"
+                            }
+                        ]
+                    },
+                    "seat": {
+                        "description": "The Seat number, 1 for the first turn",
+                        "type": "integer",
+                        "format": "int16"
+                    }
+                },
+                "required": [
+                    "guest",
+                    "name",
+                    "participant",
+                    "seat"
                 ]
             },
             "SendBugReportErrors": {
@@ -19974,6 +21086,74 @@
                 },
                 "required": [
                     "visibility"
+                ]
+            },
+            "SetResultErrors": {
+                "description": "Why a Result could not be set",
+                "type": "object",
+                "properties": {
+                    "invalid_score": {
+                        "description": "The game score does not fit a Match of this Tournament",
+                        "type": "boolean"
+                    },
+                    "not_started": {
+                        "description": "The Match's Round is only previewed",
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "invalid_score",
+                    "not_started"
+                ]
+            },
+            "SetResultRequest": {
+                "description": "The Result an Organizer sets for a Match",
+                "type": "object",
+                "properties": {
+                    "games_drawn": {
+                        "description": "Games nobody won",
+                        "type": "integer",
+                        "format": "int16"
+                    },
+                    "games_won": {
+                        "description": "Games won per Seat, in Seat order",
+                        "type": "array",
+                        "items": {
+                            "type": "integer",
+                            "format": "int16"
+                        }
+                    }
+                },
+                "required": [
+                    "games_drawn",
+                    "games_won"
+                ]
+            },
+            "SetSwissRoundsErrors": {
+                "description": "Why the number of Swiss Rounds was refused",
+                "type": "object",
+                "properties": {
+                    "out_of_range": {
+                        "description": "Below the Rounds paired so far, below one or above 30, or the Tournament is over",
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "out_of_range"
+                ]
+            },
+            "SetSwissRoundsRequest": {
+                "description": "How many Swiss Rounds an Organizer wants played",
+                "type": "object",
+                "properties": {
+                    "swiss_rounds": {
+                        "description": "The number, at least the Rounds paired so far and at most 30",
+                        "type": "integer",
+                        "format": "int16"
+                    }
+                },
+                "required": [
+                    "swiss_rounds"
                 ]
             },
             "SharedCollectionResponse": {
@@ -20623,6 +21803,91 @@
                     "source"
                 ]
             },
+            "StandingResponse": {
+                "description": "One Participant's line in the standings",
+                "type": "object",
+                "properties": {
+                    "byes": {
+                        "description": "Byes had",
+                        "type": "integer",
+                        "minimum": 0,
+                        "format": "uint32"
+                    },
+                    "draws": {
+                        "description": "Matches drawn",
+                        "type": "integer",
+                        "minimum": 0,
+                        "format": "uint32"
+                    },
+                    "guest": {
+                        "description": "Whether it is a Guest rather than an Account",
+                        "type": "boolean"
+                    },
+                    "losses": {
+                        "description": "Matches lost",
+                        "type": "integer",
+                        "minimum": 0,
+                        "format": "uint32"
+                    },
+                    "match_points": {
+                        "description": "Its Match points, Byes included",
+                        "type": "integer",
+                        "minimum": 0,
+                        "format": "uint32"
+                    },
+                    "name": {
+                        "description": "The Account's username as it is now, or the Guest's name",
+                        "type": "string"
+                    },
+                    "participant": {
+                        "description": "Who",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ParticipantUuid"
+                            }
+                        ]
+                    },
+                    "place": {
+                        "description": "Its place, 1 for the top; Participants equal on everything share one",
+                        "type": "integer",
+                        "minimum": 0,
+                        "format": "uint32"
+                    },
+                    "wins": {
+                        "description": "Matches won, Byes not included",
+                        "type": "integer",
+                        "minimum": 0,
+                        "format": "uint32"
+                    }
+                },
+                "required": [
+                    "byes",
+                    "draws",
+                    "guest",
+                    "losses",
+                    "match_points",
+                    "name",
+                    "participant",
+                    "place",
+                    "wins"
+                ]
+            },
+            "StandingsResponse": {
+                "description": "The standings of a Tournament",
+                "type": "object",
+                "properties": {
+                    "standings": {
+                        "description": "Every Participant, best first",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/StandingResponse"
+                        }
+                    }
+                },
+                "required": [
+                    "standings"
+                ]
+            },
             "StartAddPasskeyResponse": {
                 "description": "Response to a started add-passkey ceremony",
                 "type": "object",
@@ -20991,6 +22256,15 @@
                 "description": "A Tournament as one reader sees it",
                 "type": "object",
                 "properties": {
+                    "best_of": {
+                        "nullable": true,
+                        "description": "How many Games a one-on-one Match is played to, `null` for a multiplayer one",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/BestOf"
+                            }
+                        ]
+                    },
                     "description": {
                         "nullable": true,
                         "description": "What Participants should know beforehand",
@@ -21120,8 +22394,16 @@
                 "description": "Why a Tournament's settings were refused",
                 "type": "object",
                 "properties": {
+                    "best_of_mismatch": {
+                        "description": "Best-of is missing at Table size 2 or given above it",
+                        "type": "boolean"
+                    },
                     "participant_limit_too_small": {
                         "description": "The participant limit is below two",
+                        "type": "boolean"
+                    },
+                    "rules_locked": {
+                        "description": "Table size, Ruleset or best-of changed after the first Round started",
                         "type": "boolean"
                     },
                     "ruleset_mismatch": {
@@ -21142,7 +22424,9 @@
                     }
                 },
                 "required": [
+                    "best_of_mismatch",
                     "participant_limit_too_small",
+                    "rules_locked",
                     "ruleset_mismatch",
                     "self_sign_up_needs_visibility",
                     "table_size_out_of_range",
@@ -21153,6 +22437,15 @@
                 "description": "Every setting of a Tournament, to create one or to replace its settings",
                 "type": "object",
                 "properties": {
+                    "best_of": {
+                        "nullable": true,
+                        "description": "How many Games a one-on-one Match is played to: required at Table size 2, `null` above",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/BestOf"
+                            }
+                        ]
+                    },
                     "description": {
                         "nullable": true,
                         "description": "What Participants should know beforehand",
@@ -21275,6 +22568,23 @@
                             "Cancelled"
                         ]
                     }
+                ]
+            },
+            "TournamentStateResponse": {
+                "description": "Where the Tournament stands after a Round ended or the Swiss Rounds changed",
+                "type": "object",
+                "properties": {
+                    "state": {
+                        "description": "The Tournament's state now, `Finished` after the last Swiss Round",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/TournamentState"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "state"
                 ]
             },
             "TournamentSummaryResponse": {

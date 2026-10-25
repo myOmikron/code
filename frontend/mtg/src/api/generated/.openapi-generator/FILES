@@ -52,6 +52,7 @@ docs/AdminUnlockAccountErrors.md
 docs/AdminUnlockAccountRequest.md
 docs/AdvisorSettingsResponse.md
 docs/ApiErrorResponse.md
+docs/BestOf.md
 docs/BracketFlagsEntryResponse.md
 docs/BracketFlagsRequest.md
 docs/BracketFlagsResponse.md
@@ -116,6 +117,7 @@ docs/DeleteAccountErrors.md
 docs/DeleteAccountRequest.md
 docs/DeletePasskeyErrors.md
 docs/DeletionMode.md
+docs/EndTournamentRound200Response.md
 docs/EntrySort.md
 docs/ErrorConstant.md
 docs/ExtraTurnRule.md
@@ -156,7 +158,10 @@ docs/FormErrorResponseForPutDeckCollaboratorErrors.md
 docs/FormErrorResponseForRegistrationErrors.md
 docs/FormErrorResponseForRenameAccountErrors.md
 docs/FormErrorResponseForRenamePasskeyErrors.md
+docs/FormErrorResponseForRoundErrors.md
 docs/FormErrorResponseForSendBugReportErrors.md
+docs/FormErrorResponseForSetResultErrors.md
+docs/FormErrorResponseForSetSwissRoundsErrors.md
 docs/FormErrorResponseForSignUpErrors.md
 docs/FormErrorResponseForSignupErrors.md
 docs/FormErrorResponseForStartLoginErrors.md
@@ -190,6 +195,7 @@ docs/ListedCardResponse.md
 docs/ListedEntryResponse.md
 docs/MailLanguage.md
 docs/MarkedCard.md
+docs/MatchResponse.md
 docs/Me200Response.md
 docs/MeErrors.md
 docs/MeResponse.md
@@ -209,6 +215,8 @@ docs/OldestPrintingResponse.md
 docs/OnLoanResponse.md
 docs/OrganizerResponse.md
 docs/OrganizerRole.md
+docs/PairTournamentRound200Response.md
+docs/PairedRoundResponse.md
 docs/ParticipantResponse.md
 docs/PendingOidcLogin.md
 docs/PlayerCandidateResponse.md
@@ -241,6 +249,7 @@ docs/RenamePasskeyRequest.md
 docs/ResolvePrintingsRequest.md
 docs/ResolvePrintingsResponse.md
 docs/ResolvedPrintingResponse.md
+docs/ResultResponse.md
 docs/ReturnAllDeckCardsRequest.md
 docs/ReturnAllDeckCardsResponse.md
 docs/ReturnDeckCardsRequest.md
@@ -248,11 +257,16 @@ docs/Role.md
 docs/RoleBansResponse.md
 docs/RotateDeckShareTokenResponse.md
 docs/RotateShareTokenResponse.md
+docs/RoundErrors.md
+docs/RoundResponse.md
+docs/RoundState.md
+docs/RoundsResponse.md
 docs/Ruleset.md
 docs/ScannerSessionDetailResponse.md
 docs/ScannerSessionEntryResponse.md
 docs/ScannerSessionResponse.md
 docs/SearchPublicDecksResponse.md
+docs/SeatResponse.md
 docs/SendBugReport200Response.md
 docs/SendBugReportErrors.md
 docs/SendBugReportRequest.md
@@ -266,6 +280,11 @@ docs/SetDeckColorsRequest.md
 docs/SetDeckFolderRequest.md
 docs/SetDeckRuleZeroRequest.md
 docs/SetDeckVisibilityRequest.md
+docs/SetResultErrors.md
+docs/SetResultRequest.md
+docs/SetSwissRoundsErrors.md
+docs/SetSwissRoundsRequest.md
+docs/SetTournamentSwissRounds200Response.md
 docs/SharedCollectionResponse.md
 docs/SharedDeckResponse.md
 docs/SharedWithMeDeckResponse.md
@@ -283,6 +302,8 @@ docs/SourcingCandidateResponse.md
 docs/SourcingSlotResponse.md
 docs/SplitCollectionEntryRequest.md
 docs/SplitCollectionEntryResponse.md
+docs/StandingResponse.md
+docs/StandingsResponse.md
 docs/StartAddPasskeyResponse.md
 docs/StartLogin200Response.md
 docs/StartLoginErrors.md
@@ -307,6 +328,7 @@ docs/TournamentResponse.md
 docs/TournamentSettingsErrors.md
 docs/TournamentSettingsRequest.md
 docs/TournamentState.md
+docs/TournamentStateResponse.md
 docs/TournamentSummaryResponse.md
 docs/UpdateCollectionEntryRequest.md
 docs/UpdateCollectionRequest.md

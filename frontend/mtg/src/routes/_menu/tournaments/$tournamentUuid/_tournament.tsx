@@ -1,11 +1,11 @@
 import { Outlet, createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
-import { PencilSquareIcon, TrashIcon } from "@heroicons/react/20/solid";
+import { NoSymbolIcon, PencilSquareIcon, TrashIcon } from "@heroicons/react/20/solid";
 import { EyeSlashIcon } from "@heroicons/react/24/outline";
 import { Badge, Button, ConfirmDialog, EmptyState, Tab, TabLayout, TabMenu, notify } from "components";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
-import { OrganizerRole } from "src/api/generated";
+import { OrganizerRole, TournamentState } from "src/api/generated";
 import { TournamentDialog } from "src/components/tournament-dialog";
 import { useTournamentLabels } from "src/components/tournament-labels";
 import i18n from "src/i18n";
@@ -49,6 +49,7 @@ function RouteComponent() {
     const navigate = useNavigate();
     const [editing, setEditing] = useState(false);
     const [deleting, setDeleting] = useState(false);
+    const [cancelling, setCancelling] = useState(false);
 
     if (tournament === null) {
         return (
@@ -61,6 +62,17 @@ function RouteComponent() {
     }
 
     const role = tournament.organizer_role ?? null;
+    const over = tournament.state === TournamentState.Finished || tournament.state === TournamentState.Cancelled;
+
+    /**
+     * Cancels the Tournament after the confirmation was accepted
+     */
+    async function cancel() {
+        await Api.tournaments.cancel(tournamentUuid);
+        setCancelling(false);
+        notify.success(t("toast.tournament-cancelled"));
+        await router.invalidate();
+    }
 
     /**
      * Deletes the Tournament after the confirmation was accepted
@@ -88,6 +100,12 @@ function RouteComponent() {
                             <PencilSquareIcon />
                             {t("button.edit-tournament")}
                         </Button>
+                        {!over && (
+                            <Button outline onClick={() => setCancelling(true)}>
+                                <NoSymbolIcon />
+                                {t("button.cancel-tournament")}
+                            </Button>
+                        )}
                         {role === OrganizerRole.Owner && (
                             <Button outline onClick={() => setDeleting(true)}>
                                 <TrashIcon />
@@ -108,6 +126,12 @@ function RouteComponent() {
                     </Tab>
                     <Tab href={"/tournaments/$tournamentUuid/participants"} params={{ tournamentUuid }}>
                         {t("heading.participants")}
+                    </Tab>
+                    <Tab href={"/tournaments/$tournamentUuid/rounds"} params={{ tournamentUuid }}>
+                        {t("heading.rounds")}
+                    </Tab>
+                    <Tab href={"/tournaments/$tournamentUuid/standings"} params={{ tournamentUuid }}>
+                        {t("heading.standings")}
                     </Tab>
                     {role !== null && (
                         <Tab href={"/tournaments/$tournamentUuid/organizers"} params={{ tournamentUuid }}>
@@ -132,6 +156,15 @@ function RouteComponent() {
                     }}
                 />
             )}
+
+            <ConfirmDialog
+                open={cancelling}
+                onClose={() => setCancelling(false)}
+                onConfirm={cancel}
+                title={t("heading.cancel-tournament")}
+                description={t("description.cancel-tournament", { name: tournament.name })}
+                confirmLabel={t("button.cancel-tournament")}
+            />
 
             <ConfirmDialog
                 open={deleting}

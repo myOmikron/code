@@ -112,7 +112,7 @@ The even split can make a Match two smaller than T (T = 5, n = 7: 4, 3; n = 11: 
 
 The MTR only says Swiss (10.4). **Decision** (spec): Round 1 at random. Later Rounds: maximum-weight matching over all Participants, where a rematch is never an edge, a pairing within the same Match points scores highest and every point of difference costs (pair-downs minimized), so pairings stay within point groups wherever possible. The Bye is taken out before matching (see Byes).
 
-**Open**: when no rematch-free pairing exists (e.g. 4 Participants in Round 4), the engine fails the preview or allows the fewest rematches. Recommendation: allow the fewest rematches and flag them in the preview, since an Organizer edits the preview anyway.
+**Decision** (#305): when no rematch-free pairing exists (e.g. 4 Participants in Round 4), the engine pairs the fewest rematches and flags each such Match, since an Organizer checks the preview anyway. The matching minimizes, lexicographically, the number of rematches and then the sum of squared Match point differences of its Matches: squared, so two pair-downs of one point group each beat one pair-down across two. Chance decides between equally good pairings (the vertex order is shuffled from the Round's stored seed), which makes Round 1 random. Seat 1 is drawn, and the Match holding the best-ranked Participant gets table 1.
 
 ### Multiplayer (TopDeck and Multiplayer Addendum)
 
@@ -250,7 +250,6 @@ The table lists 512 in two rows; canivete starts the last row at 513. "For each 
 
 - TopDeck's exact Tiebreaker formulas and its handling of smaller Matches; only names, order and the 0.2 floor are published.
 - Which Participants TopDeck puts into Byes and the smaller Match by default.
-- Fallback when MTR pairing has no rematch-free solution.
 - Round counts for Table size 3 and 5 under both multiplayer Rulesets.
 - Whether a multiplayer draw can exclude Participants who conceded or were penalized (Addendum 2.1A).
 - How the Top cut shrinks when Drops leave fewer Participants than its size.

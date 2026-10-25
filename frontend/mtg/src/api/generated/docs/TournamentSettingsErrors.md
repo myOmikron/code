@@ -7,7 +7,9 @@ Why a Tournament\'s settings were refused
 
 Name | Type
 ------------ | -------------
+`best_of_mismatch` | boolean
 `participant_limit_too_small` | boolean
+`rules_locked` | boolean
 `ruleset_mismatch` | boolean
 `self_sign_up_needs_visibility` | boolean
 `table_size_out_of_range` | boolean

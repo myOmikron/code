@@ -52,6 +52,13 @@ export function TournamentDetails({ tournament }: TournamentDetailsProps) {
                     <Text>{labels.rulesetDescription(tournament.ruleset)}</Text>
                 </DescriptionDetails>
 
+                {tournament.best_of != null && (
+                    <>
+                        <DescriptionTerm>{t("label.best-of")}</DescriptionTerm>
+                        <DescriptionDetails>{labels.bestOf(tournament.best_of)}</DescriptionDetails>
+                    </>
+                )}
+
                 <DescriptionTerm>{t("label.format")}</DescriptionTerm>
                 <DescriptionDetails>
                     {tournament.format == null ? t("label.format-any") : deckLabels.format(tournament.format)}

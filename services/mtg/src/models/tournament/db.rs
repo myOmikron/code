@@ -9,7 +9,9 @@ use uuid::Uuid;
 
 use crate::models::account::db::AccountModel;
 use crate::models::tournament::TournamentState;
+use crate::models::tournament::round::RoundState;
 use crate::models::visibility::Visibility;
+use crate::tournament::ruleset::BestOf;
 use crate::tournament::ruleset::Ruleset;
 
 /// A Tournament: its settings, its state and its Owner
@@ -69,6 +71,15 @@ pub struct TournamentModel {
     #[rorm(default = false)]
     pub self_sign_up: bool,
 
+    /// How many Games a one-on-one Match is played to; `None` for a multiplayer Tournament
+    pub best_of: Option<BestOf>,
+
+    /// How many Swiss Rounds are played
+    ///
+    /// `None` until an Organizer sets it or the first Round starts, which
+    /// stores the engine's suggestion; until then the suggestion applies.
+    pub swiss_rounds: Option<i16>,
+
     /// Where the Tournament stands
     #[rorm(default = "Registration")]
     pub state: TournamentState,
@@ -108,6 +119,8 @@ pub struct TournamentInsertPatch {
     pub participant_limit: Option<i32>,
     /// Whether Accounts may sign up themselves
     pub self_sign_up: bool,
+    /// How many Games a one-on-one Match is played to
+    pub best_of: Option<BestOf>,
     /// Where the Tournament stands
     pub state: TournamentState,
 }
@@ -244,4 +257,137 @@ pub struct TournamentHandoverInsertPatch {
     pub tournament: ForeignModel<TournamentModel>,
     /// The Account it is offered to
     pub offered_to: ForeignModel<AccountModel>,
+}
+
+/// A Round of a Tournament: its number and how far it got
+#[derive(Model, Debug)]
+#[rorm(rename = "tournament_round")]
+pub struct TournamentRoundModel {
+    /// Primary key, [`round_key`] of its Tournament and number
+    #[rorm(primary_key)]
+    pub uuid: Uuid,
+
+    /// The Tournament it belongs to
+    #[rorm(index, on_update = "Cascade", on_delete = "Cascade")]
+    pub tournament: ForeignModel<TournamentModel>,
+
+    /// Its number, 1 for the first Round
+    pub number: i16,
+
+    /// How far it got
+    pub state: RoundState,
+
+    /// The seed its pairing was rolled from, kept to replay it
+    pub pairing_seed: i64,
+
+    /// The point in time it was paired
+    #[rorm(auto_create_time)]
+    pub created_at: OffsetDateTime,
+
+    /// The point in time it started, `None` while previewed
+    pub started_at: Option<OffsetDateTime>,
+
+    /// The point in time it ended, `None` until then
+    pub ended_at: Option<OffsetDateTime>,
+}
+
+/// Insert patch for [`TournamentRoundModel`]
+#[derive(Patch)]
+#[rorm(model = "TournamentRoundModel")]
+pub struct TournamentRoundInsertPatch {
+    /// Primary key
+    pub uuid: Uuid,
+    /// The Tournament it belongs to
+    pub tournament: ForeignModel<TournamentModel>,
+    /// Its number
+    pub number: i16,
+    /// How far it got
+    pub state: RoundState,
+    /// The seed its pairing was rolled from
+    pub pairing_seed: i64,
+}
+
+/// The primary key of a Tournament's Round by its number
+///
+/// Derived from both, so a Tournament has one Round of each number.
+pub fn round_key(tournament: Uuid, number: i16) -> Uuid {
+    Uuid::new_v3(&tournament, &number.to_be_bytes())
+}
+
+/// A Match of a Round, or a Bye
+///
+/// The Result lives in [`Self::games_drawn`] and the Seats' games won: it is
+/// in once [`Self::games_drawn`] is set. A Bye has no table and no Result.
+#[derive(Model, Debug)]
+#[rorm(rename = "tournament_match")]
+pub struct TournamentMatchModel {
+    /// Primary key
+    #[rorm(primary_key)]
+    pub uuid: Uuid,
+
+    /// The Round it is played in
+    #[rorm(index, on_update = "Cascade", on_delete = "Cascade")]
+    pub round: ForeignModel<TournamentRoundModel>,
+
+    /// The number of its table, 1 for the top table; `None` for a Bye
+    pub table_number: Option<i16>,
+
+    /// Games nobody won, `None` while it has no Result
+    pub games_drawn: Option<i16>,
+}
+
+/// Insert patch for [`TournamentMatchModel`]
+#[derive(Patch)]
+#[rorm(model = "TournamentMatchModel")]
+pub struct TournamentMatchInsertPatch {
+    /// Primary key
+    pub uuid: Uuid,
+    /// The Round it is played in
+    pub round: ForeignModel<TournamentRoundModel>,
+    /// The number of its table, `None` for a Bye
+    pub table_number: Option<i16>,
+    /// Games nobody won
+    pub games_drawn: Option<i16>,
+}
+
+/// A Participant's Seat in a Match
+#[derive(Model, Debug)]
+#[rorm(rename = "tournament_seat")]
+pub struct TournamentSeatModel {
+    /// Primary key
+    #[rorm(primary_key)]
+    pub uuid: Uuid,
+
+    /// The Match
+    #[rorm(index, on_update = "Cascade", on_delete = "Cascade")]
+    pub tournament_match: ForeignModel<TournamentMatchModel>,
+
+    /// Who sits there
+    ///
+    /// Cascading: a Participant is only removed before the first Round
+    /// starts, and changing the Participants discards the previewed Round anyway.
+    #[rorm(index, on_update = "Cascade", on_delete = "Cascade")]
+    pub participant: ForeignModel<TournamentParticipantModel>,
+
+    /// The Seat number, 1 for the first turn
+    pub seat: i16,
+
+    /// Games this Seat won, `None` while the Match has no Result
+    pub games_won: Option<i16>,
+}
+
+/// Insert patch for [`TournamentSeatModel`]
+#[derive(Patch)]
+#[rorm(model = "TournamentSeatModel")]
+pub struct TournamentSeatInsertPatch {
+    /// Primary key
+    pub uuid: Uuid,
+    /// The Match
+    pub tournament_match: ForeignModel<TournamentMatchModel>,
+    /// Who sits there
+    pub participant: ForeignModel<TournamentParticipantModel>,
+    /// The Seat number
+    pub seat: i16,
+    /// Games this Seat won
+    pub games_won: Option<i16>,
 }

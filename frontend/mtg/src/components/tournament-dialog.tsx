@@ -28,7 +28,7 @@ import { useForm } from "@tanstack/react-form";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
-import { Ruleset, Visibility } from "src/api/generated";
+import { BestOf, Ruleset, TournamentState, Visibility } from "src/api/generated";
 import type { FormatRulesResponse, TournamentResponse } from "src/api/generated";
 import { useDeckLabels } from "src/components/deck-labels";
 import { PrimaryButton } from "src/components/primary-button";
@@ -74,6 +74,7 @@ function initialValues(tournament: TournamentResponse | null) {
         visibility: tournament?.visibility ?? Visibility.Public,
         participantLimit: tournament?.participant_limit == null ? "" : String(tournament.participant_limit),
         selfSignUp: tournament?.self_sign_up ?? false,
+        bestOf: tournament?.best_of ?? BestOf.Three,
     };
 }
 
@@ -102,6 +103,8 @@ export function TournamentDialog({ open, tournament, formats, onClose, onSaved }
     const [tg] = useTranslation();
     const labels = useTournamentLabels();
     const deckLabels = useDeckLabels();
+    // Table size, Ruleset and best-of are fixed once the first Round started.
+    const rulesLocked = tournament !== null && tournament.state !== TournamentState.Registration;
 
     const form = useForm({
         defaultValues: initialValues(tournament),
@@ -118,6 +121,7 @@ export function TournamentDialog({ open, tournament, formats, onClose, onSaved }
                     visibility: value.visibility,
                     participant_limit: value.participantLimit === "" ? null : Number(value.participantLimit),
                     self_sign_up: value.selfSignUp,
+                    best_of: value.tableSize === 2 ? value.bestOf : null,
                 };
                 const response =
                     tournament === null
@@ -139,6 +143,12 @@ export function TournamentDialog({ open, tournament, formats, onClose, onSaved }
                         },
                         self_sign_up_needs_visibility: (errors) => {
                             errors.fields.selfSignUp = t("error.self-sign-up-needs-visibility");
+                        },
+                        best_of_mismatch: (errors) => {
+                            errors.fields.bestOf = t("error.best-of-mismatch");
+                        },
+                        rules_locked: (errors) => {
+                            errors.fields.tableSize = t("error.rules-locked");
                         },
                     });
                 }
@@ -218,7 +228,9 @@ export function TournamentDialog({ open, tournament, formats, onClose, onSaved }
                             {(fieldApi) => (
                                 <Field>
                                     <Label>{t("label.table-size")}</Label>
+                                    {rulesLocked && <Description>{t("description.rules-locked")}</Description>}
                                     <Listbox<number>
+                                        disabled={rulesLocked}
                                         value={fieldApi.state.value}
                                         onChange={fieldApi.handleChange}
                                         invalid={fieldApi.state.meta.errors.length > 0}
@@ -243,6 +255,7 @@ export function TournamentDialog({ open, tournament, formats, onClose, onSaved }
                                         <Field>
                                             <Label>{t("label.ruleset")}</Label>
                                             <Listbox<Ruleset>
+                                                disabled={rulesLocked}
                                                 value={fieldApi.state.value}
                                                 onChange={fieldApi.handleChange}
                                                 invalid={fieldApi.state.meta.errors.length > 0}
@@ -263,6 +276,35 @@ export function TournamentDialog({ open, tournament, formats, onClose, onSaved }
                                     )}
                                 </form.Field>
                             )}
+                        </form.Subscribe>
+
+                        <form.Subscribe selector={(state) => state.values.tableSize}>
+                            {(tableSize) =>
+                                tableSize === 2 && (
+                                    <form.Field name={"bestOf"}>
+                                        {(fieldApi) => (
+                                            <Field>
+                                                <Label>{t("label.best-of")}</Label>
+                                                <Listbox<BestOf>
+                                                    disabled={rulesLocked}
+                                                    value={fieldApi.state.value}
+                                                    onChange={fieldApi.handleChange}
+                                                    invalid={fieldApi.state.meta.errors.length > 0}
+                                                >
+                                                    {[BestOf.One, BestOf.Three].map((bestOf) => (
+                                                        <ListboxOption key={bestOf} value={bestOf}>
+                                                            <ListboxLabel>{labels.bestOf(bestOf)}</ListboxLabel>
+                                                        </ListboxOption>
+                                                    ))}
+                                                </Listbox>
+                                                {fieldApi.state.meta.errors.map((error) => (
+                                                    <ErrorMessage key={String(error)}>{String(error)}</ErrorMessage>
+                                                ))}
+                                            </Field>
+                                        )}
+                                    </form.Field>
+                                )
+                            }
                         </form.Subscribe>
 
                         <form.Field name={"format"}>

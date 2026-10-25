@@ -4,6 +4,7 @@ use galvyn::core::re_exports::axum::extract::Query;
 use galvyn::core::re_exports::time::OffsetDateTime;
 use galvyn::core::stuff::api_error::ApiError;
 use galvyn::core::stuff::api_error::ApiResult;
+use galvyn::core::stuff::api_error::FormErrors;
 use galvyn::core::stuff::api_json::ApiJson;
 use galvyn::delete;
 use galvyn::get;
@@ -21,6 +22,7 @@ use crate::http::handler_frontend::tournaments::schema::TournamentSummaryRespons
 use crate::models::account::Account;
 use crate::models::account::extractor::Viewer;
 use crate::models::tournament::Tournament;
+use crate::models::tournament::TournamentState;
 use crate::models::tournament::TournamentUuid;
 use crate::models::tournament::access::OrganizerRole;
 use crate::models::tournament::listing::ListedTournament;
@@ -124,6 +126,8 @@ pub async fn create_tournament(
 }
 
 /// Replace a Tournament's settings, as one of its Organizers
+///
+/// Table size, Ruleset and best-of stay as they are once the first Round started.
 #[put("/{tournament}")]
 pub async fn update_tournament(
     account: Account,
@@ -141,6 +145,12 @@ pub async fn update_tournament(
         tx.rollback().await?;
         return Err(denied());
     };
+    if tournament.state != TournamentState::Registration && settings.changes_rules_of(&tournament) {
+        tx.rollback().await?;
+        let mut errors = FormErrors::<TournamentSettingsErrors>::new();
+        errors.rules_locked = true;
+        return errors.fail();
+    }
     let tournament = tournament.update_settings(&mut tx, settings).await?;
     let owner = tournament.owner_name(&mut tx).await?;
 

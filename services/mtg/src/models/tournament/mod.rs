@@ -22,6 +22,7 @@ use crate::models::tournament::db::TournamentInsertPatch;
 use crate::models::tournament::db::TournamentModel;
 use crate::models::tournament::settings::TournamentSettings;
 use crate::models::visibility::Visibility;
+use crate::tournament::ruleset::BestOf;
 use crate::tournament::ruleset::Ruleset;
 use crate::tournament::ruleset::TableSize;
 
@@ -31,12 +32,19 @@ pub mod handover;
 pub mod listing;
 pub mod organizer;
 pub mod participant;
+pub mod round;
 pub mod settings;
 
 custom_db_enum! {
     enum: Ruleset,
     variants: [Mtr, TopDeck, MultiplayerAddendum],
     decoder: RulesetDecoder,
+}
+
+custom_db_enum! {
+    enum: BestOf,
+    variants: [One, Three],
+    decoder: BestOfDecoder,
 }
 
 /// Where a Tournament stands
@@ -92,6 +100,10 @@ pub struct Tournament {
     pub participant_limit: Option<i32>,
     /// Whether Accounts may sign up themselves
     pub self_sign_up: bool,
+    /// How many Games a one-on-one Match is played to, `None` multiplayer
+    pub best_of: Option<BestOf>,
+    /// How many Swiss Rounds are played, `None` while the suggestion applies
+    pub swiss_rounds: Option<i16>,
     /// Where it stands
     pub state: TournamentState,
     /// The point in time it was created
@@ -136,6 +148,7 @@ impl Tournament {
                 share_token,
                 participant_limit: settings.participant_limit,
                 self_sign_up: settings.self_sign_up,
+                best_of: settings.best_of,
                 state: TournamentState::Registration,
             })
             .await?;
@@ -172,6 +185,7 @@ impl Tournament {
                 settings.participant_limit,
             )
             .set(TournamentModel.self_sign_up, settings.self_sign_up)
+            .set(TournamentModel.best_of, settings.best_of)
             .condition(TournamentModel.uuid.equals(self.uuid.0))
             .await?;
         Ok(Tournament {
@@ -186,6 +200,7 @@ impl Tournament {
             share_token,
             participant_limit: settings.participant_limit,
             self_sign_up: settings.self_sign_up,
+            best_of: settings.best_of,
             ..self
         })
     }
@@ -218,6 +233,8 @@ impl From<TournamentModel> for Tournament {
             share_token: value.share_token,
             participant_limit: value.participant_limit,
             self_sign_up: value.self_sign_up,
+            best_of: value.best_of,
+            swiss_rounds: value.swiss_rounds,
             state: value.state,
             created_at: value.created_at,
         }
