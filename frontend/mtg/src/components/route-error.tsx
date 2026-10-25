@@ -22,6 +22,8 @@ export function RouteError(props: ErrorComponentProps) {
     const [signedIn, setSignedIn] = useState(false);
     const [reporting, setReporting] = useState(false);
     const start = useMemo<ReportStart>(() => ({ kind: "error-screen", error: props.error }), [props.error]);
+    // the router passes on whatever was thrown, not only Errors
+    const message = props.error instanceof Error ? props.error.message : String(props.error);
 
     useEffect(() => {
         let cancelled = false;
@@ -44,7 +46,7 @@ export function RouteError(props: ErrorComponentProps) {
                 }
             >
                 <Heading level={1}>{tg("heading.something-went-wrong")}</Heading>
-                <Text>{props.error.message}</Text>
+                <Text>{message}</Text>
                 <PrimaryButton onClick={() => props.reset()}>{tg("button.try-again")}</PrimaryButton>
                 {signedIn ? (
                     <Button outline={true} onClick={() => setReporting(true)}>
@@ -60,7 +62,7 @@ export function RouteError(props: ErrorComponentProps) {
                     open={reporting}
                     onClose={() => setReporting(false)}
                     start={start}
-                    initialText={tg("description.bug-report-error-text", { message: props.error.message })}
+                    initialText={tg("description.bug-report-error-text", { message })}
                 />
             ) : null}
         </main>
