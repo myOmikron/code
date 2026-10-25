@@ -47,6 +47,9 @@ pub struct Item {
     /// Whether the item is currently orderable (shown in the shop)
     pub active: bool,
 
+    /// The number the Bakery orders the item under, staff only
+    pub bakery_article_number: Option<MaxStr<32>>,
+
     /// Cache-busting version of the image (unix seconds of the upload, 0 = none)
     pub image_version: i64,
 
@@ -87,6 +90,8 @@ pub struct ItemData {
     pub category: Option<CategoryUuid>,
     /// Whether the item is currently orderable
     pub active: bool,
+    /// The number the Bakery orders the item under, staff only
+    pub bakery_article_number: Option<MaxStr<32>>,
 }
 
 impl Item {
@@ -148,6 +153,7 @@ impl Item {
                 additional_info: data.additional_info,
                 category: data.category.map(|c| ForeignModelByField(c.into_inner())),
                 active: data.active,
+                bakery_article_number: data.bakery_article_number,
                 image: None,
                 image_version: 0,
             })
@@ -173,6 +179,7 @@ impl Item {
                 data.category.map(|c| ForeignModelByField(c.into_inner())),
             )
             .set(ItemModel.active, data.active)
+            .set(ItemModel.bakery_article_number, data.bakery_article_number)
             .condition(ItemModel.uuid.equals(uuid.0))
             .await?;
         Ok(affected > 0)
@@ -232,6 +239,7 @@ impl From<ItemMetaPatch> for Item {
             additional_info: value.additional_info,
             category: value.category.map(CategoryUuid::new_from_field),
             active: value.active,
+            bakery_article_number: value.bakery_article_number,
             image_version: value.image_version,
             created_at: value.created_at,
         }

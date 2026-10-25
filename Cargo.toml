@@ -123,6 +123,9 @@ strum = { version = "~0.28", features = ["derive"] }
 # Constant-time equals for crypto
 subtle = { version = "~2" }
 
+# The web framework under `galvyn`, for the extractors `galvyn` leaves switched off (multipart)
+axum = { version = "~0.8", default-features = false, features = ["multipart"] }
+
 # HTTP middleware for the `tower` ecosystem (used by `axum`/`galvyn`)
 tower-http = { version = "~0.7.0", features = ["trace", "compression-gzip", "compression-br"] }
 
@@ -145,7 +148,7 @@ base64 = { version = "~0.23" }
 feiertage = { version = "~0.2.0" }
 
 # Date and time types
-time = { version = ">=0.3, <0.3.52", features = ["serde-well-known", "serde-human-readable"] }
+time = { version = ">=0.3, <0.3.56", features = ["serde-well-known", "serde-human-readable"] }
 
 # Timezone support for `time`
 time-tz = { version = "~2" }
@@ -157,7 +160,7 @@ bytes = { version = "~1" }
 sha2 = { version = "~0.11.0" }
 
 # Argon2id password hashing (PHC string format)
-argon2 = { version = "~0.5" }
+argon2 = { version = "~0.6.0" }
 
 # URL parsing following RFC 3986
 url = { version = "~2", features = ["serde"] }

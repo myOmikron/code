@@ -264,6 +264,16 @@ impl Account {
         Ok(accounts.into_iter().map(Account::from).collect())
     }
 
+    /// Fetch every Account with the Role [`Role::Admin`]
+    #[instrument(name = "Account::get_admins", skip(tx))]
+    pub async fn get_admins(tx: &mut Transaction) -> Result<Vec<Account>, rorm::Error> {
+        let accounts = rorm::query(tx, AccountModel)
+            .condition(AccountModel.role.equals(Role::Admin))
+            .all()
+            .await?;
+        Ok(accounts.into_iter().map(Account::from).collect())
+    }
+
     /// Fetch an account by its primary key
     #[instrument(name = "Account::get_by_uuid", skip(tx))]
     pub async fn get_by_uuid(
@@ -626,7 +636,8 @@ impl Account {
     /// The account goes by deleting its identity, and everything else it owns
     /// goes with it through the cascades on the foreign keys: passkeys,
     /// registration links, collections, watch lists, folders, tags, its places
-    /// as a Collaborator on other decks, and every deck it did not put on show.
+    /// as a Collaborator on other decks, its Bug reports, and every deck it did
+    /// not put on show.
     ///
     /// Returns `false` if the account does not exist.
     #[instrument(name = "Account::delete", skip(tx))]
