@@ -3,7 +3,7 @@
 use std::time::Duration;
 
 use o2o::o2o;
-use rand::Rng;
+use rand::RngExt;
 use time::OffsetDateTime;
 
 use crate::nats::listener::OwnedInfo;
@@ -97,7 +97,7 @@ impl RetryStrategy {
                 if let Some(retry_in) = steps.get((ctx.delivered - 1).max(0) as usize) {
                     let offset = if let Some(jitter) = jitter {
                         let millis = jitter.as_millis() as i64;
-                        rand::thread_rng().gen_range(-millis..=millis)
+                        rand::rng().random_range(-millis..=millis)
                     } else {
                         0
                     };
