@@ -12,7 +12,9 @@ Name | Type
 `name` | string
 `organizer_role` | [OrganizerRole](OrganizerRole.md)
 `owner` | string
+`participant_limit` | number
 `ruleset` | [Ruleset](Ruleset.md)
+`self_sign_up` | boolean
 `share_token` | string
 `starts_at` | string
 `state` | [TournamentState](TournamentState.md)

@@ -9201,6 +9201,133 @@
                 }
             }
         },
+        "/api/frontend/v1/shared/tournaments/{token}/participants": {
+            "get": {
+                "summary": "The Participants of the Tournament a share link points at",
+                "description": "The Participants of the Tournament a share link points at\n\nSays which of them is the reader, if any.",
+                "operationId": "list_shared_tournament_participants",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "token",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ListParticipantsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/shared/tournaments/{token}/sign-up": {
+            "post": {
+                "summary": "Sign the logged-in Account up for the Tournament a share link points at",
+                "description": "Sign the logged-in Account up for the Tournament a share link points at\n\nThe way into an unlisted Tournament; refused like `sign_up_for_tournament`.",
+                "operationId": "sign_up_for_shared_tournament",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "token",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ParticipantResponse"
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/FormErrorResponse_for_SignUpErrors"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/frontend/v1/tags": {
             "get": {
                 "summary": "Every tag the account keeps for all of its decks and collections",
@@ -9747,6 +9874,68 @@
                 }
             }
         },
+        "/api/frontend/v1/tournaments/{tournament}/participants": {
+            "get": {
+                "summary": "The Participants of a Tournament the reader may see",
+                "description": "The Participants of a Tournament the reader may see\n\nSays which of them is the reader, if any.",
+                "operationId": "list_tournament_participants",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tournament",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of a [`Tournament`]",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ListParticipantsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/frontend/v1/tournaments/mine": {
             "get": {
                 "summary": "The Tournaments the logged-in Account owns, latest start first",
@@ -9759,6 +9948,435 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/ListTournamentsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/tournaments/{tournament}/sign-up": {
+            "post": {
+                "summary": "Sign the logged-in Account up for a Tournament it sees by its id",
+                "description": "Sign the logged-in Account up for a Tournament it sees by its id\n\nTakes effect at once. Refused unless the Owner turned self sign-up on and\nthe Tournament is in Registration, and once the participant limit is\nreached. An unlisted Tournament is signed up for through its share link,\nsee `sign_up_for_shared_tournament`.",
+                "operationId": "sign_up_for_tournament",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tournament",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of a [`Tournament`]",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ParticipantResponse"
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/FormErrorResponse_for_SignUpErrors"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "summary": "Withdraw the logged-in Account's own sign-up",
+                "description": "Withdraw the logged-in Account's own sign-up\n\nOnly before the first Round starts; afterwards a Participant leaves by a Drop.",
+                "operationId": "withdraw_tournament_sign_up",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tournament",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of a [`Tournament`]",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "nullable": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/tournaments/{tournament}/participants/accounts": {
+            "post": {
+                "summary": "Add an Account as a Participant by its username, as an Organizer",
+                "description": "Add an Account as a Participant by its username, as an Organizer\n\nAn Organizer may add itself. Only while the Tournament is in Registration;\nthe participant limit does not hold Organizers back. Unknown usernames are\ncapped per caller, see [`UNKNOWN_USERNAMES`].",
+                "operationId": "add_tournament_account",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tournament",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of a [`Tournament`]",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AddAccountParticipantRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ParticipantResponse"
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/FormErrorResponse_for_AddAccountParticipantErrors"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/tournaments/{tournament}/participants/guests": {
+            "post": {
+                "summary": "Add a Guest by name, as an Organizer",
+                "description": "Add a Guest by name, as an Organizer\n\nOnly while the Tournament is in Registration. The name is trimmed; two\nGuests may share one.",
+                "operationId": "add_tournament_guest",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tournament",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of a [`Tournament`]",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AddGuestParticipantRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ParticipantResponse"
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/FormErrorResponse_for_AddGuestParticipantErrors"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/tournaments/{tournament}/participants/{participant}": {
+            "delete": {
+                "summary": "Take a Participant out of a Tournament, as an Organizer",
+                "description": "Take a Participant out of a Tournament, as an Organizer\n\nOnly before the first Round starts; afterwards a Participant leaves by a Drop.",
+                "operationId": "remove_tournament_participant",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tournament",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/TournamentUuid"
+                        },
+                        "style": "simple"
+                    },
+                    {
+                        "in": "path",
+                        "name": "participant",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/ParticipantUuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "nullable": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/tournaments/{tournament}/player-search": {
+            "get": {
+                "summary": "Accounts whose username starts with what an Organizer typed, to add as Participants",
+                "description": "Accounts whose username starts with what an Organizer typed, to add as Participants\n\nAnswers with up to ten Accounts, the caller among them if it matches,\nalphabetically by username. Fewer than two characters search nothing.\nSearches are capped per caller, see [`PLAYER_SEARCHES`]; past the cap\nthe answer is empty and says so.",
+                "operationId": "search_tournament_players",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tournament",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of a [`Tournament`]",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    },
+                    {
+                        "in": "query",
+                        "name": "query",
+                        "schema": {
+                            "description": "The start of a username, case ignored",
+                            "allOf": [
+                                {
+                                    "$ref": "#/components/schemas/MaxStr_32"
+                                }
+                            ]
+                        },
+                        "style": "form"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PlayerCandidatesResponse"
                                 }
                             }
                         }
@@ -10568,6 +11186,51 @@
                 "type": "string",
                 "format": "uuid"
             },
+            "AddAccountParticipantErrors": {
+                "description": "Why an Account could not be added as a Participant",
+                "type": "object",
+                "properties": {
+                    "already_participant": {
+                        "description": "The Account already is a Participant",
+                        "type": "boolean"
+                    },
+                    "registration_over": {
+                        "description": "The first Round started, so the Participants are settled",
+                        "type": "boolean"
+                    },
+                    "too_many_unknown_usernames": {
+                        "description": "The caller named too many unknown usernames lately, so this one was not looked up",
+                        "type": "boolean"
+                    },
+                    "unknown_username": {
+                        "description": "No Account goes by this username",
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "already_participant",
+                    "registration_over",
+                    "too_many_unknown_usernames",
+                    "unknown_username"
+                ]
+            },
+            "AddAccountParticipantRequest": {
+                "description": "The Account an Organizer adds as a Participant",
+                "type": "object",
+                "properties": {
+                    "username": {
+                        "description": "Username of the Account, case ignored",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_255"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "username"
+                ]
+            },
             "AddCollectionEntriesRequest": {
                 "description": "Request to file stacks into a collection",
                 "type": "object",
@@ -10621,6 +11284,41 @@
                     "printing",
                     "quantity",
                     "zone"
+                ]
+            },
+            "AddGuestParticipantErrors": {
+                "description": "Why a Guest could not be added",
+                "type": "object",
+                "properties": {
+                    "empty_name": {
+                        "description": "The name is empty or only blanks",
+                        "type": "boolean"
+                    },
+                    "registration_over": {
+                        "description": "The first Round started, so the Participants are settled",
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "empty_name",
+                    "registration_over"
+                ]
+            },
+            "AddGuestParticipantRequest": {
+                "description": "The Guest an Organizer adds as a Participant",
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "description": "The name the Guest goes by in this Tournament",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_64"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "name"
                 ]
             },
             "AddPasskeyErrors": {
@@ -15006,6 +15704,58 @@
                     "token"
                 ]
             },
+            "FormErrorResponse_for_AddAccountParticipantErrors": {
+                "description": "The response that is sent in a case of an error the caller should present his user",
+                "type": "object",
+                "properties": {
+                    "error": {
+                        "description": "The actual error struct",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/AddAccountParticipantErrors"
+                            }
+                        ]
+                    },
+                    "result": {
+                        "description": "A constant `\"Err\"` used to differentiate this schema from any other \"Ok\" schema",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ErrorConstant"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "error",
+                    "result"
+                ]
+            },
+            "FormErrorResponse_for_AddGuestParticipantErrors": {
+                "description": "The response that is sent in a case of an error the caller should present his user",
+                "type": "object",
+                "properties": {
+                    "error": {
+                        "description": "The actual error struct",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/AddGuestParticipantErrors"
+                            }
+                        ]
+                    },
+                    "result": {
+                        "description": "A constant `\"Err\"` used to differentiate this schema from any other \"Ok\" schema",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ErrorConstant"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "error",
+                    "result"
+                ]
+            },
             "FormErrorResponse_for_AddPasskeyErrors": {
                 "description": "The response that is sent in a case of an error the caller should present his user",
                 "type": "object",
@@ -15405,6 +16155,32 @@
                         "allOf": [
                             {
                                 "$ref": "#/components/schemas/SendBugReportErrors"
+                            }
+                        ]
+                    },
+                    "result": {
+                        "description": "A constant `\"Err\"` used to differentiate this schema from any other \"Ok\" schema",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ErrorConstant"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "error",
+                    "result"
+                ]
+            },
+            "FormErrorResponse_for_SignUpErrors": {
+                "description": "The response that is sent in a case of an error the caller should present his user",
+                "type": "object",
+                "properties": {
+                    "error": {
+                        "description": "The actual error struct",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SignUpErrors"
                             }
                         ]
                     },
@@ -15873,6 +16649,31 @@
                 },
                 "required": [
                     "providers"
+                ]
+            },
+            "ListParticipantsResponse": {
+                "description": "The Participants of a Tournament",
+                "type": "object",
+                "properties": {
+                    "me": {
+                        "nullable": true,
+                        "description": "The reader's own Participant, `null` if the reader is none",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ParticipantUuid"
+                            }
+                        ]
+                    },
+                    "participants": {
+                        "description": "Every Participant, in the order they were added or signed up",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ParticipantResponse"
+                        }
+                    }
+                },
+                "required": [
+                    "participants"
                 ]
             },
             "ListPasskeysResponse": {
@@ -16712,6 +17513,38 @@
                     }
                 ]
             },
+            "ParticipantResponse": {
+                "description": "One Participant of a Tournament",
+                "type": "object",
+                "properties": {
+                    "guest": {
+                        "description": "Whether it is a Guest rather than an Account",
+                        "type": "boolean"
+                    },
+                    "name": {
+                        "description": "The Account's username as it is now, or the Guest's name",
+                        "type": "string"
+                    },
+                    "uuid": {
+                        "description": "Primary key",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ParticipantUuid"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "guest",
+                    "name",
+                    "uuid"
+                ]
+            },
+            "ParticipantUuid": {
+                "description": "Wrapper for the primary key of a [`Participant`]",
+                "type": "string",
+                "format": "uuid"
+            },
             "PendingOidcLogin": {
                 "description": "An OIDC login waiting for its username step",
                 "type": "object",
@@ -16728,6 +17561,49 @@
                 "required": [
                     "email",
                     "provider"
+                ]
+            },
+            "PlayerCandidateResponse": {
+                "description": "An Account whose username starts with what the Organizer typed",
+                "type": "object",
+                "properties": {
+                    "account": {
+                        "description": "The Account",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/AccountUuid"
+                            }
+                        ]
+                    },
+                    "username": {
+                        "description": "The Account's username as it is now",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "account",
+                    "username"
+                ]
+            },
+            "PlayerCandidatesResponse": {
+                "description": "The Accounts whose username starts with what the Organizer typed",
+                "type": "object",
+                "properties": {
+                    "accounts": {
+                        "description": "Up to ten Accounts, alphabetically by username",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/PlayerCandidateResponse"
+                        }
+                    },
+                    "too_many_searches": {
+                        "description": "The caller searched too often lately, so nothing was searched",
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "accounts",
+                    "too_many_searches"
                 ]
             },
             "PriceDayResponse": {
@@ -18452,6 +19328,29 @@
                     "owner_username"
                 ]
             },
+            "SignUpErrors": {
+                "description": "Why an Account could not sign up",
+                "type": "object",
+                "properties": {
+                    "already_participant": {
+                        "description": "The Account already is a Participant",
+                        "type": "boolean"
+                    },
+                    "closed": {
+                        "description": "Self sign-up is off, the Tournament is private or its first Round started",
+                        "type": "boolean"
+                    },
+                    "full": {
+                        "description": "The participant limit is reached",
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "already_participant",
+                    "closed",
+                    "full"
+                ]
+            },
             "SignupErrors": {
                 "description": "Why a signup request was rejected, for the form to show on the offending field\n\nOnly the username is ever reported: profiles are reachable by name, so whether one is taken is public anyway. Whether an *email address* is already in use stays unrevealable — that request still answers `200` and simply sends no mail.",
                 "type": "object",
@@ -19345,6 +20244,12 @@
                         "description": "Its Owner's username, `null` while the Tombstone holds it",
                         "type": "string"
                     },
+                    "participant_limit": {
+                        "nullable": true,
+                        "description": "How many Participants self sign-up admits at most, `null` for no limit",
+                        "type": "integer",
+                        "format": "int32"
+                    },
                     "ruleset": {
                         "description": "The Ruleset it follows",
                         "allOf": [
@@ -19352,6 +20257,10 @@
                                 "$ref": "#/components/schemas/Ruleset"
                             }
                         ]
+                    },
+                    "self_sign_up": {
+                        "description": "Whether Accounts may sign up themselves",
+                        "type": "boolean"
                     },
                     "share_token": {
                         "nullable": true,
@@ -19403,6 +20312,7 @@
                 "required": [
                     "name",
                     "ruleset",
+                    "self_sign_up",
                     "starts_at",
                     "state",
                     "table_size",
@@ -19414,8 +20324,16 @@
                 "description": "Why a Tournament's settings were refused",
                 "type": "object",
                 "properties": {
+                    "participant_limit_too_small": {
+                        "description": "The participant limit is below two",
+                        "type": "boolean"
+                    },
                     "ruleset_mismatch": {
                         "description": "The Ruleset is not played at the Table size",
+                        "type": "boolean"
+                    },
+                    "self_sign_up_needs_visibility": {
+                        "description": "Self sign-up is on for a private Tournament",
                         "type": "boolean"
                     },
                     "table_size_out_of_range": {
@@ -19428,7 +20346,9 @@
                     }
                 },
                 "required": [
+                    "participant_limit_too_small",
                     "ruleset_mismatch",
+                    "self_sign_up_needs_visibility",
                     "table_size_out_of_range",
                     "unknown_format"
                 ]
@@ -19472,6 +20392,12 @@
                             }
                         ]
                     },
+                    "participant_limit": {
+                        "nullable": true,
+                        "description": "How many Participants self sign-up admits at most, two or more; `null` for no limit",
+                        "type": "integer",
+                        "format": "int32"
+                    },
                     "ruleset": {
                         "description": "The Ruleset to follow: `Mtr` at 2, `TopDeck` or `MultiplayerAddendum` at 3 to 5",
                         "allOf": [
@@ -19479,6 +20405,10 @@
                                 "$ref": "#/components/schemas/Ruleset"
                             }
                         ]
+                    },
+                    "self_sign_up": {
+                        "description": "Whether Accounts may sign up themselves; only for a public or unlisted Tournament",
+                        "type": "boolean"
                     },
                     "starts_at": {
                         "description": "When it is announced to start: the date and the start time",
@@ -19505,6 +20435,7 @@
                 "required": [
                     "name",
                     "ruleset",
+                    "self_sign_up",
                     "starts_at",
                     "table_size",
                     "visibility"

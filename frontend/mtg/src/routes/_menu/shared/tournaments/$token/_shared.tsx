@@ -59,6 +59,9 @@ function RouteComponent() {
                     <Tab href={"/shared/tournaments/$token"} params={{ token }} activeOptions={{ exact: true }}>
                         {t("heading.overview")}
                     </Tab>
+                    <Tab href={"/shared/tournaments/$token/participants"} params={{ token }}>
+                        {t("heading.participants")}
+                    </Tab>
                 </TabMenu>
             }
         >

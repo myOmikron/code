@@ -1,0 +1,17 @@
+
+# SignUpErrors
+
+Why an Account could not sign up
+
+## Properties
+
+Name | Type
+------------ | -------------
+`already_participant` | boolean
+`closed` | boolean
+`full` | boolean
+
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+

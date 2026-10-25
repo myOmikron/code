@@ -18,4 +18,5 @@ mod passkeys;
 mod rename;
 mod statistics;
 mod syncs;
+mod tournament_participants;
 mod tournaments;

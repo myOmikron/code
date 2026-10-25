@@ -38,9 +38,9 @@ impl Tournament {
 
     /// Fetch a Tournament if `viewer` may see it by its id
     ///
-    /// Everybody sees a public one; its Organizers see it whatever its
-    /// Visibility. An unlisted one is otherwise reached through its share
-    /// link only, see [`Self::get_by_share_token`].
+    /// Everybody sees a public one; its Organizers and Participants see it
+    /// whatever its Visibility. An unlisted one is otherwise reached through
+    /// its share link only, see [`Self::get_by_share_token`].
     #[instrument(name = "Tournament::get_visible", skip(tx))]
     pub async fn get_visible(
         tx: &mut Transaction,
@@ -50,8 +50,14 @@ impl Tournament {
         let Some(tournament) = Self::get(tx, uuid).await? else {
             return Ok(None);
         };
-        let visible = tournament.visibility == Visibility::Public
-            || viewer.is_some_and(|viewer| tournament.organizer_role(viewer).is_some());
+        if tournament.visibility == Visibility::Public {
+            return Ok(Some(tournament));
+        }
+        let Some(viewer) = viewer else {
+            return Ok(None);
+        };
+        let visible = tournament.organizer_role(viewer).is_some()
+            || tournament.participant_of(tx, viewer).await?.is_some();
         Ok(visible.then_some(tournament))
     }
 

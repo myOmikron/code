@@ -418,6 +418,9 @@ export const Api = {
         },
         tournaments: {
             get: (token: string) => defaultApi.getSharedTournament({ token }),
+            participants: (token: string) => defaultApi.listSharedTournamentParticipants({ token }),
+            // The way into an unlisted Tournament: its id alone does not let an Account in.
+            signUp: async (token: string) => handleError(defaultApi.signUpForSharedTournament({ token })),
         },
         collections: {
             get: (token: string) => defaultApi.getSharedCollection({ token }),
@@ -531,6 +534,23 @@ export const Api = {
         update: async (tournament: UUID, req: TournamentSettingsRequest) =>
             handleError(defaultApi.updateTournament({ tournament, TournamentSettingsRequest: req })),
         delete: async (tournament: UUID) => handleError(defaultApi.deleteTournament({ tournament })),
+        // Organizers add and remove Participants while the Tournament is in
+        // Registration; Accounts sign up themselves where the Owner allows it.
+        participants: {
+            list: (tournament: UUID) => defaultApi.listTournamentParticipants({ tournament }),
+            addAccount: async (tournament: UUID, username: string) =>
+                handleError(
+                    defaultApi.addTournamentAccount({ tournament, AddAccountParticipantRequest: { username } }),
+                ),
+            addGuest: async (tournament: UUID, name: string) =>
+                handleError(defaultApi.addTournamentGuest({ tournament, AddGuestParticipantRequest: { name } })),
+            remove: async (tournament: UUID, participant: UUID) =>
+                handleError(defaultApi.removeTournamentParticipant({ tournament, participant })),
+            candidates: async (tournament: UUID, query: string) =>
+                quietly(defaultApi.searchTournamentPlayers({ tournament, query })),
+            signUp: async (tournament: UUID) => handleError(defaultApi.signUpForTournament({ tournament })),
+            withdraw: async (tournament: UUID) => handleError(defaultApi.withdrawTournamentSignUp({ tournament })),
+        },
     },
     watchLists: {
         list: async () => handleError(defaultApi.getAllWatchLists()),

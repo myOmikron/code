@@ -28,6 +28,7 @@ use crate::tournament::ruleset::TableSize;
 pub mod access;
 pub(in crate::models) mod db;
 pub mod listing;
+pub mod participant;
 pub mod settings;
 
 custom_db_enum! {
@@ -85,6 +86,10 @@ pub struct Tournament {
     pub visibility: Visibility,
     /// Secret of the share link, set exactly while it is Unlisted
     pub share_token: Option<MaxStr<64>>,
+    /// How many Participants self sign-up admits at most, `None` for no limit
+    pub participant_limit: Option<i32>,
+    /// Whether Accounts may sign up themselves
+    pub self_sign_up: bool,
     /// Where it stands
     pub state: TournamentState,
     /// The point in time it was created
@@ -127,6 +132,8 @@ impl Tournament {
                 format: settings.format,
                 visibility: settings.visibility,
                 share_token,
+                participant_limit: settings.participant_limit,
+                self_sign_up: settings.self_sign_up,
                 state: TournamentState::Registration,
             })
             .await?;
@@ -158,6 +165,11 @@ impl Tournament {
             .set(TournamentModel.format, settings.format.clone())
             .set(TournamentModel.visibility, settings.visibility)
             .set(TournamentModel.share_token, share_token.clone())
+            .set(
+                TournamentModel.participant_limit,
+                settings.participant_limit,
+            )
+            .set(TournamentModel.self_sign_up, settings.self_sign_up)
             .condition(TournamentModel.uuid.equals(self.uuid.0))
             .await?;
         Ok(Tournament {
@@ -170,6 +182,8 @@ impl Tournament {
             format: settings.format,
             visibility: settings.visibility,
             share_token,
+            participant_limit: settings.participant_limit,
+            self_sign_up: settings.self_sign_up,
             ..self
         })
     }
@@ -200,6 +214,8 @@ impl From<TournamentModel> for Tournament {
             format: value.format,
             visibility: value.visibility,
             share_token: value.share_token,
+            participant_limit: value.participant_limit,
+            self_sign_up: value.self_sign_up,
             state: value.state,
             created_at: value.created_at,
         }

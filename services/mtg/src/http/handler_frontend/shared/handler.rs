@@ -6,6 +6,7 @@ use galvyn::core::stuff::api_error::ApiResult;
 use galvyn::core::stuff::api_json::ApiJson;
 use galvyn::core::stuff::schema::SchemaDateTime;
 use galvyn::get;
+use galvyn::post;
 use galvyn::rorm::Database;
 use galvyn::rorm::db::transaction::Transaction;
 use galvyn::rorm::fields::types::MaxStr;
@@ -22,8 +23,13 @@ use crate::http::handler_frontend::shared::schema::SharedDeckResponse;
 use crate::http::handler_frontend::shared::schema::redact_entry;
 use crate::http::handler_frontend::shared::schema::redact_slot;
 use crate::http::handler_frontend::shared::schema::redact_statistics;
+use crate::http::handler_frontend::tournaments::participants;
+use crate::http::handler_frontend::tournaments::participants::schema::ListParticipantsResponse;
+use crate::http::handler_frontend::tournaments::participants::schema::ParticipantResponse;
+use crate::http::handler_frontend::tournaments::participants::schema::SignUpErrors;
 use crate::http::handler_frontend::tournaments::schema::TournamentResponse;
 use crate::models::account::Account;
+use crate::models::account::extractor::Viewer;
 use crate::models::collection::Collection;
 use crate::models::collection::listing::EntryPage;
 use crate::models::collection::listing::EntryQuery;
@@ -203,6 +209,47 @@ pub async fn get_shared_tournament(
     Ok(ApiJson(TournamentResponse::new(tournament, owner, None)))
 }
 
+/// The Participants of the Tournament a share link points at
+///
+/// Says which of them is the reader, if any.
+#[get("/{token}/participants")]
+pub async fn list_shared_tournament_participants(
+    viewer: Viewer,
+    Path(token): Path<String>,
+) -> ApiResult<ApiJson<ListParticipantsResponse>> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    let token = MaxStr::new(token).map_err(|_| unknown_link())?;
+    let Some(tournament) = Tournament::get_by_share_token(&mut tx, &token).await? else {
+        tx.rollback().await?;
+        return Err(unknown_link());
+    };
+    let response = participants::handler::list(&mut tx, &tournament, viewer).await?;
+
+    tx.commit().await?;
+
+    Ok(ApiJson(response))
+}
+
+/// Sign the logged-in Account up for the Tournament a share link points at
+///
+/// The way into an unlisted Tournament; refused like `sign_up_for_tournament`.
+#[post("/{token}/sign-up")]
+pub async fn sign_up_for_shared_tournament(
+    account: Account,
+    Path(token): Path<String>,
+) -> ApiResult<ApiJson<ParticipantResponse>, SignUpErrors> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    let token = MaxStr::new(token).map_err(|_| unknown_link())?;
+    let Some(tournament) = Tournament::get_by_share_token(&mut tx, &token).await? else {
+        tx.rollback().await?;
+        return Err(unknown_link());
+    };
+    let response = participants::handler::sign_up(&mut tx, &tournament, &account).await;
+    participants::handler::finish(tx, response).await
+}
+
 /// Resolve a share token into the collection it unlocks
 ///
 /// A token that is too long, unknown or left over on a collection that is not
@@ -216,6 +263,6 @@ async fn resolve(tx: &mut Transaction, token: &str) -> ApiResult<Collection> {
 }
 
 /// The one answer every unusable link gets
-fn unknown_link() -> ApiError {
+fn unknown_link<E>() -> ApiError<E> {
     ApiError::bad_request("Request was denied")
 }

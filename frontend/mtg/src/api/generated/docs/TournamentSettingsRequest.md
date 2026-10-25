@@ -11,7 +11,9 @@ Name | Type
 `format` | string
 `location` | string
 `name` | string
+`participant_limit` | number
 `ruleset` | [Ruleset](Ruleset.md)
+`self_sign_up` | boolean
 `starts_at` | string
 `table_size` | number
 `visibility` | [Visibility](Visibility.md)

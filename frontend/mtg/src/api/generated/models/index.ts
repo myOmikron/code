@@ -1,6 +1,50 @@
 /* tslint:disable */
 /* eslint-disable */
 /**
+ * Why an Account could not be added as a Participant
+ * @export
+ * @interface AddAccountParticipantErrors
+ */
+export interface AddAccountParticipantErrors {
+    /**
+     * The Account already is a Participant
+     * @type {boolean}
+     * @memberof AddAccountParticipantErrors
+     */
+    already_participant: boolean;
+    /**
+     * The first Round started, so the Participants are settled
+     * @type {boolean}
+     * @memberof AddAccountParticipantErrors
+     */
+    registration_over: boolean;
+    /**
+     * The caller named too many unknown usernames lately, so this one was not looked up
+     * @type {boolean}
+     * @memberof AddAccountParticipantErrors
+     */
+    too_many_unknown_usernames: boolean;
+    /**
+     * No Account goes by this username
+     * @type {boolean}
+     * @memberof AddAccountParticipantErrors
+     */
+    unknown_username: boolean;
+}
+/**
+ * The Account an Organizer adds as a Participant
+ * @export
+ * @interface AddAccountParticipantRequest
+ */
+export interface AddAccountParticipantRequest {
+    /**
+     * Username of the Account, case ignored
+     * @type {string}
+     * @memberof AddAccountParticipantRequest
+     */
+    username: string;
+}
+/**
  * Request to file stacks into a collection
  * @export
  * @interface AddCollectionEntriesRequest
@@ -52,6 +96,38 @@ export interface AddDeckCardRequest {
 }
 
 
+/**
+ * Why a Guest could not be added
+ * @export
+ * @interface AddGuestParticipantErrors
+ */
+export interface AddGuestParticipantErrors {
+    /**
+     * The name is empty or only blanks
+     * @type {boolean}
+     * @memberof AddGuestParticipantErrors
+     */
+    empty_name: boolean;
+    /**
+     * The first Round started, so the Participants are settled
+     * @type {boolean}
+     * @memberof AddGuestParticipantErrors
+     */
+    registration_over: boolean;
+}
+/**
+ * The Guest an Organizer adds as a Participant
+ * @export
+ * @interface AddGuestParticipantRequest
+ */
+export interface AddGuestParticipantRequest {
+    /**
+     * The name the Guest goes by in this Tournament
+     * @type {string}
+     * @memberof AddGuestParticipantRequest
+     */
+    name: string;
+}
 /**
  * Why a passkey could not be added
  * @export
@@ -122,6 +198,18 @@ export interface AddScannerSessionEntryRequest {
 }
 
 
+/**
+ * @type AddTournamentAccount200Response
+ * 
+ * @export
+ */
+export type AddTournamentAccount200Response = FormErrorResponseForAddAccountParticipantErrors | ParticipantResponse;
+/**
+ * @type AddTournamentGuest200Response
+ * 
+ * @export
+ */
+export type AddTournamentGuest200Response = FormErrorResponseForAddGuestParticipantErrors | ParticipantResponse;
 /**
  * Request to put a card on a watch list
  * @export
@@ -4001,6 +4089,48 @@ export interface FinishRegistrationRequest {
 /**
  * The response that is sent in a case of an error the caller should present his user
  * @export
+ * @interface FormErrorResponseForAddAccountParticipantErrors
+ */
+export interface FormErrorResponseForAddAccountParticipantErrors {
+    /**
+     * The actual error struct
+     * @type {AddAccountParticipantErrors}
+     * @memberof FormErrorResponseForAddAccountParticipantErrors
+     */
+    error: AddAccountParticipantErrors;
+    /**
+     * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
+     * @type {ErrorConstant}
+     * @memberof FormErrorResponseForAddAccountParticipantErrors
+     */
+    result: ErrorConstant;
+}
+
+
+/**
+ * The response that is sent in a case of an error the caller should present his user
+ * @export
+ * @interface FormErrorResponseForAddGuestParticipantErrors
+ */
+export interface FormErrorResponseForAddGuestParticipantErrors {
+    /**
+     * The actual error struct
+     * @type {AddGuestParticipantErrors}
+     * @memberof FormErrorResponseForAddGuestParticipantErrors
+     */
+    error: AddGuestParticipantErrors;
+    /**
+     * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
+     * @type {ErrorConstant}
+     * @memberof FormErrorResponseForAddGuestParticipantErrors
+     */
+    result: ErrorConstant;
+}
+
+
+/**
+ * The response that is sent in a case of an error the caller should present his user
+ * @export
  * @interface FormErrorResponseForAddPasskeyErrors
  */
 export interface FormErrorResponseForAddPasskeyErrors {
@@ -4329,6 +4459,27 @@ export interface FormErrorResponseForSendBugReportErrors {
      * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
      * @type {ErrorConstant}
      * @memberof FormErrorResponseForSendBugReportErrors
+     */
+    result: ErrorConstant;
+}
+
+
+/**
+ * The response that is sent in a case of an error the caller should present his user
+ * @export
+ * @interface FormErrorResponseForSignUpErrors
+ */
+export interface FormErrorResponseForSignUpErrors {
+    /**
+     * The actual error struct
+     * @type {SignUpErrors}
+     * @memberof FormErrorResponseForSignUpErrors
+     */
+    error: SignUpErrors;
+    /**
+     * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
+     * @type {ErrorConstant}
+     * @memberof FormErrorResponseForSignUpErrors
      */
     result: ErrorConstant;
 }
@@ -4707,6 +4858,25 @@ export interface ListOpenIdProvidersResponse {
      * @memberof ListOpenIdProvidersResponse
      */
     providers: Array<SimpleOpenIdProvider>;
+}
+/**
+ * The Participants of a Tournament
+ * @export
+ * @interface ListParticipantsResponse
+ */
+export interface ListParticipantsResponse {
+    /**
+     * The reader's own Participant, `null` if the reader is none
+     * @type {string}
+     * @memberof ListParticipantsResponse
+     */
+    me?: string | null;
+    /**
+     * Every Participant, in the order they were added or signed up
+     * @type {Array<ParticipantResponse>}
+     * @memberof ListParticipantsResponse
+     */
+    participants: Array<ParticipantResponse>;
 }
 /**
  * The passkeys of the logged-in account
@@ -5443,6 +5613,31 @@ export const OrganizerRole = {
 export type OrganizerRole = typeof OrganizerRole[keyof typeof OrganizerRole];
 
 /**
+ * One Participant of a Tournament
+ * @export
+ * @interface ParticipantResponse
+ */
+export interface ParticipantResponse {
+    /**
+     * Whether it is a Guest rather than an Account
+     * @type {boolean}
+     * @memberof ParticipantResponse
+     */
+    guest: boolean;
+    /**
+     * The Account's username as it is now, or the Guest's name
+     * @type {string}
+     * @memberof ParticipantResponse
+     */
+    name: string;
+    /**
+     * Primary key
+     * @type {string}
+     * @memberof ParticipantResponse
+     */
+    uuid: string;
+}
+/**
  * An OIDC login waiting for its username step
  * @export
  * @interface PendingOidcLogin
@@ -5460,6 +5655,44 @@ export interface PendingOidcLogin {
      * @memberof PendingOidcLogin
      */
     provider: string;
+}
+/**
+ * An Account whose username starts with what the Organizer typed
+ * @export
+ * @interface PlayerCandidateResponse
+ */
+export interface PlayerCandidateResponse {
+    /**
+     * The Account
+     * @type {string}
+     * @memberof PlayerCandidateResponse
+     */
+    account: string;
+    /**
+     * The Account's username as it is now
+     * @type {string}
+     * @memberof PlayerCandidateResponse
+     */
+    username: string;
+}
+/**
+ * The Accounts whose username starts with what the Organizer typed
+ * @export
+ * @interface PlayerCandidatesResponse
+ */
+export interface PlayerCandidatesResponse {
+    /**
+     * Up to ten Accounts, alphabetically by username
+     * @type {Array<PlayerCandidateResponse>}
+     * @memberof PlayerCandidatesResponse
+     */
+    accounts: Array<PlayerCandidateResponse>;
+    /**
+     * The caller searched too often lately, so nothing was searched
+     * @type {boolean}
+     * @memberof PlayerCandidatesResponse
+     */
+    too_many_searches: boolean;
 }
 /**
  * What one card cost on one day
@@ -6993,6 +7226,37 @@ export interface SharedWithMeDeckResponse {
 
 
 /**
+ * Why an Account could not sign up
+ * @export
+ * @interface SignUpErrors
+ */
+export interface SignUpErrors {
+    /**
+     * The Account already is a Participant
+     * @type {boolean}
+     * @memberof SignUpErrors
+     */
+    already_participant: boolean;
+    /**
+     * Self sign-up is off, the Tournament is private or its first Round started
+     * @type {boolean}
+     * @memberof SignUpErrors
+     */
+    closed: boolean;
+    /**
+     * The participant limit is reached
+     * @type {boolean}
+     * @memberof SignUpErrors
+     */
+    full: boolean;
+}
+/**
+ * @type SignUpForSharedTournament200Response
+ * 
+ * @export
+ */
+export type SignUpForSharedTournament200Response = FormErrorResponseForSignUpErrors | ParticipantResponse;
+/**
  * @type Signup200Response
  * 
  * @export
@@ -7832,11 +8096,23 @@ export interface TournamentResponse {
      */
     owner?: string | null;
     /**
+     * How many Participants self sign-up admits at most, `null` for no limit
+     * @type {number}
+     * @memberof TournamentResponse
+     */
+    participant_limit?: number | null;
+    /**
      * The Ruleset it follows
      * @type {Ruleset}
      * @memberof TournamentResponse
      */
     ruleset: Ruleset;
+    /**
+     * Whether Accounts may sign up themselves
+     * @type {boolean}
+     * @memberof TournamentResponse
+     */
+    self_sign_up: boolean;
     /**
      * Secret of the share link while it is Unlisted, for its Organizers only
      * @type {string}
@@ -7883,11 +8159,23 @@ export interface TournamentResponse {
  */
 export interface TournamentSettingsErrors {
     /**
+     * The participant limit is below two
+     * @type {boolean}
+     * @memberof TournamentSettingsErrors
+     */
+    participant_limit_too_small: boolean;
+    /**
      * The Ruleset is not played at the Table size
      * @type {boolean}
      * @memberof TournamentSettingsErrors
      */
     ruleset_mismatch: boolean;
+    /**
+     * Self sign-up is on for a private Tournament
+     * @type {boolean}
+     * @memberof TournamentSettingsErrors
+     */
+    self_sign_up_needs_visibility: boolean;
     /**
      * The Table size is outside 2 to 5
      * @type {boolean}
@@ -7932,11 +8220,23 @@ export interface TournamentSettingsRequest {
      */
     name: string;
     /**
+     * How many Participants self sign-up admits at most, two or more; `null` for no limit
+     * @type {number}
+     * @memberof TournamentSettingsRequest
+     */
+    participant_limit?: number | null;
+    /**
      * The Ruleset to follow: `Mtr` at 2, `TopDeck` or `MultiplayerAddendum` at 3 to 5
      * @type {Ruleset}
      * @memberof TournamentSettingsRequest
      */
     ruleset: Ruleset;
+    /**
+     * Whether Accounts may sign up themselves; only for a public or unlisted Tournament
+     * @type {boolean}
+     * @memberof TournamentSettingsRequest
+     */
+    self_sign_up: boolean;
     /**
      * When it is announced to start: the date and the start time
      * @type {string}

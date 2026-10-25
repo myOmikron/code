@@ -19,6 +19,8 @@ import {
     ListboxLabel,
     ListboxOption,
     RequiredLabel,
+    Switch,
+    SwitchField,
     Textarea,
 } from "components";
 import { GlobeAltIcon, LinkIcon, LockClosedIcon } from "@heroicons/react/20/solid";
@@ -70,6 +72,8 @@ function initialValues(tournament: TournamentResponse | null) {
         ruleset: tournament?.ruleset ?? Ruleset.TopDeck,
         format: tournament?.format ?? null,
         visibility: tournament?.visibility ?? Visibility.Public,
+        participantLimit: tournament?.participant_limit == null ? "" : String(tournament.participant_limit),
+        selfSignUp: tournament?.self_sign_up ?? false,
     };
 }
 
@@ -112,6 +116,8 @@ export function TournamentDialog({ open, tournament, formats, onClose, onSaved }
                     ruleset: value.ruleset,
                     format: value.format,
                     visibility: value.visibility,
+                    participant_limit: value.participantLimit === "" ? null : Number(value.participantLimit),
+                    self_sign_up: value.selfSignUp,
                 };
                 const response =
                     tournament === null
@@ -127,6 +133,12 @@ export function TournamentDialog({ open, tournament, formats, onClose, onSaved }
                         },
                         unknown_format: (errors) => {
                             errors.fields.format = t("error.unknown-format");
+                        },
+                        participant_limit_too_small: (errors) => {
+                            errors.fields.participantLimit = t("error.participant-limit-too-small");
+                        },
+                        self_sign_up_needs_visibility: (errors) => {
+                            errors.fields.selfSignUp = t("error.self-sign-up-needs-visibility");
                         },
                     });
                 }
@@ -296,7 +308,14 @@ export function TournamentDialog({ open, tournament, formats, onClose, onSaved }
                             )}
                         </form.Field>
 
-                        <form.Field name={"visibility"}>
+                        <form.Field
+                            name={"visibility"}
+                            listeners={{
+                                onChange: ({ value }) => {
+                                    if (value === Visibility.Private) form.setFieldValue("selfSignUp", false);
+                                },
+                            }}
+                        >
                             {(fieldApi) => (
                                 <Field>
                                     <Label>{t("label.visibility")}</Label>
@@ -323,6 +342,52 @@ export function TournamentDialog({ open, tournament, formats, onClose, onSaved }
                                             </ListboxDescription>
                                         </ListboxOption>
                                     </Listbox>
+                                </Field>
+                            )}
+                        </form.Field>
+
+                        <form.Subscribe selector={(state) => state.values.visibility}>
+                            {(visibility) => (
+                                <form.Field name={"selfSignUp"}>
+                                    {(fieldApi) => (
+                                        <SwitchField disabled={visibility === Visibility.Private}>
+                                            <Label>{t("label.self-sign-up")}</Label>
+                                            <Description>
+                                                {visibility === Visibility.Private
+                                                    ? t("description.self-sign-up-private")
+                                                    : t("description.self-sign-up")}
+                                            </Description>
+                                            <Switch
+                                                color={"lime"}
+                                                checked={fieldApi.state.value}
+                                                onChange={fieldApi.handleChange}
+                                            />
+                                            {fieldApi.state.meta.errors.map((error) => (
+                                                <ErrorMessage key={String(error)}>{String(error)}</ErrorMessage>
+                                            ))}
+                                        </SwitchField>
+                                    )}
+                                </form.Field>
+                            )}
+                        </form.Subscribe>
+
+                        <form.Field name={"participantLimit"}>
+                            {(fieldApi) => (
+                                <Field>
+                                    <Label>{t("label.participant-limit")}</Label>
+                                    <Description>{t("description.participant-limit")}</Description>
+                                    <Input
+                                        type={"number"}
+                                        min={2}
+                                        step={1}
+                                        inputMode={"numeric"}
+                                        value={fieldApi.state.value}
+                                        invalid={fieldApi.state.meta.errors.length > 0}
+                                        onChange={(event) => fieldApi.handleChange(event.target.value)}
+                                    />
+                                    {fieldApi.state.meta.errors.map((error) => (
+                                        <ErrorMessage key={String(error)}>{String(error)}</ErrorMessage>
+                                    ))}
                                 </Field>
                             )}
                         </form.Field>

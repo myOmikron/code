@@ -148,6 +148,14 @@ _Avoid_: player (alone), entrant, attendee, member
 A Participant without an Account, known only by the name an Organizer gave it. A deleted Account's Participants become Guests named by its last username.
 _Avoid_: anonymous player, unregistered user
 
+**Self sign-up**:
+An Account making itself a Participant of a public or unlisted Tournament in Registration, where the Owner allowed it; it takes effect at once. Organizers add Accounts and Guests whether it is allowed or not.
+_Avoid_: registration (that is the Tournament state), join, enrol
+
+**Participant limit**:
+The most Participants a Tournament takes by Self sign-up; once reached, Self sign-up is refused. Organizers can still add Participants past it.
+_Avoid_: cap, max players
+
 **Table size**:
 How many Participants a Match of a Tournament seats when it is full: 2 for one-on-one, 3 to 5 for multiplayer. Fixed per Tournament; a Match with fewer Participants is a **smaller Match**.
 _Avoid_: pod size, players per table
