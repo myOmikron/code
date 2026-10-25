@@ -7,7 +7,7 @@
  */
 
 import { useTranslation } from "react-i18next";
-import { Ruleset, TournamentState, Visibility } from "src/api/generated";
+import { BestOf, RoundState, Ruleset, TournamentState, Visibility } from "src/api/generated";
 
 /**
  * The labels the tournament pages need
@@ -73,6 +73,40 @@ export function useTournamentLabels() {
                     return t("label.state-finished");
                 case TournamentState.Cancelled:
                     return t("label.state-cancelled");
+            }
+        },
+
+        /**
+         * How many Games a one-on-one Match is played to
+         *
+         * @param bestOf best of one or of three
+         *
+         * @returns its name
+         */
+        bestOf: (bestOf: BestOf): string => {
+            switch (bestOf) {
+                case BestOf.One:
+                    return t("label.best-of-one");
+                case BestOf.Three:
+                    return t("label.best-of-three");
+            }
+        },
+
+        /**
+         * How far a Round got
+         *
+         * @param state the Round's state
+         *
+         * @returns its name
+         */
+        roundState: (state: RoundState): string => {
+            switch (state) {
+                case RoundState.Previewed:
+                    return t("label.round-previewed");
+                case RoundState.Running:
+                    return t("label.round-running");
+                case RoundState.Ended:
+                    return t("label.round-ended");
             }
         },
 

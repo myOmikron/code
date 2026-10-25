@@ -7,6 +7,7 @@
 //!
 //! Every write to the roster first takes [`Tournament::lock_roster`], so two
 //! sign-ups racing for the last place under the limit are served one by one.
+//! Every change to the roster discards a previewed Round, which no longer fits it.
 
 use std::collections::HashMap;
 
@@ -34,6 +35,7 @@ use crate::models::tournament::db::TournamentParticipantInsertPatch;
 use crate::models::tournament::db::TournamentParticipantModel;
 use crate::models::tournament::db::participant_key;
 use crate::models::visibility::Visibility;
+use crate::tournament::record::EntrantId;
 
 /// One player in a Tournament
 #[derive(Debug, Clone)]
@@ -66,6 +68,16 @@ pub enum Player {
 pub struct ParticipantUuid(Uuid);
 
 impl ParticipantUuid {
+    /// Wrap a Participant's primary key read from a row
+    pub(in crate::models) fn new(uuid: Uuid) -> Self {
+        Self(uuid)
+    }
+
+    /// The Participant an answer of the engine names
+    pub fn from_entrant(entrant: EntrantId) -> Self {
+        Self(entrant)
+    }
+
     /// Get the underlying UUID type
     pub fn into_inner(self) -> Uuid {
         self.0
@@ -229,6 +241,7 @@ impl Tournament {
                 guest_name: None,
             })
             .await?;
+        self.discard_preview(tx).await?;
         Ok(Some(ParticipantUuid(uuid)))
     }
 
@@ -251,6 +264,7 @@ impl Tournament {
                 guest_name: Some(name),
             })
             .await?;
+        self.discard_preview(tx).await?;
         Ok(ParticipantUuid(uuid))
     }
 
@@ -269,6 +283,9 @@ impl Tournament {
                     .equals(self.uuid.into_inner()),
             ])
             .await?;
+        if removed > 0 {
+            self.discard_preview(tx).await?;
+        }
         Ok(removed > 0)
     }
 }
@@ -304,6 +321,8 @@ mod tests {
             share_token: None,
             participant_limit: Some(8),
             self_sign_up: true,
+            best_of: None,
+            swiss_rounds: None,
             state: TournamentState::Registration,
             created_at: OffsetDateTime::UNIX_EPOCH,
         }

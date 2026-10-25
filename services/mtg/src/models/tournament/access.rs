@@ -12,6 +12,9 @@
 use galvyn::core::re_exports::schemars;
 use galvyn::core::re_exports::schemars::JsonSchema;
 use galvyn::rorm;
+use galvyn::rorm::db::Executor;
+use galvyn::rorm::db::executor::All;
+use galvyn::rorm::db::sql::value::Value;
 use galvyn::rorm::db::transaction::Transaction;
 use galvyn::rorm::fields::types::MaxStr;
 use serde::Deserialize;
@@ -160,6 +163,26 @@ impl Tournament {
         };
         let role = tournament.organizer_role(tx, account).await?;
         Ok(role.map(|role| (tournament, role)))
+    }
+
+    /// Fetch a Tournament if `account` is one of its Organizers, locking it until the transaction ends
+    ///
+    /// For running it: pairing, starting and ending Rounds, Results. The lock
+    /// comes first, so what is read afterwards is what the last Organizer
+    /// left, and a second Organizer acting at once waits for this one.
+    #[instrument(name = "Tournament::get_as_organizer_for_update", skip(tx))]
+    pub async fn get_as_organizer_for_update(
+        tx: &mut Transaction,
+        uuid: TournamentUuid,
+        account: AccountUuid,
+    ) -> Result<Option<Tournament>, rorm::Error> {
+        (&mut *tx)
+            .execute::<All>(
+                "SELECT uuid FROM tournament WHERE uuid = $1 FOR NO KEY UPDATE".to_string(),
+                vec![Value::Uuid(uuid.into_inner())],
+            )
+            .await?;
+        Self::get_as_organizer(tx, uuid, account).await
     }
 
     /// Fetch a Tournament if `account` is its Owner

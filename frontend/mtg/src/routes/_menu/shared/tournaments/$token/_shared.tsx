@@ -62,6 +62,12 @@ function RouteComponent() {
                     <Tab href={"/shared/tournaments/$token/participants"} params={{ token }}>
                         {t("heading.participants")}
                     </Tab>
+                    <Tab href={"/shared/tournaments/$token/rounds"} params={{ token }}>
+                        {t("heading.rounds")}
+                    </Tab>
+                    <Tab href={"/shared/tournaments/$token/standings"} params={{ token }}>
+                        {t("heading.standings")}
+                    </Tab>
                 </TabMenu>
             }
         >

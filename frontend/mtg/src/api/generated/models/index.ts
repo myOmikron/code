@@ -1066,6 +1066,23 @@ export interface ApiErrorResponse {
      */
     trace_id: string;
 }
+
+/**
+ * How many Games a one-on-one Match is played to
+ * @export
+ */
+export const BestOf = {
+    /**
+    * One Game decides the Match
+    */
+    One: 'One',
+    /**
+    * Whoever wins two Games first wins the Match
+    */
+    Three: 'Three'
+} as const;
+export type BestOf = typeof BestOf[keyof typeof BestOf];
+
 /**
  * Which Commander bracket rules one printing counts towards
  * @export
@@ -2806,6 +2823,12 @@ export const DeletionMode = {
 } as const;
 export type DeletionMode = typeof DeletionMode[keyof typeof DeletionMode];
 
+/**
+ * @type EndTournamentRound200Response
+ * 
+ * @export
+ */
+export type EndTournamentRound200Response = FormErrorResponseForRoundErrors | TournamentStateResponse;
 
 /**
  * What a collection can be ordered by
@@ -3615,6 +3638,27 @@ export interface FormErrorResponseForRenamePasskeyErrors {
 /**
  * The response that is sent in a case of an error the caller should present his user
  * @export
+ * @interface FormErrorResponseForRoundErrors
+ */
+export interface FormErrorResponseForRoundErrors {
+    /**
+     * The actual error struct
+     * @type {RoundErrors}
+     * @memberof FormErrorResponseForRoundErrors
+     */
+    error: RoundErrors;
+    /**
+     * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
+     * @type {ErrorConstant}
+     * @memberof FormErrorResponseForRoundErrors
+     */
+    result: ErrorConstant;
+}
+
+
+/**
+ * The response that is sent in a case of an error the caller should present his user
+ * @export
  * @interface FormErrorResponseForSendBugReportErrors
  */
 export interface FormErrorResponseForSendBugReportErrors {
@@ -3624,6 +3668,48 @@ export interface FormErrorResponseForSendBugReportErrors {
     error: SendBugReportErrors;
     /**
      * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
+     */
+    result: ErrorConstant;
+}
+
+
+/**
+ * The response that is sent in a case of an error the caller should present his user
+ * @export
+ * @interface FormErrorResponseForSetResultErrors
+ */
+export interface FormErrorResponseForSetResultErrors {
+    /**
+     * The actual error struct
+     * @type {SetResultErrors}
+     * @memberof FormErrorResponseForSetResultErrors
+     */
+    error: SetResultErrors;
+    /**
+     * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
+     * @type {ErrorConstant}
+     * @memberof FormErrorResponseForSetResultErrors
+     */
+    result: ErrorConstant;
+}
+
+
+/**
+ * The response that is sent in a case of an error the caller should present his user
+ * @export
+ * @interface FormErrorResponseForSetSwissRoundsErrors
+ */
+export interface FormErrorResponseForSetSwissRoundsErrors {
+    /**
+     * The actual error struct
+     * @type {SetSwissRoundsErrors}
+     * @memberof FormErrorResponseForSetSwissRoundsErrors
+     */
+    error: SetSwissRoundsErrors;
+    /**
+     * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
+     * @type {ErrorConstant}
+     * @memberof FormErrorResponseForSetSwissRoundsErrors
      */
     result: ErrorConstant;
 }
@@ -4277,6 +4363,37 @@ export interface MarkedCard {
     oracle_id: string;
 }
 /**
+ * One Match, or a Bye
+ * @export
+ * @interface MatchResponse
+ */
+export interface MatchResponse {
+    /**
+     * Its Result, `null` while it has none and for a Bye
+     * @type {ResultResponse}
+     * @memberof MatchResponse
+     */
+    result?: ResultResponse | null;
+    /**
+     * Who plays, by Seat number
+     * @type {Array<SeatResponse>}
+     * @memberof MatchResponse
+     */
+    seats: Array<SeatResponse>;
+    /**
+     * The number of its table, 1 for the top table; `null` for a Bye
+     * @type {number}
+     * @memberof MatchResponse
+     */
+    table_number?: number | null;
+    /**
+     * Primary key
+     * @type {string}
+     * @memberof MatchResponse
+     */
+    uuid: string;
+}
+/**
  * @type Me200Response
  * 
  * @export
@@ -4661,6 +4778,25 @@ export const OrganizerRole = {
 } as const;
 export type OrganizerRole = typeof OrganizerRole[keyof typeof OrganizerRole];
 
+/**
+ * @type PairTournamentRound200Response
+ * 
+ * @export
+ */
+export type PairTournamentRound200Response = FormErrorResponseForRoundErrors | PairedRoundResponse;
+/**
+ * The Round just paired
+ * @export
+ * @interface PairedRoundResponse
+ */
+export interface PairedRoundResponse {
+    /**
+     * Its number
+     * @type {number}
+     * @memberof PairedRoundResponse
+     */
+    number: number;
+}
 /**
  * One Participant of a Tournament
  * @export
@@ -5358,6 +5494,25 @@ export interface ResolvedPrintingResponse {
     set_name: string;
 }
 /**
+ * The game score of a Match
+ * @export
+ * @interface ResultResponse
+ */
+export interface ResultResponse {
+    /**
+     * Games nobody won
+     * @type {number}
+     * @memberof ResultResponse
+     */
+    games_drawn: number;
+    /**
+     * Games won per Seat, in Seat order
+     * @type {Array<number>}
+     * @memberof ResultResponse
+     */
+    games_won: Array<number>;
+}
+/**
  * Request to sort everything in the deck back where it came from
  * @export
  * @interface ReturnAllDeckCardsRequest
@@ -5469,6 +5624,134 @@ export interface RotateShareTokenResponse {
      * The new secret — every link handed out before this call stopped working
      */
     share_token: string;
+}
+/**
+ * Why a Round could not be paired, started, ended or discarded
+ * @export
+ * @interface RoundErrors
+ */
+export interface RoundErrors {
+    /**
+     * Every Swiss Round was paired
+     * @type {boolean}
+     * @memberof RoundErrors
+     */
+    all_rounds_paired: boolean;
+    /**
+     * No Round of that number is previewed
+     * @type {boolean}
+     * @memberof RoundErrors
+     */
+    not_previewed: boolean;
+    /**
+     * No Round of that number is running
+     * @type {boolean}
+     * @memberof RoundErrors
+     */
+    not_running: boolean;
+    /**
+     * A Match of the Round has no Result yet
+     * @type {boolean}
+     * @memberof RoundErrors
+     */
+    results_missing: boolean;
+    /**
+     * A Round is previewed or running, so the next one waits
+     * @type {boolean}
+     * @memberof RoundErrors
+     */
+    round_open: boolean;
+    /**
+     * mtg does not pair this Tournament's Ruleset yet
+     * @type {boolean}
+     * @memberof RoundErrors
+     */
+    ruleset_not_paired: boolean;
+    /**
+     * Fewer than two Participants can be paired
+     * @type {boolean}
+     * @memberof RoundErrors
+     */
+    too_few_participants: boolean;
+    /**
+     * The Tournament is Finished or Cancelled
+     * @type {boolean}
+     * @memberof RoundErrors
+     */
+    tournament_over: boolean;
+}
+/**
+ * One Round
+ * @export
+ * @interface RoundResponse
+ */
+export interface RoundResponse {
+    /**
+     * Its Matches by table number, then its Byes
+     * @type {Array<MatchResponse>}
+     * @memberof RoundResponse
+     */
+    matches: Array<MatchResponse>;
+    /**
+     * Its number, 1 for the first Round
+     * @type {number}
+     * @memberof RoundResponse
+     */
+    number: number;
+    /**
+     * How far it got
+     * @type {RoundState}
+     * @memberof RoundResponse
+     */
+    state: RoundState;
+}
+
+
+
+/**
+ * How far a Round got
+ * @export
+ */
+export const RoundState = {
+    /**
+    * Paired, seen by Organizers only, not played yet
+    */
+    Previewed: 'Previewed',
+    /**
+    * Started: its Matches are being played
+    */
+    Running: 'Running',
+    /**
+    * Over: every Match has its Result
+    */
+    Ended: 'Ended'
+} as const;
+export type RoundState = typeof RoundState[keyof typeof RoundState];
+
+/**
+ * The Rounds of a Tournament the reader may see, and how many are planned
+ * @export
+ * @interface RoundsResponse
+ */
+export interface RoundsResponse {
+    /**
+     * The Rounds, oldest first; a previewed one only for Organizers
+     * @type {Array<RoundResponse>}
+     * @memberof RoundsResponse
+     */
+    rounds: Array<RoundResponse>;
+    /**
+     * How many Swiss Rounds mtg suggests for the Participants there are now; `null` for a Ruleset mtg does not pair yet
+     * @type {number}
+     * @memberof RoundsResponse
+     */
+    suggested_swiss_rounds?: number | null;
+    /**
+     * How many Swiss Rounds an Organizer set, or the first Round settled; `null` while the suggestion applies
+     * @type {number}
+     * @memberof RoundsResponse
+     */
+    swiss_rounds?: number | null;
 }
 
 /**
@@ -5606,6 +5889,37 @@ export interface SearchPublicDecksResponse {
      * How many decks the search found in total
      */
     total: number;
+}
+/**
+ * A Participant's Seat in a Match
+ * @export
+ * @interface SeatResponse
+ */
+export interface SeatResponse {
+    /**
+     * Whether it is a Guest rather than an Account
+     * @type {boolean}
+     * @memberof SeatResponse
+     */
+    guest: boolean;
+    /**
+     * The Account's username as it is now, or the Guest's name
+     * @type {string}
+     * @memberof SeatResponse
+     */
+    name: string;
+    /**
+     * Who sits there
+     * @type {string}
+     * @memberof SeatResponse
+     */
+    participant: string;
+    /**
+     * The Seat number, 1 for the first turn
+     * @type {number}
+     * @memberof SeatResponse
+     */
+    seat: number;
 }
 /**
  * @type SendBugReport200Response
@@ -5851,6 +6165,76 @@ export interface SetDeckVisibilityRequest {
 }
 
 
+/**
+ * Why a Result could not be set
+ * @export
+ * @interface SetResultErrors
+ */
+export interface SetResultErrors {
+    /**
+     * The game score does not fit a Match of this Tournament
+     * @type {boolean}
+     * @memberof SetResultErrors
+     */
+    invalid_score: boolean;
+    /**
+     * The Match's Round is only previewed
+     * @type {boolean}
+     * @memberof SetResultErrors
+     */
+    not_started: boolean;
+}
+/**
+ * The Result an Organizer sets for a Match
+ * @export
+ * @interface SetResultRequest
+ */
+export interface SetResultRequest {
+    /**
+     * Games nobody won
+     * @type {number}
+     * @memberof SetResultRequest
+     */
+    games_drawn: number;
+    /**
+     * Games won per Seat, in Seat order
+     * @type {Array<number>}
+     * @memberof SetResultRequest
+     */
+    games_won: Array<number>;
+}
+/**
+ * Why the number of Swiss Rounds was refused
+ * @export
+ * @interface SetSwissRoundsErrors
+ */
+export interface SetSwissRoundsErrors {
+    /**
+     * Below the Rounds paired so far, below one or above 30, or the Tournament is over
+     * @type {boolean}
+     * @memberof SetSwissRoundsErrors
+     */
+    out_of_range: boolean;
+}
+/**
+ * How many Swiss Rounds an Organizer wants played
+ * @export
+ * @interface SetSwissRoundsRequest
+ */
+export interface SetSwissRoundsRequest {
+    /**
+     * The number, at least the Rounds paired so far and at most 30
+     * @type {number}
+     * @memberof SetSwissRoundsRequest
+     */
+    swiss_rounds: number;
+}
+/**
+ * @type SetTournamentSwissRounds200Response
+ * 
+ * @export
+ */
+export type SetTournamentSwissRounds200Response = FormErrorResponseForSetSwissRoundsErrors | TournamentStateResponse;
 /**
  * A collection as the holder of its share link sees it
  * @export
@@ -6293,6 +6677,80 @@ export interface SplitCollectionEntryResponse {
     source: CollectionEntryResponse;
 }
 /**
+ * One Participant's line in the standings
+ * @export
+ * @interface StandingResponse
+ */
+export interface StandingResponse {
+    /**
+     * Byes had
+     * @type {number}
+     * @memberof StandingResponse
+     */
+    byes: number;
+    /**
+     * Matches drawn
+     * @type {number}
+     * @memberof StandingResponse
+     */
+    draws: number;
+    /**
+     * Whether it is a Guest rather than an Account
+     * @type {boolean}
+     * @memberof StandingResponse
+     */
+    guest: boolean;
+    /**
+     * Matches lost
+     * @type {number}
+     * @memberof StandingResponse
+     */
+    losses: number;
+    /**
+     * Its Match points, Byes included
+     * @type {number}
+     * @memberof StandingResponse
+     */
+    match_points: number;
+    /**
+     * The Account's username as it is now, or the Guest's name
+     * @type {string}
+     * @memberof StandingResponse
+     */
+    name: string;
+    /**
+     * Who
+     * @type {string}
+     * @memberof StandingResponse
+     */
+    participant: string;
+    /**
+     * Its place, 1 for the top; Participants equal on everything share one
+     * @type {number}
+     * @memberof StandingResponse
+     */
+    place: number;
+    /**
+     * Matches won, Byes not included
+     * @type {number}
+     * @memberof StandingResponse
+     */
+    wins: number;
+}
+/**
+ * The standings of a Tournament
+ * @export
+ * @interface StandingsResponse
+ */
+export interface StandingsResponse {
+    /**
+     * Every Participant, best first
+     * @type {Array<StandingResponse>}
+     * @memberof StandingsResponse
+     */
+    standings: Array<StandingResponse>;
+}
+/**
  * Response to a started add-passkey ceremony
  * @export
  * @interface StartAddPasskeyResponse
@@ -6596,6 +7054,12 @@ export interface TopCardResponse {
  */
 export interface TournamentResponse {
     /**
+     * How many Games a one-on-one Match is played to, `null` for a multiplayer one
+     * @type {BestOf}
+     * @memberof TournamentResponse
+     */
+    best_of?: BestOf | null;
+    /**
      * What Participants should know beforehand
      * @type {string}
      * @memberof TournamentResponse
@@ -6695,11 +7159,23 @@ export interface TournamentResponse {
  */
 export interface TournamentSettingsErrors {
     /**
+     * Best-of is missing at Table size 2 or given above it
+     * @type {boolean}
+     * @memberof TournamentSettingsErrors
+     */
+    best_of_mismatch: boolean;
+    /**
      * The participant limit is below two
      * @type {boolean}
      * @memberof TournamentSettingsErrors
      */
     participant_limit_too_small: boolean;
+    /**
+     * Table size, Ruleset or best-of changed after the first Round started
+     * @type {boolean}
+     * @memberof TournamentSettingsErrors
+     */
+    rules_locked: boolean;
     /**
      * The Ruleset is not played at the Table size
      * @type {boolean}
@@ -6731,6 +7207,12 @@ export interface TournamentSettingsErrors {
  * @interface TournamentSettingsRequest
  */
 export interface TournamentSettingsRequest {
+    /**
+     * How many Games a one-on-one Match is played to: required at Table size 2, `null` above
+     * @type {BestOf}
+     * @memberof TournamentSettingsRequest
+     */
+    best_of?: BestOf | null;
     /**
      * What Participants should know beforehand
      * @type {string}
@@ -6824,6 +7306,21 @@ export const TournamentState = {
     Cancelled: 'Cancelled'
 } as const;
 export type TournamentState = typeof TournamentState[keyof typeof TournamentState];
+
+/**
+ * Where the Tournament stands after a Round ended or the Swiss Rounds changed
+ * @export
+ * @interface TournamentStateResponse
+ */
+export interface TournamentStateResponse {
+    /**
+     * The Tournament's state now, `Finished` after the last Swiss Round
+     * @type {TournamentState}
+     * @memberof TournamentStateResponse
+     */
+    state: TournamentState;
+}
+
 
 /**
  * A Tournament in a list

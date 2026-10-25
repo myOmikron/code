@@ -7,6 +7,7 @@ A Tournament as one reader sees it
 
 Name | Type
 ------------ | -------------
+`best_of` | [BestOf](BestOf.md)
 `description` | string
 `format` | string
 `location` | string

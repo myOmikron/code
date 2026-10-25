@@ -4,7 +4,9 @@ use galvyn::core::re_exports::time::OffsetDateTime;
 use galvyn::rorm::fields::types::MaxStr;
 
 use crate::models::format::rules_for;
+use crate::models::tournament::Tournament;
 use crate::models::visibility::Visibility;
+use crate::tournament::ruleset::BestOf;
 use crate::tournament::ruleset::Ruleset;
 use crate::tournament::ruleset::TableSize;
 
@@ -31,6 +33,8 @@ pub struct RawTournamentSettings {
     pub participant_limit: Option<i32>,
     /// Whether Accounts may sign up themselves
     pub self_sign_up: bool,
+    /// How many Games a one-on-one Match is played to
+    pub best_of: Option<BestOf>,
 }
 
 /// A Tournament's settings that passed [`TournamentSettings::check`]
@@ -58,6 +62,19 @@ pub struct TournamentSettings {
     pub participant_limit: Option<i32>,
     /// Whether Accounts may sign up themselves, only while Public or Unlisted
     pub self_sign_up: bool,
+    /// How many Games a one-on-one Match is played to; set exactly at Table size 2
+    pub best_of: Option<BestOf>,
+}
+
+impl TournamentSettings {
+    /// Whether these settings change how `tournament` is played
+    ///
+    /// Table size, Ruleset and best-of are fixed once the first Round started.
+    pub fn changes_rules_of(&self, tournament: &Tournament) -> bool {
+        self.table_size != tournament.table_size
+            || self.ruleset != tournament.ruleset
+            || self.best_of != tournament.best_of
+    }
 }
 
 /// The smallest participant limit: a Tournament takes at least two Participants
@@ -76,6 +93,8 @@ pub struct SettingsRefusal {
     pub participant_limit_too_small: bool,
     /// Self sign-up is on for a private Tournament, which nobody else sees
     pub self_sign_up_needs_visibility: bool,
+    /// Best-of is missing one-on-one or given for a multiplayer Tournament
+    pub best_of_mismatch: bool,
 }
 
 impl TournamentSettings {
@@ -96,6 +115,9 @@ impl TournamentSettings {
             .is_some_and(|limit| limit < MIN_PARTICIPANT_LIMIT);
         refusal.self_sign_up_needs_visibility =
             raw.self_sign_up && raw.visibility == Visibility::Private;
+        if let Some(table_size) = table_size {
+            refusal.best_of_mismatch = (table_size.get() == 2) != raw.best_of.is_some();
+        }
 
         match table_size {
             Some(table_size) if refusal == SettingsRefusal::default() => Ok(Self {
@@ -109,6 +131,7 @@ impl TournamentSettings {
                 visibility: raw.visibility,
                 participant_limit: raw.participant_limit,
                 self_sign_up: raw.self_sign_up,
+                best_of: raw.best_of,
             }),
             _ => Err(refusal),
         }
@@ -123,6 +146,7 @@ mod tests {
     use super::RawTournamentSettings;
     use super::TournamentSettings;
     use crate::models::visibility::Visibility;
+    use crate::tournament::ruleset::BestOf;
     use crate::tournament::ruleset::Ruleset;
 
     fn raw(visibility: Visibility) -> RawTournamentSettings {
@@ -137,6 +161,35 @@ mod tests {
             visibility,
             participant_limit: None,
             self_sign_up: false,
+            best_of: None,
+        }
+    }
+
+    #[test]
+    fn a_one_on_one_tournament_is_best_of_one_or_three_and_a_multiplayer_one_neither() {
+        for (table_size, ruleset, best_of, valid) in [
+            (2, Ruleset::Mtr, Some(BestOf::One), true),
+            (2, Ruleset::Mtr, Some(BestOf::Three), true),
+            (2, Ruleset::Mtr, None, false),
+            (4, Ruleset::TopDeck, None, true),
+            (4, Ruleset::TopDeck, Some(BestOf::Three), false),
+        ] {
+            let settings = RawTournamentSettings {
+                table_size,
+                ruleset,
+                best_of,
+                ..raw(Visibility::Public)
+            };
+            match TournamentSettings::check(settings) {
+                Ok(settings) => {
+                    assert!(valid, "{table_size} {best_of:?}");
+                    assert_eq!(settings.best_of, best_of);
+                }
+                Err(refusal) => {
+                    assert!(!valid, "{table_size} {best_of:?}");
+                    assert!(refusal.best_of_mismatch, "{table_size} {best_of:?}");
+                }
+            }
         }
     }
 

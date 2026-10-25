@@ -69,6 +69,7 @@ import type {
     DeckTagResponse,
     DeckUndoResponse,
     DeleteAccountRequest,
+    EndTournamentRound200Response,
     EntrySort,
     FileScannerSessionRequest,
     FileScannerSessionResponse,
@@ -89,6 +90,8 @@ import type {
     FormErrorResponseForFinishLoginErrors,
     FormErrorResponseForRegistrationErrors,
     FormErrorResponseForRenamePasskeyErrors,
+    FormErrorResponseForRoundErrors,
+    FormErrorResponseForSetResultErrors,
     GetPendingOidcLoginResponse,
     ImportDeckCardsRequest,
     ImportDeckCardsResponse,
@@ -119,6 +122,7 @@ import type {
     MyTournamentsResponse,
     NameAccountRequest,
     OfferTournamentHandover200Response,
+    PairTournamentRound200Response,
     PlayerCandidatesResponse,
     PriceHistoryResponse,
     PrintingLanguagesResponse,
@@ -142,6 +146,7 @@ import type {
     Role,
     RotateDeckShareTokenResponse,
     RotateShareTokenResponse,
+    RoundsResponse,
     ScannerSessionDetailResponse,
     ScannerSessionEntryResponse,
     ScannerSessionResponse,
@@ -156,6 +161,9 @@ import type {
     SetDeckFolderRequest,
     SetDeckRuleZeroRequest,
     SetDeckVisibilityRequest,
+    SetResultRequest,
+    SetSwissRoundsRequest,
+    SetTournamentSwissRounds200Response,
     SharedCollectionResponse,
     SharedDeckResponse,
     SignUpForSharedTournament200Response,
@@ -163,6 +171,7 @@ import type {
     SignupRequest,
     SplitCollectionEntryRequest,
     SplitCollectionEntryResponse,
+    StandingsResponse,
     StartAddPasskeyResponse,
     StartLogin200Response,
     StartLoginRequest,
@@ -458,6 +467,10 @@ export interface AttachDeckCollectionRequest {
     deck: string;
 }
 
+export interface CancelTournamentRequest {
+    tournament: string;
+}
+
 export interface ChooseUsernameOperationRequest {
     /**
      * 
@@ -646,6 +659,16 @@ export interface DetachDeckCollectionRequest {
      * 
      */
     deck: string;
+}
+
+export interface DiscardTournamentRoundRequest {
+    tournament: string;
+    number: number;
+}
+
+export interface EndTournamentRoundRequest {
+    tournament: string;
+    number: number;
 }
 
 export interface FileScannerSessionOperationRequest {
@@ -855,7 +878,15 @@ export interface GetSharedTournamentRequest {
     token: string;
 }
 
+export interface GetSharedTournamentStandingsRequest {
+    token: string;
+}
+
 export interface GetTournamentRequest {
+    tournament: string;
+}
+
+export interface GetTournamentStandingsRequest {
     tournament: string;
 }
 
@@ -1077,11 +1108,19 @@ export interface ListSharedTournamentParticipantsRequest {
     token: string;
 }
 
+export interface ListSharedTournamentRoundsRequest {
+    token: string;
+}
+
 export interface ListTournamentOrganizersRequest {
     tournament: string;
 }
 
 export interface ListTournamentParticipantsRequest {
+    tournament: string;
+}
+
+export interface ListTournamentRoundsRequest {
     tournament: string;
 }
 
@@ -1117,6 +1156,10 @@ export interface MergeCollectionEntriesOperationRequest {
 export interface OfferTournamentHandoverRequest {
     tournament: string;
     NameAccountRequest?: NameAccountRequest;
+}
+
+export interface PairTournamentRoundRequest {
+    tournament: string;
 }
 
 export interface PutDeckCollaboratorOperationRequest {
@@ -1394,6 +1437,17 @@ export interface SetDeckRuleZeroOperationRequest {
     SetDeckRuleZeroRequest?: SetDeckRuleZeroRequest;
 }
 
+export interface SetTournamentMatchResultRequest {
+    tournament: string;
+    match: string;
+    SetResultRequest?: SetResultRequest;
+}
+
+export interface SetTournamentSwissRoundsRequest {
+    tournament: string;
+    SetSwissRoundsRequest?: SetSwissRoundsRequest;
+}
+
 export interface SetVisibilityCollectionRequest {
     /**
      * 
@@ -1465,6 +1519,11 @@ export interface StartRegistrationOperationRequest {
      * 
      */
     StartRegistrationRequest?: StartRegistrationRequest;
+}
+
+export interface StartTournamentRoundRequest {
+    tournament: string;
+    number: number;
 }
 
 export interface SwapDeckCardOperationRequest {
@@ -3128,6 +3187,57 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for cancelTournament without sending the request
+     */
+    async cancelTournamentRequestOpts(requestParameters: CancelTournamentRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tournament'] == null) {
+            throw new runtime.RequiredError(
+                'tournament',
+                'Required parameter "tournament" was null or undefined when calling cancelTournament().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/tournaments/{tournament}/cancel`;
+        urlPath = urlPath.replace('{tournament}', encodeURIComponent(String(requestParameters['tournament'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Cancel a Tournament, as an Organizer  Any time before it is Finished. A previewed Round goes; the Rounds played so far stay visible.
+     * Cancel a Tournament, as an Organizer
+     */
+    async cancelTournamentRaw(requestParameters: CancelTournamentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
+        const requestOptions = await this.cancelTournamentRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<any>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     * Cancel a Tournament, as an Organizer  Any time before it is Finished. A previewed Round goes; the Rounds played so far stay visible.
+     * Cancel a Tournament, as an Organizer
+     */
+    async cancelTournament(requestParameters: CancelTournamentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
+        const response = await this.cancelTournamentRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for chooseUsername without sending the request
      */
     async chooseUsernameRequestOpts(requestParameters: ChooseUsernameOperationRequest): Promise<runtime.RequestOpts> {
@@ -4345,6 +4455,116 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async detachDeckCollection(requestParameters: DetachDeckCollectionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
         const response = await this.detachDeckCollectionRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for discardTournamentRound without sending the request
+     */
+    async discardTournamentRoundRequestOpts(requestParameters: DiscardTournamentRoundRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tournament'] == null) {
+            throw new runtime.RequiredError(
+                'tournament',
+                'Required parameter "tournament" was null or undefined when calling discardTournamentRound().'
+            );
+        }
+
+        if (requestParameters['number'] == null) {
+            throw new runtime.RequiredError(
+                'number',
+                'Required parameter "number" was null or undefined when calling discardTournamentRound().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/tournaments/{tournament}/rounds/{number}`;
+        urlPath = urlPath.replace('{tournament}', encodeURIComponent(String(requestParameters['tournament'])));
+        urlPath = urlPath.replace('{number}', encodeURIComponent(String(requestParameters['number'])));
+
+        return {
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Throw a previewed Round away, as an Organizer, to pair it again
+     * Throw a previewed Round away, as an Organizer, to pair it again
+     */
+    async discardTournamentRoundRaw(requestParameters: DiscardTournamentRoundRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FormErrorResponseForRoundErrors>> {
+        const requestOptions = await this.discardTournamentRoundRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Throw a previewed Round away, as an Organizer, to pair it again
+     * Throw a previewed Round away, as an Organizer, to pair it again
+     */
+    async discardTournamentRound(requestParameters: DiscardTournamentRoundRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FormErrorResponseForRoundErrors> {
+        const response = await this.discardTournamentRoundRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for endTournamentRound without sending the request
+     */
+    async endTournamentRoundRequestOpts(requestParameters: EndTournamentRoundRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tournament'] == null) {
+            throw new runtime.RequiredError(
+                'tournament',
+                'Required parameter "tournament" was null or undefined when calling endTournamentRound().'
+            );
+        }
+
+        if (requestParameters['number'] == null) {
+            throw new runtime.RequiredError(
+                'number',
+                'Required parameter "number" was null or undefined when calling endTournamentRound().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/tournaments/{tournament}/rounds/{number}/end`;
+        urlPath = urlPath.replace('{tournament}', encodeURIComponent(String(requestParameters['tournament'])));
+        urlPath = urlPath.replace('{number}', encodeURIComponent(String(requestParameters['number'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * End a running Round once every Match has its Result, as an Organizer  After the last Swiss Round the Tournament is Finished.
+     * End a running Round once every Match has its Result, as an Organizer
+     */
+    async endTournamentRoundRaw(requestParameters: EndTournamentRoundRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<EndTournamentRound200Response>> {
+        const requestOptions = await this.endTournamentRoundRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * End a running Round once every Match has its Result, as an Organizer  After the last Swiss Round the Tournament is Finished.
+     * End a running Round once every Match has its Result, as an Organizer
+     */
+    async endTournamentRound(requestParameters: EndTournamentRoundRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<EndTournamentRound200Response> {
+        const response = await this.endTournamentRoundRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -5997,6 +6217,53 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for getSharedTournamentStandings without sending the request
+     */
+    async getSharedTournamentStandingsRequestOpts(requestParameters: GetSharedTournamentStandingsRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['token'] == null) {
+            throw new runtime.RequiredError(
+                'token',
+                'Required parameter "token" was null or undefined when calling getSharedTournamentStandings().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/shared/tournaments/{token}/standings`;
+        urlPath = urlPath.replace('{token}', encodeURIComponent(String(requestParameters['token'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * The standings of the Tournament a share link points at
+     * The standings of the Tournament a share link points at
+     */
+    async getSharedTournamentStandingsRaw(requestParameters: GetSharedTournamentStandingsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<StandingsResponse>> {
+        const requestOptions = await this.getSharedTournamentStandingsRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * The standings of the Tournament a share link points at
+     * The standings of the Tournament a share link points at
+     */
+    async getSharedTournamentStandings(requestParameters: GetSharedTournamentStandingsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<StandingsResponse> {
+        const response = await this.getSharedTournamentStandingsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for getTournament without sending the request
      */
     async getTournamentRequestOpts(requestParameters: GetTournamentRequest): Promise<runtime.RequestOpts> {
@@ -6079,6 +6346,53 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async getTournamentHandovers(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListTournamentsResponse> {
         const response = await this.getTournamentHandoversRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for getTournamentStandings without sending the request
+     */
+    async getTournamentStandingsRequestOpts(requestParameters: GetTournamentStandingsRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tournament'] == null) {
+            throw new runtime.RequiredError(
+                'tournament',
+                'Required parameter "tournament" was null or undefined when calling getTournamentStandings().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/tournaments/{tournament}/standings`;
+        urlPath = urlPath.replace('{tournament}', encodeURIComponent(String(requestParameters['tournament'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * The standings of a Tournament: Match points from every Result so far
+     * The standings of a Tournament: Match points from every Result so far
+     */
+    async getTournamentStandingsRaw(requestParameters: GetTournamentStandingsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<StandingsResponse>> {
+        const requestOptions = await this.getTournamentStandingsRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * The standings of a Tournament: Match points from every Result so far
+     * The standings of a Tournament: Match points from every Result so far
+     */
+    async getTournamentStandings(requestParameters: GetTournamentStandingsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<StandingsResponse> {
+        const response = await this.getTournamentStandingsRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -6989,6 +7303,53 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for listSharedTournamentRounds without sending the request
+     */
+    async listSharedTournamentRoundsRequestOpts(requestParameters: ListSharedTournamentRoundsRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['token'] == null) {
+            throw new runtime.RequiredError(
+                'token',
+                'Required parameter "token" was null or undefined when calling listSharedTournamentRounds().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/shared/tournaments/{token}/rounds`;
+        urlPath = urlPath.replace('{token}', encodeURIComponent(String(requestParameters['token'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * The Rounds of the Tournament a share link points at  Never a previewed one: the link shows what anybody sees.
+     * The Rounds of the Tournament a share link points at
+     */
+    async listSharedTournamentRoundsRaw(requestParameters: ListSharedTournamentRoundsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<RoundsResponse>> {
+        const requestOptions = await this.listSharedTournamentRoundsRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * The Rounds of the Tournament a share link points at  Never a previewed one: the link shows what anybody sees.
+     * The Rounds of the Tournament a share link points at
+     */
+    async listSharedTournamentRounds(requestParameters: ListSharedTournamentRoundsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<RoundsResponse> {
+        const response = await this.listSharedTournamentRoundsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for listTournamentOrganizers without sending the request
      */
     async listTournamentOrganizersRequestOpts(requestParameters: ListTournamentOrganizersRequest): Promise<runtime.RequestOpts> {
@@ -7079,6 +7440,53 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async listTournamentParticipants(requestParameters: ListTournamentParticipantsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListParticipantsResponse> {
         const response = await this.listTournamentParticipantsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for listTournamentRounds without sending the request
+     */
+    async listTournamentRoundsRequestOpts(requestParameters: ListTournamentRoundsRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tournament'] == null) {
+            throw new runtime.RequiredError(
+                'tournament',
+                'Required parameter "tournament" was null or undefined when calling listTournamentRounds().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/tournaments/{tournament}/rounds`;
+        urlPath = urlPath.replace('{tournament}', encodeURIComponent(String(requestParameters['tournament'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * The Rounds of a Tournament the reader may see  A previewed Round only shows to the Tournament\'s Organizers.
+     * The Rounds of a Tournament the reader may see
+     */
+    async listTournamentRoundsRaw(requestParameters: ListTournamentRoundsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<RoundsResponse>> {
+        const requestOptions = await this.listTournamentRoundsRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * The Rounds of a Tournament the reader may see  A previewed Round only shows to the Tournament\'s Organizers.
+     * The Rounds of a Tournament the reader may see
+     */
+    async listTournamentRounds(requestParameters: ListTournamentRoundsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<RoundsResponse> {
+        const response = await this.listTournamentRoundsRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -7358,6 +7766,53 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async offerTournamentHandover(requestParameters: OfferTournamentHandoverRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<OfferTournamentHandover200Response> {
         const response = await this.offerTournamentHandoverRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for pairTournamentRound without sending the request
+     */
+    async pairTournamentRoundRequestOpts(requestParameters: PairTournamentRoundRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tournament'] == null) {
+            throw new runtime.RequiredError(
+                'tournament',
+                'Required parameter "tournament" was null or undefined when calling pairTournamentRound().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/tournaments/{tournament}/rounds`;
+        urlPath = urlPath.replace('{tournament}', encodeURIComponent(String(requestParameters['tournament'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Pair the next Round as a preview, as an Organizer  Round 1 is paired at random, later Rounds by Match points without rematches. Only Organizers see the preview until it starts. Refused while another Round is previewed or running and once every Swiss Round was paired.
+     * Pair the next Round as a preview, as an Organizer
+     */
+    async pairTournamentRoundRaw(requestParameters: PairTournamentRoundRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PairTournamentRound200Response>> {
+        const requestOptions = await this.pairTournamentRoundRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Pair the next Round as a preview, as an Organizer  Round 1 is paired at random, later Rounds by Match points without rematches. Only Organizers see the preview until it starts. Refused while another Round is previewed or running and once every Swiss Round was paired.
+     * Pair the next Round as a preview, as an Organizer
+     */
+    async pairTournamentRound(requestParameters: PairTournamentRoundRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PairTournamentRound200Response> {
+        const response = await this.pairTournamentRoundRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -8791,6 +9246,114 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for setTournamentMatchResult without sending the request
+     */
+    async setTournamentMatchResultRequestOpts(requestParameters: SetTournamentMatchResultRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tournament'] == null) {
+            throw new runtime.RequiredError(
+                'tournament',
+                'Required parameter "tournament" was null or undefined when calling setTournamentMatchResult().'
+            );
+        }
+
+        if (requestParameters['match'] == null) {
+            throw new runtime.RequiredError(
+                'match',
+                'Required parameter "match" was null or undefined when calling setTournamentMatchResult().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/tournaments/{tournament}/matches/{match}/result`;
+        urlPath = urlPath.replace('{tournament}', encodeURIComponent(String(requestParameters['tournament'])));
+        urlPath = urlPath.replace('{match}', encodeURIComponent(String(requestParameters['match'])));
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['SetResultRequest'],
+        };
+    }
+
+    /**
+     * Set or correct the Result of a Match, as an Organizer  Any time once its Round started, also after the Tournament is over; the standings follow, the pairings stay as they are.
+     * Set or correct the Result of a Match, as an Organizer
+     */
+    async setTournamentMatchResultRaw(requestParameters: SetTournamentMatchResultRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FormErrorResponseForSetResultErrors>> {
+        const requestOptions = await this.setTournamentMatchResultRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Set or correct the Result of a Match, as an Organizer  Any time once its Round started, also after the Tournament is over; the standings follow, the pairings stay as they are.
+     * Set or correct the Result of a Match, as an Organizer
+     */
+    async setTournamentMatchResult(requestParameters: SetTournamentMatchResultRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FormErrorResponseForSetResultErrors> {
+        const response = await this.setTournamentMatchResultRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for setTournamentSwissRounds without sending the request
+     */
+    async setTournamentSwissRoundsRequestOpts(requestParameters: SetTournamentSwissRoundsRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tournament'] == null) {
+            throw new runtime.RequiredError(
+                'tournament',
+                'Required parameter "tournament" was null or undefined when calling setTournamentSwissRounds().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/tournaments/{tournament}/swiss-rounds`;
+        urlPath = urlPath.replace('{tournament}', encodeURIComponent(String(requestParameters['tournament'])));
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['SetSwissRoundsRequest'],
+        };
+    }
+
+    /**
+     * Set how many Swiss Rounds are played, as an Organizer  At least as many as were paired. Set to the Rounds played once the last of them ended, the Tournament is Finished.
+     * Set how many Swiss Rounds are played, as an Organizer
+     */
+    async setTournamentSwissRoundsRaw(requestParameters: SetTournamentSwissRoundsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SetTournamentSwissRounds200Response>> {
+        const requestOptions = await this.setTournamentSwissRoundsRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Set how many Swiss Rounds are played, as an Organizer  At least as many as were paired. Set to the Rounds played once the last of them ended, the Tournament is Finished.
+     * Set how many Swiss Rounds are played, as an Organizer
+     */
+    async setTournamentSwissRounds(requestParameters: SetTournamentSwissRoundsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SetTournamentSwissRounds200Response> {
+        const response = await this.setTournamentSwissRoundsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for setVisibilityCollection without sending the request
      */
     async setVisibilityCollectionRequestOpts(requestParameters: SetVisibilityCollectionRequest): Promise<runtime.RequestOpts> {
@@ -9254,6 +9817,61 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async startRegistration(requestParameters: StartRegistrationOperationRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<StartRegistration200Response> {
         const response = await this.startRegistrationRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for startTournamentRound without sending the request
+     */
+    async startTournamentRoundRequestOpts(requestParameters: StartTournamentRoundRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tournament'] == null) {
+            throw new runtime.RequiredError(
+                'tournament',
+                'Required parameter "tournament" was null or undefined when calling startTournamentRound().'
+            );
+        }
+
+        if (requestParameters['number'] == null) {
+            throw new runtime.RequiredError(
+                'number',
+                'Required parameter "number" was null or undefined when calling startTournamentRound().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/tournaments/{tournament}/rounds/{number}/start`;
+        urlPath = urlPath.replace('{tournament}', encodeURIComponent(String(requestParameters['tournament'])));
+        urlPath = urlPath.replace('{number}', encodeURIComponent(String(requestParameters['number'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Start a previewed Round, as an Organizer: from now on everybody sees it  Starting Round 1 closes Registration and settles the number of Swiss Rounds.
+     * Start a previewed Round, as an Organizer: from now on everybody sees it
+     */
+    async startTournamentRoundRaw(requestParameters: StartTournamentRoundRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FormErrorResponseForRoundErrors>> {
+        const requestOptions = await this.startTournamentRoundRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Start a previewed Round, as an Organizer: from now on everybody sees it  Starting Round 1 closes Registration and settles the number of Swiss Rounds.
+     * Start a previewed Round, as an Organizer: from now on everybody sees it
+     */
+    async startTournamentRound(requestParameters: StartTournamentRoundRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FormErrorResponseForRoundErrors> {
+        const response = await this.startTournamentRoundRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -10087,7 +10705,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Replace a Tournament\'s settings, as one of its Organizers
+     * Replace a Tournament\'s settings, as one of its Organizers  Table size, Ruleset and best-of stay as they are once the first Round started.
      * Replace a Tournament\'s settings, as one of its Organizers
      */
     async updateTournamentRaw(requestParameters: UpdateTournamentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CreateTournament200Response>> {
@@ -10098,7 +10716,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Replace a Tournament\'s settings, as one of its Organizers
+     * Replace a Tournament\'s settings, as one of its Organizers  Table size, Ruleset and best-of stay as they are once the first Round started.
      * Replace a Tournament\'s settings, as one of its Organizers
      */
     async updateTournament(requestParameters: UpdateTournamentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CreateTournament200Response> {

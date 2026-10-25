@@ -16,6 +16,7 @@ use crate::models::tournament::listing::Timeframe;
 use crate::models::tournament::settings::RawTournamentSettings;
 use crate::models::tournament::settings::SettingsRefusal;
 use crate::models::visibility::Visibility;
+use crate::tournament::ruleset::BestOf;
 use crate::tournament::ruleset::Ruleset;
 
 /// Every setting of a Tournament, to create one or to replace its settings
@@ -41,6 +42,8 @@ pub struct TournamentSettingsRequest {
     pub participant_limit: Option<i32>,
     /// Whether Accounts may sign up themselves; only for a public or unlisted Tournament
     pub self_sign_up: bool,
+    /// How many Games a one-on-one Match is played to: required at Table size 2, `null` above
+    pub best_of: Option<BestOf>,
 }
 
 impl From<TournamentSettingsRequest> for RawTournamentSettings {
@@ -56,6 +59,7 @@ impl From<TournamentSettingsRequest> for RawTournamentSettings {
             visibility: value.visibility,
             participant_limit: value.participant_limit,
             self_sign_up: value.self_sign_up,
+            best_of: value.best_of,
         }
     }
 }
@@ -73,6 +77,10 @@ pub struct TournamentSettingsErrors {
     pub participant_limit_too_small: bool,
     /// Self sign-up is on for a private Tournament
     pub self_sign_up_needs_visibility: bool,
+    /// Best-of is missing at Table size 2 or given above it
+    pub best_of_mismatch: bool,
+    /// Table size, Ruleset or best-of changed after the first Round started
+    pub rules_locked: bool,
 }
 
 impl From<SettingsRefusal> for TournamentSettingsErrors {
@@ -83,6 +91,8 @@ impl From<SettingsRefusal> for TournamentSettingsErrors {
             unknown_format: value.unknown_format,
             participant_limit_too_small: value.participant_limit_too_small,
             self_sign_up_needs_visibility: value.self_sign_up_needs_visibility,
+            best_of_mismatch: value.best_of_mismatch,
+            rules_locked: false,
         }
     }
 }
@@ -114,6 +124,8 @@ pub struct TournamentResponse {
     pub participant_limit: Option<i32>,
     /// Whether Accounts may sign up themselves
     pub self_sign_up: bool,
+    /// How many Games a one-on-one Match is played to, `null` for a multiplayer one
+    pub best_of: Option<BestOf>,
     /// Its Owner's username, `null` while the Tombstone holds it
     pub owner: Option<String>,
     /// The part the reader plays in running it, `null` for none
@@ -144,6 +156,7 @@ impl TournamentResponse {
             state: tournament.state,
             participant_limit: tournament.participant_limit,
             self_sign_up: tournament.self_sign_up,
+            best_of: tournament.best_of,
             owner: owner.map(|owner| owner.as_str().to_string()),
             organizer_role,
             share_token: organizer_role.and(tournament.share_token),

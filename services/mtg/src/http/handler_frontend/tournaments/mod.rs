@@ -19,6 +19,7 @@ use crate::http::middleware::account_required::AccountRequiredLayer;
 pub mod handler;
 pub mod organizers;
 pub mod participants;
+pub mod rounds;
 pub mod schema;
 
 /// Initialize the routes for Tournaments
@@ -38,6 +39,7 @@ fn public_routes() -> GalvynRouter {
         .handler(handler::list_public_tournaments)
         .handler(handler::get_tournament)
         .merge(participants::public_routes())
+        .merge(rounds::public_routes())
 }
 
 /// What any logged-in Account may do
@@ -55,6 +57,7 @@ fn organizer_routes() -> GalvynRouter {
         .handler(handler::update_tournament)
         .merge(organizers::organizer_routes())
         .merge(participants::organizer_routes())
+        .merge(rounds::organizer_routes())
 }
 
 /// What only the Owner of a Tournament may do
