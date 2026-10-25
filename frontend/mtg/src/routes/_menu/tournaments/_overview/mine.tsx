@@ -4,6 +4,7 @@ import { EmptyState, Subheading, Text } from "components";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import { RequireAccount } from "src/components/require-account";
+import { TournamentHandoverOffers } from "src/components/tournament-handover-offers";
 import { TournamentList } from "src/components/tournament-list";
 
 export const Route = createFileRoute("/_menu/tournaments/_overview/mine")({
@@ -12,7 +13,8 @@ export const Route = createFileRoute("/_menu/tournaments/_overview/mine")({
 });
 
 /**
- * The reader's Tournaments: the ones it organizes and the ones it plays in, latest start first.
+ * The reader's Tournaments: the ones it organizes and the ones it plays in, latest start first,
+ * below the ones offered to the reader to take over.
  *
  * @returns the two lists
  */
@@ -22,6 +24,7 @@ function RouteComponent() {
 
     return (
         <RequireAccount>
+            <TournamentHandoverOffers />
             {organizing.length === 0 && participating.length === 0 ? (
                 <EmptyState
                     icon={<TrophyIcon />}

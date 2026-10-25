@@ -1,7 +1,7 @@
 
 # OrganizerRole
 
-The Account the Tournament belongs to
+The part an Account plays in running a Tournament
 
 ## Properties
 

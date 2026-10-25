@@ -535,6 +535,25 @@ export const Api = {
         update: async (tournament: UUID, req: TournamentSettingsRequest) =>
             handleError(defaultApi.updateTournament({ tournament, TournamentSettingsRequest: req })),
         delete: async (tournament: UUID) => handleError(defaultApi.deleteTournament({ tournament })),
+        // Every Organizer reads and names Co-organizers; the Owner takes off
+        // any, a Co-organizer only itself.
+        organizers: {
+            list: async (tournament: UUID) => handleError(defaultApi.listTournamentOrganizers({ tournament })),
+            add: async (tournament: UUID, username: string) =>
+                handleError(defaultApi.addTournamentCoOrganizer({ tournament, NameAccountRequest: { username } })),
+            remove: async (tournament: UUID, account: UUID) =>
+                handleError(defaultApi.removeTournamentCoOrganizer({ tournament, account })),
+        },
+        // The Owner offers the Tournament to one Account at a time; nothing
+        // changes until that Account accepts.
+        handover: {
+            offer: async (tournament: UUID, username: string) =>
+                handleError(defaultApi.offerTournamentHandover({ tournament, NameAccountRequest: { username } })),
+            withdraw: async (tournament: UUID) => handleError(defaultApi.withdrawTournamentHandover({ tournament })),
+            offers: async () => handleError(defaultApi.getTournamentHandovers()),
+            accept: async (tournament: UUID) => handleError(defaultApi.acceptTournamentHandover({ tournament })),
+            decline: async (tournament: UUID) => handleError(defaultApi.declineTournamentHandover({ tournament })),
+        },
         // Organizers add and remove Participants while the Tournament is in
         // Registration; Accounts sign up themselves where the Owner allows it.
         participants: {

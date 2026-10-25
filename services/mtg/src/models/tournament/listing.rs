@@ -23,6 +23,7 @@ use crate::models::account::Username;
 use crate::models::account::db::AccountModel;
 use crate::models::tournament::Tournament;
 use crate::models::tournament::TournamentState;
+use crate::models::tournament::db::TournamentCoOrganizerModel;
 use crate::models::tournament::db::TournamentModel;
 use crate::models::tournament::db::TournamentParticipantModel;
 use crate::models::visibility::Visibility;
@@ -126,14 +127,14 @@ impl ListedTournament {
 
     /// The Tournaments `account` organizes, latest start first
     ///
-    /// The ones it owns, whatever their Visibility. Co-organizers (#318) add
-    /// the Tournaments they help run here.
+    /// The ones it owns or is a Co-organizer of, whatever their Visibility.
+    /// An Account is never both, so no Tournament shows twice.
     #[instrument(name = "ListedTournament::organized_by", skip(tx))]
     pub async fn organized_by(
         tx: &mut Transaction,
         account: AccountUuid,
     ) -> Result<Vec<ListedTournament>, rorm::Error> {
-        let rows = rorm::query(
+        let owned = rorm::query(
             &mut *tx,
             (
                 TournamentModel,
@@ -142,11 +143,32 @@ impl ListedTournament {
             ),
         )
         .condition(TournamentModel.owner.equals(account.into_inner()))
-        .order_desc(TournamentModel.starts_at)
-        .order_desc(TournamentModel.uuid)
         .all()
         .await?;
-        Ok(rows.into_iter().map(listed).collect())
+        let co_organized = rorm::query(
+            &mut *tx,
+            (
+                TournamentCoOrganizerModel
+                    .tournament
+                    .query_as(TournamentModel),
+                TournamentCoOrganizerModel.tournament.owner.username,
+                TournamentCoOrganizerModel.tournament.owner.tombstone,
+            ),
+        )
+        .condition(
+            TournamentCoOrganizerModel
+                .account
+                .equals(account.into_inner()),
+        )
+        .all()
+        .await?;
+
+        let mut tournaments: Vec<_> = owned.into_iter().chain(co_organized).map(listed).collect();
+        tournaments.sort_by(|a, b| {
+            (b.tournament.starts_at, b.tournament.uuid.into_inner())
+                .cmp(&(a.tournament.starts_at, a.tournament.uuid.into_inner()))
+        });
+        Ok(tournaments)
     }
 
     /// The Tournaments `account` takes part in as a Participant, latest start first

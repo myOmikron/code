@@ -161,3 +161,87 @@ pub struct TournamentParticipantInsertPatch {
 pub fn participant_key(tournament: Uuid, account: Uuid) -> Uuid {
     Uuid::new_v3(&tournament, account.as_bytes())
 }
+
+/// An Account named to run a Tournament with its Owner
+///
+/// The primary key is derived from the Tournament and the Account, see
+/// [`co_organizer_key`], so a Tournament holds each Account at most once.
+/// Goes with the Tournament and with the Account.
+#[derive(Model, Debug)]
+#[rorm(rename = "tournament_co_organizer")]
+pub struct TournamentCoOrganizerModel {
+    /// Primary key, [`co_organizer_key`] of the Tournament and the Account
+    #[rorm(primary_key)]
+    pub uuid: Uuid,
+
+    /// The Tournament the Account runs
+    #[rorm(index, on_update = "Cascade", on_delete = "Cascade")]
+    pub tournament: ForeignModel<TournamentModel>,
+
+    /// The Account running it
+    ///
+    /// Indexed for the Tournaments an Account runs.
+    #[rorm(index, on_update = "Cascade", on_delete = "Cascade")]
+    pub account: ForeignModel<AccountModel>,
+
+    /// The point in time the Account was named
+    #[rorm(auto_create_time)]
+    pub created_at: OffsetDateTime,
+}
+
+/// Insert patch for [`TournamentCoOrganizerModel`]
+#[derive(Patch)]
+#[rorm(model = "TournamentCoOrganizerModel")]
+pub struct TournamentCoOrganizerInsertPatch {
+    /// Primary key, [`co_organizer_key`] of the Tournament and the Account
+    pub uuid: Uuid,
+    /// The Tournament the Account runs
+    pub tournament: ForeignModel<TournamentModel>,
+    /// The Account running it
+    pub account: ForeignModel<AccountModel>,
+}
+
+/// The primary key of the Co-organizer row naming `account` on `tournament`
+///
+/// A name-based uuid in the Tournament's namespace: the same pair always gives
+/// the same key, so naming an Account twice collides on the primary key.
+pub fn co_organizer_key(tournament: Uuid, account: Uuid) -> Uuid {
+    Uuid::new_v3(&tournament, account.as_bytes())
+}
+
+/// The Owner's offer to hand a Tournament on, until it is accepted, declined or withdrawn
+///
+/// At most one per Tournament: a new offer replaces the pending one.
+#[derive(Model, Debug)]
+#[rorm(rename = "tournament_handover")]
+pub struct TournamentHandoverModel {
+    /// Primary key
+    #[rorm(primary_key)]
+    pub uuid: Uuid,
+
+    /// The Tournament offered
+    #[rorm(unique, on_update = "Cascade", on_delete = "Cascade")]
+    pub tournament: ForeignModel<TournamentModel>,
+
+    /// The Account it is offered to
+    ///
+    /// Indexed for the offers an Account has to answer.
+    #[rorm(index, on_update = "Cascade", on_delete = "Cascade")]
+    pub offered_to: ForeignModel<AccountModel>,
+
+    /// The point in time the Owner made the offer
+    #[rorm(auto_create_time)]
+    pub offered_at: OffsetDateTime,
+}
+
+/// Insert patch for [`TournamentHandoverModel`]
+#[derive(Patch)]
+#[rorm(model = "TournamentHandoverModel")]
+pub struct TournamentHandoverInsertPatch {
+    /// Primary key
+    pub uuid: Uuid,
+    /// The Tournament offered
+    pub tournament: ForeignModel<TournamentModel>,
+    /// The Account it is offered to
+    pub offered_to: ForeignModel<AccountModel>,
+}

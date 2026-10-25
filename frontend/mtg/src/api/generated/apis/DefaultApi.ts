@@ -20,6 +20,7 @@ import type {
     AddGuestParticipantRequest,
     AddScannerSessionEntryRequest,
     AddTournamentAccount200Response,
+    AddTournamentCoOrganizer200Response,
     AddTournamentGuest200Response,
     AddWatchListEntryRequest,
     AdminAccountDetail,
@@ -100,6 +101,7 @@ import type {
     ListGlobalTagsResponse,
     ListOnLoanResponse,
     ListOpenIdProvidersResponse,
+    ListOrganizersResponse,
     ListParticipantsResponse,
     ListPasskeysResponse,
     ListScannerSessionsResponse,
@@ -115,6 +117,8 @@ import type {
     MpcFillSearchRequest,
     MpcFillSearchResponse,
     MyTournamentsResponse,
+    NameAccountRequest,
+    OfferTournamentHandover200Response,
     PlayerCandidatesResponse,
     PriceHistoryResponse,
     PrintingLanguagesResponse,
@@ -185,6 +189,10 @@ import type {
     WatchListResponse,
 } from '../models/index';
 
+export interface AcceptTournamentHandoverRequest {
+    tournament: string;
+}
+
 export interface AcknowledgeWatchListAlarmRequest {
     /**
      * 
@@ -232,6 +240,11 @@ export interface AddScannerSessionEntryOperationRequest {
 export interface AddTournamentAccountRequest {
     tournament: string;
     AddAccountParticipantRequest?: AddAccountParticipantRequest;
+}
+
+export interface AddTournamentCoOrganizerRequest {
+    tournament: string;
+    NameAccountRequest?: NameAccountRequest;
 }
 
 export interface AddTournamentGuestRequest {
@@ -507,6 +520,10 @@ export interface CreateWatchListOperationRequest {
      * 
      */
     CreateWatchListRequest?: CreateWatchListRequest;
+}
+
+export interface DeclineTournamentHandoverRequest {
+    tournament: string;
 }
 
 export interface DeleteAccountOperationRequest {
@@ -1060,6 +1077,10 @@ export interface ListSharedTournamentParticipantsRequest {
     token: string;
 }
 
+export interface ListTournamentOrganizersRequest {
+    tournament: string;
+}
+
 export interface ListTournamentParticipantsRequest {
     tournament: string;
 }
@@ -1091,6 +1112,11 @@ export interface MergeCollectionEntriesOperationRequest {
      * 
      */
     MergeCollectionEntriesRequest?: MergeCollectionEntriesRequest;
+}
+
+export interface OfferTournamentHandoverRequest {
+    tournament: string;
+    NameAccountRequest?: NameAccountRequest;
 }
 
 export interface PutDeckCollaboratorOperationRequest {
@@ -1144,6 +1170,11 @@ export interface RemoveDeckCollaboratorRequest {
     /**
      * 
      */
+    account: string;
+}
+
+export interface RemoveTournamentCoOrganizerRequest {
+    tournament: string;
     account: string;
 }
 
@@ -1645,6 +1676,10 @@ export interface UpdateWatchListEntryOperationRequest {
     UpdateWatchListEntryRequest?: UpdateWatchListEntryRequest;
 }
 
+export interface WithdrawTournamentHandoverRequest {
+    tournament: string;
+}
+
 export interface WithdrawTournamentSignUpRequest {
     tournament: string;
 }
@@ -1653,6 +1688,53 @@ export interface WithdrawTournamentSignUpRequest {
  * 
  */
 export class DefaultApi extends runtime.BaseAPI {
+
+    /**
+     * Creates request options for acceptTournamentHandover without sending the request
+     */
+    async acceptTournamentHandoverRequestOpts(requestParameters: AcceptTournamentHandoverRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tournament'] == null) {
+            throw new runtime.RequiredError(
+                'tournament',
+                'Required parameter "tournament" was null or undefined when calling acceptTournamentHandover().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/tournaments/{tournament}/handover/accept`;
+        urlPath = urlPath.replace('{tournament}', encodeURIComponent(String(requestParameters['tournament'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Take over a Tournament offered to the logged-in Account  It becomes the Owner; the former Owner stays as a Co-organizer.
+     * Take over a Tournament offered to the logged-in Account
+     */
+    async acceptTournamentHandoverRaw(requestParameters: AcceptTournamentHandoverRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<TournamentResponse>> {
+        const requestOptions = await this.acceptTournamentHandoverRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Take over a Tournament offered to the logged-in Account  It becomes the Owner; the former Owner stays as a Co-organizer.
+     * Take over a Tournament offered to the logged-in Account
+     */
+    async acceptTournamentHandover(requestParameters: AcceptTournamentHandoverRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<TournamentResponse> {
+        const response = await this.acceptTournamentHandoverRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
 
     /**
      * Creates request options for acknowledgeWatchListAlarm without sending the request
@@ -1914,6 +1996,56 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async addTournamentAccount(requestParameters: AddTournamentAccountRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AddTournamentAccount200Response> {
         const response = await this.addTournamentAccountRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for addTournamentCoOrganizer without sending the request
+     */
+    async addTournamentCoOrganizerRequestOpts(requestParameters: AddTournamentCoOrganizerRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tournament'] == null) {
+            throw new runtime.RequiredError(
+                'tournament',
+                'Required parameter "tournament" was null or undefined when calling addTournamentCoOrganizer().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/tournaments/{tournament}/organizers`;
+        urlPath = urlPath.replace('{tournament}', encodeURIComponent(String(requestParameters['tournament'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['NameAccountRequest'],
+        };
+    }
+
+    /**
+     * Name an Account a Co-organizer by its username, as one of the Organizers  Unknown usernames are capped per caller, see [`UNKNOWN_USERNAMES`].
+     * Name an Account a Co-organizer by its username, as one of the Organizers
+     */
+    async addTournamentCoOrganizerRaw(requestParameters: AddTournamentCoOrganizerRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<AddTournamentCoOrganizer200Response>> {
+        const requestOptions = await this.addTournamentCoOrganizerRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Name an Account a Co-organizer by its username, as one of the Organizers  Unknown usernames are capped per caller, see [`UNKNOWN_USERNAMES`].
+     * Name an Account a Co-organizer by its username, as one of the Organizers
+     */
+    async addTournamentCoOrganizer(requestParameters: AddTournamentCoOrganizerRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AddTournamentCoOrganizer200Response> {
+        const response = await this.addTournamentCoOrganizerRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -3374,6 +3506,57 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async createWatchList(requestParameters: CreateWatchListOperationRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<WatchListResponse> {
         const response = await this.createWatchListRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for declineTournamentHandover without sending the request
+     */
+    async declineTournamentHandoverRequestOpts(requestParameters: DeclineTournamentHandoverRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tournament'] == null) {
+            throw new runtime.RequiredError(
+                'tournament',
+                'Required parameter "tournament" was null or undefined when calling declineTournamentHandover().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/tournaments/{tournament}/handover/decline`;
+        urlPath = urlPath.replace('{tournament}', encodeURIComponent(String(requestParameters['tournament'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Turn down a Tournament offered to the logged-in Account  Everything stays as it was, and the offer is gone.
+     * Turn down a Tournament offered to the logged-in Account
+     */
+    async declineTournamentHandoverRaw(requestParameters: DeclineTournamentHandoverRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
+        const requestOptions = await this.declineTournamentHandoverRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<any>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     * Turn down a Tournament offered to the logged-in Account  Everything stays as it was, and the offer is gone.
+     * Turn down a Tournament offered to the logged-in Account
+     */
+    async declineTournamentHandover(requestParameters: DeclineTournamentHandoverRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
+        const response = await this.declineTournamentHandoverRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -5861,6 +6044,45 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for getTournamentHandovers without sending the request
+     */
+    async getTournamentHandoversRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/tournaments/handovers`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * The Tournaments offered to the logged-in Account to take over, latest start first
+     * The Tournaments offered to the logged-in Account to take over, latest start first
+     */
+    async getTournamentHandoversRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListTournamentsResponse>> {
+        const requestOptions = await this.getTournamentHandoversRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * The Tournaments offered to the logged-in Account to take over, latest start first
+     * The Tournaments offered to the logged-in Account to take over, latest start first
+     */
+    async getTournamentHandovers(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListTournamentsResponse> {
+        const response = await this.getTournamentHandoversRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for getWatchList without sending the request
      */
     async getWatchListRequestOpts(requestParameters: GetWatchListRequest): Promise<runtime.RequestOpts> {
@@ -6767,6 +6989,53 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for listTournamentOrganizers without sending the request
+     */
+    async listTournamentOrganizersRequestOpts(requestParameters: ListTournamentOrganizersRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tournament'] == null) {
+            throw new runtime.RequiredError(
+                'tournament',
+                'Required parameter "tournament" was null or undefined when calling listTournamentOrganizers().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/tournaments/{tournament}/organizers`;
+        urlPath = urlPath.replace('{tournament}', encodeURIComponent(String(requestParameters['tournament'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Who runs a Tournament, and whom its Owner offered it to  Every Organizer reads it.
+     * Who runs a Tournament, and whom its Owner offered it to
+     */
+    async listTournamentOrganizersRaw(requestParameters: ListTournamentOrganizersRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListOrganizersResponse>> {
+        const requestOptions = await this.listTournamentOrganizersRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Who runs a Tournament, and whom its Owner offered it to  Every Organizer reads it.
+     * Who runs a Tournament, and whom its Owner offered it to
+     */
+    async listTournamentOrganizers(requestParameters: ListTournamentOrganizersRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListOrganizersResponse> {
+        const response = await this.listTournamentOrganizersRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for listTournamentParticipants without sending the request
      */
     async listTournamentParticipantsRequestOpts(requestParameters: ListTournamentParticipantsRequest): Promise<runtime.RequestOpts> {
@@ -7039,6 +7308,56 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async mergeCollectionEntries(requestParameters: MergeCollectionEntriesOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CollectionEntryResponse> {
         const response = await this.mergeCollectionEntriesRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for offerTournamentHandover without sending the request
+     */
+    async offerTournamentHandoverRequestOpts(requestParameters: OfferTournamentHandoverRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tournament'] == null) {
+            throw new runtime.RequiredError(
+                'tournament',
+                'Required parameter "tournament" was null or undefined when calling offerTournamentHandover().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/tournaments/{tournament}/handover`;
+        urlPath = urlPath.replace('{tournament}', encodeURIComponent(String(requestParameters['tournament'])));
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['NameAccountRequest'],
+        };
+    }
+
+    /**
+     * Offer a Tournament to an Account by its username, as its Owner  Replaces a pending offer. Nothing changes until the Account accepts. Unknown usernames are capped per caller, see [`UNKNOWN_USERNAMES`].
+     * Offer a Tournament to an Account by its username, as its Owner
+     */
+    async offerTournamentHandoverRaw(requestParameters: OfferTournamentHandoverRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<OfferTournamentHandover200Response>> {
+        const requestOptions = await this.offerTournamentHandoverRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Offer a Tournament to an Account by its username, as its Owner  Replaces a pending offer. Nothing changes until the Account accepts. Unknown usernames are capped per caller, see [`UNKNOWN_USERNAMES`].
+     * Offer a Tournament to an Account by its username, as its Owner
+     */
+    async offerTournamentHandover(requestParameters: OfferTournamentHandoverRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<OfferTournamentHandover200Response> {
+        const response = await this.offerTournamentHandoverRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -7342,6 +7661,65 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async removeDeckCollaborator(requestParameters: RemoveDeckCollaboratorRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
         const response = await this.removeDeckCollaboratorRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for removeTournamentCoOrganizer without sending the request
+     */
+    async removeTournamentCoOrganizerRequestOpts(requestParameters: RemoveTournamentCoOrganizerRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tournament'] == null) {
+            throw new runtime.RequiredError(
+                'tournament',
+                'Required parameter "tournament" was null or undefined when calling removeTournamentCoOrganizer().'
+            );
+        }
+
+        if (requestParameters['account'] == null) {
+            throw new runtime.RequiredError(
+                'account',
+                'Required parameter "account" was null or undefined when calling removeTournamentCoOrganizer().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/tournaments/{tournament}/organizers/{account}`;
+        urlPath = urlPath.replace('{tournament}', encodeURIComponent(String(requestParameters['tournament'])));
+        urlPath = urlPath.replace('{account}', encodeURIComponent(String(requestParameters['account'])));
+
+        return {
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Take a Co-organizer off a Tournament  The Owner takes off any Co-organizer, a Co-organizer only itself.
+     * Take a Co-organizer off a Tournament
+     */
+    async removeTournamentCoOrganizerRaw(requestParameters: RemoveTournamentCoOrganizerRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
+        const requestOptions = await this.removeTournamentCoOrganizerRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<any>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     * Take a Co-organizer off a Tournament  The Owner takes off any Co-organizer, a Co-organizer only itself.
+     * Take a Co-organizer off a Tournament
+     */
+    async removeTournamentCoOrganizer(requestParameters: RemoveTournamentCoOrganizerRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
+        const response = await this.removeTournamentCoOrganizerRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -9841,6 +10219,57 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async updateWatchListEntry(requestParameters: UpdateWatchListEntryOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
         const response = await this.updateWatchListEntryRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for withdrawTournamentHandover without sending the request
+     */
+    async withdrawTournamentHandoverRequestOpts(requestParameters: WithdrawTournamentHandoverRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tournament'] == null) {
+            throw new runtime.RequiredError(
+                'tournament',
+                'Required parameter "tournament" was null or undefined when calling withdrawTournamentHandover().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/tournaments/{tournament}/handover`;
+        urlPath = urlPath.replace('{tournament}', encodeURIComponent(String(requestParameters['tournament'])));
+
+        return {
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Withdraw the pending offer of a Tournament, as its Owner
+     * Withdraw the pending offer of a Tournament, as its Owner
+     */
+    async withdrawTournamentHandoverRaw(requestParameters: WithdrawTournamentHandoverRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
+        const requestOptions = await this.withdrawTournamentHandoverRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<any>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     * Withdraw the pending offer of a Tournament, as its Owner
+     * Withdraw the pending offer of a Tournament, as its Owner
+     */
+    async withdrawTournamentHandover(requestParameters: WithdrawTournamentHandoverRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
+        const response = await this.withdrawTournamentHandoverRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

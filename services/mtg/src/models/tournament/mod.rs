@@ -27,7 +27,9 @@ use crate::tournament::ruleset::TableSize;
 
 pub mod access;
 pub(in crate::models) mod db;
+pub mod handover;
 pub mod listing;
+pub mod organizer;
 pub mod participant;
 pub mod settings;
 

@@ -1,0 +1,191 @@
+[Migration]
+Hash = "17451200182380207097"
+Initial = false
+Dependency = 56
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateModel"
+Name = "tournament_co_organizer"
+
+[[Migration.Operations.Fields]]
+Name = "uuid"
+Type = "uuid"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "primary_key"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 175
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "created_at"
+Type = "datetime"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "auto_create_time"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 189
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateModel"
+Name = "tournament_handover"
+
+[[Migration.Operations.Fields]]
+Name = "uuid"
+Type = "uuid"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "primary_key"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 220
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "offered_at"
+Type = "datetime"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "auto_create_time"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 234
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "tournament_co_organizer"
+
+[Migration.Operations.Field]
+Name = "tournament"
+Type = "uuid"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "foreign_key"
+
+[Migration.Operations.Field.Annotations.Value]
+TableName = "tournament"
+ColumnName = "uuid"
+OnDelete = "Cascade"
+OnUpdate = "Cascade"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 179
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "tournament_co_organizer"
+
+[Migration.Operations.Field]
+Name = "account"
+Type = "uuid"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "foreign_key"
+
+[Migration.Operations.Field.Annotations.Value]
+TableName = "account"
+ColumnName = "uuid"
+OnDelete = "Cascade"
+OnUpdate = "Cascade"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 185
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "tournament_handover"
+
+[Migration.Operations.Field]
+Name = "tournament"
+Type = "uuid"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "foreign_key"
+
+[Migration.Operations.Field.Annotations.Value]
+TableName = "tournament"
+ColumnName = "uuid"
+OnDelete = "Cascade"
+OnUpdate = "Cascade"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "unique"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 224
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "tournament_handover"
+
+[Migration.Operations.Field]
+Name = "offered_to"
+Type = "uuid"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "foreign_key"
+
+[Migration.Operations.Field.Annotations.Value]
+TableName = "account"
+ColumnName = "uuid"
+OnDelete = "Cascade"
+OnUpdate = "Cascade"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 230
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateIndex"
+Model = "tournament_co_organizer"
+
+[Migration.Operations.Index]
+Columns = ["tournament"]
+
+[[Migration.Operations]]
+Type = "CreateIndex"
+Model = "tournament_co_organizer"
+
+[Migration.Operations.Index]
+Columns = ["account"]
+
+[[Migration.Operations]]
+Type = "CreateIndex"
+Model = "tournament_handover"
+
+[Migration.Operations.Index]
+Columns = ["offered_to"]
