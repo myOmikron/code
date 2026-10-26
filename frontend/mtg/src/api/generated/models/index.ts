@@ -7850,12 +7850,6 @@ export interface RoundErrors {
      */
     round_open: boolean;
     /**
-     * mtg does not pair this Tournament's Ruleset yet
-     * @type {boolean}
-     * @memberof RoundErrors
-     */
-    ruleset_not_paired: boolean;
-    /**
      * Fewer than two Participants can be paired
      * @type {boolean}
      * @memberof RoundErrors
@@ -9331,7 +9325,7 @@ export interface StandingResponse {
      */
     place: number;
     /**
-     * Its Tiebreakers between 0 and 1, in the order of [`StandingsResponse::tiebreakers`]
+     * Its Tiebreakers, in the order of [`StandingsResponse::tiebreakers`]: shares between 0 and 1, except `OpponentAverageMatchPoints`, which is Match points
      * @type {Array<number>}
      * @memberof StandingResponse
      */
@@ -9703,7 +9697,15 @@ export const Tiebreaker = {
     /**
     * Win rate: Match points over the most a Participant could have won, at least the floor
     */
-    WinRate: 'WinRate'
+    WinRate: 'WinRate',
+    /**
+    * MW%: Match points over the most a Participant could have won, without a floor
+    */
+    MatchWinPercentage: 'MatchWinPercentage',
+    /**
+    * OAMP: the average of the opponents&#39; Match points; a smaller Match adds an opponent with none per empty Seat
+    */
+    OpponentAverageMatchPoints: 'OpponentAverageMatchPoints'
 } as const;
 export type Tiebreaker = typeof Tiebreaker[keyof typeof Tiebreaker];
 

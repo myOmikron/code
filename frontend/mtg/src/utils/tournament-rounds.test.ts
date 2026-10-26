@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { BestOf } from "src/api/generated";
-import { formatResult, formatTiebreaker, gamesToWin, singleGameResult, winnerSeat } from "src/utils/tournament-rounds";
+import { BestOf, Tiebreaker } from "src/api/generated";
+import {
+    formatResult,
+    formatTiebreaker,
+    formatTiebreakerValue,
+    gamesToWin,
+    singleGameResult,
+    winnerSeat,
+} from "src/utils/tournament-rounds";
 
 describe("formatResult", () => {
     it("writes the games won in Seat order", () => {
@@ -22,6 +29,18 @@ describe("formatTiebreaker", () => {
 
     it("follows the reader's locale", () => {
         expect(formatTiebreaker(0.33, "de-DE")).toBe("33,00 %");
+    });
+});
+
+describe("formatTiebreakerValue", () => {
+    it("writes the opponents' average Match points as a number with two decimals", () => {
+        expect(formatTiebreakerValue(Tiebreaker.OpponentAverageMatchPoints, 25 / 6, "en-US")).toBe("4.17");
+        expect(formatTiebreakerValue(Tiebreaker.OpponentAverageMatchPoints, 7, "de-DE")).toBe("7,00");
+    });
+
+    it("writes every other Tiebreaker as a percentage", () => {
+        expect(formatTiebreakerValue(Tiebreaker.MatchWinPercentage, 0.5, "en-US")).toBe("50.00%");
+        expect(formatTiebreakerValue(Tiebreaker.OpponentMatchWinPercentage, 1 / 7, "en-US")).toBe("14.29%");
     });
 });
 

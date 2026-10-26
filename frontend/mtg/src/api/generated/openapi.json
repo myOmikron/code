@@ -22963,10 +22963,6 @@
                         "description": "A Round is previewed or running, so the next one waits",
                         "type": "boolean"
                     },
-                    "ruleset_not_paired": {
-                        "description": "mtg does not pair this Tournament's Ruleset yet",
-                        "type": "boolean"
-                    },
                     "too_few_participants": {
                         "description": "Fewer than two Participants can be paired",
                         "type": "boolean"
@@ -22985,7 +22981,6 @@
                     "results_disputed",
                     "results_missing",
                     "round_open",
-                    "ruleset_not_paired",
                     "too_few_participants",
                     "tournament_over"
                 ]
@@ -24645,7 +24640,7 @@
                         "format": "uint32"
                     },
                     "tiebreakers": {
-                        "description": "Its Tiebreakers between 0 and 1, in the order of [`StandingsResponse::tiebreakers`]",
+                        "description": "Its Tiebreakers, in the order of [`StandingsResponse::tiebreakers`]: shares between 0 and 1, except `OpponentAverageMatchPoints`, which is Match points",
                         "type": "array",
                         "items": {
                             "type": "number",
@@ -25059,6 +25054,20 @@
                         "type": "string",
                         "enum": [
                             "WinRate"
+                        ]
+                    },
+                    {
+                        "description": "MW%: Match points over the most a Participant could have won, without a floor",
+                        "type": "string",
+                        "enum": [
+                            "MatchWinPercentage"
+                        ]
+                    },
+                    {
+                        "description": "OAMP: the average of the opponents' Match points; a smaller Match adds an opponent with none per empty Seat",
+                        "type": "string",
+                        "enum": [
+                            "OpponentAverageMatchPoints"
                         ]
                     }
                 ]

@@ -189,6 +189,10 @@ export function useTournamentLabels() {
                     return t("label.tiebreaker-owr");
                 case Tiebreaker.WinRate:
                     return t("label.tiebreaker-wr");
+                case Tiebreaker.MatchWinPercentage:
+                    return t("label.tiebreaker-mw");
+                case Tiebreaker.OpponentAverageMatchPoints:
+                    return t("label.tiebreaker-oamp");
             }
         },
 
@@ -211,6 +215,10 @@ export function useTournamentLabels() {
                     return t("description.tiebreaker-owr");
                 case Tiebreaker.WinRate:
                     return t("description.tiebreaker-wr");
+                case Tiebreaker.MatchWinPercentage:
+                    return t("description.tiebreaker-mw");
+                case Tiebreaker.OpponentAverageMatchPoints:
+                    return t("description.tiebreaker-oamp");
             }
         },
 

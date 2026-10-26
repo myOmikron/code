@@ -15,7 +15,6 @@ Name | Type
 `results_disputed` | boolean
 `results_missing` | boolean
 `round_open` | boolean
-`ruleset_not_paired` | boolean
 `too_few_participants` | boolean
 `tournament_over` | boolean
 

@@ -163,7 +163,6 @@ export function TournamentRounds({ tournament, load, onTournamentChanged, me = n
         else if (error.results_missing) notify.error(t("error.results-missing"));
         else if (error.later_round_started) notify.error(t("error.later-round-started"));
         else if (error.too_few_participants) notify.error(t("error.too-few-participants"));
-        else if (error.ruleset_not_paired) notify.error(t("error.ruleset-not-paired"));
         else if (error.all_rounds_paired) notify.error(t("error.all-rounds-paired"));
         else if (error.tournament_over) notify.error(t("error.tournament-over"));
         else notify.error(t("error.round-changed"));

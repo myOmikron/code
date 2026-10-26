@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 
 use crate::tournament::matching::max_weight_matching;
+use crate::tournament::multiplayer::addendum_layout;
 use crate::tournament::multiplayer::pair_multiplayer;
 use crate::tournament::multiplayer::topdeck_layout;
 use crate::tournament::record::EntrantId;
@@ -35,8 +36,6 @@ pub struct PairedMatch {
 pub enum PairingError {
     /// Fewer than two Participants are pairable
     TooFewEntrants,
-    /// The engine does not pair this Ruleset yet
-    RulesetNotPaired(Ruleset),
 }
 
 /// Pair the next Swiss Round of `record`, rolling every chance from `seed`
@@ -47,7 +46,7 @@ pub fn pair_next_round(record: &TournamentRecord, seed: u64) -> Result<Pairing, 
     match record.ruleset {
         Ruleset::Mtr => pair_one_on_one(record, seed),
         Ruleset::TopDeck => pair_multiplayer(record, seed, topdeck_layout),
-        Ruleset::MultiplayerAddendum => Err(PairingError::RulesetNotPaired(record.ruleset)),
+        Ruleset::MultiplayerAddendum => pair_multiplayer(record, seed, addendum_layout),
     }
 }
 
@@ -376,19 +375,6 @@ mod tests {
                 }
             }
         }
-    }
-
-    #[test]
-    fn the_multiplayer_addendum_is_not_paired_yet() {
-        let record = TournamentRecord {
-            ruleset: Ruleset::MultiplayerAddendum,
-            table_size: TableSize::new(4).expect("a Table size"),
-            ..mtr(8)
-        };
-        assert_eq!(
-            pair_next_round(&record, 0),
-            Err(PairingError::RulesetNotPaired(Ruleset::MultiplayerAddendum))
-        );
     }
 
     #[test]

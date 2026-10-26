@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import type { RegisteredListResponse, RegisteredListsResponse, StandingsResponse } from "src/api/generated";
 import { TournamentRegisteredListDialog } from "src/components/tournament-registered-list-dialog";
 import { useTournamentLabels } from "src/components/tournament-labels";
-import { formatTiebreaker } from "src/utils/tournament-rounds";
+import { formatTiebreakerValue } from "src/utils/tournament-rounds";
 
 /**
  * The properties for {@link TournamentStandings}
@@ -125,7 +125,7 @@ export function TournamentStandings({ load, loadLists }: TournamentStandingsProp
                             )}
                             {standings.tiebreakers.map((tiebreaker, index) => (
                                 <TableCell key={tiebreaker} className={"text-right tabular-nums"}>
-                                    {formatTiebreaker(line.tiebreakers[index] ?? 0)}
+                                    {formatTiebreakerValue(tiebreaker, line.tiebreakers[index] ?? 0)}
                                 </TableCell>
                             ))}
                         </TableRow>

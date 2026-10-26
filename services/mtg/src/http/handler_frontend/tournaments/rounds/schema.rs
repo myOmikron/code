@@ -159,8 +159,6 @@ pub struct RoundErrors {
     pub all_rounds_paired: bool,
     /// Fewer than two Participants can be paired
     pub too_few_participants: bool,
-    /// mtg does not pair this Tournament's Ruleset yet
-    pub ruleset_not_paired: bool,
     /// No Round of that number is previewed
     pub not_previewed: bool,
     /// No Round of that number is running
@@ -183,7 +181,6 @@ impl From<RoundRefusal> for RoundErrors {
             RoundRefusal::RoundOpen => errors.round_open = true,
             RoundRefusal::AllRoundsPaired => errors.all_rounds_paired = true,
             RoundRefusal::TooFewParticipants => errors.too_few_participants = true,
-            RoundRefusal::RulesetNotPaired => errors.ruleset_not_paired = true,
             RoundRefusal::NotPreviewed => errors.not_previewed = true,
             RoundRefusal::NotRunning => errors.not_running = true,
             RoundRefusal::ResultsMissing => errors.results_missing = true,
@@ -287,7 +284,8 @@ pub struct StandingResponse {
     pub draws: u32,
     /// Byes had
     pub byes: u32,
-    /// Its Tiebreakers between 0 and 1, in the order of [`StandingsResponse::tiebreakers`]
+    /// Its Tiebreakers, in the order of [`StandingsResponse::tiebreakers`]: shares
+    /// between 0 and 1, except `OpponentAverageMatchPoints`, which is Match points
     pub tiebreakers: Vec<f64>,
     /// The last Round started before it Dropped, `null` while it plays on
     pub dropped_after_round: Option<i16>,
