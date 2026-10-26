@@ -18,6 +18,10 @@ pub struct ParticipantResponse {
     pub name: String,
     /// Whether it is a Guest rather than an Account
     pub guest: bool,
+    /// The first Round it plays if it was added late, `null` if it was there before Round 1
+    pub late_from_round: Option<i16>,
+    /// The last Round started before it Dropped, `null` while it plays on
+    pub dropped_after_round: Option<i16>,
 }
 
 impl From<Participant> for ParticipantResponse {
@@ -30,6 +34,8 @@ impl From<Participant> for ParticipantResponse {
             uuid: value.uuid,
             name,
             guest,
+            late_from_round: value.late_from_round,
+            dropped_after_round: value.dropped_after_round,
         }
     }
 }
@@ -60,8 +66,8 @@ pub struct AddAccountParticipantErrors {
     pub too_many_unknown_usernames: bool,
     /// The Account already is a Participant
     pub already_participant: bool,
-    /// The first Round started, so the Participants are settled
-    pub registration_over: bool,
+    /// The Swiss Rounds are over, so nobody is added any more
+    pub roster_closed: bool,
 }
 
 /// The Guest an Organizer adds as a Participant
@@ -76,8 +82,8 @@ pub struct AddGuestParticipantRequest {
 pub struct AddGuestParticipantErrors {
     /// The name is empty or only blanks
     pub empty_name: bool,
-    /// The first Round started, so the Participants are settled
-    pub registration_over: bool,
+    /// The Swiss Rounds are over, so nobody is added any more
+    pub roster_closed: bool,
 }
 
 /// Why an Account could not sign up
@@ -89,6 +95,16 @@ pub struct SignUpErrors {
     pub already_participant: bool,
     /// The participant limit is reached
     pub full: bool,
+}
+
+/// Why a Participant could not Drop
+#[derive(Debug, Clone, Default, Serialize, JsonSchema)]
+pub struct DropErrors {
+    /// No Round started yet: before the first Round a Participant withdraws
+    /// or is removed instead
+    pub not_started: bool,
+    /// The Tournament is Finished or Cancelled
+    pub tournament_over: bool,
 }
 
 /// What an Organizer typed while looking for an Account to add

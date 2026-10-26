@@ -559,7 +559,9 @@ export const Api = {
             decline: async (tournament: UUID) => handleError(defaultApi.declineTournamentHandover({ tournament })),
         },
         // Organizers add and remove Participants while the Tournament is in
-        // Registration; Accounts sign up themselves where the Owner allows it.
+        // Registration, and add late ones until the Swiss Rounds are over;
+        // Accounts sign up themselves where the Owner allows it. Once the
+        // first Round started, Participants Drop instead of leaving.
         participants: {
             list: (tournament: UUID) => defaultApi.listTournamentParticipants({ tournament }),
             addAccount: async (tournament: UUID, username: string) =>
@@ -574,6 +576,9 @@ export const Api = {
                 quietly(defaultApi.searchTournamentPlayers({ tournament, query })),
             signUp: async (tournament: UUID) => handleError(defaultApi.signUpForTournament({ tournament })),
             withdraw: async (tournament: UUID) => handleError(defaultApi.withdrawTournamentSignUp({ tournament })),
+            drop: async (tournament: UUID, participant: UUID) =>
+                handleError(defaultApi.dropTournamentParticipant({ tournament, participant })),
+            dropOut: async (tournament: UUID) => handleError(defaultApi.dropOutOfTournament({ tournament })),
         },
         // Running it: Organizers pair a Round as a preview only they see, start
         // it, set the Results and end it. The reads are open like `get`.

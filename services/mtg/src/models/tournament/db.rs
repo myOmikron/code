@@ -150,6 +150,12 @@ pub struct TournamentParticipantModel {
     /// The name an Organizer gave a Guest, `None` for an Account
     pub guest_name: Option<MaxStr<64>>,
 
+    /// The first Round a late Participant plays, `None` for one there before Round 1 started
+    pub late_from_round: Option<i16>,
+
+    /// The last Round started before the Participant Dropped, `None` while it plays on
+    pub dropped_after_round: Option<i16>,
+
     /// The point in time the Participant was added or signed up
     #[rorm(auto_create_time)]
     pub created_at: OffsetDateTime,
@@ -167,6 +173,8 @@ pub struct TournamentParticipantInsertPatch {
     pub account: Option<ForeignModel<AccountModel>>,
     /// The name of a Guest
     pub guest_name: Option<MaxStr<64>>,
+    /// The first Round a late Participant plays
+    pub late_from_round: Option<i16>,
 }
 
 /// The primary key of an Account's Participant row in a Tournament

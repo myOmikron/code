@@ -1,4 +1,5 @@
-//! The Participants of a Tournament: Organizers add and remove them, Accounts sign up
+//! The Participants of a Tournament: Organizers add, remove and Drop them,
+//! Accounts sign up and Drop
 //!
 //! Grouped by who may call a route, like [`super`]; [`super::initialize_routes`]
 //! merges each group into its own.
@@ -18,6 +19,7 @@ pub fn account_routes() -> GalvynRouter {
     GalvynRouter::new()
         .handler(handler::sign_up_for_tournament)
         .handler(handler::withdraw_tournament_sign_up)
+        .handler(handler::drop_out_of_tournament)
 }
 
 /// What the Organizers of a Tournament may do
@@ -26,5 +28,6 @@ pub fn organizer_routes() -> GalvynRouter {
         .handler(handler::add_tournament_account)
         .handler(handler::add_tournament_guest)
         .handler(handler::remove_tournament_participant)
+        .handler(handler::drop_tournament_participant)
         .handler(handler::search_tournament_players)
 }

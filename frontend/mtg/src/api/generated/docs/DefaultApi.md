@@ -59,6 +59,8 @@ All URIs are relative to *http://localhost*
 | [**deleteWatchListEntry**](DefaultApi.md#deletewatchlistentry) | **DELETE** /api/frontend/v1/watch-lists/{list}/entries/{entry} | Take a card off a watch list |
 | [**detachDeckCollection**](DefaultApi.md#detachdeckcollection) | **DELETE** /api/frontend/v1/decks/{deck}/collection | Stop keeping them |
 | [**discardTournamentRound**](DefaultApi.md#discardtournamentround) | **DELETE** /api/frontend/v1/tournaments/{tournament}/rounds/{number} | Throw a previewed Round away, as an Organizer, to pair it again |
+| [**dropOutOfTournament**](DefaultApi.md#dropoutoftournament) | **POST** /api/frontend/v1/tournaments/{tournament}/drop | Drop the logged-in Account out of a Tournament it plays in |
+| [**dropTournamentParticipant**](DefaultApi.md#droptournamentparticipant) | **POST** /api/frontend/v1/tournaments/{tournament}/participants/{participant}/drop | Drop a Participant, as an Organizer |
 | [**endTournamentRound**](DefaultApi.md#endtournamentround) | **POST** /api/frontend/v1/tournaments/{tournament}/rounds/{number}/end | End a running Round once every Match has its Result, as an Organizer |
 | [**fileScannerSession**](DefaultApi.md#filescannersessionoperation) | **POST** /api/frontend/v1/scanner-sessions/{session}/file | Atomically file every staged stack and empty the session |
 | [**fillDeckCollection**](DefaultApi.md#filldeckcollectionoperation) | **POST** /api/frontend/v1/decks/{deck}/sourcing/fill | Declare that the deck holds what its list asks for |
@@ -559,7 +561,7 @@ No authorization required
 
 Add an Account as a Participant by its username, as an Organizer
 
-Add an Account as a Participant by its username, as an Organizer  An Organizer may add itself. Only while the Tournament is in Registration; the participant limit does not hold Organizers back. Unknown usernames are capped per caller, see [&#x60;UNKNOWN_USERNAMES&#x60;].
+Add an Account as a Participant by its username, as an Organizer  An Organizer may add itself. In Registration, and as a late Participant until the Swiss Rounds are over; the participant limit does not hold Organizers back. Unknown usernames are capped per caller, see [&#x60;UNKNOWN_USERNAMES&#x60;].
 
 ### Example
 
@@ -705,7 +707,7 @@ No authorization required
 
 Add a Guest by name, as an Organizer
 
-Add a Guest by name, as an Organizer  Only while the Tournament is in Registration. The name is trimmed; two Guests may share one.
+Add a Guest by name, as an Organizer  In Registration, and as a late Participant until the Swiss Rounds are over. The name is trimmed; two Guests may share one.
 
 ### Example
 
@@ -4101,6 +4103,149 @@ example().catch(console.error);
 ### Return type
 
 [**FormErrorResponseForRoundErrors**](FormErrorResponseForRoundErrors.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## dropOutOfTournament
+
+> FormErrorResponseForDropErrors dropOutOfTournament(tournament)
+
+Drop the logged-in Account out of a Tournament it plays in
+
+Drop the logged-in Account out of a Tournament it plays in  Once the first Round started, until the Tournament is over; before the first Round an Account withdraws its sign-up instead. No later Round pairs it; it stays in the standings with its Results so far.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { DropOutOfTournamentRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    tournament: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies DropOutOfTournamentRequest;
+
+  try {
+    const data = await api.dropOutOfTournament(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **tournament** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**FormErrorResponseForDropErrors**](FormErrorResponseForDropErrors.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## dropTournamentParticipant
+
+> FormErrorResponseForDropErrors dropTournamentParticipant(tournament, participant)
+
+Drop a Participant, as an Organizer
+
+Drop a Participant, as an Organizer  Once the first Round started, until the Tournament is over. No later Round pairs it; it stays in the standings with its Results so far.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { DropTournamentParticipantRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    tournament: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string
+    participant: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies DropTournamentParticipantRequest;
+
+  try {
+    const data = await api.dropTournamentParticipant(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **tournament** | `string` |  | [Defaults to `undefined`] |
+| **participant** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**FormErrorResponseForDropErrors**](FormErrorResponseForDropErrors.md)
 
 ### Authorization
 

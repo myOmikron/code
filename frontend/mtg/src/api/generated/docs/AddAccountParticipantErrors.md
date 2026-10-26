@@ -8,7 +8,7 @@ Why an Account could not be added as a Participant
 Name | Type
 ------------ | -------------
 `already_participant` | boolean
-`registration_over` | boolean
+`roster_closed` | boolean
 `too_many_unknown_usernames` | boolean
 `unknown_username` | boolean
 

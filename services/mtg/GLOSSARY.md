@@ -192,6 +192,10 @@ _Avoid_: free win, skip
 A Participant leaving a Tournament, by itself or through an Organizer: it is not paired again, and its Results so far stay in the standings and in its opponents' Tiebreakers.
 _Avoid_: withdrawal, removal (removing takes a Participant out before the first Round)
 
+**Late Participant**:
+A Participant an Organizer added after the first Round started, while the Swiss Rounds are not over. It starts with no Match points, is paired from the next Round on and gets no losses for the Rounds it missed. Sign-up closes when the first Round starts, so only Organizers add late Participants.
+_Avoid_: latecomer (in identifiers), late entry
+
 **Tiebreaker**:
 A number the Ruleset defines to order Participants with equal Match points, such as opponents' Match-win percentage.
 _Avoid_: secondary score, resistance

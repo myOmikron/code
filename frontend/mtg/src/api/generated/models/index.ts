@@ -13,11 +13,11 @@ export interface AddAccountParticipantErrors {
      */
     already_participant: boolean;
     /**
-     * The first Round started, so the Participants are settled
+     * The Swiss Rounds are over, so nobody is added any more
      * @type {boolean}
      * @memberof AddAccountParticipantErrors
      */
-    registration_over: boolean;
+    roster_closed: boolean;
     /**
      * The caller named too many unknown usernames lately, so this one was not looked up
      * @type {boolean}
@@ -128,11 +128,11 @@ export interface AddGuestParticipantErrors {
      */
     empty_name: boolean;
     /**
-     * The first Round started, so the Participants are settled
+     * The Swiss Rounds are over, so nobody is added any more
      * @type {boolean}
      * @memberof AddGuestParticipantErrors
      */
-    registration_over: boolean;
+    roster_closed: boolean;
 }
 /**
  * The Guest an Organizer adds as a Participant
@@ -2836,6 +2836,25 @@ export const DeletionMode = {
 export type DeletionMode = typeof DeletionMode[keyof typeof DeletionMode];
 
 /**
+ * Why a Participant could not Drop
+ * @export
+ * @interface DropErrors
+ */
+export interface DropErrors {
+    /**
+     * No Round started yet: before the first Round a Participant withdraws or is removed instead
+     * @type {boolean}
+     * @memberof DropErrors
+     */
+    not_started: boolean;
+    /**
+     * The Tournament is Finished or Cancelled
+     * @type {boolean}
+     * @memberof DropErrors
+     */
+    tournament_over: boolean;
+}
+/**
  * @type EndTournamentRound200Response
  * 
  * @export
@@ -3519,6 +3538,27 @@ export interface FormErrorResponseForDeletePasskeyErrors {
     error: DeletePasskeyErrors;
     /**
      * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
+     */
+    result: ErrorConstant;
+}
+
+
+/**
+ * The response that is sent in a case of an error the caller should present his user
+ * @export
+ * @interface FormErrorResponseForDropErrors
+ */
+export interface FormErrorResponseForDropErrors {
+    /**
+     * The actual error struct
+     * @type {DropErrors}
+     * @memberof FormErrorResponseForDropErrors
+     */
+    error: DropErrors;
+    /**
+     * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
+     * @type {ErrorConstant}
+     * @memberof FormErrorResponseForDropErrors
      */
     result: ErrorConstant;
 }
@@ -4816,11 +4856,23 @@ export interface PairedRoundResponse {
  */
 export interface ParticipantResponse {
     /**
+     * The last Round started before it Dropped, `null` while it plays on
+     * @type {number}
+     * @memberof ParticipantResponse
+     */
+    dropped_after_round?: number | null;
+    /**
      * Whether it is a Guest rather than an Account
      * @type {boolean}
      * @memberof ParticipantResponse
      */
     guest: boolean;
+    /**
+     * The first Round it plays if it was added late, `null` if it was there before Round 1
+     * @type {number}
+     * @memberof ParticipantResponse
+     */
+    late_from_round?: number | null;
     /**
      * The Account's username as it is now, or the Guest's name
      * @type {string}
@@ -6706,6 +6758,12 @@ export interface StandingResponse {
      * @memberof StandingResponse
      */
     draws: number;
+    /**
+     * The last Round started before it Dropped, `null` while it plays on
+     * @type {number}
+     * @memberof StandingResponse
+     */
+    dropped_after_round?: number | null;
     /**
      * Whether it is a Guest rather than an Account
      * @type {boolean}

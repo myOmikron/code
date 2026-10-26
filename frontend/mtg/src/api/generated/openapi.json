@@ -10642,6 +10642,75 @@
                 }
             }
         },
+        "/api/frontend/v1/tournaments/{tournament}/drop": {
+            "post": {
+                "summary": "Drop the logged-in Account out of a Tournament it plays in",
+                "description": "Drop the logged-in Account out of a Tournament it plays in\n\nOnce the first Round started, until the Tournament is over; before the\nfirst Round an Account withdraws its sign-up instead. No later Round\npairs it; it stays in the standings with its Results so far.",
+                "operationId": "drop_out_of_tournament",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tournament",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of a [`Tournament`]",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "nullable": true
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/FormErrorResponse_for_DropErrors"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/frontend/v1/tournaments/{tournament}/organizers": {
             "get": {
                 "summary": "Who runs a Tournament, and whom its Owner offered it to",
@@ -10852,7 +10921,7 @@
         "/api/frontend/v1/tournaments/{tournament}/participants/accounts": {
             "post": {
                 "summary": "Add an Account as a Participant by its username, as an Organizer",
-                "description": "Add an Account as a Participant by its username, as an Organizer\n\nAn Organizer may add itself. Only while the Tournament is in Registration;\nthe participant limit does not hold Organizers back. Unknown usernames are\ncapped per caller, see [`UNKNOWN_USERNAMES`].",
+                "description": "Add an Account as a Participant by its username, as an Organizer\n\nAn Organizer may add itself. In Registration, and as a late Participant\nuntil the Swiss Rounds are over; the participant limit does not hold\nOrganizers back. Unknown usernames are capped per caller, see\n[`UNKNOWN_USERNAMES`].",
                 "operationId": "add_tournament_account",
                 "parameters": [
                     {
@@ -10930,7 +10999,7 @@
         "/api/frontend/v1/tournaments/{tournament}/participants/guests": {
             "post": {
                 "summary": "Add a Guest by name, as an Organizer",
-                "description": "Add a Guest by name, as an Organizer\n\nOnly while the Tournament is in Registration. The name is trimmed; two\nGuests may share one.",
+                "description": "Add a Guest by name, as an Organizer\n\nIn Registration, and as a late Participant until the Swiss Rounds are\nover. The name is trimmed; two Guests may share one.",
                 "operationId": "add_tournament_guest",
                 "parameters": [
                     {
@@ -11037,6 +11106,82 @@
                             "application/json": {
                                 "schema": {
                                     "nullable": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/tournaments/{tournament}/participants/{participant}/drop": {
+            "post": {
+                "summary": "Drop a Participant, as an Organizer",
+                "description": "Drop a Participant, as an Organizer\n\nOnce the first Round started, until the Tournament is over. No later\nRound pairs it; it stays in the standings with its Results so far.",
+                "operationId": "drop_tournament_participant",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tournament",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/TournamentUuid"
+                        },
+                        "style": "simple"
+                    },
+                    {
+                        "in": "path",
+                        "name": "participant",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/ParticipantUuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "nullable": true
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/FormErrorResponse_for_DropErrors"
+                                        }
+                                    ]
                                 }
                             }
                         }
@@ -12523,8 +12668,8 @@
                         "description": "The Account already is a Participant",
                         "type": "boolean"
                     },
-                    "registration_over": {
-                        "description": "The first Round started, so the Participants are settled",
+                    "roster_closed": {
+                        "description": "The Swiss Rounds are over, so nobody is added any more",
                         "type": "boolean"
                     },
                     "too_many_unknown_usernames": {
@@ -12538,7 +12683,7 @@
                 },
                 "required": [
                     "already_participant",
-                    "registration_over",
+                    "roster_closed",
                     "too_many_unknown_usernames",
                     "unknown_username"
                 ]
@@ -12651,14 +12796,14 @@
                         "description": "The name is empty or only blanks",
                         "type": "boolean"
                     },
-                    "registration_over": {
-                        "description": "The first Round started, so the Participants are settled",
+                    "roster_closed": {
+                        "description": "The Swiss Rounds are over, so nobody is added any more",
                         "type": "boolean"
                     }
                 },
                 "required": [
                     "empty_name",
-                    "registration_over"
+                    "roster_closed"
                 ]
             },
             "AddGuestParticipantRequest": {
@@ -16564,6 +16709,24 @@
                     }
                 ]
             },
+            "DropErrors": {
+                "description": "Why a Participant could not Drop",
+                "type": "object",
+                "properties": {
+                    "not_started": {
+                        "description": "No Round started yet: before the first Round a Participant withdraws or is removed instead",
+                        "type": "boolean"
+                    },
+                    "tournament_over": {
+                        "description": "The Tournament is Finished or Cancelled",
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "not_started",
+                    "tournament_over"
+                ]
+            },
             "EntrySort": {
                 "description": "What a collection can be ordered by",
                 "oneOf": [
@@ -17387,6 +17550,32 @@
                         "allOf": [
                             {
                                 "$ref": "#/components/schemas/DeletePasskeyErrors"
+                            }
+                        ]
+                    },
+                    "result": {
+                        "description": "A constant `\"Err\"` used to differentiate this schema from any other \"Ok\" schema",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ErrorConstant"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "error",
+                    "result"
+                ]
+            },
+            "FormErrorResponse_for_DropErrors": {
+                "description": "The response that is sent in a case of an error the caller should present his user",
+                "type": "object",
+                "properties": {
+                    "error": {
+                        "description": "The actual error struct",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DropErrors"
                             }
                         ]
                     },
@@ -19221,9 +19410,21 @@
                 "description": "One Participant of a Tournament",
                 "type": "object",
                 "properties": {
+                    "dropped_after_round": {
+                        "nullable": true,
+                        "description": "The last Round started before it Dropped, `null` while it plays on",
+                        "type": "integer",
+                        "format": "int16"
+                    },
                     "guest": {
                         "description": "Whether it is a Guest rather than an Account",
                         "type": "boolean"
+                    },
+                    "late_from_round": {
+                        "nullable": true,
+                        "description": "The first Round it plays if it was added late, `null` if it was there before Round 1",
+                        "type": "integer",
+                        "format": "int16"
                     },
                     "name": {
                         "description": "The Account's username as it is now, or the Guest's name",
@@ -21830,6 +22031,12 @@
                         "type": "integer",
                         "minimum": 0,
                         "format": "uint32"
+                    },
+                    "dropped_after_round": {
+                        "nullable": true,
+                        "description": "The last Round started before it Dropped, `null` while it plays on",
+                        "type": "integer",
+                        "format": "int16"
                     },
                     "guest": {
                         "description": "Whether it is a Guest rather than an Account",

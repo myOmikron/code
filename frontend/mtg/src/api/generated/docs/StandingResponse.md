@@ -9,6 +9,7 @@ Name | Type
 ------------ | -------------
 `byes` | number
 `draws` | number
+`dropped_after_round` | number
 `guest` | boolean
 `losses` | number
 `match_points` | number

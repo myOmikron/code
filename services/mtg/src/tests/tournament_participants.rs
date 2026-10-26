@@ -265,7 +265,7 @@ fn a_removed_participant_stays_out_of_another_tournament() {
 }
 
 #[test]
-fn the_roster_is_settled_once_the_first_round_starts() {
+fn sign_up_and_removal_end_once_the_first_round_starts() {
     run(async {
         let mut fixture = Fixture::new("Public").await;
         open_sign_up(&mut fixture, "Public", None).await;
@@ -273,8 +273,6 @@ fn the_roster_is_settled_once_the_first_round_starts() {
         let uuid = guest["uuid"].as_str().expect("uuid").to_string();
         start(&fixture).await;
 
-        let added = add_guest(&mut fixture.owner, &fixture.tournament, "Latecomer").await;
-        assert_eq!(added["error"]["registration_over"], true, "{added}");
         let removed = fixture
             .owner
             .json(

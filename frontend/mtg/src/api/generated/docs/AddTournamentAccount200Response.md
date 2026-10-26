@@ -6,7 +6,9 @@
 
 Name | Type
 ------------ | -------------
+`dropped_after_round` | number
 `guest` | boolean
+`late_from_round` | number
 `name` | string
 `uuid` | string
 `error` | [AddAccountParticipantErrors](AddAccountParticipantErrors.md)
