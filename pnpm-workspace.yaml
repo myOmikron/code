@@ -50,7 +50,7 @@ catalogs:
     tesseract.js-core: ^6.0.0
   devDependencies:
     '@eslint/js': 10.0.1
-    '@openapitools/openapi-generator-cli': 2.41.0
+    '@openapitools/openapi-generator-cli': 2.42.0
     '@tailwindcss/vite': ^4.3.2
     '@tanstack/router-devtools': ^1.167.0
     '@tanstack/router-plugin': ^1.168.19
