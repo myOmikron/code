@@ -183,6 +183,10 @@ export function useTournamentLabels() {
                     return t("label.tiebreaker-gw");
                 case Tiebreaker.OpponentGameWinPercentage:
                     return t("label.tiebreaker-ogw");
+                case Tiebreaker.OpponentWinRate:
+                    return t("label.tiebreaker-owr");
+                case Tiebreaker.WinRate:
+                    return t("label.tiebreaker-wr");
             }
         },
 
@@ -201,6 +205,10 @@ export function useTournamentLabels() {
                     return t("description.tiebreaker-gw");
                 case Tiebreaker.OpponentGameWinPercentage:
                     return t("description.tiebreaker-ogw");
+                case Tiebreaker.OpponentWinRate:
+                    return t("description.tiebreaker-owr");
+                case Tiebreaker.WinRate:
+                    return t("description.tiebreaker-wr");
             }
         },
 

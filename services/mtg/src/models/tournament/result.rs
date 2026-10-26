@@ -126,7 +126,9 @@ impl Tournament {
         if self.over() || reported.round_state != RoundState::Running {
             return Ok(Err(ReportResultRefusal::NotRunning));
         }
-        if !self.admits(reported.stage, games_won, games_drawn) {
+        if games_won.len() != reported.seats.len()
+            || !self.admits(reported.stage, games_won, games_drawn)
+        {
             return Ok(Err(ReportResultRefusal::InvalidScore));
         }
         let same_score = reported.games_drawn == Some(games_drawn)

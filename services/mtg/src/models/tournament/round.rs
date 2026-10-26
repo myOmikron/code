@@ -49,6 +49,7 @@ use crate::tournament::record::RoundRecord;
 use crate::tournament::record::TournamentRecord;
 use crate::tournament::reporting::ResultState;
 use crate::tournament::rounds::suggested_swiss_rounds;
+use crate::tournament::ruleset::single_game_admits;
 use crate::tournament::timer::RoundTimer;
 use crate::tournament::top_cut::TopCutError;
 use crate::tournament::top_cut::bracket_size;
@@ -689,7 +690,12 @@ impl Tournament {
         if round_state == RoundState::Previewed {
             return Ok(Err(ResultRefusal::NotStarted));
         }
-        if !self.admits(stage, games_won, games_drawn) {
+        let seats = rorm::query(&mut *tx, TournamentSeatModel.uuid)
+            .condition(TournamentSeatModel.tournament_match.equals(played.0))
+            .all()
+            .await?
+            .len();
+        if games_won.len() != seats || !self.admits(stage, games_won, games_drawn) {
             return Ok(Err(ResultRefusal::InvalidScore));
         }
 
@@ -735,25 +741,31 @@ impl Tournament {
         )
     }
 
-    /// Whether `games_won` per Seat and `games_drawn` is a Result a two-Seat Match of `stage` can have
+    /// Whether `games_won` per Seat and `games_drawn` is a Result a Match of `stage` can have
     ///
-    /// Only one-on-one Tournaments are paired so far, so a Result has two Seats.
-    /// A Top cut Match is played to its own best-of and has a winner: play
-    /// goes on until somebody wins (MTR 2.4).
+    /// Multiplayer one Game, won by one Seat or drawn by all. One-on-one a
+    /// game score its best-of allows; a Top cut Match is played to its own
+    /// best-of and has a winner: play goes on until somebody wins (MTR 2.4).
+    /// The caller checks there is one number per Seat.
     pub(in crate::models::tournament) fn admits(
         &self,
         stage: RoundStage,
         games_won: &[i16],
         games_drawn: i16,
     ) -> bool {
-        let [first, second] = games_won else {
-            return false;
-        };
-        let (Ok(first), Ok(second), Ok(drawn)) = (
-            u8::try_from(*first),
-            u8::try_from(*second),
+        let (Ok(games_won), Ok(drawn)) = (
+            games_won
+                .iter()
+                .map(|won| u8::try_from(*won))
+                .collect::<Result<Vec<u8>, _>>(),
             u8::try_from(games_drawn),
         ) else {
+            return false;
+        };
+        if self.table_size.get() > 2 {
+            return single_game_admits(&games_won, drawn);
+        }
+        let [first, second] = games_won[..] else {
             return false;
         };
         let best_of = match stage {

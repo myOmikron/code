@@ -42,10 +42,11 @@ import { useTournamentLabels } from "src/components/tournament-labels";
 import { TournamentPairingsEditor } from "src/components/tournament-pairings-editor";
 import { TournamentResultDialog } from "src/components/tournament-result-dialog";
 import { TournamentRoundClock } from "src/components/tournament-round-clock";
+import { TournamentWinnerDialog } from "src/components/tournament-winner-dialog";
 import { isFormError } from "src/utils/error";
 import { clockSkew } from "src/utils/round-clock";
 import { cutRoundSize } from "src/utils/top-cut";
-import { formatResult } from "src/utils/tournament-rounds";
+import { formatResult, winnerSeat } from "src/utils/tournament-rounds";
 
 /**
  * The properties for {@link TournamentRounds}
@@ -84,6 +85,7 @@ export function TournamentRounds({ tournament, load, onTournamentChanged, me = n
     const organizer = tournament.organizer_role != null;
     const over = tournament.state === TournamentState.Finished || tournament.state === TournamentState.Cancelled;
     const rounds = list?.rounds ?? [];
+    const multiplayer = tournament.table_size > 2;
     const open = rounds.find((round) => round.state !== RoundState.Ended) ?? null;
     const disputed =
         open?.state === RoundState.Running
@@ -105,6 +107,31 @@ export function TournamentRounds({ tournament, load, onTournamentChanged, me = n
     };
     const editingBestOf = bestOfFor(editing);
     const reportingBestOf = bestOfFor(reporting);
+
+    /**
+     * Says why an Organizer's Result was refused
+     *
+     * @param error the form errors of the refusal
+     *
+     * @returns the message
+     */
+    const explainSet = (error: Record<string, boolean>): string =>
+        error.not_started ? t("error.round-not-started") : t("error.invalid-score");
+
+    /**
+     * Says why a Participant's report was refused
+     *
+     * @param error the form errors of the refusal
+     *
+     * @returns the message
+     */
+    const explainReport = (error: Record<string, boolean>): string => {
+        if (error.not_running) return t("error.round-not-running");
+        if (error.reported_by_other) return t("error.result-reported-by-other");
+        if (error.disputed) return t("error.result-disputed");
+        if (error.confirmed) return t("error.result-confirmed");
+        return t("error.invalid-score");
+    };
 
     const reload = useCallback(async () => {
         const loaded = await load();
@@ -284,6 +311,7 @@ export function TournamentRounds({ tournament, load, onTournamentChanged, me = n
                         round={round}
                         tournament={tournament}
                         skewMs={skewMs}
+                        multiplayer={multiplayer}
                         editable={organizer && round.state !== RoundState.Previewed}
                         me={organizer || over || round.state !== RoundState.Running ? null : me}
                         busy={busy}
@@ -309,15 +337,14 @@ export function TournamentRounds({ tournament, load, onTournamentChanged, me = n
                 />
             )}
 
-            {organizer && editingBestOf != null && (
-                <TournamentResultDialog
+            {organizer && multiplayer && (
+                <TournamentWinnerDialog
                     played={editing}
-                    bestOf={editingBestOf}
                     title={t("heading.set-result", { table: editing?.table_number ?? "" })}
-                    description={t("description.set-result")}
+                    description={t("description.set-winner")}
                     onClose={() => setEditing(null)}
                     save={(result) => Api.tournaments.rounds.setResult(tournament.uuid, editing?.uuid ?? "", result)}
-                    explain={(error) => (error.not_started ? t("error.round-not-started") : t("error.invalid-score"))}
+                    explain={explainSet}
                     onSaved={async () => {
                         setEditing(null);
                         notify.success(t("toast.result-saved"));
@@ -326,7 +353,40 @@ export function TournamentRounds({ tournament, load, onTournamentChanged, me = n
                 />
             )}
 
-            {!organizer && me !== null && reportingBestOf != null && (
+            {organizer && !multiplayer && editingBestOf != null && (
+                <TournamentResultDialog
+                    played={editing}
+                    bestOf={editingBestOf}
+                    title={t("heading.set-result", { table: editing?.table_number ?? "" })}
+                    description={t("description.set-result")}
+                    onClose={() => setEditing(null)}
+                    save={(result) => Api.tournaments.rounds.setResult(tournament.uuid, editing?.uuid ?? "", result)}
+                    explain={explainSet}
+                    onSaved={async () => {
+                        setEditing(null);
+                        notify.success(t("toast.result-saved"));
+                        await reload();
+                    }}
+                />
+            )}
+
+            {!organizer && me !== null && multiplayer && (
+                <TournamentWinnerDialog
+                    played={reporting}
+                    title={t("heading.report-result", { table: reporting?.table_number ?? "" })}
+                    description={t("description.report-winner")}
+                    onClose={() => setReporting(null)}
+                    save={(result) => Api.tournaments.results.report(tournament.uuid, reporting?.uuid ?? "", result)}
+                    explain={explainReport}
+                    onSaved={async () => {
+                        setReporting(null);
+                        notify.success(t("toast.result-reported"));
+                        await reload();
+                    }}
+                />
+            )}
+
+            {!organizer && me !== null && !multiplayer && reportingBestOf != null && (
                 <TournamentResultDialog
                     played={reporting}
                     bestOf={reportingBestOf}
@@ -334,13 +394,7 @@ export function TournamentRounds({ tournament, load, onTournamentChanged, me = n
                     description={t("description.report-result")}
                     onClose={() => setReporting(null)}
                     save={(result) => Api.tournaments.results.report(tournament.uuid, reporting?.uuid ?? "", result)}
-                    explain={(error) => {
-                        if (error.not_running) return t("error.round-not-running");
-                        if (error.reported_by_other) return t("error.result-reported-by-other");
-                        if (error.disputed) return t("error.result-disputed");
-                        if (error.confirmed) return t("error.result-confirmed");
-                        return t("error.invalid-score");
-                    }}
+                    explain={explainReport}
                     onSaved={async () => {
                         setReporting(null);
                         notify.success(t("toast.result-reported"));
@@ -477,6 +531,8 @@ type RoundTableProps = {
     tournament: TournamentResponse;
     /** How far this device's clock is ahead of the server's, in milliseconds */
     skewMs: number;
+    /** Whether its Matches seat more than two, with a winner or a draw as Result */
+    multiplayer: boolean;
     /** Whether the reader may set Results, as an Organizer */
     editable: boolean;
     /** The reader's Participant while it may report and dispute in this Round, else `null` */
@@ -502,6 +558,7 @@ function RoundTable({
     round,
     tournament,
     skewMs,
+    multiplayer,
     editable,
     me,
     busy,
@@ -515,6 +572,19 @@ function RoundTable({
     const mine = (played: MatchResponse) =>
         me !== null && played.table_number != null && played.seats.some((seat) => seat.participant === me);
     const actions = editable || round.matches.some(mine);
+
+    /**
+     * The Result of a multiplayer Match in words: who won, or a draw
+     *
+     * @param played the Match, with its Result
+     *
+     * @returns the winner's line or the draw
+     */
+    const multiplayerResult = (played: MatchResponse): string => {
+        const winner = played.result == null ? null : winnerSeat(played.result);
+        const name = winner == null ? undefined : played.seats[winner]?.name;
+        return name === undefined ? t("label.draw") : t("label.won-by", { name });
+    };
 
     return (
         <section className={"flex flex-col gap-3"}>
@@ -545,8 +615,14 @@ function RoundTable({
                 <TableHead>
                     <TableRow>
                         <TableHeader>{t("label.table")}</TableHeader>
-                        <TableHeader>{t("label.seat-one")}</TableHeader>
-                        <TableHeader>{t("label.seat-two")}</TableHeader>
+                        {multiplayer ? (
+                            <TableHeader>{t("label.seats")}</TableHeader>
+                        ) : (
+                            <>
+                                <TableHeader>{t("label.seat-one")}</TableHeader>
+                                <TableHeader>{t("label.seat-two")}</TableHeader>
+                            </>
+                        )}
                         <TableHeader>{t("label.result")}</TableHeader>
                         {actions && <TableHeader />}
                     </TableRow>
@@ -560,15 +636,31 @@ function RoundTable({
                                     {played.rematch && <Badge color={"amber"}>{t("label.rematch")}</Badge>}
                                 </span>
                             </TableCell>
-                            <TableCell>{played.seats[0]?.name ?? ""}</TableCell>
-                            <TableCell>{played.table_number == null ? "" : (played.seats[1]?.name ?? "")}</TableCell>
+                            {multiplayer ? (
+                                <TableCell>
+                                    <ol className={"list-inside list-decimal"}>
+                                        {played.seats.map((seat) => (
+                                            <li key={seat.participant}>{seat.name}</li>
+                                        ))}
+                                    </ol>
+                                </TableCell>
+                            ) : (
+                                <>
+                                    <TableCell>{played.seats[0]?.name ?? ""}</TableCell>
+                                    <TableCell>
+                                        {played.table_number == null ? "" : (played.seats[1]?.name ?? "")}
+                                    </TableCell>
+                                </>
+                            )}
                             <TableCell>
                                 <div className={"flex flex-wrap items-center gap-2"}>
                                     {played.table_number == null
                                         ? t("label.bye-result")
                                         : played.result == null
                                           ? t("label.no-result")
-                                          : formatResult(played.result)}
+                                          : multiplayer
+                                            ? multiplayerResult(played)
+                                            : formatResult(played.result)}
                                     {played.result?.state === ResultState.Disputed && (
                                         <Badge color={"red"}>{t("label.result-disputed")}</Badge>
                                     )}
