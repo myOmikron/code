@@ -18,6 +18,7 @@ use crate::http::middleware::account_required::AccountRequiredLayer;
 
 pub mod decks;
 pub mod handler;
+pub mod live;
 pub mod organizers;
 pub mod participants;
 pub mod results;
@@ -43,6 +44,7 @@ fn public_routes() -> GalvynRouter {
         .merge(decks::public_routes())
         .merge(participants::public_routes())
         .merge(rounds::public_routes())
+        .merge(live::public_routes())
 }
 
 /// What any logged-in Account may do

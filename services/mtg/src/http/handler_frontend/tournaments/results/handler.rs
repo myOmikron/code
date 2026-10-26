@@ -9,6 +9,8 @@ use galvyn::rorm::Database;
 use tracing::info;
 
 use crate::http::handler_frontend::tournaments::handler::denied;
+use crate::http::handler_frontend::tournaments::live::TournamentEvent;
+use crate::http::handler_frontend::tournaments::live::emit;
 use crate::http::handler_frontend::tournaments::results::schema::DisputeResultErrors;
 use crate::http::handler_frontend::tournaments::results::schema::ReportResultErrors;
 use crate::http::handler_frontend::tournaments::results::schema::ReportResultRequest;
@@ -18,6 +20,7 @@ use crate::models::tournament::TournamentUuid;
 use crate::models::tournament::result::DisputeResultRefusal;
 use crate::models::tournament::result::ReportResultRefusal;
 use crate::models::tournament::result::ResultChange;
+use crate::models::tournament::result::ResultChangeKind;
 use crate::models::tournament::round::MatchUuid;
 use crate::tournament::reporting::DisputeRefusal;
 use crate::tournament::reporting::ReportRefusal;
@@ -144,7 +147,7 @@ pub async fn dispute_tournament_match_result(
 /// Tell whoever follows `tournament` that a Result was reported, disputed or set
 ///
 /// Called once the change is committed, from every route that changes a
-/// Result. Only logged so far; live updates and Web Push hang off here.
+/// Result. Logs it and hands it to the live updates; Web Push hangs off here.
 /// Web Push skips a Tournament entered afterwards
 /// ([`Tournament::entered_afterwards`]); live updates do not need to.
 pub fn announce(tournament: &Tournament, change: &ResultChange) {
@@ -156,6 +159,16 @@ pub fn announce(tournament: &Tournament, change: &ResultChange) {
         by = ?change.by,
         "Result changed"
     );
+    let (round, match_uuid) = (change.round, change.played);
+    emit(
+        tournament.uuid,
+        match change.kind {
+            ResultChangeKind::Reported => TournamentEvent::ResultReported { round, match_uuid },
+            ResultChangeKind::Disputed => TournamentEvent::ResultDisputed { round, match_uuid },
+            ResultChangeKind::Set => TournamentEvent::ResultSet { round, match_uuid },
+        },
+    );
+    emit(tournament.uuid, TournamentEvent::StandingsChanged);
 }
 
 /// The refusal for a Match that is not the Account's own

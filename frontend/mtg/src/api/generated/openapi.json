@@ -9794,6 +9794,66 @@
                 }
             }
         },
+        "/api/frontend/v1/shared/tournaments/{token}/events": {
+            "get": {
+                "summary": "Follow what changes in the Tournament a share link points at, as Server-Sent Events",
+                "description": "Follow what changes in the Tournament a share link points at, as Server-Sent Events\n\nWhat anybody sees: never the previewed Round.",
+                "operationId": "follow_shared_tournament",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "token",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "text/event-stream": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TournamentEvent"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/frontend/v1/tags": {
             "get": {
                 "summary": "Every tag the account keeps for all of its decks and collections",
@@ -10662,6 +10722,68 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/StandingsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/tournaments/{tournament}/events": {
+            "get": {
+                "summary": "Follow what changes in a Tournament the reader may see, as Server-Sent Events",
+                "description": "Follow what changes in a Tournament the reader may see, as Server-Sent Events\n\nEach event names what changed; the reader fetches that again. Organizers\nalso hear about the previewed Round.",
+                "operationId": "follow_tournament",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tournament",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of a [`Tournament`]",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "text/event-stream": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TournamentEvent"
                                 }
                             }
                         }
@@ -25041,6 +25163,266 @@
                         "type": "string",
                         "enum": [
                             "Top8"
+                        ]
+                    }
+                ]
+            },
+            "TournamentEvent": {
+                "description": "Something changed in a Tournament; the reader fetches again what it shows of it\n\nSent as the `data` of one Server-Sent Event, as json.",
+                "oneOf": [
+                    {
+                        "description": "Its settings or its state changed, or it was deleted",
+                        "type": "object",
+                        "properties": {
+                            "kind": {
+                                "type": "string",
+                                "enum": [
+                                    "TournamentChanged"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "kind"
+                        ]
+                    },
+                    {
+                        "description": "Participants joined, left or Dropped",
+                        "type": "object",
+                        "properties": {
+                            "kind": {
+                                "type": "string",
+                                "enum": [
+                                    "ParticipantsChanged"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "kind"
+                        ]
+                    },
+                    {
+                        "description": "A Round was paired as a preview, or its preview was edited; only Organizers hear it",
+                        "type": "object",
+                        "properties": {
+                            "kind": {
+                                "type": "string",
+                                "enum": [
+                                    "RoundPaired"
+                                ]
+                            },
+                            "round": {
+                                "description": "The Round's number",
+                                "type": "integer",
+                                "format": "int16"
+                            }
+                        },
+                        "required": [
+                            "kind",
+                            "round"
+                        ]
+                    },
+                    {
+                        "description": "A previewed Round was thrown away; only Organizers hear it",
+                        "type": "object",
+                        "properties": {
+                            "kind": {
+                                "type": "string",
+                                "enum": [
+                                    "RoundDiscarded"
+                                ]
+                            },
+                            "round": {
+                                "description": "The Round's number",
+                                "type": "integer",
+                                "format": "int16"
+                            }
+                        },
+                        "required": [
+                            "kind",
+                            "round"
+                        ]
+                    },
+                    {
+                        "description": "A Round started and shows to everybody",
+                        "type": "object",
+                        "properties": {
+                            "kind": {
+                                "type": "string",
+                                "enum": [
+                                    "RoundStarted"
+                                ]
+                            },
+                            "round": {
+                                "description": "The Round's number",
+                                "type": "integer",
+                                "format": "int16"
+                            }
+                        },
+                        "required": [
+                            "kind",
+                            "round"
+                        ]
+                    },
+                    {
+                        "description": "A Round ended",
+                        "type": "object",
+                        "properties": {
+                            "kind": {
+                                "type": "string",
+                                "enum": [
+                                    "RoundEnded"
+                                ]
+                            },
+                            "round": {
+                                "description": "The Round's number",
+                                "type": "integer",
+                                "format": "int16"
+                            }
+                        },
+                        "required": [
+                            "kind",
+                            "round"
+                        ]
+                    },
+                    {
+                        "description": "An ended Round was taken back and runs again",
+                        "type": "object",
+                        "properties": {
+                            "kind": {
+                                "type": "string",
+                                "enum": [
+                                    "RoundTakenBack"
+                                ]
+                            },
+                            "round": {
+                                "description": "The Round's number",
+                                "type": "integer",
+                                "format": "int16"
+                            }
+                        },
+                        "required": [
+                            "kind",
+                            "round"
+                        ]
+                    },
+                    {
+                        "description": "A Participant reported a Result",
+                        "type": "object",
+                        "properties": {
+                            "kind": {
+                                "type": "string",
+                                "enum": [
+                                    "ResultReported"
+                                ]
+                            },
+                            "match_uuid": {
+                                "description": "The Match",
+                                "allOf": [
+                                    {
+                                        "$ref": "#/components/schemas/MatchUuid"
+                                    }
+                                ]
+                            },
+                            "round": {
+                                "description": "The Round of the Match",
+                                "type": "integer",
+                                "format": "int16"
+                            }
+                        },
+                        "required": [
+                            "kind",
+                            "match_uuid",
+                            "round"
+                        ]
+                    },
+                    {
+                        "description": "A Participant disputed a Result",
+                        "type": "object",
+                        "properties": {
+                            "kind": {
+                                "type": "string",
+                                "enum": [
+                                    "ResultDisputed"
+                                ]
+                            },
+                            "match_uuid": {
+                                "description": "The Match",
+                                "allOf": [
+                                    {
+                                        "$ref": "#/components/schemas/MatchUuid"
+                                    }
+                                ]
+                            },
+                            "round": {
+                                "description": "The Round of the Match",
+                                "type": "integer",
+                                "format": "int16"
+                            }
+                        },
+                        "required": [
+                            "kind",
+                            "match_uuid",
+                            "round"
+                        ]
+                    },
+                    {
+                        "description": "An Organizer set or corrected a Result",
+                        "type": "object",
+                        "properties": {
+                            "kind": {
+                                "type": "string",
+                                "enum": [
+                                    "ResultSet"
+                                ]
+                            },
+                            "match_uuid": {
+                                "description": "The Match",
+                                "allOf": [
+                                    {
+                                        "$ref": "#/components/schemas/MatchUuid"
+                                    }
+                                ]
+                            },
+                            "round": {
+                                "description": "The Round of the Match",
+                                "type": "integer",
+                                "format": "int16"
+                            }
+                        },
+                        "required": [
+                            "kind",
+                            "match_uuid",
+                            "round"
+                        ]
+                    },
+                    {
+                        "description": "The standings changed",
+                        "type": "object",
+                        "properties": {
+                            "kind": {
+                                "type": "string",
+                                "enum": [
+                                    "StandingsChanged"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "kind"
+                        ]
+                    },
+                    {
+                        "description": "The stream missed events; the reader fetches everything again",
+                        "type": "object",
+                        "properties": {
+                            "kind": {
+                                "type": "string",
+                                "enum": [
+                                    "Resync"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "kind"
                         ]
                     }
                 ]

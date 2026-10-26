@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import type { MyMatchResponse, TournamentResponse } from "src/api/generated";
 import { TournamentRoundClock } from "src/components/tournament-round-clock";
+import { useLiveVersion } from "src/context/tournament-live-context";
 import { clockSkew } from "src/utils/round-clock";
 
 /**
@@ -34,11 +35,12 @@ export function TournamentMyMatch({ tournament }: TournamentMyMatchProps) {
     const [t] = useTranslation("tournament");
     const [loaded, setLoaded] = useState<Loaded | null>(null);
     const [busy, setBusy] = useState(false);
+    const version = useLiveVersion("rounds");
 
     const load = useCallback(async () => {
         const response = await Api.tournaments.rounds.myMatch(tournament.uuid);
         return { response, skewMs: clockSkew(response.server_time, Date.now()) };
-    }, [tournament.uuid]);
+    }, [tournament.uuid, version]);
 
     useEffect(() => {
         let gone = false;

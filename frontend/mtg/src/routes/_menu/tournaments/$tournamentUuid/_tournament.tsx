@@ -2,14 +2,16 @@ import { Outlet, createFileRoute, useNavigate, useRouter } from "@tanstack/react
 import { NoSymbolIcon, PencilSquareIcon, TrashIcon } from "@heroicons/react/20/solid";
 import { EyeSlashIcon } from "@heroicons/react/24/outline";
 import { Badge, Button, ConfirmDialog, EmptyState, Tab, TabLayout, TabMenu, notify } from "components";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import { OrganizerRole, TournamentState } from "src/api/generated";
 import { TournamentDialog } from "src/components/tournament-dialog";
+import { TournamentLiveProvider } from "src/context/tournament-live-context";
 import { useTournamentLabels } from "src/components/tournament-labels";
 import i18n from "src/i18n";
 import { isNotPublic } from "src/utils/public-page";
+import { tournamentEventsUrl } from "src/utils/tournament-live";
 
 export const Route = createFileRoute("/_menu/tournaments/$tournamentUuid/_tournament")({
     loader: async ({ params }) => {
@@ -50,6 +52,7 @@ function RouteComponent() {
     const [editing, setEditing] = useState(false);
     const [deleting, setDeleting] = useState(false);
     const [cancelling, setCancelling] = useState(false);
+    const refresh = useCallback(() => void router.invalidate(), [router]);
 
     if (tournament === null) {
         return (
@@ -146,7 +149,9 @@ function RouteComponent() {
                 </TabMenu>
             }
         >
-            <Outlet />
+            <TournamentLiveProvider url={tournamentEventsUrl(tournamentUuid)} onTournamentChanged={refresh}>
+                <Outlet />
+            </TournamentLiveProvider>
 
             {role !== null && (
                 <TournamentDialog

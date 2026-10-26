@@ -24,12 +24,15 @@ use std::sync::Arc;
 use std::sync::LazyLock;
 use std::sync::atomic::AtomicU32;
 use std::sync::atomic::Ordering;
+use std::time::Duration;
 
+use futures_util::StreamExt;
 use galvyn::Galvyn;
 use galvyn::GalvynSetup;
 use galvyn::core::Module;
 use galvyn::core::re_exports::axum::Router;
 use galvyn::core::re_exports::axum::body::Body;
+use galvyn::core::re_exports::axum::body::BodyDataStream;
 use galvyn::core::re_exports::axum::body::Bytes;
 use galvyn::core::re_exports::axum::body::to_bytes;
 use galvyn::core::re_exports::axum::extract::Path;
@@ -38,6 +41,7 @@ use galvyn::core::re_exports::axum::http::Method;
 use galvyn::core::re_exports::axum::http::Request;
 use galvyn::core::re_exports::axum::http::StatusCode;
 use galvyn::core::re_exports::axum::http::header;
+use galvyn::core::re_exports::axum::http::response::Parts;
 use galvyn::core::re_exports::axum::routing::post;
 use galvyn::core::session;
 use galvyn::core::session::Session;
@@ -359,8 +363,35 @@ impl TestClient {
         .await
     }
 
+    /// `GET`s a Server-Sent Events stream, leaving its body open to read event by event
+    pub async fn follow(&mut self, url: &Url) -> TestStream {
+        let (parts, body) = self
+            .send_unread(
+                request(Method::GET, url)
+                    .body(Body::empty())
+                    .expect("valid request"),
+            )
+            .await;
+        TestStream {
+            status: parts.status,
+            headers: parts.headers,
+            body: body.into_data_stream(),
+            buffer: String::new(),
+        }
+    }
+
     /// Sends a request, attaching and then updating the cookies
-    pub async fn send(&mut self, mut request: Request<Body>) -> TestResponse {
+    pub async fn send(&mut self, request: Request<Body>) -> TestResponse {
+        let (parts, body) = self.send_unread(request).await;
+        TestResponse {
+            status: parts.status,
+            headers: parts.headers,
+            body: to_bytes(body, usize::MAX).await.expect("read the body"),
+        }
+    }
+
+    /// Sends a request, attaching and then updating the cookies, and leaves the body unread
+    async fn send_unread(&mut self, mut request: Request<Body>) -> (Parts, Body) {
         let headers = request.headers_mut();
         headers.insert(
             "x-real-ip",
@@ -400,11 +431,58 @@ impl TestClient {
             }
         }
 
-        TestResponse {
-            status: parts.status,
-            headers: parts.headers,
-            body: to_bytes(body, usize::MAX).await.expect("read the body"),
+        (parts, body)
+    }
+}
+
+/// How long [`TestStream::next_event`] waits for an event
+const EVENT_TIMEOUT: Duration = Duration::from_millis(500);
+
+/// A Server-Sent Events response whose body is read as the events arrive
+pub struct TestStream {
+    /// Status code
+    pub status: StatusCode,
+    /// Headers
+    pub headers: HeaderMap,
+    body: BodyDataStream,
+    buffer: String,
+}
+
+impl TestStream {
+    /// The `data` of the next event, parsed as json, or `None` if none came in time
+    ///
+    /// Comments (keep-alives) are skipped.
+    pub async fn next_event(&mut self) -> Option<serde_json::Value> {
+        loop {
+            if let Some(end) = self.buffer.find("\n\n") {
+                let frame = self.buffer[..end].to_string();
+                self.buffer.drain(..end + 2);
+                let data = frame
+                    .lines()
+                    .filter_map(|line| line.strip_prefix("data: "))
+                    .collect::<Vec<_>>()
+                    .join("\n");
+                if data.is_empty() {
+                    continue;
+                }
+                return Some(serde_json::from_str(&data).expect("event data is json"));
+            }
+            let chunk = tokio::time::timeout(EVENT_TIMEOUT, self.body.next())
+                .await
+                .ok()??
+                .expect("read the stream");
+            self.buffer
+                .push_str(std::str::from_utf8(&chunk).expect("utf-8 events"));
         }
+    }
+
+    /// The `kind` of every event that comes in before the stream falls silent
+    pub async fn kinds(&mut self) -> Vec<String> {
+        let mut kinds = Vec::new();
+        while let Some(event) = self.next_event().await {
+            kinds.push(event["kind"].as_str().expect("a kind").to_string());
+        }
+        kinds
     }
 }
 

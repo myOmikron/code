@@ -12,6 +12,8 @@ use galvyn::post;
 use galvyn::put;
 use galvyn::rorm::Database;
 
+use crate::http::handler_frontend::tournaments::live::TournamentEvent;
+use crate::http::handler_frontend::tournaments::live::emit;
 use crate::http::handler_frontend::tournaments::schema::ListPublicTournamentsQuery;
 use crate::http::handler_frontend::tournaments::schema::ListTournamentsResponse;
 use crate::http::handler_frontend::tournaments::schema::MyTournamentsResponse;
@@ -163,6 +165,7 @@ pub async fn update_tournament(
 
     tx.commit().await?;
 
+    emit(tournament.uuid, TournamentEvent::TournamentChanged);
     Ok(ApiJson(TournamentResponse::new(
         tournament,
         owner,
@@ -183,10 +186,12 @@ pub async fn delete_tournament(
         tx.rollback().await?;
         return Err(denied());
     };
+    let deleted = tournament.uuid;
     tournament.delete(&mut tx).await?;
 
     tx.commit().await?;
 
+    emit(deleted, TournamentEvent::TournamentChanged);
     Ok(ApiJson(()))
 }
 
