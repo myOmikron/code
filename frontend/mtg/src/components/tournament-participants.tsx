@@ -1,4 +1,4 @@
-import { PlusIcon, TrashIcon, UserMinusIcon, UserPlusIcon } from "@heroicons/react/20/solid";
+import { PlusIcon, RectangleStackIcon, TrashIcon, UserMinusIcon, UserPlusIcon } from "@heroicons/react/20/solid";
 import {
     Badge,
     Button,
@@ -24,9 +24,11 @@ import type {
     FormErrorResponseForSignUpErrors,
     ListParticipantsResponse,
     ParticipantResponse,
+    RegisteredDeckResponse,
     TournamentResponse,
 } from "src/api/generated";
 import { PrimaryButton } from "src/components/primary-button";
+import { MyTournamentDeck, RegisteredDeckDialog } from "src/components/tournament-decks";
 import { useAccount } from "src/context/account";
 import { isFormError } from "src/utils/error";
 
@@ -65,6 +67,8 @@ export function TournamentParticipants({ tournament, load, signUp }: TournamentP
     const [list, setList] = useState<ListParticipantsResponse | null>(null);
     const [busy, setBusy] = useState(false);
     const [dropping, setDropping] = useState<ParticipantResponse | null>(null);
+    const [decks, setDecks] = useState<Map<string, RegisteredDeckResponse>>(new Map());
+    const [deckOf, setDeckOf] = useState<ParticipantResponse | null>(null);
 
     const organizer = tournament.organizer_role != null;
     const registration = tournament.state === TournamentState.Registration;
@@ -79,6 +83,16 @@ export function TournamentParticipants({ tournament, load, signUp }: TournamentP
     const reload = useCallback(async () => {
         setList(await load());
     }, [load]);
+
+    const reloadDecks = useCallback(async () => {
+        if (!organizer) return;
+        const registered = await Api.tournaments.decks.list(tournament.uuid);
+        setDecks(new Map(registered.decks.map((deck) => [deck.participant, deck])));
+    }, [organizer, tournament.uuid]);
+
+    useEffect(() => {
+        reloadDecks().catch(() => undefined);
+    }, [reloadDecks]);
 
     useEffect(() => {
         let gone = false;
@@ -198,6 +212,8 @@ export function TournamentParticipants({ tournament, load, signUp }: TournamentP
                 )}
             </div>
 
+            {account !== null && list?.me != null && <MyTournamentDeck tournament={tournament} />}
+
             {organizer && takesParticipants && (
                 <ParticipantAdder tournament={tournament} late={!registration} onAdded={reload} />
             )}
@@ -233,6 +249,25 @@ export function TournamentParticipants({ tournament, load, signUp }: TournamentP
                                     <UserMinusIcon />
                                 </Button>
                             )}
+                            {organizer && !participant.guest && (
+                                <>
+                                    <span
+                                        className={
+                                            "hidden truncate text-sm/6 text-zinc-500 sm:block dark:text-zinc-400"
+                                        }
+                                    >
+                                        {decks.get(participant.uuid)?.name ?? t("label.no-deck")}
+                                    </span>
+                                    <Button
+                                        plain
+                                        disabled={busy}
+                                        aria-label={t("accessibility.change-deck", { name: participant.name })}
+                                        onClick={() => setDeckOf(participant)}
+                                    >
+                                        <RectangleStackIcon />
+                                    </Button>
+                                </>
+                            )}
                             {organizer && registration && (
                                 <Button
                                     plain
@@ -264,6 +299,18 @@ export function TournamentParticipants({ tournament, load, signUp }: TournamentP
                 }
                 confirmLabel={t("button.drop")}
             />
+            {organizer && (
+                <RegisteredDeckDialog
+                    tournament={tournament}
+                    participant={deckOf}
+                    current={deckOf === null ? null : (decks.get(deckOf.uuid) ?? null)}
+                    onClose={() => setDeckOf(null)}
+                    onSaved={async () => {
+                        setDeckOf(null);
+                        await reloadDecks();
+                    }}
+                />
+            )}
         </div>
     );
 }

@@ -87,6 +87,7 @@ All URIs are relative to *http://localhost*
 | [**getDeckSourcing**](DefaultApi.md#getdecksourcing) | **GET** /api/frontend/v1/decks/{deck}/sourcing | What the deck asks for, what is in it, and where the rest could come from |
 | [**getDecksSharedWithMe**](DefaultApi.md#getdeckssharedwithme) | **GET** /api/frontend/v1/decks/shared-with-me | The decks other Accounts named the caller on, alphabetically by name |
 | [**getMpcfillCardbacks**](DefaultApi.md#getmpcfillcardbacks) | **GET** /api/frontend/v1/mpcfill/cardbacks | The card backs MPCFill offers |
+| [**getMyTournamentDeck**](DefaultApi.md#getmytournamentdeck) | **GET** /api/frontend/v1/tournaments/{tournament}/deck | The logged-in Account\&#39;s own Registered deck in a Tournament it plays in |
 | [**getMyTournaments**](DefaultApi.md#getmytournaments) | **GET** /api/frontend/v1/tournaments/mine | The Tournaments the logged-in Account organizes and the ones it plays in |
 | [**getPendingOidcLogin**](DefaultApi.md#getpendingoidclogin) | **GET** /api/frontend/v1/auth/oidc/pending | The session\&#39;s OIDC login waiting for its username step |
 | [**getPriceHistory**](DefaultApi.md#getpricehistory) | **GET** /api/frontend/v1/printings/{printing}/price-history | What a card has cost over time |
@@ -123,7 +124,9 @@ All URIs are relative to *http://localhost*
 | [**listSharedTournamentParticipants**](DefaultApi.md#listsharedtournamentparticipants) | **GET** /api/frontend/v1/shared/tournaments/{token}/participants | The Participants of the Tournament a share link points at |
 | [**listSharedTournamentRounds**](DefaultApi.md#listsharedtournamentrounds) | **GET** /api/frontend/v1/shared/tournaments/{token}/rounds | The Rounds of the Tournament a share link points at |
 | [**listTournamentOrganizers**](DefaultApi.md#listtournamentorganizers) | **GET** /api/frontend/v1/tournaments/{tournament}/organizers | Who runs a Tournament, and whom its Owner offered it to |
+| [**listTournamentParticipantDecks**](DefaultApi.md#listtournamentparticipantdecks) | **GET** /api/frontend/v1/tournaments/{tournament}/participants/{participant}/decks | The decks a Participant\&#39;s Account owns, as an Organizer about to register one |
 | [**listTournamentParticipants**](DefaultApi.md#listtournamentparticipants) | **GET** /api/frontend/v1/tournaments/{tournament}/participants | The Participants of a Tournament the reader may see |
+| [**listTournamentRegisteredDecks**](DefaultApi.md#listtournamentregistereddecks) | **GET** /api/frontend/v1/tournaments/{tournament}/registered-decks | Every Registered deck of a Tournament, as an Organizer |
 | [**listTournamentRounds**](DefaultApi.md#listtournamentrounds) | **GET** /api/frontend/v1/tournaments/{tournament}/rounds | The Rounds of a Tournament the reader may see |
 | [**listWatchListCopies**](DefaultApi.md#listwatchlistcopies) | **GET** /api/frontend/v1/watch-lists/{list}/entries/{entry}/copies | Where the copies of one watched card are |
 | [**listWatchListEntries**](DefaultApi.md#listwatchlistentries) | **GET** /api/frontend/v1/watch-lists/{list}/entries | Everything one watch list page is drawn from |
@@ -136,10 +139,14 @@ All URIs are relative to *http://localhost*
 | [**readDeckUrl**](DefaultApi.md#readdeckurloperation) | **POST** /api/frontend/v1/decks/import/url | Read a decklist off a link to another builder, or off one of our own links |
 | [**recoverAccount**](DefaultApi.md#recoveraccountoperation) | **POST** /api/frontend/v1/auth/recover | Send a fresh registration link to an account\&#39;s stored address |
 | [**redoDeckChange**](DefaultApi.md#redodeckchange) | **POST** /api/frontend/v1/decks/{deck}/history/redo | Apply the latest undone Deck change again |
+| [**registerMyTournamentDeck**](DefaultApi.md#registermytournamentdeck) | **PUT** /api/frontend/v1/tournaments/{tournament}/deck | Register one of the logged-in Account\&#39;s decks for a Tournament it plays in, |
+| [**registerTournamentParticipantDeck**](DefaultApi.md#registertournamentparticipantdeck) | **PUT** /api/frontend/v1/tournaments/{tournament}/participants/{participant}/deck | Register or swap a Participant\&#39;s Registered deck, as an Organizer |
 | [**removeDeckCheckpoint**](DefaultApi.md#removedeckcheckpoint) | **DELETE** /api/frontend/v1/decks/{deck}/history/{change}/checkpoint | Remove the Deck checkpoint of one of the deck\&#39;s Deck changes |
 | [**removeDeckCollaborator**](DefaultApi.md#removedeckcollaborator) | **DELETE** /api/frontend/v1/decks/{deck}/collaborators/{account} | Take an Account off a deck |
+| [**removeMyTournamentDeck**](DefaultApi.md#removemytournamentdeck) | **DELETE** /api/frontend/v1/tournaments/{tournament}/deck | Remove the logged-in Account\&#39;s own Registered deck, to play without one |
 | [**removeTournamentCoOrganizer**](DefaultApi.md#removetournamentcoorganizer) | **DELETE** /api/frontend/v1/tournaments/{tournament}/organizers/{account} | Take a Co-organizer off a Tournament |
 | [**removeTournamentParticipant**](DefaultApi.md#removetournamentparticipant) | **DELETE** /api/frontend/v1/tournaments/{tournament}/participants/{participant} | Take a Participant out of a Tournament, as an Organizer |
+| [**removeTournamentParticipantDeck**](DefaultApi.md#removetournamentparticipantdeck) | **DELETE** /api/frontend/v1/tournaments/{tournament}/participants/{participant}/deck | Remove a Participant\&#39;s Registered deck, as an Organizer, at any time |
 | [**renameAccount**](DefaultApi.md#renameaccountoperation) | **PUT** /api/frontend/v1/accounts/me/username | Rename the logged-in account |
 | [**renamePasskey**](DefaultApi.md#renamepasskeyoperation) | **PUT** /api/frontend/v1/accounts/passkeys/{uuid} | Rename one of the logged-in account\&#39;s passkeys |
 | [**reportTournamentMatchResult**](DefaultApi.md#reporttournamentmatchresult) | **POST** /api/frontend/v1/tournaments/{tournament}/matches/{match}/report | Report the Result of one\&#39;s own Match, as its Participant |
@@ -6043,6 +6050,76 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## getMyTournamentDeck
+
+> MyRegisteredDeckResponse getMyTournamentDeck(tournament)
+
+The logged-in Account\&#39;s own Registered deck in a Tournament it plays in
+
+The logged-in Account\&#39;s own Registered deck in a Tournament it plays in  Says whether it may still change it itself, which ends when the first Round starts.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { GetMyTournamentDeckRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    tournament: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies GetMyTournamentDeckRequest;
+
+  try {
+    const data = await api.getMyTournamentDeck(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **tournament** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**MyRegisteredDeckResponse**](MyRegisteredDeckResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## getMyTournaments
 
 > MyTournamentsResponse getMyTournaments()
@@ -8611,6 +8688,79 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## listTournamentParticipantDecks
+
+> ListParticipantDecksResponse listTournamentParticipantDecks(tournament, participant)
+
+The decks a Participant\&#39;s Account owns, as an Organizer about to register one
+
+The decks a Participant\&#39;s Account owns, as an Organizer about to register one
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { ListTournamentParticipantDecksRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    tournament: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string
+    participant: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies ListTournamentParticipantDecksRequest;
+
+  try {
+    const data = await api.listTournamentParticipantDecks(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **tournament** | `string` |  | [Defaults to `undefined`] |
+| **participant** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**ListParticipantDecksResponse**](ListParticipantDecksResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## listTournamentParticipants
 
 > ListParticipantsResponse listTournamentParticipants(tournament)
@@ -8659,6 +8809,76 @@ example().catch(console.error);
 ### Return type
 
 [**ListParticipantsResponse**](ListParticipantsResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## listTournamentRegisteredDecks
+
+> ListRegisteredDecksResponse listTournamentRegisteredDecks(tournament)
+
+Every Registered deck of a Tournament, as an Organizer
+
+Every Registered deck of a Tournament, as an Organizer
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { ListTournamentRegisteredDecksRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    tournament: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies ListTournamentRegisteredDecksRequest;
+
+  try {
+    const data = await api.listTournamentRegisteredDecks(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **tournament** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**ListRegisteredDecksResponse**](ListRegisteredDecksResponse.md)
 
 ### Authorization
 
@@ -9517,6 +9737,155 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## registerMyTournamentDeck
+
+> FormErrorResponseForRegisterDeckErrors registerMyTournamentDeck(tournament, RegisterDeckRequest)
+
+Register one of the logged-in Account\&#39;s decks for a Tournament it plays in,
+
+Register one of the logged-in Account\&#39;s decks for a Tournament it plays in, or swap the one registered  Only while the Tournament is in Registration; until the first Round starts the Registered deck follows the deck.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { RegisterMyTournamentDeckRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    tournament: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // RegisterDeckRequest (optional)
+    RegisterDeckRequest: ...,
+  } satisfies RegisterMyTournamentDeckRequest;
+
+  try {
+    const data = await api.registerMyTournamentDeck(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **tournament** | `string` |  | [Defaults to `undefined`] |
+| **RegisterDeckRequest** | [RegisterDeckRequest](RegisterDeckRequest.md) |  | [Optional] |
+
+### Return type
+
+[**FormErrorResponseForRegisterDeckErrors**](FormErrorResponseForRegisterDeckErrors.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## registerTournamentParticipantDeck
+
+> FormErrorResponseForRegisterDeckErrors registerTournamentParticipantDeck(tournament, participant, RegisterDeckRequest)
+
+Register or swap a Participant\&#39;s Registered deck, as an Organizer
+
+Register or swap a Participant\&#39;s Registered deck, as an Organizer  At any time; after the first Round started the new Registered deck is pinned at once and sets its own Deck checkpoint.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { RegisterTournamentParticipantDeckRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    tournament: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string
+    participant: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // RegisterDeckRequest (optional)
+    RegisterDeckRequest: ...,
+  } satisfies RegisterTournamentParticipantDeckRequest;
+
+  try {
+    const data = await api.registerTournamentParticipantDeck(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **tournament** | `string` |  | [Defaults to `undefined`] |
+| **participant** | `string` |  | [Defaults to `undefined`] |
+| **RegisterDeckRequest** | [RegisterDeckRequest](RegisterDeckRequest.md) |  | [Optional] |
+
+### Return type
+
+[**FormErrorResponseForRegisterDeckErrors**](FormErrorResponseForRegisterDeckErrors.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## removeDeckCheckpoint
 
 > any removeDeckCheckpoint(deck, change)
@@ -9663,6 +10032,76 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## removeMyTournamentDeck
+
+> FormErrorResponseForRegisterDeckErrors removeMyTournamentDeck(tournament)
+
+Remove the logged-in Account\&#39;s own Registered deck, to play without one
+
+Remove the logged-in Account\&#39;s own Registered deck, to play without one  Only while the Tournament is in Registration.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { RemoveMyTournamentDeckRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    tournament: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies RemoveMyTournamentDeckRequest;
+
+  try {
+    const data = await api.removeMyTournamentDeck(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **tournament** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**FormErrorResponseForRegisterDeckErrors**](FormErrorResponseForRegisterDeckErrors.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## removeTournamentCoOrganizer
 
 > any removeTournamentCoOrganizer(tournament, account)
@@ -9787,6 +10226,79 @@ example().catch(console.error);
 ### Return type
 
 **any**
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## removeTournamentParticipantDeck
+
+> FormErrorResponseForRegisterDeckErrors removeTournamentParticipantDeck(tournament, participant)
+
+Remove a Participant\&#39;s Registered deck, as an Organizer, at any time
+
+Remove a Participant\&#39;s Registered deck, as an Organizer, at any time
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { RemoveTournamentParticipantDeckRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    tournament: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string
+    participant: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies RemoveTournamentParticipantDeckRequest;
+
+  try {
+    const data = await api.removeTournamentParticipantDeck(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **tournament** | `string` |  | [Defaults to `undefined`] |
+| **participant** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**FormErrorResponseForRegisterDeckErrors**](FormErrorResponseForRegisterDeckErrors.md)
 
 ### Authorization
 

@@ -16,6 +16,7 @@ use galvyn::core::GalvynRouter;
 
 use crate::http::middleware::account_required::AccountRequiredLayer;
 
+pub mod decks;
 pub mod handler;
 pub mod organizers;
 pub mod participants;
@@ -48,6 +49,7 @@ fn account_routes() -> GalvynRouter {
     GalvynRouter::new()
         .handler(handler::get_my_tournaments)
         .handler(handler::create_tournament)
+        .merge(decks::account_routes())
         .merge(organizers::account_routes())
         .merge(participants::account_routes())
         .merge(results::account_routes())
@@ -57,6 +59,7 @@ fn account_routes() -> GalvynRouter {
 fn organizer_routes() -> GalvynRouter {
     GalvynRouter::new()
         .handler(handler::update_tournament)
+        .merge(decks::organizer_routes())
         .merge(organizers::organizer_routes())
         .merge(participants::organizer_routes())
         .merge(rounds::organizer_routes())

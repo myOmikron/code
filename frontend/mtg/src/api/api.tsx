@@ -581,6 +581,25 @@ export const Api = {
                 handleError(defaultApi.dropTournamentParticipant({ tournament, participant })),
             dropOut: async (tournament: UUID) => handleError(defaultApi.dropOutOfTournament({ tournament })),
         },
+        decks: {
+            mine: async (tournament: UUID) => handleError(defaultApi.getMyTournamentDeck({ tournament })),
+            register: async (tournament: UUID, deck: UUID) =>
+                handleError(defaultApi.registerMyTournamentDeck({ tournament, RegisterDeckRequest: { deck } })),
+            remove: async (tournament: UUID) => handleError(defaultApi.removeMyTournamentDeck({ tournament })),
+            list: async (tournament: UUID) => handleError(defaultApi.listTournamentRegisteredDecks({ tournament })),
+            candidates: async (tournament: UUID, participant: UUID) =>
+                handleError(defaultApi.listTournamentParticipantDecks({ tournament, participant })),
+            registerFor: async (tournament: UUID, participant: UUID, deck: UUID) =>
+                handleError(
+                    defaultApi.registerTournamentParticipantDeck({
+                        tournament,
+                        participant,
+                        RegisterDeckRequest: { deck },
+                    }),
+                ),
+            removeFor: async (tournament: UUID, participant: UUID) =>
+                handleError(defaultApi.removeTournamentParticipantDeck({ tournament, participant })),
+        },
         // Running it: Organizers pair a Round as a preview only they see, start
         // it, set the Results and end it. The reads are open like `get`.
         rounds: {
