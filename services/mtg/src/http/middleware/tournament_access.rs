@@ -49,24 +49,32 @@ impl galvyn::core::middleware::SimpleGalvynMiddleware for TournamentAccessLayer 
                 parts.extensions.insert(grant);
                 ControlFlow::Continue(Request::from_parts(parts, body))
             }
-            Err(response) => ControlFlow::Break(response),
+            Err(response) => ControlFlow::Break(*response),
         }
     }
 }
 
 /// The grant for the request in `parts`, or the response refusing it
-async fn grant(parts: &mut Parts, access: TournamentAccess) -> Result<TournamentGrant, Response> {
+async fn grant(
+    parts: &mut Parts,
+    access: TournamentAccess,
+) -> Result<TournamentGrant, Box<Response>> {
     let Path(TournamentSegment { tournament }) =
         Path::<TournamentSegment>::from_request_parts(parts, &())
             .await
-            .map_err(IntoResponse::into_response)?;
+            .map_err(refusal)?;
     let viewer = Viewer::from_request_parts(parts, &())
         .await
-        .map_err(IntoResponse::into_response)?;
+        .map_err(refusal)?;
     let fetched = fetch(tournament, viewer.account(), access)
         .await
-        .map_err(IntoResponse::into_response)?;
-    fetched.ok_or_else(|| denied::<()>().into_response())
+        .map_err(refusal)?;
+    fetched.ok_or_else(|| refusal(denied::<()>()))
+}
+
+/// `rejection` as the response refusing a request
+fn refusal(rejection: impl IntoResponse) -> Box<Response> {
+    Box::new(rejection.into_response())
 }
 
 /// Fetch `tournament` for `caller` through a route group that needs `access`, `None` if refused

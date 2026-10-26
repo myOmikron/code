@@ -260,21 +260,6 @@ fn a_deletion_stays_in_the_admin_log_after_the_account_is_gone() {
     });
 }
 
-/// Renames `account` to `username` as the Admin behind `client`
-async fn rename(client: &mut TestClient, account: &TestAccount, username: &str) {
-    let response = client
-        .json(
-            Method::PUT,
-            &api(&format!(
-                "admin/accounts/{}/username",
-                account.uuid.into_inner()
-            )),
-            &json!({ "username": username, "reason": "Asked for it", "language": "En" }),
-        )
-        .await;
-    assert_eq!(response.status, StatusCode::OK, "{response:?}");
-}
-
 /// The Tournament at `url` as an anonymous visitor reads it, `None` if refused
 async fn as_visitor(url: &Url) -> Option<Value> {
     let response = TestClient::new().get(url).await;
@@ -282,7 +267,7 @@ async fn as_visitor(url: &Url) -> Option<Value> {
 }
 
 #[test]
-fn a_deleted_accounts_participants_become_guests_named_by_its_last_username() {
+fn an_admins_deletion_turns_participants_into_anonymous_guests() {
     run(async {
         let admin = create_account(Role::Admin).await;
         let mut client = TestClient::logged_in(&admin).await;
@@ -290,13 +275,11 @@ fn a_deleted_accounts_participants_become_guests_named_by_its_last_username() {
         let member = create_account(Role::Member).await;
         let added = add_account(&mut fixture.owner, &fixture.tournament, &member.username).await;
         start(&fixture).await;
-        let last = format!("d{}", &Uuid::new_v4().simple().to_string()[..12]);
-        rename(&mut client, &member, &last).await;
 
-        delete(&mut client, &member, &last, "Full").await;
+        delete(&mut client, &member, &member.username, "Full").await;
 
         let body = roster(&mut fixture.owner, &fixture.tournament).await;
-        assert_eq!(names(&body), [last.as_str()], "{body}");
+        assert_eq!(names(&body), ["Gelöschter Spieler 1"], "{body}");
         assert_eq!(body["participants"][0]["uuid"], added["uuid"], "{body}");
         assert_eq!(body["participants"][0]["guest"], true, "{body}");
     });
@@ -511,7 +494,7 @@ fn line<'a>(standings: &'a Value, participant: &str) -> &'a Value {
 }
 
 #[test]
-fn a_deleted_accounts_matches_and_standings_stay_under_its_last_username() {
+fn a_deleted_accounts_matches_and_standings_stay_under_its_guest_name() {
     run(async {
         let admin = create_account(Role::Admin).await;
         let mut client = TestClient::logged_in(&admin).await;
@@ -525,7 +508,7 @@ fn a_deleted_accounts_matches_and_standings_stay_under_its_last_username() {
 
         let after = event.standings().await;
         let kept = line(&after, &participant);
-        assert_eq!(kept["name"], member.username.as_str(), "{after}");
+        assert_eq!(kept["name"], "Gelöschter Spieler 1", "{after}");
         assert_eq!(kept["guest"], true, "{after}");
         assert_eq!(
             kept["match_points"],
