@@ -126,11 +126,13 @@ All URIs are relative to *http://localhost*
 | [**listSharedCollectionCards**](DefaultApi.md#listsharedcollectioncards) | **GET** /api/frontend/v1/shared/collections/{token}/cards | List a page of a shared collection\&#39;s cards, sorted and filtered |
 | [**listSharedDeckCards**](DefaultApi.md#listshareddeckcards) | **GET** /api/frontend/v1/shared/decks/{token}/cards | Every card of a shared deck, with the catalog data and the tags on it |
 | [**listSharedTournamentParticipants**](DefaultApi.md#listsharedtournamentparticipants) | **GET** /api/frontend/v1/shared/tournaments/{token}/participants | The Participants of the Tournament a share link points at |
+| [**listSharedTournamentRegisteredLists**](DefaultApi.md#listsharedtournamentregisteredlists) | **GET** /api/frontend/v1/shared/tournaments/{token}/registered-lists | The shared lists of the Tournament a share link points at, once it is Finished |
 | [**listSharedTournamentRounds**](DefaultApi.md#listsharedtournamentrounds) | **GET** /api/frontend/v1/shared/tournaments/{token}/rounds | The Rounds of the Tournament a share link points at |
 | [**listTournamentOrganizers**](DefaultApi.md#listtournamentorganizers) | **GET** /api/frontend/v1/tournaments/{tournament}/organizers | Who runs a Tournament, and whom its Owner offered it to |
 | [**listTournamentParticipantDecks**](DefaultApi.md#listtournamentparticipantdecks) | **GET** /api/frontend/v1/tournaments/{tournament}/participants/{participant}/decks | The decks a Participant\&#39;s Account owns, as an Organizer about to register one |
 | [**listTournamentParticipants**](DefaultApi.md#listtournamentparticipants) | **GET** /api/frontend/v1/tournaments/{tournament}/participants | The Participants of a Tournament the reader may see |
 | [**listTournamentRegisteredDecks**](DefaultApi.md#listtournamentregistereddecks) | **GET** /api/frontend/v1/tournaments/{tournament}/registered-decks | Every Registered deck of a Tournament, as an Organizer |
+| [**listTournamentRegisteredLists**](DefaultApi.md#listtournamentregisteredlists) | **GET** /api/frontend/v1/tournaments/{tournament}/registered-lists | The Registered decks\&#39; lists the reader may see |
 | [**listTournamentRounds**](DefaultApi.md#listtournamentrounds) | **GET** /api/frontend/v1/tournaments/{tournament}/rounds | The Rounds of a Tournament the reader may see |
 | [**listWatchListCopies**](DefaultApi.md#listwatchlistcopies) | **GET** /api/frontend/v1/watch-lists/{list}/entries/{entry}/copies | Where the copies of one watched card are |
 | [**listWatchListEntries**](DefaultApi.md#listwatchlistentries) | **GET** /api/frontend/v1/watch-lists/{list}/entries | Everything one watch list page is drawn from |
@@ -171,6 +173,7 @@ All URIs are relative to *http://localhost*
 | [**setDeckColors**](DefaultApi.md#setdeckcolorsoperation) | **PUT** /api/frontend/v1/decks/{deck}/colors | Overrule which colours the deck may play |
 | [**setDeckFolder**](DefaultApi.md#setdeckfolderoperation) | **POST** /api/frontend/v1/decks/{deck}/folder | File a deck into one of the account\&#39;s folders |
 | [**setDeckRuleZero**](DefaultApi.md#setdeckrulezerooperation) | **PUT** /api/frontend/v1/decks/{deck}/rule-zero | Record the house rules the deck is played under, colours included |
+| [**setMyTournamentListSharing**](DefaultApi.md#setmytournamentlistsharing) | **PUT** /api/frontend/v1/tournaments/{tournament}/deck/sharing | Choose whether others may see the logged-in Account\&#39;s list once the |
 | [**setPushSettings**](DefaultApi.md#setpushsettingsoperation) | **PUT** /api/frontend/v1/accounts/me/push | Turn tournament pushes on or off for every device of the logged-in account |
 | [**setTournamentMatchResult**](DefaultApi.md#settournamentmatchresult) | **PUT** /api/frontend/v1/tournaments/{tournament}/matches/{match}/result | Set or correct the Result of a Match, as an Organizer |
 | [**setTournamentParticipantPaid**](DefaultApi.md#settournamentparticipantpaid) | **PUT** /api/frontend/v1/tournaments/{tournament}/participants/{participant}/paid | Mark a Participant paid or unpaid, as an Organizer |
@@ -8835,6 +8838,76 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## listSharedTournamentRegisteredLists
+
+> RegisteredListsResponse listSharedTournamentRegisteredLists(token)
+
+The shared lists of the Tournament a share link points at, once it is Finished
+
+The shared lists of the Tournament a share link points at, once it is Finished  None before; a link never reads as an Organizer.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { ListSharedTournamentRegisteredListsRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    token: token_example,
+  } satisfies ListSharedTournamentRegisteredListsRequest;
+
+  try {
+    const data = await api.listSharedTournamentRegisteredLists(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **token** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**RegisteredListsResponse**](RegisteredListsResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## listSharedTournamentRounds
 
 > RoundsResponse listSharedTournamentRounds(token)
@@ -9166,6 +9239,76 @@ example().catch(console.error);
 ### Return type
 
 [**ListRegisteredDecksResponse**](ListRegisteredDecksResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## listTournamentRegisteredLists
+
+> RegisteredListsResponse listTournamentRegisteredLists(tournament)
+
+The Registered decks\&#39; lists the reader may see
+
+The Registered decks\&#39; lists the reader may see  Organizers read every list at any time, to check them against the format. Everybody else reads none before the Tournament is Finished and the shared ones afterwards, also once their deck was deleted.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { ListTournamentRegisteredListsRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    tournament: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies ListTournamentRegisteredListsRequest;
+
+  try {
+    const data = await api.listTournamentRegisteredLists(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **tournament** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**RegisteredListsResponse**](RegisteredListsResponse.md)
 
 ### Authorization
 
@@ -12051,6 +12194,79 @@ example().catch(console.error);
 |------------- | ------------- | ------------- | -------------|
 | **deck** | `string` |  | [Defaults to `undefined`] |
 | **SetDeckRuleZeroRequest** | [SetDeckRuleZeroRequest](SetDeckRuleZeroRequest.md) |  | [Optional] |
+
+### Return type
+
+**any**
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## setMyTournamentListSharing
+
+> any setMyTournamentListSharing(tournament, SetListSharingRequest)
+
+Choose whether others may see the logged-in Account\&#39;s list once the
+
+Choose whether others may see the logged-in Account\&#39;s list once the Tournament is Finished  The Participant\&#39;s own choice, open at any time.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { SetMyTournamentListSharingRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    tournament: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // SetListSharingRequest (optional)
+    SetListSharingRequest: ...,
+  } satisfies SetMyTournamentListSharingRequest;
+
+  try {
+    const data = await api.setMyTournamentListSharing(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **tournament** | `string` |  | [Defaults to `undefined`] |
+| **SetListSharingRequest** | [SetListSharingRequest](SetListSharingRequest.md) |  | [Optional] |
 
 ### Return type
 

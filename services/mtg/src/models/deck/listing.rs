@@ -13,6 +13,7 @@ use std::collections::HashMap;
 
 use galvyn::rorm;
 use galvyn::rorm::db::Executor;
+use galvyn::rorm::db::Row;
 use galvyn::rorm::db::executor::All;
 use galvyn::rorm::db::sql::value::Value;
 use galvyn::rorm::db::transaction::Transaction;
@@ -114,17 +115,13 @@ impl ListedSlot {
         tx: &mut Transaction,
         deck: DeckUuid,
     ) -> Result<Vec<ListedSlot>, rorm::Error> {
-        let statement = "SELECT c.uuid, c.printing, c.quantity, c.zone, c.foil, c.proxy, \
-                    p.name, p.oracle_id, p.set_code, p.set_name, p.collector_number, \
-                    p.lang, p.cardmarket_id, p.rarity, p.mana_value, p.mana_cost, \
-                    p.color_identity, p.type_line, p.legal_formats, \
-                    p.image_small, p.image_normal, p.image_back_small, p.image_back_normal, \
-                    p.price_eur, p.price_eur_foil, p.finishes, p.produced_mana, p.game_changer, p.mass_land_denial, p.extra_turns, p.reserved \
+        let statement = format!(
+            "SELECT {SLOT_COLUMNS} \
              FROM deckcard c \
              LEFT JOIN printing p ON p.id = c.printing \
              WHERE c.deck = $1 \
              ORDER BY c.uuid ASC"
-            .to_string();
+        );
 
         let rows = (&mut *tx)
             .execute::<All>(statement, vec![Value::Uuid(deck.into_inner())])
@@ -134,56 +131,94 @@ impl ListedSlot {
 
         let mut slots = Vec::with_capacity(rows.len());
         for row in rows {
-            let decode =
-                |error: rorm::db::row::RowError<'_>| rorm::Error::RowError(error.into_owned());
-
-            let name: Option<String> = row.get("name").map_err(decode)?;
-            let card = match name {
-                Some(name) => Some(ListedDeckCard {
-                    name,
-                    oracle_id: row.get("oracle_id").map_err(decode)?,
-                    set_code: row.get("set_code").map_err(decode)?,
-                    set_name: row.get("set_name").map_err(decode)?,
-                    collector_number: row.get("collector_number").map_err(decode)?,
-                    lang: row.get("lang").map_err(decode)?,
-                    cardmarket_id: row.get("cardmarket_id").map_err(decode)?,
-                    rarity: rarity_of(row.get::<String>("rarity").map_err(decode)?.as_str()),
-                    mana_value: row.get("mana_value").map_err(decode)?,
-                    mana_cost: row.get("mana_cost").map_err(decode)?,
-                    color_identity: row.get("color_identity").map_err(decode)?,
-                    type_line: row.get("type_line").map_err(decode)?,
-                    legal_formats: row.get("legal_formats").map_err(decode)?,
-                    image_small: row.get("image_small").map_err(decode)?,
-                    image_normal: row.get("image_normal").map_err(decode)?,
-                    image_back_small: row.get("image_back_small").map_err(decode)?,
-                    image_back_normal: row.get("image_back_normal").map_err(decode)?,
-                    price_eur: row.get("price_eur").map_err(decode)?,
-                    price_eur_foil: row.get("price_eur_foil").map_err(decode)?,
-                    finishes: row.get("finishes").map_err(decode)?,
-                    produced_mana: row.get("produced_mana").map_err(decode)?,
-                    game_changer: row.get("game_changer").map_err(decode)?,
-                    mass_land_denial: row.get("mass_land_denial").map_err(decode)?,
-                    extra_turns: row.get("extra_turns").map_err(decode)?,
-                    reserved: row.get("reserved").map_err(decode)?,
-                }),
-                None => None,
-            };
-
-            let uuid = DeckCardUuid::from_uuid(row.get("uuid").map_err(decode)?);
-            slots.push(ListedSlot {
-                uuid,
-                printing: row.get("printing").map_err(decode)?,
-                quantity: row.get("quantity").map_err(decode)?,
-                zone: zone_of(row.get::<String>("zone").map_err(decode)?.as_str()),
-                foil: row.get("foil").map_err(decode)?,
-                proxy: row.get("proxy").map_err(decode)?,
-                card,
-                tags: tags.remove(&uuid).unwrap_or_default(),
-            });
+            let mut slot = decode_slot(&row)?;
+            slot.tags = tags.remove(&slot.uuid).unwrap_or_default();
+            slots.push(slot);
         }
 
         Ok(slots)
     }
+
+    /// Read the copied Deck entries of a pinned Registered deck, by its Participant
+    ///
+    /// Read like a deck's own slots, but without tags: the copy carries none.
+    /// The caller has to have established that the reader may see the list.
+    #[instrument(name = "ListedSlot::read_registered", skip(tx))]
+    pub async fn read_registered(
+        tx: &mut Transaction,
+        participant: Uuid,
+    ) -> Result<Vec<ListedSlot>, rorm::Error> {
+        let statement = format!(
+            "SELECT {SLOT_COLUMNS} \
+             FROM tournament_registered_card c \
+             JOIN tournament_registered_deck d ON d.uuid = c.registered_deck \
+             LEFT JOIN printing p ON p.id = c.printing \
+             WHERE d.participant = $1 \
+             ORDER BY c.uuid ASC"
+        );
+
+        let rows = (&mut *tx)
+            .execute::<All>(statement, vec![Value::Uuid(participant)])
+            .await?;
+        rows.iter().map(decode_slot).collect()
+    }
+}
+
+/// The columns [`decode_slot`] reads: a slot `c` joined against its printing `p`
+const SLOT_COLUMNS: &str = "c.uuid, c.printing, c.quantity, c.zone, c.foil, c.proxy, \
+    p.name, p.oracle_id, p.set_code, p.set_name, p.collector_number, \
+    p.lang, p.cardmarket_id, p.rarity, p.mana_value, p.mana_cost, \
+    p.color_identity, p.type_line, p.legal_formats, \
+    p.image_small, p.image_normal, p.image_back_small, p.image_back_normal, \
+    p.price_eur, p.price_eur_foil, p.finishes, p.produced_mana, p.game_changer, \
+    p.mass_land_denial, p.extra_turns, p.reserved";
+
+/// One slot out of a row holding [`SLOT_COLUMNS`], still without its tags
+fn decode_slot(row: &Row) -> Result<ListedSlot, rorm::Error> {
+    let decode = |error: rorm::db::row::RowError<'_>| rorm::Error::RowError(error.into_owned());
+
+    let name: Option<String> = row.get("name").map_err(decode)?;
+    let card = match name {
+        Some(name) => Some(ListedDeckCard {
+            name,
+            oracle_id: row.get("oracle_id").map_err(decode)?,
+            set_code: row.get("set_code").map_err(decode)?,
+            set_name: row.get("set_name").map_err(decode)?,
+            collector_number: row.get("collector_number").map_err(decode)?,
+            lang: row.get("lang").map_err(decode)?,
+            cardmarket_id: row.get("cardmarket_id").map_err(decode)?,
+            rarity: rarity_of(row.get::<String>("rarity").map_err(decode)?.as_str()),
+            mana_value: row.get("mana_value").map_err(decode)?,
+            mana_cost: row.get("mana_cost").map_err(decode)?,
+            color_identity: row.get("color_identity").map_err(decode)?,
+            type_line: row.get("type_line").map_err(decode)?,
+            legal_formats: row.get("legal_formats").map_err(decode)?,
+            image_small: row.get("image_small").map_err(decode)?,
+            image_normal: row.get("image_normal").map_err(decode)?,
+            image_back_small: row.get("image_back_small").map_err(decode)?,
+            image_back_normal: row.get("image_back_normal").map_err(decode)?,
+            price_eur: row.get("price_eur").map_err(decode)?,
+            price_eur_foil: row.get("price_eur_foil").map_err(decode)?,
+            finishes: row.get("finishes").map_err(decode)?,
+            produced_mana: row.get("produced_mana").map_err(decode)?,
+            game_changer: row.get("game_changer").map_err(decode)?,
+            mass_land_denial: row.get("mass_land_denial").map_err(decode)?,
+            extra_turns: row.get("extra_turns").map_err(decode)?,
+            reserved: row.get("reserved").map_err(decode)?,
+        }),
+        None => None,
+    };
+
+    Ok(ListedSlot {
+        uuid: DeckCardUuid::from_uuid(row.get("uuid").map_err(decode)?),
+        printing: row.get("printing").map_err(decode)?,
+        quantity: row.get("quantity").map_err(decode)?,
+        zone: zone_of(row.get::<String>("zone").map_err(decode)?.as_str()),
+        foil: row.get("foil").map_err(decode)?,
+        proxy: row.get("proxy").map_err(decode)?,
+        card,
+        tags: Vec::new(),
+    })
 }
 
 /// One commander of a deck, as far as the catalog knows it

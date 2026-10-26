@@ -6,8 +6,12 @@ use galvyn::core::stuff::api_json::ApiJson;
 use galvyn::delete;
 use galvyn::get;
 use galvyn::put;
+use galvyn::rorm;
 use galvyn::rorm::Database;
+use galvyn::rorm::db::transaction::Transaction;
 
+use crate::http::handler_frontend::decks::schema::DeckCardResponse;
+use crate::http::handler_frontend::shared::schema::redact_slot;
 use crate::http::handler_frontend::tournaments::decks::schema::ListParticipantDecksResponse;
 use crate::http::handler_frontend::tournaments::decks::schema::ListRegisteredDecksResponse;
 use crate::http::handler_frontend::tournaments::decks::schema::MyRegisteredDeckResponse;
@@ -15,13 +19,19 @@ use crate::http::handler_frontend::tournaments::decks::schema::ParticipantDeckRe
 use crate::http::handler_frontend::tournaments::decks::schema::RegisterDeckErrors;
 use crate::http::handler_frontend::tournaments::decks::schema::RegisterDeckRequest;
 use crate::http::handler_frontend::tournaments::decks::schema::RegisteredDeckResponse;
+use crate::http::handler_frontend::tournaments::decks::schema::RegisteredListResponse;
+use crate::http::handler_frontend::tournaments::decks::schema::RegisteredListsResponse;
+use crate::http::handler_frontend::tournaments::decks::schema::SetListSharingRequest;
 use crate::http::handler_frontend::tournaments::handler::denied;
 use crate::models::account::Account;
+use crate::models::account::extractor::Viewer;
 use crate::models::tournament::Tournament;
 use crate::models::tournament::TournamentUuid;
 use crate::models::tournament::participant::ParticipantUuid;
 use crate::models::tournament::registered_deck::DeckRegistrar;
+use crate::models::tournament::registered_deck::ListReader;
 use crate::models::tournament::registered_deck::RegisterDeckRefusal;
+use crate::models::tournament::registered_deck::list_visible;
 
 /// The logged-in Account's own Registered deck in a Tournament it plays in
 ///
@@ -61,7 +71,7 @@ pub async fn get_my_tournament_deck(
 pub async fn register_my_tournament_deck(
     account: Account,
     Path(tournament): Path<TournamentUuid>,
-    ApiJson(RegisterDeckRequest { deck }): ApiJson<RegisterDeckRequest>,
+    ApiJson(RegisterDeckRequest { deck, shared }): ApiJson<RegisterDeckRequest>,
 ) -> ApiResult<ApiJson<()>, RegisterDeckErrors> {
     let mut tx = Database::global().start_transaction().await?;
 
@@ -75,7 +85,13 @@ pub async fn register_my_tournament_deck(
         return Err(ApiError::bad_request("Not a participant"));
     };
     if let Err(refusal) = tournament
-        .register_deck(&mut tx, participant, deck, DeckRegistrar::Participant)
+        .register_deck(
+            &mut tx,
+            participant,
+            deck,
+            shared,
+            DeckRegistrar::Participant,
+        )
         .await?
     {
         tx.rollback().await?;
@@ -181,7 +197,7 @@ pub async fn list_tournament_participant_decks(
 pub async fn register_tournament_participant_deck(
     account: Account,
     Path((tournament, participant)): Path<(TournamentUuid, ParticipantUuid)>,
-    ApiJson(RegisterDeckRequest { deck }): ApiJson<RegisterDeckRequest>,
+    ApiJson(RegisterDeckRequest { deck, shared }): ApiJson<RegisterDeckRequest>,
 ) -> ApiResult<ApiJson<()>, RegisterDeckErrors> {
     let mut tx = Database::global().start_transaction().await?;
 
@@ -191,7 +207,7 @@ pub async fn register_tournament_participant_deck(
         return Err(denied());
     };
     if let Err(refusal) = tournament
-        .register_deck(&mut tx, participant, deck, DeckRegistrar::Organizer)
+        .register_deck(&mut tx, participant, deck, shared, DeckRegistrar::Organizer)
         .await?
     {
         tx.rollback().await?;
@@ -227,6 +243,98 @@ pub async fn remove_tournament_participant_deck(
     tx.commit().await?;
 
     Ok(ApiJson(()))
+}
+
+/// Choose whether others may see the logged-in Account's list once the
+/// Tournament is Finished
+///
+/// The Participant's own choice, open at any time.
+#[put("/{tournament}/deck/sharing")]
+pub async fn set_my_tournament_list_sharing(
+    account: Account,
+    Path(tournament): Path<TournamentUuid>,
+    ApiJson(SetListSharingRequest { shared }): ApiJson<SetListSharingRequest>,
+) -> ApiResult<ApiJson<()>> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    let Some(tournament) = Tournament::get_visible(&mut tx, tournament, Some(account.uuid)).await?
+    else {
+        tx.rollback().await?;
+        return Err(denied());
+    };
+    let Some(participant) = tournament.participant_of(&mut tx, account.uuid).await? else {
+        tx.rollback().await?;
+        return Err(ApiError::bad_request("Not a participant"));
+    };
+    if !tournament
+        .set_list_sharing(&mut tx, participant, shared)
+        .await?
+    {
+        tx.rollback().await?;
+        return Err(ApiError::bad_request("No registered deck"));
+    }
+
+    tx.commit().await?;
+
+    Ok(ApiJson(()))
+}
+
+/// The Registered decks' lists the reader may see
+///
+/// Organizers read every list at any time, to check them against the format.
+/// Everybody else reads none before the Tournament is Finished and the shared
+/// ones afterwards, also once their deck was deleted.
+#[get("/{tournament}/registered-lists")]
+pub async fn list_tournament_registered_lists(
+    viewer: Viewer,
+    Path(tournament): Path<TournamentUuid>,
+) -> ApiResult<ApiJson<RegisteredListsResponse>> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    let Some(tournament) = Tournament::get_visible(&mut tx, tournament, viewer.account()).await?
+    else {
+        tx.rollback().await?;
+        return Err(denied());
+    };
+    let reader = match viewer.account() {
+        Some(account) if tournament.organizer_role(&mut tx, account).await?.is_some() => {
+            ListReader::Organizer
+        }
+        _ => ListReader::Other,
+    };
+    let response = registered_lists_view(&mut tx, &tournament, reader).await?;
+
+    tx.commit().await?;
+
+    Ok(ApiJson(response))
+}
+
+/// The lists of `tournament`'s Registered decks `reader` may see
+///
+/// Somebody else's proxies stay out of the lists an Organizer does not read.
+pub async fn registered_lists_view(
+    tx: &mut Transaction,
+    tournament: &Tournament,
+    reader: ListReader,
+) -> Result<RegisteredListsResponse, rorm::Error> {
+    let mut decks = Vec::new();
+    for deck in tournament.registered_decks(tx).await? {
+        if !list_visible(tournament.state, deck.shared, reader) {
+            continue;
+        }
+        let cards = tournament
+            .registered_list(tx, &deck)
+            .await?
+            .into_iter()
+            .map(DeckCardResponse::from)
+            .map(|slot| match reader {
+                ListReader::Organizer => slot,
+                ListReader::Other => redact_slot(slot),
+            })
+            .collect();
+        decks.push(RegisteredListResponse::new(deck, cards));
+    }
+    Ok(RegisteredListsResponse { decks })
 }
 
 /// The answer to a refused Registered deck write

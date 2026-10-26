@@ -89,13 +89,24 @@ export type RuleZero = {
 };
 
 /**
+ * The deck settings a legality check reads: its format and the table's agreement.
+ *
+ * A deck has them, and so has a Tournament's Registered deck, which carries a
+ * copy of them without being a deck.
+ */
+export type CheckedDeck = Pick<
+    DeckResponse,
+    "format" | "allowed_color_identity" | "allow_extra_commanders" | "allow_duplicates" | "allow_banned" | "deck_size"
+>;
+
+/**
  * What a deck's owner wrote down about the table's agreement
  *
  * @param deck the deck
  *
  * @returns its house rules
  */
-export function deckRuleZero(deck: DeckResponse): RuleZero {
+export function deckRuleZero(deck: CheckedDeck): RuleZero {
     return {
         extraCommanders: deck.allow_extra_commanders,
         duplicates: deck.allow_duplicates,
@@ -394,7 +405,7 @@ export function countBracket(
  * @returns the remarks
  */
 export function checkDeck(
-    deck: DeckResponse,
+    deck: CheckedDeck,
     cards: Array<DeckCardResponse>,
     rules: FormatRulesResponse | undefined,
     bracket?: BracketRulesResponse,

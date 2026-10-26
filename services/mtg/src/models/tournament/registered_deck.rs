@@ -28,6 +28,7 @@ use crate::models::deck::DeckUuid;
 use crate::models::deck::db::DeckModel;
 use crate::models::deck::history::CHECKPOINT_LENGTH;
 use crate::models::deck::history::DeckHistory;
+use crate::models::deck::listing::ListedSlot;
 use crate::models::tournament::Tournament;
 use crate::models::tournament::TournamentState;
 use crate::models::tournament::db::TournamentModel;
@@ -37,6 +38,7 @@ use crate::models::tournament::db::TournamentRegisteredCardModel;
 use crate::models::tournament::db::TournamentRegisteredDeckInsertPatch;
 use crate::models::tournament::db::TournamentRegisteredDeckModel;
 use crate::models::tournament::participant::ParticipantUuid;
+use crate::models::visibility::Visibility;
 
 /// How many copied Deck entries one insert statement carries at most
 const COPY_CHUNK: usize = 1000;
@@ -52,6 +54,8 @@ pub struct RegisteredDeck {
     pub pinned_at: Option<OffsetDateTime>,
     /// The deck's settings: as they are now while it follows, as copied once pinned
     pub settings: RegisteredDeckSettings,
+    /// Whether the Participant lets others see the list once the Tournament is Finished
+    pub shared: bool,
 }
 
 /// The deck settings a Registered deck carries
@@ -119,6 +123,34 @@ pub enum RegisterDeckRefusal {
     Guest,
     /// The deck does not exist or the Participant's Account does not own it
     NotTheirDeck,
+}
+
+/// Who reads a Registered deck's list
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ListReader {
+    /// An Organizer of the Tournament, who checks the lists while it runs
+    Organizer,
+    /// Anybody else who sees the Tournament, Participants included
+    Other,
+}
+
+/// Whether a list is shared when the Participant registers it without saying
+///
+/// A public deck is out in the open already; anything else stays to itself.
+pub fn shared_by_default(visibility: Visibility) -> bool {
+    visibility == Visibility::Public
+}
+
+/// Whether `reader` sees a Registered deck's list
+///
+/// Organizers see every list at any time. Everybody else sees none before the
+/// Tournament is Finished, so nobody gets scouted mid-event, and afterwards the
+/// ones their Participants chose to share.
+pub fn list_visible(state: TournamentState, shared: bool, reader: ListReader) -> bool {
+    match reader {
+        ListReader::Organizer => true,
+        ListReader::Other => state == TournamentState::Finished && shared,
+    }
 }
 
 /// The Deck checkpoint name a Tournament called `name` sets
@@ -262,13 +294,15 @@ impl Tournament {
     /// Register `deck` for `participant`, replacing the Registered deck it had
     ///
     /// The deck has to be one its Account owns. In Registration the Registered
-    /// deck follows the deck; afterwards it is pinned at once.
+    /// deck follows the deck; afterwards it is pinned at once. `shared` is the
+    /// list sharing choice, `None` for the default: shared for a public deck.
     #[instrument(name = "Tournament::register_deck", skip(tx, self), fields(tournament = ?self.uuid))]
     pub async fn register_deck(
         &self,
         tx: &mut Transaction,
         participant: ParticipantUuid,
         deck: DeckUuid,
+        shared: Option<bool>,
         registrar: DeckRegistrar,
     ) -> Result<Result<(), RegisterDeckRefusal>, rorm::Error> {
         let state = match self.lock_for_deck_write(tx, registrar).await? {
@@ -280,16 +314,16 @@ impl Tournament {
             Some(None) => return Ok(Err(RegisterDeckRefusal::Guest)),
             Some(Some(account)) => account,
         };
-        let owned = rorm::query(&mut *tx, DeckModel.uuid)
+        let owned = rorm::query(&mut *tx, DeckModel.visibility)
             .condition(rorm::and![
                 DeckModel.uuid.equals(deck.into_inner()),
                 DeckModel.owner.equals(account.into_inner()),
             ])
             .optional()
             .await?;
-        if owned.is_none() {
+        let Some(visibility) = owned else {
             return Ok(Err(RegisterDeckRefusal::NotTheirDeck));
-        }
+        };
 
         delete_registered(tx, participant).await?;
         rorm::insert(&mut *tx, TournamentRegisteredDeckModel)
@@ -298,12 +332,57 @@ impl Tournament {
                 uuid: Uuid::now_v7(),
                 participant: ForeignModelByField(participant.into_inner()),
                 deck: Some(ForeignModelByField(deck.into_inner())),
+                list_shared: shared.unwrap_or_else(|| shared_by_default(visibility)),
             })
             .await?;
         if state != TournamentState::Registration {
             self.pin_registered_deck(tx, participant).await?;
         }
         Ok(Ok(()))
+    }
+
+    /// Set whether `participant`'s list is shared once the Tournament is Finished
+    ///
+    /// The Participant's own choice, which it may change at any time. Answers
+    /// `false` if it has no Registered deck.
+    #[instrument(name = "Tournament::set_list_sharing", skip(tx, self), fields(tournament = ?self.uuid))]
+    pub async fn set_list_sharing(
+        &self,
+        tx: &mut Transaction,
+        participant: ParticipantUuid,
+        shared: bool,
+    ) -> Result<bool, rorm::Error> {
+        if self.participant_account(tx, participant).await?.is_none() {
+            return Ok(false);
+        }
+        let updated = rorm::update(&mut *tx, TournamentRegisteredDeckModel)
+            .set(TournamentRegisteredDeckModel.list_shared, shared)
+            .condition(
+                TournamentRegisteredDeckModel
+                    .participant
+                    .equals(participant.into_inner()),
+            )
+            .await?;
+        Ok(updated > 0)
+    }
+
+    /// The list of a Registered deck, its Deck entries joined against the card
+    /// catalog: the copy once pinned, the deck's own until then
+    ///
+    /// The caller decides with [`list_visible`] whether the reader may see it.
+    #[instrument(name = "Tournament::registered_list", skip(tx, self, deck), fields(tournament = ?self.uuid))]
+    pub async fn registered_list(
+        &self,
+        tx: &mut Transaction,
+        deck: &RegisteredDeck,
+    ) -> Result<Vec<ListedSlot>, rorm::Error> {
+        if deck.pinned_at.is_some() {
+            return ListedSlot::read_registered(tx, deck.participant.into_inner()).await;
+        }
+        match deck.deck {
+            Some(followed) => ListedSlot::read_deck(tx, followed).await,
+            None => Ok(Vec::new()),
+        }
     }
 
     /// Take `participant`'s Registered deck away, so it plays without one
@@ -541,6 +620,7 @@ async fn resolve(
                 allow_banned: row.allow_banned,
                 deck_size: row.deck_size,
             },
+            shared: row.list_shared,
         }));
     }
     let Some(followed) = deck else {
@@ -555,12 +635,60 @@ async fn resolve(
         deck,
         pinned_at: None,
         settings: RegisteredDeckSettings::from(&found),
+        shared: row.list_shared,
     }))
 }
 
 #[cfg(test)]
 mod tests {
+    use super::ListReader;
     use super::checkpoint_name;
+    use super::list_visible;
+    use super::shared_by_default;
+    use crate::models::tournament::TournamentState;
+    use crate::models::visibility::Visibility;
+
+    #[test]
+    fn a_public_deck_is_shared_by_default_and_the_others_are_not() {
+        assert!(shared_by_default(Visibility::Public));
+        assert!(!shared_by_default(Visibility::Unlisted));
+        assert!(!shared_by_default(Visibility::Private));
+    }
+
+    #[test]
+    fn nobody_but_organizers_sees_a_list_before_the_tournament_is_finished() {
+        for state in [
+            TournamentState::Registration,
+            TournamentState::Swiss,
+            TournamentState::TopCut,
+            TournamentState::Cancelled,
+        ] {
+            assert!(!list_visible(state, true, ListReader::Other), "{state:?}");
+            assert!(
+                list_visible(state, false, ListReader::Organizer),
+                "{state:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_finished_tournament_shows_the_shared_lists_only() {
+        assert!(list_visible(
+            TournamentState::Finished,
+            true,
+            ListReader::Other
+        ));
+        assert!(!list_visible(
+            TournamentState::Finished,
+            false,
+            ListReader::Other
+        ));
+        assert!(list_visible(
+            TournamentState::Finished,
+            false,
+            ListReader::Organizer
+        ));
+    }
 
     #[test]
     fn a_short_tournament_name_is_the_checkpoint_name() {

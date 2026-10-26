@@ -9734,6 +9734,66 @@
                 }
             }
         },
+        "/api/frontend/v1/shared/tournaments/{token}/registered-lists": {
+            "get": {
+                "summary": "The shared lists of the Tournament a share link points at, once it is Finished",
+                "description": "The shared lists of the Tournament a share link points at, once it is Finished\n\nNone before; a link never reads as an Organizer.",
+                "operationId": "list_shared_tournament_registered_lists",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "token",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RegisteredListsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/frontend/v1/tags": {
             "get": {
                 "summary": "Every tag the account keeps for all of its decks and collections",
@@ -10324,6 +10384,68 @@
                 }
             }
         },
+        "/api/frontend/v1/tournaments/{tournament}/registered-lists": {
+            "get": {
+                "summary": "The Registered decks' lists the reader may see",
+                "description": "The Registered decks' lists the reader may see\n\nOrganizers read every list at any time, to check them against the format.\nEverybody else reads none before the Tournament is Finished and the shared\nones afterwards, also once their deck was deleted.",
+                "operationId": "list_tournament_registered_lists",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tournament",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of a [`Tournament`]",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RegisteredListsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/frontend/v1/tournaments/{tournament}/participants": {
             "get": {
                 "summary": "The Participants of a Tournament the reader may see",
@@ -10794,6 +10916,77 @@
                                             "$ref": "#/components/schemas/FormErrorResponse_for_RegisterDeckErrors"
                                         }
                                     ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/tournaments/{tournament}/deck/sharing": {
+            "put": {
+                "summary": "Choose whether others may see the logged-in Account's list once the",
+                "description": "Choose whether others may see the logged-in Account's list once the\nTournament is Finished\n\nThe Participant's own choice, open at any time.",
+                "operationId": "set_my_tournament_list_sharing",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tournament",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of a [`Tournament`]",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SetListSharingRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "nullable": true
                                 }
                             }
                         }
@@ -21923,6 +22116,11 @@
                                 "$ref": "#/components/schemas/DeckUuid"
                             }
                         ]
+                    },
+                    "shared": {
+                        "nullable": true,
+                        "description": "Whether others may see the list once the Tournament is Finished, `null` for the default: shared for a public deck, not for any other",
+                        "type": "boolean"
                     }
                 },
                 "required": [
@@ -21967,13 +22165,120 @@
                     "pinned": {
                         "description": "Whether it is a copy that no longer changes with the deck",
                         "type": "boolean"
+                    },
+                    "shared": {
+                        "description": "Whether its Participant lets others see the list once the Tournament is Finished",
+                        "type": "boolean"
                     }
                 },
                 "required": [
                     "format",
                     "name",
                     "participant",
-                    "pinned"
+                    "pinned",
+                    "shared"
+                ]
+            },
+            "RegisteredListResponse": {
+                "description": "One Registered deck's list, with what the format warnings read",
+                "type": "object",
+                "properties": {
+                    "allow_banned": {
+                        "description": "Whether the table agreed to cards the format bans",
+                        "type": "boolean"
+                    },
+                    "allow_duplicates": {
+                        "description": "Whether the table agreed to more copies of a card than the format allows",
+                        "type": "boolean"
+                    },
+                    "allow_extra_commanders": {
+                        "description": "Whether the table agreed to more commanders than the format allows",
+                        "type": "boolean"
+                    },
+                    "allowed_color_identity": {
+                        "nullable": true,
+                        "description": "The colours the table agreed it may play, `null` for the commander's",
+                        "type": "string"
+                    },
+                    "bracket": {
+                        "nullable": true,
+                        "description": "The Commander bracket it is built to, `null` when unset",
+                        "type": "integer",
+                        "format": "int16"
+                    },
+                    "cards": {
+                        "description": "Its Deck entries, joined against the card catalog",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/DeckCardResponse"
+                        }
+                    },
+                    "deck": {
+                        "nullable": true,
+                        "description": "The deck it was made from, `null` once that deck is deleted",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/DeckUuid"
+                            }
+                        ]
+                    },
+                    "deck_size": {
+                        "nullable": true,
+                        "description": "How many cards the table agreed it is built to, `null` for the format's rule",
+                        "type": "integer",
+                        "format": "int16"
+                    },
+                    "format": {
+                        "description": "The format the deck is built for, a Scryfall slug",
+                        "type": "string"
+                    },
+                    "name": {
+                        "description": "The deck's name: as it is now until pinned, as it was when pinned afterwards",
+                        "type": "string"
+                    },
+                    "participant": {
+                        "description": "The Participant playing it",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ParticipantUuid"
+                            }
+                        ]
+                    },
+                    "pinned": {
+                        "description": "Whether it is a copy that no longer changes with the deck",
+                        "type": "boolean"
+                    },
+                    "shared": {
+                        "description": "Whether its Participant lets others see it once the Tournament is Finished",
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "allow_banned",
+                    "allow_duplicates",
+                    "allow_extra_commanders",
+                    "cards",
+                    "format",
+                    "name",
+                    "participant",
+                    "pinned",
+                    "shared"
+                ]
+            },
+            "RegisteredListsResponse": {
+                "description": "The Registered decks' lists a reader may see",
+                "type": "object",
+                "properties": {
+                    "decks": {
+                        "description": "Every list for Organizers; for everybody else the shared ones once the Tournament is Finished and none before; in the order the Participants joined",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/RegisteredListResponse"
+                        }
+                    }
+                },
+                "required": [
+                    "decks"
                 ]
             },
             "RegistrationErrors": {
@@ -23378,6 +23683,19 @@
                 },
                 "required": [
                     "visibility"
+                ]
+            },
+            "SetListSharingRequest": {
+                "description": "Whether others may see the reader's list once the Tournament is Finished",
+                "type": "object",
+                "properties": {
+                    "shared": {
+                        "description": "`true` to show it next to the standings once the Tournament is Finished",
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "shared"
                 ]
             },
             "SetPaidErrors": {

@@ -611,3 +611,227 @@ fn only_organizers_read_every_registered_deck() {
         assert_eq!(response.status, StatusCode::BAD_REQUEST, "{response:?}");
     });
 }
+
+/// Create a deck called `name` in `format` with the given visibility and one fresh printing
+async fn deck_with(client: &mut TestClient, name: &str, format: &str, visibility: &str) -> String {
+    let body = client
+        .json(
+            Method::POST,
+            &api("decks"),
+            &json!({
+                "name": name,
+                "description": null,
+                "format": format,
+                "visibility": visibility,
+            }),
+        )
+        .await
+        .ok_json();
+    let deck = body["uuid"].as_str().expect("deck uuid").to_string();
+    add_card(client, &deck, Uuid::new_v4(), 1).await;
+    deck
+}
+
+/// The Registered decks' lists at `url` as `client` reads them
+async fn registered_lists(client: &mut TestClient, url: &Url) -> Value {
+    client.get(url).await.ok_json()
+}
+
+/// Which Participants' Registered decks' lists at `url` `client` reads
+async fn listed(client: &mut TestClient, url: &Url) -> Vec<String> {
+    registered_lists(client, url).await["decks"]
+        .as_array()
+        .expect("a list of decks")
+        .iter()
+        .map(|deck| {
+            deck["participant"]
+                .as_str()
+                .expect("participant")
+                .to_string()
+        })
+        .collect()
+}
+
+impl Event {
+    /// Player `index` registers `deck` itself with the sharing choice `shared`
+    async fn register_sharing(&mut self, index: usize, deck: &str, shared: bool) {
+        let url = self.url("deck");
+        self.players[index]
+            .client
+            .json(
+                Method::PUT,
+                &url,
+                &json!({ "deck": deck, "shared": shared }),
+            )
+            .await
+            .ok_json();
+    }
+
+    /// Play the one Swiss Round to its end, which finishes the Tournament
+    async fn finish(&mut self) {
+        let url = self.url("swiss-rounds");
+        self.owner
+            .json(Method::PUT, &url, &json!({ "swiss_rounds": 1 }))
+            .await
+            .ok_json();
+        self.start().await;
+        let rounds = self.owner.get(&self.url("rounds")).await.ok_json();
+        let played = rounds["rounds"][0]["matches"]
+            .as_array()
+            .expect("a list of matches")
+            .iter()
+            .find(|played| played["table_number"] != Value::Null)
+            .expect("a match")["uuid"]
+            .as_str()
+            .expect("match uuid")
+            .to_string();
+        let url = self.url(&format!("matches/{played}/result"));
+        self.owner
+            .json(
+                Method::PUT,
+                &url,
+                &json!({ "games_won": [1, 0], "games_drawn": 0 }),
+            )
+            .await
+            .ok_json();
+        let url = self.url("rounds/1/end");
+        let ended = self
+            .owner
+            .json(Method::POST, &url, &json!({}))
+            .await
+            .ok_json();
+        assert_eq!(ended["state"], "Finished", "{ended}");
+    }
+}
+
+#[test]
+fn a_public_deck_is_shared_by_default_and_a_private_one_is_not() {
+    run(async {
+        let mut event = Event::new().await;
+        let public = deck_with(&mut event.players[1].client, "Zoo", "modern", "Public").await;
+
+        event.register_own(0).await;
+        event.register(1, &public).await.ok_json();
+
+        assert_eq!(event.mine(0).await["deck"]["shared"], false);
+        assert_eq!(event.mine(1).await["deck"]["shared"], true);
+    });
+}
+
+#[test]
+fn a_participant_chooses_and_changes_whether_its_list_is_shared() {
+    run(async {
+        let mut event = Event::new().await;
+        let deck = event.players[0].deck.clone();
+        event.register_sharing(0, &deck, true).await;
+        assert_eq!(event.mine(0).await["deck"]["shared"], true);
+
+        let url = event.url("deck/sharing");
+        event.players[0]
+            .client
+            .json(Method::PUT, &url, &json!({ "shared": false }))
+            .await
+            .ok_json();
+
+        assert_eq!(event.mine(0).await["deck"]["shared"], false);
+    });
+}
+
+#[test]
+fn no_list_is_visible_to_participants_before_the_tournament_is_finished() {
+    run(async {
+        let mut event = Event::new().await;
+        for index in 0..2 {
+            let deck = event.players[index].deck.clone();
+            event.register_sharing(index, &deck, true).await;
+        }
+        let url = event.url("registered-lists");
+        let mut anonymous = TestClient::new();
+
+        assert!(listed(&mut event.players[1].client, &url).await.is_empty());
+        assert!(listed(&mut anonymous, &url).await.is_empty());
+        event.start().await;
+        assert!(listed(&mut event.players[1].client, &url).await.is_empty());
+        assert!(listed(&mut anonymous, &url).await.is_empty());
+    });
+}
+
+#[test]
+fn organizers_read_every_list_with_what_the_format_warnings_need() {
+    run(async {
+        let mut event = Event::new().await;
+        let pauper = deck_with(&mut event.players[1].client, "Faeries", "pauper", "Private").await;
+        event.register_own(0).await;
+        event.register(1, &pauper).await.ok_json();
+        let url = event.url("registered-lists");
+
+        let lists = registered_lists(&mut event.owner, &url).await;
+
+        let decks = lists["decks"].as_array().expect("a list of decks");
+        assert_eq!(decks.len(), 2, "{lists}");
+        let first = event.players[0].participant.as_str();
+        assert_eq!(decks[0]["participant"], first, "{lists}");
+        assert_eq!(decks[0]["format"], "modern", "{lists}");
+        assert_eq!(decks[0]["shared"], false, "{lists}");
+        assert_eq!(decks[0]["allow_banned"], false, "{lists}");
+        let printing = event.players[0].printing.to_string();
+        assert_eq!(decks[0]["cards"][0]["printing"], printing, "{lists}");
+        assert_eq!(decks[0]["cards"][0]["quantity"], 3, "{lists}");
+        assert_eq!(
+            decks[1]["format"], "pauper",
+            "the mismatch to warn about: {lists}"
+        );
+    });
+}
+
+#[test]
+fn the_shared_lists_appear_once_the_tournament_is_finished() {
+    run(async {
+        let mut event = Event::new().await;
+        let first = event.players[0].deck.clone();
+        let second = event.players[1].deck.clone();
+        event.register_sharing(0, &first, true).await;
+        event.register_sharing(1, &second, false).await;
+        let url = event.url("registered-lists");
+
+        event.finish().await;
+
+        let shared = vec![event.players[0].participant.clone()];
+        assert_eq!(listed(&mut TestClient::new(), &url).await, shared);
+        assert_eq!(listed(&mut event.players[1].client, &url).await, shared);
+        let lists = registered_lists(&mut TestClient::new(), &url).await;
+        assert_eq!(lists["decks"][0]["name"], "Burn", "{lists}");
+        let printing = event.players[0].printing.to_string();
+        assert_eq!(
+            lists["decks"][0]["cards"][0]["printing"], printing,
+            "{lists}"
+        );
+        assert_eq!(
+            listed(&mut event.owner, &url).await.len(),
+            2,
+            "Organizers read both"
+        );
+    });
+}
+
+#[test]
+fn a_shared_list_stays_visible_after_its_deck_was_deleted() {
+    run(async {
+        let mut event = Event::new().await;
+        let deck = event.players[0].deck.clone();
+        event.register_sharing(0, &deck, true).await;
+        event.finish().await;
+
+        let url = api(&format!("decks/{deck}"));
+        event.players[0]
+            .client
+            .json(Method::DELETE, &url, &json!(null))
+            .await
+            .ok_json();
+
+        let lists = registered_lists(&mut TestClient::new(), &event.url("registered-lists")).await;
+        assert_eq!(lists["decks"][0]["deck"], Value::Null, "{lists}");
+        assert_eq!(lists["decks"][0]["name"], "Burn", "{lists}");
+        assert_eq!(lists["decks"][0]["cards"][0]["quantity"], 3, "{lists}");
+    });
+}

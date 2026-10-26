@@ -535,6 +535,10 @@ pub struct TournamentRegisteredDeckModel {
     /// The point in time it was registered
     #[rorm(auto_create_time)]
     pub registered_at: OffsetDateTime,
+
+    /// Whether the Participant lets others see the list once the Tournament is Finished
+    #[rorm(default = false)]
+    pub list_shared: bool,
 }
 
 /// Insert patch for [`TournamentRegisteredDeckModel`], following its deck
@@ -547,6 +551,8 @@ pub struct TournamentRegisteredDeckInsertPatch {
     pub participant: ForeignModel<TournamentParticipantModel>,
     /// The deck it is made from
     pub deck: Option<ForeignModel<DeckModel>>,
+    /// Whether the list is shared once the Tournament is Finished
+    pub list_shared: bool,
 }
 
 /// One Deck entry of a pinned Registered deck, copied from its deck

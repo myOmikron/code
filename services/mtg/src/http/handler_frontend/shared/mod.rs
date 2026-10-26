@@ -34,6 +34,7 @@ pub fn initialize_routes() -> GalvynRouter {
                 .handler(handler::list_shared_tournament_participants)
                 .handler(handler::sign_up_for_shared_tournament)
                 .handler(handler::list_shared_tournament_rounds)
-                .handler(handler::get_shared_tournament_standings),
+                .handler(handler::get_shared_tournament_standings)
+                .handler(handler::list_shared_tournament_registered_lists),
         )
 }

@@ -440,6 +440,8 @@ export const Api = {
             // Never a previewed Round: the link shows what anybody sees.
             rounds: (token: string) => defaultApi.listSharedTournamentRounds({ token }),
             standings: (token: string) => defaultApi.getSharedTournamentStandings({ token }),
+            // The shared lists once the Tournament is Finished, none before.
+            lists: (token: string) => defaultApi.listSharedTournamentRegisteredLists({ token }),
         },
         collections: {
             get: (token: string) => defaultApi.getSharedCollection({ token }),
@@ -601,8 +603,13 @@ export const Api = {
         },
         decks: {
             mine: async (tournament: UUID) => handleError(defaultApi.getMyTournamentDeck({ tournament })),
-            register: async (tournament: UUID, deck: UUID) =>
-                handleError(defaultApi.registerMyTournamentDeck({ tournament, RegisterDeckRequest: { deck } })),
+            register: async (tournament: UUID, deck: UUID, shared: boolean) =>
+                handleError(defaultApi.registerMyTournamentDeck({ tournament, RegisterDeckRequest: { deck, shared } })),
+            setSharing: async (tournament: UUID, shared: boolean) =>
+                handleError(defaultApi.setMyTournamentListSharing({ tournament, SetListSharingRequest: { shared } })),
+            // Every list for Organizers; for anybody else the shared ones once
+            // the Tournament is Finished. Open like `get`.
+            lists: (tournament: UUID) => defaultApi.listTournamentRegisteredLists({ tournament }),
             remove: async (tournament: UUID) => handleError(defaultApi.removeMyTournamentDeck({ tournament })),
             list: async (tournament: UUID) => handleError(defaultApi.listTournamentRegisteredDecks({ tournament })),
             candidates: async (tournament: UUID, participant: UUID) =>
