@@ -93,6 +93,11 @@ export function TournamentDetails({ tournament }: TournamentDetailsProps) {
                     </>
                 )}
 
+                <DescriptionTerm>{t("label.run-mode")}</DescriptionTerm>
+                <DescriptionDetails>
+                    {tournament.entered_afterwards ? t("label.run-mode-afterwards") : t("label.run-mode-live")}
+                </DescriptionDetails>
+
                 <DescriptionTerm>{t("label.entry-fee")}</DescriptionTerm>
                 <DescriptionDetails>
                     {tournament.entry_fee == null ? t("label.entry-fee-none") : formatEntryFee(tournament.entry_fee)}

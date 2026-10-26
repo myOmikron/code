@@ -101,6 +101,12 @@ pub struct TournamentModel {
     /// How many Games a Top cut Match is played to; set exactly with [`Self::top_cut`]
     pub top_cut_best_of: Option<BestOf>,
 
+    /// Whether the Tournament is entered afterwards instead of run live
+    ///
+    /// Its Organizers set every pairing and Result; nobody is asked to report.
+    #[rorm(default = false)]
+    pub entered_afterwards: bool,
+
     /// Where the Tournament stands
     #[rorm(default = "Registration")]
     pub state: TournamentState,
@@ -148,6 +154,8 @@ pub struct TournamentInsertPatch {
     pub top_cut: Option<TopCut>,
     /// How many Games a Top cut Match is played to
     pub top_cut_best_of: Option<BestOf>,
+    /// Whether the Tournament is entered afterwards instead of run live
+    pub entered_afterwards: bool,
     /// The entry fee in the currency's smallest unit
     pub entry_fee_amount: Option<i32>,
     /// The ISO 4217 code of the entry fee's currency

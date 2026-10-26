@@ -9,6 +9,7 @@ Name | Type
 ------------ | -------------
 `confirmed` | boolean
 `disputed` | boolean
+`entered_afterwards` | boolean
 `invalid_score` | boolean
 `not_running` | boolean
 `reported_by_other` | boolean

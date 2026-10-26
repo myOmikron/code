@@ -535,6 +535,7 @@ mod tests {
             swiss_rounds: None,
             top_cut: None,
             top_cut_best_of: None,
+            entered_afterwards: false,
             state: TournamentState::Registration,
             created_at: OffsetDateTime::UNIX_EPOCH,
         }

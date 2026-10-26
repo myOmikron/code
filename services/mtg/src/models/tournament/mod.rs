@@ -132,6 +132,9 @@ pub struct Tournament {
     pub top_cut: Option<TopCut>,
     /// How many Games a Top cut Match is played to, set exactly with [`Self::top_cut`]
     pub top_cut_best_of: Option<BestOf>,
+    /// Whether it is entered afterwards: its Organizers set every pairing and
+    /// Result, nobody is asked to report and nobody gets a push
+    pub entered_afterwards: bool,
     /// Where it stands
     pub state: TournamentState,
     /// The point in time it was created
@@ -180,6 +183,7 @@ impl Tournament {
                 round_minutes: settings.round_minutes.map(stored_minutes),
                 top_cut: settings.top_cut,
                 top_cut_best_of: settings.top_cut_best_of,
+                entered_afterwards: settings.entered_afterwards,
                 entry_fee_amount: settings.entry_fee.as_ref().map(|fee| fee.amount),
                 entry_fee_currency: settings.entry_fee.as_ref().map(|fee| fee.currency.clone()),
                 state: TournamentState::Registration,
@@ -226,6 +230,10 @@ impl Tournament {
             .set(TournamentModel.top_cut, settings.top_cut)
             .set(TournamentModel.top_cut_best_of, settings.top_cut_best_of)
             .set(
+                TournamentModel.entered_afterwards,
+                settings.entered_afterwards,
+            )
+            .set(
                 TournamentModel.entry_fee_amount,
                 settings.entry_fee.as_ref().map(|fee| fee.amount),
             )
@@ -251,6 +259,7 @@ impl Tournament {
             round_minutes: settings.round_minutes,
             top_cut: settings.top_cut,
             top_cut_best_of: settings.top_cut_best_of,
+            entered_afterwards: settings.entered_afterwards,
             entry_fee: settings.entry_fee,
             ..self
         })
@@ -287,6 +296,7 @@ impl Tournament {
             best_of: settings.best_of,
             top_cut: settings.top_cut,
             top_cut_best_of: settings.top_cut_best_of,
+            entered_afterwards: settings.entered_afterwards,
             entry_fee: settings.entry_fee,
             round_minutes: settings.round_minutes,
             swiss_rounds: None,
@@ -325,6 +335,7 @@ impl From<TournamentModel> for Tournament {
             swiss_rounds: value.swiss_rounds,
             top_cut: value.top_cut,
             top_cut_best_of: value.top_cut_best_of,
+            entered_afterwards: value.entered_afterwards,
             state: value.state,
             created_at: value.created_at,
         }
