@@ -37,6 +37,7 @@ pub mod participant;
 pub mod registered_deck;
 pub mod result;
 pub mod round;
+pub mod round_edit;
 pub mod settings;
 
 custom_db_enum! {

@@ -45,6 +45,8 @@ pub struct MatchResponse {
     pub seats: Vec<SeatResponse>,
     /// Its Result, `null` while it has none and for a Bye
     pub result: Option<ResultResponse>,
+    /// Whether some of its Participants met in an earlier Round
+    pub rematch: bool,
 }
 
 /// A Participant's Seat in a Match
@@ -110,6 +112,10 @@ pub struct RoundErrors {
     pub results_missing: bool,
     /// A Result of the Round is disputed; an Organizer settles it first
     pub results_disputed: bool,
+    /// No Round of that number ended
+    pub not_ended: bool,
+    /// A later Round started, so this one cannot be taken back
+    pub later_round_started: bool,
 }
 
 impl From<RoundRefusal> for RoundErrors {
@@ -125,9 +131,39 @@ impl From<RoundRefusal> for RoundErrors {
             RoundRefusal::NotRunning => errors.not_running = true,
             RoundRefusal::ResultsMissing => errors.results_missing = true,
             RoundRefusal::ResultsDisputed => errors.results_disputed = true,
+            RoundRefusal::NotEnded => errors.not_ended = true,
+            RoundRefusal::LaterRoundStarted => errors.later_round_started = true,
         }
         errors
     }
+}
+
+/// An Organizer's layout of a previewed Round
+#[derive(Debug, Clone, Deserialize, JsonSchema)]
+pub struct ArrangeRoundRequest {
+    /// The Matches, top table first, each listing its Participants in Seat order
+    pub matches: Vec<Vec<ParticipantUuid>>,
+    /// Who has a Bye
+    pub byes: Vec<ParticipantUuid>,
+}
+
+/// Why a layout of a previewed Round was refused
+#[derive(Debug, Clone, Default, Serialize, JsonSchema)]
+pub struct ArrangeRoundErrors {
+    /// The Tournament is Finished or Cancelled
+    pub tournament_over: bool,
+    /// No Round of that number is previewed
+    pub not_previewed: bool,
+    /// Somebody sits who is no Participant the Round pairs
+    pub not_pairable: bool,
+    /// Somebody sits more than once
+    pub seated_twice: bool,
+    /// A Participant the Round pairs sits nowhere
+    pub not_seated: bool,
+    /// A Match seats a number of Participants it cannot have
+    pub match_size: bool,
+    /// The Ruleset never gives a Bye
+    pub no_byes: bool,
 }
 
 /// The Result an Organizer sets for a Match

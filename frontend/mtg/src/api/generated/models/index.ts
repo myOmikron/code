@@ -1078,6 +1078,74 @@ export interface ApiErrorResponse {
      */
     trace_id: string;
 }
+/**
+ * Why a layout of a previewed Round was refused
+ * @export
+ * @interface ArrangeRoundErrors
+ */
+export interface ArrangeRoundErrors {
+    /**
+     * A Match seats a number of Participants it cannot have
+     * @type {boolean}
+     * @memberof ArrangeRoundErrors
+     */
+    match_size: boolean;
+    /**
+     * The Ruleset never gives a Bye
+     * @type {boolean}
+     * @memberof ArrangeRoundErrors
+     */
+    no_byes: boolean;
+    /**
+     * Somebody sits who is no Participant the Round pairs
+     * @type {boolean}
+     * @memberof ArrangeRoundErrors
+     */
+    not_pairable: boolean;
+    /**
+     * No Round of that number is previewed
+     * @type {boolean}
+     * @memberof ArrangeRoundErrors
+     */
+    not_previewed: boolean;
+    /**
+     * A Participant the Round pairs sits nowhere
+     * @type {boolean}
+     * @memberof ArrangeRoundErrors
+     */
+    not_seated: boolean;
+    /**
+     * Somebody sits more than once
+     * @type {boolean}
+     * @memberof ArrangeRoundErrors
+     */
+    seated_twice: boolean;
+    /**
+     * The Tournament is Finished or Cancelled
+     * @type {boolean}
+     * @memberof ArrangeRoundErrors
+     */
+    tournament_over: boolean;
+}
+/**
+ * An Organizer's layout of a previewed Round
+ * @export
+ * @interface ArrangeRoundRequest
+ */
+export interface ArrangeRoundRequest {
+    /**
+     * Who has a Bye
+     * @type {Array<string>}
+     * @memberof ArrangeRoundRequest
+     */
+    byes: Array<string>;
+    /**
+     * The Matches, top table first, each listing its Participants in Seat order
+     * @type {Array<Array<string>>}
+     * @memberof ArrangeRoundRequest
+     */
+    matches: Array<Array<string>>;
+}
 
 /**
  * How many Games a one-on-one Match is played to
@@ -3526,6 +3594,27 @@ export interface FormErrorResponseForAdminUnlockAccountErrors {
 /**
  * The response that is sent in a case of an error the caller should present his user
  * @export
+ * @interface FormErrorResponseForArrangeRoundErrors
+ */
+export interface FormErrorResponseForArrangeRoundErrors {
+    /**
+     * The actual error struct
+     * @type {ArrangeRoundErrors}
+     * @memberof FormErrorResponseForArrangeRoundErrors
+     */
+    error: ArrangeRoundErrors;
+    /**
+     * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
+     * @type {ErrorConstant}
+     * @memberof FormErrorResponseForArrangeRoundErrors
+     */
+    result: ErrorConstant;
+}
+
+
+/**
+ * The response that is sent in a case of an error the caller should present his user
+ * @export
  * @interface FormErrorResponseForChooseUsernameErrors
  */
 export interface FormErrorResponseForChooseUsernameErrors {
@@ -4540,6 +4629,12 @@ export interface MarkedCard {
  * @interface MatchResponse
  */
 export interface MatchResponse {
+    /**
+     * Whether some of its Participants met in an earlier Round
+     * @type {boolean}
+     * @memberof MatchResponse
+     */
+    rematch: boolean;
     /**
      * Its Result, `null` while it has none and for a Bye
      * @type {ResultResponse}
@@ -6043,6 +6138,18 @@ export interface RoundErrors {
      * @memberof RoundErrors
      */
     all_rounds_paired: boolean;
+    /**
+     * A later Round started, so this one cannot be taken back
+     * @type {boolean}
+     * @memberof RoundErrors
+     */
+    later_round_started: boolean;
+    /**
+     * No Round of that number ended
+     * @type {boolean}
+     * @memberof RoundErrors
+     */
+    not_ended: boolean;
     /**
      * No Round of that number is previewed
      * @type {boolean}

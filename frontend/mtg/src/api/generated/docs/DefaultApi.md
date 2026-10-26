@@ -29,6 +29,7 @@ All URIs are relative to *http://localhost*
 | [**adminSetBugReportNote**](DefaultApi.md#adminsetbugreportnoteoperation) | **PUT** /api/frontend/v1/admin/bug-reports/{number}/note | Set the Admins\&#39; internal note on a Bug report, an empty note removes it |
 | [**adminSetRole**](DefaultApi.md#adminsetroleoperation) | **PUT** /api/frontend/v1/admin/accounts/{uuid}/role | Change an Account\&#39;s Role |
 | [**adminUnlockAccount**](DefaultApi.md#adminunlockaccountoperation) | **POST** /api/frontend/v1/admin/accounts/{uuid}/unlock | Lift an Account\&#39;s Lock |
+| [**arrangeTournamentRound**](DefaultApi.md#arrangetournamentround) | **PUT** /api/frontend/v1/tournaments/{tournament}/rounds/{number}/layout | Lay out a previewed Round by hand, as an Organizer |
 | [**assignCollectionEntryTag**](DefaultApi.md#assigncollectionentrytag) | **POST** /api/frontend/v1/collections/{collection}/entries/{entry}/tags/{tag} | Put a card-wide tag on a stack |
 | [**assignDeckCardTag**](DefaultApi.md#assigndeckcardtag) | **POST** /api/frontend/v1/decks/{deck}/cards/{card}/tags/{tag} | Put a tag on a card |
 | [**attachDeckCollection**](DefaultApi.md#attachdeckcollection) | **POST** /api/frontend/v1/decks/{deck}/collection | Start keeping the cards that are physically in this deck |
@@ -181,6 +182,7 @@ All URIs are relative to *http://localhost*
 | [**startRegistration**](DefaultApi.md#startregistrationoperation) | **POST** /api/frontend/v1/auth/register/start | Start a passkey registration |
 | [**startTournamentRound**](DefaultApi.md#starttournamentround) | **POST** /api/frontend/v1/tournaments/{tournament}/rounds/{number}/start | Start a previewed Round, as an Organizer: from now on everybody sees it |
 | [**swapDeckCard**](DefaultApi.md#swapdeckcardoperation) | **POST** /api/frontend/v1/decks/{deck}/cards/{card}/swap | Give up copies of a Deck entry for another card in the same zone |
+| [**takeBackTournamentRound**](DefaultApi.md#takebacktournamentround) | **POST** /api/frontend/v1/tournaments/{tournament}/rounds/{number}/take-back | Take back the latest ended Round, as an Organizer: it runs again |
 | [**takeDeckCards**](DefaultApi.md#takedeckcardsoperation) | **POST** /api/frontend/v1/decks/{deck}/sourcing/take | Move copies out of a collection and into the deck |
 | [**unassignCollectionEntryTag**](DefaultApi.md#unassigncollectionentrytag) | **DELETE** /api/frontend/v1/collections/{collection}/entries/{entry}/tags/{tag} | Take a card-wide tag off a stack, see [&#x60;assign_collection_entry_tag&#x60;] |
 | [**unassignDeckCardTag**](DefaultApi.md#unassigndeckcardtag) | **DELETE** /api/frontend/v1/decks/{deck}/cards/{card}/tags/{tag} | Take a tag off a card |
@@ -1983,6 +1985,82 @@ example().catch(console.error);
 ### Return type
 
 [**FormErrorResponseForAdminUnlockAccountErrors**](FormErrorResponseForAdminUnlockAccountErrors.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## arrangeTournamentRound
+
+> FormErrorResponseForArrangeRoundErrors arrangeTournamentRound(tournament, number, ArrangeRoundRequest)
+
+Lay out a previewed Round by hand, as an Organizer
+
+Lay out a previewed Round by hand, as an Organizer  The whole Round at once: every Match in table order with its Participants in Seat order, and the Byes. Starting the Round starts this layout.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { ArrangeTournamentRoundRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    tournament: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // number
+    number: 56,
+    // ArrangeRoundRequest (optional)
+    ArrangeRoundRequest: ...,
+  } satisfies ArrangeTournamentRoundRequest;
+
+  try {
+    const data = await api.arrangeTournamentRound(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **tournament** | `string` |  | [Defaults to `undefined`] |
+| **number** | `number` |  | [Defaults to `undefined`] |
+| **ArrangeRoundRequest** | [ArrangeRoundRequest](ArrangeRoundRequest.md) |  | [Optional] |
+
+### Return type
+
+[**FormErrorResponseForArrangeRoundErrors**](FormErrorResponseForArrangeRoundErrors.md)
 
 ### Authorization
 
@@ -12778,6 +12856,79 @@ No authorization required
 ### HTTP request headers
 
 - **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## takeBackTournamentRound
+
+> EndTournamentRound200Response takeBackTournamentRound(tournament, number)
+
+Take back the latest ended Round, as an Organizer: it runs again
+
+Take back the latest ended Round, as an Organizer: it runs again  Only while no later Round started; a previewed next Round goes. Its Results stay. A Tournament its last Swiss Round finished is back in Swiss.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { TakeBackTournamentRoundRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    tournament: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // number
+    number: 56,
+  } satisfies TakeBackTournamentRoundRequest;
+
+  try {
+    const data = await api.takeBackTournamentRound(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **tournament** | `string` |  | [Defaults to `undefined`] |
+| **number** | `number` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**EndTournamentRound200Response**](EndTournamentRound200Response.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
 - **Accept**: `application/json`
 
 

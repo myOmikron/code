@@ -24,5 +24,6 @@ mod tournament_lists;
 mod tournament_organizers;
 mod tournament_participants;
 mod tournament_results;
+mod tournament_round_edits;
 mod tournament_rounds;
 mod tournaments;

@@ -16,6 +16,8 @@ use galvyn::rorm::db::transaction::Transaction;
 use crate::http::handler_frontend::tournaments::handler::denied;
 use crate::http::handler_frontend::tournaments::participants::schema::ParticipantResponse;
 use crate::http::handler_frontend::tournaments::results::handler::announce;
+use crate::http::handler_frontend::tournaments::rounds::schema::ArrangeRoundErrors;
+use crate::http::handler_frontend::tournaments::rounds::schema::ArrangeRoundRequest;
 use crate::http::handler_frontend::tournaments::rounds::schema::MatchResponse;
 use crate::http::handler_frontend::tournaments::rounds::schema::PairedRoundResponse;
 use crate::http::handler_frontend::tournaments::rounds::schema::ResultResponse;
@@ -38,6 +40,9 @@ use crate::models::tournament::participant::ParticipantUuid;
 use crate::models::tournament::round::MatchUuid;
 use crate::models::tournament::round::ResultRefusal;
 use crate::models::tournament::round::RoundState;
+use crate::models::tournament::round_edit::ArrangeRefusal;
+use crate::tournament::layout::Layout;
+use crate::tournament::layout::LayoutError;
 use crate::tournament::standings::Share;
 use crate::tournament::standings::standings;
 
@@ -205,6 +210,88 @@ pub async fn end_tournament_round(
     Ok(ApiJson(TournamentStateResponse { state }))
 }
 
+/// Lay out a previewed Round by hand, as an Organizer
+///
+/// The whole Round at once: every Match in table order with its Participants
+/// in Seat order, and the Byes. Starting the Round starts this layout.
+#[put("/{tournament}/rounds/{number}/layout")]
+pub async fn arrange_tournament_round(
+    account: Account,
+    Path((tournament, number)): Path<(TournamentUuid, i16)>,
+    ApiJson(request): ApiJson<ArrangeRoundRequest>,
+) -> ApiResult<ApiJson<()>, ArrangeRoundErrors> {
+    let layout = Layout {
+        matches: request
+            .matches
+            .iter()
+            .map(|seats| seats.iter().map(|seat| seat.into_inner()).collect())
+            .collect(),
+        byes: request.byes.iter().map(|bye| bye.into_inner()).collect(),
+    };
+    let mut tx = Database::global().start_transaction().await?;
+
+    let Some(tournament) =
+        Tournament::get_as_organizer_for_update(&mut tx, tournament, account.uuid).await?
+    else {
+        tx.rollback().await?;
+        return Err(denied());
+    };
+    if let Err(refusal) = tournament.arrange_preview(&mut tx, number, &layout).await? {
+        tx.rollback().await?;
+        let mut errors = FormErrors::<ArrangeRoundErrors>::new();
+        match refusal {
+            ArrangeRefusal::TournamentOver => errors.tournament_over = true,
+            ArrangeRefusal::NotPreviewed => errors.not_previewed = true,
+            ArrangeRefusal::Invalid(mistakes) => {
+                for mistake in mistakes {
+                    match mistake {
+                        LayoutError::NotPairable(_) => errors.not_pairable = true,
+                        LayoutError::SeatedTwice(_) => errors.seated_twice = true,
+                        LayoutError::NotSeated(_) => errors.not_seated = true,
+                        LayoutError::MatchSize { .. } => errors.match_size = true,
+                        LayoutError::NoByes => errors.no_byes = true,
+                    }
+                }
+            }
+        }
+        return errors.fail();
+    }
+
+    tx.commit().await?;
+
+    Ok(ApiJson(()))
+}
+
+/// Take back the latest ended Round, as an Organizer: it runs again
+///
+/// Only while no later Round started; a previewed next Round goes. Its
+/// Results stay. A Tournament its last Swiss Round finished is back in Swiss.
+#[post("/{tournament}/rounds/{number}/take-back")]
+pub async fn take_back_tournament_round(
+    account: Account,
+    Path((tournament, number)): Path<(TournamentUuid, i16)>,
+) -> ApiResult<ApiJson<TournamentStateResponse>, RoundErrors> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    let Some(tournament) =
+        Tournament::get_as_organizer_for_update(&mut tx, tournament, account.uuid).await?
+    else {
+        tx.rollback().await?;
+        return Err(denied());
+    };
+    let state = match tournament.take_back_round(&mut tx, number).await? {
+        Ok(state) => state,
+        Err(refusal) => {
+            tx.rollback().await?;
+            return Err(ApiError::FormError(refusal.into()));
+        }
+    };
+
+    tx.commit().await?;
+
+    Ok(ApiJson(TournamentStateResponse { state }))
+}
+
 /// Set or correct the Result of a Match, as an Organizer
 ///
 /// Any time once its Round started, also after the Tournament is over; the
@@ -357,6 +444,7 @@ pub async fn rounds_view(
                                 })
                                 .collect(),
                             result,
+                            rematch: played.rematch,
                         }
                     })
                     .collect(),

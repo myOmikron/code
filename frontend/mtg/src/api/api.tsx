@@ -10,6 +10,7 @@ import {
     AdminBugReportFilter,
     AdminListAccountsRequest,
     AdminListLogRequest,
+    ArrangeRoundRequest,
     CollaboratorLevel,
     Configuration,
     DeletionMode,
@@ -612,6 +613,12 @@ export const Api = {
                 handleError(defaultApi.startTournamentRound({ tournament, number })),
             end: async (tournament: UUID, number: number) =>
                 handleError(defaultApi.endTournamentRound({ tournament, number })),
+            // The whole previewed Round at once; starting it starts this layout.
+            arrange: async (tournament: UUID, number: number, req: ArrangeRoundRequest) =>
+                handleError(defaultApi.arrangeTournamentRound({ tournament, number, ArrangeRoundRequest: req })),
+            // The latest ended Round runs again, with its Results.
+            takeBack: async (tournament: UUID, number: number) =>
+                handleError(defaultApi.takeBackTournamentRound({ tournament, number })),
             // Also corrects a Result, at any time once the Round started.
             setResult: async (tournament: UUID, match: UUID, req: SetResultRequest) =>
                 handleError(defaultApi.setTournamentMatchResult({ tournament, match, SetResultRequest: req })),

@@ -7,6 +7,7 @@ One Match, or a Bye
 
 Name | Type
 ------------ | -------------
+`rematch` | boolean
 `result` | [ResultResponse](ResultResponse.md)
 `seats` | [Array&lt;SeatResponse&gt;](SeatResponse.md)
 `table_number` | number

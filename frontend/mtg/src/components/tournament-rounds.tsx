@@ -1,7 +1,15 @@
-import { ArrowPathIcon, FlagIcon, PencilSquareIcon, PlayIcon, StopIcon } from "@heroicons/react/20/solid";
+import {
+    ArrowPathIcon,
+    ArrowUturnLeftIcon,
+    FlagIcon,
+    PencilSquareIcon,
+    PlayIcon,
+    StopIcon,
+} from "@heroicons/react/20/solid";
 import {
     Badge,
     Button,
+    ConfirmDialog,
     Description,
     ErrorMessage,
     Field,
@@ -31,6 +39,7 @@ import type {
 } from "src/api/generated";
 import { PrimaryButton } from "src/components/primary-button";
 import { useTournamentLabels } from "src/components/tournament-labels";
+import { TournamentPairingsEditor } from "src/components/tournament-pairings-editor";
 import { TournamentResultDialog } from "src/components/tournament-result-dialog";
 import { isFormError } from "src/utils/error";
 import { formatResult } from "src/utils/tournament-rounds";
@@ -65,6 +74,8 @@ export function TournamentRounds({ tournament, load, onTournamentChanged, me = n
     const [busy, setBusy] = useState(false);
     const [editing, setEditing] = useState<MatchResponse | null>(null);
     const [reporting, setReporting] = useState<MatchResponse | null>(null);
+    const [arranging, setArranging] = useState(false);
+    const [takingBack, setTakingBack] = useState(false);
 
     const organizer = tournament.organizer_role != null;
     const over = tournament.state === TournamentState.Finished || tournament.state === TournamentState.Cancelled;
@@ -74,6 +85,14 @@ export function TournamentRounds({ tournament, load, onTournamentChanged, me = n
         open?.state === RoundState.Running
             ? open.matches.filter((played) => played.result?.state === ResultState.Disputed).length
             : 0;
+    const lastEnded = rounds.findLast((round) => round.state === RoundState.Ended) ?? null;
+    const takeBack =
+        organizer &&
+        tournament.state !== TournamentState.Cancelled &&
+        lastEnded !== null &&
+        !rounds.some((round) => round.number > lastEnded.number && round.state !== RoundState.Previewed)
+            ? lastEnded
+            : null;
 
     const reload = useCallback(async () => {
         setList(await load());
@@ -99,6 +118,7 @@ export function TournamentRounds({ tournament, load, onTournamentChanged, me = n
     function refused(error: RoundErrors) {
         if (error.results_disputed) notify.error(t("error.results-disputed"));
         else if (error.results_missing) notify.error(t("error.results-missing"));
+        else if (error.later_round_started) notify.error(t("error.later-round-started"));
         else if (error.too_few_participants) notify.error(t("error.too-few-participants"));
         else if (error.ruleset_not_paired) notify.error(t("error.ruleset-not-paired"));
         else if (error.all_rounds_paired) notify.error(t("error.all-rounds-paired"));
@@ -179,7 +199,7 @@ export function TournamentRounds({ tournament, load, onTournamentChanged, me = n
                     {open?.state === RoundState.Previewed && (
                         <>
                             <PrimaryButton
-                                disabled={busy}
+                                disabled={busy || arranging}
                                 onClick={() =>
                                     void act(() => Api.tournaments.rounds.start(tournament.uuid, open.number))
                                 }
@@ -187,11 +207,16 @@ export function TournamentRounds({ tournament, load, onTournamentChanged, me = n
                                 <PlayIcon />
                                 {t("button.start-round", { number: open.number })}
                             </PrimaryButton>
+                            <Button outline disabled={busy || arranging} onClick={() => setArranging(true)}>
+                                <PencilSquareIcon />
+                                {t("button.edit-pairing")}
+                            </Button>
                             <Button
                                 outline
                                 disabled={busy}
                                 onClick={() =>
                                     void act(async () => {
+                                        setArranging(false);
                                         await Api.tournaments.rounds.discard(tournament.uuid, open.number);
                                         return Api.tournaments.rounds.pair(tournament.uuid);
                                     })
@@ -217,18 +242,48 @@ export function TournamentRounds({ tournament, load, onTournamentChanged, me = n
 
             {list !== null && rounds.length === 0 && <Text>{t("description.no-rounds")}</Text>}
 
-            {[...rounds].reverse().map((round) => (
-                <RoundTable
-                    key={round.number}
-                    round={round}
-                    editable={organizer && round.state !== RoundState.Previewed}
-                    me={organizer || over || round.state !== RoundState.Running ? null : me}
-                    busy={busy}
-                    onEdit={setEditing}
-                    onReport={setReporting}
-                    onDispute={(played) => void dispute(played)}
+            {[...rounds].reverse().map((round) =>
+                arranging && round.state === RoundState.Previewed ? (
+                    <section key={round.number} className={"flex flex-col gap-3"}>
+                        <Subheading>{t("heading.edit-pairing", { number: round.number })}</Subheading>
+                        <TournamentPairingsEditor
+                            tournamentUuid={tournament.uuid}
+                            round={round}
+                            rounds={rounds}
+                            onDone={async (saved) => {
+                                setArranging(false);
+                                if (saved) await reload();
+                            }}
+                        />
+                    </section>
+                ) : (
+                    <RoundTable
+                        key={round.number}
+                        round={round}
+                        editable={organizer && round.state !== RoundState.Previewed}
+                        me={organizer || over || round.state !== RoundState.Running ? null : me}
+                        busy={busy}
+                        onEdit={setEditing}
+                        onReport={setReporting}
+                        onDispute={(played) => void dispute(played)}
+                        onTakeBack={takeBack?.number === round.number ? () => setTakingBack(true) : undefined}
+                    />
+                ),
+            )}
+
+            {takeBack !== null && (
+                <ConfirmDialog
+                    open={takingBack}
+                    onClose={() => setTakingBack(false)}
+                    onConfirm={async () => {
+                        setTakingBack(false);
+                        await act(() => Api.tournaments.rounds.takeBack(tournament.uuid, takeBack.number));
+                    }}
+                    title={t("heading.take-back-round", { number: takeBack.number })}
+                    description={t("description.take-back-round")}
+                    confirmLabel={t("button.take-back-round", { number: takeBack.number })}
                 />
-            ))}
+            )}
 
             {organizer && tournament.best_of != null && (
                 <TournamentResultDialog
@@ -395,6 +450,8 @@ type RoundTableProps = {
     onReport: (played: MatchResponse) => void;
     /** Called with the reader's Match whose Result it disputes */
     onDispute: (played: MatchResponse) => void;
+    /** Called when the reader wants the Round taken back; only for a Round that can be */
+    onTakeBack?: () => void;
 };
 
 /**
@@ -402,7 +459,7 @@ type RoundTableProps = {
  *
  * @returns the Round's heading and table
  */
-function RoundTable({ round, editable, me, busy, onEdit, onReport, onDispute }: RoundTableProps) {
+function RoundTable({ round, editable, me, busy, onEdit, onReport, onDispute, onTakeBack }: RoundTableProps) {
     const [t] = useTranslation("tournament");
     const labels = useTournamentLabels();
     const mine = (played: MatchResponse) =>
@@ -416,6 +473,12 @@ function RoundTable({ round, editable, me, busy, onEdit, onReport, onDispute }: 
                 <Badge color={round.state === RoundState.Previewed ? "amber" : "sky"}>
                     {labels.roundState(round.state)}
                 </Badge>
+                {onTakeBack !== undefined && (
+                    <Button plain className={"ms-auto"} onClick={onTakeBack}>
+                        <ArrowUturnLeftIcon />
+                        {t("button.take-back-round", { number: round.number })}
+                    </Button>
+                )}
             </div>
             {round.state === RoundState.Previewed && <Text>{t("description.round-preview")}</Text>}
             <Table striped={true}>
@@ -431,7 +494,12 @@ function RoundTable({ round, editable, me, busy, onEdit, onReport, onDispute }: 
                 <TableBody>
                     {round.matches.map((played) => (
                         <TableRow key={played.uuid}>
-                            <TableCell>{played.table_number ?? t("label.bye")}</TableCell>
+                            <TableCell>
+                                <span className={"flex items-center gap-2"}>
+                                    {played.table_number ?? t("label.bye")}
+                                    {played.rematch && <Badge color={"amber"}>{t("label.rematch")}</Badge>}
+                                </span>
+                            </TableCell>
                             <TableCell>{played.seats[0]?.name ?? ""}</TableCell>
                             <TableCell>{played.table_number == null ? "" : (played.seats[1]?.name ?? "")}</TableCell>
                             <TableCell>

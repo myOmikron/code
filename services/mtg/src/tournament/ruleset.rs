@@ -47,6 +47,14 @@ impl Ruleset {
     pub fn draw_points(self) -> u32 {
         1
     }
+
+    /// Whether a Participant can have a Bye; the Multiplayer Addendum plays smaller Matches instead
+    pub fn gives_byes(self) -> bool {
+        match self {
+            Self::Mtr | Self::TopDeck => true,
+            Self::MultiplayerAddendum => false,
+        }
+    }
 }
 
 /// How many Games a one-on-one Match is played to

@@ -37,6 +37,7 @@ use crate::models::tournament::participant::ParticipantUuid;
 use crate::models::tournament::result::ResultChange;
 use crate::models::tournament::result::ResultChangeKind;
 use crate::models::tournament::result::store_result;
+use crate::tournament::layout::Meetings;
 use crate::tournament::pairing::PairingError;
 use crate::tournament::pairing::pair_next_round;
 use crate::tournament::record::Entrant;
@@ -91,6 +92,8 @@ pub struct Match {
     pub reported_by: Option<ParticipantUuid>,
     /// The Participant who disputed the Result, `None` unless it is disputed
     pub disputed_by: Option<ParticipantUuid>,
+    /// Whether some of its Participants met in an earlier Round
+    pub rematch: bool,
 }
 
 impl Match {
@@ -154,6 +157,10 @@ pub enum RoundRefusal {
     ResultsMissing,
     /// A Result of the Round is disputed; an Organizer settles it first
     ResultsDisputed,
+    /// No Round of that number ended
+    NotEnded,
+    /// A later Round started, so this one cannot be taken back
+    LaterRoundStarted,
 }
 
 /// Why a Result could not be set
@@ -237,19 +244,31 @@ impl Tournament {
                 disputed_by: row
                     .disputed_by
                     .map(|participant| ParticipantUuid::new(participant.0)),
+                rematch: false,
             });
         }
+        let mut meetings = Meetings::default();
         Ok(rounds
             .into_iter()
             .filter(|round| previews || round.state != RoundState::Previewed)
             .map(|round| {
                 let mut matches = matches_of.remove(&round.uuid).unwrap_or_default();
                 matches.sort_by_key(|played| (played.table_number.is_none(), played.table_number));
-                Round {
+                for played in matches.iter_mut().filter(|played| !played.is_bye()) {
+                    let seats: Vec<Uuid> = played
+                        .seats
+                        .iter()
+                        .map(|seat| seat.participant.into_inner())
+                        .collect();
+                    played.rematch = meetings.rematch(&seats);
+                }
+                let round = Round {
                     number: round.number,
                     state: round.state,
                     matches,
-                }
+                };
+                meetings.add(&round_record(&round));
+                round
             })
             .collect())
     }
