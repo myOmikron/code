@@ -23094,19 +23094,19 @@
                     "extra_turns": {
                         "description": "How many turns follow the active player's turn once time is up, under the Tournament's Ruleset\n\nInformation only: 5 under MTR, 0 under the multiplayer Rulesets.",
                         "type": "integer",
-                        "minimum": 0,
+                        "minimum": 0.0,
                         "format": "uint8"
                     },
                     "length_seconds": {
                         "description": "How long the Round runs, in seconds",
                         "type": "integer",
-                        "minimum": 0,
+                        "minimum": 0.0,
                         "format": "uint32"
                     },
                     "remaining_seconds": {
                         "description": "Seconds left when the server answered, 0 once time is up",
                         "type": "integer",
-                        "minimum": 0,
+                        "minimum": 0.0,
                         "format": "uint32"
                     },
                     "time_up": {
@@ -24590,13 +24590,13 @@
                     "byes": {
                         "description": "Byes had",
                         "type": "integer",
-                        "minimum": 0,
+                        "minimum": 0.0,
                         "format": "uint32"
                     },
                     "draws": {
                         "description": "Matches drawn",
                         "type": "integer",
-                        "minimum": 0,
+                        "minimum": 0.0,
                         "format": "uint32"
                     },
                     "dropped_after_round": {
@@ -24612,13 +24612,13 @@
                     "losses": {
                         "description": "Matches lost",
                         "type": "integer",
-                        "minimum": 0,
+                        "minimum": 0.0,
                         "format": "uint32"
                     },
                     "match_points": {
                         "description": "Its Match points, Byes included",
                         "type": "integer",
-                        "minimum": 0,
+                        "minimum": 0.0,
                         "format": "uint32"
                     },
                     "name": {
@@ -24636,7 +24636,7 @@
                     "place": {
                         "description": "Its place, 1 for the top; Participants equal on everything share one",
                         "type": "integer",
-                        "minimum": 0,
+                        "minimum": 0.0,
                         "format": "uint32"
                     },
                     "tiebreakers": {
@@ -24650,7 +24650,7 @@
                     "wins": {
                         "description": "Matches won, Byes not included",
                         "type": "integer",
-                        "minimum": 0,
+                        "minimum": 0.0,
                         "format": "uint32"
                     }
                 },
@@ -25588,7 +25588,7 @@
                         "nullable": true,
                         "description": "How many minutes the round timer gives a Round, `null` for no timer",
                         "type": "integer",
-                        "minimum": 0,
+                        "minimum": 0.0,
                         "format": "uint16"
                     },
                     "ruleset": {

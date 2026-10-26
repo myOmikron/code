@@ -222,6 +222,9 @@ import type {
 } from '../models/index';
 
 export interface AcceptTournamentHandoverRequest {
+    /**
+     * 
+     */
     tournament: string;
 }
 
@@ -270,17 +273,35 @@ export interface AddScannerSessionEntryOperationRequest {
 }
 
 export interface AddTournamentAccountRequest {
+    /**
+     * 
+     */
     tournament: string;
+    /**
+     * 
+     */
     AddAccountParticipantRequest?: AddAccountParticipantRequest;
 }
 
 export interface AddTournamentCoOrganizerRequest {
+    /**
+     * 
+     */
     tournament: string;
+    /**
+     * 
+     */
     NameAccountRequest?: NameAccountRequest;
 }
 
 export interface AddTournamentGuestRequest {
+    /**
+     * 
+     */
     tournament: string;
+    /**
+     * 
+     */
     AddGuestParticipantRequest?: AddGuestParticipantRequest;
 }
 
@@ -454,8 +475,17 @@ export interface AdminUnlockAccountOperationRequest {
 }
 
 export interface ArrangeTournamentRoundRequest {
+    /**
+     * 
+     */
     tournament: string;
+    /**
+     * 
+     */
     number: number;
+    /**
+     * 
+     */
     ArrangeRoundRequest?: ArrangeRoundRequest;
 }
 
@@ -497,10 +527,16 @@ export interface AttachDeckCollectionRequest {
 }
 
 export interface CancelTournamentRequest {
+    /**
+     * 
+     */
     tournament: string;
 }
 
 export interface CheckPushDeviceRequest {
+    /**
+     * 
+     */
     PushDeviceRequest?: PushDeviceRequest;
 }
 
@@ -558,6 +594,9 @@ export interface CreateScannerSessionOperationRequest {
 }
 
 export interface CreateTournamentRequest {
+    /**
+     * 
+     */
     TournamentSettingsRequest?: TournamentSettingsRequest;
 }
 
@@ -569,6 +608,9 @@ export interface CreateWatchListOperationRequest {
 }
 
 export interface DeclineTournamentHandoverRequest {
+    /**
+     * 
+     */
     tournament: string;
 }
 
@@ -666,6 +708,9 @@ export interface DeleteScannerSessionEntryRequest {
 }
 
 export interface DeleteTournamentRequest {
+    /**
+     * 
+     */
     tournament: string;
 }
 
@@ -695,26 +740,53 @@ export interface DetachDeckCollectionRequest {
 }
 
 export interface DiscardTournamentRoundRequest {
+    /**
+     * 
+     */
     tournament: string;
+    /**
+     * 
+     */
     number: number;
 }
 
 export interface DisputeTournamentMatchResultRequest {
+    /**
+     * 
+     */
     tournament: string;
+    /**
+     * 
+     */
     match: string;
 }
 
 export interface DropOutOfTournamentRequest {
+    /**
+     * 
+     */
     tournament: string;
 }
 
 export interface DropTournamentParticipantRequest {
+    /**
+     * 
+     */
     tournament: string;
+    /**
+     * 
+     */
     participant: string;
 }
 
 export interface EndTournamentRoundRequest {
+    /**
+     * 
+     */
     tournament: string;
+    /**
+     * 
+     */
     number: number;
 }
 
@@ -777,10 +849,16 @@ export interface FinishRegistrationOperationRequest {
 }
 
 export interface FollowSharedTournamentRequest {
+    /**
+     * 
+     */
     token: string;
 }
 
 export interface FollowTournamentRequest {
+    /**
+     * 
+     */
     tournament: string;
 }
 
@@ -860,10 +938,16 @@ export interface GetDeckSourcingRequest {
 }
 
 export interface GetMyTournamentDeckRequest {
+    /**
+     * 
+     */
     tournament: string;
 }
 
 export interface GetMyTournamentMatchRequest {
+    /**
+     * 
+     */
     tournament: string;
 }
 
@@ -938,18 +1022,30 @@ export interface GetSharedDeckRequest {
 }
 
 export interface GetSharedTournamentRequest {
+    /**
+     * 
+     */
     token: string;
 }
 
 export interface GetSharedTournamentStandingsRequest {
+    /**
+     * 
+     */
     token: string;
 }
 
 export interface GetTournamentRequest {
+    /**
+     * 
+     */
     tournament: string;
 }
 
 export interface GetTournamentStandingsRequest {
+    /**
+     * 
+     */
     tournament: string;
 }
 
@@ -1108,8 +1204,17 @@ export interface ListPublicDeckCardsRequest {
 }
 
 export interface ListPublicTournamentsRequest {
+    /**
+     * 
+     */
     format?: string | null;
+    /**
+     * 
+     */
     location?: string | null;
+    /**
+     * 
+     */
     timeframe?: Timeframe | null;
 }
 
@@ -1168,39 +1273,69 @@ export interface ListSharedDeckCardsRequest {
 }
 
 export interface ListSharedTournamentParticipantsRequest {
+    /**
+     * 
+     */
     token: string;
 }
 
 export interface ListSharedTournamentRegisteredListsRequest {
+    /**
+     * 
+     */
     token: string;
 }
 
 export interface ListSharedTournamentRoundsRequest {
+    /**
+     * 
+     */
     token: string;
 }
 
 export interface ListTournamentOrganizersRequest {
+    /**
+     * 
+     */
     tournament: string;
 }
 
 export interface ListTournamentParticipantDecksRequest {
+    /**
+     * 
+     */
     tournament: string;
+    /**
+     * 
+     */
     participant: string;
 }
 
 export interface ListTournamentParticipantsRequest {
+    /**
+     * 
+     */
     tournament: string;
 }
 
 export interface ListTournamentRegisteredDecksRequest {
+    /**
+     * 
+     */
     tournament: string;
 }
 
 export interface ListTournamentRegisteredListsRequest {
+    /**
+     * 
+     */
     tournament: string;
 }
 
 export interface ListTournamentRoundsRequest {
+    /**
+     * 
+     */
     tournament: string;
 }
 
@@ -1234,11 +1369,20 @@ export interface MergeCollectionEntriesOperationRequest {
 }
 
 export interface OfferTournamentHandoverRequest {
+    /**
+     * 
+     */
     tournament: string;
+    /**
+     * 
+     */
     NameAccountRequest?: NameAccountRequest;
 }
 
 export interface PairTournamentRoundRequest {
+    /**
+     * 
+     */
     tournament: string;
 }
 
@@ -1275,13 +1419,28 @@ export interface RedoDeckChangeRequest {
 }
 
 export interface RegisterMyTournamentDeckRequest {
+    /**
+     * 
+     */
     tournament: string;
+    /**
+     * 
+     */
     RegisterDeckRequest?: RegisterDeckRequest;
 }
 
 export interface RegisterTournamentParticipantDeckRequest {
+    /**
+     * 
+     */
     tournament: string;
+    /**
+     * 
+     */
     participant: string;
+    /**
+     * 
+     */
     RegisterDeckRequest?: RegisterDeckRequest;
 }
 
@@ -1308,21 +1467,42 @@ export interface RemoveDeckCollaboratorRequest {
 }
 
 export interface RemoveMyTournamentDeckRequest {
+    /**
+     * 
+     */
     tournament: string;
 }
 
 export interface RemoveTournamentCoOrganizerRequest {
+    /**
+     * 
+     */
     tournament: string;
+    /**
+     * 
+     */
     account: string;
 }
 
 export interface RemoveTournamentParticipantRequest {
+    /**
+     * 
+     */
     tournament: string;
+    /**
+     * 
+     */
     participant: string;
 }
 
 export interface RemoveTournamentParticipantDeckRequest {
+    /**
+     * 
+     */
     tournament: string;
+    /**
+     * 
+     */
     participant: string;
 }
 
@@ -1345,8 +1525,17 @@ export interface RenamePasskeyOperationRequest {
 }
 
 export interface ReportTournamentMatchResultRequest {
+    /**
+     * 
+     */
     tournament: string;
+    /**
+     * 
+     */
     match: string;
+    /**
+     * 
+     */
     ReportResultRequest?: ReportResultRequest;
 }
 
@@ -1458,7 +1647,13 @@ export interface SearchPublicDecksRequest {
 }
 
 export interface SearchTournamentPlayersRequest {
+    /**
+     * 
+     */
     tournament: string;
+    /**
+     * 
+     */
     query?: string;
 }
 
@@ -1544,28 +1739,61 @@ export interface SetDeckRuleZeroOperationRequest {
 }
 
 export interface SetMyTournamentListSharingRequest {
+    /**
+     * 
+     */
     tournament: string;
+    /**
+     * 
+     */
     SetListSharingRequest?: SetListSharingRequest;
 }
 
 export interface SetPushSettingsOperationRequest {
+    /**
+     * 
+     */
     SetPushSettingsRequest?: SetPushSettingsRequest;
 }
 
 export interface SetTournamentMatchResultRequest {
+    /**
+     * 
+     */
     tournament: string;
+    /**
+     * 
+     */
     match: string;
+    /**
+     * 
+     */
     SetResultRequest?: SetResultRequest;
 }
 
 export interface SetTournamentParticipantPaidRequest {
+    /**
+     * 
+     */
     tournament: string;
+    /**
+     * 
+     */
     participant: string;
+    /**
+     * 
+     */
     SetPaidRequest?: SetPaidRequest;
 }
 
 export interface SetTournamentSwissRoundsRequest {
+    /**
+     * 
+     */
     tournament: string;
+    /**
+     * 
+     */
     SetSwissRoundsRequest?: SetSwissRoundsRequest;
 }
 
@@ -1592,10 +1820,16 @@ export interface SetVisibilityDeckRequest {
 }
 
 export interface SignUpForSharedTournamentRequest {
+    /**
+     * 
+     */
     token: string;
 }
 
 export interface SignUpForTournamentRequest {
+    /**
+     * 
+     */
     tournament: string;
 }
 
@@ -1643,11 +1877,20 @@ export interface StartRegistrationOperationRequest {
 }
 
 export interface StartTournamentRoundRequest {
+    /**
+     * 
+     */
     tournament: string;
+    /**
+     * 
+     */
     number: number;
 }
 
 export interface SubscribePushDeviceOperationRequest {
+    /**
+     * 
+     */
     SubscribePushDeviceRequest?: SubscribePushDeviceRequest;
 }
 
@@ -1667,7 +1910,13 @@ export interface SwapDeckCardOperationRequest {
 }
 
 export interface TakeBackTournamentRoundRequest {
+    /**
+     * 
+     */
     tournament: string;
+    /**
+     * 
+     */
     number: number;
 }
 
@@ -1720,6 +1969,9 @@ export interface UndoDeckChangeRequest {
 }
 
 export interface UnsubscribePushDeviceRequest {
+    /**
+     * 
+     */
     PushDeviceRequest?: PushDeviceRequest;
 }
 
@@ -1839,7 +2091,13 @@ export interface UpdateScannerSessionEntryOperationRequest {
 }
 
 export interface UpdateTournamentRequest {
+    /**
+     * 
+     */
     tournament: string;
+    /**
+     * 
+     */
     TournamentSettingsRequest?: TournamentSettingsRequest;
 }
 
@@ -1870,10 +2128,16 @@ export interface UpdateWatchListEntryOperationRequest {
 }
 
 export interface WithdrawTournamentHandoverRequest {
+    /**
+     * 
+     */
     tournament: string;
 }
 
 export interface WithdrawTournamentSignUpRequest {
+    /**
+     * 
+     */
     tournament: string;
 }
 

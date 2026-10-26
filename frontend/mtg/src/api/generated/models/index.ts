@@ -8,26 +8,18 @@
 export interface AddAccountParticipantErrors {
     /**
      * The Account already is a Participant
-     * @type {boolean}
-     * @memberof AddAccountParticipantErrors
      */
     already_participant: boolean;
     /**
      * The Swiss Rounds are over, so nobody is added any more
-     * @type {boolean}
-     * @memberof AddAccountParticipantErrors
      */
     roster_closed: boolean;
     /**
      * The caller named too many unknown usernames lately, so this one was not looked up
-     * @type {boolean}
-     * @memberof AddAccountParticipantErrors
      */
     too_many_unknown_usernames: boolean;
     /**
      * No Account goes by this username
-     * @type {boolean}
-     * @memberof AddAccountParticipantErrors
      */
     unknown_username: boolean;
 }
@@ -39,8 +31,6 @@ export interface AddAccountParticipantErrors {
 export interface AddAccountParticipantRequest {
     /**
      * Username of the Account, case ignored
-     * @type {string}
-     * @memberof AddAccountParticipantRequest
      */
     username: string;
 }
@@ -52,26 +42,18 @@ export interface AddAccountParticipantRequest {
 export interface AddCoOrganizerErrors {
     /**
      * The Account is a Co-organizer already
-     * @type {boolean}
-     * @memberof AddCoOrganizerErrors
      */
     already_co_organizer: boolean;
     /**
      * The Account is the Owner
-     * @type {boolean}
-     * @memberof AddCoOrganizerErrors
      */
     owner: boolean;
     /**
      * The caller named too many unknown usernames lately, so this one was not looked up
-     * @type {boolean}
-     * @memberof AddCoOrganizerErrors
      */
     too_many_unknown_usernames: boolean;
     /**
      * No Account goes by this username
-     * @type {boolean}
-     * @memberof AddCoOrganizerErrors
      */
     unknown_username: boolean;
 }
@@ -123,14 +105,10 @@ export interface AddDeckCardRequest {
 export interface AddGuestParticipantErrors {
     /**
      * The name is empty or only blanks
-     * @type {boolean}
-     * @memberof AddGuestParticipantErrors
      */
     empty_name: boolean;
     /**
      * The Swiss Rounds are over, so nobody is added any more
-     * @type {boolean}
-     * @memberof AddGuestParticipantErrors
      */
     roster_closed: boolean;
 }
@@ -142,8 +120,6 @@ export interface AddGuestParticipantErrors {
 export interface AddGuestParticipantRequest {
     /**
      * The name the Guest goes by in this Tournament
-     * @type {string}
-     * @memberof AddGuestParticipantRequest
      */
     name: string;
 }
@@ -914,8 +890,6 @@ export interface AdminStatisticsSnapshot {
     decks: number;
     /**
      * Finished Tournaments; zero before Tournaments were counted
-     * @type {number}
-     * @memberof AdminStatisticsSnapshot
      */
     finished_tournaments: number;
     /**
@@ -936,8 +910,6 @@ export interface AdminStatisticsSnapshot {
     taken_at: string;
     /**
      * Tournaments in any state; zero before Tournaments were counted
-     * @type {number}
-     * @memberof AdminStatisticsSnapshot
      */
     tournaments: number;
     /**
@@ -1086,50 +1058,34 @@ export interface ApiErrorResponse {
 export interface ArrangeRoundErrors {
     /**
      * A Match seats a number of Participants it cannot have
-     * @type {boolean}
-     * @memberof ArrangeRoundErrors
      */
     match_size: boolean;
     /**
      * The Ruleset never gives a Bye
-     * @type {boolean}
-     * @memberof ArrangeRoundErrors
      */
     no_byes: boolean;
     /**
      * Somebody sits who is no Participant the Round pairs
-     * @type {boolean}
-     * @memberof ArrangeRoundErrors
      */
     not_pairable: boolean;
     /**
      * No Round of that number is previewed
-     * @type {boolean}
-     * @memberof ArrangeRoundErrors
      */
     not_previewed: boolean;
     /**
      * A Participant the Round pairs sits nowhere
-     * @type {boolean}
-     * @memberof ArrangeRoundErrors
      */
     not_seated: boolean;
     /**
      * Somebody sits more than once
-     * @type {boolean}
-     * @memberof ArrangeRoundErrors
      */
     seated_twice: boolean;
     /**
      * The Round is one of the Top cut, which the standings seed
-     * @type {boolean}
-     * @memberof ArrangeRoundErrors
      */
     top_cut: boolean;
     /**
      * The Tournament is Finished or Cancelled
-     * @type {boolean}
-     * @memberof ArrangeRoundErrors
      */
     tournament_over: boolean;
 }
@@ -1141,14 +1097,10 @@ export interface ArrangeRoundErrors {
 export interface ArrangeRoundRequest {
     /**
      * Who has a Bye
-     * @type {Array<string>}
-     * @memberof ArrangeRoundRequest
      */
     byes: Array<string>;
     /**
      * The Matches, top table first, each listing its Participants in Seat order
-     * @type {Array<Array<string>>}
-     * @memberof ArrangeRoundRequest
      */
     matches: Array<Array<string>>;
 }
@@ -1165,7 +1117,7 @@ export const BestOf = {
     /**
     * Whoever wins two Games first wins the Match
     */
-    Three: 'Three'
+    Three: 'Three',
 } as const;
 export type BestOf = typeof BestOf[keyof typeof BestOf];
 
@@ -1981,20 +1933,14 @@ export interface CreateWatchListRequest {
 export interface CurrentRoundResponse {
     /**
      * The reader's Match or Bye in it; `null` if the reader is not seated in it
-     * @type {MatchResponse}
-     * @memberof CurrentRoundResponse
      */
     my_match?: MatchResponse | null;
     /**
      * Its number
-     * @type {number}
-     * @memberof CurrentRoundResponse
      */
     number: number;
     /**
      * Its round timer, `null` for a Tournament without one
-     * @type {RoundTimerResponse}
-     * @memberof CurrentRoundResponse
      */
     timer?: RoundTimerResponse | null;
 }
@@ -2942,32 +2888,22 @@ export type DeletionMode = typeof DeletionMode[keyof typeof DeletionMode];
 export interface DisputeResultErrors {
     /**
      * An Organizer set the Result
-     * @type {boolean}
-     * @memberof DisputeResultErrors
      */
     confirmed: boolean;
     /**
      * The Tournament is entered afterwards: its Organizers set every Result
-     * @type {boolean}
-     * @memberof DisputeResultErrors
      */
     entered_afterwards: boolean;
     /**
      * The Match has no Result to dispute
-     * @type {boolean}
-     * @memberof DisputeResultErrors
      */
     no_result: boolean;
     /**
      * The Match's Round is not running, or the Tournament is over
-     * @type {boolean}
-     * @memberof DisputeResultErrors
      */
     not_running: boolean;
     /**
      * The Participant reported it itself; report again to correct it
-     * @type {boolean}
-     * @memberof DisputeResultErrors
      */
     own_report: boolean;
 }
@@ -2979,14 +2915,10 @@ export interface DisputeResultErrors {
 export interface DropErrors {
     /**
      * No Round started yet: before the first Round a Participant withdraws or is removed instead
-     * @type {boolean}
-     * @memberof DropErrors
      */
     not_started: boolean;
     /**
      * The Tournament is Finished or Cancelled
-     * @type {boolean}
-     * @memberof DropErrors
      */
     tournament_over: boolean;
 }
@@ -3004,14 +2936,10 @@ export type EndTournamentRound200Response = FormErrorResponseForRoundErrors | To
 export interface EntryFeeSchema {
     /**
      * The amount in the currency's smallest unit, cents for euros; above zero
-     * @type {number}
-     * @memberof EntryFeeSchema
      */
     amount: number;
     /**
      * The ISO 4217 code of the currency, three capital letters like `EUR`
-     * @type {string}
-     * @memberof EntryFeeSchema
      */
     currency: string;
 }
@@ -3490,14 +3418,10 @@ export interface FinishRegistrationRequest {
 export interface FormErrorResponseForAddAccountParticipantErrors {
     /**
      * The actual error struct
-     * @type {AddAccountParticipantErrors}
-     * @memberof FormErrorResponseForAddAccountParticipantErrors
      */
     error: AddAccountParticipantErrors;
     /**
      * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
-     * @type {ErrorConstant}
-     * @memberof FormErrorResponseForAddAccountParticipantErrors
      */
     result: ErrorConstant;
 }
@@ -3511,14 +3435,10 @@ export interface FormErrorResponseForAddAccountParticipantErrors {
 export interface FormErrorResponseForAddCoOrganizerErrors {
     /**
      * The actual error struct
-     * @type {AddCoOrganizerErrors}
-     * @memberof FormErrorResponseForAddCoOrganizerErrors
      */
     error: AddCoOrganizerErrors;
     /**
      * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
-     * @type {ErrorConstant}
-     * @memberof FormErrorResponseForAddCoOrganizerErrors
      */
     result: ErrorConstant;
 }
@@ -3532,14 +3452,10 @@ export interface FormErrorResponseForAddCoOrganizerErrors {
 export interface FormErrorResponseForAddGuestParticipantErrors {
     /**
      * The actual error struct
-     * @type {AddGuestParticipantErrors}
-     * @memberof FormErrorResponseForAddGuestParticipantErrors
      */
     error: AddGuestParticipantErrors;
     /**
      * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
-     * @type {ErrorConstant}
-     * @memberof FormErrorResponseForAddGuestParticipantErrors
      */
     result: ErrorConstant;
 }
@@ -3655,14 +3571,10 @@ export interface FormErrorResponseForAdminUnlockAccountErrors {
 export interface FormErrorResponseForArrangeRoundErrors {
     /**
      * The actual error struct
-     * @type {ArrangeRoundErrors}
-     * @memberof FormErrorResponseForArrangeRoundErrors
      */
     error: ArrangeRoundErrors;
     /**
      * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
-     * @type {ErrorConstant}
-     * @memberof FormErrorResponseForArrangeRoundErrors
      */
     result: ErrorConstant;
 }
@@ -3727,14 +3639,10 @@ export interface FormErrorResponseForDeletePasskeyErrors {
 export interface FormErrorResponseForDisputeResultErrors {
     /**
      * The actual error struct
-     * @type {DisputeResultErrors}
-     * @memberof FormErrorResponseForDisputeResultErrors
      */
     error: DisputeResultErrors;
     /**
      * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
-     * @type {ErrorConstant}
-     * @memberof FormErrorResponseForDisputeResultErrors
      */
     result: ErrorConstant;
 }
@@ -3748,14 +3656,10 @@ export interface FormErrorResponseForDisputeResultErrors {
 export interface FormErrorResponseForDropErrors {
     /**
      * The actual error struct
-     * @type {DropErrors}
-     * @memberof FormErrorResponseForDropErrors
      */
     error: DropErrors;
     /**
      * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
-     * @type {ErrorConstant}
-     * @memberof FormErrorResponseForDropErrors
      */
     result: ErrorConstant;
 }
@@ -3803,14 +3707,10 @@ export interface FormErrorResponseForMeErrors {
 export interface FormErrorResponseForOfferHandoverErrors {
     /**
      * The actual error struct
-     * @type {OfferHandoverErrors}
-     * @memberof FormErrorResponseForOfferHandoverErrors
      */
     error: OfferHandoverErrors;
     /**
      * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
-     * @type {ErrorConstant}
-     * @memberof FormErrorResponseForOfferHandoverErrors
      */
     result: ErrorConstant;
 }
@@ -3841,14 +3741,10 @@ export interface FormErrorResponseForPutDeckCollaboratorErrors {
 export interface FormErrorResponseForRegisterDeckErrors {
     /**
      * The actual error struct
-     * @type {RegisterDeckErrors}
-     * @memberof FormErrorResponseForRegisterDeckErrors
      */
     error: RegisterDeckErrors;
     /**
      * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
-     * @type {ErrorConstant}
-     * @memberof FormErrorResponseForRegisterDeckErrors
      */
     result: ErrorConstant;
 }
@@ -3913,14 +3809,10 @@ export interface FormErrorResponseForRenamePasskeyErrors {
 export interface FormErrorResponseForReportResultErrors {
     /**
      * The actual error struct
-     * @type {ReportResultErrors}
-     * @memberof FormErrorResponseForReportResultErrors
      */
     error: ReportResultErrors;
     /**
      * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
-     * @type {ErrorConstant}
-     * @memberof FormErrorResponseForReportResultErrors
      */
     result: ErrorConstant;
 }
@@ -3934,14 +3826,10 @@ export interface FormErrorResponseForReportResultErrors {
 export interface FormErrorResponseForRoundErrors {
     /**
      * The actual error struct
-     * @type {RoundErrors}
-     * @memberof FormErrorResponseForRoundErrors
      */
     error: RoundErrors;
     /**
      * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
-     * @type {ErrorConstant}
-     * @memberof FormErrorResponseForRoundErrors
      */
     result: ErrorConstant;
 }
@@ -3972,14 +3860,10 @@ export interface FormErrorResponseForSendBugReportErrors {
 export interface FormErrorResponseForSetPaidErrors {
     /**
      * The actual error struct
-     * @type {SetPaidErrors}
-     * @memberof FormErrorResponseForSetPaidErrors
      */
     error: SetPaidErrors;
     /**
      * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
-     * @type {ErrorConstant}
-     * @memberof FormErrorResponseForSetPaidErrors
      */
     result: ErrorConstant;
 }
@@ -3993,14 +3877,10 @@ export interface FormErrorResponseForSetPaidErrors {
 export interface FormErrorResponseForSetResultErrors {
     /**
      * The actual error struct
-     * @type {SetResultErrors}
-     * @memberof FormErrorResponseForSetResultErrors
      */
     error: SetResultErrors;
     /**
      * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
-     * @type {ErrorConstant}
-     * @memberof FormErrorResponseForSetResultErrors
      */
     result: ErrorConstant;
 }
@@ -4014,14 +3894,10 @@ export interface FormErrorResponseForSetResultErrors {
 export interface FormErrorResponseForSetSwissRoundsErrors {
     /**
      * The actual error struct
-     * @type {SetSwissRoundsErrors}
-     * @memberof FormErrorResponseForSetSwissRoundsErrors
      */
     error: SetSwissRoundsErrors;
     /**
      * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
-     * @type {ErrorConstant}
-     * @memberof FormErrorResponseForSetSwissRoundsErrors
      */
     result: ErrorConstant;
 }
@@ -4035,14 +3911,10 @@ export interface FormErrorResponseForSetSwissRoundsErrors {
 export interface FormErrorResponseForSignUpErrors {
     /**
      * The actual error struct
-     * @type {SignUpErrors}
-     * @memberof FormErrorResponseForSignUpErrors
      */
     error: SignUpErrors;
     /**
      * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
-     * @type {ErrorConstant}
-     * @memberof FormErrorResponseForSignUpErrors
      */
     result: ErrorConstant;
 }
@@ -4107,14 +3979,10 @@ export interface FormErrorResponseForStartOidcLoginErrors {
 export interface FormErrorResponseForSubscribePushDeviceErrors {
     /**
      * The actual error struct
-     * @type {SubscribePushDeviceErrors}
-     * @memberof FormErrorResponseForSubscribePushDeviceErrors
      */
     error: SubscribePushDeviceErrors;
     /**
      * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
-     * @type {ErrorConstant}
-     * @memberof FormErrorResponseForSubscribePushDeviceErrors
      */
     result: ErrorConstant;
 }
@@ -4128,14 +3996,10 @@ export interface FormErrorResponseForSubscribePushDeviceErrors {
 export interface FormErrorResponseForTournamentSettingsErrors {
     /**
      * The actual error struct
-     * @type {TournamentSettingsErrors}
-     * @memberof FormErrorResponseForTournamentSettingsErrors
      */
     error: TournamentSettingsErrors;
     /**
      * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
-     * @type {ErrorConstant}
-     * @memberof FormErrorResponseForTournamentSettingsErrors
      */
     result: ErrorConstant;
 }
@@ -4381,20 +4245,14 @@ export interface ListOpenIdProvidersResponse {
 export interface ListOrganizersResponse {
     /**
      * The Co-organizers, alphabetically by username
-     * @type {Array<OrganizerResponse>}
-     * @memberof ListOrganizersResponse
      */
     co_organizers: Array<OrganizerResponse>;
     /**
      * The Account the Tournament is offered to, `null` without a pending offer
-     * @type {OrganizerResponse}
-     * @memberof ListOrganizersResponse
      */
     handover?: OrganizerResponse | null;
     /**
      * The Owner, `null` while the Tombstone holds it
-     * @type {OrganizerResponse}
-     * @memberof ListOrganizersResponse
      */
     owner?: OrganizerResponse | null;
 }
@@ -4406,8 +4264,6 @@ export interface ListOrganizersResponse {
 export interface ListParticipantDecksResponse {
     /**
      * Alphabetically by name; empty for a Guest
-     * @type {Array<ParticipantDeckResponse>}
-     * @memberof ListParticipantDecksResponse
      */
     decks: Array<ParticipantDeckResponse>;
 }
@@ -4419,14 +4275,10 @@ export interface ListParticipantDecksResponse {
 export interface ListParticipantsResponse {
     /**
      * The reader's own Participant, `null` if the reader is none
-     * @type {string}
-     * @memberof ListParticipantsResponse
      */
     me?: string | null;
     /**
      * Every Participant, in the order they were added or signed up
-     * @type {Array<ParticipantResponse>}
-     * @memberof ListParticipantsResponse
      */
     participants: Array<ParticipantResponse>;
 }
@@ -4449,8 +4301,6 @@ export interface ListPasskeysResponse {
 export interface ListRegisteredDecksResponse {
     /**
      * One per Participant that registered one, in the order they joined
-     * @type {Array<RegisteredDeckResponse>}
-     * @memberof ListRegisteredDecksResponse
      */
     decks: Array<RegisteredDeckResponse>;
 }
@@ -4484,8 +4334,6 @@ export interface ListSharedWithMeResponse {
 export interface ListTournamentsResponse {
     /**
      * The Tournaments, latest start first
-     * @type {Array<TournamentSummaryResponse>}
-     * @memberof ListTournamentsResponse
      */
     tournaments: Array<TournamentSummaryResponse>;
 }
@@ -4729,32 +4577,22 @@ export interface MarkedCard {
 export interface MatchResponse {
     /**
      * Whether some of its Participants met in an earlier Round
-     * @type {boolean}
-     * @memberof MatchResponse
      */
     rematch: boolean;
     /**
      * Its Result, `null` while it has none and for a Bye
-     * @type {ResultResponse}
-     * @memberof MatchResponse
      */
     result?: ResultResponse | null;
     /**
      * Who plays, by Seat number
-     * @type {Array<SeatResponse>}
-     * @memberof MatchResponse
      */
     seats: Array<SeatResponse>;
     /**
      * The number of its table, 1 for the top table; `null` for a Bye
-     * @type {number}
-     * @memberof MatchResponse
      */
     table_number?: number | null;
     /**
      * Primary key
-     * @type {string}
-     * @memberof MatchResponse
      */
     uuid: string;
 }
@@ -4914,20 +4752,14 @@ export interface MpcFillSearchResponse {
 export interface MyMatchResponse {
     /**
      * The reader's Participant, `null` if the reader plays in none
-     * @type {string}
-     * @memberof MyMatchResponse
      */
     participant?: string | null;
     /**
      * The running Round, `null` while none runs
-     * @type {CurrentRoundResponse}
-     * @memberof MyMatchResponse
      */
     round?: CurrentRoundResponse | null;
     /**
      * The server's clock when it answered, to count the round timer down against
-     * @type {string}
-     * @memberof MyMatchResponse
      */
     server_time: string;
 }
@@ -4939,14 +4771,10 @@ export interface MyMatchResponse {
 export interface MyRegisteredDeckResponse {
     /**
      * Whether the reader may still register, swap or remove it itself
-     * @type {boolean}
-     * @memberof MyRegisteredDeckResponse
      */
     changeable: boolean;
     /**
      * The Registered deck, `null` while the reader plays without one
-     * @type {RegisteredDeckResponse}
-     * @memberof MyRegisteredDeckResponse
      */
     deck?: RegisteredDeckResponse | null;
 }
@@ -4958,14 +4786,10 @@ export interface MyRegisteredDeckResponse {
 export interface MyTournamentsResponse {
     /**
      * The Tournaments it organizes, as Owner or Co-organizer, latest start first
-     * @type {Array<TournamentSummaryResponse>}
-     * @memberof MyTournamentsResponse
      */
     organizing: Array<TournamentSummaryResponse>;
     /**
      * The Tournaments it takes part in as a Participant, latest start first
-     * @type {Array<TournamentSummaryResponse>}
-     * @memberof MyTournamentsResponse
      */
     participating: Array<TournamentSummaryResponse>;
 }
@@ -4977,8 +4801,6 @@ export interface MyTournamentsResponse {
 export interface NameAccountRequest {
     /**
      * Username of the Account, case ignored
-     * @type {string}
-     * @memberof NameAccountRequest
      */
     username: string;
 }
@@ -5027,20 +4849,14 @@ export interface NewCollectionEntry {
 export interface OfferHandoverErrors {
     /**
      * The username is the caller's own, which owns the Tournament
-     * @type {boolean}
-     * @memberof OfferHandoverErrors
      */
     own_account: boolean;
     /**
      * The caller named too many unknown usernames lately, so this one was not looked up
-     * @type {boolean}
-     * @memberof OfferHandoverErrors
      */
     too_many_unknown_usernames: boolean;
     /**
      * No Account goes by this username
-     * @type {boolean}
-     * @memberof OfferHandoverErrors
      */
     unknown_username: boolean;
 }
@@ -5159,14 +4975,10 @@ export interface OnLoanResponse {
 export interface OrganizerResponse {
     /**
      * The Account, which is what removing a Co-organizer names
-     * @type {string}
-     * @memberof OrganizerResponse
      */
     account: string;
     /**
      * The Account's username as it is now
-     * @type {string}
-     * @memberof OrganizerResponse
      */
     username: string;
 }
@@ -5183,7 +4995,7 @@ export const OrganizerRole = {
     /**
     * An Account named to run it with the Owner
     */
-    CoOrganizer: 'CoOrganizer'
+    CoOrganizer: 'CoOrganizer',
 } as const;
 export type OrganizerRole = typeof OrganizerRole[keyof typeof OrganizerRole];
 
@@ -5201,8 +5013,6 @@ export type PairTournamentRound200Response = FormErrorResponseForRoundErrors | P
 export interface PairedRoundResponse {
     /**
      * Its number
-     * @type {number}
-     * @memberof PairedRoundResponse
      */
     number: number;
 }
@@ -5214,20 +5024,14 @@ export interface PairedRoundResponse {
 export interface ParticipantDeckResponse {
     /**
      * The format it is built for, a Scryfall slug
-     * @type {string}
-     * @memberof ParticipantDeckResponse
      */
     format: string;
     /**
      * Its name
-     * @type {string}
-     * @memberof ParticipantDeckResponse
      */
     name: string;
     /**
      * The deck
-     * @type {string}
-     * @memberof ParticipantDeckResponse
      */
     uuid: string;
 }
@@ -5239,40 +5043,28 @@ export interface ParticipantDeckResponse {
 export interface ParticipantResponse {
     /**
      * The last Round started before it Dropped, `null` while it plays on
-     * @type {number}
-     * @memberof ParticipantResponse
      */
     dropped_after_round?: number | null;
     /**
      * Whether it is a Guest rather than an Account
-     * @type {boolean}
-     * @memberof ParticipantResponse
      */
     guest: boolean;
     /**
      * The first Round it plays if it was added late, `null` if it was there before Round 1
-     * @type {number}
-     * @memberof ParticipantResponse
      */
     late_from_round?: number | null;
     /**
      * The Account's username as it is now, or the Guest's name
-     * @type {string}
-     * @memberof ParticipantResponse
      */
     name: string;
     /**
      * Whether it still owes the entry fee, which keeps it out of the pairing
      * 
      * Only Organizers learn it, `null` for every other reader. Always `false` while the Tournament has no entry fee.
-     * @type {boolean}
-     * @memberof ParticipantResponse
      */
     unpaid?: boolean | null;
     /**
      * Primary key
-     * @type {string}
-     * @memberof ParticipantResponse
      */
     uuid: string;
 }
@@ -5299,14 +5091,10 @@ export interface PendingOidcLogin {
 export interface PlayerCandidateResponse {
     /**
      * The Account
-     * @type {string}
-     * @memberof PlayerCandidateResponse
      */
     account: string;
     /**
      * The Account's username as it is now
-     * @type {string}
-     * @memberof PlayerCandidateResponse
      */
     username: string;
 }
@@ -5318,14 +5106,10 @@ export interface PlayerCandidateResponse {
 export interface PlayerCandidatesResponse {
     /**
      * Up to ten Accounts, alphabetically by username
-     * @type {Array<PlayerCandidateResponse>}
-     * @memberof PlayerCandidatesResponse
      */
     accounts: Array<PlayerCandidateResponse>;
     /**
      * The caller searched too often lately, so nothing was searched
-     * @type {boolean}
-     * @memberof PlayerCandidatesResponse
      */
     too_many_searches: boolean;
 }
@@ -5606,8 +5390,6 @@ export interface PublicProfileResponse {
     decks: Array<PublicDeckResponse>;
     /**
      * The public Tournaments it owns or plays in, latest start first
-     * @type {Array<TournamentSummaryResponse>}
-     * @memberof PublicProfileResponse
      */
     tournaments: Array<TournamentSummaryResponse>;
     /**
@@ -5623,8 +5405,6 @@ export interface PublicProfileResponse {
 export interface PushDeviceRequest {
     /**
      * The device's push endpoint
-     * @type {string}
-     * @memberof PushDeviceRequest
      */
     endpoint: string;
 }
@@ -5636,8 +5416,6 @@ export interface PushDeviceRequest {
 export interface PushDeviceResponse {
     /**
      * True if the device gets this account's pushes
-     * @type {boolean}
-     * @memberof PushDeviceResponse
      */
     subscribed: boolean;
 }
@@ -5656,7 +5434,7 @@ export const PushLanguage = {
     /**
     * English
     */
-    En: 'En'
+    En: 'En',
 } as const;
 export type PushLanguage = typeof PushLanguage[keyof typeof PushLanguage];
 
@@ -5668,14 +5446,10 @@ export type PushLanguage = typeof PushLanguage[keyof typeof PushLanguage];
 export interface PushSettingsResponse {
     /**
      * The public VAPID key to pass to `PushManager.subscribe`, `None` while the service sends no pushes
-     * @type {string}
-     * @memberof PushSettingsResponse
      */
     public_key?: string | null;
     /**
      * Whether the account's devices get tournament pushes
-     * @type {boolean}
-     * @memberof PushSettingsResponse
      */
     tournament_pushes: boolean;
 }
@@ -5842,20 +5616,14 @@ export interface RecoverAccountRequest {
 export interface RegisterDeckErrors {
     /**
      * The Participant is a Guest, which has no decks
-     * @type {boolean}
-     * @memberof RegisterDeckErrors
      */
     guest: boolean;
     /**
      * The deck does not exist or the Participant's Account does not own it
-     * @type {boolean}
-     * @memberof RegisterDeckErrors
      */
     not_their_deck: boolean;
     /**
      * The first Round started, so only Organizers change it
-     * @type {boolean}
-     * @memberof RegisterDeckErrors
      */
     registration_over: boolean;
 }
@@ -5867,14 +5635,10 @@ export interface RegisterDeckErrors {
 export interface RegisterDeckRequest {
     /**
      * One of the Participant's Account's decks
-     * @type {string}
-     * @memberof RegisterDeckRequest
      */
     deck: string;
     /**
      * Whether others may see the list once the Tournament is Finished, `null` for the default: shared for a public deck, not for any other
-     * @type {boolean}
-     * @memberof RegisterDeckRequest
      */
     shared?: boolean | null;
 }
@@ -5886,44 +5650,30 @@ export interface RegisterDeckRequest {
 export interface RegisteredDeckResponse {
     /**
      * The Commander bracket it is built to, `null` when unset
-     * @type {number}
-     * @memberof RegisteredDeckResponse
      */
     bracket?: number | null;
     /**
      * The deck it was made from, `null` once that deck is deleted
-     * @type {string}
-     * @memberof RegisteredDeckResponse
      */
     deck?: string | null;
     /**
      * The format the deck is built for, a Scryfall slug
-     * @type {string}
-     * @memberof RegisteredDeckResponse
      */
     format: string;
     /**
      * The deck's name: as it is now until pinned, as it was when pinned afterwards
-     * @type {string}
-     * @memberof RegisteredDeckResponse
      */
     name: string;
     /**
      * The Participant playing it
-     * @type {string}
-     * @memberof RegisteredDeckResponse
      */
     participant: string;
     /**
      * Whether it is a copy that no longer changes with the deck
-     * @type {boolean}
-     * @memberof RegisteredDeckResponse
      */
     pinned: boolean;
     /**
      * Whether its Participant lets others see the list once the Tournament is Finished
-     * @type {boolean}
-     * @memberof RegisteredDeckResponse
      */
     shared: boolean;
 }
@@ -5935,80 +5685,54 @@ export interface RegisteredDeckResponse {
 export interface RegisteredListResponse {
     /**
      * Whether the table agreed to cards the format bans
-     * @type {boolean}
-     * @memberof RegisteredListResponse
      */
     allow_banned: boolean;
     /**
      * Whether the table agreed to more copies of a card than the format allows
-     * @type {boolean}
-     * @memberof RegisteredListResponse
      */
     allow_duplicates: boolean;
     /**
      * Whether the table agreed to more commanders than the format allows
-     * @type {boolean}
-     * @memberof RegisteredListResponse
      */
     allow_extra_commanders: boolean;
     /**
      * The colours the table agreed it may play, `null` for the commander's
-     * @type {string}
-     * @memberof RegisteredListResponse
      */
     allowed_color_identity?: string | null;
     /**
      * The Commander bracket it is built to, `null` when unset
-     * @type {number}
-     * @memberof RegisteredListResponse
      */
     bracket?: number | null;
     /**
      * Its Deck entries, joined against the card catalog
-     * @type {Array<DeckCardResponse>}
-     * @memberof RegisteredListResponse
      */
     cards: Array<DeckCardResponse>;
     /**
      * The deck it was made from, `null` once that deck is deleted
-     * @type {string}
-     * @memberof RegisteredListResponse
      */
     deck?: string | null;
     /**
      * How many cards the table agreed it is built to, `null` for the format's rule
-     * @type {number}
-     * @memberof RegisteredListResponse
      */
     deck_size?: number | null;
     /**
      * The format the deck is built for, a Scryfall slug
-     * @type {string}
-     * @memberof RegisteredListResponse
      */
     format: string;
     /**
      * The deck's name: as it is now until pinned, as it was when pinned afterwards
-     * @type {string}
-     * @memberof RegisteredListResponse
      */
     name: string;
     /**
      * The Participant playing it
-     * @type {string}
-     * @memberof RegisteredListResponse
      */
     participant: string;
     /**
      * Whether it is a copy that no longer changes with the deck
-     * @type {boolean}
-     * @memberof RegisteredListResponse
      */
     pinned: boolean;
     /**
      * Whether its Participant lets others see it once the Tournament is Finished
-     * @type {boolean}
-     * @memberof RegisteredListResponse
      */
     shared: boolean;
 }
@@ -6020,8 +5744,6 @@ export interface RegisteredListResponse {
 export interface RegisteredListsResponse {
     /**
      * Every list for Organizers; for everybody else the shared ones once the Tournament is Finished and none before; in the order the Participants joined
-     * @type {Array<RegisteredListResponse>}
-     * @memberof RegisteredListsResponse
      */
     decks: Array<RegisteredListResponse>;
 }
@@ -6145,38 +5867,26 @@ export interface RenamePasskeyRequest {
 export interface ReportResultErrors {
     /**
      * An Organizer set the Result
-     * @type {boolean}
-     * @memberof ReportResultErrors
      */
     confirmed: boolean;
     /**
      * The Result is disputed; an Organizer settles it
-     * @type {boolean}
-     * @memberof ReportResultErrors
      */
     disputed: boolean;
     /**
      * The Tournament is entered afterwards: its Organizers set every Result
-     * @type {boolean}
-     * @memberof ReportResultErrors
      */
     entered_afterwards: boolean;
     /**
      * The game score does not fit a Match of this Tournament
-     * @type {boolean}
-     * @memberof ReportResultErrors
      */
     invalid_score: boolean;
     /**
      * The Match's Round is not running, or the Tournament is over
-     * @type {boolean}
-     * @memberof ReportResultErrors
      */
     not_running: boolean;
     /**
      * Another Participant reported a different Result; dispute it instead
-     * @type {boolean}
-     * @memberof ReportResultErrors
      */
     reported_by_other: boolean;
 }
@@ -6188,14 +5898,10 @@ export interface ReportResultErrors {
 export interface ReportResultRequest {
     /**
      * Games nobody won
-     * @type {number}
-     * @memberof ReportResultRequest
      */
     games_drawn: number;
     /**
      * Games won per Seat, in Seat order
-     * @type {Array<number>}
-     * @memberof ReportResultRequest
      */
     games_won: Array<number>;
 }
@@ -6272,32 +5978,22 @@ export interface ResolvedPrintingResponse {
 export interface ResultResponse {
     /**
      * The Participant who disputed it, `null` unless it is disputed
-     * @type {string}
-     * @memberof ResultResponse
      */
     disputed_by?: string | null;
     /**
      * Games nobody won
-     * @type {number}
-     * @memberof ResultResponse
      */
     games_drawn: number;
     /**
      * Games won per Seat, in Seat order
-     * @type {Array<number>}
-     * @memberof ResultResponse
      */
     games_won: Array<number>;
     /**
      * The Participant who reported it, `null` when an Organizer set it
-     * @type {string}
-     * @memberof ResultResponse
      */
     reported_by?: string | null;
     /**
      * Where it stands: reported by a Participant, disputed, or set by an Organizer
-     * @type {ResultState}
-     * @memberof ResultResponse
      */
     state: ResultState;
 }
@@ -6320,7 +6016,7 @@ export const ResultState = {
     /**
     * Set by an Organizer; Participants can no longer change or dispute it
     */
-    Confirmed: 'Confirmed'
+    Confirmed: 'Confirmed',
 } as const;
 export type ResultState = typeof ResultState[keyof typeof ResultState];
 
@@ -6445,62 +6141,42 @@ export interface RotateShareTokenResponse {
 export interface RoundErrors {
     /**
      * Every Swiss Round was paired
-     * @type {boolean}
-     * @memberof RoundErrors
      */
     all_rounds_paired: boolean;
     /**
      * A later Round started, so this one cannot be taken back
-     * @type {boolean}
-     * @memberof RoundErrors
      */
     later_round_started: boolean;
     /**
      * No Round of that number ended
-     * @type {boolean}
-     * @memberof RoundErrors
      */
     not_ended: boolean;
     /**
      * No Round of that number is previewed
-     * @type {boolean}
-     * @memberof RoundErrors
      */
     not_previewed: boolean;
     /**
      * No Round of that number is running
-     * @type {boolean}
-     * @memberof RoundErrors
      */
     not_running: boolean;
     /**
      * A Result of the Round is disputed; an Organizer settles it first
-     * @type {boolean}
-     * @memberof RoundErrors
      */
     results_disputed: boolean;
     /**
      * A Match of the Round has no Result yet
-     * @type {boolean}
-     * @memberof RoundErrors
      */
     results_missing: boolean;
     /**
      * A Round is previewed or running, so the next one waits
-     * @type {boolean}
-     * @memberof RoundErrors
      */
     round_open: boolean;
     /**
      * Fewer than two Participants can be paired
-     * @type {boolean}
-     * @memberof RoundErrors
      */
     too_few_participants: boolean;
     /**
      * The Tournament is Finished or Cancelled
-     * @type {boolean}
-     * @memberof RoundErrors
      */
     tournament_over: boolean;
 }
@@ -6512,32 +6188,22 @@ export interface RoundErrors {
 export interface RoundResponse {
     /**
      * Its Matches by table number, then its Byes
-     * @type {Array<MatchResponse>}
-     * @memberof RoundResponse
      */
     matches: Array<MatchResponse>;
     /**
      * Its number, 1 for the first Round; the Top cut goes on counting after the Swiss Rounds
-     * @type {number}
-     * @memberof RoundResponse
      */
     number: number;
     /**
      * Whether it is a Swiss Round or one of the Top cut
-     * @type {RoundStage}
-     * @memberof RoundResponse
      */
     stage: RoundStage;
     /**
      * How far it got
-     * @type {RoundState}
-     * @memberof RoundResponse
      */
     state: RoundState;
     /**
      * Its round timer while it runs; `null` before and after, and for a Tournament without one
-     * @type {RoundTimerResponse}
-     * @memberof RoundResponse
      */
     timer?: RoundTimerResponse | null;
 }
@@ -6556,7 +6222,7 @@ export const RoundStage = {
     /**
     * A Round of the Top cut: single elimination, no standings
     */
-    TopCut: 'TopCut'
+    TopCut: 'TopCut',
 } as const;
 export type RoundStage = typeof RoundStage[keyof typeof RoundStage];
 
@@ -6577,7 +6243,7 @@ export const RoundState = {
     /**
     * Over: every Match has its Result, none disputed
     */
-    Ended: 'Ended'
+    Ended: 'Ended',
 } as const;
 export type RoundState = typeof RoundState[keyof typeof RoundState];
 
@@ -6589,34 +6255,24 @@ export type RoundState = typeof RoundState[keyof typeof RoundState];
 export interface RoundTimerResponse {
     /**
      * When time is up
-     * @type {string}
-     * @memberof RoundTimerResponse
      */
     ends_at: string;
     /**
      * How many turns follow the active player's turn once time is up, under the Tournament's Ruleset
      * 
      * Information only: 5 under MTR, 0 under the multiplayer Rulesets.
-     * @type {number}
-     * @memberof RoundTimerResponse
      */
     extra_turns: number;
     /**
      * How long the Round runs, in seconds
-     * @type {number}
-     * @memberof RoundTimerResponse
      */
     length_seconds: number;
     /**
      * Seconds left when the server answered, 0 once time is up
-     * @type {number}
-     * @memberof RoundTimerResponse
      */
     remaining_seconds: number;
     /**
      * Whether time was up when the server answered
-     * @type {boolean}
-     * @memberof RoundTimerResponse
      */
     time_up: boolean;
 }
@@ -6628,42 +6284,30 @@ export interface RoundTimerResponse {
 export interface RoundsResponse {
     /**
      * The Rounds, oldest first; a previewed one only for Organizers
-     * @type {Array<RoundResponse>}
-     * @memberof RoundsResponse
      */
     rounds: Array<RoundResponse>;
     /**
      * The server's clock when it answered, to count a round timer down against
-     * @type {string}
-     * @memberof RoundsResponse
      */
     server_time: string;
     /**
      * How many Swiss Rounds mtg suggests for the Participants there are now; `null` for a Ruleset mtg does not pair yet
-     * @type {number}
-     * @memberof RoundsResponse
      */
     suggested_swiss_rounds?: number | null;
     /**
      * How many Swiss Rounds an Organizer set, or the first Round settled; `null` while the suggestion applies
-     * @type {number}
-     * @memberof RoundsResponse
      */
     swiss_rounds?: number | null;
     /**
      * How many Participants the Top cut takes, `null` without one
      * 
      * Once it started the size it started with; before, the size the Participants who play on fill, so a Top 8 of seven reads 4.
-     * @type {number}
-     * @memberof RoundsResponse
      */
     top_cut_size?: number | null;
     /**
      * The Participant who won the Top cut, `null` without one or while its final has no Result
      * 
      * The winner of the final; a drawn multiplayer final goes to its highest seed, and a Participant who Dropped during the final cannot win it.
-     * @type {string}
-     * @memberof RoundsResponse
      */
     top_cut_winner?: string | null;
 }
@@ -6686,7 +6330,7 @@ export const Ruleset = {
     /**
     * The Multiplayer Addendum to the MTR: smaller Matches, never a Bye
     */
-    MultiplayerAddendum: 'MultiplayerAddendum'
+    MultiplayerAddendum: 'MultiplayerAddendum',
 } as const;
 export type Ruleset = typeof Ruleset[keyof typeof Ruleset];
 
@@ -6812,26 +6456,18 @@ export interface SearchPublicDecksResponse {
 export interface SeatResponse {
     /**
      * Whether it is a Guest rather than an Account
-     * @type {boolean}
-     * @memberof SeatResponse
      */
     guest: boolean;
     /**
      * The Account's username as it is now, or the Guest's name
-     * @type {string}
-     * @memberof SeatResponse
      */
     name: string;
     /**
      * Who sits there
-     * @type {string}
-     * @memberof SeatResponse
      */
     participant: string;
     /**
      * The Seat number, 1 for the first turn
-     * @type {number}
-     * @memberof SeatResponse
      */
     seat: number;
 }
@@ -7087,8 +6723,6 @@ export interface SetDeckVisibilityRequest {
 export interface SetListSharingRequest {
     /**
      * `true` to show it next to the standings once the Tournament is Finished
-     * @type {boolean}
-     * @memberof SetListSharingRequest
      */
     shared: boolean;
 }
@@ -7100,14 +6734,10 @@ export interface SetListSharingRequest {
 export interface SetPaidErrors {
     /**
      * The Tournament has no entry fee, so nobody is unpaid
-     * @type {boolean}
-     * @memberof SetPaidErrors
      */
     no_entry_fee: boolean;
     /**
      * The Tournament is Finished or Cancelled
-     * @type {boolean}
-     * @memberof SetPaidErrors
      */
     tournament_over: boolean;
 }
@@ -7119,8 +6749,6 @@ export interface SetPaidErrors {
 export interface SetPaidRequest {
     /**
      * `true` once it paid, `false` to take that back
-     * @type {boolean}
-     * @memberof SetPaidRequest
      */
     paid: boolean;
 }
@@ -7132,8 +6760,6 @@ export interface SetPaidRequest {
 export interface SetPushSettingsRequest {
     /**
      * Whether the account's devices get tournament pushes
-     * @type {boolean}
-     * @memberof SetPushSettingsRequest
      */
     tournament_pushes: boolean;
 }
@@ -7145,14 +6771,10 @@ export interface SetPushSettingsRequest {
 export interface SetResultErrors {
     /**
      * The game score does not fit a Match of this Tournament
-     * @type {boolean}
-     * @memberof SetResultErrors
      */
     invalid_score: boolean;
     /**
      * The Match's Round is only previewed
-     * @type {boolean}
-     * @memberof SetResultErrors
      */
     not_started: boolean;
 }
@@ -7164,14 +6786,10 @@ export interface SetResultErrors {
 export interface SetResultRequest {
     /**
      * Games nobody won
-     * @type {number}
-     * @memberof SetResultRequest
      */
     games_drawn: number;
     /**
      * Games won per Seat, in Seat order
-     * @type {Array<number>}
-     * @memberof SetResultRequest
      */
     games_won: Array<number>;
 }
@@ -7183,8 +6801,6 @@ export interface SetResultRequest {
 export interface SetSwissRoundsErrors {
     /**
      * Below the Rounds paired so far, below one or above 30, or the Tournament is over
-     * @type {boolean}
-     * @memberof SetSwissRoundsErrors
      */
     out_of_range: boolean;
 }
@@ -7196,8 +6812,6 @@ export interface SetSwissRoundsErrors {
 export interface SetSwissRoundsRequest {
     /**
      * The number, at least the Rounds paired so far and at most 30
-     * @type {number}
-     * @memberof SetSwissRoundsRequest
      */
     swiss_rounds: number;
 }
@@ -7290,20 +6904,14 @@ export interface SharedWithMeDeckResponse {
 export interface SignUpErrors {
     /**
      * The Account already is a Participant
-     * @type {boolean}
-     * @memberof SignUpErrors
      */
     already_participant: boolean;
     /**
      * Self sign-up is off, the Tournament is private or its first Round started
-     * @type {boolean}
-     * @memberof SignUpErrors
      */
     closed: boolean;
     /**
      * The participant limit is reached
-     * @type {boolean}
-     * @memberof SignUpErrors
      */
     full: boolean;
 }
@@ -7656,68 +7264,46 @@ export interface SplitCollectionEntryResponse {
 export interface StandingResponse {
     /**
      * Byes had
-     * @type {number}
-     * @memberof StandingResponse
      */
     byes: number;
     /**
      * Matches drawn
-     * @type {number}
-     * @memberof StandingResponse
      */
     draws: number;
     /**
      * The last Round started before it Dropped, `null` while it plays on
-     * @type {number}
-     * @memberof StandingResponse
      */
     dropped_after_round?: number | null;
     /**
      * Whether it is a Guest rather than an Account
-     * @type {boolean}
-     * @memberof StandingResponse
      */
     guest: boolean;
     /**
      * Matches lost
-     * @type {number}
-     * @memberof StandingResponse
      */
     losses: number;
     /**
      * Its Match points, Byes included
-     * @type {number}
-     * @memberof StandingResponse
      */
     match_points: number;
     /**
      * The Account's username as it is now, or the Guest's name
-     * @type {string}
-     * @memberof StandingResponse
      */
     name: string;
     /**
      * Who
-     * @type {string}
-     * @memberof StandingResponse
      */
     participant: string;
     /**
      * Its place, 1 for the top; Participants equal on everything share one
-     * @type {number}
-     * @memberof StandingResponse
      */
     place: number;
     /**
      * Its Tiebreakers, in the order of [`StandingsResponse::tiebreakers`]: shares between 0 and 1, except `OpponentAverageMatchPoints`, which is Match points
-     * @type {Array<number>}
-     * @memberof StandingResponse
      */
     tiebreakers: Array<number>;
     /**
      * Matches won, Byes not included
-     * @type {number}
-     * @memberof StandingResponse
      */
     wins: number;
 }
@@ -7729,14 +7315,10 @@ export interface StandingResponse {
 export interface StandingsResponse {
     /**
      * Every Participant, best first
-     * @type {Array<StandingResponse>}
-     * @memberof StandingsResponse
      */
     standings: Array<StandingResponse>;
     /**
      * The Ruleset's Tiebreakers after Match points, the most significant first
-     * @type {Array<Tiebreaker>}
-     * @memberof StandingsResponse
      */
     tiebreakers: Array<Tiebreaker>;
 }
@@ -7894,8 +7476,6 @@ export interface StatBucketResponse {
 export interface SubscribePushDeviceErrors {
     /**
      * The endpoint is no https url
-     * @type {boolean}
-     * @memberof SubscribePushDeviceErrors
      */
     invalid_endpoint: boolean;
 }
@@ -7907,26 +7487,18 @@ export interface SubscribePushDeviceErrors {
 export interface SubscribePushDeviceRequest {
     /**
      * The device's authentication secret, base64url
-     * @type {string}
-     * @memberof SubscribePushDeviceRequest
      */
     auth: string;
     /**
      * Where pushes for the device are posted
-     * @type {string}
-     * @memberof SubscribePushDeviceRequest
      */
     endpoint: string;
     /**
      * The language the app shows on the device, which its pushes are written in
-     * @type {PushLanguage}
-     * @memberof SubscribePushDeviceRequest
      */
     language: PushLanguage;
     /**
      * The device's P-256 public key, base64url
-     * @type {string}
-     * @memberof SubscribePushDeviceRequest
      */
     p256dh: string;
 }
@@ -8043,7 +7615,7 @@ export const Tiebreaker = {
     /**
     * OAMP: the average of the opponents&#39; Match points; a smaller Match adds an opponent with none per empty Seat
     */
-    OpponentAverageMatchPoints: 'OpponentAverageMatchPoints'
+    OpponentAverageMatchPoints: 'OpponentAverageMatchPoints',
 } as const;
 export type Tiebreaker = typeof Tiebreaker[keyof typeof Tiebreaker];
 
@@ -8062,7 +7634,7 @@ export const Timeframe = {
     /**
     * Over, or never started although its start has passed, the latest start first
     */
-    Past: 'Past'
+    Past: 'Past',
 } as const;
 export type Timeframe = typeof Timeframe[keyof typeof Timeframe];
 
@@ -8137,7 +7709,7 @@ export const TopCut = {
     /**
     * Multiplayer: one final Match of as many of the best as the Table size seats
     */
-    Final: 'Final'
+    Final: 'Final',
 } as const;
 export type TopCut = typeof TopCut[keyof typeof TopCut];
 
@@ -8157,8 +7729,6 @@ export type TournamentEvent = TournamentEventOneOf | TournamentEventOneOf1 | Tou
 export interface TournamentEventOneOf {
     /**
      * 
-     * @type {TournamentEventOneOfKindEnum}
-     * @memberof TournamentEventOneOf
      */
     kind: TournamentEventOneOfKindEnum;
 }
@@ -8168,7 +7738,7 @@ export interface TournamentEventOneOf {
  * @export
  */
 export const TournamentEventOneOfKindEnum = {
-    TournamentChanged: 'TournamentChanged'
+    TournamentChanged: 'TournamentChanged',
 } as const;
 export type TournamentEventOneOfKindEnum = typeof TournamentEventOneOfKindEnum[keyof typeof TournamentEventOneOfKindEnum];
 
@@ -8180,8 +7750,6 @@ export type TournamentEventOneOfKindEnum = typeof TournamentEventOneOfKindEnum[k
 export interface TournamentEventOneOf1 {
     /**
      * 
-     * @type {TournamentEventOneOf1KindEnum}
-     * @memberof TournamentEventOneOf1
      */
     kind: TournamentEventOneOf1KindEnum;
 }
@@ -8191,7 +7759,7 @@ export interface TournamentEventOneOf1 {
  * @export
  */
 export const TournamentEventOneOf1KindEnum = {
-    ParticipantsChanged: 'ParticipantsChanged'
+    ParticipantsChanged: 'ParticipantsChanged',
 } as const;
 export type TournamentEventOneOf1KindEnum = typeof TournamentEventOneOf1KindEnum[keyof typeof TournamentEventOneOf1KindEnum];
 
@@ -8203,20 +7771,14 @@ export type TournamentEventOneOf1KindEnum = typeof TournamentEventOneOf1KindEnum
 export interface TournamentEventOneOf10 {
     /**
      * 
-     * @type {TournamentEventOneOf10KindEnum}
-     * @memberof TournamentEventOneOf10
      */
     kind: TournamentEventOneOf10KindEnum;
     /**
      * The Match
-     * @type {string}
-     * @memberof TournamentEventOneOf10
      */
     match_uuid: string;
     /**
      * The Round of the Match
-     * @type {number}
-     * @memberof TournamentEventOneOf10
      */
     round: number;
 }
@@ -8226,7 +7788,7 @@ export interface TournamentEventOneOf10 {
  * @export
  */
 export const TournamentEventOneOf10KindEnum = {
-    ResultReported: 'ResultReported'
+    ResultReported: 'ResultReported',
 } as const;
 export type TournamentEventOneOf10KindEnum = typeof TournamentEventOneOf10KindEnum[keyof typeof TournamentEventOneOf10KindEnum];
 
@@ -8238,20 +7800,14 @@ export type TournamentEventOneOf10KindEnum = typeof TournamentEventOneOf10KindEn
 export interface TournamentEventOneOf11 {
     /**
      * 
-     * @type {TournamentEventOneOf11KindEnum}
-     * @memberof TournamentEventOneOf11
      */
     kind: TournamentEventOneOf11KindEnum;
     /**
      * The Match
-     * @type {string}
-     * @memberof TournamentEventOneOf11
      */
     match_uuid: string;
     /**
      * The Round of the Match
-     * @type {number}
-     * @memberof TournamentEventOneOf11
      */
     round: number;
 }
@@ -8261,7 +7817,7 @@ export interface TournamentEventOneOf11 {
  * @export
  */
 export const TournamentEventOneOf11KindEnum = {
-    ResultDisputed: 'ResultDisputed'
+    ResultDisputed: 'ResultDisputed',
 } as const;
 export type TournamentEventOneOf11KindEnum = typeof TournamentEventOneOf11KindEnum[keyof typeof TournamentEventOneOf11KindEnum];
 
@@ -8273,20 +7829,14 @@ export type TournamentEventOneOf11KindEnum = typeof TournamentEventOneOf11KindEn
 export interface TournamentEventOneOf12 {
     /**
      * 
-     * @type {TournamentEventOneOf12KindEnum}
-     * @memberof TournamentEventOneOf12
      */
     kind: TournamentEventOneOf12KindEnum;
     /**
      * The Match
-     * @type {string}
-     * @memberof TournamentEventOneOf12
      */
     match_uuid: string;
     /**
      * The Round of the Match
-     * @type {number}
-     * @memberof TournamentEventOneOf12
      */
     round: number;
 }
@@ -8296,7 +7846,7 @@ export interface TournamentEventOneOf12 {
  * @export
  */
 export const TournamentEventOneOf12KindEnum = {
-    ResultSet: 'ResultSet'
+    ResultSet: 'ResultSet',
 } as const;
 export type TournamentEventOneOf12KindEnum = typeof TournamentEventOneOf12KindEnum[keyof typeof TournamentEventOneOf12KindEnum];
 
@@ -8308,8 +7858,6 @@ export type TournamentEventOneOf12KindEnum = typeof TournamentEventOneOf12KindEn
 export interface TournamentEventOneOf13 {
     /**
      * 
-     * @type {TournamentEventOneOf13KindEnum}
-     * @memberof TournamentEventOneOf13
      */
     kind: TournamentEventOneOf13KindEnum;
 }
@@ -8319,7 +7867,7 @@ export interface TournamentEventOneOf13 {
  * @export
  */
 export const TournamentEventOneOf13KindEnum = {
-    StandingsChanged: 'StandingsChanged'
+    StandingsChanged: 'StandingsChanged',
 } as const;
 export type TournamentEventOneOf13KindEnum = typeof TournamentEventOneOf13KindEnum[keyof typeof TournamentEventOneOf13KindEnum];
 
@@ -8331,8 +7879,6 @@ export type TournamentEventOneOf13KindEnum = typeof TournamentEventOneOf13KindEn
 export interface TournamentEventOneOf14 {
     /**
      * 
-     * @type {TournamentEventOneOf14KindEnum}
-     * @memberof TournamentEventOneOf14
      */
     kind: TournamentEventOneOf14KindEnum;
 }
@@ -8342,7 +7888,7 @@ export interface TournamentEventOneOf14 {
  * @export
  */
 export const TournamentEventOneOf14KindEnum = {
-    Resync: 'Resync'
+    Resync: 'Resync',
 } as const;
 export type TournamentEventOneOf14KindEnum = typeof TournamentEventOneOf14KindEnum[keyof typeof TournamentEventOneOf14KindEnum];
 
@@ -8354,8 +7900,6 @@ export type TournamentEventOneOf14KindEnum = typeof TournamentEventOneOf14KindEn
 export interface TournamentEventOneOf2 {
     /**
      * 
-     * @type {TournamentEventOneOf2KindEnum}
-     * @memberof TournamentEventOneOf2
      */
     kind: TournamentEventOneOf2KindEnum;
 }
@@ -8365,7 +7909,7 @@ export interface TournamentEventOneOf2 {
  * @export
  */
 export const TournamentEventOneOf2KindEnum = {
-    OrganizersChanged: 'OrganizersChanged'
+    OrganizersChanged: 'OrganizersChanged',
 } as const;
 export type TournamentEventOneOf2KindEnum = typeof TournamentEventOneOf2KindEnum[keyof typeof TournamentEventOneOf2KindEnum];
 
@@ -8377,8 +7921,6 @@ export type TournamentEventOneOf2KindEnum = typeof TournamentEventOneOf2KindEnum
 export interface TournamentEventOneOf3 {
     /**
      * 
-     * @type {TournamentEventOneOf3KindEnum}
-     * @memberof TournamentEventOneOf3
      */
     kind: TournamentEventOneOf3KindEnum;
 }
@@ -8388,7 +7930,7 @@ export interface TournamentEventOneOf3 {
  * @export
  */
 export const TournamentEventOneOf3KindEnum = {
-    DecksChanged: 'DecksChanged'
+    DecksChanged: 'DecksChanged',
 } as const;
 export type TournamentEventOneOf3KindEnum = typeof TournamentEventOneOf3KindEnum[keyof typeof TournamentEventOneOf3KindEnum];
 
@@ -8400,14 +7942,10 @@ export type TournamentEventOneOf3KindEnum = typeof TournamentEventOneOf3KindEnum
 export interface TournamentEventOneOf4 {
     /**
      * 
-     * @type {TournamentEventOneOf4KindEnum}
-     * @memberof TournamentEventOneOf4
      */
     kind: TournamentEventOneOf4KindEnum;
     /**
      * The Round's number
-     * @type {number}
-     * @memberof TournamentEventOneOf4
      */
     round: number;
 }
@@ -8417,7 +7955,7 @@ export interface TournamentEventOneOf4 {
  * @export
  */
 export const TournamentEventOneOf4KindEnum = {
-    RoundPaired: 'RoundPaired'
+    RoundPaired: 'RoundPaired',
 } as const;
 export type TournamentEventOneOf4KindEnum = typeof TournamentEventOneOf4KindEnum[keyof typeof TournamentEventOneOf4KindEnum];
 
@@ -8429,14 +7967,10 @@ export type TournamentEventOneOf4KindEnum = typeof TournamentEventOneOf4KindEnum
 export interface TournamentEventOneOf5 {
     /**
      * 
-     * @type {TournamentEventOneOf5KindEnum}
-     * @memberof TournamentEventOneOf5
      */
     kind: TournamentEventOneOf5KindEnum;
     /**
      * The Round's number
-     * @type {number}
-     * @memberof TournamentEventOneOf5
      */
     round: number;
 }
@@ -8446,7 +7980,7 @@ export interface TournamentEventOneOf5 {
  * @export
  */
 export const TournamentEventOneOf5KindEnum = {
-    RoundDiscarded: 'RoundDiscarded'
+    RoundDiscarded: 'RoundDiscarded',
 } as const;
 export type TournamentEventOneOf5KindEnum = typeof TournamentEventOneOf5KindEnum[keyof typeof TournamentEventOneOf5KindEnum];
 
@@ -8458,14 +7992,10 @@ export type TournamentEventOneOf5KindEnum = typeof TournamentEventOneOf5KindEnum
 export interface TournamentEventOneOf6 {
     /**
      * 
-     * @type {TournamentEventOneOf6KindEnum}
-     * @memberof TournamentEventOneOf6
      */
     kind: TournamentEventOneOf6KindEnum;
     /**
      * The Round's number
-     * @type {number}
-     * @memberof TournamentEventOneOf6
      */
     round: number;
 }
@@ -8475,7 +8005,7 @@ export interface TournamentEventOneOf6 {
  * @export
  */
 export const TournamentEventOneOf6KindEnum = {
-    PreviewOutdated: 'PreviewOutdated'
+    PreviewOutdated: 'PreviewOutdated',
 } as const;
 export type TournamentEventOneOf6KindEnum = typeof TournamentEventOneOf6KindEnum[keyof typeof TournamentEventOneOf6KindEnum];
 
@@ -8487,14 +8017,10 @@ export type TournamentEventOneOf6KindEnum = typeof TournamentEventOneOf6KindEnum
 export interface TournamentEventOneOf7 {
     /**
      * 
-     * @type {TournamentEventOneOf7KindEnum}
-     * @memberof TournamentEventOneOf7
      */
     kind: TournamentEventOneOf7KindEnum;
     /**
      * The Round's number
-     * @type {number}
-     * @memberof TournamentEventOneOf7
      */
     round: number;
 }
@@ -8504,7 +8030,7 @@ export interface TournamentEventOneOf7 {
  * @export
  */
 export const TournamentEventOneOf7KindEnum = {
-    RoundStarted: 'RoundStarted'
+    RoundStarted: 'RoundStarted',
 } as const;
 export type TournamentEventOneOf7KindEnum = typeof TournamentEventOneOf7KindEnum[keyof typeof TournamentEventOneOf7KindEnum];
 
@@ -8516,14 +8042,10 @@ export type TournamentEventOneOf7KindEnum = typeof TournamentEventOneOf7KindEnum
 export interface TournamentEventOneOf8 {
     /**
      * 
-     * @type {TournamentEventOneOf8KindEnum}
-     * @memberof TournamentEventOneOf8
      */
     kind: TournamentEventOneOf8KindEnum;
     /**
      * The Round's number
-     * @type {number}
-     * @memberof TournamentEventOneOf8
      */
     round: number;
 }
@@ -8533,7 +8055,7 @@ export interface TournamentEventOneOf8 {
  * @export
  */
 export const TournamentEventOneOf8KindEnum = {
-    RoundEnded: 'RoundEnded'
+    RoundEnded: 'RoundEnded',
 } as const;
 export type TournamentEventOneOf8KindEnum = typeof TournamentEventOneOf8KindEnum[keyof typeof TournamentEventOneOf8KindEnum];
 
@@ -8545,14 +8067,10 @@ export type TournamentEventOneOf8KindEnum = typeof TournamentEventOneOf8KindEnum
 export interface TournamentEventOneOf9 {
     /**
      * 
-     * @type {TournamentEventOneOf9KindEnum}
-     * @memberof TournamentEventOneOf9
      */
     kind: TournamentEventOneOf9KindEnum;
     /**
      * The Round's number
-     * @type {number}
-     * @memberof TournamentEventOneOf9
      */
     round: number;
 }
@@ -8562,7 +8080,7 @@ export interface TournamentEventOneOf9 {
  * @export
  */
 export const TournamentEventOneOf9KindEnum = {
-    RoundTakenBack: 'RoundTakenBack'
+    RoundTakenBack: 'RoundTakenBack',
 } as const;
 export type TournamentEventOneOf9KindEnum = typeof TournamentEventOneOf9KindEnum[keyof typeof TournamentEventOneOf9KindEnum];
 
@@ -8574,128 +8092,86 @@ export type TournamentEventOneOf9KindEnum = typeof TournamentEventOneOf9KindEnum
 export interface TournamentResponse {
     /**
      * How many Games a one-on-one Match is played to, `null` for a multiplayer one
-     * @type {BestOf}
-     * @memberof TournamentResponse
      */
     best_of?: BestOf | null;
     /**
      * What Participants should know beforehand
-     * @type {string}
-     * @memberof TournamentResponse
      */
     description?: string | null;
     /**
      * Whether it is entered afterwards: its Organizers set every pairing and Result, Participants report nothing and get no pushes
-     * @type {boolean}
-     * @memberof TournamentResponse
      */
     entered_afterwards: boolean;
     /**
      * What playing costs, `null` for nothing
-     * @type {EntryFeeSchema}
-     * @memberof TournamentResponse
      */
     entry_fee?: EntryFeeSchema | null;
     /**
      * The format played, `null` for any
-     * @type {string}
-     * @memberof TournamentResponse
      */
     format?: string | null;
     /**
      * Where it takes place, as free text
-     * @type {string}
-     * @memberof TournamentResponse
      */
     location?: string | null;
     /**
      * What the Tournament is called
-     * @type {string}
-     * @memberof TournamentResponse
      */
     name: string;
     /**
      * The part the reader plays in running it, `null` for none
-     * @type {OrganizerRole}
-     * @memberof TournamentResponse
      */
     organizer_role?: OrganizerRole | null;
     /**
      * Its Owner's username, `null` while the Tombstone holds it
-     * @type {string}
-     * @memberof TournamentResponse
      */
     owner?: string | null;
     /**
      * How many Participants self sign-up admits at most, `null` for no limit
-     * @type {number}
-     * @memberof TournamentResponse
      */
     participant_limit?: number | null;
     /**
      * How many minutes the round timer gives a Round, `null` for no timer
-     * @type {number}
-     * @memberof TournamentResponse
      */
     round_minutes?: number | null;
     /**
      * The Ruleset it follows
-     * @type {Ruleset}
-     * @memberof TournamentResponse
      */
     ruleset: Ruleset;
     /**
      * Whether Accounts may sign up themselves
-     * @type {boolean}
-     * @memberof TournamentResponse
      */
     self_sign_up: boolean;
     /**
      * Secret of the share link while it is Unlisted, for its Organizers only
-     * @type {string}
-     * @memberof TournamentResponse
      */
     share_token?: string | null;
     /**
      * When it is announced to start
-     * @type {string}
-     * @memberof TournamentResponse
      */
     starts_at: string;
     /**
      * Where it stands
-     * @type {TournamentState}
-     * @memberof TournamentResponse
      */
     state: TournamentState;
     /**
      * How many Participants a full Match seats
-     * @type {number}
-     * @memberof TournamentResponse
      */
     table_size: number;
     /**
      * The Top cut after the Swiss Rounds, `null` for none
-     * @type {TopCut}
-     * @memberof TournamentResponse
      */
     top_cut?: TopCut | null;
     /**
      * How many Games a Top cut Match is played to, `null` without a Top 4 or Top 8
-     * @type {BestOf}
-     * @memberof TournamentResponse
      */
     top_cut_best_of?: BestOf | null;
     /**
      * Primary key
-     * @type {string}
-     * @memberof TournamentResponse
      */
     uuid: string;
     /**
      * Who may see it
-     * @type {Visibility}
-     * @memberof TournamentResponse
      */
     visibility: Visibility;
 }
@@ -8709,80 +8185,54 @@ export interface TournamentResponse {
 export interface TournamentSettingsErrors {
     /**
      * Best-of is missing at Table size 2 or given above it
-     * @type {boolean}
-     * @memberof TournamentSettingsErrors
      */
     best_of_mismatch: boolean;
     /**
      * The entry fee is zero or less
-     * @type {boolean}
-     * @memberof TournamentSettingsErrors
      */
     entry_fee_not_positive: boolean;
     /**
      * The participant limit is below two
-     * @type {boolean}
-     * @memberof TournamentSettingsErrors
      */
     participant_limit_too_small: boolean;
     /**
      * The round timer is below a minute or above 240
-     * @type {boolean}
-     * @memberof TournamentSettingsErrors
      */
     round_minutes_out_of_range: boolean;
     /**
      * Table size, Ruleset, best-of or entering afterwards changed, or an entry fee was taken up or dropped, after the first Round started
-     * @type {boolean}
-     * @memberof TournamentSettingsErrors
      */
     rules_locked: boolean;
     /**
      * The Ruleset is not played at the Table size
-     * @type {boolean}
-     * @memberof TournamentSettingsErrors
      */
     ruleset_mismatch: boolean;
     /**
      * Self sign-up is on for a private Tournament
-     * @type {boolean}
-     * @memberof TournamentSettingsErrors
      */
     self_sign_up_needs_visibility: boolean;
     /**
      * The Table size is outside 2 to 5
-     * @type {boolean}
-     * @memberof TournamentSettingsErrors
      */
     table_size_out_of_range: boolean;
     /**
      * The Top cut's best-of is missing with a Top 4 or Top 8 or given without one
-     * @type {boolean}
-     * @memberof TournamentSettingsErrors
      */
     top_cut_best_of_mismatch: boolean;
     /**
      * The Top cut or its best-of changed after the Swiss Rounds were over
-     * @type {boolean}
-     * @memberof TournamentSettingsErrors
      */
     top_cut_locked: boolean;
     /**
      * The Top cut is not played at the Table size
-     * @type {boolean}
-     * @memberof TournamentSettingsErrors
      */
     top_cut_mismatch: boolean;
     /**
      * The entry fee's currency is not three capital letters
-     * @type {boolean}
-     * @memberof TournamentSettingsErrors
      */
     unknown_currency: boolean;
     /**
      * The format is not one a deck can be built for
-     * @type {boolean}
-     * @memberof TournamentSettingsErrors
      */
     unknown_format: boolean;
 }
@@ -8794,100 +8244,68 @@ export interface TournamentSettingsErrors {
 export interface TournamentSettingsRequest {
     /**
      * How many Games a one-on-one Match is played to: required at Table size 2, `null` above
-     * @type {BestOf}
-     * @memberof TournamentSettingsRequest
      */
     best_of?: BestOf | null;
     /**
      * What Participants should know beforehand
-     * @type {string}
-     * @memberof TournamentSettingsRequest
      */
     description?: string | null;
     /**
      * Whether the Tournament is entered afterwards instead of run live: its Organizers set every pairing and Result, any date fits; `false` when left out
-     * @type {boolean}
-     * @memberof TournamentSettingsRequest
      */
     entered_afterwards?: boolean;
     /**
      * What playing costs, `null` or left out for nothing
      * 
      * With a fee every Participant starts unpaid and is only paired once an Organizer marked it paid. Taking a fee up or dropping it is refused after the first Round started; amount and currency stay editable.
-     * @type {EntryFeeSchema}
-     * @memberof TournamentSettingsRequest
      */
     entry_fee?: EntryFeeSchema | null;
     /**
      * The format played, a slug from the deck formats; `null` for any
-     * @type {string}
-     * @memberof TournamentSettingsRequest
      */
     format?: string | null;
     /**
      * Where it takes place, as free text
-     * @type {string}
-     * @memberof TournamentSettingsRequest
      */
     location?: string | null;
     /**
      * What the Tournament is called
-     * @type {string}
-     * @memberof TournamentSettingsRequest
      */
     name: string;
     /**
      * How many Participants self sign-up admits at most, two or more; `null` for no limit
-     * @type {number}
-     * @memberof TournamentSettingsRequest
      */
     participant_limit?: number | null;
     /**
      * How many minutes the round timer gives a Round, 1 to 240; `null` for no timer
-     * @type {number}
-     * @memberof TournamentSettingsRequest
      */
     round_minutes?: number | null;
     /**
      * The Ruleset to follow: `Mtr` at 2, `TopDeck` or `MultiplayerAddendum` at 3 to 5
-     * @type {Ruleset}
-     * @memberof TournamentSettingsRequest
      */
     ruleset: Ruleset;
     /**
      * Whether Accounts may sign up themselves; only for a public or unlisted Tournament
-     * @type {boolean}
-     * @memberof TournamentSettingsRequest
      */
     self_sign_up: boolean;
     /**
      * When it is announced to start: the date and the start time
-     * @type {string}
-     * @memberof TournamentSettingsRequest
      */
     starts_at: string;
     /**
      * How many Participants a full Match seats, 2 to 5
-     * @type {number}
-     * @memberof TournamentSettingsRequest
      */
     table_size: number;
     /**
      * The Top cut after the Swiss Rounds: Top 4 or Top 8 at Table size 2, the final above; `null` for none
-     * @type {TopCut}
-     * @memberof TournamentSettingsRequest
      */
     top_cut?: TopCut | null;
     /**
      * How many Games a Top cut Match is played to: required with a Top 4 or Top 8, `null` otherwise
-     * @type {BestOf}
-     * @memberof TournamentSettingsRequest
      */
     top_cut_best_of?: BestOf | null;
     /**
      * Who may see the Tournament
-     * @type {Visibility}
-     * @memberof TournamentSettingsRequest
      */
     visibility: Visibility;
 }
@@ -8920,7 +8338,7 @@ export const TournamentState = {
     /**
     * Called off; the Rounds played so far stay
     */
-    Cancelled: 'Cancelled'
+    Cancelled: 'Cancelled',
 } as const;
 export type TournamentState = typeof TournamentState[keyof typeof TournamentState];
 
@@ -8932,8 +8350,6 @@ export type TournamentState = typeof TournamentState[keyof typeof TournamentStat
 export interface TournamentStateResponse {
     /**
      * The Tournament's state now, `Finished` after the last Swiss Round
-     * @type {TournamentState}
-     * @memberof TournamentStateResponse
      */
     state: TournamentState;
 }
@@ -8947,62 +8363,42 @@ export interface TournamentStateResponse {
 export interface TournamentSummaryResponse {
     /**
      * The format played, `null` for any
-     * @type {string}
-     * @memberof TournamentSummaryResponse
      */
     format?: string | null;
     /**
      * Where it takes place, as free text
-     * @type {string}
-     * @memberof TournamentSummaryResponse
      */
     location?: string | null;
     /**
      * What the Tournament is called
-     * @type {string}
-     * @memberof TournamentSummaryResponse
      */
     name: string;
     /**
      * Its Owner's username, `null` while the Tombstone holds it
-     * @type {string}
-     * @memberof TournamentSummaryResponse
      */
     owner?: string | null;
     /**
      * The Ruleset it follows
-     * @type {Ruleset}
-     * @memberof TournamentSummaryResponse
      */
     ruleset: Ruleset;
     /**
      * When it is announced to start
-     * @type {string}
-     * @memberof TournamentSummaryResponse
      */
     starts_at: string;
     /**
      * Where it stands
-     * @type {TournamentState}
-     * @memberof TournamentSummaryResponse
      */
     state: TournamentState;
     /**
      * How many Participants a full Match seats
-     * @type {number}
-     * @memberof TournamentSummaryResponse
      */
     table_size: number;
     /**
      * Primary key
-     * @type {string}
-     * @memberof TournamentSummaryResponse
      */
     uuid: string;
     /**
      * Who may see it
-     * @type {Visibility}
-     * @memberof TournamentSummaryResponse
      */
     visibility: Visibility;
 }
