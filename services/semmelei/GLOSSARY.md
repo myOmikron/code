@@ -40,9 +40,17 @@ _Avoid_: ID, item number, SKU
 What the Nachbarschaftshilfe buys at the Bakery for one pickup day: all positions of that day's orders that were not cancelled, summed per Item. Final once the day is Dispatched. Called "Beschaffung" in the UI.
 _Avoid_: bakery order, purchase order
 
+**Order Value**:
+What the positions of orders that were not cancelled are worth at the prices agreed when they were ordered. Counts what was ordered, not what was paid or earned. Called "Bestellwert" in the UI.
+_Avoid_: revenue, turnover, Umsatz, profit
+
 **Deadline**:
 The point in time a pickup day stops taking orders. Customers can neither place nor cancel orders afterwards; staff can still cancel them until the Dispatch. Called "Bestellschluss" in the UI.
 _Avoid_: cutoff, order time, lock
+
+**Called Off**:
+The state of a pickup day that does not take place. All its orders are cancelled with it, which tells them apart from orders cancelled one by one. Called "abgesagt" in the UI.
+_Avoid_: closed, cancelled (for a day), skipped
 
 **Review Window**:
 The span between a pickup day's Deadline and its Dispatch, in which Admins look over the day's orders and cancel the ones that should not be bought. Called "Prüfzeit" in the UI.
