@@ -52,6 +52,8 @@ docs/AdminUnlockAccountErrors.md
 docs/AdminUnlockAccountRequest.md
 docs/AdvisorSettingsResponse.md
 docs/ApiErrorResponse.md
+docs/ArrangeRoundErrors.md
+docs/ArrangeRoundRequest.md
 docs/BestOf.md
 docs/BracketFlagsEntryResponse.md
 docs/BracketFlagsRequest.md
@@ -150,6 +152,7 @@ docs/FormErrorResponseForAdminLockAccountErrors.md
 docs/FormErrorResponseForAdminRenameAccountErrors.md
 docs/FormErrorResponseForAdminSetRoleErrors.md
 docs/FormErrorResponseForAdminUnlockAccountErrors.md
+docs/FormErrorResponseForArrangeRoundErrors.md
 docs/FormErrorResponseForChooseUsernameErrors.md
 docs/FormErrorResponseForDeleteAccountErrors.md
 docs/FormErrorResponseForDeletePasskeyErrors.md

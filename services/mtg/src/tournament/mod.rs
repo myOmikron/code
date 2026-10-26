@@ -9,6 +9,8 @@
 //!   and Byes, rolled from a seed the caller stores;
 //! - [`standings::standings`]: every Participant's Match points, Tiebreakers and place;
 //! - [`rounds::suggested_swiss_rounds`]: how many Swiss Rounds to play;
+//! - [`layout::check_layout`]: whether an Organizer's layout of a Round fits,
+//!   and [`layout::Meetings`]: which Matches are rematches;
 //! - [`ruleset`]: what a Ruleset scores and which game scores a Match takes;
 //! - [`reporting`]: who may report or dispute a Result, and what it does.
 //!
@@ -16,6 +18,7 @@
 //! derives from the record, so a new rule reads the same input. The rules
 //! behind it are in `docs/research/tournament-pairing.md`.
 
+pub mod layout;
 pub mod matching;
 pub mod pairing;
 pub mod record;

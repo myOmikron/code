@@ -165,7 +165,7 @@ The published tournament rules a Tournament follows for Match points, Byes, smal
 _Avoid_: rules, scoring system, format (that is the deck format)
 
 **Round**:
-One turn of the Tournament in which every paired Participant plays one Match at the same time, in the Swiss part or in the Top cut. Its pairings are a preview only Organizers see until it starts; it ends when every Match has a Result and none is disputed.
+One turn of the Tournament in which every paired Participant plays one Match at the same time, in the Swiss part or in the Top cut. Its pairings are a preview only Organizers see and may change until it starts; it ends when every Match has a Result and none is disputed. **Taking back** the latest ended Round, while no later Round started, makes it run again with its Results.
 _Avoid_: turn (that is a turn within a game), pairing
 
 **Match**:

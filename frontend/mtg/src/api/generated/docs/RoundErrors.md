@@ -8,6 +8,8 @@ Why a Round could not be paired, started, ended or discarded
 Name | Type
 ------------ | -------------
 `all_rounds_paired` | boolean
+`later_round_started` | boolean
+`not_ended` | boolean
 `not_previewed` | boolean
 `not_running` | boolean
 `results_disputed` | boolean
