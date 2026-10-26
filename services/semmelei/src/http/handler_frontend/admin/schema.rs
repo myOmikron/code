@@ -8,9 +8,12 @@ use galvyn::rorm::fields::types::MaxStr;
 use serde::Deserialize;
 use serde::Serialize;
 
+use crate::http::handler_frontend::shop::schema::PublicCategory;
 use crate::models::AccountUuid;
 use crate::models::CategoryUuid;
 use crate::models::ItemUuid;
+use crate::models::OrderStatus;
+use crate::models::OrderUuid;
 use crate::models::Role;
 use crate::models::ScheduleWeekday;
 use crate::models::ShopSettings;
@@ -207,4 +210,51 @@ pub struct PickupDayChangeResponse {
     pub day: AdminPickupDay,
     /// How many orders were cancelled by calling the day off
     pub cancelled_orders: i64,
+}
+
+/// The period the statistics cover
+#[derive(Deserialize, JsonSchema)]
+pub struct StatisticsPeriodQuery {
+    /// First day of the period (Europe/Berlin), inclusive
+    pub from: SchemaDate,
+    /// Last day of the period (Europe/Berlin), inclusive
+    pub to: SchemaDate,
+}
+
+/// An order position as the statistics see it
+#[derive(Serialize, JsonSchema)]
+pub struct StatisticsPosition {
+    /// The order the position belongs to
+    pub order: OrderUuid,
+    /// The point in time the order was placed
+    pub ordered_at: SchemaDateTime,
+    /// The order's status
+    pub status: OrderStatus,
+    /// The effective pickup date of the order's pickup day
+    pub pickup_date: SchemaDate,
+    /// The Deadline of the order's pickup day
+    pub deadline: SchemaDateTime,
+    /// Whether the pickup day has been Dispatched
+    pub dispatched: bool,
+    /// Whether the pickup day is Called Off
+    pub called_off: bool,
+    /// The Item, unset once it was deleted
+    pub item: Option<ItemUuid>,
+    /// The Item's current name, unset once it was deleted
+    pub item_name: Option<String>,
+    /// The Item's current category, unset once the Item was deleted or if it has none
+    pub category: Option<PublicCategory>,
+    /// The name the Item had when the order was placed
+    pub name: String,
+    /// How many units were ordered
+    pub quantity: i64,
+    /// The price per unit (euro cents) when the order was placed
+    pub price_cents: i64,
+}
+
+/// The positions of every order placed or picked up in the period
+#[derive(Serialize, JsonSchema)]
+pub struct StatisticsPositionsResponse {
+    /// The positions, in no particular order
+    pub positions: Vec<StatisticsPosition>,
 }

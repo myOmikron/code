@@ -12,6 +12,7 @@ use rand::seq::IndexedRandom;
 use serde::Deserialize;
 use serde::Serialize;
 use service_bootstrap::custom_db_enum;
+use time::Date;
 use time::OffsetDateTime;
 use tracing::instrument;
 use uuid::Uuid;
@@ -388,7 +389,112 @@ impl Order {
     }
 }
 
+/// An order position with what the statistics need of its order and pickup day
+#[derive(Debug)]
+pub struct StatisticsPosition {
+    /// The order the position belongs to
+    pub order: OrderUuid,
+    /// The point in time the order was placed
+    pub ordered_at: OffsetDateTime,
+    /// The order's status
+    pub status: OrderStatus,
+    /// The effective pickup date of the order's pickup day
+    pub pickup_date: Date,
+    /// The Deadline of the order's pickup day
+    pub deadline_at: OffsetDateTime,
+    /// Whether the order's pickup day has been Dispatched
+    pub dispatched: bool,
+    /// Whether the order's pickup day is Called Off
+    pub called_off: bool,
+    /// Link to the catalog item, unset once the Item was deleted
+    pub item: Option<ItemUuid>,
+    /// Snapshot of the item name at order time
+    pub name: MaxStr<255>,
+    /// Snapshot of the price (euro cents) at order time
+    pub price_cents: i64,
+    /// How many units were ordered
+    pub quantity: i64,
+}
+
 impl OrderItem {
+    /// Fetch the positions of every order placed in `[placed_from, placed_until)`
+    /// or picked up from `picked_up_from` to `picked_up_to`, both inclusive
+    #[instrument(name = "OrderItem::get_for_statistics", skip(exe))]
+    pub async fn get_for_statistics(
+        exe: impl Executor<'_>,
+        placed_from: OffsetDateTime,
+        placed_until: OffsetDateTime,
+        picked_up_from: Date,
+        picked_up_to: Date,
+    ) -> Result<Vec<StatisticsPosition>, rorm::Error> {
+        let rows = rorm::query(
+            exe,
+            (
+                OrderItemModel.order,
+                OrderItemModel.order.created_at,
+                OrderItemModel.order.status,
+                OrderItemModel.order.pickup_day.pickup_date,
+                OrderItemModel.order.pickup_day.deadline_at,
+                OrderItemModel.order.pickup_day.dispatched_at,
+                OrderItemModel.order.pickup_day.closed,
+                OrderItemModel.item,
+                OrderItemModel.name,
+                OrderItemModel.price_cents,
+                OrderItemModel.quantity,
+            ),
+        )
+        .condition(rorm::or!(
+            rorm::and!(
+                OrderItemModel.order.created_at.greater_equals(placed_from),
+                OrderItemModel.order.created_at.less_than(placed_until),
+            ),
+            rorm::and!(
+                OrderItemModel
+                    .order
+                    .pickup_day
+                    .pickup_date
+                    .greater_equals(picked_up_from),
+                OrderItemModel
+                    .order
+                    .pickup_day
+                    .pickup_date
+                    .less_equals(picked_up_to),
+            ),
+        ))
+        .all()
+        .await?;
+        Ok(rows
+            .into_iter()
+            .map(
+                |(
+                    order,
+                    ordered_at,
+                    status,
+                    pickup_date,
+                    deadline_at,
+                    dispatched_at,
+                    closed,
+                    item,
+                    name,
+                    price_cents,
+                    quantity,
+                )| StatisticsPosition {
+                    order: OrderUuid::new_from_field(order),
+                    ordered_at,
+                    status,
+                    pickup_date,
+                    deadline_at,
+                    dispatched: dispatched_at.is_some(),
+                    called_off: closed,
+                    item: item.map(ItemUuid::new_from_field),
+                    name,
+                    price_cents,
+                    quantity,
+                },
+            )
+            .collect())
+    }
+
     /// Fetch all positions of an order
     #[instrument(name = "OrderItem::get_by_order", skip(exe))]
     pub async fn get_by_order(
