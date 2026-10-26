@@ -26,4 +26,5 @@ mod tournament_participants;
 mod tournament_results;
 mod tournament_round_edits;
 mod tournament_rounds;
+mod tournament_top_cut;
 mod tournaments;

@@ -19,6 +19,7 @@ use crate::models::tournament::db::TournamentSeatInsertPatch;
 use crate::models::tournament::db::TournamentSeatModel;
 use crate::models::tournament::db::round_key;
 use crate::models::tournament::round::RoundRefusal;
+use crate::models::tournament::round::RoundStage;
 use crate::models::tournament::round::RoundState;
 use crate::tournament::layout::Layout;
 use crate::tournament::layout::LayoutError;
@@ -31,6 +32,8 @@ pub enum ArrangeRefusal {
     TournamentOver,
     /// No Round of that number is previewed
     NotPreviewed,
+    /// The Round is one of the Top cut, which the standings seed
+    TopCut,
     /// The layout does not fit the Tournament
     Invalid(Vec<LayoutError>),
 }
@@ -49,6 +52,9 @@ impl Tournament {
     ) -> Result<Result<(), ArrangeRefusal>, rorm::Error> {
         if self.over() {
             return Ok(Err(ArrangeRefusal::TournamentOver));
+        }
+        if self.state == TournamentState::TopCut {
+            return Ok(Err(ArrangeRefusal::TopCut));
         }
         let round = round_key(self.uuid.into_inner(), number);
         let previewed = rorm::query(&mut *tx, TournamentRoundModel.uuid)
@@ -121,9 +127,10 @@ impl Tournament {
     /// Take back the ended Round `number`: it runs again, its Results stay
     ///
     /// Only the latest ended Round, and only while no later Round started; a
-    /// previewed next Round goes, since it was paired on these Results. A
-    /// Tournament its last Swiss Round finished is back in Swiss. Answers
-    /// the state the Tournament is in afterwards.
+    /// previewed next Round goes, since it was paired on these Results. The
+    /// Tournament goes back to the part the Round belongs to: Swiss for a
+    /// Swiss Round (also out of the Top cut or Finished), Top cut for a Top
+    /// cut Round. Answers the state the Tournament is in afterwards.
     #[instrument(name = "Tournament::take_back_round", skip(tx, self), fields(tournament = ?self.uuid))]
     pub async fn take_back_round(
         &self,
@@ -133,15 +140,18 @@ impl Tournament {
         if self.state == TournamentState::Cancelled {
             return Ok(Err(RoundRefusal::TournamentOver));
         }
-        let rounds: Vec<(i16, RoundState)> = self
-            .rounds(tx, true)
-            .await?
+        let rounds = self.rounds(tx, true).await?;
+        let states: Vec<(i16, RoundState)> = rounds
             .iter()
             .map(|round| (round.number, round.state))
             .collect();
-        if let Some(refusal) = take_back_refusal(&rounds, number) {
+        if let Some(refusal) = take_back_refusal(&states, number) {
             return Ok(Err(refusal));
         }
+        let stage = rounds
+            .iter()
+            .find(|round| round.number == number)
+            .map_or(RoundStage::Swiss, |round| round.stage);
 
         self.discard_preview(tx).await?;
         rorm::update(&mut *tx, TournamentRoundModel)
@@ -153,14 +163,22 @@ impl Tournament {
                     .equals(round_key(self.uuid.into_inner(), number)),
             )
             .await?;
-        if self.state == TournamentState::Finished {
+        let state = state_after_take_back(stage);
+        if state != self.state {
             rorm::update(&mut *tx, TournamentModel)
-                .set(TournamentModel.state, TournamentState::Swiss)
+                .set(TournamentModel.state, state)
                 .condition(TournamentModel.uuid.equals(self.uuid.into_inner()))
                 .await?;
-            return Ok(Ok(TournamentState::Swiss));
         }
-        Ok(Ok(self.state))
+        Ok(Ok(state))
+    }
+}
+
+/// The state a Tournament is in once a Round of `stage` runs again
+fn state_after_take_back(stage: RoundStage) -> TournamentState {
+    match stage {
+        RoundStage::Swiss => TournamentState::Swiss,
+        RoundStage::TopCut => TournamentState::TopCut,
     }
 }
 
@@ -180,9 +198,24 @@ fn take_back_refusal(rounds: &[(i16, RoundState)], number: i16) -> Option<RoundR
 
 #[cfg(test)]
 mod tests {
+    use super::state_after_take_back;
     use super::take_back_refusal;
+    use crate::models::tournament::TournamentState;
     use crate::models::tournament::round::RoundRefusal;
+    use crate::models::tournament::round::RoundStage;
     use crate::models::tournament::round::RoundState;
+
+    #[test]
+    fn a_taken_back_round_reopens_the_part_it_belongs_to() {
+        assert_eq!(
+            state_after_take_back(RoundStage::Swiss),
+            TournamentState::Swiss
+        );
+        assert_eq!(
+            state_after_take_back(RoundStage::TopCut),
+            TournamentState::TopCut
+        );
+    }
 
     #[test]
     fn the_latest_ended_round_can_be_taken_back() {

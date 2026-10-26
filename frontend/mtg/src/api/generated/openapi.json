@@ -9903,7 +9903,7 @@
             },
             "put": {
                 "summary": "Replace a Tournament's settings, as one of its Organizers",
-                "description": "Replace a Tournament's settings, as one of its Organizers\n\nTable size, Ruleset and best-of stay as they are once the first Round started.",
+                "description": "Replace a Tournament's settings, as one of its Organizers\n\nTable size, Ruleset and best-of stay as they are once the first Round started,\nthe Top cut and its best-of once the Swiss Rounds are over.",
                 "operationId": "update_tournament",
                 "parameters": [
                     {
@@ -14984,6 +14984,10 @@
                         "description": "Somebody sits more than once",
                         "type": "boolean"
                     },
+                    "top_cut": {
+                        "description": "The Round is one of the Top cut, which the standings seed",
+                        "type": "boolean"
+                    },
                     "tournament_over": {
                         "description": "The Tournament is Finished or Cancelled",
                         "type": "boolean"
@@ -14996,6 +15000,7 @@
                     "not_previewed",
                     "not_seated",
                     "seated_twice",
+                    "top_cut",
                     "tournament_over"
                 ]
             },
@@ -21909,9 +21914,17 @@
                         }
                     },
                     "number": {
-                        "description": "Its number, 1 for the first Round",
+                        "description": "Its number, 1 for the first Round; the Top cut goes on counting after the Swiss Rounds",
                         "type": "integer",
                         "format": "int16"
+                    },
+                    "stage": {
+                        "description": "Whether it is a Swiss Round or one of the Top cut",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/RoundStage"
+                            }
+                        ]
                     },
                     "state": {
                         "description": "How far it got",
@@ -21925,7 +21938,27 @@
                 "required": [
                     "matches",
                     "number",
+                    "stage",
                     "state"
+                ]
+            },
+            "RoundStage": {
+                "description": "Which part of a Tournament a Round belongs to",
+                "oneOf": [
+                    {
+                        "description": "A Swiss Round: it counts for the standings",
+                        "type": "string",
+                        "enum": [
+                            "Swiss"
+                        ]
+                    },
+                    {
+                        "description": "A Round of the Top cut: single elimination, no standings",
+                        "type": "string",
+                        "enum": [
+                            "TopCut"
+                        ]
+                    }
                 ]
             },
             "RoundState": {
@@ -21974,6 +22007,12 @@
                     "swiss_rounds": {
                         "nullable": true,
                         "description": "How many Swiss Rounds an Organizer set, or the first Round settled; `null` while the suggestion applies",
+                        "type": "integer",
+                        "format": "int16"
+                    },
+                    "top_cut_size": {
+                        "nullable": true,
+                        "description": "How many Participants the Top cut takes, `null` without one\n\nOnce it started the size it started with; before, the size the Participants who play on fill, so a Top 8 of seven reads 4.",
                         "type": "integer",
                         "format": "int16"
                     }
@@ -23832,6 +23871,25 @@
                     "value_cents"
                 ]
             },
+            "TopCut": {
+                "description": "How many Participants a one-on-one Top cut takes",
+                "oneOf": [
+                    {
+                        "description": "The best four: two semifinals and a final",
+                        "type": "string",
+                        "enum": [
+                            "Top4"
+                        ]
+                    },
+                    {
+                        "description": "The best eight: quarterfinals, semifinals and a final",
+                        "type": "string",
+                        "enum": [
+                            "Top8"
+                        ]
+                    }
+                ]
+            },
             "TournamentResponse": {
                 "description": "A Tournament as one reader sees it",
                 "type": "object",
@@ -23942,6 +24000,24 @@
                         "type": "integer",
                         "format": "int16"
                     },
+                    "top_cut": {
+                        "nullable": true,
+                        "description": "The Top cut after the Swiss Rounds, `null` for none",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/TopCut"
+                            }
+                        ]
+                    },
+                    "top_cut_best_of": {
+                        "nullable": true,
+                        "description": "How many Games a Top cut Match is played to, `null` without a Top cut",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/BestOf"
+                            }
+                        ]
+                    },
                     "uuid": {
                         "description": "Primary key",
                         "allOf": [
@@ -23998,6 +24074,18 @@
                         "description": "The Table size is outside 2 to 5",
                         "type": "boolean"
                     },
+                    "top_cut_best_of_mismatch": {
+                        "description": "The Top cut's best-of is missing with a Top cut or given without one",
+                        "type": "boolean"
+                    },
+                    "top_cut_locked": {
+                        "description": "The Top cut or its best-of changed after the Swiss Rounds were over",
+                        "type": "boolean"
+                    },
+                    "top_cut_mismatch": {
+                        "description": "The Top cut is not played at the Table size",
+                        "type": "boolean"
+                    },
                     "unknown_format": {
                         "description": "The format is not one a deck can be built for",
                         "type": "boolean"
@@ -24010,6 +24098,9 @@
                     "ruleset_mismatch",
                     "self_sign_up_needs_visibility",
                     "table_size_out_of_range",
+                    "top_cut_best_of_mismatch",
+                    "top_cut_locked",
+                    "top_cut_mismatch",
                     "unknown_format"
                 ]
             },
@@ -24091,6 +24182,24 @@
                         "description": "How many Participants a full Match seats, 2 to 5",
                         "type": "integer",
                         "format": "int16"
+                    },
+                    "top_cut": {
+                        "nullable": true,
+                        "description": "The Top cut after the Swiss Rounds, at Table size 2 only; `null` for none",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/TopCut"
+                            }
+                        ]
+                    },
+                    "top_cut_best_of": {
+                        "nullable": true,
+                        "description": "How many Games a Top cut Match is played to: required with a Top cut, `null` without",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/BestOf"
+                            }
+                        ]
                     },
                     "visibility": {
                         "description": "Who may see the Tournament",

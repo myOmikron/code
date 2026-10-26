@@ -5,7 +5,9 @@
 //! engine's [`TournamentRecord`], the operations here store what it answers.
 //!
 //! A Round is paired as a preview only Organizers see, then started, then
-//! ended once every Match has a Result. Every operation here expects the
+//! ended once every Match has a Result. The Swiss Rounds come first; a Top
+//! cut, if the Tournament has one, follows with Rounds of its own that go on
+//! counting. Every operation here expects the
 //! Tournament fetched with [`Tournament::get_as_organizer_for_update`], so
 //! two Organizers acting at once are served one after the other.
 
@@ -47,6 +49,11 @@ use crate::tournament::record::RoundRecord;
 use crate::tournament::record::TournamentRecord;
 use crate::tournament::reporting::ResultState;
 use crate::tournament::rounds::suggested_swiss_rounds;
+use crate::tournament::top_cut::TopCutError;
+use crate::tournament::top_cut::bracket_size;
+use crate::tournament::top_cut::cut_over;
+use crate::tournament::top_cut::cut_size;
+use crate::tournament::top_cut::pair_top_cut;
 
 /// How far a Round got
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -64,11 +71,28 @@ custom_db_enum! {
     decoder: RoundStateDecoder,
 }
 
+/// Which part of a Tournament a Round belongs to
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub enum RoundStage {
+    /// A Swiss Round: it counts for the standings
+    #[default]
+    Swiss,
+    /// A Round of the Top cut: single elimination, no standings
+    TopCut,
+}
+custom_db_enum! {
+    enum: RoundStage,
+    variants: [Swiss, TopCut],
+    decoder: RoundStageDecoder,
+}
+
 /// One Round of a Tournament with its Matches
 #[derive(Debug, Clone)]
 pub struct Round {
-    /// Its number, 1 for the first Round
+    /// Its number, 1 for the first Round; the Top cut goes on counting
     pub number: i16,
+    /// Whether it is a Swiss Round or one of the Top cut
+    pub stage: RoundStage,
     /// How far it got
     pub state: RoundState,
     /// Its Matches by table number, then its Byes
@@ -264,6 +288,7 @@ impl Tournament {
                 }
                 let round = Round {
                     number: round.number,
+                    stage: round.stage,
                     state: round.state,
                     matches,
                 };
@@ -273,11 +298,14 @@ impl Tournament {
             .collect())
     }
 
-    /// This Tournament as the engine sees it: Participants and the Rounds that started
+    /// This Tournament as the engine sees it: Participants and the Swiss Rounds that started
+    ///
+    /// The Top cut is no part of it, see [`Self::top_cut_record`].
     #[instrument(name = "Tournament::record", skip(tx, self), fields(tournament = ?self.uuid))]
     pub async fn record(&self, tx: &mut Transaction) -> Result<TournamentRecord, rorm::Error> {
         let participants = self.participants(tx).await?;
-        let rounds = self.rounds(tx, false).await?;
+        let mut rounds = self.rounds(tx, false).await?;
+        rounds.retain(|round| round.stage == RoundStage::Swiss);
         Ok(TournamentRecord {
             ruleset: self.ruleset,
             table_size: self.table_size,
@@ -293,6 +321,54 @@ impl Tournament {
         })
     }
 
+    /// The Top cut Rounds that started, oldest first, as the engine reads them
+    #[instrument(name = "Tournament::top_cut_record", skip(tx, self), fields(tournament = ?self.uuid))]
+    pub async fn top_cut_record(
+        &self,
+        tx: &mut Transaction,
+    ) -> Result<Vec<RoundRecord>, rorm::Error> {
+        Ok(self
+            .rounds(tx, false)
+            .await?
+            .iter()
+            .filter(|round| round.stage == RoundStage::TopCut)
+            .map(round_record)
+            .collect())
+    }
+
+    /// How many Participants the Top cut takes, `None` without one
+    ///
+    /// Once the cut started, the size it started with; before, the size the
+    /// Participants who play on fill (a Top 8 of seven is a Top 4).
+    pub async fn top_cut_size(&self, tx: &mut Transaction) -> Result<Option<i16>, rorm::Error> {
+        let Some(top_cut) = self.top_cut else {
+            return Ok(None);
+        };
+        let size = match bracket_size(&self.top_cut_record(tx).await?) {
+            Some(size) => Some(size),
+            None => cut_size(top_cut, self.playing_on(tx).await?),
+        };
+        Ok(size.and_then(|size| i16::try_from(size).ok()))
+    }
+
+    /// Whether the Top cut's size and best-of can still change: until the Swiss Rounds are over
+    pub fn top_cut_open(&self) -> bool {
+        matches!(
+            self.state,
+            TournamentState::Registration | TournamentState::Swiss
+        )
+    }
+
+    /// How many Participants play on: everybody but those who Dropped
+    async fn playing_on(&self, tx: &mut Transaction) -> Result<usize, rorm::Error> {
+        Ok(self
+            .participants(tx)
+            .await?
+            .iter()
+            .filter(|participant| participant.plays_on())
+            .count())
+    }
+
     /// The number of Swiss Rounds the engine suggests for the Participants there are now
     ///
     /// Counts the Participants the next Round pairs, not those who Dropped.
@@ -300,12 +376,7 @@ impl Tournament {
         &self,
         tx: &mut Transaction,
     ) -> Result<Option<i16>, rorm::Error> {
-        let participants = self
-            .participants(tx)
-            .await?
-            .iter()
-            .filter(|participant| participant.plays_on())
-            .count();
+        let participants = self.playing_on(tx).await?;
         Ok(suggested_swiss_rounds(self.ruleset, participants)
             .map(|rounds| i16::try_from(rounds).unwrap_or(MAX_SWISS_ROUNDS)))
     }
@@ -335,21 +406,34 @@ impl Tournament {
             return Ok(Err(RoundRefusal::RoundOpen));
         }
         let number = i16::try_from(rounds.len() + 1).unwrap_or(i16::MAX);
-        if let Some(planned) = self.planned_swiss_rounds(tx).await?
-            && number > planned
-        {
-            return Ok(Err(RoundRefusal::AllRoundsPaired));
-        }
-
         let record = self.record(tx).await?;
         let seed = rand::random::<u64>();
-        let pairing = match pair_next_round(&record, seed) {
-            Ok(pairing) => pairing,
-            Err(PairingError::TooFewEntrants) => {
-                return Ok(Err(RoundRefusal::TooFewParticipants));
+        let (stage, pairing) = if self.state == TournamentState::TopCut {
+            let Some(top_cut) = self.top_cut else {
+                return Ok(Err(RoundRefusal::AllRoundsPaired));
+            };
+            let cut = self.top_cut_record(tx).await?;
+            match pair_top_cut(&record, top_cut, &cut) {
+                Ok(pairing) => (RoundStage::TopCut, pairing),
+                Err(TopCutError::TooFewEntrants) => {
+                    return Ok(Err(RoundRefusal::TooFewParticipants));
+                }
+                Err(TopCutError::CutOver) => return Ok(Err(RoundRefusal::AllRoundsPaired)),
             }
-            Err(PairingError::RulesetNotPaired(_)) => {
-                return Ok(Err(RoundRefusal::RulesetNotPaired));
+        } else {
+            if let Some(planned) = self.planned_swiss_rounds(tx).await?
+                && number > planned
+            {
+                return Ok(Err(RoundRefusal::AllRoundsPaired));
+            }
+            match pair_next_round(&record, seed) {
+                Ok(pairing) => (RoundStage::Swiss, pairing),
+                Err(PairingError::TooFewEntrants) => {
+                    return Ok(Err(RoundRefusal::TooFewParticipants));
+                }
+                Err(PairingError::RulesetNotPaired(_)) => {
+                    return Ok(Err(RoundRefusal::RulesetNotPaired));
+                }
             }
         };
 
@@ -360,6 +444,7 @@ impl Tournament {
                 uuid: round,
                 tournament: ForeignModelByField(self.uuid.into_inner()),
                 number,
+                stage,
                 state: RoundState::Previewed,
                 pairing_seed: i64::from_ne_bytes(seed.to_ne_bytes()),
             })
@@ -468,8 +553,9 @@ impl Tournament {
 
     /// End the running Round `number` once every Match has its Result and none is disputed
     ///
-    /// After the last Swiss Round the Tournament is Finished. Answers the
-    /// state the Tournament is in afterwards.
+    /// After the last Swiss Round the Top cut follows, or without one the
+    /// Tournament is Finished; after the final of the Top cut it is Finished.
+    /// Answers the state the Tournament is in afterwards.
     #[instrument(name = "Tournament::end_round", skip(tx, self), fields(tournament = ?self.uuid))]
     pub async fn end_round(
         &self,
@@ -511,15 +597,15 @@ impl Tournament {
     /// Set how many Swiss Rounds are played, at least as many as were paired
     ///
     /// Setting it to the number of Rounds played once the last of them ended
-    /// finishes the Tournament. Answers the state it is in afterwards, `None`
-    /// if the number was refused.
+    /// ends the Swiss Rounds. Answers the state the Tournament is in
+    /// afterwards, `None` if the number was refused or the Swiss Rounds are over.
     #[instrument(name = "Tournament::set_swiss_rounds", skip(tx, self), fields(tournament = ?self.uuid))]
     pub async fn set_swiss_rounds(
         &self,
         tx: &mut Transaction,
         swiss_rounds: i16,
     ) -> Result<Option<TournamentState>, rorm::Error> {
-        if self.over() {
+        if !self.top_cut_open() {
             return Ok(None);
         }
         let rounds = self.rounds(tx, true).await?;
@@ -555,9 +641,10 @@ impl Tournament {
         games_won: &[i16],
         games_drawn: i16,
     ) -> Result<Result<ResultChange, ResultRefusal>, rorm::Error> {
-        let Some((round_state, round_number, table_number)) = rorm::query(
+        let Some((stage, round_state, round_number, table_number)) = rorm::query(
             &mut *tx,
             (
+                TournamentMatchModel.round.stage,
                 TournamentMatchModel.round.state,
                 TournamentMatchModel.round.number,
                 TournamentMatchModel.table_number,
@@ -581,7 +668,7 @@ impl Tournament {
         if round_state == RoundState::Previewed {
             return Ok(Err(ResultRefusal::NotStarted));
         }
-        if !self.admits(games_won, games_drawn) {
+        if !self.admits(stage, games_won, games_drawn) {
             return Ok(Err(ResultRefusal::InvalidScore));
         }
 
@@ -627,11 +714,14 @@ impl Tournament {
         )
     }
 
-    /// Whether `games_won` per Seat and `games_drawn` is a Result a two-Seat Match can have
+    /// Whether `games_won` per Seat and `games_drawn` is a Result a two-Seat Match of `stage` can have
     ///
     /// Only one-on-one Tournaments are paired so far, so a Result has two Seats.
+    /// A Top cut Match is played to its own best-of and has a winner: play
+    /// goes on until somebody wins (MTR 2.4).
     pub(in crate::models::tournament) fn admits(
         &self,
+        stage: RoundStage,
         games_won: &[i16],
         games_drawn: i16,
     ) -> bool {
@@ -645,25 +735,106 @@ impl Tournament {
         ) else {
             return false;
         };
-        self.best_of
-            .is_some_and(|best_of| best_of.admits(first, second, drawn))
+        let best_of = match stage {
+            RoundStage::Swiss => self.best_of,
+            RoundStage::TopCut => self.top_cut_best_of,
+        };
+        let decided = stage == RoundStage::Swiss || first != second;
+        decided && best_of.is_some_and(|best_of| best_of.admits(first, second, drawn))
     }
 
-    /// Finish the Tournament if Round `ended` was its last Swiss Round
+    /// `participant` Dropped during the Top cut: it loses its Match of the running Round
+    ///
+    /// The other Seat wins it by the Games the Match needs, as an Organizer's
+    /// Result. Nothing happens outside a running Top cut Round; a Participant
+    /// who Dropped between Rounds is not paired again, see
+    /// [`crate::tournament::top_cut::pair_top_cut`].
+    #[instrument(name = "Tournament::forfeit_top_cut_match", skip(tx, self), fields(tournament = ?self.uuid))]
+    pub(in crate::models::tournament) async fn forfeit_top_cut_match(
+        &self,
+        tx: &mut Transaction,
+        participant: ParticipantUuid,
+    ) -> Result<Option<ResultChange>, rorm::Error> {
+        if self.state != TournamentState::TopCut {
+            return Ok(None);
+        }
+        let rounds = self.rounds(tx, false).await?;
+        let running = rounds
+            .iter()
+            .find(|round| round.stage == RoundStage::TopCut && round.state == RoundState::Running);
+        let Some(round) = running else {
+            return Ok(None);
+        };
+        let played = round.matches.iter().find(|played| {
+            !played.is_bye()
+                && played
+                    .seats
+                    .iter()
+                    .any(|seat| seat.participant == participant)
+        });
+        let Some(played) = played else {
+            return Ok(None);
+        };
+        let games_to_win = self
+            .top_cut_best_of
+            .map_or(1, |best_of| i16::from(best_of.games_to_win()));
+        let games_won: Vec<i16> = played
+            .seats
+            .iter()
+            .map(|seat| {
+                if seat.participant == participant {
+                    0
+                } else {
+                    games_to_win
+                }
+            })
+            .collect();
+        let seats =
+            store_result(tx, played.uuid, &games_won, 0, ResultState::Confirmed, None).await?;
+        Ok(Some(ResultChange {
+            round: round.number,
+            played: played.uuid,
+            kind: ResultChangeKind::Set,
+            by: None,
+            seats,
+        }))
+    }
+
+    /// Move on once Round `ended` was the last of its part
+    ///
+    /// After the last Swiss Round the Top cut follows, if the Tournament has
+    /// one and at least two Participants play on; otherwise, and after the
+    /// final of the Top cut, the Tournament is Finished.
     async fn finish_if_played(
         &self,
         tx: &mut Transaction,
         ended: i16,
     ) -> Result<TournamentState, rorm::Error> {
-        let planned = self.planned_swiss_rounds(tx).await?;
-        if planned.is_some_and(|planned| ended >= planned) {
-            rorm::update(&mut *tx, TournamentModel)
-                .set(TournamentModel.state, TournamentState::Finished)
-                .condition(TournamentModel.uuid.equals(self.uuid.into_inner()))
-                .await?;
-            return Ok(TournamentState::Finished);
-        }
-        Ok(self.state)
+        let next = if self.state == TournamentState::TopCut {
+            cut_over(&self.top_cut_record(tx).await?).then_some(TournamentState::Finished)
+        } else {
+            let planned = self.planned_swiss_rounds(tx).await?;
+            if planned.is_some_and(|planned| ended >= planned) {
+                let playing_on = self.playing_on(tx).await?;
+                let cut = self
+                    .top_cut
+                    .and_then(|top_cut| cut_size(top_cut, playing_on));
+                Some(match cut {
+                    Some(_) => TournamentState::TopCut,
+                    None => TournamentState::Finished,
+                })
+            } else {
+                None
+            }
+        };
+        let Some(next) = next else {
+            return Ok(self.state);
+        };
+        rorm::update(&mut *tx, TournamentModel)
+            .set(TournamentModel.state, next)
+            .condition(TournamentModel.uuid.equals(self.uuid.into_inner()))
+            .await?;
+        Ok(next)
     }
 }
 

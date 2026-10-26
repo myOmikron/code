@@ -11,11 +11,13 @@ use crate::models::account::db::AccountModel;
 use crate::models::deck::DeckZone;
 use crate::models::deck::db::DeckModel;
 use crate::models::tournament::TournamentState;
+use crate::models::tournament::round::RoundStage;
 use crate::models::tournament::round::RoundState;
 use crate::models::visibility::Visibility;
 use crate::tournament::reporting::ResultState;
 use crate::tournament::ruleset::BestOf;
 use crate::tournament::ruleset::Ruleset;
+use crate::tournament::top_cut::TopCut;
 
 /// A Tournament: its settings, its state and its Owner
 #[derive(Model, Debug)]
@@ -83,6 +85,12 @@ pub struct TournamentModel {
     /// stores the engine's suggestion; until then the suggestion applies.
     pub swiss_rounds: Option<i16>,
 
+    /// The Top cut after the Swiss Rounds, `None` for none
+    pub top_cut: Option<TopCut>,
+
+    /// How many Games a Top cut Match is played to; set exactly with [`Self::top_cut`]
+    pub top_cut_best_of: Option<BestOf>,
+
     /// Where the Tournament stands
     #[rorm(default = "Registration")]
     pub state: TournamentState,
@@ -124,6 +132,10 @@ pub struct TournamentInsertPatch {
     pub self_sign_up: bool,
     /// How many Games a one-on-one Match is played to
     pub best_of: Option<BestOf>,
+    /// The Top cut after the Swiss Rounds
+    pub top_cut: Option<TopCut>,
+    /// How many Games a Top cut Match is played to
+    pub top_cut_best_of: Option<BestOf>,
     /// Where the Tournament stands
     pub state: TournamentState,
 }
@@ -283,8 +295,12 @@ pub struct TournamentRoundModel {
     #[rorm(index, on_update = "Cascade", on_delete = "Cascade")]
     pub tournament: ForeignModel<TournamentModel>,
 
-    /// Its number, 1 for the first Round
+    /// Its number, 1 for the first Round; the Top cut goes on counting after the Swiss Rounds
     pub number: i16,
+
+    /// Whether it is a Swiss Round or one of the Top cut
+    #[rorm(default = "Swiss")]
+    pub stage: RoundStage,
 
     /// How far it got
     pub state: RoundState,
@@ -313,6 +329,8 @@ pub struct TournamentRoundInsertPatch {
     pub tournament: ForeignModel<TournamentModel>,
     /// Its number
     pub number: i16,
+    /// Whether it is a Swiss Round or one of the Top cut
+    pub stage: RoundStage,
     /// How far it got
     pub state: RoundState,
     /// The seed its pairing was rolled from

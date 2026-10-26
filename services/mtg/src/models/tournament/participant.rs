@@ -368,8 +368,10 @@ impl Tournament {
 
     /// Drop `participant`: no later Round pairs it, its Results so far stay
     ///
-    /// A Match it is seated in right now stays and still needs its Result; a
-    /// previewed Round is discarded, since it seats the Participant. Dropping
+    /// A Swiss Match it is seated in right now stays and still needs its
+    /// Result; a running Top cut Match it loses. A previewed Round is
+    /// discarded, since it seats the Participant: paired again before the Top
+    /// cut started, the next in the standings takes its place. Dropping
     /// a Participant that Dropped already changes nothing. Answers `false` if
     /// it is none of this Tournament's. The caller holds [`Self::lock_roster`].
     #[instrument(name = "Tournament::drop_participant", skip(tx, self), fields(tournament = ?self.uuid))]
@@ -403,6 +405,7 @@ impl Tournament {
                     .condition(TournamentParticipantModel.uuid.equals(participant.0))
                     .await?;
                 self.discard_preview(tx).await?;
+                self.forfeit_top_cut_match(tx, participant).await?;
                 Ok(Ok(true))
             }
         }
@@ -444,6 +447,8 @@ mod tests {
             self_sign_up: true,
             best_of: None,
             swiss_rounds: None,
+            top_cut: None,
+            top_cut_best_of: None,
             state: TournamentState::Registration,
             created_at: OffsetDateTime::UNIX_EPOCH,
         }

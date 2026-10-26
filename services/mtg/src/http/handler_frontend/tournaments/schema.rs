@@ -18,6 +18,7 @@ use crate::models::tournament::settings::SettingsRefusal;
 use crate::models::visibility::Visibility;
 use crate::tournament::ruleset::BestOf;
 use crate::tournament::ruleset::Ruleset;
+use crate::tournament::top_cut::TopCut;
 
 /// Every setting of a Tournament, to create one or to replace its settings
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
@@ -44,6 +45,10 @@ pub struct TournamentSettingsRequest {
     pub self_sign_up: bool,
     /// How many Games a one-on-one Match is played to: required at Table size 2, `null` above
     pub best_of: Option<BestOf>,
+    /// The Top cut after the Swiss Rounds, at Table size 2 only; `null` for none
+    pub top_cut: Option<TopCut>,
+    /// How many Games a Top cut Match is played to: required with a Top cut, `null` without
+    pub top_cut_best_of: Option<BestOf>,
 }
 
 impl From<TournamentSettingsRequest> for RawTournamentSettings {
@@ -60,6 +65,8 @@ impl From<TournamentSettingsRequest> for RawTournamentSettings {
             participant_limit: value.participant_limit,
             self_sign_up: value.self_sign_up,
             best_of: value.best_of,
+            top_cut: value.top_cut,
+            top_cut_best_of: value.top_cut_best_of,
         }
     }
 }
@@ -81,6 +88,12 @@ pub struct TournamentSettingsErrors {
     pub best_of_mismatch: bool,
     /// Table size, Ruleset or best-of changed after the first Round started
     pub rules_locked: bool,
+    /// The Top cut is not played at the Table size
+    pub top_cut_mismatch: bool,
+    /// The Top cut's best-of is missing with a Top cut or given without one
+    pub top_cut_best_of_mismatch: bool,
+    /// The Top cut or its best-of changed after the Swiss Rounds were over
+    pub top_cut_locked: bool,
 }
 
 impl From<SettingsRefusal> for TournamentSettingsErrors {
@@ -93,6 +106,9 @@ impl From<SettingsRefusal> for TournamentSettingsErrors {
             self_sign_up_needs_visibility: value.self_sign_up_needs_visibility,
             best_of_mismatch: value.best_of_mismatch,
             rules_locked: false,
+            top_cut_mismatch: value.top_cut_mismatch,
+            top_cut_best_of_mismatch: value.top_cut_best_of_mismatch,
+            top_cut_locked: false,
         }
     }
 }
@@ -126,6 +142,10 @@ pub struct TournamentResponse {
     pub self_sign_up: bool,
     /// How many Games a one-on-one Match is played to, `null` for a multiplayer one
     pub best_of: Option<BestOf>,
+    /// The Top cut after the Swiss Rounds, `null` for none
+    pub top_cut: Option<TopCut>,
+    /// How many Games a Top cut Match is played to, `null` without a Top cut
+    pub top_cut_best_of: Option<BestOf>,
     /// Its Owner's username, `null` while the Tombstone holds it
     pub owner: Option<String>,
     /// The part the reader plays in running it, `null` for none
@@ -157,6 +177,8 @@ impl TournamentResponse {
             participant_limit: tournament.participant_limit,
             self_sign_up: tournament.self_sign_up,
             best_of: tournament.best_of,
+            top_cut: tournament.top_cut,
+            top_cut_best_of: tournament.top_cut_best_of,
             owner: owner.map(|owner| owner.as_str().to_string()),
             organizer_role,
             share_token: organizer_role.and(tournament.share_token),

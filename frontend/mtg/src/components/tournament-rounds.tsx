@@ -28,7 +28,7 @@ import {
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
-import { ResultState, RoundState, TournamentState } from "src/api/generated";
+import { ResultState, RoundStage, RoundState, TournamentState } from "src/api/generated";
 import type {
     DisputeResultErrors,
     MatchResponse,
@@ -42,6 +42,7 @@ import { useTournamentLabels } from "src/components/tournament-labels";
 import { TournamentPairingsEditor } from "src/components/tournament-pairings-editor";
 import { TournamentResultDialog } from "src/components/tournament-result-dialog";
 import { isFormError } from "src/utils/error";
+import { cutRoundSize } from "src/utils/top-cut";
 import { formatResult } from "src/utils/tournament-rounds";
 
 /**
@@ -93,6 +94,14 @@ export function TournamentRounds({ tournament, load, onTournamentChanged, me = n
         !rounds.some((round) => round.number > lastEnded.number && round.state !== RoundState.Previewed)
             ? lastEnded
             : null;
+
+    // A Top cut Match is played to the Top cut's own best-of.
+    const bestOfFor = (played: MatchResponse | null) => {
+        const stage = rounds.find((round) => round.matches.some((other) => other.uuid === played?.uuid))?.stage;
+        return stage === RoundStage.TopCut ? (tournament.top_cut_best_of ?? tournament.best_of) : tournament.best_of;
+    };
+    const editingBestOf = bestOfFor(editing);
+    const reportingBestOf = bestOfFor(reporting);
 
     const reload = useCallback(async () => {
         setList(await load());
@@ -177,7 +186,11 @@ export function TournamentRounds({ tournament, load, onTournamentChanged, me = n
                 <RoundPlan
                     tournament={tournament}
                     rounds={list}
-                    editable={organizer && !over}
+                    editable={
+                        organizer &&
+                        (tournament.state === TournamentState.Registration ||
+                            tournament.state === TournamentState.Swiss)
+                    }
                     onChanged={async () => {
                         await reload();
                         onTournamentChanged?.();
@@ -207,10 +220,12 @@ export function TournamentRounds({ tournament, load, onTournamentChanged, me = n
                                 <PlayIcon />
                                 {t("button.start-round", { number: open.number })}
                             </PrimaryButton>
-                            <Button outline disabled={busy || arranging} onClick={() => setArranging(true)}>
-                                <PencilSquareIcon />
-                                {t("button.edit-pairing")}
-                            </Button>
+                            {open.stage === RoundStage.Swiss && (
+                                <Button outline disabled={busy || arranging} onClick={() => setArranging(true)}>
+                                    <PencilSquareIcon />
+                                    {t("button.edit-pairing")}
+                                </Button>
+                            )}
                             <Button
                                 outline
                                 disabled={busy}
@@ -285,10 +300,10 @@ export function TournamentRounds({ tournament, load, onTournamentChanged, me = n
                 />
             )}
 
-            {organizer && tournament.best_of != null && (
+            {organizer && editingBestOf != null && (
                 <TournamentResultDialog
                     played={editing}
-                    bestOf={tournament.best_of}
+                    bestOf={editingBestOf}
                     title={t("heading.set-result", { table: editing?.table_number ?? "" })}
                     description={t("description.set-result")}
                     onClose={() => setEditing(null)}
@@ -302,10 +317,10 @@ export function TournamentRounds({ tournament, load, onTournamentChanged, me = n
                 />
             )}
 
-            {!organizer && me !== null && tournament.best_of != null && (
+            {!organizer && me !== null && reportingBestOf != null && (
                 <TournamentResultDialog
                     played={reporting}
-                    bestOf={tournament.best_of}
+                    bestOf={reportingBestOf}
                     title={t("heading.report-result", { table: reporting?.table_number ?? "" })}
                     description={t("description.report-result")}
                     onClose={() => setReporting(null)}
@@ -351,6 +366,11 @@ type RoundPlanProps = {
 function RoundPlan({ tournament, rounds, editable, onChanged }: RoundPlanProps) {
     const [t] = useTranslation("tournament");
     const planned = rounds.swiss_rounds ?? rounds.suggested_swiss_rounds ?? null;
+    const played = rounds.rounds.filter((round) => round.stage === RoundStage.Swiss).length;
+    const topCut =
+        rounds.top_cut_size == null ? null : (
+            <Text>{t("description.top-cut-size", { count: rounds.top_cut_size })}</Text>
+        );
     const [value, setValue] = useState(planned === null ? "" : String(planned));
     const [error, setError] = useState<string | null>(null);
     const [busy, setBusy] = useState(false);
@@ -385,50 +405,56 @@ function RoundPlan({ tournament, rounds, editable, onChanged }: RoundPlanProps) 
 
     if (!editable) {
         return (
-            <Text>
-                {planned === null
-                    ? t("description.swiss-rounds-unknown")
-                    : t("label.swiss-rounds-played", { count: planned, played: rounds.rounds.length })}
-            </Text>
+            <div className={"flex flex-col gap-1"}>
+                <Text>
+                    {planned === null
+                        ? t("description.swiss-rounds-unknown")
+                        : t("label.swiss-rounds-played", { count: planned, played })}
+                </Text>
+                {topCut}
+            </div>
         );
     }
 
     return (
-        <Field className={"max-w-sm"}>
-            <Label>{t("label.swiss-rounds")}</Label>
-            <form
-                className={"flex items-start gap-2"}
-                onSubmit={(event) => {
-                    event.preventDefault();
-                    void save();
-                }}
-            >
-                <Input
-                    type={"number"}
-                    min={Math.max(1, rounds.rounds.length)}
-                    max={30}
-                    step={1}
-                    inputMode={"numeric"}
-                    className={"min-w-0 flex-1"}
-                    value={value}
-                    invalid={error !== null}
-                    onChange={(event) => {
-                        setValue(event.target.value);
-                        setError(null);
+        <div className={"flex flex-col gap-1"}>
+            <Field className={"max-w-sm"}>
+                <Label>{t("label.swiss-rounds")}</Label>
+                <form
+                    className={"flex items-start gap-2"}
+                    onSubmit={(event) => {
+                        event.preventDefault();
+                        void save();
                     }}
-                />
-                <Button type={"submit"} outline disabled={busy || value === ""} className={"shrink-0"}>
-                    {t("button.save-swiss-rounds")}
-                </Button>
-            </form>
-            {error !== null ? (
-                <ErrorMessage>{error}</ErrorMessage>
-            ) : (
-                <Description>
-                    {rounds.swiss_rounds == null ? t("description.swiss-rounds-follow-suggestion") : suggestion}
-                </Description>
-            )}
-        </Field>
+                >
+                    <Input
+                        type={"number"}
+                        min={Math.max(1, rounds.rounds.length)}
+                        max={30}
+                        step={1}
+                        inputMode={"numeric"}
+                        className={"min-w-0 flex-1"}
+                        value={value}
+                        invalid={error !== null}
+                        onChange={(event) => {
+                            setValue(event.target.value);
+                            setError(null);
+                        }}
+                    />
+                    <Button type={"submit"} outline disabled={busy || value === ""} className={"shrink-0"}>
+                        {t("button.save-swiss-rounds")}
+                    </Button>
+                </form>
+                {error !== null ? (
+                    <ErrorMessage>{error}</ErrorMessage>
+                ) : (
+                    <Description>
+                        {rounds.swiss_rounds == null ? t("description.swiss-rounds-follow-suggestion") : suggestion}
+                    </Description>
+                )}
+            </Field>
+            {topCut}
+        </div>
     );
 }
 
@@ -469,7 +495,14 @@ function RoundTable({ round, editable, me, busy, onEdit, onReport, onDispute, on
     return (
         <section className={"flex flex-col gap-3"}>
             <div className={"flex flex-wrap items-center gap-3"}>
-                <Subheading>{t("heading.round", { number: round.number })}</Subheading>
+                <Subheading>
+                    {round.stage === RoundStage.TopCut
+                        ? t("heading.cut-round", {
+                              name: labels.cutRound(cutRoundSize(round)),
+                              number: round.number,
+                          })
+                        : t("heading.round", { number: round.number })}
+                </Subheading>
                 <Badge color={round.state === RoundState.Previewed ? "amber" : "sky"}>
                     {labels.roundState(round.state)}
                 </Badge>

@@ -133,6 +133,11 @@ function RouteComponent() {
                     <Tab href={"/tournaments/$tournamentUuid/standings"} params={{ tournamentUuid }}>
                         {t("heading.standings")}
                     </Tab>
+                    {tournament.top_cut != null && (
+                        <Tab href={"/tournaments/$tournamentUuid/top-cut"} params={{ tournamentUuid }}>
+                            {t("heading.top-cut")}
+                        </Tab>
+                    )}
                     {role !== null && (
                         <Tab href={"/tournaments/$tournamentUuid/organizers"} params={{ tournamentUuid }}>
                             {t("heading.organizers")}

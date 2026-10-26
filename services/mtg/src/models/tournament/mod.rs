@@ -26,6 +26,7 @@ use crate::tournament::reporting::ResultState;
 use crate::tournament::ruleset::BestOf;
 use crate::tournament::ruleset::Ruleset;
 use crate::tournament::ruleset::TableSize;
+use crate::tournament::top_cut::TopCut;
 
 pub mod access;
 pub(in crate::models) mod db;
@@ -50,6 +51,12 @@ custom_db_enum! {
     enum: BestOf,
     variants: [One, Three],
     decoder: BestOfDecoder,
+}
+
+custom_db_enum! {
+    enum: TopCut,
+    variants: [Top4, Top8],
+    decoder: TopCutDecoder,
 }
 
 custom_db_enum! {
@@ -115,6 +122,10 @@ pub struct Tournament {
     pub best_of: Option<BestOf>,
     /// How many Swiss Rounds are played, `None` while the suggestion applies
     pub swiss_rounds: Option<i16>,
+    /// The Top cut after the Swiss Rounds, `None` for none
+    pub top_cut: Option<TopCut>,
+    /// How many Games a Top cut Match is played to, set exactly with [`Self::top_cut`]
+    pub top_cut_best_of: Option<BestOf>,
     /// Where it stands
     pub state: TournamentState,
     /// The point in time it was created
@@ -160,6 +171,8 @@ impl Tournament {
                 participant_limit: settings.participant_limit,
                 self_sign_up: settings.self_sign_up,
                 best_of: settings.best_of,
+                top_cut: settings.top_cut,
+                top_cut_best_of: settings.top_cut_best_of,
                 state: TournamentState::Registration,
             })
             .await?;
@@ -197,6 +210,8 @@ impl Tournament {
             )
             .set(TournamentModel.self_sign_up, settings.self_sign_up)
             .set(TournamentModel.best_of, settings.best_of)
+            .set(TournamentModel.top_cut, settings.top_cut)
+            .set(TournamentModel.top_cut_best_of, settings.top_cut_best_of)
             .condition(TournamentModel.uuid.equals(self.uuid.0))
             .await?;
         Ok(Tournament {
@@ -212,6 +227,8 @@ impl Tournament {
             participant_limit: settings.participant_limit,
             self_sign_up: settings.self_sign_up,
             best_of: settings.best_of,
+            top_cut: settings.top_cut,
+            top_cut_best_of: settings.top_cut_best_of,
             ..self
         })
     }
@@ -246,6 +263,8 @@ impl From<TournamentModel> for Tournament {
             self_sign_up: value.self_sign_up,
             best_of: value.best_of,
             swiss_rounds: value.swiss_rounds,
+            top_cut: value.top_cut,
+            top_cut_best_of: value.top_cut_best_of,
             state: value.state,
             created_at: value.created_at,
         }

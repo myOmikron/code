@@ -9,6 +9,7 @@ Name | Type
 ------------ | -------------
 `matches` | [Array&lt;MatchResponse&gt;](MatchResponse.md)
 `number` | number
+`stage` | [RoundStage](RoundStage.md)
 `state` | [RoundState](RoundState.md)
 
 

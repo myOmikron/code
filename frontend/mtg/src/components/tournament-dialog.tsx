@@ -28,7 +28,7 @@ import { useForm } from "@tanstack/react-form";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
-import { BestOf, Ruleset, TournamentState, Visibility } from "src/api/generated";
+import { BestOf, Ruleset, TopCut, TournamentState, Visibility } from "src/api/generated";
 import type { FormatRulesResponse, TournamentResponse } from "src/api/generated";
 import { useDeckLabels } from "src/components/deck-labels";
 import { PrimaryButton } from "src/components/primary-button";
@@ -38,6 +38,9 @@ import { TABLE_SIZES, fromLocalInput, rulesetFits, rulesetsFor, toLocalInput } f
 
 /** The Table size a new Tournament starts out with: a Commander table */
 const DEFAULT_TABLE_SIZE = 4;
+
+/** The form's value for "no Top cut" */
+const NO_TOP_CUT = "None";
 
 /**
  * The properties for {@link TournamentDialog}
@@ -75,6 +78,8 @@ function initialValues(tournament: TournamentResponse | null) {
         participantLimit: tournament?.participant_limit == null ? "" : String(tournament.participant_limit),
         selfSignUp: tournament?.self_sign_up ?? false,
         bestOf: tournament?.best_of ?? BestOf.Three,
+        topCut: (tournament?.top_cut ?? NO_TOP_CUT) as TopCut | typeof NO_TOP_CUT,
+        topCutBestOf: tournament?.top_cut_best_of ?? BestOf.Three,
     };
 }
 
@@ -105,6 +110,11 @@ export function TournamentDialog({ open, tournament, formats, onClose, onSaved }
     const deckLabels = useDeckLabels();
     // Table size, Ruleset and best-of are fixed once the first Round started.
     const rulesLocked = tournament !== null && tournament.state !== TournamentState.Registration;
+    // The Top cut stays open until the Swiss Rounds are over.
+    const topCutLocked =
+        tournament !== null &&
+        tournament.state !== TournamentState.Registration &&
+        tournament.state !== TournamentState.Swiss;
 
     const form = useForm({
         defaultValues: initialValues(tournament),
@@ -122,6 +132,8 @@ export function TournamentDialog({ open, tournament, formats, onClose, onSaved }
                     participant_limit: value.participantLimit === "" ? null : Number(value.participantLimit),
                     self_sign_up: value.selfSignUp,
                     best_of: value.tableSize === 2 ? value.bestOf : null,
+                    top_cut: value.tableSize === 2 && value.topCut !== NO_TOP_CUT ? value.topCut : null,
+                    top_cut_best_of: value.tableSize === 2 && value.topCut !== NO_TOP_CUT ? value.topCutBestOf : null,
                 };
                 const response =
                     tournament === null
@@ -149,6 +161,15 @@ export function TournamentDialog({ open, tournament, formats, onClose, onSaved }
                         },
                         rules_locked: (errors) => {
                             errors.fields.tableSize = t("error.rules-locked");
+                        },
+                        top_cut_mismatch: (errors) => {
+                            errors.fields.topCut = t("error.top-cut-mismatch");
+                        },
+                        top_cut_best_of_mismatch: (errors) => {
+                            errors.fields.topCutBestOf = t("error.top-cut-best-of-mismatch");
+                        },
+                        top_cut_locked: (errors) => {
+                            errors.fields.topCut = t("error.top-cut-locked");
                         },
                     });
                 }
@@ -287,6 +308,74 @@ export function TournamentDialog({ open, tournament, formats, onClose, onSaved }
                                                 <Label>{t("label.best-of")}</Label>
                                                 <Listbox<BestOf>
                                                     disabled={rulesLocked}
+                                                    value={fieldApi.state.value}
+                                                    onChange={fieldApi.handleChange}
+                                                    invalid={fieldApi.state.meta.errors.length > 0}
+                                                >
+                                                    {[BestOf.One, BestOf.Three].map((bestOf) => (
+                                                        <ListboxOption key={bestOf} value={bestOf}>
+                                                            <ListboxLabel>{labels.bestOf(bestOf)}</ListboxLabel>
+                                                        </ListboxOption>
+                                                    ))}
+                                                </Listbox>
+                                                {fieldApi.state.meta.errors.map((error) => (
+                                                    <ErrorMessage key={String(error)}>{String(error)}</ErrorMessage>
+                                                ))}
+                                            </Field>
+                                        )}
+                                    </form.Field>
+                                )
+                            }
+                        </form.Subscribe>
+
+                        <form.Subscribe selector={(state) => state.values.tableSize}>
+                            {(tableSize) =>
+                                tableSize === 2 && (
+                                    <form.Field name={"topCut"}>
+                                        {(fieldApi) => (
+                                            <Field>
+                                                <Label>{t("label.top-cut")}</Label>
+                                                <Description>
+                                                    {topCutLocked
+                                                        ? t("description.top-cut-locked")
+                                                        : t("description.top-cut")}
+                                                </Description>
+                                                <Listbox<TopCut | typeof NO_TOP_CUT>
+                                                    disabled={topCutLocked}
+                                                    value={fieldApi.state.value}
+                                                    onChange={fieldApi.handleChange}
+                                                    invalid={fieldApi.state.meta.errors.length > 0}
+                                                >
+                                                    <ListboxOption value={NO_TOP_CUT}>
+                                                        <ListboxLabel>{labels.topCut(null)}</ListboxLabel>
+                                                    </ListboxOption>
+                                                    {[TopCut.Top4, TopCut.Top8].map((topCut) => (
+                                                        <ListboxOption key={topCut} value={topCut}>
+                                                            <ListboxLabel>{labels.topCut(topCut)}</ListboxLabel>
+                                                        </ListboxOption>
+                                                    ))}
+                                                </Listbox>
+                                                {fieldApi.state.meta.errors.map((error) => (
+                                                    <ErrorMessage key={String(error)}>{String(error)}</ErrorMessage>
+                                                ))}
+                                            </Field>
+                                        )}
+                                    </form.Field>
+                                )
+                            }
+                        </form.Subscribe>
+
+                        <form.Subscribe
+                            selector={(state) => state.values.tableSize === 2 && state.values.topCut !== NO_TOP_CUT}
+                        >
+                            {(withTopCut) =>
+                                withTopCut && (
+                                    <form.Field name={"topCutBestOf"}>
+                                        {(fieldApi) => (
+                                            <Field>
+                                                <Label>{t("label.top-cut-best-of")}</Label>
+                                                <Listbox<BestOf>
+                                                    disabled={topCutLocked}
                                                     value={fieldApi.state.value}
                                                     onChange={fieldApi.handleChange}
                                                     invalid={fieldApi.state.meta.errors.length > 0}

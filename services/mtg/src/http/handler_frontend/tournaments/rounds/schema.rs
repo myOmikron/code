@@ -7,6 +7,7 @@ use crate::models::tournament::TournamentState;
 use crate::models::tournament::participant::ParticipantUuid;
 use crate::models::tournament::round::MatchUuid;
 use crate::models::tournament::round::RoundRefusal;
+use crate::models::tournament::round::RoundStage;
 use crate::models::tournament::round::RoundState;
 use crate::tournament::reporting::ResultState;
 use crate::tournament::standings::Tiebreaker;
@@ -21,13 +22,20 @@ pub struct RoundsResponse {
     /// How many Swiss Rounds mtg suggests for the Participants there are now;
     /// `null` for a Ruleset mtg does not pair yet
     pub suggested_swiss_rounds: Option<i16>,
+    /// How many Participants the Top cut takes, `null` without one
+    ///
+    /// Once it started the size it started with; before, the size the
+    /// Participants who play on fill, so a Top 8 of seven reads 4.
+    pub top_cut_size: Option<i16>,
 }
 
 /// One Round
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct RoundResponse {
-    /// Its number, 1 for the first Round
+    /// Its number, 1 for the first Round; the Top cut goes on counting after the Swiss Rounds
     pub number: i16,
+    /// Whether it is a Swiss Round or one of the Top cut
+    pub stage: RoundStage,
     /// How far it got
     pub state: RoundState,
     /// Its Matches by table number, then its Byes
@@ -154,6 +162,8 @@ pub struct ArrangeRoundErrors {
     pub tournament_over: bool,
     /// No Round of that number is previewed
     pub not_previewed: bool,
+    /// The Round is one of the Top cut, which the standings seed
+    pub top_cut: bool,
     /// Somebody sits who is no Participant the Round pairs
     pub not_pairable: bool,
     /// Somebody sits more than once

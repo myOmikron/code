@@ -244,7 +244,8 @@ The table lists 512 in two rows; canivete starts the last row at 513. "For each 
 - **MTR** (Source, 10.4): Top 8 pairs 1v8, 4v5, 2v7, 3v6; the winners of 1v8 and 4v5 meet, the winners of 2v7 and 3v6 meet. Top 4 pairs 1v4 and 2v3. A Top cut Match cannot end in a draw (MTR 2.4: play continues until someone wins), so its Result always has a winner.
 - **Multiplayer**, both Rulesets: mtg plays one final Match of the T best Participants, Seats by seed. A drawn final goes to the highest seed in it (Source: MTRA 2.1 "the highest ranked player is considered to advance"; Addendum 2.4C "the Player with the highest Standing from the Swiss Portion ... should be considered the Winner").
 - **Drops**: a Participant who Drops after the cut was made is not replaced, and in single elimination the opponent advances (Source, MTR 2.10: "no other player is advanced as a replacement", the highest ranked remaining player "receives a bye for the next round instead"). A Drop before the cut is made leaves room for the next in the standings (spec). The multiplayer documents say nothing; **Decision** (spec): the dropped Participant loses the final, the rest play on.
-- If Drops leave fewer Participants than the Top cut size before it starts, **Open** for the Top cut ticket; recommendation: shrink to the next size that fits (Top 8 to Top 4, a multiplayer final to the Participants left).
+- If Drops leave fewer Participants than the Top cut size before it starts, **Decision** (#314): shrink to the next size that fits, Top 8 to Top 4 to a final of two; with fewer than two left there is no Top cut and the last Swiss Round finishes the Tournament. A multiplayer final shrinks to the Participants left (#315).
+- **Decision** (#314): a one-on-one Top cut Match needs a winner (MTR 2.4), so a Result with equal games is refused. A Participant who Drops during a running Top cut Round loses its Match by the games the Match needs; one who Drops between Top cut Rounds is not paired again and the other half of its pairing advances with a Bye (MTR 2.10).
 
 ## Still uncertain
 
@@ -252,4 +253,3 @@ The table lists 512 in two rows; canivete starts the last row at 513. "For each 
 - Which Participants TopDeck puts into Byes and the smaller Match by default.
 - Round counts for Table size 3 and 5 under both multiplayer Rulesets.
 - Whether a multiplayer draw can exclude Participants who conceded or were penalized (Addendum 2.1A).
-- How the Top cut shrinks when Drops leave fewer Participants than its size.

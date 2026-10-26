@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { RoundState } from "src/api/generated";
+import { RoundStage, RoundState } from "src/api/generated";
 import type { MatchResponse, RoundResponse } from "src/api/generated";
 import { isChanged, isRematch, layoutFrom, meetingsBefore, moveTable, swap, toRequest } from "src/utils/pairing-edit";
 
@@ -32,7 +32,7 @@ function played(uuid: string, table: number | null, seats: Array<string>): Match
  * @returns the Round as the service sends it
  */
 function round(number: number, state: RoundState, matches: Array<MatchResponse>): RoundResponse {
-    return { number, state, matches };
+    return { number, stage: RoundStage.Swiss, state, matches };
 }
 
 const preview = round(2, RoundState.Previewed, [
