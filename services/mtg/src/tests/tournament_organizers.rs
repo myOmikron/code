@@ -14,6 +14,7 @@ use crate::tests::harness::TestResponse;
 use crate::tests::harness::api;
 use crate::tests::harness::create_account;
 use crate::tests::harness::run;
+use crate::tests::tournament_participants::add_account;
 use crate::tests::tournaments;
 use crate::tests::tournaments::Fixture;
 use crate::tests::tournaments::settings;
@@ -201,6 +202,32 @@ fn naming_refuses_unknown_usernames_the_owner_and_co_organizers_named_already() 
         let twice = add(&mut setup.fixture.owner, &url, &twice_name).await;
         assert_eq!(twice["result"], "Err", "{twice}");
         assert_eq!(twice["error"]["already_co_organizer"], true, "{twice}");
+    });
+}
+
+#[test]
+fn unknown_usernames_count_against_one_budget_for_participants_co_organizers_and_heirs() {
+    run(async {
+        let mut fixture = Fixture::new("Private").await;
+        let tournament = fixture.tournament.clone();
+        for attempt in 0..20 {
+            let body = add_account(
+                &mut fixture.owner,
+                &tournament,
+                &format!("nobody-{attempt}"),
+            )
+            .await;
+            assert_eq!(body["error"]["unknown_username"], true, "{body}");
+        }
+
+        let url = organizers_url(&fixture);
+        let co_organizer = add(&mut fixture.owner, &url, "nobody-else").await;
+        assert_eq!(
+            co_organizer["error"]["too_many_unknown_usernames"], true,
+            "{co_organizer}"
+        );
+        let heir = offer(&mut fixture.owner, &tournament, "nobody-at-all").await;
+        assert_eq!(heir["error"]["too_many_unknown_usernames"], true, "{heir}");
     });
 }
 

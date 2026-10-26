@@ -9,7 +9,9 @@
 //! one pins it at once, so a late Participant's deck is a copy from the start.
 //!
 //! The Participant registers, swaps and removes its own while the Tournament is
-//! in Registration; Organizers do it for any Account's Participant at any time.
+//! in Registration; a late Participant registers its own until it is pinned,
+//! see [`participant_changes_deck`]. Organizers do it for any Account's
+//! Participant at any time, with any of its decks but the private ones.
 //! Every write takes [`Tournament::lock_roster`] first and reads the state
 //! under that lock, so it cannot slip in beside the first Round's start.
 
@@ -121,7 +123,8 @@ pub enum RegisterDeckRefusal {
     NoParticipant,
     /// The Participant is a Guest, which has no decks
     Guest,
-    /// The deck does not exist or the Participant's Account does not own it
+    /// The deck does not exist, the Participant's Account does not own it, or
+    /// it is private and an Organizer registers it
     NotTheirDeck,
 }
 
@@ -150,6 +153,31 @@ pub fn list_visible(state: TournamentState, shared: bool, reader: ListReader) ->
     match reader {
         ListReader::Organizer => true,
         ListReader::Other => state == TournamentState::Finished && shared,
+    }
+}
+
+/// Whether `registrar` may register one of the Participant's decks that has `visibility`
+///
+/// The Participant any of its own. An Organizer none that is private: what
+/// the owner keeps to itself stays out of the Organizer's reach.
+pub fn may_register(registrar: DeckRegistrar, visibility: Visibility) -> bool {
+    match registrar {
+        DeckRegistrar::Participant => true,
+        DeckRegistrar::Organizer => visibility != Visibility::Private,
+    }
+}
+
+/// Whether a Participant may register, swap or remove its own Registered deck
+///
+/// Anybody while the Tournament is in Registration. Afterwards a `late`
+/// Participant, who joined after the first Round started, registers its own
+/// until it is `pinned`, which registering does at once; nobody does once the
+/// Tournament is Finished or Cancelled.
+pub fn participant_changes_deck(state: TournamentState, late: bool, pinned: bool) -> bool {
+    match state {
+        TournamentState::Registration => true,
+        TournamentState::Swiss | TournamentState::TopCut => late && !pinned,
+        TournamentState::Finished | TournamentState::Cancelled => false,
     }
 }
 
@@ -267,9 +295,10 @@ impl Tournament {
             .collect())
     }
 
-    /// The decks `participant`'s Account owns, to register one of them
+    /// The decks `participant`'s Account owns that an Organizer may register for it
     ///
-    /// Empty for a Guest and for a Participant of another Tournament.
+    /// Leaves the private ones out, see [`may_register`]. Empty for a Guest
+    /// and for a Participant of another Tournament.
     #[instrument(name = "Tournament::participant_decks", skip(tx, self), fields(tournament = ?self.uuid))]
     pub async fn participant_decks(
         &self,
@@ -280,7 +309,13 @@ impl Tournament {
             return Ok(Vec::new());
         };
         let decks = rorm::query(&mut *tx, (DeckModel.uuid, DeckModel.name, DeckModel.format))
-            .condition(DeckModel.owner.equals(account.into_inner()))
+            .condition(rorm::and![
+                DeckModel.owner.equals(account.into_inner()),
+                rorm::or![
+                    DeckModel.visibility.equals(Visibility::Public),
+                    DeckModel.visibility.equals(Visibility::Unlisted),
+                ],
+            ])
             .order_asc(DeckModel.name)
             .order_asc(DeckModel.uuid)
             .all()
@@ -293,7 +328,8 @@ impl Tournament {
 
     /// Register `deck` for `participant`, replacing the Registered deck it had
     ///
-    /// The deck has to be one its Account owns. In Registration the Registered
+    /// The deck has to be one its Account owns, and not a private one when an
+    /// Organizer registers it, see [`may_register`]. In Registration the Registered
     /// deck follows the deck; afterwards it is pinned at once. `shared` is the
     /// list sharing choice, `None` for the default: shared for a public deck.
     #[instrument(name = "Tournament::register_deck", skip(tx, self), fields(tournament = ?self.uuid))]
@@ -305,7 +341,7 @@ impl Tournament {
         shared: Option<bool>,
         registrar: DeckRegistrar,
     ) -> Result<Result<(), RegisterDeckRefusal>, rorm::Error> {
-        let state = match self.lock_for_deck_write(tx, registrar).await? {
+        let state = match self.lock_for_deck_write(tx, participant, registrar).await? {
             Ok(state) => state,
             Err(refusal) => return Ok(Err(refusal)),
         };
@@ -321,7 +357,8 @@ impl Tournament {
             ])
             .optional()
             .await?;
-        let Some(visibility) = owned else {
+        let Some(visibility) = owned.filter(|visibility| may_register(registrar, *visibility))
+        else {
             return Ok(Err(RegisterDeckRefusal::NotTheirDeck));
         };
 
@@ -395,7 +432,7 @@ impl Tournament {
         participant: ParticipantUuid,
         registrar: DeckRegistrar,
     ) -> Result<Result<bool, RegisterDeckRefusal>, rorm::Error> {
-        if let Err(refusal) = self.lock_for_deck_write(tx, registrar).await? {
+        if let Err(refusal) = self.lock_for_deck_write(tx, participant, registrar).await? {
             return Ok(Err(refusal));
         }
         if self.participant_account(tx, participant).await?.is_none() {
@@ -541,11 +578,50 @@ impl Tournament {
         Ok(())
     }
 
+    /// Whether `participant` may change its own Registered deck in `state`,
+    /// see [`participant_changes_deck`]
+    #[instrument(name = "Tournament::changes_own_deck", skip(tx, self), fields(tournament = ?self.uuid))]
+    pub async fn changes_own_deck(
+        &self,
+        tx: &mut Transaction,
+        state: TournamentState,
+        participant: ParticipantUuid,
+    ) -> Result<bool, rorm::Error> {
+        if state == TournamentState::Registration {
+            return Ok(true);
+        }
+        let late = rorm::query(&mut *tx, TournamentParticipantModel.late_from_round)
+            .condition(rorm::and![
+                TournamentParticipantModel
+                    .uuid
+                    .equals(participant.into_inner()),
+                TournamentParticipantModel
+                    .tournament
+                    .equals(self.uuid.into_inner()),
+            ])
+            .optional()
+            .await?
+            .flatten()
+            .is_some();
+        let pinned = rorm::query(&mut *tx, TournamentRegisteredDeckModel.uuid)
+            .condition(rorm::and![
+                TournamentRegisteredDeckModel
+                    .participant
+                    .equals(participant.into_inner()),
+                TournamentRegisteredDeckModel.pinned_at.is_some(),
+            ])
+            .optional()
+            .await?
+            .is_some();
+        Ok(participant_changes_deck(state, late, pinned))
+    }
+
     /// Take the roster lock and answer the state under it, or why `registrar`
-    /// may not write now
+    /// may not write `participant`'s Registered deck now
     async fn lock_for_deck_write(
         &self,
         tx: &mut Transaction,
+        participant: ParticipantUuid,
         registrar: DeckRegistrar,
     ) -> Result<Result<TournamentState, RegisterDeckRefusal>, rorm::Error> {
         self.lock_roster(tx).await?;
@@ -553,7 +629,9 @@ impl Tournament {
             .condition(TournamentModel.uuid.equals(self.uuid.into_inner()))
             .one()
             .await?;
-        if registrar == DeckRegistrar::Participant && state != TournamentState::Registration {
+        if registrar == DeckRegistrar::Participant
+            && !self.changes_own_deck(tx, state, participant).await?
+        {
             return Ok(Err(RegisterDeckRefusal::RegistrationOver));
         }
         Ok(Ok(state))
@@ -641,9 +719,12 @@ async fn resolve(
 
 #[cfg(test)]
 mod tests {
+    use super::DeckRegistrar;
     use super::ListReader;
     use super::checkpoint_name;
     use super::list_visible;
+    use super::may_register;
+    use super::participant_changes_deck;
     use super::shared_by_default;
     use crate::models::tournament::TournamentState;
     use crate::models::visibility::Visibility;
@@ -711,5 +792,37 @@ mod tests {
     fn the_cut_never_splits_a_character() {
         let name = format!("{}Ä", "a".repeat(63));
         assert_eq!(&*checkpoint_name(&name), "a".repeat(63));
+    }
+
+    #[test]
+    fn organizers_register_no_private_deck_and_participants_any_of_theirs() {
+        assert!(may_register(
+            DeckRegistrar::Participant,
+            Visibility::Private
+        ));
+        assert!(may_register(DeckRegistrar::Organizer, Visibility::Public));
+        assert!(may_register(DeckRegistrar::Organizer, Visibility::Unlisted));
+        assert!(!may_register(DeckRegistrar::Organizer, Visibility::Private));
+    }
+
+    #[test]
+    fn a_participant_changes_its_deck_in_registration() {
+        assert!(participant_changes_deck(
+            TournamentState::Registration,
+            false,
+            false
+        ));
+    }
+
+    #[test]
+    fn a_late_participant_registers_its_deck_until_it_is_pinned() {
+        for state in [TournamentState::Swiss, TournamentState::TopCut] {
+            assert!(participant_changes_deck(state, true, false), "{state:?}");
+            assert!(!participant_changes_deck(state, true, true), "{state:?}");
+            assert!(!participant_changes_deck(state, false, false), "{state:?}");
+        }
+        for state in [TournamentState::Finished, TournamentState::Cancelled] {
+            assert!(!participant_changes_deck(state, true, false), "{state:?}");
+        }
     }
 }

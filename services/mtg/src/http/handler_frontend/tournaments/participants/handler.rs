@@ -12,11 +12,14 @@ use galvyn::delete;
 use galvyn::get;
 use galvyn::post;
 use galvyn::put;
+use galvyn::rorm;
 use galvyn::rorm::Database;
 use galvyn::rorm::db::transaction::Transaction;
 use galvyn::rorm::fields::types::MaxStr;
 
 use crate::http::handler_frontend::tournaments::handler::denied;
+use crate::http::handler_frontend::tournaments::handler::named_account;
+use crate::http::handler_frontend::tournaments::handler::unknown_username;
 use crate::http::handler_frontend::tournaments::live::TournamentEvent;
 use crate::http::handler_frontend::tournaments::live::emit;
 use crate::http::handler_frontend::tournaments::participants::schema::AddAccountParticipantErrors;
@@ -32,8 +35,8 @@ use crate::http::handler_frontend::tournaments::participants::schema::SearchPlay
 use crate::http::handler_frontend::tournaments::participants::schema::SetPaidErrors;
 use crate::http::handler_frontend::tournaments::participants::schema::SetPaidRequest;
 use crate::http::handler_frontend::tournaments::participants::schema::SignUpErrors;
+use crate::http::handler_frontend::tournaments::results::handler::announce;
 use crate::models::account::Account;
-use crate::models::account::Username;
 use crate::models::account::extractor::Viewer;
 use crate::models::tournament::Tournament;
 use crate::models::tournament::TournamentUuid;
@@ -44,11 +47,8 @@ use crate::models::tournament::participant::ParticipantUuid;
 use crate::models::tournament::participant::Player;
 use crate::models::tournament::participant::SignUpRefusal;
 use crate::models::tournament::participant::late_from_round;
+use crate::models::tournament::result::ResultChange;
 use crate::utils::account_budget::AccountBudget;
-
-/// Unknown usernames an Organizer may try to add per hour
-static UNKNOWN_USERNAMES: LazyLock<AccountBudget> =
-    LazyLock::new(|| AccountBudget::new(20, Duration::from_secs(60 * 60)));
 
 /// Username searches an Organizer may run per hour, about one per typed letter
 static PLAYER_SEARCHES: LazyLock<AccountBudget> =
@@ -87,7 +87,7 @@ pub async fn list_tournament_participants(
 /// An Organizer may add itself. In Registration, and as a late Participant
 /// until the Swiss Rounds are over; the participant limit does not hold
 /// Organizers back. Unknown usernames are capped per caller, see
-/// [`UNKNOWN_USERNAMES`].
+/// [`unknown_username`].
 #[post("/{tournament}/participants/accounts")]
 pub async fn add_tournament_account(
     account: Account,
@@ -109,21 +109,12 @@ pub async fn add_tournament_account(
         return errors.fail();
     }
 
-    let named = match Username::new(username.to_string()) {
-        Ok(username) => Account::get_by_username(&mut tx, &username).await?,
-        Err(_) => None,
-    };
-    let Some(named) = named else {
+    let Some(named) = named_account(&mut tx, &username).await? else {
         tx.rollback().await?;
-        let mut errors = FormErrors::<AddAccountParticipantErrors>::new();
-        if UNKNOWN_USERNAMES.take(account.uuid) {
-            errors.unknown_username = true;
-        } else {
-            errors.too_many_unknown_usernames = true;
-        }
-        return errors.fail();
+        return unknown_username(account.uuid);
     };
     let late_from_round = late_from_round(tournament.started_rounds(&mut tx).await?);
+    let change = RosterChange::begin(&mut tx, &tournament).await?;
     let Some(participant) = tournament.add_account(&mut tx, named.uuid).await? else {
         tx.rollback().await?;
         let mut errors = FormErrors::<AddAccountParticipantErrors>::new();
@@ -131,9 +122,7 @@ pub async fn add_tournament_account(
         return errors.fail();
     };
 
-    tx.commit().await?;
-
-    roster_changed(tournament.uuid);
+    change.finish(tx, &tournament, Ok(())).await?;
 
     Ok(ApiJson(ParticipantResponse::for_organizers(Participant {
         uuid: participant,
@@ -181,11 +170,10 @@ pub async fn add_tournament_guest(
         return errors.fail();
     }
     let late_from_round = late_from_round(tournament.started_rounds(&mut tx).await?);
+    let change = RosterChange::begin(&mut tx, &tournament).await?;
     let participant = tournament.add_guest(&mut tx, name.clone()).await?;
 
-    tx.commit().await?;
-
-    roster_changed(tournament.uuid);
+    change.finish(tx, &tournament, Ok(())).await?;
 
     Ok(ApiJson(ParticipantResponse::for_organizers(Participant {
         uuid: participant,
@@ -216,15 +204,13 @@ pub async fn remove_tournament_participant(
         tx.rollback().await?;
         return Err(ApiError::bad_request("Registration is over"));
     }
+    let change = RosterChange::begin(&mut tx, &tournament).await?;
     if !tournament.remove_participant(&mut tx, participant).await? {
         tx.rollback().await?;
         return Err(ApiError::bad_request("No such participant"));
     }
 
-    tx.commit().await?;
-
-    roster_changed(tournament.uuid);
-    Ok(ApiJson(()))
+    change.finish(tx, &tournament, Ok(ApiJson(()))).await
 }
 
 /// Drop a Participant, as an Organizer
@@ -244,8 +230,13 @@ pub async fn drop_tournament_participant(
         tx.rollback().await?;
         return Err(denied());
     };
+    let change = RosterChange::begin(&mut tx, &tournament).await?;
     let response = drop_participant(&mut tx, &tournament, participant).await;
-    finish_roster_change(tx, tournament.uuid, response).await
+    let forfeit = change.finish(tx, &tournament, response).await?;
+    if let Some(forfeit) = forfeit {
+        announce(&tournament, &forfeit);
+    }
+    Ok(ApiJson(()))
 }
 
 /// Mark a Participant paid or unpaid, as an Organizer
@@ -267,6 +258,7 @@ pub async fn set_tournament_participant_paid(
         tx.rollback().await?;
         return Err(denied());
     };
+    let change = RosterChange::begin(&mut tx, &tournament).await?;
     let response = match tournament.mark_paid(&mut tx, participant, paid).await? {
         Ok(true) => Ok(ApiJson(())),
         Ok(false) => Err(ApiError::bad_request("No such participant")),
@@ -279,7 +271,7 @@ pub async fn set_tournament_participant_paid(
             errors.fail()
         }
     };
-    finish_roster_change(tx, tournament.uuid, response).await
+    change.finish(tx, &tournament, response).await
 }
 
 /// Drop the logged-in Account out of a Tournament it plays in
@@ -308,8 +300,13 @@ pub async fn drop_out_of_tournament(
         tx.rollback().await?;
         return Err(ApiError::bad_request("Not a participant"));
     };
+    let change = RosterChange::begin(&mut tx, &tournament).await?;
     let response = drop_participant(&mut tx, &tournament, participant).await;
-    finish_roster_change(tx, tournament.uuid, response).await
+    let forfeit = change.finish(tx, &tournament, response).await?;
+    if let Some(forfeit) = forfeit {
+        announce(&tournament, &forfeit);
+    }
+    Ok(ApiJson(()))
 }
 
 /// Accounts whose username starts with what an Organizer typed, to add as Participants
@@ -383,8 +380,9 @@ pub async fn sign_up_for_tournament(
         tx.rollback().await?;
         return Err(denied());
     };
+    let change = RosterChange::begin(&mut tx, &tournament).await?;
     let response = sign_up(&mut tx, &tournament, &account).await;
-    finish_roster_change(tx, tournament.uuid, response).await
+    change.finish(tx, &tournament, response).await
 }
 
 /// Withdraw the logged-in Account's own sign-up
@@ -411,12 +409,10 @@ pub async fn withdraw_tournament_sign_up(
         tx.rollback().await?;
         return Err(ApiError::bad_request("Not a participant"));
     };
+    let change = RosterChange::begin(&mut tx, &tournament).await?;
     tournament.remove_participant(&mut tx, participant).await?;
 
-    tx.commit().await?;
-
-    roster_changed(tournament.uuid);
-    Ok(ApiJson(()))
+    change.finish(tx, &tournament, Ok(ApiJson(()))).await
 }
 
 /// The Participants of `tournament` as `viewer` reads them
@@ -446,16 +442,17 @@ pub async fn list(
 
 /// Drop `participant` out of `tournament`, under the roster lock
 ///
-/// Leaves the transaction to the caller, see [`finish`].
+/// Answers the Result of the Top cut Match it lost by that, to announce once
+/// committed. Leaves the transaction to the caller, see [`finish`].
 async fn drop_participant(
     tx: &mut Transaction,
     tournament: &Tournament,
     participant: ParticipantUuid,
-) -> ApiResult<ApiJson<()>, DropErrors> {
+) -> ApiResult<Option<ResultChange>, DropErrors> {
     tournament.lock_roster(tx).await?;
     match tournament.drop_participant(tx, participant).await? {
-        Ok(true) => Ok(ApiJson(())),
-        Ok(false) => Err(ApiError::bad_request("No such participant")),
+        Ok(Some(dropped)) => Ok(dropped.forfeit),
+        Ok(None) => Err(ApiError::bad_request("No such participant")),
         Err(refusal) => {
             let mut errors = FormErrors::<DropErrors>::new();
             match refusal {
@@ -521,21 +518,48 @@ pub async fn finish<T, E>(tx: Transaction, response: ApiResult<T, E>) -> ApiResu
     }
 }
 
-/// [`finish`] a change to the roster of `tournament`, telling its followers once it is committed
-pub async fn finish_roster_change<T, E>(
-    tx: Transaction,
-    tournament: TournamentUuid,
-    response: ApiResult<T, E>,
-) -> ApiResult<T, E> {
-    let response = finish(tx, response).await;
-    if response.is_ok() {
-        roster_changed(tournament);
-    }
-    response
+/// A change to a Tournament's roster under way
+///
+/// Every change to the roster throws a previewed Round away, see
+/// [`Tournament::discard_preview`]. Begun before the change, it remembers
+/// the previewed Round, so the Organizers hear when the change threw it away.
+pub struct RosterChange {
+    /// The previewed Round before the change
+    previewed: Option<i16>,
 }
 
-/// Tell the followers of `tournament` that its roster changed, and with it the standings
-fn roster_changed(tournament: TournamentUuid) {
-    emit(tournament, TournamentEvent::ParticipantsChanged);
-    emit(tournament, TournamentEvent::StandingsChanged);
+impl RosterChange {
+    /// Begin a change to `tournament`'s roster, before anything changed
+    pub async fn begin(tx: &mut Transaction, tournament: &Tournament) -> Result<Self, rorm::Error> {
+        Ok(Self {
+            previewed: tournament.previewed_round(tx).await?,
+        })
+    }
+
+    /// [`finish`] the change behind `response`, telling the followers of
+    /// `tournament` once it is committed
+    ///
+    /// Everybody hears that the roster changed, and with it the standings;
+    /// the Organizers also hear about the previewed Round it threw away.
+    pub async fn finish<T, E>(
+        self,
+        mut tx: Transaction,
+        tournament: &Tournament,
+        response: ApiResult<T, E>,
+    ) -> ApiResult<T, E> {
+        if response.is_err() {
+            return finish(tx, response).await;
+        }
+        let outdated = match self.previewed {
+            Some(round) if tournament.previewed_round(&mut tx).await?.is_none() => Some(round),
+            _ => None,
+        };
+        let response = finish(tx, response).await;
+        emit(tournament.uuid, TournamentEvent::ParticipantsChanged);
+        emit(tournament.uuid, TournamentEvent::StandingsChanged);
+        if let Some(round) = outdated {
+            emit(tournament.uuid, TournamentEvent::PreviewOutdated { round });
+        }
+        response
+    }
 }

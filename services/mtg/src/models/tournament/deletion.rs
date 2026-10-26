@@ -26,7 +26,8 @@ impl Tournament {
     /// `tombstone` when public or unlisted, else it is deleted; `tombstone` is
     /// `None` for a full Deletion. A pending handover of an owned Tournament
     /// is dropped with the old Owner. Its places as Co-organizer and the
-    /// handovers offered to it go with the cascade.
+    /// handovers offered to it go with the cascade. Runs before the Account
+    /// row is deleted, whose cascade would take the Participants along.
     #[instrument(name = "Tournament::part_with_account", skip(tx))]
     pub(in crate::models) async fn part_with_account(
         tx: &mut Transaction,

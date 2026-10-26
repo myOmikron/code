@@ -172,6 +172,9 @@ serde_urlencoded = { version = "~0.7" }
 # UUID generation and parsing
 uuid = { version = "~1", features = ["v3", "v4", "v7", "serde", "std"] }
 
+# Arbitrary-precision integers, for exact fractions that outgrow any fixed-width integer
+num-bigint = { version = "~0.4" }
+
 # -------------- #
 # Error handling #
 # -------------- #

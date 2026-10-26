@@ -2173,7 +2173,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Add an Account as a Participant by its username, as an Organizer  An Organizer may add itself. In Registration, and as a late Participant until the Swiss Rounds are over; the participant limit does not hold Organizers back. Unknown usernames are capped per caller, see [`UNKNOWN_USERNAMES`].
+     * Add an Account as a Participant by its username, as an Organizer  An Organizer may add itself. In Registration, and as a late Participant until the Swiss Rounds are over; the participant limit does not hold Organizers back. Unknown usernames are capped per caller, see [`unknown_username`].
      * Add an Account as a Participant by its username, as an Organizer
      */
     async addTournamentAccountRaw(requestParameters: AddTournamentAccountRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<AddTournamentAccount200Response>> {
@@ -2184,7 +2184,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Add an Account as a Participant by its username, as an Organizer  An Organizer may add itself. In Registration, and as a late Participant until the Swiss Rounds are over; the participant limit does not hold Organizers back. Unknown usernames are capped per caller, see [`UNKNOWN_USERNAMES`].
+     * Add an Account as a Participant by its username, as an Organizer  An Organizer may add itself. In Registration, and as a late Participant until the Swiss Rounds are over; the participant limit does not hold Organizers back. Unknown usernames are capped per caller, see [`unknown_username`].
      * Add an Account as a Participant by its username, as an Organizer
      */
     async addTournamentAccount(requestParameters: AddTournamentAccountRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AddTournamentAccount200Response> {
@@ -2223,7 +2223,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Name an Account a Co-organizer by its username, as one of the Organizers  Unknown usernames are capped per caller, see [`UNKNOWN_USERNAMES`].
+     * Name an Account a Co-organizer by its username, as one of the Organizers  Unknown usernames are capped per caller, see [`unknown_username`].
      * Name an Account a Co-organizer by its username, as one of the Organizers
      */
     async addTournamentCoOrganizerRaw(requestParameters: AddTournamentCoOrganizerRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<AddTournamentCoOrganizer200Response>> {
@@ -2234,7 +2234,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Name an Account a Co-organizer by its username, as one of the Organizers  Unknown usernames are capped per caller, see [`UNKNOWN_USERNAMES`].
+     * Name an Account a Co-organizer by its username, as one of the Organizers  Unknown usernames are capped per caller, see [`unknown_username`].
      * Name an Account a Co-organizer by its username, as one of the Organizers
      */
     async addTournamentCoOrganizer(requestParameters: AddTournamentCoOrganizerRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AddTournamentCoOrganizer200Response> {
@@ -6134,7 +6134,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * The logged-in Account\'s own Registered deck in a Tournament it plays in  Says whether it may still change it itself, which ends when the first Round starts.
+     * The logged-in Account\'s own Registered deck in a Tournament it plays in  Says whether it may still change it itself, which ends when the first Round starts; a late Participant registers its own until it is pinned.
      * The logged-in Account\'s own Registered deck in a Tournament it plays in
      */
     async getMyTournamentDeckRaw(requestParameters: GetMyTournamentDeckRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MyRegisteredDeckResponse>> {
@@ -6145,7 +6145,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * The logged-in Account\'s own Registered deck in a Tournament it plays in  Says whether it may still change it itself, which ends when the first Round starts.
+     * The logged-in Account\'s own Registered deck in a Tournament it plays in  Says whether it may still change it itself, which ends when the first Round starts; a late Participant registers its own until it is pinned.
      * The logged-in Account\'s own Registered deck in a Tournament it plays in
      */
     async getMyTournamentDeck(requestParameters: GetMyTournamentDeckRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MyRegisteredDeckResponse> {
@@ -8097,7 +8097,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * The decks a Participant\'s Account owns, as an Organizer about to register one
+     * The decks a Participant\'s Account owns, as an Organizer about to register one  Private decks are left out: an Organizer registers none of them.
      * The decks a Participant\'s Account owns, as an Organizer about to register one
      */
     async listTournamentParticipantDecksRaw(requestParameters: ListTournamentParticipantDecksRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListParticipantDecksResponse>> {
@@ -8108,7 +8108,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * The decks a Participant\'s Account owns, as an Organizer about to register one
+     * The decks a Participant\'s Account owns, as an Organizer about to register one  Private decks are left out: an Organizer registers none of them.
      * The decks a Participant\'s Account owns, as an Organizer about to register one
      */
     async listTournamentParticipantDecks(requestParameters: ListTournamentParticipantDecksRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListParticipantDecksResponse> {
@@ -8564,7 +8564,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Offer a Tournament to an Account by its username, as its Owner  Replaces a pending offer. Nothing changes until the Account accepts. Unknown usernames are capped per caller, see [`UNKNOWN_USERNAMES`].
+     * Offer a Tournament to an Account by its username, as its Owner  Replaces a pending offer. Nothing changes until the Account accepts. Unknown usernames are capped per caller, see [`unknown_username`].
      * Offer a Tournament to an Account by its username, as its Owner
      */
     async offerTournamentHandoverRaw(requestParameters: OfferTournamentHandoverRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<OfferTournamentHandover200Response>> {
@@ -8575,7 +8575,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Offer a Tournament to an Account by its username, as its Owner  Replaces a pending offer. Nothing changes until the Account accepts. Unknown usernames are capped per caller, see [`UNKNOWN_USERNAMES`].
+     * Offer a Tournament to an Account by its username, as its Owner  Replaces a pending offer. Nothing changes until the Account accepts. Unknown usernames are capped per caller, see [`unknown_username`].
      * Offer a Tournament to an Account by its username, as its Owner
      */
     async offerTournamentHandover(requestParameters: OfferTournamentHandoverRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<OfferTournamentHandover200Response> {
@@ -8846,7 +8846,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Register one of the logged-in Account\'s decks for a Tournament it plays in, or swap the one registered  Only while the Tournament is in Registration; until the first Round starts the Registered deck follows the deck.
+     * Register one of the logged-in Account\'s decks for a Tournament it plays in, or swap the one registered  While the Tournament is in Registration, where the Registered deck follows the deck until the first Round starts; a late Participant registers its own afterwards, pinned at once, and can no longer swap it then.
      * Register one of the logged-in Account\'s decks for a Tournament it plays in,
      */
     async registerMyTournamentDeckRaw(requestParameters: RegisterMyTournamentDeckRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FormErrorResponseForRegisterDeckErrors>> {
@@ -8857,7 +8857,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Register one of the logged-in Account\'s decks for a Tournament it plays in, or swap the one registered  Only while the Tournament is in Registration; until the first Round starts the Registered deck follows the deck.
+     * Register one of the logged-in Account\'s decks for a Tournament it plays in, or swap the one registered  While the Tournament is in Registration, where the Registered deck follows the deck until the first Round starts; a late Participant registers its own afterwards, pinned at once, and can no longer swap it then.
      * Register one of the logged-in Account\'s decks for a Tournament it plays in,
      */
     async registerMyTournamentDeck(requestParameters: RegisterMyTournamentDeckRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FormErrorResponseForRegisterDeckErrors> {
@@ -8904,7 +8904,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Register or swap a Participant\'s Registered deck, as an Organizer  At any time; after the first Round started the new Registered deck is pinned at once and sets its own Deck checkpoint.
+     * Register or swap a Participant\'s Registered deck, as an Organizer  At any time, with any of the Participant\'s decks that is not private; after the first Round started the new Registered deck is pinned at once and sets its own Deck checkpoint.
      * Register or swap a Participant\'s Registered deck, as an Organizer
      */
     async registerTournamentParticipantDeckRaw(requestParameters: RegisterTournamentParticipantDeckRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FormErrorResponseForRegisterDeckErrors>> {
@@ -8915,7 +8915,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Register or swap a Participant\'s Registered deck, as an Organizer  At any time; after the first Round started the new Registered deck is pinned at once and sets its own Deck checkpoint.
+     * Register or swap a Participant\'s Registered deck, as an Organizer  At any time, with any of the Participant\'s decks that is not private; after the first Round started the new Registered deck is pinned at once and sets its own Deck checkpoint.
      * Register or swap a Participant\'s Registered deck, as an Organizer
      */
     async registerTournamentParticipantDeck(requestParameters: RegisterTournamentParticipantDeckRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FormErrorResponseForRegisterDeckErrors> {

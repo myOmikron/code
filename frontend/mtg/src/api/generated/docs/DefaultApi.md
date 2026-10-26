@@ -584,7 +584,7 @@ No authorization required
 
 Add an Account as a Participant by its username, as an Organizer
 
-Add an Account as a Participant by its username, as an Organizer  An Organizer may add itself. In Registration, and as a late Participant until the Swiss Rounds are over; the participant limit does not hold Organizers back. Unknown usernames are capped per caller, see [&#x60;UNKNOWN_USERNAMES&#x60;].
+Add an Account as a Participant by its username, as an Organizer  An Organizer may add itself. In Registration, and as a late Participant until the Swiss Rounds are over; the participant limit does not hold Organizers back. Unknown usernames are capped per caller, see [&#x60;unknown_username&#x60;].
 
 ### Example
 
@@ -657,7 +657,7 @@ No authorization required
 
 Name an Account a Co-organizer by its username, as one of the Organizers
 
-Name an Account a Co-organizer by its username, as one of the Organizers  Unknown usernames are capped per caller, see [&#x60;UNKNOWN_USERNAMES&#x60;].
+Name an Account a Co-organizer by its username, as one of the Organizers  Unknown usernames are capped per caller, see [&#x60;unknown_username&#x60;].
 
 ### Example
 
@@ -6356,7 +6356,7 @@ No authorization required
 
 The logged-in Account\&#39;s own Registered deck in a Tournament it plays in
 
-The logged-in Account\&#39;s own Registered deck in a Tournament it plays in  Says whether it may still change it itself, which ends when the first Round starts.
+The logged-in Account\&#39;s own Registered deck in a Tournament it plays in  Says whether it may still change it itself, which ends when the first Round starts; a late Participant registers its own until it is pinned.
 
 ### Example
 
@@ -9196,7 +9196,7 @@ No authorization required
 
 The decks a Participant\&#39;s Account owns, as an Organizer about to register one
 
-The decks a Participant\&#39;s Account owns, as an Organizer about to register one
+The decks a Participant\&#39;s Account owns, as an Organizer about to register one  Private decks are left out: an Organizer registers none of them.
 
 ### Example
 
@@ -9889,7 +9889,7 @@ No authorization required
 
 Offer a Tournament to an Account by its username, as its Owner
 
-Offer a Tournament to an Account by its username, as its Owner  Replaces a pending offer. Nothing changes until the Account accepts. Unknown usernames are capped per caller, see [&#x60;UNKNOWN_USERNAMES&#x60;].
+Offer a Tournament to an Account by its username, as its Owner  Replaces a pending offer. Nothing changes until the Account accepts. Unknown usernames are capped per caller, see [&#x60;unknown_username&#x60;].
 
 ### Example
 
@@ -10315,7 +10315,7 @@ No authorization required
 
 Register one of the logged-in Account\&#39;s decks for a Tournament it plays in,
 
-Register one of the logged-in Account\&#39;s decks for a Tournament it plays in, or swap the one registered  Only while the Tournament is in Registration; until the first Round starts the Registered deck follows the deck.
+Register one of the logged-in Account\&#39;s decks for a Tournament it plays in, or swap the one registered  While the Tournament is in Registration, where the Registered deck follows the deck until the first Round starts; a late Participant registers its own afterwards, pinned at once, and can no longer swap it then.
 
 ### Example
 
@@ -10388,7 +10388,7 @@ No authorization required
 
 Register or swap a Participant\&#39;s Registered deck, as an Organizer
 
-Register or swap a Participant\&#39;s Registered deck, as an Organizer  At any time; after the first Round started the new Registered deck is pinned at once and sets its own Deck checkpoint.
+Register or swap a Participant\&#39;s Registered deck, as an Organizer  At any time, with any of the Participant\&#39;s decks that is not private; after the first Round started the new Registered deck is pinned at once and sets its own Deck checkpoint.
 
 ### Example
 

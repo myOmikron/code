@@ -114,7 +114,11 @@ function nextEvening(): Date {
  * Dialog for creating a Tournament or changing its settings.
  *
  * Only offers the Rulesets fitting the chosen Table size; changing the Table
- * size moves the Ruleset along when the old one no longer fits.
+ * size moves the Ruleset along when the old one no longer fits. Table size,
+ * Ruleset, best-of, entering afterwards and taking up an entry fee are fixed
+ * once the first Round started, the Top cut once the Swiss Rounds are over;
+ * the entry fee's amount and currency stay editable. Every opening starts from
+ * the settings of the Tournament it is opened on.
  *
  * @returns the dialog
  */
@@ -123,14 +127,11 @@ export function TournamentDialog({ open, tournament, formats, onClose, onSaved }
     const [tg] = useTranslation();
     const labels = useTournamentLabels();
     const deckLabels = useDeckLabels();
-    // Table size, Ruleset, best-of and entering afterwards are fixed once the first Round started.
     const rulesLocked = tournament !== null && tournament.state !== TournamentState.Registration;
-    // The Top cut stays open until the Swiss Rounds are over.
     const topCutLocked =
         tournament !== null &&
         tournament.state !== TournamentState.Registration &&
         tournament.state !== TournamentState.Swiss;
-    // So is whether there is an entry fee; its amount and currency stay editable.
     const feeLocked = rulesLocked && tournament?.entry_fee == null;
 
     const form = useForm({
@@ -214,11 +215,8 @@ export function TournamentDialog({ open, tournament, formats, onClose, onSaved }
         },
     });
 
-    // The dialog stays mounted, so the form has to be pointed at whatever it is
-    // opened on: `defaultValues` is read once, at mount.
     useEffect(() => {
         form.reset(initialValues(tournament));
-        // Deliberately not keyed on `form`, which is rebuilt on every render.
     }, [tournament, open]);
 
     return (

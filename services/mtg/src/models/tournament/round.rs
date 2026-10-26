@@ -46,6 +46,7 @@ use crate::tournament::pairing::Pairing;
 use crate::tournament::pairing::PairingError;
 use crate::tournament::pairing::pair_next_round;
 use crate::tournament::record::Entrant;
+use crate::tournament::record::EntrantId;
 use crate::tournament::record::MatchRecord;
 use crate::tournament::record::MatchResult;
 use crate::tournament::record::RoundRecord;
@@ -501,48 +502,27 @@ impl Tournament {
                 pairing_seed: i64::from_ne_bytes(seed.to_ne_bytes()),
             })
             .await?;
-        let tables = pairing
+        let tables: Vec<&[EntrantId]> = pairing
             .matches
             .iter()
             .map(|paired| paired.seats.as_slice())
-            .enumerate()
-            .map(|(index, seats)| (Some(i16::try_from(index + 1).unwrap_or(i16::MAX)), seats));
-        let byes = pairing
-            .byes
-            .iter()
-            .map(|bye| (None, std::slice::from_ref(bye)));
-        let mut match_rows = Vec::new();
-        let mut seat_rows = Vec::new();
-        for (table_number, seats) in tables.chain(byes) {
-            let uuid = Uuid::now_v7();
-            match_rows.push(TournamentMatchInsertPatch {
-                uuid,
-                round: ForeignModelByField(round),
-                table_number,
-                games_drawn: None,
-                result_state: None,
-                reported_by: None,
-                disputed_by: None,
-            });
-            for (index, participant) in seats.iter().enumerate() {
-                seat_rows.push(TournamentSeatInsertPatch {
-                    uuid: Uuid::now_v7(),
-                    tournament_match: ForeignModelByField(uuid),
-                    participant: ForeignModelByField(*participant),
-                    seat: i16::try_from(index + 1).unwrap_or(i16::MAX),
-                    games_won: None,
-                });
-            }
-        }
-        rorm::insert(&mut *tx, TournamentMatchModel)
-            .return_nothing()
-            .bulk(&match_rows)
-            .await?;
-        rorm::insert(&mut *tx, TournamentSeatModel)
-            .return_nothing()
-            .bulk(&seat_rows)
-            .await?;
+            .collect();
+        insert_matches(tx, round, &tables, &pairing.byes).await?;
         Ok(Ok(number))
+    }
+
+    /// The number of the previewed Round, `None` if there is none
+    #[instrument(name = "Tournament::previewed_round", skip(tx, self), fields(tournament = ?self.uuid))]
+    pub async fn previewed_round(&self, tx: &mut Transaction) -> Result<Option<i16>, rorm::Error> {
+        rorm::query(&mut *tx, TournamentRoundModel.number)
+            .condition(rorm::and![
+                TournamentRoundModel
+                    .tournament
+                    .equals(self.uuid.into_inner()),
+                TournamentRoundModel.state.equals(RoundState::Previewed),
+            ])
+            .optional()
+            .await
     }
 
     /// Throw the previewed Round away, `false` if there was none
@@ -916,6 +896,58 @@ impl Tournament {
             .await?;
         Ok(next)
     }
+}
+
+/// Insert the Matches of the Round keyed `round`: one per entry of `tables`,
+/// numbered from 1 in that order with the Seats in order within each, and a
+/// Bye for each of `byes`
+pub(in crate::models::tournament) async fn insert_matches(
+    tx: &mut Transaction,
+    round: Uuid,
+    tables: &[&[EntrantId]],
+    byes: &[EntrantId],
+) -> Result<(), rorm::Error> {
+    let tables = tables
+        .iter()
+        .enumerate()
+        .map(|(index, seats)| (Some(i16::try_from(index + 1).unwrap_or(i16::MAX)), *seats));
+    let byes = byes.iter().map(|bye| (None, std::slice::from_ref(bye)));
+    let mut match_rows = Vec::new();
+    let mut seat_rows = Vec::new();
+    for (table_number, seats) in tables.chain(byes) {
+        let uuid = Uuid::now_v7();
+        match_rows.push(TournamentMatchInsertPatch {
+            uuid,
+            round: ForeignModelByField(round),
+            table_number,
+            games_drawn: None,
+            result_state: None,
+            reported_by: None,
+            disputed_by: None,
+        });
+        for (index, participant) in seats.iter().enumerate() {
+            seat_rows.push(TournamentSeatInsertPatch {
+                uuid: Uuid::now_v7(),
+                tournament_match: ForeignModelByField(uuid),
+                participant: ForeignModelByField(*participant),
+                seat: i16::try_from(index + 1).unwrap_or(i16::MAX),
+                games_won: None,
+            });
+        }
+    }
+    if !match_rows.is_empty() {
+        rorm::insert(&mut *tx, TournamentMatchModel)
+            .return_nothing()
+            .bulk(&match_rows)
+            .await?;
+    }
+    if !seat_rows.is_empty() {
+        rorm::insert(&mut *tx, TournamentSeatModel)
+            .return_nothing()
+            .bulk(&seat_rows)
+            .await?;
+    }
+    Ok(())
 }
 
 /// A Round as the engine reads it

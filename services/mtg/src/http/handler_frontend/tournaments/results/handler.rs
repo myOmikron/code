@@ -6,7 +6,7 @@ use galvyn::core::stuff::api_error::FormErrors;
 use galvyn::core::stuff::api_json::ApiJson;
 use galvyn::post;
 use galvyn::rorm::Database;
-use tracing::info;
+use tracing::debug;
 
 use crate::http::handler_frontend::tournaments::handler::denied;
 use crate::http::handler_frontend::tournaments::live::TournamentEvent;
@@ -152,7 +152,7 @@ pub async fn dispute_tournament_match_result(
 /// pushes beside it ([`Tournament::push_result_disputed`]), which skips a
 /// Tournament entered afterwards; live updates do not need to.
 pub fn announce(tournament: &Tournament, change: &ResultChange) {
-    info!(
+    debug!(
         tournament = ?tournament.uuid,
         round = change.round,
         played = ?change.played,

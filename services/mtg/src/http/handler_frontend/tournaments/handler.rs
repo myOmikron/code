@@ -1,3 +1,6 @@
+use std::sync::LazyLock;
+use std::time::Duration;
+
 use galvyn::core::Module;
 use galvyn::core::re_exports::axum::extract::Path;
 use galvyn::core::re_exports::axum::extract::Query;
@@ -10,10 +13,16 @@ use galvyn::delete;
 use galvyn::get;
 use galvyn::post;
 use galvyn::put;
+use galvyn::rorm;
 use galvyn::rorm::Database;
+use galvyn::rorm::db::transaction::Transaction;
+use galvyn::rorm::fields::types::MaxStr;
 
 use crate::http::handler_frontend::tournaments::live::TournamentEvent;
 use crate::http::handler_frontend::tournaments::live::emit;
+use crate::http::handler_frontend::tournaments::organizers::schema::AddCoOrganizerErrors;
+use crate::http::handler_frontend::tournaments::organizers::schema::OfferHandoverErrors;
+use crate::http::handler_frontend::tournaments::participants::schema::AddAccountParticipantErrors;
 use crate::http::handler_frontend::tournaments::schema::ListPublicTournamentsQuery;
 use crate::http::handler_frontend::tournaments::schema::ListTournamentsResponse;
 use crate::http::handler_frontend::tournaments::schema::MyTournamentsResponse;
@@ -22,6 +31,8 @@ use crate::http::handler_frontend::tournaments::schema::TournamentSettingsErrors
 use crate::http::handler_frontend::tournaments::schema::TournamentSettingsRequest;
 use crate::http::handler_frontend::tournaments::schema::TournamentSummaryResponse;
 use crate::models::account::Account;
+use crate::models::account::AccountUuid;
+use crate::models::account::Username;
 use crate::models::account::extractor::Viewer;
 use crate::models::tournament::Tournament;
 use crate::models::tournament::TournamentState;
@@ -30,6 +41,7 @@ use crate::models::tournament::access::OrganizerRole;
 use crate::models::tournament::listing::ListedTournament;
 use crate::models::tournament::listing::OverviewFilter;
 use crate::models::tournament::settings::TournamentSettings;
+use crate::utils::account_budget::AccountBudget;
 
 /// The public Tournaments, narrowed down by the filters given
 ///
@@ -200,4 +212,67 @@ pub async fn delete_tournament(
 /// One answer for both, so it says nothing about whether a private Tournament exists.
 pub fn denied<E>() -> ApiError<E> {
     ApiError::bad_request("No such tournament")
+}
+
+/// Unknown usernames a caller may name per hour, as Participant, Co-organizer or heir
+static UNKNOWN_USERNAMES: LazyLock<AccountBudget> =
+    LazyLock::new(|| AccountBudget::new(20, Duration::from_secs(60 * 60)));
+
+/// Form errors of a request that names an Account by its username
+pub trait UnknownUsernameErrors: Default {
+    /// The errors saying no Account goes by the username, or with
+    /// `too_many` that the username was not looked up at all
+    fn naming_nobody(too_many: bool) -> Self;
+}
+
+/// The Account a request names by `username`, `None` for an unknown one
+pub async fn named_account(
+    tx: &mut Transaction,
+    username: &MaxStr<255>,
+) -> Result<Option<Account>, rorm::Error> {
+    match Username::new(username.to_string()) {
+        Ok(username) => Account::get_by_username(tx, &username).await,
+        Err(_) => Ok(None),
+    }
+}
+
+/// The refusal of a request whose username names no Account
+///
+/// Counts against `caller`'s budget of unknown usernames, one budget for
+/// every request that names an Account, see [`UNKNOWN_USERNAMES`]; past it
+/// the answer says the caller named too many lately instead.
+pub fn unknown_username<T, E: UnknownUsernameErrors>(caller: AccountUuid) -> ApiResult<T, E> {
+    Err(ApiError::FormError(E::naming_nobody(
+        !UNKNOWN_USERNAMES.take(caller),
+    )))
+}
+
+impl UnknownUsernameErrors for AddAccountParticipantErrors {
+    fn naming_nobody(too_many: bool) -> Self {
+        Self {
+            unknown_username: !too_many,
+            too_many_unknown_usernames: too_many,
+            ..Self::default()
+        }
+    }
+}
+
+impl UnknownUsernameErrors for AddCoOrganizerErrors {
+    fn naming_nobody(too_many: bool) -> Self {
+        Self {
+            unknown_username: !too_many,
+            too_many_unknown_usernames: too_many,
+            ..Self::default()
+        }
+    }
+}
+
+impl UnknownUsernameErrors for OfferHandoverErrors {
+    fn naming_nobody(too_many: bool) -> Self {
+        Self {
+            unknown_username: !too_many,
+            too_many_unknown_usernames: too_many,
+            ..Self::default()
+        }
+    }
 }

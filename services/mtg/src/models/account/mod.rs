@@ -663,8 +663,6 @@ impl Account {
             Deck::hand_over_public(&mut *tx, uuid, tombstone).await?;
         }
 
-        // Before the delete as well: the Tournaments it owns hold the account
-        // back, and its Participants would go with the cascade.
         Tournament::part_with_account(&mut *tx, uuid, &account.username, tombstone).await?;
 
         // Also before the delete, see `Collection::delete_all_of_account`.

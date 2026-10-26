@@ -53,6 +53,10 @@ function RouteComponent() {
     const [deleting, setDeleting] = useState(false);
     const [cancelling, setCancelling] = useState(false);
     const refresh = useCallback(() => void router.invalidate(), [router]);
+    const previewOutdated = useCallback(
+        (round: number) => notify.warning(t("toast.preview-outdated", { number: round })),
+        [t],
+    );
 
     if (tournament === null) {
         return (
@@ -149,7 +153,11 @@ function RouteComponent() {
                 </TabMenu>
             }
         >
-            <TournamentLiveProvider url={tournamentEventsUrl(tournamentUuid)} onTournamentChanged={refresh}>
+            <TournamentLiveProvider
+                url={tournamentEventsUrl(tournamentUuid)}
+                onTournamentChanged={refresh}
+                onPreviewOutdated={previewOutdated}
+            >
                 <Outlet />
             </TournamentLiveProvider>
 

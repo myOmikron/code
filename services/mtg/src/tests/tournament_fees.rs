@@ -19,6 +19,7 @@ use crate::tests::tournament_participants::roster;
 use crate::tests::tournament_rounds::Event;
 use crate::tests::tournament_rounds::round;
 use crate::tests::tournament_rounds::seated;
+use crate::tests::tournament_top_cut::set_swiss_rounds;
 use crate::tests::tournaments::Fixture;
 use crate::tests::tournaments::create;
 use crate::tests::tournaments::settings;
@@ -511,6 +512,7 @@ fn a_late_participant_pays_before_it_is_paired() {
         for participant in &players {
             mark(&mut event.owner, &tournament, participant, true).await;
         }
+        set_swiss_rounds(&mut event, 2).await;
         event.play_round().await;
         event.end(1).await;
         let late = event.add_guest("Late").await;

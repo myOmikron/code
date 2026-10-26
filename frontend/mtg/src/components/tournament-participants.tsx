@@ -37,6 +37,7 @@ import type {
 import { PrimaryButton } from "src/components/primary-button";
 import { RegisteredListWarnings, MyTournamentDeck, RegisteredDeckDialog } from "src/components/tournament-decks";
 import { useAccount } from "src/context/account";
+import { useLiveVersion } from "src/context/tournament-live-context";
 import { isFormError } from "src/utils/error";
 import { type RegisteredListWarning, registeredListWarnings } from "src/utils/tournament-registered-lists";
 
@@ -87,12 +88,12 @@ export function TournamentParticipants({ tournament, load, signUp }: TournamentP
     const mine = participants.find((participant) => participant.uuid === list?.me) ?? null;
     const limit = tournament.participant_limit ?? null;
     const full = limit !== null && participants.length >= limit;
-    // Only Organizers learn who paid; the list says so by carrying the flag at all.
     const collectsFees =
         organizer &&
         tournament.entry_fee != null &&
         tournament.state !== TournamentState.Finished &&
         tournament.state !== TournamentState.Cancelled;
+    const version = useLiveVersion("participants");
     const unpaidCount = participants.filter((participant) => participant.unpaid === true).length;
     const signUpOpen = tournament.self_sign_up && tournament.visibility !== Visibility.Private && registration;
 
@@ -116,7 +117,7 @@ export function TournamentParticipants({ tournament, load, signUp }: TournamentP
                 ]),
             ),
         );
-    }, [organizer, tournament.uuid, tournament.format]);
+    }, [organizer, tournament.uuid, tournament.format, version]);
 
     useEffect(() => {
         reloadDecks().catch(() => undefined);

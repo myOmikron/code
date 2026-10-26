@@ -31,6 +31,12 @@ pub enum TournamentEvent {
     TournamentChanged,
     /// Participants joined, left or Dropped
     ParticipantsChanged,
+    /// Co-organizers were named or removed, or a handover was offered,
+    /// withdrawn, accepted or declined
+    OrganizersChanged,
+    /// A Registered deck was registered, swapped or removed, or its list
+    /// sharing changed
+    DecksChanged,
     /// A Round was paired as a preview, or its preview was edited; only Organizers hear it
     RoundPaired {
         /// The Round's number
@@ -38,6 +44,12 @@ pub enum TournamentEvent {
     },
     /// A previewed Round was thrown away; only Organizers hear it
     RoundDiscarded {
+        /// The Round's number
+        round: i16,
+    },
+    /// A change to the Participants threw the previewed Round away, since it
+    /// no longer fits them; only Organizers hear it
+    PreviewOutdated {
         /// The Round's number
         round: i16,
     },
@@ -86,7 +98,10 @@ pub enum TournamentEvent {
 impl TournamentEvent {
     /// Whether only the Tournament's Organizers hear it, because it is about a previewed Round
     pub fn for_organizers_only(&self) -> bool {
-        matches!(self, Self::RoundPaired { .. } | Self::RoundDiscarded { .. })
+        matches!(
+            self,
+            Self::RoundPaired { .. } | Self::RoundDiscarded { .. } | Self::PreviewOutdated { .. }
+        )
     }
 }
 

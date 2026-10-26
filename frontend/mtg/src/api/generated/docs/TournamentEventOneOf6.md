@@ -1,7 +1,7 @@
 
 # TournamentEventOneOf6
 
-An ended Round was taken back and runs again
+A change to the Participants threw the previewed Round away, since it no longer fits them; only Organizers hear it
 
 ## Properties
 

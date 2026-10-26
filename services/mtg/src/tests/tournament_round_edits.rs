@@ -131,7 +131,11 @@ fn a_layout_that_leaves_somebody_out_or_seats_somebody_twice_is_refused() {
             .ok_json();
         assert_eq!(short["error"]["match_size"], true, "{short}");
 
-        assert_eq!(event.rounds().await, before, "the preview stays as it was");
+        assert_eq!(
+            event.rounds().await["rounds"],
+            before["rounds"],
+            "the preview stays as it was"
+        );
     });
 }
 
@@ -255,6 +259,24 @@ fn a_taken_back_round_runs_again_with_its_results() {
         event.result(&first, [0, 2], 0).await;
         let ended = event.end(1).await;
         assert_eq!(ended["state"], "Swiss", "{ended}");
+    });
+}
+
+#[test]
+fn a_taken_back_round_runs_without_its_old_round_timer() {
+    run(async {
+        let mut event = Event::new("Three", 4).await;
+        event.set_round_minutes(json!(50)).await;
+        event.play_and_end_round().await;
+
+        event.take_back(1).await;
+
+        let rounds = event.rounds().await;
+        assert_eq!(round(&rounds, 1)["state"], "Running", "{rounds}");
+        assert!(
+            round(&rounds, 1)["timer"].is_null(),
+            "no clock that ran out while the Round was over: {rounds}"
+        );
     });
 }
 

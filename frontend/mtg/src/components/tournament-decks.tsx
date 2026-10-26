@@ -222,7 +222,11 @@ export function MyTournamentDeck({ tournament }: MyTournamentDeckProps) {
                         {error !== null ? (
                             <ErrorMessage>{error}</ErrorMessage>
                         ) : (
-                            <Description>{t("description.my-deck-follows")}</Description>
+                            <Description>
+                                {tournament.state === "Registration"
+                                    ? t("description.my-deck-follows")
+                                    : t("description.my-deck-late")}
+                            </Description>
                         )}
                     </Field>
                 )

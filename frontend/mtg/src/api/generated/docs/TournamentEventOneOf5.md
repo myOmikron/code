@@ -1,7 +1,7 @@
 
 # TournamentEventOneOf5
 
-A Round ended
+A previewed Round was thrown away; only Organizers hear it
 
 ## Properties
 

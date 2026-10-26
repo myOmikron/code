@@ -50,7 +50,6 @@ export function TournamentBracket({ load, topCut }: TournamentBracketProps) {
             <div className={"overflow-x-auto"}>
                 <div className={"flex min-w-max gap-6"}>
                     {columns.map((column, columnIndex) => {
-                        // The last column is the final, also when a multiplayer final seats more than two.
                         const final = columnIndex === columns.length - 1;
                         return (
                             <section key={column.size} className={"flex w-56 flex-col gap-3"}>
@@ -91,21 +90,23 @@ type BracketMatchProps = {
 /**
  * One Match of the bracket: its two Seats with the games each won
  *
- * @returns the Match's box
+ * @returns the Match in its frame
  */
 function BracketMatch({ played, winner }: BracketMatchProps) {
     const [t] = useTranslation("tournament");
-    const box = "rounded-lg border border-zinc-950/10 dark:border-white/10";
+    const matchFrame = "rounded-lg border border-zinc-950/10 dark:border-white/10";
 
     if (played === null) {
         return (
-            <div className={clsx(box, "px-3 py-2 text-sm text-zinc-500 dark:text-zinc-400")}>{t("label.cut-open")}</div>
+            <div className={clsx(matchFrame, "px-3 py-2 text-sm text-zinc-500 dark:text-zinc-400")}>
+                {t("label.cut-open")}
+            </div>
         );
     }
 
     const bye = played.table_number == null;
     return (
-        <div className={clsx(box, "divide-y divide-zinc-950/5 text-sm dark:divide-white/5")}>
+        <div className={clsx(matchFrame, "divide-y divide-zinc-950/5 text-sm dark:divide-white/5")}>
             {played.seats.map((seat, index) => (
                 <div
                     key={seat.participant}

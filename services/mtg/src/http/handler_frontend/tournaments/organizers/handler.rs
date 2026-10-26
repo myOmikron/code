@@ -1,6 +1,3 @@
-use std::sync::LazyLock;
-use std::time::Duration;
-
 use galvyn::core::Module;
 use galvyn::core::re_exports::axum::extract::Path;
 use galvyn::core::stuff::api_error::ApiResult;
@@ -11,10 +8,12 @@ use galvyn::get;
 use galvyn::post;
 use galvyn::put;
 use galvyn::rorm::Database;
-use galvyn::rorm::db::transaction::Transaction;
-use galvyn::rorm::fields::types::MaxStr;
 
 use crate::http::handler_frontend::tournaments::handler::denied;
+use crate::http::handler_frontend::tournaments::handler::named_account;
+use crate::http::handler_frontend::tournaments::handler::unknown_username;
+use crate::http::handler_frontend::tournaments::live::TournamentEvent;
+use crate::http::handler_frontend::tournaments::live::emit;
 use crate::http::handler_frontend::tournaments::organizers::schema::AddCoOrganizerErrors;
 use crate::http::handler_frontend::tournaments::organizers::schema::ListOrganizersResponse;
 use crate::http::handler_frontend::tournaments::organizers::schema::NameAccountRequest;
@@ -25,17 +24,11 @@ use crate::http::handler_frontend::tournaments::schema::TournamentResponse;
 use crate::http::handler_frontend::tournaments::schema::TournamentSummaryResponse;
 use crate::models::account::Account;
 use crate::models::account::AccountUuid;
-use crate::models::account::Username;
 use crate::models::tournament::Tournament;
 use crate::models::tournament::TournamentUuid;
 use crate::models::tournament::access::OrganizerRole;
 use crate::models::tournament::listing::ListedTournament;
 use crate::models::tournament::organizer::AddCoOrganizerRefusal;
-use crate::utils::account_budget::AccountBudget;
-
-/// Unknown usernames a caller may try to name per hour, as Co-organizer or heir
-static UNKNOWN_USERNAMES: LazyLock<AccountBudget> =
-    LazyLock::new(|| AccountBudget::new(20, Duration::from_secs(60 * 60)));
 
 /// Who runs a Tournament, and whom its Owner offered it to
 ///
@@ -70,7 +63,7 @@ pub async fn list_tournament_organizers(
 
 /// Name an Account a Co-organizer by its username, as one of the Organizers
 ///
-/// Unknown usernames are capped per caller, see [`UNKNOWN_USERNAMES`].
+/// Unknown usernames are capped per caller, see [`unknown_username`].
 #[post("/{tournament}/organizers")]
 pub async fn add_tournament_co_organizer(
     account: Account,
@@ -86,13 +79,7 @@ pub async fn add_tournament_co_organizer(
     };
     let Some(named) = named_account(&mut tx, &username).await? else {
         tx.rollback().await?;
-        let mut errors = FormErrors::<AddCoOrganizerErrors>::new();
-        if UNKNOWN_USERNAMES.take(account.uuid) {
-            errors.unknown_username = true;
-        } else {
-            errors.too_many_unknown_usernames = true;
-        }
-        return errors.fail();
+        return unknown_username(account.uuid);
     };
     if let Err(refusal) = tournament.add_co_organizer(&mut tx, named.uuid).await? {
         tx.rollback().await?;
@@ -105,6 +92,7 @@ pub async fn add_tournament_co_organizer(
     }
 
     tx.commit().await?;
+    emit(tournament.uuid, TournamentEvent::OrganizersChanged);
 
     Ok(ApiJson(OrganizerResponse::new(named.uuid, &named.username)))
 }
@@ -134,6 +122,7 @@ pub async fn remove_tournament_co_organizer(
         .await?;
 
     tx.commit().await?;
+    emit(tournament.uuid, TournamentEvent::OrganizersChanged);
 
     Ok(ApiJson(()))
 }
@@ -141,7 +130,7 @@ pub async fn remove_tournament_co_organizer(
 /// Offer a Tournament to an Account by its username, as its Owner
 ///
 /// Replaces a pending offer. Nothing changes until the Account accepts.
-/// Unknown usernames are capped per caller, see [`UNKNOWN_USERNAMES`].
+/// Unknown usernames are capped per caller, see [`unknown_username`].
 #[put("/{tournament}/handover")]
 pub async fn offer_tournament_handover(
     account: Account,
@@ -157,13 +146,7 @@ pub async fn offer_tournament_handover(
     };
     let Some(named) = named_account(&mut tx, &username).await? else {
         tx.rollback().await?;
-        let mut errors = FormErrors::<OfferHandoverErrors>::new();
-        if UNKNOWN_USERNAMES.take(account.uuid) {
-            errors.unknown_username = true;
-        } else {
-            errors.too_many_unknown_usernames = true;
-        }
-        return errors.fail();
+        return unknown_username(account.uuid);
     };
     if named.uuid == tournament.owner {
         tx.rollback().await?;
@@ -174,6 +157,7 @@ pub async fn offer_tournament_handover(
     tournament.offer_handover(&mut tx, named.uuid).await?;
 
     tx.commit().await?;
+    emit(tournament.uuid, TournamentEvent::OrganizersChanged);
 
     Ok(ApiJson(OrganizerResponse::new(named.uuid, &named.username)))
 }
@@ -194,6 +178,7 @@ pub async fn withdraw_tournament_handover(
     tournament.withdraw_handover(&mut tx).await?;
 
     tx.commit().await?;
+    emit(tournament.uuid, TournamentEvent::OrganizersChanged);
 
     Ok(ApiJson(()))
 }
@@ -234,6 +219,7 @@ pub async fn accept_tournament_handover(
     };
 
     tx.commit().await?;
+    emit(tournament.uuid, TournamentEvent::OrganizersChanged);
 
     Ok(ApiJson(TournamentResponse::new(
         tournament,
@@ -258,17 +244,7 @@ pub async fn decline_tournament_handover(
     }
 
     tx.commit().await?;
+    emit(tournament, TournamentEvent::OrganizersChanged);
 
     Ok(ApiJson(()))
-}
-
-/// The Account a request names by username, `None` for an unknown one
-async fn named_account(
-    tx: &mut Transaction,
-    username: &MaxStr<255>,
-) -> Result<Option<Account>, galvyn::rorm::Error> {
-    match Username::new(username.to_string()) {
-        Ok(username) => Account::get_by_username(tx, &username).await,
-        Err(_) => Ok(None),
-    }
 }

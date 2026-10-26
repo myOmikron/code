@@ -498,6 +498,7 @@ fn an_organizer_swaps_a_deck_after_the_first_round_and_pins_it_at_once() {
         let mut event = Event::new().await;
         event.start().await;
         let (other, printing) = Player::deck(&mut event.players[1].client, "Control").await;
+        set_visibility(&mut event.players[1].client, &other, "Unlisted").await;
         let url = event.url(&format!(
             "participants/{}/deck",
             event.players[1].participant
@@ -533,9 +534,12 @@ fn an_organizer_swaps_a_deck_after_the_first_round_and_pins_it_at_once() {
 }
 
 #[test]
-fn an_organizer_picks_among_the_participants_decks() {
+fn an_organizer_picks_among_the_participants_decks_that_are_not_private() {
     run(async {
         let mut event = Event::new().await;
+        let public = deck_with(&mut event.players[0].client, "Affinity", "modern", "Public").await;
+        let unlisted =
+            deck_with(&mut event.players[0].client, "Bogles", "modern", "Unlisted").await;
         let url = event.url(&format!(
             "participants/{}/decks",
             event.players[0].participant
@@ -543,23 +547,86 @@ fn an_organizer_picks_among_the_participants_decks() {
 
         let decks = event.owner.get(&url).await.ok_json();
 
-        assert_eq!(
-            decks["decks"][0]["uuid"],
-            event.players[0].deck.as_str(),
-            "{decks}"
-        );
-        assert_eq!(decks["decks"].as_array().map(Vec::len), Some(1), "{decks}");
-        let foreign = event.players[1].deck.clone();
+        let offered: Vec<&str> = decks["decks"]
+            .as_array()
+            .expect("a list of decks")
+            .iter()
+            .map(|deck| deck["uuid"].as_str().expect("deck uuid"))
+            .collect();
+        assert_eq!(offered, vec![public.as_str(), unlisted.as_str()], "{decks}");
         let url = event.url(&format!(
             "participants/{}/deck",
             event.players[0].participant
         ));
+        let private = event.players[0].deck.clone();
+        let refused = event
+            .owner
+            .json(Method::PUT, &url, &json!({ "deck": private }))
+            .await
+            .ok_json();
+        assert_eq!(refused["error"]["not_their_deck"], true, "{refused}");
+        let foreign = event.players[1].deck.clone();
+        set_visibility(&mut event.players[1].client, &foreign, "Public").await;
         let refused = event
             .owner
             .json(Method::PUT, &url, &json!({ "deck": foreign }))
             .await
             .ok_json();
         assert_eq!(refused["error"]["not_their_deck"], true, "{refused}");
+        event
+            .owner
+            .json(Method::PUT, &url, &json!({ "deck": unlisted }))
+            .await
+            .ok_json();
+        assert_eq!(event.mine(0).await["deck"]["deck"], unlisted.as_str());
+    });
+}
+
+#[test]
+fn a_participant_still_registers_its_private_deck_itself() {
+    run(async {
+        let mut event = Event::new().await;
+
+        event.register_own(0).await;
+
+        let mine = event.mine(0).await;
+        assert_eq!(
+            mine["deck"]["deck"],
+            event.players[0].deck.as_str(),
+            "{mine}"
+        );
+    });
+}
+
+#[test]
+fn a_late_participant_registers_its_own_deck_once_pinned_at_once() {
+    run(async {
+        let mut event = Event::new().await;
+        event.start().await;
+        let tournament = event.tournament.clone();
+        let mut late = Event::player(&mut event.owner, &tournament).await;
+        let url = event.url("deck");
+
+        let before = late.client.get(&url).await.ok_json();
+        assert_eq!(before["changeable"], true, "{before}");
+        late.client
+            .json(Method::PUT, &url, &json!({ "deck": late.deck }))
+            .await
+            .ok_json();
+
+        let mine = late.client.get(&url).await.ok_json();
+        assert_eq!(mine["deck"]["deck"], late.deck.as_str(), "{mine}");
+        assert_eq!(mine["deck"]["pinned"], true, "{mine}");
+        assert_eq!(mine["changeable"], false, "{mine}");
+        let (other, _) = Player::deck(&mut late.client, "Control").await;
+        let swapped = late
+            .client
+            .json(Method::PUT, &url, &json!({ "deck": other }))
+            .await
+            .ok_json();
+        assert_eq!(swapped["error"]["registration_over"], true, "{swapped}");
+        let checkpoints = late.checkpoints().await;
+        assert_eq!(checkpoints[0].1, TOURNAMENT_NAME, "{checkpoints:?}");
     });
 }
 
@@ -610,6 +677,15 @@ fn only_organizers_read_every_registered_deck() {
         );
         assert_eq!(response.status, StatusCode::BAD_REQUEST, "{response:?}");
     });
+}
+
+/// Make `deck` public, unlisted or private as its owner `client`
+async fn set_visibility(client: &mut TestClient, deck: &str, visibility: &str) {
+    let url = api(&format!("decks/{deck}"));
+    client
+        .json(Method::POST, &url, &json!({ "visibility": visibility }))
+        .await
+        .ok_json();
 }
 
 /// Create a deck called `name` in `format` with the given visibility and one fresh printing

@@ -120,6 +120,10 @@ pub enum TopCutError {
 /// Rounds pair the winners as the bracket says, the higher Swiss seed in
 /// Seat 1. A winner who Dropped is not replaced: the other half of its
 /// pairing advances with a Bye (MTR 2.10).
+///
+/// Where a Participant stands in the bracket is its leaf: its table and Seat
+/// in the first cut Round, two leaves per table. The k-th Round, counted from
+/// 0, joins the leaves equal in all but their lowest k + 1 bits.
 pub fn pair_top_cut(
     record: &TournamentRecord,
     top_cut: TopCut,
@@ -165,7 +169,6 @@ pub fn pair_top_cut(
         return Err(TopCutError::CutOver);
     }
 
-    // Where everybody stands in the bracket: two leaves per table of the first Round.
     let leaf: HashMap<EntrantId, usize> = first
         .matches
         .iter()
@@ -193,7 +196,6 @@ pub fn pair_top_cut(
         advancing.extend(&last.byes);
     }
 
-    // The k-th Round (from 0) joins the leaves equal in all but their lowest k + 1 bits.
     let mut pairs: BTreeMap<usize, Vec<EntrantId>> = BTreeMap::new();
     for entrant in advancing {
         if let Some(leaf) = leaf.get(&entrant)

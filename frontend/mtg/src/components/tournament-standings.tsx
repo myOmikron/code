@@ -41,8 +41,6 @@ export function TournamentStandings({ load, loadLists }: TournamentStandingsProp
         let gone = false;
         loadLists()
             .then((loaded) => {
-                // Only what everybody reads: an Organizer is handed every list,
-                // but the standings show the shared ones.
                 const shared = loaded.decks.filter((list) => list.shared);
                 if (!gone && shared.length > 0) setLists(new Map(shared.map((list) => [list.participant, list])));
             })

@@ -1,14 +1,13 @@
 
 # TournamentEventOneOf7
 
-A Participant reported a Result
+A Round started and shows to everybody
 
 ## Properties
 
 Name | Type
 ------------ | -------------
 `kind` | string
-`match_uuid` | string
 `round` | number
 
 

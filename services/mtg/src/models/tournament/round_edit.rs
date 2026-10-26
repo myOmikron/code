@@ -5,25 +5,22 @@
 
 use galvyn::rorm;
 use galvyn::rorm::db::transaction::Transaction;
-use galvyn::rorm::fields::types::ForeignModelByField;
 use tracing::instrument;
-use uuid::Uuid;
 
 use crate::models::tournament::Tournament;
 use crate::models::tournament::TournamentState;
-use crate::models::tournament::db::TournamentMatchInsertPatch;
 use crate::models::tournament::db::TournamentMatchModel;
 use crate::models::tournament::db::TournamentModel;
 use crate::models::tournament::db::TournamentRoundModel;
-use crate::models::tournament::db::TournamentSeatInsertPatch;
-use crate::models::tournament::db::TournamentSeatModel;
 use crate::models::tournament::db::round_key;
 use crate::models::tournament::round::RoundRefusal;
 use crate::models::tournament::round::RoundStage;
 use crate::models::tournament::round::RoundState;
+use crate::models::tournament::round::insert_matches;
 use crate::tournament::layout::Layout;
 use crate::tournament::layout::LayoutError;
 use crate::tournament::layout::check_layout;
+use crate::tournament::record::EntrantId;
 
 /// Why a preview could not be laid out as asked
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -76,58 +73,17 @@ impl Tournament {
         rorm::delete(&mut *tx, TournamentMatchModel)
             .condition(TournamentMatchModel.round.equals(round))
             .await?;
-        let tables = layout
-            .matches
-            .iter()
-            .map(Vec::as_slice)
-            .enumerate()
-            .map(|(index, seats)| (Some(i16::try_from(index + 1).unwrap_or(i16::MAX)), seats));
-        let byes = layout
-            .byes
-            .iter()
-            .map(|bye| (None, std::slice::from_ref(bye)));
-        let mut match_rows = Vec::new();
-        let mut seat_rows = Vec::new();
-        for (table_number, seats) in tables.chain(byes) {
-            let uuid = Uuid::now_v7();
-            match_rows.push(TournamentMatchInsertPatch {
-                uuid,
-                round: ForeignModelByField(round),
-                table_number,
-                games_drawn: None,
-                result_state: None,
-                reported_by: None,
-                disputed_by: None,
-            });
-            for (index, participant) in seats.iter().enumerate() {
-                seat_rows.push(TournamentSeatInsertPatch {
-                    uuid: Uuid::now_v7(),
-                    tournament_match: ForeignModelByField(uuid),
-                    participant: ForeignModelByField(*participant),
-                    seat: i16::try_from(index + 1).unwrap_or(i16::MAX),
-                    games_won: None,
-                });
-            }
-        }
-        if !match_rows.is_empty() {
-            rorm::insert(&mut *tx, TournamentMatchModel)
-                .return_nothing()
-                .bulk(&match_rows)
-                .await?;
-        }
-        if !seat_rows.is_empty() {
-            rorm::insert(&mut *tx, TournamentSeatModel)
-                .return_nothing()
-                .bulk(&seat_rows)
-                .await?;
-        }
+        let tables: Vec<&[EntrantId]> = layout.matches.iter().map(Vec::as_slice).collect();
+        insert_matches(tx, round, &tables, &layout.byes).await?;
         Ok(Ok(()))
     }
 
     /// Take back the ended Round `number`: it runs again, its Results stay
     ///
     /// Only the latest ended Round, and only while no later Round started; a
-    /// previewed next Round goes, since it was paired on these Results. The
+    /// previewed next Round goes, since it was paired on these Results. Its
+    /// round timer goes too: it ran out or was cut short while the Round was
+    /// over, so the Round runs on without a clock. The
     /// Tournament goes back to the part the Round belongs to: Swiss for a
     /// Swiss Round (also out of the Top cut or Finished), Top cut for a Top
     /// cut Round. Answers the state the Tournament is in afterwards.
@@ -157,6 +113,8 @@ impl Tournament {
         rorm::update(&mut *tx, TournamentRoundModel)
             .set(TournamentRoundModel.state, RoundState::Running)
             .set(TournamentRoundModel.ended_at, None)
+            .set(TournamentRoundModel.timer_seconds, None)
+            .set(TournamentRoundModel.timer_ends_at, None)
             .condition(
                 TournamentRoundModel
                     .uuid
