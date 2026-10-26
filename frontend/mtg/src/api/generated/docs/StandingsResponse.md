@@ -8,6 +8,7 @@ The standings of a Tournament
 Name | Type
 ------------ | -------------
 `standings` | [Array&lt;StandingResponse&gt;](StandingResponse.md)
+`tiebreakers` | [Array&lt;Tiebreaker&gt;](Tiebreaker.md)
 
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)

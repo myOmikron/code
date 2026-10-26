@@ -8,6 +8,7 @@ use crate::models::tournament::participant::ParticipantUuid;
 use crate::models::tournament::round::MatchUuid;
 use crate::models::tournament::round::RoundRefusal;
 use crate::models::tournament::round::RoundState;
+use crate::tournament::standings::Tiebreaker;
 
 /// The Rounds of a Tournament the reader may see, and how many are planned
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
@@ -154,6 +155,8 @@ pub struct SetSwissRoundsErrors {
 /// The standings of a Tournament
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct StandingsResponse {
+    /// The Ruleset's Tiebreakers after Match points, the most significant first
+    pub tiebreakers: Vec<Tiebreaker>,
     /// Every Participant, best first
     pub standings: Vec<StandingResponse>,
 }
@@ -179,4 +182,6 @@ pub struct StandingResponse {
     pub draws: u32,
     /// Byes had
     pub byes: u32,
+    /// Its Tiebreakers between 0 and 1, in the order of [`StandingsResponse::tiebreakers`]
+    pub tiebreakers: Vec<f64>,
 }

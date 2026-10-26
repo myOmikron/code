@@ -37,6 +37,7 @@ use crate::models::tournament::participant::ParticipantUuid;
 use crate::models::tournament::round::MatchUuid;
 use crate::models::tournament::round::ResultRefusal;
 use crate::models::tournament::round::RoundState;
+use crate::tournament::standings::Share;
 use crate::tournament::standings::standings;
 
 /// The Rounds of a Tournament the reader may see
@@ -365,6 +366,7 @@ pub async fn standings_view(
     let names = names(tx, tournament).await?;
     let record = tournament.record(tx).await?;
     Ok(StandingsResponse {
+        tiebreakers: record.ruleset.tiebreakers().to_vec(),
         standings: standings(&record)
             .into_iter()
             .map(|line| {
@@ -380,6 +382,7 @@ pub async fn standings_view(
                     losses: line.losses,
                     draws: line.draws,
                     byes: line.byes,
+                    tiebreakers: line.tiebreakers.iter().map(Share::to_f64).collect(),
                 }
             })
             .collect(),

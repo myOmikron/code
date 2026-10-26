@@ -14,6 +14,22 @@ export function formatResult(result: ResultResponse): string {
 }
 
 /**
+ * A Tiebreaker as the standings show it: a percentage with two decimals
+ *
+ * @param share the Tiebreaker between 0 and 1, as the service sends it
+ * @param locale the locale to write it in, the reader's by default
+ *
+ * @returns the percentage, e.g. "61.64%"
+ */
+export function formatTiebreaker(share: number, locale?: string): string {
+    return new Intl.NumberFormat(locale, {
+        style: "percent",
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    }).format(share);
+}
+
+/**
  * How many games win a Match played best of `bestOf`
  *
  * @param bestOf best of one or of three

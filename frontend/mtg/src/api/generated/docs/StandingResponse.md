@@ -15,6 +15,7 @@ Name | Type
 `name` | string
 `participant` | string
 `place` | number
+`tiebreakers` | Array&lt;number&gt;
 `wins` | number
 
 

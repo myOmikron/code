@@ -7,7 +7,7 @@
 //!
 //! - [`pairing::pair_next_round`]: the next Round's Matches with their Seats
 //!   and Byes, rolled from a seed the caller stores;
-//! - [`standings::standings`]: every Participant's Match points and place;
+//! - [`standings::standings`]: every Participant's Match points, Tiebreakers and place;
 //! - [`rounds::suggested_swiss_rounds`]: how many Swiss Rounds to play;
 //! - [`ruleset`]: what a Ruleset scores and which game scores a Match takes.
 //!

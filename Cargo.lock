@@ -2645,6 +2645,7 @@ dependencies = [
  "galvyn",
  "galvyn-identity",
  "nats-subjects",
+ "num-bigint",
  "prost",
  "rand 0.10.3",
  "regex",

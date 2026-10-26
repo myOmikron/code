@@ -395,7 +395,63 @@ fn the_standings_show_match_points_and_a_bye_counts_as_a_win() {
         assert_eq!(line(&loser)["losses"], 1, "{standings}");
         assert_eq!(line(&loser)["place"], 3, "{standings}");
         assert_eq!(line(&winner)["place"], 1, "{standings}");
-        assert_eq!(line(&bye)["place"], 1, "{standings}");
+        assert_eq!(
+            line(&bye)["place"],
+            2,
+            "the winner has an opponent: {standings}"
+        );
+    });
+}
+
+#[test]
+fn the_standings_break_ties_by_omw_gw_and_ogw() {
+    run(async {
+        let mut event = Event::new("Three", 3).await;
+        let round = event.play_round().await;
+        let bye = round["matches"]
+            .as_array()
+            .expect("matches")
+            .iter()
+            .find(|played| played["table_number"].is_null())
+            .map(|played| seated(played)[0].clone())
+            .expect("a bye");
+        let played = matches(&round)[0];
+        let (winner, loser) = (seated(played)[0].clone(), seated(played)[1].clone());
+
+        let standings = event.standings().await;
+        assert_eq!(
+            standings["tiebreakers"],
+            json!([
+                "OpponentMatchWinPercentage",
+                "GameWinPercentage",
+                "OpponentGameWinPercentage"
+            ]),
+            "{standings}"
+        );
+        let line = |participant: &str| -> Value {
+            standings["standings"]
+                .as_array()
+                .expect("standings")
+                .iter()
+                .find(|line| line["participant"] == participant)
+                .expect("a line")
+                .clone()
+        };
+        assert_eq!(
+            line(&winner)["tiebreakers"],
+            json!([0.33, 1.0, 0.33]),
+            "{standings}"
+        );
+        assert_eq!(
+            line(&bye)["tiebreakers"],
+            json!([0.0, 1.0, 0.0]),
+            "{standings}"
+        );
+        assert_eq!(
+            line(&loser)["tiebreakers"],
+            json!([1.0, 0.33, 1.0]),
+            "{standings}"
+        );
     });
 }
 

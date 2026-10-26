@@ -21865,6 +21865,14 @@
                         "minimum": 0,
                         "format": "uint32"
                     },
+                    "tiebreakers": {
+                        "description": "Its Tiebreakers between 0 and 1, in the order of [`StandingsResponse::tiebreakers`]",
+                        "type": "array",
+                        "items": {
+                            "type": "number",
+                            "format": "double"
+                        }
+                    },
                     "wins": {
                         "description": "Matches won, Byes not included",
                         "type": "integer",
@@ -21881,6 +21889,7 @@
                     "name",
                     "participant",
                     "place",
+                    "tiebreakers",
                     "wins"
                 ]
             },
@@ -21894,10 +21903,18 @@
                         "items": {
                             "$ref": "#/components/schemas/StandingResponse"
                         }
+                    },
+                    "tiebreakers": {
+                        "description": "The Ruleset's Tiebreakers after Match points, the most significant first",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Tiebreaker"
+                        }
                     }
                 },
                 "required": [
-                    "standings"
+                    "standings",
+                    "tiebreakers"
                 ]
             },
             "StartAddPasskeyResponse": {
@@ -22169,6 +22186,32 @@
                         }
                     }
                 }
+            },
+            "Tiebreaker": {
+                "description": "A Tiebreaker: a number a Ruleset orders Participants with equal Match points by",
+                "oneOf": [
+                    {
+                        "description": "OMW%: the average of the opponents' Match-win percentages, each at least the floor",
+                        "type": "string",
+                        "enum": [
+                            "OpponentMatchWinPercentage"
+                        ]
+                    },
+                    {
+                        "description": "GW%: game points over three per game played, at least the floor",
+                        "type": "string",
+                        "enum": [
+                            "GameWinPercentage"
+                        ]
+                    },
+                    {
+                        "description": "OGW%: the average of the opponents' game-win percentages, each at least the floor",
+                        "type": "string",
+                        "enum": [
+                            "OpponentGameWinPercentage"
+                        ]
+                    }
+                ]
             },
             "Timeframe": {
                 "description": "Whether a Tournament is still ahead or already over\n\nA running Tournament is upcoming and a finished or cancelled one is past, whatever their start. One still in Registration is upcoming until its start has passed.",

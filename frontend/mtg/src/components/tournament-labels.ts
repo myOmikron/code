@@ -7,7 +7,7 @@
  */
 
 import { useTranslation } from "react-i18next";
-import { BestOf, RoundState, Ruleset, TournamentState, Visibility } from "src/api/generated";
+import { BestOf, RoundState, Ruleset, Tiebreaker, TournamentState, Visibility } from "src/api/generated";
 
 /**
  * The labels the tournament pages need
@@ -134,6 +134,42 @@ export function useTournamentLabels() {
                     return t("label.visibility-unlisted");
                 case Visibility.Public:
                     return t("label.visibility-public");
+            }
+        },
+
+        /**
+         * The short name of a Tiebreaker, as a column heading
+         *
+         * @param tiebreaker the Tiebreaker
+         *
+         * @returns its abbreviation, e.g. "OMW%"
+         */
+        tiebreaker: (tiebreaker: Tiebreaker): string => {
+            switch (tiebreaker) {
+                case Tiebreaker.OpponentMatchWinPercentage:
+                    return t("label.tiebreaker-omw");
+                case Tiebreaker.GameWinPercentage:
+                    return t("label.tiebreaker-gw");
+                case Tiebreaker.OpponentGameWinPercentage:
+                    return t("label.tiebreaker-ogw");
+            }
+        },
+
+        /**
+         * What a Tiebreaker measures, in one line
+         *
+         * @param tiebreaker the Tiebreaker
+         *
+         * @returns its explanation
+         */
+        tiebreakerDescription: (tiebreaker: Tiebreaker): string => {
+            switch (tiebreaker) {
+                case Tiebreaker.OpponentMatchWinPercentage:
+                    return t("description.tiebreaker-omw");
+                case Tiebreaker.GameWinPercentage:
+                    return t("description.tiebreaker-gw");
+                case Tiebreaker.OpponentGameWinPercentage:
+                    return t("description.tiebreaker-ogw");
             }
         },
 
