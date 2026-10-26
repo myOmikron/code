@@ -7,3 +7,4 @@ pub mod harness;
 mod items;
 mod news_posts;
 mod procurement;
+mod statistics;

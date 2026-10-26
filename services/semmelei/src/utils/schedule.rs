@@ -14,6 +14,7 @@ use time::Date;
 use time::Duration;
 use time::OffsetDateTime;
 use time::PrimitiveDateTime;
+use time::Time;
 use time::Weekday;
 use time_tz::OffsetDateTimeExt;
 use time_tz::PrimitiveDateTimeExt;
@@ -124,6 +125,14 @@ pub fn deadline_from_rule(settings: &ShopSettings, pickup_date: Date) -> OffsetD
 /// so a changed Review Window applies to a day that is already in its window.
 pub fn dispatch_due(settings: &ShopSettings, deadline: OffsetDateTime) -> OffsetDateTime {
     deadline + Duration::minutes(i64::from(settings.review_window_minutes))
+}
+
+/// The point in time `date` begins in the shop's timezone
+pub fn start_of_day(date: Date) -> OffsetDateTime {
+    PrimitiveDateTime::new(date, Time::MIDNIGHT)
+        .assume_timezone(timezone())
+        .take_first()
+        .unwrap_or_else(|| PrimitiveDateTime::new(date, Time::MIDNIGHT).assume_utc())
 }
 
 /// Resolve the upcoming pickup days: rule dates with their overrides applied

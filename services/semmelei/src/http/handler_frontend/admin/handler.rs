@@ -1,9 +1,12 @@
 //! Handlers of the admin endpoints
 
+use std::collections::HashMap;
+
 use base64::Engine;
 use base64::prelude::BASE64_STANDARD;
 use galvyn::core::Module;
 use galvyn::core::re_exports::axum::extract::Path;
+use galvyn::core::re_exports::axum::extract::Query;
 use galvyn::core::stuff::api_error::ApiError;
 use galvyn::core::stuff::api_error::ApiResult;
 use galvyn::core::stuff::api_json::ApiJson;
@@ -33,6 +36,9 @@ use crate::http::handler_frontend::admin::schema::ListPickupDaysResponse;
 use crate::http::handler_frontend::admin::schema::PickupDayChangeResponse;
 use crate::http::handler_frontend::admin::schema::ScheduleSchema;
 use crate::http::handler_frontend::admin::schema::SetItemImageRequest;
+use crate::http::handler_frontend::admin::schema::StatisticsPeriodQuery;
+use crate::http::handler_frontend::admin::schema::StatisticsPosition;
+use crate::http::handler_frontend::admin::schema::StatisticsPositionsResponse;
 use crate::http::handler_frontend::admin::schema::UpdateAccountRequest;
 use crate::http::handler_frontend::admin::schema::UpdatePickupDayRequest;
 use crate::http::handler_frontend::shop::schema::LegalLinks;
@@ -46,6 +52,7 @@ use crate::models::Item;
 use crate::models::ItemData;
 use crate::models::ItemUuid;
 use crate::models::Order;
+use crate::models::OrderItem;
 use crate::models::OrderStatus;
 use crate::models::PickupDay;
 use crate::models::PickupDayOverride;
@@ -603,6 +610,76 @@ pub async fn lock_pickup_day(
     Ok(ApiJson(PickupDayChangeResponse {
         day: schema,
         cancelled_orders: 0,
+    }))
+}
+
+// ------------- //
+//  Statistics   //
+// ------------- //
+
+/// The positions of every order placed or picked up in a period
+///
+/// A position is returned when its order was placed on one of the period's
+/// days (Europe/Berlin) or its pickup day's effective date lies in it.
+#[get("/statistics/positions")]
+pub async fn get_statistics_positions(
+    Query(period): Query<StatisticsPeriodQuery>,
+) -> ApiResult<ApiJson<StatisticsPositionsResponse>> {
+    let SchemaDate(from) = period.from;
+    let SchemaDate(to) = period.to;
+    let after_to = to
+        .next_day()
+        .ok_or(ApiError::bad_request("The period ends too late"))?;
+
+    let mut tx = Database::global().start_transaction().await?;
+    let positions = OrderItem::get_for_statistics(
+        &mut tx,
+        schedule::start_of_day(from),
+        schedule::start_of_day(after_to),
+        from,
+        to,
+    )
+    .await?;
+    let items: HashMap<ItemUuid, Item> = Item::get_all(&mut tx)
+        .await?
+        .into_iter()
+        .map(|item| (item.uuid, item))
+        .collect();
+    let categories: HashMap<CategoryUuid, Category> = Category::get_all(&mut tx)
+        .await?
+        .into_iter()
+        .map(|category| (category.uuid, category))
+        .collect();
+    tx.commit().await?;
+
+    Ok(ApiJson(StatisticsPositionsResponse {
+        positions: positions
+            .into_iter()
+            .map(|position| {
+                let item = position.item.and_then(|uuid| items.get(&uuid));
+                StatisticsPosition {
+                    order: position.order,
+                    ordered_at: SchemaDateTime(position.ordered_at),
+                    status: position.status,
+                    pickup_date: SchemaDate(position.pickup_date),
+                    deadline: SchemaDateTime(position.deadline_at),
+                    dispatched: position.dispatched,
+                    called_off: position.called_off,
+                    item: item.map(|item| item.uuid),
+                    item_name: item.map(|item| item.name.to_string()),
+                    category: item
+                        .and_then(|item| item.category)
+                        .and_then(|uuid| categories.get(&uuid))
+                        .map(|category| PublicCategory {
+                            uuid: category.uuid,
+                            name: category.name.to_string(),
+                        }),
+                    name: position.name.to_string(),
+                    quantity: position.quantity,
+                    price_cents: position.price_cents,
+                }
+            })
+            .collect(),
     }))
 }
 

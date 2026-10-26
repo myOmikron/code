@@ -1,4 +1,4 @@
-//! Admin endpoints: categories, items and staff accounts
+//! Admin endpoints: categories, items, staff accounts and statistics
 
 use galvyn::core::GalvynRouter;
 
@@ -28,6 +28,7 @@ pub fn initialize_routes() -> GalvynRouter {
         .handler(handler::list_pickup_days)
         .handler(handler::update_pickup_day)
         .handler(handler::lock_pickup_day)
+        .handler(handler::get_statistics_positions)
         .handler(handler::get_legal_settings)
         .handler(handler::update_legal_settings)
         .handler(handler::get_bakery_addresses)
