@@ -10,6 +10,7 @@ pub mod deck;
 pub mod format;
 pub mod price;
 pub mod printing;
+pub mod push;
 mod row;
 pub mod scanner_session;
 pub mod share;

@@ -212,6 +212,10 @@ _Avoid_: playoff, finals, bracket (that is how it is shown)
 The deck a Participant with an Account plays in a Tournament. Follows the deck until the first Round starts, or until a late Participant joins; from then on it is a copy of the deck's Deck entries that never changes with the deck and outlives it. Its list is hidden from other Participants until the Tournament is Finished, and shown afterwards only if its Participant shared it.
 _Avoid_: decklist, submitted deck, tournament deck
 
+**Tournament push**:
+A Web Push notification to the devices an Account subscribed, about a Tournament it takes part in, such as "Round paired" with its table and Seat. Each device is subscribed on its own; one setting turns tournament pushes off for all of an Account's devices. A Tournament entered afterwards sends none, and the tournament planner never sends mail.
+_Avoid_: notification mail, alert, message
+
 **Tournament states**:
 Where a Tournament stands: **Registration** before the first Round starts, **Swiss** while Swiss Rounds are played, **Top cut** during the playoff, then **Finished**; **Cancelled** can follow any state and keeps the Rounds played so far.
 _Avoid_: status, phase, closed, completed

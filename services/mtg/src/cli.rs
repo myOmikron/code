@@ -130,6 +130,12 @@ pub enum Command {
         #[clap(value_enum)]
         role: CliRole,
     },
+    /// Print a fresh VAPID key pair for Web Push and exit
+    ///
+    /// The private key goes into `VAPID_PRIVATE_KEY`. Needs no config. Keep
+    /// it for the life of the origin: replacing it orphans every subscribed
+    /// device.
+    GenerateVapidKey,
 }
 
 /// Role assignable via the cli

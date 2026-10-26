@@ -51,6 +51,10 @@ async-compression = { version = "~0.4", features = ["tokio", "gzip"] }
 # Bridges the download's byte stream into something the decoder can read
 tokio-util = { workspace = true, features = ["io"] }
 
+# Web Push to the devices Accounts subscribed, and the VAPID key it is signed with
+web-push-native = { workspace = true }
+base64 = { workspace = true }
+
 # Async
 tokio = { workspace = true }
 futures-util = { workspace = true }

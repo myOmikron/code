@@ -1,0 +1,15 @@
+
+# PushDeviceResponse
+
+Whether a device is subscribed for the account
+
+## Properties
+
+Name | Type
+------------ | -------------
+`subscribed` | boolean
+
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+

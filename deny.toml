@@ -9,7 +9,10 @@ ignore = [
 
     # crypto-bigint 0.5 is not constant-time; fix is in 0.7.6, which needs elliptic-curve 0.14.
     # openidconnect 4.0.1 and jsonwebtoken 11.1 (both latest) still pin p256/p384 0.13.
-    # We only sign with RS256, EC code only verifies public signatures, so no secret is involved.
+    # openidconnect signs with RS256 only and its EC code only verifies public signatures.
+    # web-push-native 0.5 (latest) pins p256 0.13 as well, and there EC code does handle secrets:
+    # the VAPID key signs ES256 and every push draws a fresh ECDH key. A timing attack would have
+    # to measure the push requests mtg sends, which leave the service asynchronously.
     "RUSTSEC-2026-0387",
 ]
 

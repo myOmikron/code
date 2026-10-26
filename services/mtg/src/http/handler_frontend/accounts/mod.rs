@@ -6,6 +6,7 @@ use galvyn_identity::AuthRequiredLayer;
 use crate::http::middleware::account_required::AccountRequiredLayer;
 
 pub mod handler;
+pub mod push;
 pub mod schema;
 
 /// Initializes the account routes
@@ -25,6 +26,7 @@ pub fn initialize_routes() -> GalvynRouter {
                 .handler(handler::rename_passkey)
                 .handler(handler::delete_passkey)
                 .handler(handler::delete_account)
+                .merge(push::initialize_routes())
                 .wrap(AccountRequiredLayer),
         )
 }

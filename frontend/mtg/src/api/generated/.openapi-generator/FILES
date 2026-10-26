@@ -178,6 +178,7 @@ docs/FormErrorResponseForSignUpErrors.md
 docs/FormErrorResponseForSignupErrors.md
 docs/FormErrorResponseForStartLoginErrors.md
 docs/FormErrorResponseForStartOidcLoginErrors.md
+docs/FormErrorResponseForSubscribePushDeviceErrors.md
 docs/FormErrorResponseForTournamentSettingsErrors.md
 docs/FormatRulesResponse.md
 docs/GetPendingOidcLoginResponse.md
@@ -248,6 +249,10 @@ docs/PublicCollectionResponse.md
 docs/PublicDeckResponse.md
 docs/PublicDeckSort.md
 docs/PublicProfileResponse.md
+docs/PushDeviceRequest.md
+docs/PushDeviceResponse.md
+docs/PushLanguage.md
+docs/PushSettingsResponse.md
 docs/PutDeckCollaborator200Response.md
 docs/PutDeckCollaboratorErrors.md
 docs/PutDeckCollaboratorRequest.md
@@ -307,6 +312,7 @@ docs/SetDeckRuleZeroRequest.md
 docs/SetDeckVisibilityRequest.md
 docs/SetPaidErrors.md
 docs/SetPaidRequest.md
+docs/SetPushSettingsRequest.md
 docs/SetResultErrors.md
 docs/SetResultRequest.md
 docs/SetSwissRoundsErrors.md
@@ -344,6 +350,8 @@ docs/StartRegistration200Response.md
 docs/StartRegistrationRequest.md
 docs/StartRegistrationResponse.md
 docs/StatBucketResponse.md
+docs/SubscribePushDeviceErrors.md
+docs/SubscribePushDeviceRequest.md
 docs/SwapDeckCardRequest.md
 docs/SyncRunOutcome.md
 docs/TakeDeckCardsRequest.md
