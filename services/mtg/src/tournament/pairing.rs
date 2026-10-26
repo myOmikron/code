@@ -4,6 +4,8 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 
 use crate::tournament::matching::max_weight_matching;
+use crate::tournament::multiplayer::pair_multiplayer;
+use crate::tournament::multiplayer::topdeck_layout;
 use crate::tournament::record::EntrantId;
 use crate::tournament::record::TournamentRecord;
 use crate::tournament::rng::SplitMix64;
@@ -44,9 +46,8 @@ pub enum PairingError {
 pub fn pair_next_round(record: &TournamentRecord, seed: u64) -> Result<Pairing, PairingError> {
     match record.ruleset {
         Ruleset::Mtr => pair_one_on_one(record, seed),
-        Ruleset::TopDeck | Ruleset::MultiplayerAddendum => {
-            Err(PairingError::RulesetNotPaired(record.ruleset))
-        }
+        Ruleset::TopDeck => pair_multiplayer(record, seed, topdeck_layout),
+        Ruleset::MultiplayerAddendum => Err(PairingError::RulesetNotPaired(record.ruleset)),
     }
 }
 
@@ -165,7 +166,7 @@ fn pair_one_on_one(record: &TournamentRecord, seed: u64) -> Result<Pairing, Pair
 }
 
 /// An unordered pair as an ordered key
-fn pair_key(one: EntrantId, other: EntrantId) -> (EntrantId, EntrantId) {
+pub(super) fn pair_key(one: EntrantId, other: EntrantId) -> (EntrantId, EntrantId) {
     if one <= other {
         (one, other)
     } else {
@@ -378,18 +379,16 @@ mod tests {
     }
 
     #[test]
-    fn the_multiplayer_rulesets_are_not_paired_yet() {
-        for ruleset in [Ruleset::TopDeck, Ruleset::MultiplayerAddendum] {
-            let record = TournamentRecord {
-                ruleset,
-                table_size: TableSize::new(4).expect("a Table size"),
-                ..mtr(8)
-            };
-            assert_eq!(
-                pair_next_round(&record, 0),
-                Err(PairingError::RulesetNotPaired(ruleset))
-            );
-        }
+    fn the_multiplayer_addendum_is_not_paired_yet() {
+        let record = TournamentRecord {
+            ruleset: Ruleset::MultiplayerAddendum,
+            table_size: TableSize::new(4).expect("a Table size"),
+            ..mtr(8)
+        };
+        assert_eq!(
+            pair_next_round(&record, 0),
+            Err(PairingError::RulesetNotPaired(Ruleset::MultiplayerAddendum))
+        );
     }
 
     #[test]

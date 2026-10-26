@@ -809,10 +809,12 @@ fn a_one_on_one_tournament_needs_best_of() {
 }
 
 #[test]
-fn a_multiplayer_tournament_is_not_paired_yet() {
+fn a_multiplayer_addendum_tournament_is_not_paired_yet() {
     run(async {
         let mut client = TestClient::logged_in(&create_account(Role::Member).await).await;
-        let created = create(&mut client, &settings("Public")).await;
+        let mut request = settings("Public");
+        request["ruleset"] = json!("MultiplayerAddendum");
+        let created = create(&mut client, &request).await;
         let tournament = created["uuid"].as_str().expect("uuid");
         for index in 0..4 {
             client

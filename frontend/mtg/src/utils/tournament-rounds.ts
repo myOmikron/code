@@ -1,5 +1,5 @@
 import { BestOf } from "src/api/generated";
-import type { ResultResponse } from "src/api/generated";
+import type { ResultResponse, SetResultRequest } from "src/api/generated";
 
 /**
  * A game score as players say it: "2-1", with drawn games as a third number ("1-1-1")
@@ -42,3 +42,30 @@ export function gamesToWin(bestOf: BestOf): number {
 
 /** The most drawn games a Result records, as the service takes it */
 export const MAX_DRAWN_GAMES = 3;
+
+/**
+ * The Seat that won a multiplayer Match, which is a single game
+ *
+ * @param result the Result of the Match
+ *
+ * @returns the index of the winning Seat, `null` for a draw
+ */
+export function winnerSeat(result: Pick<ResultResponse, "games_won" | "games_drawn">): number | null {
+    const seat = result.games_won.findIndex((won) => won > 0);
+    return result.games_drawn > 0 || seat < 0 ? null : seat;
+}
+
+/**
+ * The Result of a multiplayer Match as the service takes it
+ *
+ * @param seats how many Seats the Match has
+ * @param winner the index of the winning Seat, `null` for a draw
+ *
+ * @returns one game won by the winner, or one drawn game
+ */
+export function singleGameResult(seats: number, winner: number | null): SetResultRequest {
+    return {
+        games_won: Array.from({ length: seats }, (_, seat) => (seat === winner ? 1 : 0)),
+        games_drawn: winner === null ? 1 : 0,
+    };
+}

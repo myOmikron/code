@@ -6,7 +6,8 @@
 //! that started with their Results) and ask:
 //!
 //! - [`pairing::pair_next_round`]: the next Round's Matches with their Seats
-//!   and Byes, rolled from a seed the caller stores;
+//!   and Byes, rolled from a seed the caller stores; multiplayer Rulesets go
+//!   through [`multiplayer::pair_multiplayer`] with their own Match sizes;
 //! - [`standings::standings`]: every Participant's Match points, Tiebreakers and place;
 //! - [`rounds::suggested_swiss_rounds`]: how many Swiss Rounds to play;
 //! - [`layout::check_layout`]: whether an Organizer's layout of a Round fits,
@@ -22,6 +23,7 @@
 
 pub mod layout;
 pub mod matching;
+pub mod multiplayer;
 pub mod pairing;
 pub mod record;
 pub mod reporting;

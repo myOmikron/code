@@ -24138,6 +24138,20 @@
                         "enum": [
                             "OpponentGameWinPercentage"
                         ]
+                    },
+                    {
+                        "description": "Opponent win rate: the average of the opponents' win rates; every Bye adds a Match of opponents at the floor",
+                        "type": "string",
+                        "enum": [
+                            "OpponentWinRate"
+                        ]
+                    },
+                    {
+                        "description": "Win rate: Match points over the most a Participant could have won, at least the floor",
+                        "type": "string",
+                        "enum": [
+                            "WinRate"
+                        ]
                     }
                 ]
             },

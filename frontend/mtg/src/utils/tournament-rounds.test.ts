@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { BestOf } from "src/api/generated";
-import { formatResult, formatTiebreaker, gamesToWin } from "src/utils/tournament-rounds";
+import { formatResult, formatTiebreaker, gamesToWin, singleGameResult, winnerSeat } from "src/utils/tournament-rounds";
 
 describe("formatResult", () => {
     it("writes the games won in Seat order", () => {
@@ -29,5 +29,25 @@ describe("gamesToWin", () => {
     it("takes one game in a best of one and two in a best of three", () => {
         expect(gamesToWin(BestOf.One)).toBe(1);
         expect(gamesToWin(BestOf.Three)).toBe(2);
+    });
+});
+
+describe("winnerSeat", () => {
+    it("finds the Seat that won a multiplayer Match", () => {
+        expect(winnerSeat({ games_won: [0, 0, 1, 0], games_drawn: 0 })).toBe(2);
+    });
+
+    it("has none for a draw", () => {
+        expect(winnerSeat({ games_won: [0, 0, 0], games_drawn: 1 })).toBeNull();
+    });
+});
+
+describe("singleGameResult", () => {
+    it("gives the winner one game and everybody else none", () => {
+        expect(singleGameResult(4, 1)).toEqual({ games_won: [0, 1, 0, 0], games_drawn: 0 });
+    });
+
+    it("makes a draw one drawn game", () => {
+        expect(singleGameResult(3, null)).toEqual({ games_won: [0, 0, 0], games_drawn: 1 });
     });
 });

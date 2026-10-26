@@ -138,6 +138,8 @@ canivete as written (`SwissMatcher`, `Pod`), for reference, not to copy:
 
 The swap search is a local search; it need not be optimal, it needs to be deterministic for a given seed so tests can pin it.
 
+**Decision** (#312): the spread of a Match is counted in point groups (the distinct Match point totals of the paired field, best first), squared, not in raw Match points, so a pair-down costs the same whatever a win is worth and two pair-downs of one group each beat one across two groups, as for the MTR. Ties in the standings are broken at random from the Round's seed before the fill, so Round 1 differs on every pairing. The swap search runs from eight starts, the plain fill and seven fills shuffled within point groups, and keeps the cheapest; on small fields it reaches the fewest repeat opponents (tested against every split of 8, 9 and 11 Participants). A Match that still repeats an opponent is flagged for the Organizer, as one-on-one. The Byes are taken out before the fill and never swapped.
+
 ## Seats
 
 - **MTR**: in a one-on-one Swiss Match the winner of a random method chooses play or draw (MTR 2.2); in the Top cut the higher-ranked Participant chooses. **Decision**: Seat 1 is the Participant who chooses: random in Swiss Rounds, the higher seed in the Top cut. The game score is not tied to Seats.

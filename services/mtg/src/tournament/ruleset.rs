@@ -104,6 +104,21 @@ impl BestOf {
     }
 }
 
+/// Whether `games_won` per Seat and `games_drawn` is the Result of a multiplayer Match
+///
+/// A multiplayer Match is one Game: one Seat won it, or it is a draw of all
+/// (research note, "Match points and Results").
+pub fn single_game_admits(games_won: &[u8], games_drawn: u8) -> bool {
+    let winners = games_won.iter().filter(|won| **won == 1).count();
+    let others_lost = games_won.iter().all(|won| *won <= 1);
+    others_lost
+        && match games_drawn {
+            0 => winners == 1,
+            1 => winners == 0,
+            _ => false,
+        }
+}
+
 /// How many Participants a full Match of a Tournament seats
 ///
 /// 2 for one-on-one, 3 to 5 for multiplayer. Only [`TableSize::new`] makes
@@ -206,6 +221,26 @@ mod tests {
         assert_eq!(Ruleset::Mtr.extra_turns(), 5);
         assert_eq!(Ruleset::TopDeck.extra_turns(), 0);
         assert_eq!(Ruleset::MultiplayerAddendum.extra_turns(), 0);
+    }
+
+    #[test]
+    fn a_multiplayer_match_is_won_by_one_seat_or_drawn_by_all() {
+        for (won, drawn, admitted) in [
+            (&[1, 0, 0, 0][..], 0, true),
+            (&[0, 0, 1][..], 0, true),
+            (&[0, 0, 0, 0][..], 1, true),
+            (&[0, 0, 0, 0][..], 0, false),
+            (&[1, 1, 0, 0][..], 0, false),
+            (&[1, 0, 0, 0][..], 1, false),
+            (&[2, 0, 0, 0][..], 0, false),
+            (&[0, 0, 0][..], 2, false),
+        ] {
+            assert_eq!(
+                super::single_game_admits(won, drawn),
+                admitted,
+                "{won:?} {drawn}"
+            );
+        }
     }
 
     #[test]

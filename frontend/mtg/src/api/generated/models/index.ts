@@ -9408,7 +9408,15 @@ export const Tiebreaker = {
     /**
     * OGW%: the average of the opponents&#39; game-win percentages, each at least the floor
     */
-    OpponentGameWinPercentage: 'OpponentGameWinPercentage'
+    OpponentGameWinPercentage: 'OpponentGameWinPercentage',
+    /**
+    * Opponent win rate: the average of the opponents&#39; win rates; every Bye adds a Match of opponents at the floor
+    */
+    OpponentWinRate: 'OpponentWinRate',
+    /**
+    * Win rate: Match points over the most a Participant could have won, at least the floor
+    */
+    WinRate: 'WinRate'
 } as const;
 export type Tiebreaker = typeof Tiebreaker[keyof typeof Tiebreaker];
 

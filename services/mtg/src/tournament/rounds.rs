@@ -6,12 +6,28 @@ use crate::tournament::ruleset::Ruleset;
 ///
 /// MTR follows its Appendix E, except that up to eight Participants play
 /// ceil(log2 n) Swiss Rounds instead of a single elimination, since mtg always
-/// plays Swiss (research note, "Suggested number of Swiss Rounds"). `None`
-/// for a Ruleset the engine does not pair yet.
+/// plays Swiss (research note, "Suggested number of Swiss Rounds"). TopDeck
+/// follows the MTRA's "Recommended Number of Rounds". `None` for a Ruleset
+/// the engine does not pair yet.
 pub fn suggested_swiss_rounds(ruleset: Ruleset, participants: usize) -> Option<u16> {
     match ruleset {
         Ruleset::Mtr => Some(mtr_rounds(participants)),
-        Ruleset::TopDeck | Ruleset::MultiplayerAddendum => None,
+        Ruleset::TopDeck => Some(topdeck_rounds(participants)),
+        Ruleset::MultiplayerAddendum => None,
+    }
+}
+
+/// The MTRA's table of recommended Swiss Rounds, at every Table size
+fn topdeck_rounds(participants: usize) -> u16 {
+    match participants {
+        0..=16 => 3,
+        17..=34 => 4,
+        35..=128 => 5,
+        129..=208 => 6,
+        209..=304 => 7,
+        305..=540 => 8,
+        541..=960 => 9,
+        _ => 10,
     }
 }
 
@@ -60,6 +76,33 @@ mod tests {
         ] {
             assert_eq!(
                 suggested_swiss_rounds(Ruleset::Mtr, participants),
+                Some(rounds),
+                "{participants} Participants"
+            );
+        }
+    }
+
+    #[test]
+    fn topdeck_suggests_the_rounds_of_its_recommended_table() {
+        for (participants, rounds) in [
+            (4, 3),
+            (16, 3),
+            (17, 4),
+            (34, 4),
+            (35, 5),
+            (128, 5),
+            (129, 6),
+            (208, 6),
+            (209, 7),
+            (304, 7),
+            (305, 8),
+            (540, 8),
+            (541, 9),
+            (960, 9),
+            (961, 10),
+        ] {
+            assert_eq!(
+                suggested_swiss_rounds(Ruleset::TopDeck, participants),
                 Some(rounds),
                 "{participants} Participants"
             );

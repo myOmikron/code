@@ -14,6 +14,7 @@ use crate::tournament::record::EntrantId;
 use crate::tournament::record::TournamentRecord;
 use crate::tournament::rng;
 use crate::tournament::ruleset::Ruleset;
+use crate::tournament::ruleset::TableSize;
 
 /// Game points of a game won (MTR App. C)
 const GAME_POINTS_WIN: u64 = 3;
@@ -33,13 +34,20 @@ pub enum Tiebreaker {
     GameWinPercentage,
     /// OGW%: the average of the opponents' game-win percentages, each at least the floor
     OpponentGameWinPercentage,
+    /// Opponent win rate: the average of the opponents' win rates; every Bye adds
+    /// a Match of opponents at the floor
+    OpponentWinRate,
+    /// Win rate: Match points over the most a Participant could have won, at least the floor
+    WinRate,
 }
 
 impl Ruleset {
     /// The Tiebreakers after Match points, the most significant first
     ///
-    /// MTR: OMW%, GW%, OGW% (MTR 3.1). The multiplayer Rulesets order by
-    /// Match points alone so far.
+    /// MTR: OMW%, GW%, OGW% (MTR 3.1). TopDeck: opponent win rate, win rate;
+    /// its game win rates equal the win rates, since a Match is one Game
+    /// (research note, "TopDeck"). The Multiplayer Addendum orders by Match
+    /// points alone so far.
     pub fn tiebreakers(self) -> &'static [Tiebreaker] {
         match self {
             Self::Mtr => &[
@@ -47,7 +55,27 @@ impl Ruleset {
                 Tiebreaker::GameWinPercentage,
                 Tiebreaker::OpponentGameWinPercentage,
             ],
-            Self::TopDeck | Self::MultiplayerAddendum => &[],
+            Self::TopDeck => &[Tiebreaker::OpponentWinRate, Tiebreaker::WinRate],
+            Self::MultiplayerAddendum => &[],
+        }
+    }
+
+    /// The least a Participant's percentage counts as: MTR 0.33, TopDeck 0.2
+    fn tiebreaker_floor(self) -> Share {
+        match self {
+            Self::Mtr | Self::MultiplayerAddendum => Share::mtr_floor(),
+            Self::TopDeck => Share::new(1, 5),
+        }
+    }
+
+    /// How many opponents at the floor a Bye adds to the opponents' list
+    ///
+    /// TopDeck a full Match of them, T - 1 (MTRA 3.1: three at Table size 4);
+    /// under the MTR a Bye is no opponent.
+    fn bye_opponents(self, table_size: TableSize) -> usize {
+        match self {
+            Self::TopDeck => usize::from(table_size.get().unsigned_abs()).saturating_sub(1),
+            Self::Mtr | Self::MultiplayerAddendum => 0,
         }
     }
 }
@@ -272,7 +300,8 @@ pub fn standings(record: &TournamentRecord) -> Vec<Standing> {
     }
 
     let chain = record.ruleset.tiebreakers();
-    let floor = Share::mtr_floor();
+    let floor = record.ruleset.tiebreaker_floor();
+    let bye_opponents = record.ruleset.bye_opponents(record.table_size);
     let match_win: HashMap<EntrantId, Share> = played
         .iter()
         .map(|(entrant, played)| (*entrant, played.match_win(win, &floor)))
@@ -298,6 +327,22 @@ pub fn standings(record: &TournamentRecord) -> Vec<Standing> {
                 Tiebreaker::OpponentMatchWinPercentage => average(&played.opponents, &match_win),
                 Tiebreaker::GameWinPercentage => played.game_win(&floor),
                 Tiebreaker::OpponentGameWinPercentage => average(&played.opponents, &game_win),
+                Tiebreaker::OpponentWinRate => {
+                    let byes = usize::try_from(line.byes).unwrap_or(usize::MAX);
+                    Share::mean(
+                        played
+                            .opponents
+                            .iter()
+                            .map(|opponent| {
+                                match_win
+                                    .get(opponent)
+                                    .cloned()
+                                    .unwrap_or_else(|| floor.clone())
+                            })
+                            .chain(std::iter::repeat_n(floor.clone(), byes * bye_opponents)),
+                    )
+                }
+                Tiebreaker::WinRate => played.match_win(win, &floor),
             })
             .collect();
     }
@@ -812,5 +857,121 @@ mod tests {
             })
             .collect();
         assert!(orders.len() > 1, "every seed drew the same order");
+    }
+
+    /// A multiplayer Match of `seats` won by Seat `winner`, or drawn
+    fn pod(seats: &[u128], winner: Option<usize>) -> MatchRecord {
+        let mut games_won = vec![0; seats.len()];
+        if let Some(winner) = winner {
+            games_won[winner] = 1;
+        }
+        MatchRecord {
+            seats: seats.iter().copied().map(p).collect(),
+            result: Some(MatchResult {
+                games_won,
+                games_drawn: u8::from(winner.is_none()),
+            }),
+        }
+    }
+
+    /// A TopDeck Tournament at Table size 4 of Participants 1 to `entrants`
+    fn topdeck(entrants: u128, rounds: Vec<RoundRecord>) -> TournamentRecord {
+        TournamentRecord {
+            ruleset: Ruleset::TopDeck,
+            table_size: TableSize::new(4).expect("a Table size"),
+            ..mtr(entrants, rounds)
+        }
+    }
+
+    /// Two Rounds at Table size 4, the second with a smaller Match and a Bye
+    fn topdeck_event() -> Vec<Standing> {
+        standings(&topdeck(
+            9,
+            vec![
+                RoundRecord {
+                    matches: vec![pod(&[1, 2, 3, 4], Some(0)), pod(&[5, 6, 7, 8], None)],
+                    byes: vec![],
+                },
+                RoundRecord {
+                    matches: vec![pod(&[1, 5, 6, 7], Some(1)), pod(&[2, 3, 4], Some(0))],
+                    byes: vec![p(8)],
+                },
+            ],
+        ))
+    }
+
+    /// Opponent win rate and win rate of `n`
+    fn rates(table: &[Standing], n: u128) -> (Share, Share) {
+        let values = &line(table, n).tiebreakers;
+        assert_eq!(values.len(), 2, "TopDeck breaks ties twice");
+        (values[0].clone(), values[1].clone())
+    }
+
+    #[test]
+    fn topdeck_breaks_ties_by_the_opponents_win_rate_then_the_own() {
+        assert_eq!(
+            Ruleset::TopDeck.tiebreakers(),
+            &[Tiebreaker::OpponentWinRate, Tiebreaker::WinRate]
+        );
+    }
+
+    #[test]
+    fn topdeck_scores_five_for_a_win_one_for_a_draw_and_a_bye_as_a_win() {
+        let table = topdeck_event();
+        for (n, points) in [(1, 5), (2, 5), (3, 0), (5, 6), (6, 1), (8, 6), (9, 0)] {
+            assert_eq!(line(&table, n).match_points, points, "Participant {n}");
+        }
+    }
+
+    #[test]
+    fn the_win_rate_is_match_points_over_five_per_match_at_least_a_fifth() {
+        let table = topdeck_event();
+        assert_eq!(rates(&table, 1).1, share(1, 2), "a win and a loss");
+        assert_eq!(
+            rates(&table, 3).1,
+            share(1, 5),
+            "two losses, raised to the floor"
+        );
+        assert_eq!(rates(&table, 6).1, share(1, 5), "1/10 is below the floor");
+        assert_eq!(rates(&table, 8).1, share(3, 5), "a draw and a Bye: 6/10");
+        assert_eq!(rates(&table, 9).1, share(0, 1), "never played");
+    }
+
+    #[test]
+    fn the_opponents_win_rate_counts_a_bye_as_three_opponents_at_the_floor() {
+        let table = topdeck_event();
+        assert_eq!(rates(&table, 1).0, share(19, 60));
+        assert_eq!(
+            rates(&table, 2).0,
+            share(13, 50),
+            "a smaller Match is not padded"
+        );
+        assert_eq!(
+            rates(&table, 8).0,
+            share(4, 15),
+            "three real and three Bye opponents"
+        );
+        assert_eq!(rates(&table, 9).0, share(0, 1));
+
+        let only_bye = standings(&topdeck(
+            1,
+            vec![RoundRecord {
+                matches: vec![],
+                byes: vec![p(1)],
+            }],
+        ));
+        assert_eq!(rates(&only_bye, 1), (share(1, 5), share(1, 1)));
+    }
+
+    #[test]
+    fn under_topdeck_the_stronger_opponents_win_the_tie_before_the_own_win_rate() {
+        let table = topdeck_event();
+        assert!(line(&table, 5).place < line(&table, 8).place);
+        assert!(line(&table, 1).place < line(&table, 2).place);
+        assert_eq!(
+            line(&table, 6).place,
+            line(&table, 7).place,
+            "equal on everything"
+        );
     }
 }
