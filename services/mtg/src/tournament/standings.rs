@@ -39,6 +39,11 @@ pub enum Tiebreaker {
     OpponentWinRate,
     /// Win rate: Match points over the most a Participant could have won, at least the floor
     WinRate,
+    /// MW%: Match points over the most a Participant could have won, without a floor
+    MatchWinPercentage,
+    /// OAMP: the average of the opponents' Match points; a smaller Match adds
+    /// an opponent with none per empty Seat
+    OpponentAverageMatchPoints,
 }
 
 impl Ruleset {
@@ -46,8 +51,8 @@ impl Ruleset {
     ///
     /// MTR: OMW%, GW%, OGW% (MTR 3.1). TopDeck: opponent win rate, win rate;
     /// its game win rates equal the win rates, since a Match is one Game
-    /// (research note, "TopDeck"). The Multiplayer Addendum orders by Match
-    /// points alone so far.
+    /// (research note, "TopDeck"). The Multiplayer Addendum: MW%, OAMP, OMW%
+    /// (Addendum 3.1A).
     pub fn tiebreakers(self) -> &'static [Tiebreaker] {
         match self {
             Self::Mtr => &[
@@ -56,15 +61,37 @@ impl Ruleset {
                 Tiebreaker::OpponentGameWinPercentage,
             ],
             Self::TopDeck => &[Tiebreaker::OpponentWinRate, Tiebreaker::WinRate],
-            Self::MultiplayerAddendum => &[],
+            Self::MultiplayerAddendum => &[
+                Tiebreaker::MatchWinPercentage,
+                Tiebreaker::OpponentAverageMatchPoints,
+                Tiebreaker::OpponentMatchWinPercentage,
+            ],
         }
     }
 
-    /// The least a Participant's percentage counts as: MTR 0.33, TopDeck 0.2
-    fn tiebreaker_floor(self) -> Share {
+    /// The least a Participant's percentage counts as
+    ///
+    /// MTR 0.33, TopDeck 0.2; the Multiplayer Addendum one win's worth, 1 / (2T - 1)
+    /// (1/7 at Table size 4), and only for an opponent's MW% (Addendum App. C).
+    fn tiebreaker_floor(self, table_size: TableSize) -> Share {
         match self {
-            Self::Mtr | Self::MultiplayerAddendum => Share::mtr_floor(),
+            Self::Mtr => Share::mtr_floor(),
             Self::TopDeck => Share::new(1, 5),
+            Self::MultiplayerAddendum => Share::new(1, u64::from(self.win_points(table_size))),
+        }
+    }
+
+    /// How many opponents with no Match points at the floor a Match of `seats` adds
+    ///
+    /// The Multiplayer Addendum one per empty Seat of a smaller Match (Addendum
+    /// App. C, after canivete's ghosts); a Match larger than the Table size
+    /// adds none. TopDeck does not pad a smaller Match (research note).
+    fn phantom_opponents(self, table_size: TableSize, seats: usize) -> usize {
+        match self {
+            Self::MultiplayerAddendum => {
+                usize::from(table_size.get().unsigned_abs()).saturating_sub(seats)
+            }
+            Self::Mtr | Self::TopDeck => 0,
         }
     }
 
@@ -195,6 +222,8 @@ struct Played {
     games: u64,
     /// Everyone it shared a Match with a Result with, once per Match; never a Bye
     opponents: Vec<EntrantId>,
+    /// Opponents at the floor with no Match points, for empty Seats of smaller Matches
+    phantoms: usize,
 }
 
 impl Played {
@@ -203,7 +232,12 @@ impl Played {
         if self.rounds == 0 {
             return Share::zero();
         }
-        Share::new(self.match_points, u64::from(win_points) * self.rounds).max(floor.clone())
+        self.raw_match_win(win_points).max(floor.clone())
+    }
+
+    /// Match points over the most it could have won in its Rounds, without a floor
+    fn raw_match_win(&self, win_points: u32) -> Share {
+        Share::new(self.match_points, u64::from(win_points) * self.rounds)
     }
 
     /// Game points over three per game played, at least `floor`
@@ -295,26 +329,35 @@ pub fn standings(record: &TournamentRecord) -> Vec<Standing> {
                         .filter(|(other, _)| *other != seat)
                         .map(|(_, opponent)| *opponent),
                 );
+                played.phantoms += record
+                    .ruleset
+                    .phantom_opponents(record.table_size, paired.seats.len());
             }
         }
     }
 
     let chain = record.ruleset.tiebreakers();
-    let floor = record.ruleset.tiebreaker_floor();
+    let floor = record.ruleset.tiebreaker_floor(record.table_size);
     let bye_opponents = record.ruleset.bye_opponents(record.table_size);
     let match_win: HashMap<EntrantId, Share> = played
         .iter()
         .map(|(entrant, played)| (*entrant, played.match_win(win, &floor)))
         .collect();
+    let points: HashMap<EntrantId, u64> = played
+        .iter()
+        .map(|(entrant, played)| (*entrant, played.match_points))
+        .collect();
     let game_win: HashMap<EntrantId, Share> = played
         .iter()
         .map(|(entrant, played)| (*entrant, played.game_win(&floor)))
         .collect();
-    let average = |opponents: &[EntrantId], of: &HashMap<EntrantId, Share>| {
+    let average = |played: &Played, of: &HashMap<EntrantId, Share>| {
         Share::mean(
-            opponents
+            played
+                .opponents
                 .iter()
-                .map(|opponent| of.get(opponent).cloned().unwrap_or_else(|| floor.clone())),
+                .map(|opponent| of.get(opponent).cloned().unwrap_or_else(|| floor.clone()))
+                .chain(std::iter::repeat_n(floor.clone(), played.phantoms)),
         )
     };
     for (entrant, line) in &mut lines {
@@ -324,9 +367,9 @@ pub fn standings(record: &TournamentRecord) -> Vec<Standing> {
         line.tiebreakers = chain
             .iter()
             .map(|tiebreaker| match tiebreaker {
-                Tiebreaker::OpponentMatchWinPercentage => average(&played.opponents, &match_win),
+                Tiebreaker::OpponentMatchWinPercentage => average(played, &match_win),
                 Tiebreaker::GameWinPercentage => played.game_win(&floor),
-                Tiebreaker::OpponentGameWinPercentage => average(&played.opponents, &game_win),
+                Tiebreaker::OpponentGameWinPercentage => average(played, &game_win),
                 Tiebreaker::OpponentWinRate => {
                     let byes = usize::try_from(line.byes).unwrap_or(usize::MAX);
                     Share::mean(
@@ -343,6 +386,14 @@ pub fn standings(record: &TournamentRecord) -> Vec<Standing> {
                     )
                 }
                 Tiebreaker::WinRate => played.match_win(win, &floor),
+                Tiebreaker::MatchWinPercentage => played.raw_match_win(win),
+                Tiebreaker::OpponentAverageMatchPoints => Share::mean(
+                    played
+                        .opponents
+                        .iter()
+                        .map(|opponent| Share::new(points.get(opponent).copied().unwrap_or(0), 1))
+                        .chain(std::iter::repeat_n(Share::zero(), played.phantoms)),
+                ),
             })
             .collect();
     }
@@ -973,5 +1024,132 @@ mod tests {
             line(&table, 7).place,
             "equal on everything"
         );
+    }
+
+    /// A Multiplayer Addendum Tournament at Table size 4 of Participants 1 to `entrants`
+    fn addendum(entrants: u128, rounds: Vec<RoundRecord>) -> TournamentRecord {
+        TournamentRecord {
+            ruleset: Ruleset::MultiplayerAddendum,
+            ..topdeck(entrants, rounds)
+        }
+    }
+
+    /// Two Rounds of ten at Table size 4: one Match of four and two of three each
+    fn addendum_event() -> Vec<Standing> {
+        standings(&addendum(
+            10,
+            vec![
+                RoundRecord {
+                    matches: vec![
+                        pod(&[1, 2, 3, 4], Some(0)),
+                        pod(&[5, 6, 7], Some(0)),
+                        pod(&[8, 9, 10], None),
+                    ],
+                    byes: vec![],
+                },
+                RoundRecord {
+                    matches: vec![
+                        pod(&[1, 5, 8, 9], Some(1)),
+                        pod(&[2, 6, 10], Some(0)),
+                        pod(&[3, 4, 7], None),
+                    ],
+                    byes: vec![],
+                },
+            ],
+        ))
+    }
+
+    /// MW%, OAMP and OMW% of `n`
+    fn addendum_tiebreakers(table: &[Standing], n: u128) -> (Share, Share, Share) {
+        let values = &line(table, n).tiebreakers;
+        assert_eq!(values.len(), 3, "the Addendum breaks ties three times");
+        (values[0].clone(), values[1].clone(), values[2].clone())
+    }
+
+    #[test]
+    fn the_addendum_breaks_ties_by_mw_then_oamp_then_omw() {
+        assert_eq!(
+            Ruleset::MultiplayerAddendum.tiebreakers(),
+            &[
+                Tiebreaker::MatchWinPercentage,
+                Tiebreaker::OpponentAverageMatchPoints,
+                Tiebreaker::OpponentMatchWinPercentage,
+            ]
+        );
+    }
+
+    #[test]
+    fn the_addendum_scores_seven_for_a_win_and_one_for_a_draw_also_in_a_smaller_match() {
+        let table = addendum_event();
+        for (n, points) in [(1, 7), (2, 7), (3, 1), (5, 14), (6, 0), (8, 1)] {
+            assert_eq!(line(&table, n).match_points, points, "Participant {n}");
+        }
+    }
+
+    #[test]
+    fn the_addendum_match_win_percentage_has_no_floor() {
+        let table = addendum_event();
+        assert_eq!(addendum_tiebreakers(&table, 1).0, share(1, 2));
+        assert_eq!(addendum_tiebreakers(&table, 5).0, share(1, 1));
+        assert_eq!(addendum_tiebreakers(&table, 3).0, share(1, 14));
+        assert_eq!(addendum_tiebreakers(&table, 6).0, share(0, 1));
+    }
+
+    #[test]
+    fn a_smaller_match_adds_a_phantom_opponent_with_nothing_at_the_floor() {
+        let table = addendum_event();
+        let (_, oamp, omw) = addendum_tiebreakers(&table, 1);
+        assert_eq!(oamp, share(25, 6), "six real opponents");
+        assert_eq!(omw, share(29, 84), "1/2, 1, and four raised to 1/7");
+        let (_, oamp, omw) = addendum_tiebreakers(&table, 2);
+        assert_eq!(oamp, share(10, 6), "five opponents and a phantom");
+        assert_eq!(omw, share(17, 84), "1/2 and five at 1/7, the phantom too");
+        let (_, oamp, omw) = addendum_tiebreakers(&table, 6);
+        assert_eq!(oamp, share(23, 6), "two smaller Matches, two phantoms");
+        assert_eq!(omw, share(29, 84), "1, 1/2 and four at 1/7");
+    }
+
+    #[test]
+    fn under_the_addendum_the_opponents_match_points_break_the_tie_before_their_percentage() {
+        let table = addendum_event();
+        assert!(line(&table, 1).place < line(&table, 2).place);
+    }
+
+    #[test]
+    fn under_the_addendum_the_own_match_win_percentage_comes_first() {
+        let table = standings(&addendum(
+            8,
+            vec![
+                RoundRecord {
+                    matches: vec![pod(&[1, 2, 3, 4], Some(0))],
+                    byes: vec![],
+                },
+                RoundRecord {
+                    matches: vec![pod(&[1, 2, 3, 4], Some(3)), pod(&[5, 6, 7, 8], Some(0))],
+                    byes: vec![],
+                },
+            ],
+        ));
+        assert_eq!(line(&table, 1).match_points, 7);
+        assert_eq!(line(&table, 5).match_points, 7);
+        assert!(
+            line(&table, 5).place < line(&table, 1).place,
+            "one Round won beats a win and a loss, whoever the opponents"
+        );
+    }
+
+    #[test]
+    fn a_match_of_five_at_four_adds_no_phantom() {
+        let table = standings(&addendum(
+            5,
+            vec![RoundRecord {
+                matches: vec![pod(&[1, 2, 3, 4, 5], Some(0))],
+                byes: vec![],
+            }],
+        ));
+        let (mw, oamp, omw) = addendum_tiebreakers(&table, 2);
+        assert_eq!(mw, share(0, 1));
+        assert_eq!(oamp, share(7, 4));
+        assert_eq!(omw, share(10, 28), "1 and three raised to 1/7");
     }
 }

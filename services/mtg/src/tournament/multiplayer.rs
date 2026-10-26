@@ -72,6 +72,28 @@ pub fn topdeck_layout(players: usize, table_size: TableSize) -> Layout {
     Layout { sizes, byes }
 }
 
+/// Multiplayer Addendum: the fewest Matches, the field split as evenly as possible
+///
+/// ceil(n / T) Matches whose sizes differ by at most one, larger ones on the
+/// top tables, never a Bye (Addendum x.1B, 10.4A; research note, "Match
+/// sizes"). Exception after canivete and Addendum App. E: T + 1 Participants
+/// play one Match of T + 1 while that is at most five Seats.
+pub fn addendum_layout(players: usize, table_size: TableSize) -> Layout {
+    let seats = usize::from(table_size.get().unsigned_abs());
+    let largest = usize::from(TableSize::RANGE.end().unsigned_abs());
+    if players == seats + 1 && players <= largest {
+        return Layout {
+            sizes: vec![players],
+            byes: 0,
+        };
+    }
+    let matches = players.div_ceil(seats);
+    let sizes = (0..matches)
+        .map(|table| players / matches + usize::from(table < players % matches))
+        .collect();
+    Layout { sizes, byes: 0 }
+}
+
 /// Pair the next multiplayer Swiss Round of `record` under `layout`, rolling every chance from `seed`
 pub fn pair_multiplayer(
     record: &TournamentRecord,
@@ -295,9 +317,60 @@ impl Search<'_> {
     /// Swap Participants between Matches while that lowers the cost; answers the cost reached
     ///
     /// Takes every swap that helps, in table and Seat order, so the same start
-    /// always ends the same way.
+    /// always ends the same way. When no swap of one for one helps any more,
+    /// tries two for two between the same two Matches: who plays a smaller
+    /// Match is often only settled that way without a repeat opponent, since
+    /// each half of the exchange alone adds one.
     fn improve(&self, tables: &mut [Vec<EntrantId>]) -> Cost {
         let mut costs: Vec<Cost> = tables.iter().map(|table| self.cost(table)).collect();
+        loop {
+            self.swap_pairs(tables, &mut costs);
+            if !self.swap_twos(tables, &mut costs) {
+                break;
+            }
+        }
+        costs.into_iter().fold(Cost::default(), Cost::add)
+    }
+
+    /// Exchange two Participants of one Match for two of another; answers whether that helped
+    ///
+    /// Only the first exchange that lowers the cost is taken; the swaps of one
+    /// for one go on from there.
+    fn swap_twos(&self, tables: &mut [Vec<EntrantId>], costs: &mut [Cost]) -> bool {
+        for a in 0..tables.len() {
+            for b in a + 1..tables.len() {
+                for i in 0..tables[a].len() {
+                    for k in i + 1..tables[a].len() {
+                        for j in 0..tables[b].len() {
+                            for l in j + 1..tables[b].len() {
+                                let (one, two) = (tables[a][i], tables[a][k]);
+                                let (three, four) = (tables[b][j], tables[b][l]);
+                                tables[a][i] = three;
+                                tables[a][k] = four;
+                                tables[b][j] = one;
+                                tables[b][l] = two;
+                                let (cost_a, cost_b) =
+                                    (self.cost(&tables[a]), self.cost(&tables[b]));
+                                if cost_a.add(cost_b) < costs[a].add(costs[b]) {
+                                    costs[a] = cost_a;
+                                    costs[b] = cost_b;
+                                    return true;
+                                }
+                                tables[a][i] = one;
+                                tables[a][k] = two;
+                                tables[b][j] = three;
+                                tables[b][l] = four;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        false
+    }
+
+    /// Swap two Participants of different Matches while that lowers the cost
+    fn swap_pairs(&self, tables: &mut [Vec<EntrantId>], costs: &mut [Cost]) {
         let mut improved = true;
         while improved {
             improved = false;
@@ -322,7 +395,6 @@ impl Search<'_> {
                 }
             }
         }
-        costs.into_iter().fold(Cost::default(), Cost::add)
     }
 }
 
@@ -357,6 +429,7 @@ mod tests {
     use uuid::Uuid;
 
     use super::Layout;
+    use super::addendum_layout;
     use super::topdeck_layout;
     use crate::tournament::pairing::Pairing;
     use crate::tournament::pairing::pair_next_round;
@@ -423,6 +496,14 @@ mod tests {
         });
     }
 
+    /// A Multiplayer Addendum Tournament at Table size 4 of Participants 1 to `entrants`, all pairable
+    fn addendum(entrants: u128) -> TournamentRecord {
+        TournamentRecord {
+            ruleset: Ruleset::MultiplayerAddendum,
+            ..topdeck(entrants)
+        }
+    }
+
     fn sizes(pairing: &Pairing) -> Vec<usize> {
         pairing
             .matches
@@ -476,6 +557,163 @@ mod tests {
         assert_eq!(topdeck_layout(3, size(4)), layout(&[3], 0));
         assert_eq!(topdeck_layout(2, size(5)), layout(&[2], 0));
         assert_eq!(topdeck_layout(1, size(4)), layout(&[], 1));
+    }
+
+    #[test]
+    fn the_addendum_splits_the_field_evenly_over_the_fewest_matches() {
+        for (players, sizes) in [
+            (6, vec![3, 3]),
+            (7, vec![4, 3]),
+            (8, vec![4, 4]),
+            (9, vec![3, 3, 3]),
+            (10, vec![4, 3, 3]),
+            (11, vec![4, 4, 3]),
+            (12, vec![4, 4, 4]),
+            (21, vec![4, 4, 4, 3, 3, 3]),
+            (22, vec![4, 4, 4, 4, 3, 3]),
+            (23, vec![4, 4, 4, 4, 4, 3]),
+        ] {
+            assert_eq!(
+                addendum_layout(players, size(4)),
+                layout(&sizes, 0),
+                "{players}"
+            );
+        }
+    }
+
+    #[test]
+    fn the_addendum_seats_one_more_than_a_table_at_one_match_up_to_five() {
+        assert_eq!(addendum_layout(5, size(4)), layout(&[5], 0));
+        assert_eq!(addendum_layout(4, size(3)), layout(&[4], 0));
+        assert_eq!(addendum_layout(6, size(5)), layout(&[3, 3], 0));
+    }
+
+    #[test]
+    fn the_addendum_takes_the_even_split_to_three_and_five() {
+        assert_eq!(addendum_layout(7, size(3)), layout(&[3, 2, 2], 0));
+        assert_eq!(addendum_layout(8, size(3)), layout(&[3, 3, 2], 0));
+        assert_eq!(addendum_layout(7, size(5)), layout(&[4, 3], 0));
+        assert_eq!(addendum_layout(11, size(5)), layout(&[4, 4, 3], 0));
+        assert_eq!(addendum_layout(14, size(5)), layout(&[5, 5, 4], 0));
+    }
+
+    #[test]
+    fn the_addendum_never_gives_a_bye() {
+        assert_eq!(addendum_layout(3, size(4)), layout(&[3], 0));
+        assert_eq!(addendum_layout(2, size(5)), layout(&[2], 0));
+        for players in 2..=40 {
+            for table in 3..=5 {
+                let split = addendum_layout(players, size(table));
+                assert_eq!(split.byes, 0, "{players} at {table}");
+                assert_eq!(split.sizes.iter().sum::<usize>(), players);
+            }
+        }
+    }
+
+    #[test]
+    fn under_the_addendum_nine_ten_and_eleven_participants_play_smaller_matches_and_no_bye() {
+        for (entrants, expected) in [(9, vec![3, 3, 3]), (10, vec![4, 3, 3]), (11, vec![4, 4, 3])] {
+            for seed in 0..5 {
+                let mut record = addendum(entrants);
+                for number in 0..3 {
+                    let pairing = pair_next_round(&record, seed * 10 + number).expect("pairs");
+                    assert_eq!(sizes(&pairing), expected, "{entrants}, seed {seed}");
+                    assert!(pairing.byes.is_empty(), "{entrants}, seed {seed}");
+                    let everybody: Vec<EntrantId> = (1..=entrants).map(p).collect();
+                    assert_eq!(seated(&pairing), everybody, "{entrants}, seed {seed}");
+                    play(&mut record, &pairing, |table| Some(table % 3));
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn under_the_addendum_five_at_four_play_one_match_of_five() {
+        let mut record = addendum(5);
+        for number in 0..2 {
+            let pairing = pair_next_round(&record, number).expect("pairs");
+            assert_eq!(sizes(&pairing), vec![5]);
+            assert!(pairing.byes.is_empty());
+            play(&mut record, &pairing, |_| Some(4));
+        }
+    }
+
+    /// Who played a smaller Match in `record`, and how often
+    fn smaller_matches(record: &TournamentRecord) -> HashMap<EntrantId, u32> {
+        let mut smaller = HashMap::new();
+        for played in record.rounds.iter().flat_map(|round| &round.matches) {
+            if played.seats.len() < 4 {
+                for entrant in &played.seats {
+                    *smaller.entry(*entrant).or_default() += 1;
+                }
+            }
+        }
+        smaller
+    }
+
+    /// Participants in a smaller Match of `tables` who already played one
+    fn smaller_again(tables: &[Vec<EntrantId>], before: &HashMap<EntrantId, u32>) -> usize {
+        tables
+            .iter()
+            .filter(|table| table.len() < 4)
+            .flatten()
+            .filter(|entrant| before.contains_key(entrant))
+            .count()
+    }
+
+    #[test]
+    fn under_the_addendum_nobody_plays_a_smaller_match_twice_while_avoidable() {
+        let mut rng = SplitMix64::seeded(313);
+        for case in 0..60 {
+            let entrants = [10, 11][case % 2];
+            let mut record = addendum(entrants);
+            for _ in 0..1 + rng.below(2) {
+                let pairing = pair_next_round(&record, rng.next_u64()).expect("pairs");
+                let winners: Vec<usize> =
+                    (0..pairing.matches.len()).map(|_| rng.below(3)).collect();
+                play(&mut record, &pairing, |table| Some(winners[table]));
+            }
+            let before = smaller_matches(&record);
+            let met = meetings(&record);
+            let pairing = pair_next_round(&record, rng.next_u64()).expect("pairs");
+            let tables: Vec<Vec<EntrantId>> = pairing
+                .matches
+                .iter()
+                .map(|paired| paired.seats.clone())
+                .collect();
+            let field: Vec<EntrantId> = tables.iter().flatten().copied().collect();
+            let best = splits(&field, &sizes(&pairing))
+                .iter()
+                .map(|split| (repeats(split, &met), smaller_again(split, &before)))
+                .min()
+                .expect("a split");
+            assert_eq!(
+                (repeats(&tables, &met), smaller_again(&tables, &before)),
+                best,
+                "case {case}"
+            );
+        }
+    }
+
+    #[test]
+    fn under_the_addendum_a_second_smaller_match_waits_until_everyone_had_one() {
+        for seed in 0..8 {
+            let mut record = addendum(15);
+            let mut smaller = HashSet::new();
+            for number in 0..3 {
+                let pairing = pair_next_round(&record, seed * 10 + number).expect("pairs");
+                let short = pairing.matches.last().expect("four Matches");
+                assert_eq!(short.seats.len(), 3);
+                for entrant in &short.seats {
+                    assert!(
+                        smaller.insert(*entrant),
+                        "seed {seed}, Round {}: {entrant} again",
+                        number + 1
+                    );
+                }
+                play(&mut record, &pairing, |table| Some(table % 3));
+            }
+        }
     }
 
     #[test]

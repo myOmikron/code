@@ -179,8 +179,6 @@ pub enum RoundRefusal {
     AllRoundsPaired,
     /// Fewer than two Participants are pairable
     TooFewParticipants,
-    /// mtg does not pair this Ruleset yet
-    RulesetNotPaired,
     /// No Round of that number is previewed
     NotPreviewed,
     /// No Round of that number is running
@@ -407,8 +405,10 @@ impl Tournament {
         tx: &mut Transaction,
     ) -> Result<Option<i16>, rorm::Error> {
         let participants = self.pairable(tx).await?;
-        Ok(suggested_swiss_rounds(self.ruleset, participants)
-            .map(|rounds| i16::try_from(rounds).unwrap_or(MAX_SWISS_ROUNDS)))
+        Ok(
+            suggested_swiss_rounds(self.ruleset, self.table_size, participants)
+                .map(|rounds| i16::try_from(rounds).unwrap_or(MAX_SWISS_ROUNDS)),
+        )
     }
 
     /// How many Swiss Rounds are played: an Organizer's number, else the suggestion
@@ -484,9 +484,6 @@ impl Tournament {
                     Ok(pairing) => (RoundStage::Swiss, pairing),
                     Err(PairingError::TooFewEntrants) => {
                         return Ok(Err(RoundRefusal::TooFewParticipants));
-                    }
-                    Err(PairingError::RulesetNotPaired(_)) => {
-                        return Ok(Err(RoundRefusal::RulesetNotPaired));
                     }
                 }
             }

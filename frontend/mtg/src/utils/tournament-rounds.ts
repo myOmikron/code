@@ -1,4 +1,4 @@
-import { BestOf } from "src/api/generated";
+import { BestOf, Tiebreaker } from "src/api/generated";
 import type { ResultResponse, SetResultRequest } from "src/api/generated";
 
 /**
@@ -27,6 +27,28 @@ export function formatTiebreaker(share: number, locale?: string): string {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
     }).format(share);
+}
+
+/**
+ * A Tiebreaker's value as the standings show it
+ *
+ * The opponents' average Match points are a number of points with two
+ * decimals; every other Tiebreaker is a share, written by {@link formatTiebreaker}.
+ *
+ * @param tiebreaker which Tiebreaker the value belongs to
+ * @param value the value as the service sends it
+ * @param locale the locale to write it in, the reader's by default
+ *
+ * @returns the value, e.g. "4.17" or "61.64%"
+ */
+export function formatTiebreakerValue(tiebreaker: Tiebreaker, value: number, locale?: string): string {
+    if (tiebreaker === Tiebreaker.OpponentAverageMatchPoints) {
+        return new Intl.NumberFormat(locale, {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+        }).format(value);
+    }
+    return formatTiebreaker(value, locale);
 }
 
 /**

@@ -809,38 +809,6 @@ fn a_one_on_one_tournament_needs_best_of() {
 }
 
 #[test]
-fn a_multiplayer_addendum_tournament_is_not_paired_yet() {
-    run(async {
-        let mut client = TestClient::logged_in(&create_account(Role::Member).await).await;
-        let mut request = settings("Public");
-        request["ruleset"] = json!("MultiplayerAddendum");
-        let created = create(&mut client, &request).await;
-        let tournament = created["uuid"].as_str().expect("uuid");
-        for index in 0..4 {
-            client
-                .json(
-                    Method::POST,
-                    &api(&format!("tournaments/{tournament}/participants/guests")),
-                    &json!({ "name": format!("Guest {index}") }),
-                )
-                .await
-                .ok_json();
-        }
-
-        let refused = client
-            .json(
-                Method::POST,
-                &api(&format!("tournaments/{tournament}/rounds")),
-                &json!({}),
-            )
-            .await
-            .ok_json();
-
-        assert_eq!(refused["error"]["ruleset_not_paired"], true, "{refused}");
-    });
-}
-
-#[test]
 fn a_share_link_shows_the_rounds_and_standings_but_never_the_preview() {
     run(async {
         let mut event = Event::new("Three", 4).await;

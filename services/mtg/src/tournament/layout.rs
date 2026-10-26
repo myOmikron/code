@@ -8,9 +8,11 @@
 use std::collections::HashMap;
 use std::collections::HashSet;
 
+use crate::tournament::multiplayer::addendum_layout;
 use crate::tournament::record::EntrantId;
 use crate::tournament::record::RoundRecord;
 use crate::tournament::record::TournamentRecord;
+use crate::tournament::ruleset::Ruleset;
 
 /// The Matches and Byes of a Round as an Organizer lays them out
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -43,7 +45,9 @@ pub enum LayoutError {
 ///
 /// Every pairable Participant sits exactly once, in a Match or in a Bye, and
 /// nobody else sits at all. One-on-one a Match seats two; multiplayer a full
-/// table or one Seat fewer. The Multiplayer Addendum gives no Byes.
+/// table or one Seat fewer, and under the Multiplayer Addendum also any size
+/// its own split lays out for the field (one Match of five at four, a Match
+/// two Seats short at five). The Multiplayer Addendum gives no Byes.
 pub fn check_layout(record: &TournamentRecord, layout: &Layout) -> Vec<LayoutError> {
     let mut errors = Vec::new();
     let pairable: HashSet<EntrantId> = record
@@ -76,8 +80,14 @@ pub fn check_layout(record: &TournamentRecord, layout: &Layout) -> Vec<LayoutErr
     }
 
     let full = usize::try_from(record.table_size.get()).unwrap_or(2);
+    let split = match record.ruleset {
+        Ruleset::MultiplayerAddendum => addendum_layout(pairable.len(), record.table_size).sizes,
+        Ruleset::Mtr | Ruleset::TopDeck => Vec::new(),
+    };
     for (index, seats) in layout.matches.iter().enumerate() {
-        let fits = seats.len() == full || (full > 2 && seats.len() + 1 == full);
+        let fits = seats.len() == full
+            || (full > 2 && seats.len() + 1 == full)
+            || split.contains(&seats.len());
         if !fits {
             errors.push(LayoutError::MatchSize { table: index + 1 });
         }
@@ -355,6 +365,36 @@ mod tests {
         assert_eq!(
             blank_layout(&record),
             layout(&[&[1, 2, 3, 4], &[5, 6, 7], &[8, 9, 10]], &[])
+        );
+    }
+
+    #[test]
+    fn the_addendum_also_admits_the_match_sizes_its_own_split_lays_out() {
+        let five = tournament(Ruleset::MultiplayerAddendum, 4, 5);
+        assert_eq!(
+            check_layout(&five, &layout(&[&[1, 2, 3, 4, 5]], &[])),
+            vec![]
+        );
+        let seven = tournament(Ruleset::MultiplayerAddendum, 5, 7);
+        assert_eq!(
+            check_layout(&seven, &layout(&[&[1, 2, 3, 4], &[5, 6, 7]], &[])),
+            vec![]
+        );
+        let eleven = tournament(Ruleset::MultiplayerAddendum, 4, 11);
+        assert_eq!(
+            check_layout(
+                &eleven,
+                &layout(&[&[1, 2, 3, 4, 5], &[6, 7, 8], &[9, 10, 11]], &[])
+            ),
+            vec![LayoutError::MatchSize { table: 1 }],
+            "a Match of five is only the whole field of five"
+        );
+        assert_eq!(
+            check_layout(
+                &tournament(Ruleset::TopDeck, 4, 5),
+                &layout(&[&[1, 2, 3, 4, 5]], &[])
+            ),
+            vec![LayoutError::MatchSize { table: 1 }]
         );
     }
 
