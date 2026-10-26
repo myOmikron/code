@@ -81,9 +81,11 @@ export function classifyPasskeyError(error: unknown): PasskeyErrors {
             case "ERROR_AUTO_REGISTER_USER_VERIFICATION_FAILURE":
                 return { ...NO_PASSKEY_ERROR, authenticator_error: true };
             // Malformed options — the server built the challenge wrong, nothing the user can
-            // do about it, so it stays a generic failure.
+            // do about it, so it stays a generic failure. Bad signal* arguments too, which no
+            // ceremony makes.
             case "ERROR_INVALID_USER_ID_LENGTH":
             case "ERROR_MALFORMED_PUBKEYCREDPARAMS":
+            case "ERROR_SIGNAL_INVALID_ARGUMENT":
                 return { ...NO_PASSKEY_ERROR, unknown: true };
             // Raised verbatim by the platform; the real reason is the DOMException below.
             case "ERROR_PASSTHROUGH_SEE_CAUSE_PROPERTY":
@@ -163,8 +165,7 @@ type CurrentUserDetails = {
 export async function signalUsername(rpId: string, userId: string, username: string): Promise<void> {
     const signal = (
         globalThis.PublicKeyCredential as
-            | { signalCurrentUserDetails?: (details: CurrentUserDetails) => Promise<void> }
-            | undefined
+            { signalCurrentUserDetails?: (details: CurrentUserDetails) => Promise<void> } | undefined
     )?.signalCurrentUserDetails;
     if (signal === undefined) return;
     try {

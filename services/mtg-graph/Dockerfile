@@ -1,6 +1,6 @@
 # Build context is the workspace root, like the Rust services:
 #   docker build -f services/mtg-graph/Dockerfile .
-FROM ghcr.io/astral-sh/uv:0.13.1-python3.14-trixie-slim@sha256:112f89760bd54b63c84d140151ea5f3d849278e54f6f939f2c40a57f3e33d895 AS build
+FROM ghcr.io/astral-sh/uv:0.13.5-python3.14-trixie-slim@sha256:d8e732839dfc4225a1ff698803b478b2223c05636c055d3add41ab9dbec0f315 AS build
 
 WORKDIR /app
 ENV UV_COMPILE_BYTECODE=1
@@ -17,7 +17,7 @@ RUN uv sync --locked --no-dev --extra api --extra solver --extra edhrec
 
 # Not dhi.io/alpine-base like the Rust services: ortools only ships manylinux
 # (glibc) wheels, so the runtime has to stay Debian-based.
-FROM python:3.14.8-slim-trixie@sha256:a2b82f3c48559aa0a8446d9af49826b6e2b2016f4cd2afabfe6013ec53729170
+FROM python:3.15.1-slim-trixie@sha256:533b0b2f9b5d46fd097091cf826f27902f1d6c3bca714b6dc74551356aa97a51
 
 RUN <<EOF
 set -e

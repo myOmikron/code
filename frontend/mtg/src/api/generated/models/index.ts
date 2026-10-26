@@ -83,8 +83,6 @@ export interface AddCoOrganizerErrors {
 export interface AddCollectionEntriesRequest {
     /**
      * The stacks to file
-     * @type {Array<NewCollectionEntry>}
-     * @memberof AddCollectionEntriesRequest
      */
     entries: Array<NewCollectionEntry>;
 }
@@ -96,32 +94,22 @@ export interface AddCollectionEntriesRequest {
 export interface AddDeckCardRequest {
     /**
      * Whether the copies are the foil ones, `null` for the ordinary ones
-     * @type {boolean}
-     * @memberof AddDeckCardRequest
      */
     foil?: boolean | null;
     /**
      * Scryfall's id of the printing
-     * @type {string}
-     * @memberof AddDeckCardRequest
      */
     printing: string;
     /**
      * Whether the copies are stand-ins rather than the real cards, `null` for the ordinary ones
-     * @type {boolean}
-     * @memberof AddDeckCardRequest
      */
     proxy?: boolean | null;
     /**
      * How many copies to put in
-     * @type {number}
-     * @memberof AddDeckCardRequest
      */
     quantity: number;
     /**
      * Which zone it goes into
-     * @type {DeckZone}
-     * @memberof AddDeckCardRequest
      */
     zone: DeckZone;
 }
@@ -167,26 +155,18 @@ export interface AddGuestParticipantRequest {
 export interface AddPasskeyErrors {
     /**
      * This authenticator already holds a passkey for this account
-     * @type {boolean}
-     * @memberof AddPasskeyErrors
      */
     already_registered: boolean;
     /**
      * The browser's response was not a credential
-     * @type {boolean}
-     * @memberof AddPasskeyErrors
      */
     malformed_credential: boolean;
     /**
      * No ceremony is in progress — the session expired, or `passkeys/start` was never called
-     * @type {boolean}
-     * @memberof AddPasskeyErrors
      */
     no_ceremony: boolean;
     /**
      * The credential did not check out
-     * @type {boolean}
-     * @memberof AddPasskeyErrors
      */
     registration_failed: boolean;
 }
@@ -198,32 +178,22 @@ export interface AddPasskeyErrors {
 export interface AddScannerSessionEntryRequest {
     /**
      * Physical finish
-     * @type {CardFinish}
-     * @memberof AddScannerSessionEntryRequest
      */
     finish: CardFinish;
     /**
      * Scryfall printing id
-     * @type {string}
-     * @memberof AddScannerSessionEntryRequest
      */
     printing: string;
     /**
      * Paid price per copy in euro cents
-     * @type {number}
-     * @memberof AddScannerSessionEntryRequest
      */
     purchase_price_cents?: number | null;
     /**
      * Number of copies
-     * @type {number}
-     * @memberof AddScannerSessionEntryRequest
      */
     quantity: number;
     /**
      * Whether the cards are signed
-     * @type {boolean}
-     * @memberof AddScannerSessionEntryRequest
      */
     signed?: boolean;
 }
@@ -255,50 +225,34 @@ export type AddTournamentGuest200Response = FormErrorResponseForAddGuestParticip
 export interface AddWatchListEntryRequest {
     /**
      * Alarm below this price in euro cents, `None` for no alarm
-     * @type {number}
-     * @memberof AddWatchListEntryRequest
      */
     alarm_price_cents?: number | null;
     /**
      * Whether only this very printing counts
-     * @type {boolean}
-     * @memberof AddWatchListEntryRequest
      */
     exact_printing: boolean;
     /**
      * The finish that is wanted
-     * @type {CardFinish}
-     * @memberof AddWatchListEntryRequest
      */
     finish: CardFinish;
     /**
      * Which languages count, as Scryfall's codes; empty for any
-     * @type {Array<string>}
-     * @memberof AddWatchListEntryRequest
      */
     languages?: Array<string>;
     /**
      * Whether only the named finish counts
-     * @type {boolean}
-     * @memberof AddWatchListEntryRequest
      */
     match_finish: boolean;
     /**
      * What the entry is for
-     * @type {string}
-     * @memberof AddWatchListEntryRequest
      */
     note: string;
     /**
      * Scryfall's id of the printing
-     * @type {string}
-     * @memberof AddWatchListEntryRequest
      */
     printing: string;
     /**
      * How many copies the account is after, at least one
-     * @type {number}
-     * @memberof AddWatchListEntryRequest
      */
     wanted: number;
 }
@@ -312,56 +266,38 @@ export interface AddWatchListEntryRequest {
 export interface AdminAccount {
     /**
      * Collections on the shelf, without the ones standing for a deck
-     * @type {number}
-     * @memberof AdminAccount
      */
     collections: number;
     /**
      * When the Account was created
-     * @type {string}
-     * @memberof AdminAccount
      */
     created_at: string;
     /**
      * Decks of the Account
-     * @type {number}
-     * @memberof AdminAccount
      */
     decks: number;
     /**
      * Email address
-     * @type {string}
-     * @memberof AdminAccount
      */
     email: string;
     /**
      * The Account's Lock, `None` while it is not locked
-     * @type {AdminAccountLock}
-     * @memberof AdminAccount
      */
     lock?: AdminAccountLock | null;
     /**
      * The OpenID provider an External Account logs in through, `None` for a Local Account
-     * @type {AdminOpenIdProvider}
-     * @memberof AdminAccount
      */
     openid_provider?: AdminOpenIdProvider | null;
     /**
      * What the Account may do
-     * @type {Role}
-     * @memberof AdminAccount
      */
     role: Role;
     /**
      * Login handle and display name
-     * @type {string}
-     * @memberof AdminAccount
      */
     username: string;
     /**
      * Primary key
-     * @type {string}
-     * @memberof AdminAccount
      */
     uuid: string;
 }
@@ -375,20 +311,14 @@ export interface AdminAccount {
 export interface AdminAccountDetail {
     /**
      * What the list shows
-     * @type {AdminAccount}
-     * @memberof AdminAccountDetail
      */
     account: AdminAccount;
     /**
      * Cards the Account owns, on the shelf and sleeved in decks
-     * @type {number}
-     * @memberof AdminAccountDetail
      */
     cards: number;
     /**
      * Passkeys the Account can log in with
-     * @type {number}
-     * @memberof AdminAccountDetail
      */
     passkeys: number;
 }
@@ -400,14 +330,10 @@ export interface AdminAccountDetail {
 export interface AdminAccountLock {
     /**
      * When the Account was locked
-     * @type {string}
-     * @memberof AdminAccountLock
      */
     locked_at: string;
     /**
      * Why it was locked
-     * @type {string}
-     * @memberof AdminAccountLock
      */
     reason: string;
 }
@@ -419,44 +345,30 @@ export interface AdminAccountLock {
 export interface AdminBugReport {
     /**
      * When it was sent
-     * @type {string}
-     * @memberof AdminBugReport
      */
     created_at: string;
     /**
      * The running number
-     * @type {number}
-     * @memberof AdminBugReport
      */
     number: number;
     /**
      * Whether its images and diagnostics were purged
-     * @type {boolean}
-     * @memberof AdminBugReport
      */
     purged: boolean;
     /**
      * The Release the app was running
-     * @type {string}
-     * @memberof AdminBugReport
      */
     release: string;
     /**
      * Who sent it
-     * @type {BugReportAccount}
-     * @memberof AdminBugReport
      */
     reporter: BugReportAccount;
     /**
      * The route the app was on
-     * @type {string}
-     * @memberof AdminBugReport
      */
     route: string;
     /**
      * Open or done
-     * @type {BugReportState}
-     * @memberof AdminBugReport
      */
     state: BugReportState;
 }
@@ -470,68 +382,46 @@ export interface AdminBugReport {
 export interface AdminBugReportDetail {
     /**
      * The diagnostics document the app built, `None` once purged
-     * @type {any}
-     * @memberof AdminBugReportDetail
      */
     diagnostics?: any | null;
     /**
      * When it was marked done
-     * @type {string}
-     * @memberof AdminBugReportDetail
      */
     done_at?: string | null;
     /**
      * The Admin that marked it done, `None` while open or once that Admin is deleted
-     * @type {BugReportAccount}
-     * @memberof AdminBugReportDetail
      */
     done_by?: BugReportAccount | null;
     /**
      * Its images, in the order they were sent, empty once purged
-     * @type {Array<BugReportImageInfo>}
-     * @memberof AdminBugReportDetail
      */
     images: Array<BugReportImageInfo>;
     /**
      * The browser's language
-     * @type {string}
-     * @memberof AdminBugReportDetail
      */
     language: string;
     /**
      * The Admins' internal note
-     * @type {string}
-     * @memberof AdminBugReportDetail
      */
     note?: string | null;
     /**
      * When its images and diagnostics were purged
-     * @type {string}
-     * @memberof AdminBugReportDetail
      */
     purged_at?: string | null;
     /**
      * What the list shows
-     * @type {AdminBugReport}
-     * @memberof AdminBugReportDetail
      */
     report: AdminBugReport;
     /**
      * What went wrong, in the player's words
-     * @type {string}
-     * @memberof AdminBugReportDetail
      */
     text: string;
     /**
      * The browser's user agent
-     * @type {string}
-     * @memberof AdminBugReportDetail
      */
     user_agent: string;
     /**
      * The browser window's size
-     * @type {string}
-     * @memberof AdminBugReportDetail
      */
     viewport: string;
 }
@@ -552,7 +442,7 @@ export const AdminBugReportFilter = {
     /**
     * All of them
     */
-    All: 'All'
+    All: 'All',
 } as const;
 export type AdminBugReportFilter = typeof AdminBugReportFilter[keyof typeof AdminBugReportFilter];
 
@@ -564,14 +454,10 @@ export type AdminBugReportFilter = typeof AdminBugReportFilter[keyof typeof Admi
 export interface AdminCatalogStamp {
     /**
      * The `updated_at` Scryfall stamped the bulk file with
-     * @type {string}
-     * @memberof AdminCatalogStamp
      */
     bulk_updated_at: string;
     /**
      * When it was read
-     * @type {string}
-     * @memberof AdminCatalogStamp
      */
     synced_at: string;
 }
@@ -583,14 +469,10 @@ export interface AdminCatalogStamp {
 export interface AdminCatalogSync {
     /**
      * Its Sync runs
-     * @type {AdminSyncRuns}
-     * @memberof AdminCatalogSync
      */
     runs: AdminSyncRuns;
     /**
      * The file the catalog was last read from, `None` before the first read
-     * @type {AdminCatalogStamp}
-     * @memberof AdminCatalogSync
      */
     stamp?: AdminCatalogStamp | null;
 }
@@ -602,14 +484,10 @@ export interface AdminCatalogSync {
 export interface AdminDeleteAccountErrors {
     /**
      * The Account is the Admin's own, which it cannot delete
-     * @type {boolean}
-     * @memberof AdminDeleteAccountErrors
      */
     own_account: boolean;
     /**
      * The typed username is not the Account's
-     * @type {boolean}
-     * @memberof AdminDeleteAccountErrors
      */
     username_mismatch: boolean;
 }
@@ -621,14 +499,10 @@ export interface AdminDeleteAccountErrors {
 export interface AdminDeleteAccountRequest {
     /**
      * What happens to the Account's public decks
-     * @type {DeletionMode}
-     * @memberof AdminDeleteAccountRequest
      */
     mode?: DeletionMode;
     /**
      * The Account's username, typed out by the Admin
-     * @type {string}
-     * @memberof AdminDeleteAccountRequest
      */
     username: string;
 }
@@ -642,14 +516,10 @@ export interface AdminDeleteAccountRequest {
 export interface AdminListAccountsResponse {
     /**
      * The Accounts
-     * @type {Array<AdminAccount>}
-     * @memberof AdminListAccountsResponse
      */
     accounts: Array<AdminAccount>;
     /**
      * Pass as `after` for the next page, `None` on the last one
-     * @type {string}
-     * @memberof AdminListAccountsResponse
      */
     next_cursor?: string | null;
 }
@@ -661,14 +531,10 @@ export interface AdminListAccountsResponse {
 export interface AdminListBugReportsResponse {
     /**
      * Pass as `after` for the next page, `None` on the last one
-     * @type {number}
-     * @memberof AdminListBugReportsResponse
      */
     next_cursor?: number | null;
     /**
      * The Bug reports
-     * @type {Array<AdminBugReport>}
-     * @memberof AdminListBugReportsResponse
      */
     reports: Array<AdminBugReport>;
 }
@@ -680,14 +546,10 @@ export interface AdminListBugReportsResponse {
 export interface AdminListLogResponse {
     /**
      * The entries
-     * @type {Array<AdminLogEntryResponse>}
-     * @memberof AdminListLogResponse
      */
     entries: Array<AdminLogEntryResponse>;
     /**
      * Pass as `after` for the next page, `None` on the last one
-     * @type {string}
-     * @memberof AdminListLogResponse
      */
     next_cursor?: string | null;
 }
@@ -699,20 +561,14 @@ export interface AdminListLogResponse {
 export interface AdminLockAccountErrors {
     /**
      * The Account is locked already
-     * @type {boolean}
-     * @memberof AdminLockAccountErrors
      */
     already_locked: boolean;
     /**
      * The Account is the Admin's own, which it cannot Lock
-     * @type {boolean}
-     * @memberof AdminLockAccountErrors
      */
     own_account: boolean;
     /**
      * No reason was given
-     * @type {boolean}
-     * @memberof AdminLockAccountErrors
      */
     reason_missing: boolean;
 }
@@ -724,8 +580,6 @@ export interface AdminLockAccountErrors {
 export interface AdminLockAccountRequest {
     /**
      * Why the Account is locked, shown to Admins only
-     * @type {string}
-     * @memberof AdminLockAccountRequest
      */
     reason: string;
 }
@@ -743,14 +597,10 @@ export type AdminLogAction = AdminLogActionOneOf | AdminLogActionOneOf1 | AdminL
 export interface AdminLogActionOneOf {
     /**
      * 
-     * @type {AdminLogActionOneOfKindEnum}
-     * @memberof AdminLogActionOneOf
      */
     kind: AdminLogActionOneOfKindEnum;
     /**
      * Why the Account was locked
-     * @type {string}
-     * @memberof AdminLogActionOneOf
      */
     reason: string;
 }
@@ -760,7 +610,7 @@ export interface AdminLogActionOneOf {
  * @export
  */
 export const AdminLogActionOneOfKindEnum = {
-    Lock: 'Lock'
+    Lock: 'Lock',
 } as const;
 export type AdminLogActionOneOfKindEnum = typeof AdminLogActionOneOfKindEnum[keyof typeof AdminLogActionOneOfKindEnum];
 
@@ -772,14 +622,10 @@ export type AdminLogActionOneOfKindEnum = typeof AdminLogActionOneOfKindEnum[key
 export interface AdminLogActionOneOf1 {
     /**
      * 
-     * @type {AdminLogActionOneOf1KindEnum}
-     * @memberof AdminLogActionOneOf1
      */
     kind: AdminLogActionOneOf1KindEnum;
     /**
      * Why the Lock was lifted, if the Admin said
-     * @type {string}
-     * @memberof AdminLogActionOneOf1
      */
     reason?: string | null;
 }
@@ -789,7 +635,7 @@ export interface AdminLogActionOneOf1 {
  * @export
  */
 export const AdminLogActionOneOf1KindEnum = {
-    Unlock: 'Unlock'
+    Unlock: 'Unlock',
 } as const;
 export type AdminLogActionOneOf1KindEnum = typeof AdminLogActionOneOf1KindEnum[keyof typeof AdminLogActionOneOf1KindEnum];
 
@@ -801,14 +647,10 @@ export type AdminLogActionOneOf1KindEnum = typeof AdminLogActionOneOf1KindEnum[k
 export interface AdminLogActionOneOf2 {
     /**
      * 
-     * @type {AdminLogActionOneOf2KindEnum}
-     * @memberof AdminLogActionOneOf2
      */
     kind: AdminLogActionOneOf2KindEnum;
     /**
      * The Role the Account has now
-     * @type {Role}
-     * @memberof AdminLogActionOneOf2
      */
     role: Role;
 }
@@ -818,7 +660,7 @@ export interface AdminLogActionOneOf2 {
  * @export
  */
 export const AdminLogActionOneOf2KindEnum = {
-    RoleChange: 'RoleChange'
+    RoleChange: 'RoleChange',
 } as const;
 export type AdminLogActionOneOf2KindEnum = typeof AdminLogActionOneOf2KindEnum[keyof typeof AdminLogActionOneOf2KindEnum];
 
@@ -830,14 +672,10 @@ export type AdminLogActionOneOf2KindEnum = typeof AdminLogActionOneOf2KindEnum[k
 export interface AdminLogActionOneOf3 {
     /**
      * 
-     * @type {AdminLogActionOneOf3KindEnum}
-     * @memberof AdminLogActionOneOf3
      */
     kind: AdminLogActionOneOf3KindEnum;
     /**
      * What happened to the Account's public decks
-     * @type {DeletionMode}
-     * @memberof AdminLogActionOneOf3
      */
     mode: DeletionMode;
 }
@@ -847,7 +685,7 @@ export interface AdminLogActionOneOf3 {
  * @export
  */
 export const AdminLogActionOneOf3KindEnum = {
-    Deletion: 'Deletion'
+    Deletion: 'Deletion',
 } as const;
 export type AdminLogActionOneOf3KindEnum = typeof AdminLogActionOneOf3KindEnum[keyof typeof AdminLogActionOneOf3KindEnum];
 
@@ -859,20 +697,14 @@ export type AdminLogActionOneOf3KindEnum = typeof AdminLogActionOneOf3KindEnum[k
 export interface AdminLogActionOneOf4 {
     /**
      * 
-     * @type {AdminLogActionOneOf4KindEnum}
-     * @memberof AdminLogActionOneOf4
      */
     kind: AdminLogActionOneOf4KindEnum;
     /**
      * The username the Account has now
-     * @type {any}
-     * @memberof AdminLogActionOneOf4
      */
     new_username: any;
     /**
      * Why the Account was renamed
-     * @type {string}
-     * @memberof AdminLogActionOneOf4
      */
     reason: string;
 }
@@ -882,7 +714,7 @@ export interface AdminLogActionOneOf4 {
  * @export
  */
 export const AdminLogActionOneOf4KindEnum = {
-    Rename: 'Rename'
+    Rename: 'Rename',
 } as const;
 export type AdminLogActionOneOf4KindEnum = typeof AdminLogActionOneOf4KindEnum[keyof typeof AdminLogActionOneOf4KindEnum];
 
@@ -894,44 +726,30 @@ export type AdminLogActionOneOf4KindEnum = typeof AdminLogActionOneOf4KindEnum[k
 export interface AdminLogEntryResponse {
     /**
      * The affected Account, `None` once it is deleted
-     * @type {string}
-     * @memberof AdminLogEntryResponse
      */
     account?: string | null;
     /**
      * The affected Account's username at the time
-     * @type {string}
-     * @memberof AdminLogEntryResponse
      */
     account_username: string;
     /**
      * What the Admin did
-     * @type {AdminLogAction}
-     * @memberof AdminLogEntryResponse
      */
     action: AdminLogAction;
     /**
      * The acting Admin, `None` once it is deleted or for a change made through the cli
-     * @type {string}
-     * @memberof AdminLogEntryResponse
      */
     admin?: string | null;
     /**
      * The acting Admin's username at the time
-     * @type {string}
-     * @memberof AdminLogEntryResponse
      */
     admin_username: string;
     /**
      * When the Admin acted
-     * @type {string}
-     * @memberof AdminLogEntryResponse
      */
     created_at: string;
     /**
      * Primary key
-     * @type {string}
-     * @memberof AdminLogEntryResponse
      */
     uuid: string;
 }
@@ -943,14 +761,10 @@ export interface AdminLogEntryResponse {
 export interface AdminOpenIdProvider {
     /**
      * What the frontend calls the provider, `None` once it is no longer configured
-     * @type {string}
-     * @memberof AdminOpenIdProvider
      */
     display_name?: string | null;
     /**
      * The provider's issuer
-     * @type {string}
-     * @memberof AdminOpenIdProvider
      */
     issuer: string;
 }
@@ -962,14 +776,10 @@ export interface AdminOpenIdProvider {
 export interface AdminPriceGuideStamp {
     /**
      * The day it quoted prices for
-     * @type {string}
-     * @memberof AdminPriceGuideStamp
      */
     day: string;
     /**
      * The etag the file was served under
-     * @type {string}
-     * @memberof AdminPriceGuideStamp
      */
     etag: string;
 }
@@ -981,14 +791,10 @@ export interface AdminPriceGuideStamp {
 export interface AdminPriceGuideSync {
     /**
      * Its Sync runs
-     * @type {AdminSyncRuns}
-     * @memberof AdminPriceGuideSync
      */
     runs: AdminSyncRuns;
     /**
      * The file the prices were last read from, `None` before the first read
-     * @type {AdminPriceGuideStamp}
-     * @memberof AdminPriceGuideSync
      */
     stamp?: AdminPriceGuideStamp | null;
 }
@@ -1000,20 +806,14 @@ export interface AdminPriceGuideSync {
 export interface AdminRenameAccountErrors {
     /**
      * The Account is the Admin's own, which it renames through its own settings
-     * @type {boolean}
-     * @memberof AdminRenameAccountErrors
      */
     own_account: boolean;
     /**
      * No reason was given
-     * @type {boolean}
-     * @memberof AdminRenameAccountErrors
      */
     reason_missing: boolean;
     /**
      * Another Account goes by this username already, case ignored
-     * @type {boolean}
-     * @memberof AdminRenameAccountErrors
      */
     username_taken: boolean;
 }
@@ -1027,20 +827,14 @@ export interface AdminRenameAccountRequest {
      * The language of the mail that tells the Account its new username
      * 
      * The client sends the language its UI is showing; left out, the mail falls back to German, the app's primary language.
-     * @type {MailLanguage}
-     * @memberof AdminRenameAccountRequest
      */
     language?: MailLanguage;
     /**
      * Why the Account is renamed, shown to Admins only
-     * @type {string}
-     * @memberof AdminRenameAccountRequest
      */
     reason: string;
     /**
      * The new username, held to the same rules as at signup
-     * @type {any}
-     * @memberof AdminRenameAccountRequest
      */
     username: any;
 }
@@ -1054,8 +848,6 @@ export interface AdminRenameAccountRequest {
 export interface AdminSetBugReportNoteRequest {
     /**
      * The note, empty to remove it
-     * @type {string}
-     * @memberof AdminSetBugReportNoteRequest
      */
     note: string;
 }
@@ -1067,8 +859,6 @@ export interface AdminSetBugReportNoteRequest {
 export interface AdminSetRoleErrors {
     /**
      * The Account is the Admin's own, which it cannot demote
-     * @type {boolean}
-     * @memberof AdminSetRoleErrors
      */
     own_account: boolean;
 }
@@ -1080,8 +870,6 @@ export interface AdminSetRoleErrors {
 export interface AdminSetRoleRequest {
     /**
      * The new Role
-     * @type {Role}
-     * @memberof AdminSetRoleRequest
      */
     role: Role;
 }
@@ -1095,14 +883,10 @@ export interface AdminSetRoleRequest {
 export interface AdminStatisticsResponse {
     /**
      * Snapshots of the last 30 days, oldest first
-     * @type {Array<AdminStatisticsSnapshot>}
-     * @memberof AdminStatisticsResponse
      */
     history: Array<AdminStatisticsSnapshot>;
     /**
      * The most recent snapshot, `None` before the first one was taken
-     * @type {AdminStatisticsSnapshot}
-     * @memberof AdminStatisticsResponse
      */
     newest?: AdminStatisticsSnapshot | null;
 }
@@ -1114,26 +898,18 @@ export interface AdminStatisticsResponse {
 export interface AdminStatisticsSnapshot {
     /**
      * Accounts, without the Tombstone
-     * @type {number}
-     * @memberof AdminStatisticsSnapshot
      */
     accounts: number;
     /**
      * Cards, on the shelf and sleeved in decks
-     * @type {number}
-     * @memberof AdminStatisticsSnapshot
      */
     cards: number;
     /**
      * Collections on a shelf, without the ones standing for a deck
-     * @type {number}
-     * @memberof AdminStatisticsSnapshot
      */
     collections: number;
     /**
      * Decks
-     * @type {number}
-     * @memberof AdminStatisticsSnapshot
      */
     decks: number;
     /**
@@ -1144,26 +920,18 @@ export interface AdminStatisticsSnapshot {
     finished_tournaments: number;
     /**
      * Accounts created in the 7 days before `taken_at`
-     * @type {number}
-     * @memberof AdminStatisticsSnapshot
      */
     new_accounts: number;
     /**
      * Scanner sessions holding at least one card not yet filed
-     * @type {number}
-     * @memberof AdminStatisticsSnapshot
      */
     open_scanner_sessions: number;
     /**
      * Public decks
-     * @type {number}
-     * @memberof AdminStatisticsSnapshot
      */
     public_decks: number;
     /**
      * When the counts were taken
-     * @type {string}
-     * @memberof AdminStatisticsSnapshot
      */
     taken_at: string;
     /**
@@ -1174,8 +942,6 @@ export interface AdminStatisticsSnapshot {
     tournaments: number;
     /**
      * Primary key
-     * @type {string}
-     * @memberof AdminStatisticsSnapshot
      */
     uuid: string;
 }
@@ -1187,32 +953,22 @@ export interface AdminStatisticsSnapshot {
 export interface AdminSyncRun {
     /**
      * How long it took, in milliseconds
-     * @type {number}
-     * @memberof AdminSyncRun
      */
     duration_ms: number;
     /**
      * Why it failed
-     * @type {string}
-     * @memberof AdminSyncRun
      */
     error?: string | null;
     /**
      * What it came to
-     * @type {SyncRunOutcome}
-     * @memberof AdminSyncRun
      */
     outcome: SyncRunOutcome;
     /**
      * When it started
-     * @type {string}
-     * @memberof AdminSyncRun
      */
     started_at: string;
     /**
      * Primary key
-     * @type {string}
-     * @memberof AdminSyncRun
      */
     uuid: string;
 }
@@ -1226,26 +982,18 @@ export interface AdminSyncRun {
 export interface AdminSyncRuns {
     /**
      * The newest run
-     * @type {AdminSyncRun}
-     * @memberof AdminSyncRuns
      */
     last_attempt?: AdminSyncRun | null;
     /**
      * The newest run that failed, with its error
-     * @type {AdminSyncRun}
-     * @memberof AdminSyncRuns
      */
     last_failure?: AdminSyncRun | null;
     /**
      * The newest run that did not fail
-     * @type {AdminSyncRun}
-     * @memberof AdminSyncRuns
      */
     last_success?: AdminSyncRun | null;
     /**
      * The newest runs, newest first
-     * @type {Array<AdminSyncRun>}
-     * @memberof AdminSyncRuns
      */
     recent: Array<AdminSyncRun>;
 }
@@ -1257,14 +1005,10 @@ export interface AdminSyncRuns {
 export interface AdminSyncsResponse {
     /**
      * The catalog sync from Scryfall
-     * @type {AdminCatalogSync}
-     * @memberof AdminSyncsResponse
      */
     catalog: AdminCatalogSync;
     /**
      * The price guide sync from Cardmarket
-     * @type {AdminPriceGuideSync}
-     * @memberof AdminSyncsResponse
      */
     price_guide: AdminPriceGuideSync;
 }
@@ -1276,8 +1020,6 @@ export interface AdminSyncsResponse {
 export interface AdminUnlockAccountErrors {
     /**
      * The Account is not locked
-     * @type {boolean}
-     * @memberof AdminUnlockAccountErrors
      */
     not_locked: boolean;
 }
@@ -1289,8 +1031,6 @@ export interface AdminUnlockAccountErrors {
 export interface AdminUnlockAccountRequest {
     /**
      * Why the Lock is lifted, shown to Admins only
-     * @type {string}
-     * @memberof AdminUnlockAccountRequest
      */
     reason?: string | null;
 }
@@ -1304,38 +1044,26 @@ export interface AdminUnlockAccountRequest {
 export interface AdvisorSettingsResponse {
     /**
      * Cards the advisor must never offer
-     * @type {Array<MarkedCard>}
-     * @memberof AdvisorSettingsResponse
      */
     ignored: Array<MarkedCard>;
     /**
      * Cards the advisor must never propose cutting
-     * @type {Array<MarkedCard>}
-     * @memberof AdvisorSettingsResponse
      */
     kept: Array<MarkedCard>;
     /**
      * The restriction on what may be suggested at all, `null` for the whole pool
-     * @type {string}
-     * @memberof AdvisorSettingsResponse
      */
     pool_query?: string | null;
     /**
      * Whether the reader has been through the advisor's questions
-     * @type {boolean}
-     * @memberof AdvisorSettingsResponse
      */
     setup_done: boolean;
     /**
      * The shape the deck is graded against, where it was moved
-     * @type {DeckTargets}
-     * @memberof AdvisorSettingsResponse
      */
     targets: DeckTargets;
     /**
      * Which themes to argue for and which to avoid
-     * @type {ThemePrefs}
-     * @memberof AdvisorSettingsResponse
      */
     themes: ThemePrefs;
 }
@@ -1347,8 +1075,6 @@ export interface AdvisorSettingsResponse {
 export interface ApiErrorResponse {
     /**
      * ID of the opentelemetry trace this error originated in
-     * @type {string}
-     * @memberof ApiErrorResponse
      */
     trace_id: string;
 }
@@ -1451,26 +1177,18 @@ export type BestOf = typeof BestOf[keyof typeof BestOf];
 export interface BracketFlagsEntryResponse {
     /**
      * Whether the card takes extra turns
-     * @type {boolean}
-     * @memberof BracketFlagsEntryResponse
      */
     extra_turns: boolean;
     /**
      * Whether Wizards lists the card as a Game Changer
-     * @type {boolean}
-     * @memberof BracketFlagsEntryResponse
      */
     game_changer: boolean;
     /**
      * Scryfall's id of the printing
-     * @type {string}
-     * @memberof BracketFlagsEntryResponse
      */
     id: string;
     /**
      * Whether the card denies lands en masse
-     * @type {boolean}
-     * @memberof BracketFlagsEntryResponse
      */
     mass_land_denial: boolean;
 }
@@ -1482,8 +1200,6 @@ export interface BracketFlagsEntryResponse {
 export interface BracketFlagsRequest {
     /**
      * Scryfall's ids of the printings
-     * @type {Array<string>}
-     * @memberof BracketFlagsRequest
      */
     printings: Array<string>;
 }
@@ -1495,8 +1211,6 @@ export interface BracketFlagsRequest {
 export interface BracketFlagsResponse {
     /**
      * One per flagged printing; a printing that is missing counts towards none
-     * @type {Array<BracketFlagsEntryResponse>}
-     * @memberof BracketFlagsResponse
      */
     printings: Array<BracketFlagsEntryResponse>;
 }
@@ -1508,38 +1222,26 @@ export interface BracketFlagsResponse {
 export interface BracketRulesResponse {
     /**
      * How much combo play the bracket tolerates
-     * @type {ComboRule}
-     * @memberof BracketRulesResponse
      */
     combos: ComboRule;
     /**
      * How much extra-turn play the bracket tolerates
-     * @type {ExtraTurnRule}
-     * @memberof BracketRulesResponse
      */
     extra_turns: ExtraTurnRule;
     /**
      * Whether mass land denial is expected to stay out
-     * @type {boolean}
-     * @memberof BracketRulesResponse
      */
     mass_land_denial: boolean;
     /**
      * How many Game Changers may be played, `null` for no limit
-     * @type {number}
-     * @memberof BracketRulesResponse
      */
     max_game_changers?: number | null;
     /**
      * Which bracket, one to five
-     * @type {number}
-     * @memberof BracketRulesResponse
      */
     number: number;
     /**
      * The slug the client turns into a name
-     * @type {string}
-     * @memberof BracketRulesResponse
      */
     slug: string;
 }
@@ -1553,14 +1255,10 @@ export interface BracketRulesResponse {
 export interface BugReportAccount {
     /**
      * Its current username
-     * @type {string}
-     * @memberof BugReportAccount
      */
     username: string;
     /**
      * Primary key
-     * @type {string}
-     * @memberof BugReportAccount
      */
     uuid: string;
 }
@@ -1572,14 +1270,10 @@ export interface BugReportAccount {
 export interface BugReportImageInfo {
     /**
      * The image's media type
-     * @type {string}
-     * @memberof BugReportImageInfo
      */
     content_type: string;
     /**
      * Primary key
-     * @type {string}
-     * @memberof BugReportImageInfo
      */
     uuid: string;
 }
@@ -1596,7 +1290,7 @@ export const BugReportState = {
     /**
     * Marked done by an Admin
     */
-    Done: 'Done'
+    Done: 'Done',
 } as const;
 export type BugReportState = typeof BugReportState[keyof typeof BugReportState];
 
@@ -1635,7 +1329,7 @@ export const CardCondition = {
     /**
     * Poor
     */
-    Poor: 'Poor'
+    Poor: 'Poor',
 } as const;
 export type CardCondition = typeof CardCondition[keyof typeof CardCondition];
 
@@ -1660,7 +1354,7 @@ export const CardFinish = {
     /**
     * Etched foil
     */
-    Etched: 'Etched'
+    Etched: 'Etched',
 } as const;
 export type CardFinish = typeof CardFinish[keyof typeof CardFinish];
 
@@ -1697,7 +1391,7 @@ export const CardRarity = {
     /**
     * Bonus sheets
     */
-    Bonus: 'Bonus'
+    Bonus: 'Bonus',
 } as const;
 export type CardRarity = typeof CardRarity[keyof typeof CardRarity];
 
@@ -1709,20 +1403,14 @@ export type CardRarity = typeof CardRarity[keyof typeof CardRarity];
 export interface ChooseUsernameErrors {
     /**
      * The verified email came to belong to an Account since the login started; the pending login is gone
-     * @type {boolean}
-     * @memberof ChooseUsernameErrors
      */
     email_in_use: boolean;
     /**
      * No OIDC login is pending, or it ran out
-     * @type {boolean}
-     * @memberof ChooseUsernameErrors
      */
     nothing_pending: boolean;
     /**
      * The username belongs to another Account
-     * @type {boolean}
-     * @memberof ChooseUsernameErrors
      */
     username_taken: boolean;
 }
@@ -1734,8 +1422,6 @@ export interface ChooseUsernameErrors {
 export interface ChooseUsernameRequest {
     /**
      * The desired username
-     * @type {any}
-     * @memberof ChooseUsernameRequest
      */
     username: any;
 }
@@ -1747,14 +1433,10 @@ export interface ChooseUsernameRequest {
 export interface CollaboratorCandidateResponse {
     /**
      * The Account
-     * @type {string}
-     * @memberof CollaboratorCandidateResponse
      */
     account: string;
     /**
      * The Account's username as it is now
-     * @type {string}
-     * @memberof CollaboratorCandidateResponse
      */
     username: string;
 }
@@ -1766,14 +1448,10 @@ export interface CollaboratorCandidateResponse {
 export interface CollaboratorCandidatesResponse {
     /**
      * Up to ten Accounts, alphabetically by username
-     * @type {Array<CollaboratorCandidateResponse>}
-     * @memberof CollaboratorCandidatesResponse
      */
     accounts: Array<CollaboratorCandidateResponse>;
     /**
      * The caller searched too often lately, so nothing was searched
-     * @type {boolean}
-     * @memberof CollaboratorCandidatesResponse
      */
     too_many_searches: boolean;
 }
@@ -1790,7 +1468,7 @@ export const CollaboratorLevel = {
     /**
     * Also builds the deck as a decklist
     */
-    Editor: 'Editor'
+    Editor: 'Editor',
 } as const;
 export type CollaboratorLevel = typeof CollaboratorLevel[keyof typeof CollaboratorLevel];
 
@@ -1802,56 +1480,38 @@ export type CollaboratorLevel = typeof CollaboratorLevel[keyof typeof Collaborat
 export interface CollectionEntryResponse {
     /**
      * The day the cards were acquired
-     * @type {string}
-     * @memberof CollectionEntryResponse
      */
     acquired_at?: string | null;
     /**
      * Condition of the cards
-     * @type {CardCondition}
-     * @memberof CollectionEntryResponse
      */
     condition: CardCondition;
     /**
      * When the stack was filed
-     * @type {string}
-     * @memberof CollectionEntryResponse
      */
     created_at: string;
     /**
      * Finish of the cards
-     * @type {CardFinish}
-     * @memberof CollectionEntryResponse
      */
     finish: CardFinish;
     /**
      * Scryfall's id of the printing — the client resolves name and image from it
-     * @type {string}
-     * @memberof CollectionEntryResponse
      */
     printing: string;
     /**
      * What was paid per copy, in euro cents
-     * @type {number}
-     * @memberof CollectionEntryResponse
      */
     purchase_price_cents?: number | null;
     /**
      * How many copies this stack holds
-     * @type {number}
-     * @memberof CollectionEntryResponse
      */
     quantity: number;
     /**
      * Whether the cards carry an artist's signature
-     * @type {boolean}
-     * @memberof CollectionEntryResponse
      */
     signed: boolean;
     /**
      * Primary key
-     * @type {string}
-     * @memberof CollectionEntryResponse
      */
     uuid: string;
 }
@@ -1865,38 +1525,26 @@ export interface CollectionEntryResponse {
 export interface CollectionOverviewResponse {
     /**
      * Artwork of the most valuable cards in it, at most two
-     * @type {Array<string>}
-     * @memberof CollectionOverviewResponse
      */
     arts: Array<string>;
     /**
      * How many copies are filed in it
-     * @type {number}
-     * @memberof CollectionOverviewResponse
      */
     cards: number;
     /**
      * The collection itself
-     * @type {CollectionResponse}
-     * @memberof CollectionOverviewResponse
      */
     collection: CollectionResponse;
     /**
      * The colours the collection holds, as the letters `WUBRG`
-     * @type {string}
-     * @memberof CollectionOverviewResponse
      */
     colors: string;
     /**
      * What those copies are worth in euro cents
-     * @type {number}
-     * @memberof CollectionOverviewResponse
      */
     price_eur_cents: number;
     /**
      * Copies per rarity
-     * @type {RarityCountsResponse}
-     * @memberof CollectionOverviewResponse
      */
     rarities: RarityCountsResponse;
 }
@@ -1908,56 +1556,38 @@ export interface CollectionOverviewResponse {
 export interface CollectionResponse {
     /**
      * The colour the collection is drawn in
-     * @type {string}
-     * @memberof CollectionResponse
      */
     color: string;
     /**
      * 
-     * @type {string}
-     * @memberof CollectionResponse
      */
     created_at: string;
     /**
      * The deck this collection stands for, `None` for a collection on a shelf
-     * @type {string}
-     * @memberof CollectionResponse
      */
     deck?: string | null;
     /**
      * 
-     * @type {string}
-     * @memberof CollectionResponse
      */
     description: string;
     /**
      * The pictogram drawn on the collection
-     * @type {string}
-     * @memberof CollectionResponse
      */
     icon: string;
     /**
      * 
-     * @type {string}
-     * @memberof CollectionResponse
      */
     name: string;
     /**
      * 
-     * @type {string}
-     * @memberof CollectionResponse
      */
     share_token?: string | null;
     /**
      * Wrapper for the primary key of the [`Collection`] model. To have better distinguishable types.
-     * @type {string}
-     * @memberof CollectionResponse
      */
     uuid: string;
     /**
      * 
-     * @type {Visibility}
-     * @memberof CollectionResponse
      */
     visibility: Visibility;
 }
@@ -1973,170 +1603,114 @@ export interface CollectionResponse {
 export interface CollectionStatisticsResponse {
     /**
      * The most represented illustrators
-     * @type {Array<StatBucketResponse>}
-     * @memberof CollectionStatisticsResponse
      */
     artists: Array<StatBucketResponse>;
     /**
      * Mean value of a priced copy, in euro cents
-     * @type {number}
-     * @memberof CollectionStatisticsResponse
      */
     average_value_cents: number;
     /**
      * Copies whose colour identity contains each colour, keyed `W U B R G`
-     * @type {Array<StatBucketResponse>}
-     * @memberof CollectionStatisticsResponse
      */
     color_identity: Array<StatBucketResponse>;
     /**
      * Copies per colour count, keyed `0` through `5`
-     * @type {Array<StatBucketResponse>}
-     * @memberof CollectionStatisticsResponse
      */
     color_spread: Array<StatBucketResponse>;
     /**
      * Copies per condition, best grade first
-     * @type {Array<StatBucketResponse>}
-     * @memberof CollectionStatisticsResponse
      */
     conditions: Array<StatBucketResponse>;
     /**
      * How many different sets are represented
-     * @type {number}
-     * @memberof CollectionStatisticsResponse
      */
     distinct_sets: number;
     /**
      * Copies per finish
-     * @type {Array<StatBucketResponse>}
-     * @memberof CollectionStatisticsResponse
      */
     finishes: Array<StatBucketResponse>;
     /**
      * Copies legal in each tracked format
-     * @type {Array<StatBucketResponse>}
-     * @memberof CollectionStatisticsResponse
      */
     formats: Array<StatBucketResponse>;
     /**
      * The most common rules keywords
-     * @type {Array<StatBucketResponse>}
-     * @memberof CollectionStatisticsResponse
      */
     keywords: Array<StatBucketResponse>;
     /**
      * Copies per mana value, lands excluded, everything above `7` pooled there
-     * @type {Array<StatBucketResponse>}
-     * @memberof CollectionStatisticsResponse
      */
     mana_curve: Array<StatBucketResponse>;
     /**
      * Today's value of exactly those copies, in euro cents
-     * @type {number}
-     * @memberof CollectionStatisticsResponse
      */
     market_of_purchased_cents: number;
     /**
      * What the whole collection fetches today, in euro cents
-     * @type {number}
-     * @memberof CollectionStatisticsResponse
      */
     market_value_cents: number;
     /**
      * The oldest printing in the collection, `null` when nothing resolved
-     * @type {OldestPrintingResponse}
-     * @memberof CollectionStatisticsResponse
      */
     oldest?: OldestPrintingResponse | null;
     /**
      * Coloured mana symbols across all costs, weighted by copies, keyed `W U B R G`
-     * @type {Array<StatBucketResponse>}
-     * @memberof CollectionStatisticsResponse
      */
     pips: Array<StatBucketResponse>;
     /**
      * Paid against worth, for the stacks with the most money riding on them
-     * @type {Array<PricePointResponse>}
-     * @memberof CollectionStatisticsResponse
      */
     price_points: Array<PricePointResponse>;
     /**
      * Copies the catalog has a price for
-     * @type {number}
-     * @memberof CollectionStatisticsResponse
      */
     priced_cards: number;
     /**
      * What was paid, over the stacks that recorded it, in euro cents
-     * @type {number}
-     * @memberof CollectionStatisticsResponse
      */
     purchase_total_cents: number;
     /**
      * Copies with a recorded purchase price
-     * @type {number}
-     * @memberof CollectionStatisticsResponse
      */
     purchased_cards: number;
     /**
      * Copies per rarity, most first, keyed by Scryfall's lowercase spelling
-     * @type {Array<StatBucketResponse>}
-     * @memberof CollectionStatisticsResponse
      */
     rarities: Array<StatBucketResponse>;
     /**
      * Copies on the reserved list
-     * @type {number}
-     * @memberof CollectionStatisticsResponse
      */
     reserved_cards: number;
     /**
      * What those are worth, in euro cents
-     * @type {number}
-     * @memberof CollectionStatisticsResponse
      */
     reserved_value_cents: number;
     /**
      * Sets by copies, most first
-     * @type {Array<SetBucketResponse>}
-     * @memberof CollectionStatisticsResponse
      */
     sets: Array<SetBucketResponse>;
     /**
      * Cumulative copies and value over time
-     * @type {Array<TimelinePointResponse>}
-     * @memberof CollectionStatisticsResponse
      */
     timeline: Array<TimelinePointResponse>;
     /**
      * The most valuable stacks
-     * @type {Array<TopCardResponse>}
-     * @memberof CollectionStatisticsResponse
      */
     top_cards: Array<TopCardResponse>;
     /**
      * Copies filed in total
-     * @type {number}
-     * @memberof CollectionStatisticsResponse
      */
     total_cards: number;
     /**
      * Copies per card type, keyed by lowercase type slug plus `other`
-     * @type {Array<StatBucketResponse>}
-     * @memberof CollectionStatisticsResponse
      */
     types: Array<StatBucketResponse>;
     /**
      * Copies per price bracket, keyed `bulk low mid high premium chase`
-     * @type {Array<StatBucketResponse>}
-     * @memberof CollectionStatisticsResponse
      */
     value_buckets: Array<StatBucketResponse>;
     /**
      * Copies per release year of the printing, oldest first
-     * @type {Array<StatBucketResponse>}
-     * @memberof CollectionStatisticsResponse
      */
     years: Array<StatBucketResponse>;
 }
@@ -2159,7 +1733,7 @@ export const ComboRule = {
     /**
     * No limit
     */
-    any: 'any'
+    any: 'any',
 } as const;
 export type ComboRule = typeof ComboRule[keyof typeof ComboRule];
 
@@ -2177,8 +1751,6 @@ export type CommanderRule = CommanderRuleOneOf | CommanderRuleOneOf1;
 export interface CommanderRuleOneOf {
     /**
      * 
-     * @type {CommanderRuleOneOfKindEnum}
-     * @memberof CommanderRuleOneOf
      */
     kind: CommanderRuleOneOfKindEnum;
 }
@@ -2188,7 +1760,7 @@ export interface CommanderRuleOneOf {
  * @export
  */
 export const CommanderRuleOneOfKindEnum = {
-    none: 'none'
+    none: 'none',
 } as const;
 export type CommanderRuleOneOfKindEnum = typeof CommanderRuleOneOfKindEnum[keyof typeof CommanderRuleOneOfKindEnum];
 
@@ -2200,20 +1772,14 @@ export type CommanderRuleOneOfKindEnum = typeof CommanderRuleOneOfKindEnum[keyof
 export interface CommanderRuleOneOf1 {
     /**
      * 
-     * @type {CommanderRuleOneOf1KindEnum}
-     * @memberof CommanderRuleOneOf1
      */
     kind: CommanderRuleOneOf1KindEnum;
     /**
      * Most cards in the commander zone, two for partners
-     * @type {number}
-     * @memberof CommanderRuleOneOf1
      */
     max: number;
     /**
      * Fewest cards in the commander zone
-     * @type {number}
-     * @memberof CommanderRuleOneOf1
      */
     min: number;
 }
@@ -2223,7 +1789,7 @@ export interface CommanderRuleOneOf1 {
  * @export
  */
 export const CommanderRuleOneOf1KindEnum = {
-    required: 'required'
+    required: 'required',
 } as const;
 export type CommanderRuleOneOf1KindEnum = typeof CommanderRuleOneOf1KindEnum[keyof typeof CommanderRuleOneOf1KindEnum];
 
@@ -2235,14 +1801,10 @@ export type CommanderRuleOneOf1KindEnum = typeof CommanderRuleOneOf1KindEnum[key
 export interface Corridor {
     /**
      * The ceiling
-     * @type {number}
-     * @memberof Corridor
      */
     high: number;
     /**
      * The floor
-     * @type {number}
-     * @memberof Corridor
      */
     low: number;
 }
@@ -2254,32 +1816,22 @@ export interface Corridor {
 export interface CreateCollectionRequest {
     /**
      * The colour the collection is drawn in
-     * @type {string}
-     * @memberof CreateCollectionRequest
      */
     color: string;
     /**
      * 
-     * @type {string}
-     * @memberof CreateCollectionRequest
      */
     description: string;
     /**
      * The pictogram drawn on the collection
-     * @type {string}
-     * @memberof CreateCollectionRequest
      */
     icon: string;
     /**
      * 
-     * @type {string}
-     * @memberof CreateCollectionRequest
      */
     name: string;
     /**
      * 
-     * @type {Visibility}
-     * @memberof CreateCollectionRequest
      */
     visibility: Visibility;
 }
@@ -2293,8 +1845,6 @@ export interface CreateCollectionRequest {
 export interface CreateDeckFolderRequest {
     /**
      * What it is called
-     * @type {string}
-     * @memberof CreateDeckFolderRequest
      */
     name: string;
 }
@@ -2308,32 +1858,22 @@ export interface CreateDeckRequest {
      * The colours as the letters `WUBRG`, `null` or left out to follow the commander
      * 
      * Lets a clone take over its original's colours in its created Deck change instead of a Deck change of its own.
-     * @type {string}
-     * @memberof CreateDeckRequest
      */
     colors?: string | null;
     /**
      * Optional description
-     * @type {string}
-     * @memberof CreateDeckRequest
      */
     description?: string | null;
     /**
      * The format to build for
-     * @type {string}
-     * @memberof CreateDeckRequest
      */
     format: string;
     /**
      * Name of the deck
-     * @type {string}
-     * @memberof CreateDeckRequest
      */
     name: string;
     /**
      * Who may see the deck
-     * @type {Visibility}
-     * @memberof CreateDeckRequest
      */
     visibility: Visibility;
 }
@@ -2347,26 +1887,18 @@ export interface CreateDeckRequest {
 export interface CreateDeckTagRequest {
     /**
      * The colour it is drawn in
-     * @type {string}
-     * @memberof CreateDeckTagRequest
      */
     color: string;
     /**
      * Whether assignments follow the card through every deck and printing
-     * @type {boolean}
-     * @memberof CreateDeckTagRequest
      */
     global: boolean;
     /**
      * The icon drawn inside its colour marker
-     * @type {string}
-     * @memberof CreateDeckTagRequest
      */
     icon: string;
     /**
      * What the tag is called
-     * @type {string}
-     * @memberof CreateDeckTagRequest
      */
     name: string;
 }
@@ -2378,20 +1910,14 @@ export interface CreateDeckTagRequest {
 export interface CreateGlobalTagRequest {
     /**
      * The colour it is drawn in
-     * @type {string}
-     * @memberof CreateGlobalTagRequest
      */
     color: string;
     /**
      * The icon drawn inside its colour marker
-     * @type {string}
-     * @memberof CreateGlobalTagRequest
      */
     icon: string;
     /**
      * What the tag is called
-     * @type {string}
-     * @memberof CreateGlobalTagRequest
      */
     name: string;
 }
@@ -2403,26 +1929,18 @@ export interface CreateGlobalTagRequest {
 export interface CreateScannerSessionRequest {
     /**
      * Optional preferred destination collection
-     * @type {string}
-     * @memberof CreateScannerSessionRequest
      */
     collection?: string | null;
     /**
      * Marker colour
-     * @type {string}
-     * @memberof CreateScannerSessionRequest
      */
     color: string;
     /**
      * Marker icon
-     * @type {string}
-     * @memberof CreateScannerSessionRequest
      */
     icon: string;
     /**
      * Display name
-     * @type {string}
-     * @memberof CreateScannerSessionRequest
      */
     name: string;
 }
@@ -2440,26 +1958,18 @@ export type CreateTournament200Response = FormErrorResponseForTournamentSettings
 export interface CreateWatchListRequest {
     /**
      * The colour it is drawn in
-     * @type {string}
-     * @memberof CreateWatchListRequest
      */
     color: string;
     /**
      * Description shown above the entries
-     * @type {string}
-     * @memberof CreateWatchListRequest
      */
     description: string;
     /**
      * The pictogram drawn on it
-     * @type {string}
-     * @memberof CreateWatchListRequest
      */
     icon: string;
     /**
      * What the list is called
-     * @type {string}
-     * @memberof CreateWatchListRequest
      */
     name: string;
 }
@@ -2496,164 +2006,114 @@ export interface CurrentRoundResponse {
 export interface DeckCardCatalogResponse {
     /**
      * Cardmarket's id of the product this printing is sold as
-     * @type {number}
-     * @memberof DeckCardCatalogResponse
      */
     cardmarket_id?: number | null;
     /**
      * Collector number as printed
-     * @type {string}
-     * @memberof DeckCardCatalogResponse
      */
     collector_number: string;
     /**
      * Colour identity as the letters `WUBRG`
-     * @type {string}
-     * @memberof DeckCardCatalogResponse
      */
     color_identity: string;
     /**
      * Whether the card takes extra turns, which brackets 1 and 2 play none of
      * 
      * Derived like [`Self::mass_land_denial`], with the same caveat.
-     * @type {boolean}
-     * @memberof DeckCardCatalogResponse
      */
     extra_turns: boolean;
     /**
      * The finishes this printing exists in, as Scryfall spells them
-     * @type {Array<string>}
-     * @memberof DeckCardCatalogResponse
      */
     finishes: Array<string>;
     /**
      * Whether Wizards lists the card as a Game Changer
      * 
      * The curated list behind the Commander brackets, refreshed with the catalog. A deck's bracket is checked against how many of these it plays.
-     * @type {boolean}
-     * @memberof DeckCardCatalogResponse
      */
     game_changer: boolean;
     /**
      * The back face's artwork for a closer look
-     * @type {string}
-     * @memberof DeckCardCatalogResponse
      */
     image_back_normal?: string | null;
     /**
      * The back face's artwork for a list row
      * 
      * `None` unless the card is photographed twice: a transform card, a modal double-faced card, a battle. A split card or an adventure prints both halves on one side, so there is nothing to turn over.
-     * @type {string}
-     * @memberof DeckCardCatalogResponse
      */
     image_back_small?: string | null;
     /**
      * Artwork for a closer look
-     * @type {string}
-     * @memberof DeckCardCatalogResponse
      */
     image_normal?: string | null;
     /**
      * Artwork for a list row
-     * @type {string}
-     * @memberof DeckCardCatalogResponse
      */
     image_small?: string | null;
     /**
      * Language of the printing, as Scryfall's code
-     * @type {string}
-     * @memberof DeckCardCatalogResponse
      */
     lang: string;
     /**
      * The formats this printing is legal in, of the ones the catalog tracks
      * 
      * Only a "legal" set: a format missing here may be banned, restricted or simply not offered, which the client tells apart via Scryfall when it needs the reason.
-     * @type {Array<string>}
-     * @memberof DeckCardCatalogResponse
      */
     legal_formats: Array<string>;
     /**
      * Mana cost as printed, faces joined by ` // `
-     * @type {string}
-     * @memberof DeckCardCatalogResponse
      */
     mana_cost: string;
     /**
      * Mana value
-     * @type {number}
-     * @memberof DeckCardCatalogResponse
      */
     mana_value: number;
     /**
      * Whether the card denies lands en masse
      * 
      * Derived from the rules text when the catalog is synced, not stored as the text itself. Brackets 1 to 3 play none of these, so the legality band checks a claimed bracket against it. Detection errs toward silence: a card the patterns miss raises no warning, which is the right way for a warning to fail.
-     * @type {boolean}
-     * @memberof DeckCardCatalogResponse
      */
     mass_land_denial: boolean;
     /**
      * The printed name
-     * @type {string}
-     * @memberof DeckCardCatalogResponse
      */
     name: string;
     /**
      * Groups every printing of the same card, which is what a copy limit counts
-     * @type {string}
-     * @memberof DeckCardCatalogResponse
      */
     oracle_id?: string | null;
     /**
      * Market price in euro cents
-     * @type {number}
-     * @memberof DeckCardCatalogResponse
      */
     price_eur_cents?: number | null;
     /**
      * Foil market price in euro cents
-     * @type {number}
-     * @memberof DeckCardCatalogResponse
      */
     price_eur_foil_cents?: number | null;
     /**
      * The colours the card can produce, as the letters `WUBRGC`
      * 
      * What a mana base is counted with: sources of each colour against the pips the deck asks for.
-     * @type {Array<string>}
-     * @memberof DeckCardCatalogResponse
      */
     produced_mana: Array<string>;
     /**
      * How rare the printing is
-     * @type {CardRarity}
-     * @memberof DeckCardCatalogResponse
      */
     rarity: CardRarity;
     /**
      * Whether the card is on the reserved list
-     * @type {boolean}
-     * @memberof DeckCardCatalogResponse
      */
     reserved: boolean;
     /**
      * Set code, upper case
-     * @type {string}
-     * @memberof DeckCardCatalogResponse
      */
     set_code: string;
     /**
      * Full set name
-     * @type {string}
-     * @memberof DeckCardCatalogResponse
      */
     set_name: string;
     /**
      * Type line as printed
-     * @type {string}
-     * @memberof DeckCardCatalogResponse
      */
     type_line: string;
 }
@@ -2667,50 +2127,34 @@ export interface DeckCardCatalogResponse {
 export interface DeckCardResponse {
     /**
      * The card, as far as the catalog knows it
-     * @type {DeckCardCatalogResponse}
-     * @memberof DeckCardResponse
      */
     card?: DeckCardCatalogResponse | null;
     /**
      * Whether the copies in this slot are the foil ones
-     * @type {boolean}
-     * @memberof DeckCardResponse
      */
     foil: boolean;
     /**
      * Scryfall's id of the printing
-     * @type {string}
-     * @memberof DeckCardResponse
      */
     printing: string;
     /**
      * Whether the copies in this slot are stand-ins rather than the real cards
-     * @type {boolean}
-     * @memberof DeckCardResponse
      */
     proxy: boolean;
     /**
      * How many copies this slot holds
-     * @type {number}
-     * @memberof DeckCardResponse
      */
     quantity: number;
     /**
      * The tags put on this slot
-     * @type {Array<string>}
-     * @memberof DeckCardResponse
      */
     tags: Array<string>;
     /**
      * Primary key
-     * @type {string}
-     * @memberof DeckCardResponse
      */
     uuid: string;
     /**
      * Which zone the slot sits in
-     * @type {DeckZone}
-     * @memberof DeckCardResponse
      */
     zone: DeckZone;
 }
@@ -2777,7 +2221,7 @@ export const DeckChangeKind = {
     /**
     * The deck brought back to an earlier point of its Deck history
     */
-    Reset: 'Reset'
+    Reset: 'Reset',
 } as const;
 export type DeckChangeKind = typeof DeckChangeKind[keyof typeof DeckChangeKind];
 
@@ -2789,50 +2233,34 @@ export type DeckChangeKind = typeof DeckChangeKind[keyof typeof DeckChangeKind];
 export interface DeckChangeResponse {
     /**
      * When it happened
-     * @type {string}
-     * @memberof DeckChangeResponse
      */
     changed_at: string;
     /**
      * The Deck checkpoint the owner named it with, `None` when unnamed
-     * @type {string}
-     * @memberof DeckChangeResponse
      */
     checkpoint?: string | null;
     /**
      * The Deck entries it touched
-     * @type {Array<DeckEntryChangeResponse>}
-     * @memberof DeckChangeResponse
      */
     entries: Array<DeckEntryChangeResponse>;
     /**
      * The deck fields it changed
-     * @type {Array<FieldDifference>}
-     * @memberof DeckChangeResponse
      */
     fields: Array<FieldDifference>;
     /**
      * What the owner or an Editor did
-     * @type {DeckChangeKind}
-     * @memberof DeckChangeResponse
      */
     kind: DeckChangeKind;
     /**
      * The Deck change an undo takes back, a redo applies again or a reset returns to, `None` for any other kind
-     * @type {string}
-     * @memberof DeckChangeResponse
      */
     reference?: string | null;
     /**
      * Whether an undo took it back and no redo applied it again since
-     * @type {boolean}
-     * @memberof DeckChangeResponse
      */
     undone: boolean;
     /**
      * Primary key
-     * @type {string}
-     * @memberof DeckChangeResponse
      */
     uuid: string;
 }
@@ -2846,20 +2274,14 @@ export interface DeckChangeResponse {
 export interface DeckCollaboratorResponse {
     /**
      * The Account, which is what removing it names
-     * @type {string}
-     * @memberof DeckCollaboratorResponse
      */
     account: string;
     /**
      * What the owner lets it do
-     * @type {CollaboratorLevel}
-     * @memberof DeckCollaboratorResponse
      */
     level: CollaboratorLevel;
     /**
      * The Account's username as it is now
-     * @type {string}
-     * @memberof DeckCollaboratorResponse
      */
     username: string;
 }
@@ -2873,32 +2295,22 @@ export interface DeckCollaboratorResponse {
 export interface DeckCommanderResponse {
     /**
      * Colour identity as the letters `WUBRG`
-     * @type {string}
-     * @memberof DeckCommanderResponse
      */
     color_identity: string;
     /**
      * The illustration alone, in landscape, for a tile wider than a card is
-     * @type {string}
-     * @memberof DeckCommanderResponse
      */
     image_art_crop?: string | null;
     /**
      * Artwork for a wider tile
-     * @type {string}
-     * @memberof DeckCommanderResponse
      */
     image_normal?: string | null;
     /**
      * Artwork for a tile
-     * @type {string}
-     * @memberof DeckCommanderResponse
      */
     image_small?: string | null;
     /**
      * The printed name
-     * @type {string}
-     * @memberof DeckCommanderResponse
      */
     name: string;
 }
@@ -2912,32 +2324,22 @@ export interface DeckCommanderResponse {
 export interface DeckDriftResponse {
     /**
      * Whether the deck keeps a collection at all; nothing drifts while it does not
-     * @type {boolean}
-     * @memberof DeckDriftResponse
      */
     keeps_collection: boolean;
     /**
      * Copies lying in the deck whose card the list does not name at all
-     * @type {Array<DeckDriftRowResponse>}
-     * @memberof DeckDriftResponse
      */
     not_in_deck: Array<DeckDriftRowResponse>;
     /**
      * Copies lying in the deck in a printing or finish the list does not ask for
-     * @type {Array<DeckDriftRowResponse>}
-     * @memberof DeckDriftResponse
      */
     other_printing: Array<DeckDriftRowResponse>;
     /**
      * Copies the list asks for that are nowhere in the deck
-     * @type {Array<DeckDriftRowResponse>}
-     * @memberof DeckDriftResponse
      */
     pending: Array<DeckDriftRowResponse>;
     /**
      * Copies of a card the list wants, beyond the count it asks for
-     * @type {Array<DeckDriftRowResponse>}
-     * @memberof DeckDriftResponse
      */
     surplus: Array<DeckDriftRowResponse>;
 }
@@ -2949,32 +2351,22 @@ export interface DeckDriftResponse {
 export interface DeckDriftRowResponse {
     /**
      * What the catalog knows about the printing
-     * @type {SourcedPrintingResponse}
-     * @memberof DeckDriftRowResponse
      */
     card?: SourcedPrintingResponse | null;
     /**
      * Whether those copies are the foil ones
-     * @type {boolean}
-     * @memberof DeckDriftRowResponse
      */
     foil: boolean;
     /**
      * Scryfall's id of the printing the row is about
-     * @type {string}
-     * @memberof DeckDriftRowResponse
      */
     printing: string;
     /**
      * How many copies the disagreement is about
-     * @type {number}
-     * @memberof DeckDriftRowResponse
      */
     quantity: number;
     /**
      * The printing the list asks for instead, only on `other_printing` rows
-     * @type {SourcedPrintingResponse}
-     * @memberof DeckDriftRowResponse
      */
     wanted?: SourcedPrintingResponse | null;
 }
@@ -2986,44 +2378,30 @@ export interface DeckDriftRowResponse {
 export interface DeckEntryChangeResponse {
     /**
      * How many copies it holds after, zero for an entry that is gone
-     * @type {number}
-     * @memberof DeckEntryChangeResponse
      */
     after: number;
     /**
      * How many copies it held before, zero for an entry that came into being
-     * @type {number}
-     * @memberof DeckEntryChangeResponse
      */
     before: number;
     /**
      * Whether the copies are the foil ones
-     * @type {boolean}
-     * @memberof DeckEntryChangeResponse
      */
     foil: boolean;
     /**
      * The card's printed name, `None` while the catalog does not know the printing
-     * @type {string}
-     * @memberof DeckEntryChangeResponse
      */
     name?: string | null;
     /**
      * Scryfall's id of the printing
-     * @type {string}
-     * @memberof DeckEntryChangeResponse
      */
     printing: string;
     /**
      * Whether the copies are stand-ins rather than the real cards
-     * @type {boolean}
-     * @memberof DeckEntryChangeResponse
      */
     proxy: boolean;
     /**
      * Which zone the entry sits in
-     * @type {DeckZone}
-     * @memberof DeckEntryChangeResponse
      */
     zone: DeckZone;
 }
@@ -3042,7 +2420,7 @@ export const DeckFolderKind = {
     /**
     * The one folder the app knows: decks that were put away
     */
-    Archive: 'Archive'
+    Archive: 'Archive',
 } as const;
 export type DeckFolderKind = typeof DeckFolderKind[keyof typeof DeckFolderKind];
 
@@ -3054,28 +2432,20 @@ export type DeckFolderKind = typeof DeckFolderKind[keyof typeof DeckFolderKind];
 export interface DeckFolderResponse {
     /**
      * When the folder was made
-     * @type {string}
-     * @memberof DeckFolderResponse
      */
     created_at: string;
     /**
      * Which of the folders this is
-     * @type {DeckFolderKind}
-     * @memberof DeckFolderResponse
      */
     kind: DeckFolderKind;
     /**
      * What the folder is called
      * 
      * The archive carries the name it was made under; a client shows it under its own word for the archive instead, in the language it is running in.
-     * @type {string}
-     * @memberof DeckFolderResponse
      */
     name: string;
     /**
      * Primary key
-     * @type {string}
-     * @memberof DeckFolderResponse
      */
     uuid: string;
 }
@@ -3089,26 +2459,18 @@ export interface DeckFolderResponse {
 export interface DeckHistoryResponse {
     /**
      * Whether there is an undone Deck change to redo
-     * @type {boolean}
-     * @memberof DeckHistoryResponse
      */
     can_redo: boolean;
     /**
      * Whether there is a Deck change to undo
-     * @type {boolean}
-     * @memberof DeckHistoryResponse
      */
     can_undo: boolean;
     /**
      * The Deck changes
-     * @type {Array<DeckChangeResponse>}
-     * @memberof DeckHistoryResponse
      */
     changes: Array<DeckChangeResponse>;
     /**
      * Pass as `after` for the next page, `None` on the last one
-     * @type {string}
-     * @memberof DeckHistoryResponse
      */
     next_cursor?: string | null;
 }
@@ -3120,26 +2482,18 @@ export interface DeckHistoryResponse {
 export interface DeckOverviewResponse {
     /**
      * How many cards sit in the deck proper, the sideboard aside
-     * @type {number}
-     * @memberof DeckOverviewResponse
      */
     cards: number;
     /**
      * The commanders, in the order they were put in
-     * @type {Array<DeckCommanderResponse>}
-     * @memberof DeckOverviewResponse
      */
     commanders: Array<DeckCommanderResponse>;
     /**
      * The deck itself
-     * @type {DeckResponse}
-     * @memberof DeckOverviewResponse
      */
     deck: DeckResponse;
     /**
      * What those cards are worth in euro cents
-     * @type {number}
-     * @memberof DeckOverviewResponse
      */
     price_eur_cents: number;
 }
@@ -3151,14 +2505,10 @@ export interface DeckOverviewResponse {
 export interface DeckOwnerResponse {
     /**
      * The Account
-     * @type {string}
-     * @memberof DeckOwnerResponse
      */
     account: string;
     /**
      * The Account's username as it is now
-     * @type {string}
-     * @memberof DeckOwnerResponse
      */
     username: string;
 }
@@ -3170,38 +2520,26 @@ export interface DeckOwnerResponse {
 export interface DeckPointEntryResponse {
     /**
      * Whether the copies were the foil ones
-     * @type {boolean}
-     * @memberof DeckPointEntryResponse
      */
     foil: boolean;
     /**
      * The card's printed name, `None` while the catalog does not know the printing
-     * @type {string}
-     * @memberof DeckPointEntryResponse
      */
     name?: string | null;
     /**
      * Scryfall's id of the printing
-     * @type {string}
-     * @memberof DeckPointEntryResponse
      */
     printing: string;
     /**
      * Whether the copies were stand-ins rather than the real cards
-     * @type {boolean}
-     * @memberof DeckPointEntryResponse
      */
     proxy: boolean;
     /**
      * How many copies it held
-     * @type {number}
-     * @memberof DeckPointEntryResponse
      */
     quantity: number;
     /**
      * Which zone the entry sat in
-     * @type {DeckZone}
-     * @memberof DeckPointEntryResponse
      */
     zone: DeckZone;
 }
@@ -3215,20 +2553,14 @@ export interface DeckPointEntryResponse {
 export interface DeckPointResponse {
     /**
      * The Deck change
-     * @type {DeckChangeResponse}
-     * @memberof DeckPointResponse
      */
     change: DeckChangeResponse;
     /**
      * The Deck entries the deck held then
-     * @type {Array<DeckPointEntryResponse>}
-     * @memberof DeckPointResponse
      */
     entries: Array<DeckPointEntryResponse>;
     /**
      * The recorded deck fields as they were then
-     * @type {DeckSettingsResponse}
-     * @memberof DeckPointResponse
      */
     settings: DeckSettingsResponse;
 }
@@ -3242,106 +2574,72 @@ export interface DeckPointResponse {
 export interface DeckResponse {
     /**
      * Whether the table agreed to cards the format bans
-     * @type {boolean}
-     * @memberof DeckResponse
      */
     allow_banned: boolean;
     /**
      * Whether the table agreed to more copies of a card than the format allows
-     * @type {boolean}
-     * @memberof DeckResponse
      */
     allow_duplicates: boolean;
     /**
      * Whether the table agreed to more commanders than the format allows
-     * @type {boolean}
-     * @memberof DeckResponse
      */
     allow_extra_commanders: boolean;
     /**
      * The colours the deck may play, `null` for whatever the commander allows
-     * @type {string}
-     * @memberof DeckResponse
      */
     allowed_color_identity?: string | null;
     /**
      * Which Commander bracket the deck is built to, `null` when unset
-     * @type {number}
-     * @memberof DeckResponse
      */
     bracket?: number | null;
     /**
      * Whether there is an undone Deck change to redo
-     * @type {boolean}
-     * @memberof DeckResponse
      */
     can_redo: boolean;
     /**
      * Whether there is a Deck change to undo
-     * @type {boolean}
-     * @memberof DeckResponse
      */
     can_undo: boolean;
     /**
      * When the deck was created
-     * @type {string}
-     * @memberof DeckResponse
      */
     created_at: string;
     /**
      * How many cards the deck is built to, `null` for the format's rule
      * 
      * The commanders count toward it, the way the format's own size does.
-     * @type {number}
-     * @memberof DeckResponse
      */
     deck_size?: number | null;
     /**
      * Optional description, e.g. the deck's game plan
-     * @type {string}
-     * @memberof DeckResponse
      */
     description?: string | null;
     /**
      * The folder the deck is filed in, `null` while it is on no shelf
-     * @type {string}
-     * @memberof DeckResponse
      */
     folder?: string | null;
     /**
      * The format the deck is built for
-     * @type {string}
-     * @memberof DeckResponse
      */
     format: string;
     /**
      * Name of the deck
-     * @type {string}
-     * @memberof DeckResponse
      */
     name: string;
     /**
      * The caller's role on the deck, `null` when only its Visibility shows it to them
-     * @type {DeckRole}
-     * @memberof DeckResponse
      */
     role?: DeckRole | null;
     /**
      * Secret of the share link, `null` once the link is revoked
-     * @type {string}
-     * @memberof DeckResponse
      */
     share_token?: string | null;
     /**
      * Primary key
-     * @type {string}
-     * @memberof DeckResponse
      */
     uuid: string;
     /**
      * Who may see the deck
-     * @type {Visibility}
-     * @memberof DeckResponse
      */
     visibility: Visibility;
 }
@@ -3364,7 +2662,7 @@ export const DeckRole = {
     /**
     * A Collaborator who only looks at the deck
     */
-    Viewer: 'Viewer'
+    Viewer: 'Viewer',
 } as const;
 export type DeckRole = typeof DeckRole[keyof typeof DeckRole];
 
@@ -3376,56 +2674,38 @@ export type DeckRole = typeof DeckRole[keyof typeof DeckRole];
 export interface DeckSettingsResponse {
     /**
      * Whether the table agreed to cards the format bans
-     * @type {boolean}
-     * @memberof DeckSettingsResponse
      */
     allow_banned: boolean;
     /**
      * Whether the table agreed to more copies of a card than the format allows
-     * @type {boolean}
-     * @memberof DeckSettingsResponse
      */
     allow_duplicates: boolean;
     /**
      * Whether the table agreed to more commanders than the format allows
-     * @type {boolean}
-     * @memberof DeckSettingsResponse
      */
     allow_extra_commanders: boolean;
     /**
      * The colours the deck could play, `None` for whatever the commander allows
-     * @type {string}
-     * @memberof DeckSettingsResponse
      */
     allowed_color_identity?: string | null;
     /**
      * The Commander bracket the deck was built to, `None` when unset
-     * @type {number}
-     * @memberof DeckSettingsResponse
      */
     bracket?: number | null;
     /**
      * How many cards the deck was built to, `None` for the format's rule
-     * @type {number}
-     * @memberof DeckSettingsResponse
      */
     deck_size?: number | null;
     /**
      * The deck's description, `None` for none
-     * @type {string}
-     * @memberof DeckSettingsResponse
      */
     description?: string | null;
     /**
      * The format the deck was built for
-     * @type {string}
-     * @memberof DeckSettingsResponse
      */
     format: string;
     /**
      * The deck's name
-     * @type {string}
-     * @memberof DeckSettingsResponse
      */
     name: string;
 }
@@ -3443,14 +2723,10 @@ export type DeckSize = DeckSizeOneOf | DeckSizeOneOf1;
 export interface DeckSizeOneOf {
     /**
      * The count
-     * @type {number}
-     * @memberof DeckSizeOneOf
      */
     cards: number;
     /**
      * 
-     * @type {DeckSizeOneOfKindEnum}
-     * @memberof DeckSizeOneOf
      */
     kind: DeckSizeOneOfKindEnum;
 }
@@ -3460,7 +2736,7 @@ export interface DeckSizeOneOf {
  * @export
  */
 export const DeckSizeOneOfKindEnum = {
-    exactly: 'exactly'
+    exactly: 'exactly',
 } as const;
 export type DeckSizeOneOfKindEnum = typeof DeckSizeOneOfKindEnum[keyof typeof DeckSizeOneOfKindEnum];
 
@@ -3472,14 +2748,10 @@ export type DeckSizeOneOfKindEnum = typeof DeckSizeOneOfKindEnum[keyof typeof De
 export interface DeckSizeOneOf1 {
     /**
      * The count
-     * @type {number}
-     * @memberof DeckSizeOneOf1
      */
     cards: number;
     /**
      * 
-     * @type {DeckSizeOneOf1KindEnum}
-     * @memberof DeckSizeOneOf1
      */
     kind: DeckSizeOneOf1KindEnum;
 }
@@ -3489,7 +2761,7 @@ export interface DeckSizeOneOf1 {
  * @export
  */
 export const DeckSizeOneOf1KindEnum = {
-    at_least: 'at_least'
+    at_least: 'at_least',
 } as const;
 export type DeckSizeOneOf1KindEnum = typeof DeckSizeOneOf1KindEnum[keyof typeof DeckSizeOneOf1KindEnum];
 
@@ -3501,26 +2773,18 @@ export type DeckSizeOneOf1KindEnum = typeof DeckSizeOneOf1KindEnum[keyof typeof 
 export interface DeckSourcingResponse {
     /**
      * What could still be taken from elsewhere
-     * @type {Array<SourcingCandidateResponse>}
-     * @memberof DeckSourcingResponse
      */
     candidates: Array<SourcingCandidateResponse>;
     /**
      * The deck's own collection, `None` while it keeps none
-     * @type {CollectionResponse}
-     * @memberof DeckSourcingResponse
      */
     collection?: CollectionResponse | null;
     /**
      * What is filed in the deck's own collection
-     * @type {Array<SourcedStackResponse>}
-     * @memberof DeckSourcingResponse
      */
     filed: Array<SourcedStackResponse>;
     /**
      * What the list asks for
-     * @type {Array<SourcingSlotResponse>}
-     * @memberof DeckSourcingResponse
      */
     slots: Array<SourcingSlotResponse>;
 }
@@ -3532,32 +2796,22 @@ export interface DeckSourcingResponse {
 export interface DeckTagResponse {
     /**
      * The colour it is drawn in
-     * @type {string}
-     * @memberof DeckTagResponse
      */
     color: string;
     /**
      * The deck it is local to, `null` for one offered on every deck
-     * @type {string}
-     * @memberof DeckTagResponse
      */
     deck?: string | null;
     /**
      * The icon drawn inside its colour marker
-     * @type {string}
-     * @memberof DeckTagResponse
      */
     icon: string;
     /**
      * What the tag is called
-     * @type {string}
-     * @memberof DeckTagResponse
      */
     name: string;
     /**
      * Primary key
-     * @type {string}
-     * @memberof DeckTagResponse
      */
     uuid: string;
 }
@@ -3569,20 +2823,14 @@ export interface DeckTagResponse {
 export interface DeckTargets {
     /**
      * Corridors by role bucket id, only for the ones that were moved
-     * @type {{ [key: string]: Corridor | undefined; }}
-     * @memberof DeckTargets
      */
     buckets?: { [key: string]: Corridor | undefined; };
     /**
      * The target curve as shares per mana value, `None` on the bracket's own shape
-     * @type {Array<number>}
-     * @memberof DeckTargets
      */
     curve?: Array<number> | null;
     /**
      * Corridors by primary card type, only for the ones that were moved
-     * @type {{ [key: string]: Corridor | undefined; }}
-     * @memberof DeckTargets
      */
     types?: { [key: string]: Corridor | undefined; };
 }
@@ -3594,14 +2842,10 @@ export interface DeckTargets {
 export interface DeckUndoResponse {
     /**
      * Whether there is an undone Deck change to redo
-     * @type {boolean}
-     * @memberof DeckUndoResponse
      */
     can_redo: boolean;
     /**
      * Whether there is a Deck change to undo
-     * @type {boolean}
-     * @memberof DeckUndoResponse
      */
     can_undo: boolean;
 }
@@ -3630,7 +2874,7 @@ export const DeckZone = {
     /**
     * Considered but not currently in the deck
     */
-    Maybe: 'Maybe'
+    Maybe: 'Maybe',
 } as const;
 export type DeckZone = typeof DeckZone[keyof typeof DeckZone];
 
@@ -3642,8 +2886,6 @@ export type DeckZone = typeof DeckZone[keyof typeof DeckZone];
 export interface DeleteAccountErrors {
     /**
      * The typed username is not the one the session belongs to
-     * @type {boolean}
-     * @memberof DeleteAccountErrors
      */
     username_mismatch: boolean;
 }
@@ -3657,8 +2899,6 @@ export interface DeleteAccountRequest {
      * The account's own username, typed out
      * 
      * Proof that the request means the account it is authenticated as, and not a stray click on a red button.
-     * @type {string}
-     * @memberof DeleteAccountRequest
      */
     username: string;
 }
@@ -3670,14 +2910,10 @@ export interface DeleteAccountRequest {
 export interface DeletePasskeyErrors {
     /**
      * It is the account's only passkey — deleting it would lock the account out for good
-     * @type {boolean}
-     * @memberof DeletePasskeyErrors
      */
     last_passkey: boolean;
     /**
      * No passkey with that id belongs to this account
-     * @type {boolean}
-     * @memberof DeletePasskeyErrors
      */
     unknown_passkey: boolean;
 }
@@ -3694,7 +2930,7 @@ export const DeletionMode = {
     /**
     * Deletes them along with everything else, the full Deletion
     */
-    Full: 'Full'
+    Full: 'Full',
 } as const;
 export type DeletionMode = typeof DeletionMode[keyof typeof DeletionMode];
 
@@ -3820,7 +3056,7 @@ export const EntrySort = {
     /**
     * Condition, best first
     */
-    condition: 'condition'
+    condition: 'condition',
 } as const;
 export type EntrySort = typeof EntrySort[keyof typeof EntrySort];
 
@@ -3830,7 +3066,7 @@ export type EntrySort = typeof EntrySort[keyof typeof EntrySort];
  * @export
  */
 export const ErrorConstant = {
-    Err: 'Err'
+    Err: 'Err',
 } as const;
 export type ErrorConstant = typeof ErrorConstant[keyof typeof ErrorConstant];
 
@@ -3853,7 +3089,7 @@ export const ExtraTurnRule = {
     /**
     * No limit
     */
-    any: 'any'
+    any: 'any',
 } as const;
 export type ExtraTurnRule = typeof ExtraTurnRule[keyof typeof ExtraTurnRule];
 
@@ -3871,20 +3107,14 @@ export type FieldDifference = FieldDifferenceOneOf | FieldDifferenceOneOf1 | Fie
 export interface FieldDifferenceOneOf {
     /**
      * The name after
-     * @type {string}
-     * @memberof FieldDifferenceOneOf
      */
     after: string;
     /**
      * The name before
-     * @type {string}
-     * @memberof FieldDifferenceOneOf
      */
     before: string;
     /**
      * 
-     * @type {FieldDifferenceOneOfFieldEnum}
-     * @memberof FieldDifferenceOneOf
      */
     field: FieldDifferenceOneOfFieldEnum;
 }
@@ -3894,7 +3124,7 @@ export interface FieldDifferenceOneOf {
  * @export
  */
 export const FieldDifferenceOneOfFieldEnum = {
-    Name: 'Name'
+    Name: 'Name',
 } as const;
 export type FieldDifferenceOneOfFieldEnum = typeof FieldDifferenceOneOfFieldEnum[keyof typeof FieldDifferenceOneOfFieldEnum];
 
@@ -3906,20 +3136,14 @@ export type FieldDifferenceOneOfFieldEnum = typeof FieldDifferenceOneOfFieldEnum
 export interface FieldDifferenceOneOf1 {
     /**
      * The description after, `None` for none
-     * @type {string}
-     * @memberof FieldDifferenceOneOf1
      */
     after?: string | null;
     /**
      * The description before, `None` for none
-     * @type {string}
-     * @memberof FieldDifferenceOneOf1
      */
     before?: string | null;
     /**
      * 
-     * @type {FieldDifferenceOneOf1FieldEnum}
-     * @memberof FieldDifferenceOneOf1
      */
     field: FieldDifferenceOneOf1FieldEnum;
 }
@@ -3929,7 +3153,7 @@ export interface FieldDifferenceOneOf1 {
  * @export
  */
 export const FieldDifferenceOneOf1FieldEnum = {
-    Description: 'Description'
+    Description: 'Description',
 } as const;
 export type FieldDifferenceOneOf1FieldEnum = typeof FieldDifferenceOneOf1FieldEnum[keyof typeof FieldDifferenceOneOf1FieldEnum];
 
@@ -3941,20 +3165,14 @@ export type FieldDifferenceOneOf1FieldEnum = typeof FieldDifferenceOneOf1FieldEn
 export interface FieldDifferenceOneOf2 {
     /**
      * The format after
-     * @type {string}
-     * @memberof FieldDifferenceOneOf2
      */
     after: string;
     /**
      * The format before
-     * @type {string}
-     * @memberof FieldDifferenceOneOf2
      */
     before: string;
     /**
      * 
-     * @type {FieldDifferenceOneOf2FieldEnum}
-     * @memberof FieldDifferenceOneOf2
      */
     field: FieldDifferenceOneOf2FieldEnum;
 }
@@ -3964,7 +3182,7 @@ export interface FieldDifferenceOneOf2 {
  * @export
  */
 export const FieldDifferenceOneOf2FieldEnum = {
-    Format: 'Format'
+    Format: 'Format',
 } as const;
 export type FieldDifferenceOneOf2FieldEnum = typeof FieldDifferenceOneOf2FieldEnum[keyof typeof FieldDifferenceOneOf2FieldEnum];
 
@@ -3976,20 +3194,14 @@ export type FieldDifferenceOneOf2FieldEnum = typeof FieldDifferenceOneOf2FieldEn
 export interface FieldDifferenceOneOf3 {
     /**
      * The colours after, `None` for whatever the commander allows
-     * @type {string}
-     * @memberof FieldDifferenceOneOf3
      */
     after?: string | null;
     /**
      * The colours before, `None` for whatever the commander allows
-     * @type {string}
-     * @memberof FieldDifferenceOneOf3
      */
     before?: string | null;
     /**
      * 
-     * @type {FieldDifferenceOneOf3FieldEnum}
-     * @memberof FieldDifferenceOneOf3
      */
     field: FieldDifferenceOneOf3FieldEnum;
 }
@@ -3999,7 +3211,7 @@ export interface FieldDifferenceOneOf3 {
  * @export
  */
 export const FieldDifferenceOneOf3FieldEnum = {
-    Colors: 'Colors'
+    Colors: 'Colors',
 } as const;
 export type FieldDifferenceOneOf3FieldEnum = typeof FieldDifferenceOneOf3FieldEnum[keyof typeof FieldDifferenceOneOf3FieldEnum];
 
@@ -4011,20 +3223,14 @@ export type FieldDifferenceOneOf3FieldEnum = typeof FieldDifferenceOneOf3FieldEn
 export interface FieldDifferenceOneOf4 {
     /**
      * The bracket after, `None` when unset
-     * @type {number}
-     * @memberof FieldDifferenceOneOf4
      */
     after?: number | null;
     /**
      * The bracket before, `None` when unset
-     * @type {number}
-     * @memberof FieldDifferenceOneOf4
      */
     before?: number | null;
     /**
      * 
-     * @type {FieldDifferenceOneOf4FieldEnum}
-     * @memberof FieldDifferenceOneOf4
      */
     field: FieldDifferenceOneOf4FieldEnum;
 }
@@ -4034,7 +3240,7 @@ export interface FieldDifferenceOneOf4 {
  * @export
  */
 export const FieldDifferenceOneOf4FieldEnum = {
-    Bracket: 'Bracket'
+    Bracket: 'Bracket',
 } as const;
 export type FieldDifferenceOneOf4FieldEnum = typeof FieldDifferenceOneOf4FieldEnum[keyof typeof FieldDifferenceOneOf4FieldEnum];
 
@@ -4046,20 +3252,14 @@ export type FieldDifferenceOneOf4FieldEnum = typeof FieldDifferenceOneOf4FieldEn
 export interface FieldDifferenceOneOf5 {
     /**
      * The agreement after
-     * @type {boolean}
-     * @memberof FieldDifferenceOneOf5
      */
     after: boolean;
     /**
      * The agreement before
-     * @type {boolean}
-     * @memberof FieldDifferenceOneOf5
      */
     before: boolean;
     /**
      * 
-     * @type {FieldDifferenceOneOf5FieldEnum}
-     * @memberof FieldDifferenceOneOf5
      */
     field: FieldDifferenceOneOf5FieldEnum;
 }
@@ -4069,7 +3269,7 @@ export interface FieldDifferenceOneOf5 {
  * @export
  */
 export const FieldDifferenceOneOf5FieldEnum = {
-    AllowExtraCommanders: 'AllowExtraCommanders'
+    AllowExtraCommanders: 'AllowExtraCommanders',
 } as const;
 export type FieldDifferenceOneOf5FieldEnum = typeof FieldDifferenceOneOf5FieldEnum[keyof typeof FieldDifferenceOneOf5FieldEnum];
 
@@ -4081,20 +3281,14 @@ export type FieldDifferenceOneOf5FieldEnum = typeof FieldDifferenceOneOf5FieldEn
 export interface FieldDifferenceOneOf6 {
     /**
      * The agreement after
-     * @type {boolean}
-     * @memberof FieldDifferenceOneOf6
      */
     after: boolean;
     /**
      * The agreement before
-     * @type {boolean}
-     * @memberof FieldDifferenceOneOf6
      */
     before: boolean;
     /**
      * 
-     * @type {FieldDifferenceOneOf6FieldEnum}
-     * @memberof FieldDifferenceOneOf6
      */
     field: FieldDifferenceOneOf6FieldEnum;
 }
@@ -4104,7 +3298,7 @@ export interface FieldDifferenceOneOf6 {
  * @export
  */
 export const FieldDifferenceOneOf6FieldEnum = {
-    AllowDuplicates: 'AllowDuplicates'
+    AllowDuplicates: 'AllowDuplicates',
 } as const;
 export type FieldDifferenceOneOf6FieldEnum = typeof FieldDifferenceOneOf6FieldEnum[keyof typeof FieldDifferenceOneOf6FieldEnum];
 
@@ -4116,20 +3310,14 @@ export type FieldDifferenceOneOf6FieldEnum = typeof FieldDifferenceOneOf6FieldEn
 export interface FieldDifferenceOneOf7 {
     /**
      * The agreement after
-     * @type {boolean}
-     * @memberof FieldDifferenceOneOf7
      */
     after: boolean;
     /**
      * The agreement before
-     * @type {boolean}
-     * @memberof FieldDifferenceOneOf7
      */
     before: boolean;
     /**
      * 
-     * @type {FieldDifferenceOneOf7FieldEnum}
-     * @memberof FieldDifferenceOneOf7
      */
     field: FieldDifferenceOneOf7FieldEnum;
 }
@@ -4139,7 +3327,7 @@ export interface FieldDifferenceOneOf7 {
  * @export
  */
 export const FieldDifferenceOneOf7FieldEnum = {
-    AllowBanned: 'AllowBanned'
+    AllowBanned: 'AllowBanned',
 } as const;
 export type FieldDifferenceOneOf7FieldEnum = typeof FieldDifferenceOneOf7FieldEnum[keyof typeof FieldDifferenceOneOf7FieldEnum];
 
@@ -4151,20 +3339,14 @@ export type FieldDifferenceOneOf7FieldEnum = typeof FieldDifferenceOneOf7FieldEn
 export interface FieldDifferenceOneOf8 {
     /**
      * The size after, `None` for the format's rule
-     * @type {number}
-     * @memberof FieldDifferenceOneOf8
      */
     after?: number | null;
     /**
      * The size before, `None` for the format's rule
-     * @type {number}
-     * @memberof FieldDifferenceOneOf8
      */
     before?: number | null;
     /**
      * 
-     * @type {FieldDifferenceOneOf8FieldEnum}
-     * @memberof FieldDifferenceOneOf8
      */
     field: FieldDifferenceOneOf8FieldEnum;
 }
@@ -4174,7 +3356,7 @@ export interface FieldDifferenceOneOf8 {
  * @export
  */
 export const FieldDifferenceOneOf8FieldEnum = {
-    DeckSize: 'DeckSize'
+    DeckSize: 'DeckSize',
 } as const;
 export type FieldDifferenceOneOf8FieldEnum = typeof FieldDifferenceOneOf8FieldEnum[keyof typeof FieldDifferenceOneOf8FieldEnum];
 
@@ -4186,8 +3368,6 @@ export type FieldDifferenceOneOf8FieldEnum = typeof FieldDifferenceOneOf8FieldEn
 export interface FileScannerSessionRequest {
     /**
      * Destination; omitted to use the session's preferred collection
-     * @type {string}
-     * @memberof FileScannerSessionRequest
      */
     collection?: string | null;
 }
@@ -4199,20 +3379,14 @@ export interface FileScannerSessionRequest {
 export interface FileScannerSessionResponse {
     /**
      * Destination collection
-     * @type {string}
-     * @memberof FileScannerSessionResponse
      */
     collection: string;
     /**
      * Copies filed
-     * @type {number}
-     * @memberof FileScannerSessionResponse
      */
     copies: number;
     /**
      * Distinct stacks filed
-     * @type {number}
-     * @memberof FileScannerSessionResponse
      */
     stacks: number;
 }
@@ -4224,8 +3398,6 @@ export interface FileScannerSessionResponse {
 export interface FillDeckCollectionRequest {
     /**
      * The one slot to fill, `None` for every slot of the deck
-     * @type {string}
-     * @memberof FillDeckCollectionRequest
      */
     slot?: string | null;
 }
@@ -4237,8 +3409,6 @@ export interface FillDeckCollectionRequest {
 export interface FillDeckCollectionResponse {
     /**
      * How many copies were filed as being in the deck
-     * @type {number}
-     * @memberof FillDeckCollectionResponse
      */
     filed: number;
 }
@@ -4250,14 +3420,10 @@ export interface FillDeckCollectionResponse {
 export interface FinishAddPasskeyRequest {
     /**
      * The browser's `RegisterPublicKeyCredential` response
-     * @type {any}
-     * @memberof FinishAddPasskeyRequest
      */
     credential: any | null;
     /**
      * What to call the device, or `None` to number it
-     * @type {string}
-     * @memberof FinishAddPasskeyRequest
      */
     label?: string | null;
 }
@@ -4269,26 +3435,18 @@ export interface FinishAddPasskeyRequest {
 export interface FinishLoginErrors {
     /**
      * The signature did not check out
-     * @type {boolean}
-     * @memberof FinishLoginErrors
      */
     authentication_failed: boolean;
     /**
      * An Admin locked the account
-     * @type {boolean}
-     * @memberof FinishLoginErrors
      */
     locked: boolean;
     /**
      * The browser's response was not a credential
-     * @type {boolean}
-     * @memberof FinishLoginErrors
      */
     malformed_credential: boolean;
     /**
      * No ceremony is in progress — the session expired, or `login/start` was never called
-     * @type {boolean}
-     * @memberof FinishLoginErrors
      */
     no_ceremony: boolean;
 }
@@ -4300,16 +3458,12 @@ export interface FinishLoginErrors {
 export interface FinishLoginRequest {
     /**
      * The browser's `PublicKeyCredential` response
-     * @type {any}
-     * @memberof FinishLoginRequest
      */
     credential: any | null;
     /**
      * Keep the session alive across browser restarts
      * 
      * Off means the cookie is dropped when the browser closes — the sensible default on a machine somebody else also uses.
-     * @type {boolean}
-     * @memberof FinishLoginRequest
      */
     remember_me: boolean;
 }
@@ -4321,14 +3475,10 @@ export interface FinishLoginRequest {
 export interface FinishRegistrationRequest {
     /**
      * The browser's `RegisterPublicKeyCredential` response
-     * @type {any}
-     * @memberof FinishRegistrationRequest
      */
     credential: any | null;
     /**
      * The token from the registration link
-     * @type {string}
-     * @memberof FinishRegistrationRequest
      */
     token: string;
 }
@@ -4403,14 +3553,10 @@ export interface FormErrorResponseForAddGuestParticipantErrors {
 export interface FormErrorResponseForAddPasskeyErrors {
     /**
      * The actual error struct
-     * @type {AddPasskeyErrors}
-     * @memberof FormErrorResponseForAddPasskeyErrors
      */
     error: AddPasskeyErrors;
     /**
      * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
-     * @type {ErrorConstant}
-     * @memberof FormErrorResponseForAddPasskeyErrors
      */
     result: ErrorConstant;
 }
@@ -4424,14 +3570,10 @@ export interface FormErrorResponseForAddPasskeyErrors {
 export interface FormErrorResponseForAdminDeleteAccountErrors {
     /**
      * The actual error struct
-     * @type {AdminDeleteAccountErrors}
-     * @memberof FormErrorResponseForAdminDeleteAccountErrors
      */
     error: AdminDeleteAccountErrors;
     /**
      * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
-     * @type {ErrorConstant}
-     * @memberof FormErrorResponseForAdminDeleteAccountErrors
      */
     result: ErrorConstant;
 }
@@ -4445,14 +3587,10 @@ export interface FormErrorResponseForAdminDeleteAccountErrors {
 export interface FormErrorResponseForAdminLockAccountErrors {
     /**
      * The actual error struct
-     * @type {AdminLockAccountErrors}
-     * @memberof FormErrorResponseForAdminLockAccountErrors
      */
     error: AdminLockAccountErrors;
     /**
      * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
-     * @type {ErrorConstant}
-     * @memberof FormErrorResponseForAdminLockAccountErrors
      */
     result: ErrorConstant;
 }
@@ -4466,14 +3604,10 @@ export interface FormErrorResponseForAdminLockAccountErrors {
 export interface FormErrorResponseForAdminRenameAccountErrors {
     /**
      * The actual error struct
-     * @type {AdminRenameAccountErrors}
-     * @memberof FormErrorResponseForAdminRenameAccountErrors
      */
     error: AdminRenameAccountErrors;
     /**
      * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
-     * @type {ErrorConstant}
-     * @memberof FormErrorResponseForAdminRenameAccountErrors
      */
     result: ErrorConstant;
 }
@@ -4487,14 +3621,10 @@ export interface FormErrorResponseForAdminRenameAccountErrors {
 export interface FormErrorResponseForAdminSetRoleErrors {
     /**
      * The actual error struct
-     * @type {AdminSetRoleErrors}
-     * @memberof FormErrorResponseForAdminSetRoleErrors
      */
     error: AdminSetRoleErrors;
     /**
      * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
-     * @type {ErrorConstant}
-     * @memberof FormErrorResponseForAdminSetRoleErrors
      */
     result: ErrorConstant;
 }
@@ -4508,14 +3638,10 @@ export interface FormErrorResponseForAdminSetRoleErrors {
 export interface FormErrorResponseForAdminUnlockAccountErrors {
     /**
      * The actual error struct
-     * @type {AdminUnlockAccountErrors}
-     * @memberof FormErrorResponseForAdminUnlockAccountErrors
      */
     error: AdminUnlockAccountErrors;
     /**
      * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
-     * @type {ErrorConstant}
-     * @memberof FormErrorResponseForAdminUnlockAccountErrors
      */
     result: ErrorConstant;
 }
@@ -4550,14 +3676,10 @@ export interface FormErrorResponseForArrangeRoundErrors {
 export interface FormErrorResponseForChooseUsernameErrors {
     /**
      * The actual error struct
-     * @type {ChooseUsernameErrors}
-     * @memberof FormErrorResponseForChooseUsernameErrors
      */
     error: ChooseUsernameErrors;
     /**
      * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
-     * @type {ErrorConstant}
-     * @memberof FormErrorResponseForChooseUsernameErrors
      */
     result: ErrorConstant;
 }
@@ -4571,14 +3693,10 @@ export interface FormErrorResponseForChooseUsernameErrors {
 export interface FormErrorResponseForDeleteAccountErrors {
     /**
      * The actual error struct
-     * @type {DeleteAccountErrors}
-     * @memberof FormErrorResponseForDeleteAccountErrors
      */
     error: DeleteAccountErrors;
     /**
      * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
-     * @type {ErrorConstant}
-     * @memberof FormErrorResponseForDeleteAccountErrors
      */
     result: ErrorConstant;
 }
@@ -4592,14 +3710,10 @@ export interface FormErrorResponseForDeleteAccountErrors {
 export interface FormErrorResponseForDeletePasskeyErrors {
     /**
      * The actual error struct
-     * @type {DeletePasskeyErrors}
-     * @memberof FormErrorResponseForDeletePasskeyErrors
      */
     error: DeletePasskeyErrors;
     /**
      * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
-     * @type {ErrorConstant}
-     * @memberof FormErrorResponseForDeletePasskeyErrors
      */
     result: ErrorConstant;
 }
@@ -4655,14 +3769,10 @@ export interface FormErrorResponseForDropErrors {
 export interface FormErrorResponseForFinishLoginErrors {
     /**
      * The actual error struct
-     * @type {FinishLoginErrors}
-     * @memberof FormErrorResponseForFinishLoginErrors
      */
     error: FinishLoginErrors;
     /**
      * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
-     * @type {ErrorConstant}
-     * @memberof FormErrorResponseForFinishLoginErrors
      */
     result: ErrorConstant;
 }
@@ -4676,14 +3786,10 @@ export interface FormErrorResponseForFinishLoginErrors {
 export interface FormErrorResponseForMeErrors {
     /**
      * The actual error struct
-     * @type {MeErrors}
-     * @memberof FormErrorResponseForMeErrors
      */
     error: MeErrors;
     /**
      * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
-     * @type {ErrorConstant}
-     * @memberof FormErrorResponseForMeErrors
      */
     result: ErrorConstant;
 }
@@ -4718,14 +3824,10 @@ export interface FormErrorResponseForOfferHandoverErrors {
 export interface FormErrorResponseForPutDeckCollaboratorErrors {
     /**
      * The actual error struct
-     * @type {PutDeckCollaboratorErrors}
-     * @memberof FormErrorResponseForPutDeckCollaboratorErrors
      */
     error: PutDeckCollaboratorErrors;
     /**
      * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
-     * @type {ErrorConstant}
-     * @memberof FormErrorResponseForPutDeckCollaboratorErrors
      */
     result: ErrorConstant;
 }
@@ -4760,14 +3862,10 @@ export interface FormErrorResponseForRegisterDeckErrors {
 export interface FormErrorResponseForRegistrationErrors {
     /**
      * The actual error struct
-     * @type {RegistrationErrors}
-     * @memberof FormErrorResponseForRegistrationErrors
      */
     error: RegistrationErrors;
     /**
      * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
-     * @type {ErrorConstant}
-     * @memberof FormErrorResponseForRegistrationErrors
      */
     result: ErrorConstant;
 }
@@ -4781,14 +3879,10 @@ export interface FormErrorResponseForRegistrationErrors {
 export interface FormErrorResponseForRenameAccountErrors {
     /**
      * The actual error struct
-     * @type {RenameAccountErrors}
-     * @memberof FormErrorResponseForRenameAccountErrors
      */
     error: RenameAccountErrors;
     /**
      * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
-     * @type {ErrorConstant}
-     * @memberof FormErrorResponseForRenameAccountErrors
      */
     result: ErrorConstant;
 }
@@ -4802,14 +3896,10 @@ export interface FormErrorResponseForRenameAccountErrors {
 export interface FormErrorResponseForRenamePasskeyErrors {
     /**
      * The actual error struct
-     * @type {RenamePasskeyErrors}
-     * @memberof FormErrorResponseForRenamePasskeyErrors
      */
     error: RenamePasskeyErrors;
     /**
      * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
-     * @type {ErrorConstant}
-     * @memberof FormErrorResponseForRenamePasskeyErrors
      */
     result: ErrorConstant;
 }
@@ -4865,14 +3955,10 @@ export interface FormErrorResponseForRoundErrors {
 export interface FormErrorResponseForSendBugReportErrors {
     /**
      * The actual error struct
-     * @type {SendBugReportErrors}
-     * @memberof FormErrorResponseForSendBugReportErrors
      */
     error: SendBugReportErrors;
     /**
      * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
-     * @type {ErrorConstant}
-     * @memberof FormErrorResponseForSendBugReportErrors
      */
     result: ErrorConstant;
 }
@@ -4970,14 +4056,10 @@ export interface FormErrorResponseForSignUpErrors {
 export interface FormErrorResponseForSignupErrors {
     /**
      * The actual error struct
-     * @type {SignupErrors}
-     * @memberof FormErrorResponseForSignupErrors
      */
     error: SignupErrors;
     /**
      * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
-     * @type {ErrorConstant}
-     * @memberof FormErrorResponseForSignupErrors
      */
     result: ErrorConstant;
 }
@@ -4991,14 +4073,10 @@ export interface FormErrorResponseForSignupErrors {
 export interface FormErrorResponseForStartLoginErrors {
     /**
      * The actual error struct
-     * @type {StartLoginErrors}
-     * @memberof FormErrorResponseForStartLoginErrors
      */
     error: StartLoginErrors;
     /**
      * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
-     * @type {ErrorConstant}
-     * @memberof FormErrorResponseForStartLoginErrors
      */
     result: ErrorConstant;
 }
@@ -5012,14 +4090,10 @@ export interface FormErrorResponseForStartLoginErrors {
 export interface FormErrorResponseForStartOidcLoginErrors {
     /**
      * The actual error struct
-     * @type {StartOidcLoginErrors}
-     * @memberof FormErrorResponseForStartOidcLoginErrors
      */
     error: StartOidcLoginErrors;
     /**
      * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
-     * @type {ErrorConstant}
-     * @memberof FormErrorResponseForStartOidcLoginErrors
      */
     result: ErrorConstant;
 }
@@ -5075,50 +4149,34 @@ export interface FormErrorResponseForTournamentSettingsErrors {
 export interface FormatRulesResponse {
     /**
      * Whether the deck's colours follow its commander unless overruled
-     * @type {boolean}
-     * @memberof FormatRulesResponse
      */
     color_identity_locked: boolean;
     /**
      * Whether a commander is required, and how many
-     * @type {CommanderRule}
-     * @memberof FormatRulesResponse
      */
     commander: CommanderRule;
     /**
      * How many cards the deck holds
-     * @type {DeckSize}
-     * @memberof FormatRulesResponse
      */
     deck_size: DeckSize;
     /**
      * Whether a deck in this format claims one of the brackets
-     * @type {boolean}
-     * @memberof FormatRulesResponse
      */
     has_brackets: boolean;
     /**
      * How many copies of one card may be played, ignoring basic lands
-     * @type {number}
-     * @memberof FormatRulesResponse
      */
     max_copies: number;
     /**
      * The cards this format bans from a zone rather than from the deck
-     * @type {RoleBansResponse}
-     * @memberof FormatRulesResponse
      */
     role_bans: RoleBansResponse;
     /**
      * How many cards the sideboard may hold, zero when the format has none
-     * @type {number}
-     * @memberof FormatRulesResponse
      */
     sideboard: number;
     /**
      * The slug, matching Scryfall's `legalities` keys
-     * @type {string}
-     * @memberof FormatRulesResponse
      */
     slug: string;
 }
@@ -5130,8 +4188,6 @@ export interface FormatRulesResponse {
 export interface GetPendingOidcLoginResponse {
     /**
      * The pending login, `None` if there is none or it ran out
-     * @type {PendingOidcLogin}
-     * @memberof GetPendingOidcLoginResponse
      */
     pending?: PendingOidcLogin | null;
 }
@@ -5143,14 +4199,10 @@ export interface GetPendingOidcLoginResponse {
 export interface ImportDeckCardsRequest {
     /**
      * The cards to put in
-     * @type {Array<AddDeckCardRequest>}
-     * @memberof ImportDeckCardsRequest
      */
     cards: Array<AddDeckCardRequest>;
     /**
      * Whether the cards add to the deck, replace it or fill it up for the advisor
-     * @type {ImportMode}
-     * @memberof ImportDeckCardsRequest
      */
     mode: ImportMode;
 }
@@ -5164,8 +4216,6 @@ export interface ImportDeckCardsRequest {
 export interface ImportDeckCardsResponse {
     /**
      * How many slots were added
-     * @type {number}
-     * @memberof ImportDeckCardsResponse
      */
     added: number;
 }
@@ -5188,7 +4238,7 @@ Gives every slot a new id, so anything hanging off those ids is lost. That is ri
     /**
     * The cards the advisor suggested to fill the deck up with, added to what is there
     */
-    Fill: 'Fill'
+    Fill: 'Fill',
 } as const;
 export type ImportMode = typeof ImportMode[keyof typeof ImportMode];
 
@@ -5200,38 +4250,26 @@ export type ImportMode = typeof ImportMode[keyof typeof ImportMode];
 export interface ListCardsResponse {
     /**
      * The stacks on this page
-     * @type {Array<ListedEntryResponse>}
-     * @memberof ListCardsResponse
      */
     entries: Array<ListedEntryResponse>;
     /**
      * The page size actually applied, which may be below what was asked for
-     * @type {number}
-     * @memberof ListCardsResponse
      */
     limit: number;
     /**
      * Pass back as `after` to get the next page, `None` at the end
-     * @type {string}
-     * @memberof ListCardsResponse
      */
     next_cursor?: string | null;
     /**
      * How many stacks were skipped
-     * @type {number}
-     * @memberof ListCardsResponse
      */
     offset: number;
     /**
      * How many stacks match the filters in total, for the pager
-     * @type {number}
-     * @memberof ListCardsResponse
      */
     total: number;
     /**
      * How many copies those stacks hold — the cards, not the rows
-     * @type {number}
-     * @memberof ListCardsResponse
      */
     total_copies: number;
 }
@@ -5243,8 +4281,6 @@ export interface ListCardsResponse {
 export interface ListCollectionEntriesResponse {
     /**
      * One entry per stack
-     * @type {Array<CollectionEntryResponse>}
-     * @memberof ListCollectionEntriesResponse
      */
     entries: Array<CollectionEntryResponse>;
 }
@@ -5256,14 +4292,10 @@ export interface ListCollectionEntriesResponse {
 export interface ListDeckCardsResponse {
     /**
      * The slots, in the order they were added
-     * @type {Array<DeckCardResponse>}
-     * @memberof ListDeckCardsResponse
      */
     cards: Array<DeckCardResponse>;
     /**
      * The tags that can be put on them
-     * @type {Array<DeckTagResponse>}
-     * @memberof ListDeckCardsResponse
      */
     tags: Array<DeckTagResponse>;
 }
@@ -5275,14 +4307,10 @@ export interface ListDeckCardsResponse {
 export interface ListDeckCollaboratorsResponse {
     /**
      * The Collaborators
-     * @type {Array<DeckCollaboratorResponse>}
-     * @memberof ListDeckCollaboratorsResponse
      */
     collaborators: Array<DeckCollaboratorResponse>;
     /**
      * The owner, which the list leaves out
-     * @type {DeckOwnerResponse}
-     * @memberof ListDeckCollaboratorsResponse
      */
     owner: DeckOwnerResponse;
 }
@@ -5294,8 +4322,6 @@ export interface ListDeckCollaboratorsResponse {
 export interface ListDeckFoldersResponse {
     /**
      * The folders, the account's own first and the archive last
-     * @type {Array<DeckFolderResponse>}
-     * @memberof ListDeckFoldersResponse
      */
     folders: Array<DeckFolderResponse>;
 }
@@ -5307,14 +4333,10 @@ export interface ListDeckFoldersResponse {
 export interface ListFormatsResponse {
     /**
      * The five Commander brackets, in order
-     * @type {Array<BracketRulesResponse>}
-     * @memberof ListFormatsResponse
      */
     brackets: Array<BracketRulesResponse>;
     /**
      * One entry per format
-     * @type {Array<FormatRulesResponse>}
-     * @memberof ListFormatsResponse
      */
     formats: Array<FormatRulesResponse>;
 }
@@ -5326,8 +4348,6 @@ export interface ListFormatsResponse {
 export interface ListGlobalTagsResponse {
     /**
      * The tags, by name
-     * @type {Array<DeckTagResponse>}
-     * @memberof ListGlobalTagsResponse
      */
     tags: Array<DeckTagResponse>;
 }
@@ -5339,8 +4359,6 @@ export interface ListGlobalTagsResponse {
 export interface ListOnLoanResponse {
     /**
      * One entry per stack, grouped by deck
-     * @type {Array<OnLoanResponse>}
-     * @memberof ListOnLoanResponse
      */
     loans: Array<OnLoanResponse>;
 }
@@ -5352,8 +4370,6 @@ export interface ListOnLoanResponse {
 export interface ListOpenIdProvidersResponse {
     /**
      * The active providers, empty while OIDC login is off
-     * @type {Array<SimpleOpenIdProvider>}
-     * @memberof ListOpenIdProvidersResponse
      */
     providers: Array<SimpleOpenIdProvider>;
 }
@@ -5422,8 +4438,6 @@ export interface ListParticipantsResponse {
 export interface ListPasskeysResponse {
     /**
      * One entry per registered device
-     * @type {Array<SimplePasskey>}
-     * @memberof ListPasskeysResponse
      */
     passkeys: Array<SimplePasskey>;
 }
@@ -5448,8 +4462,6 @@ export interface ListRegisteredDecksResponse {
 export interface ListScannerSessionsResponse {
     /**
      * Sessions, newest first
-     * @type {Array<ScannerSessionResponse>}
-     * @memberof ListScannerSessionsResponse
      */
     sessions: Array<ScannerSessionResponse>;
 }
@@ -5461,8 +4473,6 @@ export interface ListScannerSessionsResponse {
 export interface ListSharedWithMeResponse {
     /**
      * The decks
-     * @type {Array<SharedWithMeDeckResponse>}
-     * @memberof ListSharedWithMeResponse
      */
     decks: Array<SharedWithMeDeckResponse>;
 }
@@ -5487,14 +4497,10 @@ export interface ListTournamentsResponse {
 export interface ListWatchListAlarmsResponse {
     /**
      * The alarms, newest first
-     * @type {Array<WatchListAlarmResponse>}
-     * @memberof ListWatchListAlarmsResponse
      */
     alarms: Array<WatchListAlarmResponse>;
     /**
      * How many of them the reader has not seen yet
-     * @type {number}
-     * @memberof ListWatchListAlarmsResponse
      */
     unread: number;
 }
@@ -5506,8 +4512,6 @@ export interface ListWatchListAlarmsResponse {
 export interface ListWatchListCopiesResponse {
     /**
      * The stacks, the ones on a shelf before the ones sleeved into a deck
-     * @type {Array<WatchedCopyResponse>}
-     * @memberof ListWatchListCopiesResponse
      */
     copies: Array<WatchedCopyResponse>;
 }
@@ -5519,22 +4523,16 @@ export interface ListWatchListCopiesResponse {
 export interface ListWatchListEntriesResponse {
     /**
      * What is on it, oldest first
-     * @type {Array<WatchListEntryResponse>}
-     * @memberof ListWatchListEntriesResponse
      */
     entries: Array<WatchListEntryResponse>;
     /**
      * The list itself
-     * @type {WatchListResponse}
-     * @memberof ListWatchListEntriesResponse
      */
     list: WatchListResponse;
     /**
      * The newest catalog sync any of these cards came out of
      * 
      * What the page dates its prices by. `None` for a list whose cards the catalog holds none of.
-     * @type {string}
-     * @memberof ListWatchListEntriesResponse
      */
     prices_updated_at?: string | null;
 }
@@ -5546,8 +4544,6 @@ export interface ListWatchListEntriesResponse {
 export interface ListWatchListsResponse {
     /**
      * The lists, oldest first
-     * @type {Array<WatchListOverviewResponse>}
-     * @memberof ListWatchListsResponse
      */
     lists: Array<WatchListOverviewResponse>;
 }
@@ -5563,112 +4559,76 @@ export interface ListedCardResponse {
      * Cardmarket's id of the product this printing is sold as
      * 
      * What a link to the card's market page is built from. The country page in front of it and the filters behind it are the reader's own settings. `None` when Cardmarket does not stock the printing, which is when the client falls back to a search by name.
-     * @type {number}
-     * @memberof ListedCardResponse
      */
     cardmarket_id?: number | null;
     /**
      * Collector number as printed
-     * @type {string}
-     * @memberof ListedCardResponse
      */
     collector_number: string;
     /**
      * Colour identity as the letters `WUBRG`
-     * @type {string}
-     * @memberof ListedCardResponse
      */
     color_identity: string;
     /**
      * The finishes this printing exists in, as Scryfall spells them
-     * @type {Array<string>}
-     * @memberof ListedCardResponse
      */
     finishes: Array<string>;
     /**
      * The back face's artwork for a closer look
-     * @type {string}
-     * @memberof ListedCardResponse
      */
     image_back_normal?: string | null;
     /**
      * The back face's artwork for a list row
      * 
      * `None` unless the card is photographed twice: a transform card, a modal double-faced card, a battle. A split card or an adventure prints both halves on one side, so there is nothing to turn over.
-     * @type {string}
-     * @memberof ListedCardResponse
      */
     image_back_small?: string | null;
     /**
      * Artwork for a closer look — what a hover preview shows
-     * @type {string}
-     * @memberof ListedCardResponse
      */
     image_normal?: string | null;
     /**
      * Artwork for a list row
-     * @type {string}
-     * @memberof ListedCardResponse
      */
     image_small?: string | null;
     /**
      * Language of the printing, as Scryfall's code
-     * @type {string}
-     * @memberof ListedCardResponse
      */
     lang: string;
     /**
      * Mana value
-     * @type {number}
-     * @memberof ListedCardResponse
      */
     mana_value: number;
     /**
      * The printed name
-     * @type {string}
-     * @memberof ListedCardResponse
      */
     name: string;
     /**
      * Market price in euro cents
-     * @type {number}
-     * @memberof ListedCardResponse
      */
     price_eur_cents?: number | null;
     /**
      * Foil market price in euro cents
-     * @type {number}
-     * @memberof ListedCardResponse
      */
     price_eur_foil_cents?: number | null;
     /**
      * How rare the printing is
-     * @type {CardRarity}
-     * @memberof ListedCardResponse
      */
     rarity: CardRarity;
     /**
      * Whether the card is on the reserved list
-     * @type {boolean}
-     * @memberof ListedCardResponse
      */
     reserved: boolean;
     /**
      * Set code, upper case
-     * @type {string}
-     * @memberof ListedCardResponse
      */
     set_code: string;
     /**
      * Full set name
-     * @type {string}
-     * @memberof ListedCardResponse
      */
     set_name: string;
     /**
      * Type line as printed
-     * @type {string}
-     * @memberof ListedCardResponse
      */
     type_line: string;
 }
@@ -5682,68 +4642,46 @@ export interface ListedCardResponse {
 export interface ListedEntryResponse {
     /**
      * The day the cards were acquired
-     * @type {string}
-     * @memberof ListedEntryResponse
      */
     acquired_at?: string | null;
     /**
      * The card, as far as the catalog knows it
-     * @type {ListedCardResponse}
-     * @memberof ListedEntryResponse
      */
     card?: ListedCardResponse | null;
     /**
      * Condition of the cards
-     * @type {CardCondition}
-     * @memberof ListedEntryResponse
      */
     condition: CardCondition;
     /**
      * When the stack was filed
-     * @type {string}
-     * @memberof ListedEntryResponse
      */
     created_at: string;
     /**
      * Finish of the cards
-     * @type {CardFinish}
-     * @memberof ListedEntryResponse
      */
     finish: CardFinish;
     /**
      * Scryfall's id of the printing
-     * @type {string}
-     * @memberof ListedEntryResponse
      */
     printing: string;
     /**
      * What was paid per copy, in euro cents
-     * @type {number}
-     * @memberof ListedEntryResponse
      */
     purchase_price_cents?: number | null;
     /**
      * How many copies this stack holds
-     * @type {number}
-     * @memberof ListedEntryResponse
      */
     quantity: number;
     /**
      * Whether the cards carry an artist's signature
-     * @type {boolean}
-     * @memberof ListedEntryResponse
      */
     signed: boolean;
     /**
      * The owner's card-wide tags on the card this stack holds
-     * @type {Array<string>}
-     * @memberof ListedEntryResponse
      */
     tags: Array<string>;
     /**
      * Primary key
-     * @type {string}
-     * @memberof ListedEntryResponse
      */
     uuid: string;
 }
@@ -5764,7 +4702,7 @@ export const MailLanguage = {
     /**
     * English
     */
-    En: 'En'
+    En: 'En',
 } as const;
 export type MailLanguage = typeof MailLanguage[keyof typeof MailLanguage];
 
@@ -5776,14 +4714,10 @@ export type MailLanguage = typeof MailLanguage[keyof typeof MailLanguage];
 export interface MarkedCard {
     /**
      * The name, so a list of these reads without resolving anything
-     * @type {string}
-     * @memberof MarkedCard
      */
     name: string;
     /**
      * The oracle identity the advisor filters on
-     * @type {string}
-     * @memberof MarkedCard
      */
     oracle_id: string;
 }
@@ -5838,8 +4772,6 @@ export type Me200Response = FormErrorResponseForMeErrors | MeResponse;
 export interface MeErrors {
     /**
      * An Admin locked the account; the session is logged out
-     * @type {boolean}
-     * @memberof MeErrors
      */
     locked: boolean;
 }
@@ -5853,26 +4785,18 @@ export interface MeResponse {
      * Whether the account logs in through an OpenID provider (an External Account)
      * 
      * An External Account has no Passkeys and cannot add one.
-     * @type {boolean}
-     * @memberof MeResponse
      */
     external: boolean;
     /**
      * What the account may do, decides whether the admin dashboard is offered
-     * @type {Role}
-     * @memberof MeResponse
      */
     role: Role;
     /**
      * The account's login handle and display name
-     * @type {string}
-     * @memberof MeResponse
      */
     username: string;
     /**
      * The account's primary key
-     * @type {string}
-     * @memberof MeResponse
      */
     uuid: string;
 }
@@ -5886,8 +4810,6 @@ export interface MeResponse {
 export interface MergeCollectionEntriesRequest {
     /**
      * The stacks to combine — at least two, all of the same printing, condition and finish, and signed alike
-     * @type {Array<string>}
-     * @memberof MergeCollectionEntriesRequest
      */
     entries: Array<string>;
 }
@@ -5899,14 +4821,10 @@ export interface MergeCollectionEntriesRequest {
 export interface MpcFillArtResponse {
     /**
      * What was found, in the order MPCFill ranks it — empty for a card nobody drew
-     * @type {Array<MpcFillImageResponse>}
-     * @memberof MpcFillArtResponse
      */
     images: Array<MpcFillImageResponse>;
     /**
      * The name this answers, as it was asked
-     * @type {string}
-     * @memberof MpcFillArtResponse
      */
     name: string;
 }
@@ -5918,8 +4836,6 @@ export interface MpcFillArtResponse {
 export interface MpcFillCardbacksResponse {
     /**
      * The backs, in the order MPCFill ranks them
-     * @type {Array<MpcFillImageResponse>}
-     * @memberof MpcFillCardbacksResponse
      */
     cardbacks: Array<MpcFillImageResponse>;
 }
@@ -5931,56 +4847,38 @@ export interface MpcFillCardbacksResponse {
 export interface MpcFillImageResponse {
     /**
      * The resolution it was uploaded at
-     * @type {number}
-     * @memberof MpcFillImageResponse
      */
     dpi: number;
     /**
      * The Google Drive file id — what the order xml names
-     * @type {string}
-     * @memberof MpcFillImageResponse
      */
     id: string;
     /**
      * The language the card is printed in, as a two-letter code
-     * @type {string}
-     * @memberof MpcFillImageResponse
      */
     language: string;
     /**
      * The file's name in the drive, which is what the order xml carries along
-     * @type {string}
-     * @memberof MpcFillImageResponse
      */
     name: string;
     /**
      * How large the file is, in bytes
-     * @type {number}
-     * @memberof MpcFillImageResponse
      */
     size: number;
     /**
      * The drive it came from, as its owner named it
-     * @type {string}
-     * @memberof MpcFillImageResponse
      */
     source: string;
     /**
      * What the image is tagged with, e.g. `NSFW`, `Extended`
-     * @type {Array<string>}
-     * @memberof MpcFillImageResponse
      */
     tags: Array<string>;
     /**
      * A thumbnail 800 pixels across, for looking at one closely
-     * @type {string}
-     * @memberof MpcFillImageResponse
      */
     thumbnail_medium: string;
     /**
      * A thumbnail 400 pixels across, for a picker's grid
-     * @type {string}
-     * @memberof MpcFillImageResponse
      */
     thumbnail_small: string;
 }
@@ -5994,8 +4892,6 @@ export interface MpcFillSearchRequest {
      * The names to look for, as printed
      * 
      * One entry per face rather than per card: the two halves of a double-faced card are two images in an order, and only the caller knows which half it is asking about.
-     * @type {Array<string>}
-     * @memberof MpcFillSearchRequest
      */
     names: Array<string>;
 }
@@ -6007,8 +4903,6 @@ export interface MpcFillSearchRequest {
 export interface MpcFillSearchResponse {
     /**
      * One entry per name, in the order they were asked
-     * @type {Array<MpcFillArtResponse>}
-     * @memberof MpcFillSearchResponse
      */
     results: Array<MpcFillArtResponse>;
 }
@@ -6096,44 +4990,30 @@ export interface NameAccountRequest {
 export interface NewCollectionEntry {
     /**
      * The day the cards were acquired
-     * @type {string}
-     * @memberof NewCollectionEntry
      */
     acquired_at?: string | null;
     /**
      * Condition of the cards
-     * @type {CardCondition}
-     * @memberof NewCollectionEntry
      */
     condition: CardCondition;
     /**
      * Finish of the cards
-     * @type {CardFinish}
-     * @memberof NewCollectionEntry
      */
     finish: CardFinish;
     /**
      * Scryfall's id of the printing
-     * @type {string}
-     * @memberof NewCollectionEntry
      */
     printing: string;
     /**
      * What was paid per copy, in euro cents
-     * @type {number}
-     * @memberof NewCollectionEntry
      */
     purchase_price_cents?: number | null;
     /**
      * How many copies to file
-     * @type {number}
-     * @memberof NewCollectionEntry
      */
     quantity: number;
     /**
      * Whether the cards carry an artist's signature
-     * @type {boolean}
-     * @memberof NewCollectionEntry
      */
     signed?: boolean;
 }
@@ -6205,7 +5085,7 @@ export const OidcLoginFailure = {
     /**
     * The provider&#39;s answer did not check out
     */
-    failed: 'failed'
+    failed: 'failed',
 } as const;
 export type OidcLoginFailure = typeof OidcLoginFailure[keyof typeof OidcLoginFailure];
 
@@ -6217,20 +5097,14 @@ export type OidcLoginFailure = typeof OidcLoginFailure[keyof typeof OidcLoginFai
 export interface OldestPrintingResponse {
     /**
      * The card's name
-     * @type {string}
-     * @memberof OldestPrintingResponse
      */
     name: string;
     /**
      * The day it was released
-     * @type {string}
-     * @memberof OldestPrintingResponse
      */
     released_at: string;
     /**
      * Full set name
-     * @type {string}
-     * @memberof OldestPrintingResponse
      */
     set_name: string;
 }
@@ -6242,56 +5116,38 @@ export interface OldestPrintingResponse {
 export interface OnLoanResponse {
     /**
      * Collector number as printed
-     * @type {string}
-     * @memberof OnLoanResponse
      */
     collector_number?: string | null;
     /**
      * The deck they are in
-     * @type {string}
-     * @memberof OnLoanResponse
      */
     deck: string;
     /**
      * What that deck is called
-     * @type {string}
-     * @memberof OnLoanResponse
      */
     deck_name: string;
     /**
      * Artwork for a list row
-     * @type {string}
-     * @memberof OnLoanResponse
      */
     image_small?: string | null;
     /**
      * The card's name, `None` for a printing the catalog has not caught up with
-     * @type {string}
-     * @memberof OnLoanResponse
      */
     name?: string | null;
     /**
      * Scryfall's id of the printing
-     * @type {string}
-     * @memberof OnLoanResponse
      */
     printing: string;
     /**
      * How many copies of it are in that deck
-     * @type {number}
-     * @memberof OnLoanResponse
      */
     quantity: number;
     /**
      * Set code, upper case
-     * @type {string}
-     * @memberof OnLoanResponse
      */
     set_code?: string | null;
     /**
      * Full set name
-     * @type {string}
-     * @memberof OnLoanResponse
      */
     set_name?: string | null;
 }
@@ -6428,14 +5284,10 @@ export interface ParticipantResponse {
 export interface PendingOidcLogin {
     /**
      * The verified email the Account will get
-     * @type {string}
-     * @memberof PendingOidcLogin
      */
     email: string;
     /**
      * The display name of the provider that vouched for the person
-     * @type {string}
-     * @memberof PendingOidcLogin
      */
     provider: string;
 }
@@ -6487,32 +5339,22 @@ export interface PlayerCandidatesResponse {
 export interface PriceDayResponse {
     /**
      * The day the guide quoted these prices for
-     * @type {string}
-     * @memberof PriceDayResponse
      */
     day: string;
     /**
      * The cheapest offer
-     * @type {number}
-     * @memberof PriceDayResponse
      */
     low_cents?: number | null;
     /**
      * The cheapest foil offer
-     * @type {number}
-     * @memberof PriceDayResponse
      */
     low_foil_cents?: number | null;
     /**
      * Cardmarket's trend price
-     * @type {number}
-     * @memberof PriceDayResponse
      */
     trend_cents?: number | null;
     /**
      * The foil trend price
-     * @type {number}
-     * @memberof PriceDayResponse
      */
     trend_foil_cents?: number | null;
 }
@@ -6526,8 +5368,6 @@ export interface PriceHistoryResponse {
      * The days, oldest first
      * 
      * Daily for the last quarter and weekly before that — the history is thinned as it ages, so a chart should plot against the dates rather than against the position in this list.
-     * @type {Array<PriceDayResponse>}
-     * @memberof PriceHistoryResponse
      */
     days: Array<PriceDayResponse>;
 }
@@ -6539,26 +5379,18 @@ export interface PriceHistoryResponse {
 export interface PricePointResponse {
     /**
      * How many copies the stack holds
-     * @type {number}
-     * @memberof PricePointResponse
      */
     copies: number;
     /**
      * What one copy fetches today, in euro cents
-     * @type {number}
-     * @memberof PricePointResponse
      */
     market_cents: number;
     /**
      * The card's name
-     * @type {string}
-     * @memberof PricePointResponse
      */
     name: string;
     /**
      * What was paid per copy, in euro cents
-     * @type {number}
-     * @memberof PricePointResponse
      */
     purchase_cents: number;
 }
@@ -6570,20 +5402,14 @@ export interface PricePointResponse {
 export interface PrintingLanguageResponse {
     /**
      * Scryfall's id of that language's printing — what a stack stores
-     * @type {string}
-     * @memberof PrintingLanguageResponse
      */
     id: string;
     /**
      * Artwork for a list row
-     * @type {string}
-     * @memberof PrintingLanguageResponse
      */
     image_small?: string | null;
     /**
      * The language, as Scryfall's code
-     * @type {string}
-     * @memberof PrintingLanguageResponse
      */
     lang: string;
 }
@@ -6595,8 +5421,6 @@ export interface PrintingLanguageResponse {
 export interface PrintingLanguagesResponse {
     /**
      * One per language, English first, the printing asked about included
-     * @type {Array<PrintingLanguageResponse>}
-     * @memberof PrintingLanguagesResponse
      */
     languages: Array<PrintingLanguageResponse>;
 }
@@ -6610,32 +5434,22 @@ export interface PrintingLanguagesResponse {
 export interface PrintingLookupRequest {
     /**
      * Collector number as printed
-     * @type {string}
-     * @memberof PrintingLookupRequest
      */
     collector_number?: string | null;
     /**
      * Scryfall's id of the printing, when the export carried one
-     * @type {string}
-     * @memberof PrintingLookupRequest
      */
     id?: string | null;
     /**
      * The language the row is in, as Scryfall's code — English when absent
-     * @type {string}
-     * @memberof PrintingLookupRequest
      */
     lang?: string | null;
     /**
      * The printed name
-     * @type {string}
-     * @memberof PrintingLookupRequest
      */
     name?: string | null;
     /**
      * Set code, in any case
-     * @type {string}
-     * @memberof PrintingLookupRequest
      */
     set_code?: string | null;
 }
@@ -6651,68 +5465,46 @@ export interface PrintingLookupRequest {
 export interface PublicCollectionResponse {
     /**
      * Artwork of the most valuable cards in it, at most two
-     * @type {Array<string>}
-     * @memberof PublicCollectionResponse
      */
     arts: Array<string>;
     /**
      * How many copies are filed in it
-     * @type {number}
-     * @memberof PublicCollectionResponse
      */
     cards: number;
     /**
      * The colour the collection is drawn in
-     * @type {string}
-     * @memberof PublicCollectionResponse
      */
     color: string;
     /**
      * The colours the collection holds, as the letters `WUBRG`
-     * @type {string}
-     * @memberof PublicCollectionResponse
      */
     colors: string;
     /**
      * The point in time the collection was created
-     * @type {string}
-     * @memberof PublicCollectionResponse
      */
     created_at: string;
     /**
      * Description shown above the card list
-     * @type {string}
-     * @memberof PublicCollectionResponse
      */
     description: string;
     /**
      * The pictogram drawn on the collection
-     * @type {string}
-     * @memberof PublicCollectionResponse
      */
     icon: string;
     /**
      * Name of the collection
-     * @type {string}
-     * @memberof PublicCollectionResponse
      */
     name: string;
     /**
      * The username of the account it belongs to
-     * @type {string}
-     * @memberof PublicCollectionResponse
      */
     owner: string;
     /**
      * Copies per rarity
-     * @type {RarityCountsResponse}
-     * @memberof PublicCollectionResponse
      */
     rarities: RarityCountsResponse;
     /**
      * Primary key
-     * @type {string}
-     * @memberof PublicCollectionResponse
      */
     uuid: string;
 }
@@ -6724,70 +5516,48 @@ export interface PublicCollectionResponse {
 export interface PublicDeckResponse {
     /**
      * The colours it may play, `null` for whatever the commander allows
-     * @type {string}
-     * @memberof PublicDeckResponse
      */
     allowed_color_identity?: string | null;
     /**
      * Which Commander bracket the deck is built to, `null` when it claims none
-     * @type {number}
-     * @memberof PublicDeckResponse
      */
     bracket?: number | null;
     /**
      * How many cards sit in the deck proper, the sideboard aside
-     * @type {number}
-     * @memberof PublicDeckResponse
      */
     cards: number;
     /**
      * The commanders, in the order they were put in
-     * @type {Array<DeckCommanderResponse>}
-     * @memberof PublicDeckResponse
      */
     commanders: Array<DeckCommanderResponse>;
     /**
      * The point in time the deck was created
-     * @type {string}
-     * @memberof PublicDeckResponse
      */
     created_at: string;
     /**
      * Optional description, e.g. the deck's game plan
-     * @type {string}
-     * @memberof PublicDeckResponse
      */
     description?: string | null;
     /**
      * The format it is built for
-     * @type {string}
-     * @memberof PublicDeckResponse
      */
     format: string;
     /**
      * Name of the deck
-     * @type {string}
-     * @memberof PublicDeckResponse
      */
     name: string;
     /**
      * The username of the account that built it, `null` once it is deleted
      * 
      * The decklist stays; who built it does not.
-     * @type {string}
-     * @memberof PublicDeckResponse
      */
     owner?: string | null;
     /**
      * What those cards are worth in euro cents
-     * @type {number}
-     * @memberof PublicDeckResponse
      */
     price_eur_cents: number;
     /**
      * Primary key
-     * @type {string}
-     * @memberof PublicDeckResponse
      */
     uuid: string;
 }
@@ -6812,7 +5582,7 @@ export const PublicDeckSort = {
     /**
     * By what those cards are worth
     */
-    Price: 'Price'
+    Price: 'Price',
 } as const;
 export type PublicDeckSort = typeof PublicDeckSort[keyof typeof PublicDeckSort];
 
@@ -6824,20 +5594,14 @@ export type PublicDeckSort = typeof PublicDeckSort[keyof typeof PublicDeckSort];
 export interface PublicProfileResponse {
     /**
      * The collections it put on show, alphabetically
-     * @type {Array<PublicCollectionResponse>}
-     * @memberof PublicProfileResponse
      */
     collections: Array<PublicCollectionResponse>;
     /**
      * The point in time the account was created
-     * @type {string}
-     * @memberof PublicProfileResponse
      */
     created_at: string;
     /**
      * The decks it put on show, newest first
-     * @type {Array<PublicDeckResponse>}
-     * @memberof PublicProfileResponse
      */
     decks: Array<PublicDeckResponse>;
     /**
@@ -6848,8 +5612,6 @@ export interface PublicProfileResponse {
     tournaments: Array<TournamentSummaryResponse>;
     /**
      * The account's login handle and display name
-     * @type {string}
-     * @memberof PublicProfileResponse
      */
     username: string;
 }
@@ -6931,20 +5693,14 @@ export type PutDeckCollaborator200Response = DeckCollaboratorResponse | FormErro
 export interface PutDeckCollaboratorErrors {
     /**
      * The username is the caller's own, which owns the deck
-     * @type {boolean}
-     * @memberof PutDeckCollaboratorErrors
      */
     own_account: boolean;
     /**
      * The caller named too many unknown usernames lately, so this one was not looked up
-     * @type {boolean}
-     * @memberof PutDeckCollaboratorErrors
      */
     too_many_unknown_usernames: boolean;
     /**
      * No Account goes by this username
-     * @type {boolean}
-     * @memberof PutDeckCollaboratorErrors
      */
     unknown_username: boolean;
 }
@@ -6956,14 +5712,10 @@ export interface PutDeckCollaboratorErrors {
 export interface PutDeckCollaboratorRequest {
     /**
      * What the owner lets it do
-     * @type {CollaboratorLevel}
-     * @memberof PutDeckCollaboratorRequest
      */
     level: CollaboratorLevel;
     /**
      * Username of the Account, case ignored
-     * @type {string}
-     * @memberof PutDeckCollaboratorRequest
      */
     username: string;
 }
@@ -6977,32 +5729,22 @@ export interface PutDeckCollaboratorRequest {
 export interface RarityCountsResponse {
     /**
      * Copies of common cards
-     * @type {number}
-     * @memberof RarityCountsResponse
      */
     common: number;
     /**
      * Copies of mythic rare cards
-     * @type {number}
-     * @memberof RarityCountsResponse
      */
     mythic: number;
     /**
      * Copies of everything else the catalog files separately
-     * @type {number}
-     * @memberof RarityCountsResponse
      */
     other: number;
     /**
      * Copies of rare cards
-     * @type {number}
-     * @memberof RarityCountsResponse
      */
     rare: number;
     /**
      * Copies of uncommon cards
-     * @type {number}
-     * @memberof RarityCountsResponse
      */
     uncommon: number;
 }
@@ -7014,38 +5756,26 @@ export interface RarityCountsResponse {
 export interface ReadDeckCardResponse {
     /**
      * The collector number, when the site says
-     * @type {string}
-     * @memberof ReadDeckCardResponse
      */
     collector_number?: string | null;
     /**
      * Whether the list asks for the foil copies
-     * @type {boolean}
-     * @memberof ReadDeckCardResponse
      */
     foil: boolean;
     /**
      * The card's name, to be placed in the catalog by the client
-     * @type {string}
-     * @memberof ReadDeckCardResponse
      */
     name: string;
     /**
      * How many copies
-     * @type {number}
-     * @memberof ReadDeckCardResponse
      */
     quantity: number;
     /**
      * The set it was printed in, when the site says
-     * @type {string}
-     * @memberof ReadDeckCardResponse
      */
     set_code?: string | null;
     /**
      * Which zone it sits in
-     * @type {DeckZone}
-     * @memberof ReadDeckCardResponse
      */
     zone: DeckZone;
 }
@@ -7059,8 +5789,6 @@ export interface ReadDeckCardResponse {
 export interface ReadDeckUrlRequest {
     /**
      * The link, as it was copied out of the address bar
-     * @type {string}
-     * @memberof ReadDeckUrlRequest
      */
     url: string;
 }
@@ -7074,20 +5802,14 @@ export interface ReadDeckUrlRequest {
 export interface ReadDeckUrlResponse {
     /**
      * The cards
-     * @type {Array<ReadDeckCardResponse>}
-     * @memberof ReadDeckUrlResponse
      */
     cards: Array<ReadDeckCardResponse>;
     /**
      * The format it is built for, as the site spells it
-     * @type {string}
-     * @memberof ReadDeckUrlResponse
      */
     format?: string | null;
     /**
      * What the deck is called there
-     * @type {string}
-     * @memberof ReadDeckUrlResponse
      */
     name: string;
 }
@@ -7103,14 +5825,10 @@ export interface RecoverAccountRequest {
      * The language the recovery mail is written in
      * 
      * The client sends the language its UI is showing; left out, the mail falls back to German, the app's primary language.
-     * @type {MailLanguage}
-     * @memberof RecoverAccountRequest
      */
     language?: MailLanguage;
     /**
      * The username to recover
-     * @type {any}
-     * @memberof RecoverAccountRequest
      */
     username: any;
 }
@@ -7315,50 +6033,34 @@ export interface RegisteredListsResponse {
 export interface RegistrationErrors {
     /**
      * This authenticator already holds a passkey for this account
-     * @type {boolean}
-     * @memberof RegistrationErrors
      */
     already_registered: boolean;
     /**
      * An Admin locked the account
-     * @type {boolean}
-     * @memberof RegistrationErrors
      */
     locked: boolean;
     /**
      * The browser's response was not a credential
-     * @type {boolean}
-     * @memberof RegistrationErrors
      */
     malformed_credential: boolean;
     /**
      * No ceremony is in progress — the session expired, or `register/start` was never called
-     * @type {boolean}
-     * @memberof RegistrationErrors
      */
     no_ceremony: boolean;
     /**
      * The credential did not check out
-     * @type {boolean}
-     * @memberof RegistrationErrors
      */
     registration_failed: boolean;
     /**
      * The token is past its validity
-     * @type {boolean}
-     * @memberof RegistrationErrors
      */
     token_expired: boolean;
     /**
      * No such registration token
-     * @type {boolean}
-     * @memberof RegistrationErrors
      */
     token_invalid: boolean;
     /**
      * The token was already used to register a passkey
-     * @type {boolean}
-     * @memberof RegistrationErrors
      */
     token_used: boolean;
 }
@@ -7376,8 +6078,6 @@ export type RenameAccount200Response = FormErrorResponseForRenameAccountErrors |
 export interface RenameAccountErrors {
     /**
      * Another account goes by this username already, case ignored
-     * @type {boolean}
-     * @memberof RenameAccountErrors
      */
     username_taken: boolean;
 }
@@ -7389,8 +6089,6 @@ export interface RenameAccountErrors {
 export interface RenameAccountRequest {
     /**
      * The new username, held to the same rules as at signup
-     * @type {any}
-     * @memberof RenameAccountRequest
      */
     username: any;
 }
@@ -7402,20 +6100,14 @@ export interface RenameAccountRequest {
 export interface RenameAccountResponse {
     /**
      * The `rpId` to pass to `PublicKeyCredential.signalCurrentUserDetails`
-     * @type {string}
-     * @memberof RenameAccountResponse
      */
     rp_id: string;
     /**
      * The base64url `userId` to pass to `PublicKeyCredential.signalCurrentUserDetails`
-     * @type {string}
-     * @memberof RenameAccountResponse
      */
     user_id: string;
     /**
      * The new username, spelled the way it was requested
-     * @type {string}
-     * @memberof RenameAccountResponse
      */
     username: string;
 }
@@ -7427,14 +6119,10 @@ export interface RenameAccountResponse {
 export interface RenamePasskeyErrors {
     /**
      * Nothing is left of the label once trimmed
-     * @type {boolean}
-     * @memberof RenamePasskeyErrors
      */
     empty_label: boolean;
     /**
      * No passkey with that id belongs to this account
-     * @type {boolean}
-     * @memberof RenamePasskeyErrors
      */
     unknown_passkey: boolean;
 }
@@ -7446,8 +6134,6 @@ export interface RenamePasskeyErrors {
 export interface RenamePasskeyRequest {
     /**
      * The new label, trimmed before it is stored
-     * @type {string}
-     * @memberof RenamePasskeyRequest
      */
     label: string;
 }
@@ -7521,8 +6207,6 @@ export interface ReportResultRequest {
 export interface ResolvePrintingsRequest {
     /**
      * The rows to look up, in any order
-     * @type {Array<PrintingLookupRequest>}
-     * @memberof ResolvePrintingsRequest
      */
     lookups: Array<PrintingLookupRequest>;
 }
@@ -7536,8 +6220,6 @@ export interface ResolvePrintingsResponse {
      * The printings, each naming the lookup it answers
      * 
      * A lookup no printing names is one the catalog holds no card for. That is an answer, not a failure — the row has to be reported as unmatched rather than dropped, and a card the catalog does not know cannot be filed anyway.
-     * @type {Array<ResolvedPrintingResponse>}
-     * @memberof ResolvePrintingsResponse
      */
     printings: Array<ResolvedPrintingResponse>;
 }
@@ -7549,52 +6231,36 @@ export interface ResolvePrintingsResponse {
 export interface ResolvedPrintingResponse {
     /**
      * Collector number as printed
-     * @type {string}
-     * @memberof ResolvedPrintingResponse
      */
     collector_number: string;
     /**
      * The finishes this printing exists in, as Scryfall spells them
-     * @type {Array<string>}
-     * @memberof ResolvedPrintingResponse
      */
     finishes: Array<string>;
     /**
      * Scryfall's id of the printing — what a collection entry stores
-     * @type {string}
-     * @memberof ResolvedPrintingResponse
      */
     id: string;
     /**
      * Language of this printing, as Scryfall's code
-     * @type {string}
-     * @memberof ResolvedPrintingResponse
      */
     lang: string;
     /**
      * Which lookup this answers, as its position in the request
      * 
      * Answers carry their question rather than the list carrying a hole per unmatched row: a five-figure import is mostly cards the catalog knows, and the few it does not are what the client reports as unmatched.
-     * @type {number}
-     * @memberof ResolvedPrintingResponse
      */
     lookup: number;
     /**
      * The printed name
-     * @type {string}
-     * @memberof ResolvedPrintingResponse
      */
     name: string;
     /**
      * Set code, upper case
-     * @type {string}
-     * @memberof ResolvedPrintingResponse
      */
     set_code: string;
     /**
      * Full set name
-     * @type {string}
-     * @memberof ResolvedPrintingResponse
      */
     set_name: string;
 }
@@ -7666,8 +6332,6 @@ export type ResultState = typeof ResultState[keyof typeof ResultState];
 export interface ReturnAllDeckCardsRequest {
     /**
      * Where stacks without an origin go, `None` to leave those in the deck
-     * @type {string}
-     * @memberof ReturnAllDeckCardsRequest
      */
     target?: string | null;
 }
@@ -7679,14 +6343,10 @@ export interface ReturnAllDeckCardsRequest {
 export interface ReturnAllDeckCardsResponse {
     /**
      * How many stayed, because nobody said where they belong
-     * @type {number}
-     * @memberof ReturnAllDeckCardsResponse
      */
     left: number;
     /**
      * How many stacks were sorted back
-     * @type {number}
-     * @memberof ReturnAllDeckCardsResponse
      */
     returned: number;
 }
@@ -7698,20 +6358,14 @@ export interface ReturnAllDeckCardsResponse {
 export interface ReturnDeckCardsRequest {
     /**
      * The stack in the deck to take them from
-     * @type {string}
-     * @memberof ReturnDeckCardsRequest
      */
     entry: string;
     /**
      * How many copies to sort back
-     * @type {number}
-     * @memberof ReturnDeckCardsRequest
      */
     quantity: number;
     /**
      * Where to put them, `None` to use where they came from
-     * @type {string}
-     * @memberof ReturnDeckCardsRequest
      */
     target?: string | null;
 }
@@ -7728,7 +6382,7 @@ export const Role = {
     /**
     * Also manages other Accounts in the admin dashboard
     */
-    Admin: 'Admin'
+    Admin: 'Admin',
 } as const;
 export type Role = typeof Role[keyof typeof Role];
 
@@ -7742,30 +6396,22 @@ export type Role = typeof Role[keyof typeof Role];
 export interface RoleBansResponse {
     /**
      * Cards that may not be a commander, by name
-     * @type {Array<string>}
-     * @memberof RoleBansResponse
      */
     commander: Array<string>;
     /**
      * Cards that may not be the companion, by name
-     * @type {Array<string>}
-     * @memberof RoleBansResponse
      */
     companion: Array<string>;
     /**
      * Commander pairs that may not sit in the command zone together
      * 
      * Each entry is the two names, both of them legal commanders apart.
-     * @type {Array<Array<string>>}
-     * @memberof RoleBansResponse
      */
     pairings: Array<Array<string>>;
     /**
      * Cards that may not be one of a pair of partnered commanders, by name
      * 
      * Alone they are legal commanders — only the second seat is the problem.
-     * @type {Array<string>}
-     * @memberof RoleBansResponse
      */
     partner: Array<string>;
 }
@@ -7777,8 +6423,6 @@ export interface RoleBansResponse {
 export interface RotateDeckShareTokenResponse {
     /**
      * The new secret — every link handed out before this call stopped working
-     * @type {string}
-     * @memberof RotateDeckShareTokenResponse
      */
     share_token: string;
 }
@@ -7790,8 +6434,6 @@ export interface RotateDeckShareTokenResponse {
 export interface RotateShareTokenResponse {
     /**
      * The new secret — every link handed out before this call stopped working
-     * @type {string}
-     * @memberof RotateShareTokenResponse
      */
     share_token: string;
 }
@@ -8056,14 +6698,10 @@ export type Ruleset = typeof Ruleset[keyof typeof Ruleset];
 export interface ScannerSessionDetailResponse {
     /**
      * Staged stacks, newest first
-     * @type {Array<ScannerSessionEntryResponse>}
-     * @memberof ScannerSessionDetailResponse
      */
     entries: Array<ScannerSessionEntryResponse>;
     /**
      * Session metadata and counts
-     * @type {ScannerSessionResponse}
-     * @memberof ScannerSessionDetailResponse
      */
     session: ScannerSessionResponse;
 }
@@ -8075,44 +6713,30 @@ export interface ScannerSessionDetailResponse {
 export interface ScannerSessionEntryResponse {
     /**
      * When this stack was first staged
-     * @type {string}
-     * @memberof ScannerSessionEntryResponse
      */
     created_at: string;
     /**
      * Physical finish
-     * @type {CardFinish}
-     * @memberof ScannerSessionEntryResponse
      */
     finish: CardFinish;
     /**
      * Scryfall printing id
-     * @type {string}
-     * @memberof ScannerSessionEntryResponse
      */
     printing: string;
     /**
      * Paid price per copy in euro cents
-     * @type {number}
-     * @memberof ScannerSessionEntryResponse
      */
     purchase_price_cents?: number | null;
     /**
      * Number of copies
-     * @type {number}
-     * @memberof ScannerSessionEntryResponse
      */
     quantity: number;
     /**
      * Whether the cards carry an artist's signature
-     * @type {boolean}
-     * @memberof ScannerSessionEntryResponse
      */
     signed: boolean;
     /**
      * Primary key
-     * @type {string}
-     * @memberof ScannerSessionEntryResponse
      */
     uuid: string;
 }
@@ -8126,50 +6750,34 @@ export interface ScannerSessionEntryResponse {
 export interface ScannerSessionResponse {
     /**
      * Preferred destination collection
-     * @type {string}
-     * @memberof ScannerSessionResponse
      */
     collection?: string | null;
     /**
      * Marker colour
-     * @type {string}
-     * @memberof ScannerSessionResponse
      */
     color: string;
     /**
      * Number of staged copies
-     * @type {number}
-     * @memberof ScannerSessionResponse
      */
     copies: number;
     /**
      * Creation time
-     * @type {string}
-     * @memberof ScannerSessionResponse
      */
     created_at: string;
     /**
      * Marker icon
-     * @type {string}
-     * @memberof ScannerSessionResponse
      */
     icon: string;
     /**
      * Display name
-     * @type {string}
-     * @memberof ScannerSessionResponse
      */
     name: string;
     /**
      * Number of distinct staged stacks
-     * @type {number}
-     * @memberof ScannerSessionResponse
      */
     stacks: number;
     /**
      * Primary key
-     * @type {string}
-     * @memberof ScannerSessionResponse
      */
     uuid: string;
 }
@@ -8181,26 +6789,18 @@ export interface ScannerSessionResponse {
 export interface SearchPublicDecksResponse {
     /**
      * The decks on this page
-     * @type {Array<PublicDeckResponse>}
-     * @memberof SearchPublicDecksResponse
      */
     decks: Array<PublicDeckResponse>;
     /**
      * How many decks were asked for
-     * @type {number}
-     * @memberof SearchPublicDecksResponse
      */
     limit: number;
     /**
      * How many decks were skipped
-     * @type {number}
-     * @memberof SearchPublicDecksResponse
      */
     offset: number;
     /**
      * How many decks the search found in total
-     * @type {number}
-     * @memberof SearchPublicDecksResponse
      */
     total: number;
 }
@@ -8249,44 +6849,30 @@ export type SendBugReport200Response = FormErrorResponseForSendBugReportErrors |
 export interface SendBugReportErrors {
     /**
      * A part sent as an image is no JPEG, PNG or WebP
-     * @type {boolean}
-     * @memberof SendBugReportErrors
      */
     image_invalid: boolean;
     /**
      * An image is larger than 5 MB
-     * @type {boolean}
-     * @memberof SendBugReportErrors
      */
     image_too_large: boolean;
     /**
      * The Account sent 15 Bug reports within the last hour
-     * @type {boolean}
-     * @memberof SendBugReportErrors
      */
     rate_limited: boolean;
     /**
      * The `report` part is missing, larger than 512 KB or not the expected json
-     * @type {boolean}
-     * @memberof SendBugReportErrors
      */
     report_invalid: boolean;
     /**
      * The text is empty or too short
-     * @type {boolean}
-     * @memberof SendBugReportErrors
      */
     text_missing: boolean;
     /**
      * The text has more than 5000 characters
-     * @type {boolean}
-     * @memberof SendBugReportErrors
      */
     text_too_long: boolean;
     /**
      * More than three images
-     * @type {boolean}
-     * @memberof SendBugReportErrors
      */
     too_many_images: boolean;
 }
@@ -8298,44 +6884,30 @@ export interface SendBugReportErrors {
 export interface SendBugReportRequest {
     /**
      * The diagnostics document the app built, stored as is
-     * @type {any}
-     * @memberof SendBugReportRequest
      */
     diagnostics: any | null;
     /**
      * The browser's language
-     * @type {string}
-     * @memberof SendBugReportRequest
      */
     language: string;
     /**
      * The Release the app was running
-     * @type {string}
-     * @memberof SendBugReportRequest
      */
     release: string;
     /**
      * The route the app was on
-     * @type {string}
-     * @memberof SendBugReportRequest
      */
     route: string;
     /**
      * What went wrong, in the player's words
-     * @type {string}
-     * @memberof SendBugReportRequest
      */
     text: string;
     /**
      * The browser's user agent
-     * @type {string}
-     * @memberof SendBugReportRequest
      */
     user_agent: string;
     /**
      * The browser window's size, as `<width>x<height>`
-     * @type {string}
-     * @memberof SendBugReportRequest
      */
     viewport: string;
 }
@@ -8347,8 +6919,6 @@ export interface SendBugReportRequest {
 export interface SendBugReportResponse {
     /**
      * Its running number, for the player to quote
-     * @type {number}
-     * @memberof SendBugReportResponse
      */
     number: number;
 }
@@ -8364,38 +6934,26 @@ export interface SendBugReportResponse {
 export interface SetAdvisorSettingsRequest {
     /**
      * Cards the advisor must never offer
-     * @type {Array<MarkedCard>}
-     * @memberof SetAdvisorSettingsRequest
      */
     ignored: Array<MarkedCard>;
     /**
      * Cards the advisor must never propose cutting
-     * @type {Array<MarkedCard>}
-     * @memberof SetAdvisorSettingsRequest
      */
     kept: Array<MarkedCard>;
     /**
      * The restriction on what may be suggested at all, blank for the whole pool
-     * @type {string}
-     * @memberof SetAdvisorSettingsRequest
      */
     pool_query?: string | null;
     /**
      * Whether the reader has been through the advisor's questions
-     * @type {boolean}
-     * @memberof SetAdvisorSettingsRequest
      */
     setup_done: boolean;
     /**
      * The shape the deck is graded against, where it was moved
-     * @type {DeckTargets}
-     * @memberof SetAdvisorSettingsRequest
      */
     targets: DeckTargets;
     /**
      * Which themes to argue for and which to avoid
-     * @type {ThemePrefs}
-     * @memberof SetAdvisorSettingsRequest
      */
     themes: ThemePrefs;
 }
@@ -8407,26 +6965,18 @@ export interface SetAdvisorSettingsRequest {
 export interface SetBucketResponse {
     /**
      * Copies from this set
-     * @type {number}
-     * @memberof SetBucketResponse
      */
     cards: number;
     /**
      * Set code, upper case
-     * @type {string}
-     * @memberof SetBucketResponse
      */
     set_code: string;
     /**
      * Full set name
-     * @type {string}
-     * @memberof SetBucketResponse
      */
     set_name: string;
     /**
      * What those copies are worth, in euro cents
-     * @type {number}
-     * @memberof SetBucketResponse
      */
     value_cents: number;
 }
@@ -8438,8 +6988,6 @@ export interface SetBucketResponse {
 export interface SetCollectionVisibilityRequest {
     /**
      * The visibility to switch to
-     * @type {Visibility}
-     * @memberof SetCollectionVisibilityRequest
      */
     visibility: Visibility;
 }
@@ -8453,8 +7001,6 @@ export interface SetCollectionVisibilityRequest {
 export interface SetDeckBracketRequest {
     /**
      * The bracket, one to five, or `null` to leave it unsaid
-     * @type {number}
-     * @memberof SetDeckBracketRequest
      */
     bracket?: number | null;
 }
@@ -8466,8 +7012,6 @@ export interface SetDeckBracketRequest {
 export interface SetDeckCheckpointRequest {
     /**
      * The name, never blank; surrounding whitespace is dropped
-     * @type {string}
-     * @memberof SetDeckCheckpointRequest
      */
     name: string;
 }
@@ -8479,8 +7023,6 @@ export interface SetDeckCheckpointRequest {
 export interface SetDeckColorsRequest {
     /**
      * The colours as the letters `WUBRG`, or `null` to follow the commander
-     * @type {string}
-     * @memberof SetDeckColorsRequest
      */
     colors?: string | null;
 }
@@ -8492,8 +7034,6 @@ export interface SetDeckColorsRequest {
 export interface SetDeckFolderRequest {
     /**
      * The folder to file it in, `null` to take it off every shelf
-     * @type {string}
-     * @memberof SetDeckFolderRequest
      */
     folder?: string | null;
 }
@@ -8507,32 +7047,22 @@ export interface SetDeckFolderRequest {
 export interface SetDeckRuleZeroRequest {
     /**
      * Whether the table agreed to cards the format bans
-     * @type {boolean}
-     * @memberof SetDeckRuleZeroRequest
      */
     allow_banned: boolean;
     /**
      * Whether the table agreed to multiple copies of a card
-     * @type {boolean}
-     * @memberof SetDeckRuleZeroRequest
      */
     allow_duplicates: boolean;
     /**
      * Whether the table agreed to more than the format's commanders
-     * @type {boolean}
-     * @memberof SetDeckRuleZeroRequest
      */
     allow_extra_commanders: boolean;
     /**
      * The colours as the letters `WUBRG`, `null` or left out to follow the commander
-     * @type {string}
-     * @memberof SetDeckRuleZeroRequest
      */
     colors?: string | null;
     /**
      * How many cards the deck is built to, `null` for the format's rule
-     * @type {number}
-     * @memberof SetDeckRuleZeroRequest
      */
     deck_size?: number | null;
 }
@@ -8544,8 +7074,6 @@ export interface SetDeckRuleZeroRequest {
 export interface SetDeckVisibilityRequest {
     /**
      * The visibility to switch to
-     * @type {Visibility}
-     * @memberof SetDeckVisibilityRequest
      */
     visibility: Visibility;
 }
@@ -8687,26 +7215,18 @@ export type SetTournamentSwissRounds200Response = FormErrorResponseForSetSwissRo
 export interface SharedCollectionResponse {
     /**
      * The point in time the collection was created
-     * @type {string}
-     * @memberof SharedCollectionResponse
      */
     created_at: string;
     /**
      * Description shown above the card list
-     * @type {string}
-     * @memberof SharedCollectionResponse
      */
     description: string;
     /**
      * Name of the collection
-     * @type {string}
-     * @memberof SharedCollectionResponse
      */
     name: string;
     /**
      * Display name of the account the collection belongs to
-     * @type {string}
-     * @memberof SharedCollectionResponse
      */
     owner: string;
 }
@@ -8718,38 +7238,26 @@ export interface SharedCollectionResponse {
 export interface SharedDeckResponse {
     /**
      * The colours the deck may play, `null` for whatever the commander allows
-     * @type {string}
-     * @memberof SharedDeckResponse
      */
     allowed_color_identity?: string | null;
     /**
      * The point in time the deck was created
-     * @type {string}
-     * @memberof SharedDeckResponse
      */
     created_at: string;
     /**
      * Optional description, e.g. the deck's game plan
-     * @type {string}
-     * @memberof SharedDeckResponse
      */
     description?: string | null;
     /**
      * The format the deck is built for
-     * @type {string}
-     * @memberof SharedDeckResponse
      */
     format: string;
     /**
      * Name of the deck
-     * @type {string}
-     * @memberof SharedDeckResponse
      */
     name: string;
     /**
      * Display name of the account the deck belongs to
-     * @type {string}
-     * @memberof SharedDeckResponse
      */
     owner: string;
 }
@@ -8761,20 +7269,14 @@ export interface SharedDeckResponse {
 export interface SharedWithMeDeckResponse {
     /**
      * What the owner lets the caller do
-     * @type {CollaboratorLevel}
-     * @memberof SharedWithMeDeckResponse
      */
     level: CollaboratorLevel;
     /**
      * The deck as the list of decks shows it, without the owner's share link and folder
-     * @type {DeckOverviewResponse}
-     * @memberof SharedWithMeDeckResponse
      */
     overview: DeckOverviewResponse;
     /**
      * The owner's username as it is now
-     * @type {string}
-     * @memberof SharedWithMeDeckResponse
      */
     owner_username: string;
 }
@@ -8827,14 +7329,10 @@ export type Signup200Response = FormErrorResponseForSignupErrors | SignupRespons
 export interface SignupErrors {
     /**
      * The email address is not shaped like one
-     * @type {boolean}
-     * @memberof SignupErrors
      */
     email_malformed: boolean;
     /**
      * The username belongs to an account that has already finished its registration
-     * @type {boolean}
-     * @memberof SignupErrors
      */
     username_taken: boolean;
 }
@@ -8846,22 +7344,16 @@ export interface SignupErrors {
 export interface SignupRequest {
     /**
      * The email address the registration link is sent to
-     * @type {string}
-     * @memberof SignupRequest
      */
     email: string;
     /**
      * The language the registration mail is written in
      * 
      * The client sends the language its UI is showing; left out, the mail falls back to German, the app's primary language.
-     * @type {MailLanguage}
-     * @memberof SignupRequest
      */
     language?: MailLanguage;
     /**
      * The desired username
-     * @type {any}
-     * @memberof SignupRequest
      */
     username: any;
 }
@@ -8877,8 +7369,6 @@ export interface SignupResponse {
      * The username the registration link is for
      * 
      * Echoed back so the confirmation screen can name the account without claiming which address the mail went to — for a re-issued invite that is the address already on the account, not the one just typed.
-     * @type {string}
-     * @memberof SignupResponse
      */
     username: string;
 }
@@ -8890,14 +7380,10 @@ export interface SignupResponse {
 export interface SimpleOpenIdProvider {
     /**
      * What the frontend calls the provider, e.g. `Google`
-     * @type {string}
-     * @memberof SimpleOpenIdProvider
      */
     display_name: string;
     /**
      * The provider's id, to start a login with, e.g. `google`
-     * @type {string}
-     * @memberof SimpleOpenIdProvider
      */
     id: string;
 }
@@ -8909,26 +7395,18 @@ export interface SimpleOpenIdProvider {
 export interface SimplePasskey {
     /**
      * When the passkey was registered
-     * @type {string}
-     * @memberof SimplePasskey
      */
     created_at: string;
     /**
      * Human-readable device label
-     * @type {string}
-     * @memberof SimplePasskey
      */
     label: string;
     /**
      * When the passkey was last used to log in, if ever
-     * @type {string}
-     * @memberof SimplePasskey
      */
     last_used_at?: string | null;
     /**
      * The passkey's primary key
-     * @type {string}
-     * @memberof SimplePasskey
      */
     uuid: string;
 }
@@ -8940,68 +7418,46 @@ export interface SimplePasskey {
 export interface SourcedPrintingResponse {
     /**
      * Cardmarket's id of the product this printing is sold as
-     * @type {number}
-     * @memberof SourcedPrintingResponse
      */
     cardmarket_id?: number | null;
     /**
      * Collector number as printed
-     * @type {string}
-     * @memberof SourcedPrintingResponse
      */
     collector_number: string;
     /**
      * Artwork for a tile, which a row-sized scan is too small for
-     * @type {string}
-     * @memberof SourcedPrintingResponse
      */
     image_normal?: string | null;
     /**
      * Artwork for a list row
-     * @type {string}
-     * @memberof SourcedPrintingResponse
      */
     image_small?: string | null;
     /**
      * Language of the printing
-     * @type {string}
-     * @memberof SourcedPrintingResponse
      */
     lang: string;
     /**
      * The printed name
-     * @type {string}
-     * @memberof SourcedPrintingResponse
      */
     name: string;
     /**
      * Groups every printing of the same card, which is what a wider match uses
-     * @type {string}
-     * @memberof SourcedPrintingResponse
      */
     oracle_id?: string | null;
     /**
      * What a copy costs, in euro cents
-     * @type {number}
-     * @memberof SourcedPrintingResponse
      */
     price_eur_cents?: number | null;
     /**
      * What a foil copy costs, in euro cents
-     * @type {number}
-     * @memberof SourcedPrintingResponse
      */
     price_eur_foil_cents?: number | null;
     /**
      * Set code, upper case
-     * @type {string}
-     * @memberof SourcedPrintingResponse
      */
     set_code: string;
     /**
      * Full set name
-     * @type {string}
-     * @memberof SourcedPrintingResponse
      */
     set_name: string;
 }
@@ -9013,62 +7469,42 @@ export interface SourcedPrintingResponse {
 export interface SourcedStackResponse {
     /**
      * What the catalog knows about the printing
-     * @type {SourcedPrintingResponse}
-     * @memberof SourcedStackResponse
      */
     card?: SourcedPrintingResponse | null;
     /**
      * Condition of the cards
-     * @type {CardCondition}
-     * @memberof SourcedStackResponse
      */
     condition: CardCondition;
     /**
      * Finish of the cards
-     * @type {CardFinish}
-     * @memberof SourcedStackResponse
      */
     finish: CardFinish;
     /**
      * The collection they were taken out of, `None` if they were bought into it
-     * @type {string}
-     * @memberof SourcedStackResponse
      */
     origin?: string | null;
     /**
      * Its marker colour
-     * @type {string}
-     * @memberof SourcedStackResponse
      */
     origin_color?: string | null;
     /**
      * Its marker pictogram
-     * @type {string}
-     * @memberof SourcedStackResponse
      */
     origin_icon?: string | null;
     /**
      * What that collection is called, `None` once it is gone
-     * @type {string}
-     * @memberof SourcedStackResponse
      */
     origin_name?: string | null;
     /**
      * Scryfall's id of the printing
-     * @type {string}
-     * @memberof SourcedStackResponse
      */
     printing: string;
     /**
      * How many copies the stack holds
-     * @type {number}
-     * @memberof SourcedStackResponse
      */
     quantity: number;
     /**
      * Primary key of the stack
-     * @type {string}
-     * @memberof SourcedStackResponse
      */
     uuid: string;
 }
@@ -9082,68 +7518,46 @@ export interface SourcedStackResponse {
 export interface SourcingCandidateResponse {
     /**
      * What the catalog knows about the printing
-     * @type {SourcedPrintingResponse}
-     * @memberof SourcingCandidateResponse
      */
     card: SourcedPrintingResponse;
     /**
      * The collection it lies in
-     * @type {string}
-     * @memberof SourcingCandidateResponse
      */
     collection: string;
     /**
      * Its marker colour
-     * @type {string}
-     * @memberof SourcingCandidateResponse
      */
     collection_color: string;
     /**
      * The deck it stands for, so taking from another deck is visibly that
-     * @type {string}
-     * @memberof SourcingCandidateResponse
      */
     collection_deck?: string | null;
     /**
      * Its marker pictogram
-     * @type {string}
-     * @memberof SourcingCandidateResponse
      */
     collection_icon: string;
     /**
      * What that collection is called
-     * @type {string}
-     * @memberof SourcingCandidateResponse
      */
     collection_name: string;
     /**
      * Condition of the cards
-     * @type {CardCondition}
-     * @memberof SourcingCandidateResponse
      */
     condition: CardCondition;
     /**
      * Finish of the cards
-     * @type {CardFinish}
-     * @memberof SourcingCandidateResponse
      */
     finish: CardFinish;
     /**
      * Scryfall's id of the printing
-     * @type {string}
-     * @memberof SourcingCandidateResponse
      */
     printing: string;
     /**
      * How many copies the stack holds
-     * @type {number}
-     * @memberof SourcingCandidateResponse
      */
     quantity: number;
     /**
      * Primary key of the stack
-     * @type {string}
-     * @memberof SourcingCandidateResponse
      */
     uuid: string;
 }
@@ -9157,44 +7571,30 @@ export interface SourcingCandidateResponse {
 export interface SourcingSlotResponse {
     /**
      * What the catalog knows, `None` for a printing it has not caught up with
-     * @type {SourcedPrintingResponse}
-     * @memberof SourcingSlotResponse
      */
     card?: SourcedPrintingResponse | null;
     /**
      * Whether the list asks for foils
-     * @type {boolean}
-     * @memberof SourcingSlotResponse
      */
     foil: boolean;
     /**
      * Scryfall's id of the printing the list asks for
-     * @type {string}
-     * @memberof SourcingSlotResponse
      */
     printing: string;
     /**
      * Whether the slot is a stand-in — it asks for no cardboard
-     * @type {boolean}
-     * @memberof SourcingSlotResponse
      */
     proxy: boolean;
     /**
      * How many copies it asks for
-     * @type {number}
-     * @memberof SourcingSlotResponse
      */
     quantity: number;
     /**
      * Primary key of the slot
-     * @type {string}
-     * @memberof SourcingSlotResponse
      */
     uuid: string;
     /**
      * Which zone the slot sits in
-     * @type {DeckZone}
-     * @memberof SourcingSlotResponse
      */
     zone: DeckZone;
 }
@@ -9208,38 +7608,26 @@ export interface SourcingSlotResponse {
 export interface SplitCollectionEntryRequest {
     /**
      * The day the split-off cards were acquired; inherited when omitted, `null` clears it
-     * @type {string}
-     * @memberof SplitCollectionEntryRequest
      */
     acquired_at?: string | null;
     /**
      * The condition of the split-off cards; inherited when omitted
-     * @type {CardCondition}
-     * @memberof SplitCollectionEntryRequest
      */
     condition?: CardCondition | null;
     /**
      * The finish of the split-off cards; inherited when omitted
-     * @type {CardFinish}
-     * @memberof SplitCollectionEntryRequest
      */
     finish?: CardFinish | null;
     /**
      * What was paid per copy, in euro cents; inherited when omitted, `null` clears it
-     * @type {number}
-     * @memberof SplitCollectionEntryRequest
      */
     purchase_price_cents?: number | null;
     /**
      * How many copies move out — fewer than the stack holds
-     * @type {number}
-     * @memberof SplitCollectionEntryRequest
      */
     quantity: number;
     /**
      * Whether the split-off cards carry a signature; inherited when omitted
-     * @type {boolean}
-     * @memberof SplitCollectionEntryRequest
      */
     signed?: boolean | null;
 }
@@ -9253,14 +7641,10 @@ export interface SplitCollectionEntryRequest {
 export interface SplitCollectionEntryResponse {
     /**
      * The stack the copies moved into
-     * @type {CollectionEntryResponse}
-     * @memberof SplitCollectionEntryResponse
      */
     created: CollectionEntryResponse;
     /**
      * The original stack, now holding the copies that stayed
-     * @type {CollectionEntryResponse}
-     * @memberof SplitCollectionEntryResponse
      */
     source: CollectionEntryResponse;
 }
@@ -9364,8 +7748,6 @@ export interface StandingsResponse {
 export interface StartAddPasskeyResponse {
     /**
      * `PublicKeyCredentialCreationOptions` to pass to the browser
-     * @type {any}
-     * @memberof StartAddPasskeyResponse
      */
     options: any | null;
 }
@@ -9383,14 +7765,10 @@ export type StartLogin200Response = FormErrorResponseForStartLoginErrors | Start
 export interface StartLoginErrors {
     /**
      * An Admin locked the account
-     * @type {boolean}
-     * @memberof StartLoginErrors
      */
     locked: boolean;
     /**
      * No account by that name, or it has no passkey — deliberately the same flag, so the endpoint does not say which usernames are actually able to log in
-     * @type {boolean}
-     * @memberof StartLoginErrors
      */
     unknown_username: boolean;
 }
@@ -9402,8 +7780,6 @@ export interface StartLoginErrors {
 export interface StartLoginRequest {
     /**
      * The username to log in as
-     * @type {any}
-     * @memberof StartLoginRequest
      */
     username: any;
 }
@@ -9415,8 +7791,6 @@ export interface StartLoginRequest {
 export interface StartLoginResponse {
     /**
      * `PublicKeyCredentialRequestOptions` to pass to the browser
-     * @type {any}
-     * @memberof StartLoginResponse
      */
     options: any | null;
 }
@@ -9434,8 +7808,6 @@ export type StartOidcLogin200Response = FormErrorResponseForStartOidcLoginErrors
 export interface StartOidcLoginErrors {
     /**
      * The provider cannot be reached right now
-     * @type {boolean}
-     * @memberof StartOidcLoginErrors
      */
     provider_unavailable: boolean;
 }
@@ -9447,14 +7819,10 @@ export interface StartOidcLoginErrors {
 export interface StartOidcLoginRequest {
     /**
      * The id of the provider to log in through
-     * @type {string}
-     * @memberof StartOidcLoginRequest
      */
     provider: string;
     /**
      * Keep the session alive across browser restarts
-     * @type {boolean}
-     * @memberof StartOidcLoginRequest
      */
     remember_me: boolean;
 }
@@ -9466,8 +7834,6 @@ export interface StartOidcLoginRequest {
 export interface StartOidcLoginResponse {
     /**
      * The provider's authorization url to send the browser to
-     * @type {string}
-     * @memberof StartOidcLoginResponse
      */
     url: string;
 }
@@ -9485,8 +7851,6 @@ export type StartRegistration200Response = FormErrorResponseForRegistrationError
 export interface StartRegistrationRequest {
     /**
      * The token from the registration link
-     * @type {string}
-     * @memberof StartRegistrationRequest
      */
     token: string;
 }
@@ -9498,14 +7862,10 @@ export interface StartRegistrationRequest {
 export interface StartRegistrationResponse {
     /**
      * `PublicKeyCredentialCreationOptions` to pass to the browser
-     * @type {any}
-     * @memberof StartRegistrationResponse
      */
     options: any | null;
     /**
      * The username the passkey will be registered for
-     * @type {string}
-     * @memberof StartRegistrationResponse
      */
     username: string;
 }
@@ -9519,14 +7879,10 @@ export interface StartRegistrationResponse {
 export interface StatBucketResponse {
     /**
      * Copies in it
-     * @type {number}
-     * @memberof StatBucketResponse
      */
     cards: number;
     /**
      * Identifies the bucket
-     * @type {string}
-     * @memberof StatBucketResponse
      */
     key: string;
 }
@@ -9584,26 +7940,18 @@ export interface SubscribePushDeviceRequest {
 export interface SwapDeckCardRequest {
     /**
      * Whether the incoming copies are the foil ones, `null` for the ordinary ones
-     * @type {boolean}
-     * @memberof SwapDeckCardRequest
      */
     foil?: boolean | null;
     /**
      * Scryfall's id of the printing coming in
-     * @type {string}
-     * @memberof SwapDeckCardRequest
      */
     printing: string;
     /**
      * Whether the incoming copies are stand-ins rather than the real cards, `null` for the ordinary ones
-     * @type {boolean}
-     * @memberof SwapDeckCardRequest
      */
     proxy?: boolean | null;
     /**
      * How many copies leave the entry and how many of the other card come in
-     * @type {number}
-     * @memberof SwapDeckCardRequest
      */
     quantity: number;
 }
@@ -9624,7 +7972,7 @@ export const SyncRunOutcome = {
     /**
     * The run failed
     */
-    Failed: 'Failed'
+    Failed: 'Failed',
 } as const;
 export type SyncRunOutcome = typeof SyncRunOutcome[keyof typeof SyncRunOutcome];
 
@@ -9636,20 +7984,14 @@ export type SyncRunOutcome = typeof SyncRunOutcome[keyof typeof SyncRunOutcome];
 export interface TakeDeckCardsRequest {
     /**
      * The stack to take them from
-     * @type {string}
-     * @memberof TakeDeckCardsRequest
      */
     entry: string;
     /**
      * How many copies to take
-     * @type {number}
-     * @memberof TakeDeckCardsRequest
      */
     quantity: number;
     /**
      * The slot they are being sourced for, which then follows the printing
-     * @type {string}
-     * @memberof TakeDeckCardsRequest
      */
     slot?: string | null;
 }
@@ -9661,14 +8003,10 @@ export interface TakeDeckCardsRequest {
 export interface ThemePrefs {
     /**
      * Themes to steer away from
-     * @type {Array<string>}
-     * @memberof ThemePrefs
      */
     excluded?: Array<string>;
     /**
      * Themes to steer toward
-     * @type {Array<string>}
-     * @memberof ThemePrefs
      */
     pinned?: Array<string>;
 }
@@ -9736,20 +8074,14 @@ export type Timeframe = typeof Timeframe[keyof typeof Timeframe];
 export interface TimelinePointResponse {
     /**
      * Copies owned by the end of that month
-     * @type {number}
-     * @memberof TimelinePointResponse
      */
     cards: number;
     /**
      * The month as `YYYY-MM`
-     * @type {string}
-     * @memberof TimelinePointResponse
      */
     month: string;
     /**
      * What those copies are worth today, in euro cents
-     * @type {number}
-     * @memberof TimelinePointResponse
      */
     value_cents: number;
 }
@@ -9761,44 +8093,30 @@ export interface TimelinePointResponse {
 export interface TopCardResponse {
     /**
      * Copies in the stack
-     * @type {number}
-     * @memberof TopCardResponse
      */
     copies: number;
     /**
      * Artwork for a list row
-     * @type {string}
-     * @memberof TopCardResponse
      */
     image_small?: string | null;
     /**
      * The card's name
-     * @type {string}
-     * @memberof TopCardResponse
      */
     name: string;
     /**
      * Scryfall's id of the printing
-     * @type {string}
-     * @memberof TopCardResponse
      */
     printing: string;
     /**
      * Full set name
-     * @type {string}
-     * @memberof TopCardResponse
      */
     set_name: string;
     /**
      * The entry it came from
-     * @type {string}
-     * @memberof TopCardResponse
      */
     uuid: string;
     /**
      * What the whole stack is worth, in euro cents
-     * @type {number}
-     * @memberof TopCardResponse
      */
     value_cents: number;
 }
@@ -10700,44 +9018,30 @@ export interface TournamentSummaryResponse {
 export interface UpdateCollectionEntryRequest {
     /**
      * The day the cards were acquired; `null` clears it
-     * @type {string}
-     * @memberof UpdateCollectionEntryRequest
      */
     acquired_at?: string | null;
     /**
      * The condition the cards are in
-     * @type {CardCondition}
-     * @memberof UpdateCollectionEntryRequest
      */
     condition?: CardCondition | null;
     /**
      * The finish the cards have
-     * @type {CardFinish}
-     * @memberof UpdateCollectionEntryRequest
      */
     finish?: CardFinish | null;
     /**
      * Scryfall's id of the printing — send this to correct a mis-identified card
-     * @type {string}
-     * @memberof UpdateCollectionEntryRequest
      */
     printing?: string | null;
     /**
      * What was paid per copy, in euro cents; `null` clears it
-     * @type {number}
-     * @memberof UpdateCollectionEntryRequest
      */
     purchase_price_cents?: number | null;
     /**
      * The new count
-     * @type {number}
-     * @memberof UpdateCollectionEntryRequest
      */
     quantity?: number | null;
     /**
      * Whether the cards carry an artist's signature
-     * @type {boolean}
-     * @memberof UpdateCollectionEntryRequest
      */
     signed?: boolean | null;
 }
@@ -10751,26 +9055,18 @@ export interface UpdateCollectionEntryRequest {
 export interface UpdateCollectionRequest {
     /**
      * The colour the collection is drawn in
-     * @type {string}
-     * @memberof UpdateCollectionRequest
      */
     color: string;
     /**
      * 
-     * @type {string}
-     * @memberof UpdateCollectionRequest
      */
     description: string;
     /**
      * The pictogram drawn on the collection
-     * @type {string}
-     * @memberof UpdateCollectionRequest
      */
     icon: string;
     /**
      * 
-     * @type {string}
-     * @memberof UpdateCollectionRequest
      */
     name: string;
 }
@@ -10782,32 +9078,22 @@ export interface UpdateCollectionRequest {
 export interface UpdateDeckCardRequest {
     /**
      * Whether the copies in this slot are the foil ones
-     * @type {boolean}
-     * @memberof UpdateDeckCardRequest
      */
     foil?: boolean | null;
     /**
      * Scryfall's id of the printing — send this to sleeve a different print
-     * @type {string}
-     * @memberof UpdateDeckCardRequest
      */
     printing?: string | null;
     /**
      * Whether the copies in this slot are stand-ins rather than the real cards
-     * @type {boolean}
-     * @memberof UpdateDeckCardRequest
      */
     proxy?: boolean | null;
     /**
      * The new count, zero removes the Deck entry
-     * @type {number}
-     * @memberof UpdateDeckCardRequest
      */
     quantity?: number | null;
     /**
      * The zone to move it to
-     * @type {DeckZone}
-     * @memberof UpdateDeckCardRequest
      */
     zone?: DeckZone | null;
 }
@@ -10821,8 +9107,6 @@ export interface UpdateDeckCardRequest {
 export interface UpdateDeckFolderRequest {
     /**
      * What it is called now
-     * @type {string}
-     * @memberof UpdateDeckFolderRequest
      */
     name: string;
 }
@@ -10834,20 +9118,14 @@ export interface UpdateDeckFolderRequest {
 export interface UpdateDeckRequest {
     /**
      * Optional description
-     * @type {string}
-     * @memberof UpdateDeckRequest
      */
     description?: string | null;
     /**
      * The format to build for
-     * @type {string}
-     * @memberof UpdateDeckRequest
      */
     format: string;
     /**
      * Name of the deck
-     * @type {string}
-     * @memberof UpdateDeckRequest
      */
     name: string;
 }
@@ -10859,26 +9137,18 @@ export interface UpdateDeckRequest {
 export interface UpdateDeckTagRequest {
     /**
      * The colour it is drawn in
-     * @type {string}
-     * @memberof UpdateDeckTagRequest
      */
     color: string;
     /**
      * Whether assignments follow the card through every deck and printing
-     * @type {boolean}
-     * @memberof UpdateDeckTagRequest
      */
     global: boolean;
     /**
      * The icon drawn inside its colour marker
-     * @type {string}
-     * @memberof UpdateDeckTagRequest
      */
     icon: string;
     /**
      * What the tag is called
-     * @type {string}
-     * @memberof UpdateDeckTagRequest
      */
     name: string;
 }
@@ -10890,20 +9160,14 @@ export interface UpdateDeckTagRequest {
 export interface UpdateGlobalTagRequest {
     /**
      * The colour it is drawn in
-     * @type {string}
-     * @memberof UpdateGlobalTagRequest
      */
     color: string;
     /**
      * The icon drawn inside its colour marker
-     * @type {string}
-     * @memberof UpdateGlobalTagRequest
      */
     icon: string;
     /**
      * What the tag is called
-     * @type {string}
-     * @memberof UpdateGlobalTagRequest
      */
     name: string;
 }
@@ -10915,32 +9179,22 @@ export interface UpdateGlobalTagRequest {
 export interface UpdateScannerSessionEntryRequest {
     /**
      * New finish
-     * @type {CardFinish}
-     * @memberof UpdateScannerSessionEntryRequest
      */
     finish?: CardFinish | null;
     /**
      * Corrected printing
-     * @type {string}
-     * @memberof UpdateScannerSessionEntryRequest
      */
     printing?: string | null;
     /**
      * Paid price per copy; `null` clears it
-     * @type {number}
-     * @memberof UpdateScannerSessionEntryRequest
      */
     purchase_price_cents?: number | null;
     /**
      * New number of copies
-     * @type {number}
-     * @memberof UpdateScannerSessionEntryRequest
      */
     quantity?: number | null;
     /**
      * New signed state
-     * @type {boolean}
-     * @memberof UpdateScannerSessionEntryRequest
      */
     signed?: boolean | null;
 }
@@ -10954,26 +9208,18 @@ export interface UpdateScannerSessionEntryRequest {
 export interface UpdateScannerSessionRequest {
     /**
      * Optional preferred destination collection
-     * @type {string}
-     * @memberof UpdateScannerSessionRequest
      */
     collection?: string | null;
     /**
      * Marker colour
-     * @type {string}
-     * @memberof UpdateScannerSessionRequest
      */
     color: string;
     /**
      * Marker icon
-     * @type {string}
-     * @memberof UpdateScannerSessionRequest
      */
     icon: string;
     /**
      * Display name
-     * @type {string}
-     * @memberof UpdateScannerSessionRequest
      */
     name: string;
 }
@@ -10987,50 +9233,34 @@ export interface UpdateScannerSessionRequest {
 export interface UpdateWatchListEntryRequest {
     /**
      * Alarm below this price in euro cents; `null` takes the alarm off
-     * @type {number}
-     * @memberof UpdateWatchListEntryRequest
      */
     alarm_price_cents?: number | null;
     /**
      * Whether only the named printing counts
-     * @type {boolean}
-     * @memberof UpdateWatchListEntryRequest
      */
     exact_printing?: boolean | null;
     /**
      * A different finish
-     * @type {CardFinish}
-     * @memberof UpdateWatchListEntryRequest
      */
     finish?: CardFinish | null;
     /**
      * Which languages count; an empty list means any
-     * @type {Array<string>}
-     * @memberof UpdateWatchListEntryRequest
      */
     languages?: Array<string> | null;
     /**
      * Whether only the named finish counts
-     * @type {boolean}
-     * @memberof UpdateWatchListEntryRequest
      */
     match_finish?: boolean | null;
     /**
      * What the entry is for
-     * @type {string}
-     * @memberof UpdateWatchListEntryRequest
      */
     note?: string | null;
     /**
      * A different printing
-     * @type {string}
-     * @memberof UpdateWatchListEntryRequest
      */
     printing?: string | null;
     /**
      * How many copies the account is after
-     * @type {number}
-     * @memberof UpdateWatchListEntryRequest
      */
     wanted?: number | null;
 }
@@ -11044,26 +9274,18 @@ export interface UpdateWatchListEntryRequest {
 export interface UpdateWatchListRequest {
     /**
      * The colour it is drawn in
-     * @type {string}
-     * @memberof UpdateWatchListRequest
      */
     color: string;
     /**
      * Description shown above the entries
-     * @type {string}
-     * @memberof UpdateWatchListRequest
      */
     description: string;
     /**
      * The pictogram drawn on it
-     * @type {string}
-     * @memberof UpdateWatchListRequest
      */
     icon: string;
     /**
      * What the list is called
-     * @type {string}
-     * @memberof UpdateWatchListRequest
      */
     name: string;
 }
@@ -11086,7 +9308,7 @@ export const Visibility = {
     /**
     * Only the owner
     */
-    Private: 'Private'
+    Private: 'Private',
 } as const;
 export type Visibility = typeof Visibility[keyof typeof Visibility];
 
@@ -11098,44 +9320,30 @@ export type Visibility = typeof Visibility[keyof typeof Visibility];
 export interface WatchListAlarmResponse {
     /**
      * The threshold it fell through, in euro cents
-     * @type {number}
-     * @memberof WatchListAlarmResponse
      */
     alarm_price_cents?: number | null;
     /**
      * The entry whose alarm went off
-     * @type {string}
-     * @memberof WatchListAlarmResponse
      */
     entry: string;
     /**
      * The printed name of the card, empty while the catalog misses it
-     * @type {string}
-     * @memberof WatchListAlarmResponse
      */
     name: string;
     /**
      * When it went off
-     * @type {string}
-     * @memberof WatchListAlarmResponse
      */
     triggered_at: string;
     /**
      * What the card cost when the alarm went off, in euro cents
-     * @type {number}
-     * @memberof WatchListAlarmResponse
      */
     triggered_price_cents?: number | null;
     /**
      * The list the entry sits on
-     * @type {string}
-     * @memberof WatchListAlarmResponse
      */
     watch_list: string;
     /**
      * What that list is called
-     * @type {string}
-     * @memberof WatchListAlarmResponse
      */
     watch_list_name: string;
 }
@@ -11147,108 +9355,74 @@ export interface WatchListAlarmResponse {
 export interface WatchListEntryResponse {
     /**
      * Whether the reader has seen the alarm
-     * @type {boolean}
-     * @memberof WatchListEntryResponse
      */
     acknowledged: boolean;
     /**
      * Alarm below this price in euro cents, `None` for an entry without one
-     * @type {number}
-     * @memberof WatchListEntryResponse
      */
     alarm_price_cents?: number | null;
     /**
      * What the catalog knows, `None` for a printing it has not caught up with
-     * @type {WatchedCardResponse}
-     * @memberof WatchListEntryResponse
      */
     card?: WatchedCardResponse | null;
     /**
      * The point in time the entry was added
-     * @type {string}
-     * @memberof WatchListEntryResponse
      */
     created_at: string;
     /**
      * Whether only this very printing counts
-     * @type {boolean}
-     * @memberof WatchListEntryResponse
      */
     exact_printing: boolean;
     /**
      * The finish that is wanted
-     * @type {CardFinish}
-     * @memberof WatchListEntryResponse
      */
     finish: CardFinish;
     /**
      * Which languages count, as Scryfall's codes, empty for any
      * 
      * Only in force while the printing is not pinned: a pinned printing is already one language.
-     * @type {Array<string>}
-     * @memberof WatchListEntryResponse
      */
     languages: Array<string>;
     /**
      * The printing the price and the alarm actually refer to
      * 
      * For an entry that watches one printing this is that printing. For a wide one it is the cheapest print of the card the switches accept, which is a different card than the row is named after — so it carries its own identity, and a shop link opens the product that actually costs what the row says. `None` when the catalog prices nothing the entry accepts.
-     * @type {WatchedMarketResponse}
-     * @memberof WatchListEntryResponse
      */
     market?: WatchedMarketResponse | null;
     /**
      * Whether only the entry's finish counts
-     * @type {boolean}
-     * @memberof WatchListEntryResponse
      */
     match_finish: boolean;
     /**
      * What the entry is for, in the account's own words
-     * @type {string}
-     * @memberof WatchListEntryResponse
      */
     note: string;
     /**
      * Scryfall's id of the printing the entry names
-     * @type {string}
-     * @memberof WatchListEntryResponse
      */
     printing: string;
     /**
      * What the account already holds
-     * @type {WatchedStockResponse}
-     * @memberof WatchListEntryResponse
      */
     stock: WatchedStockResponse;
     /**
      * When the price last fell through the alarm, `None` while it has not
-     * @type {string}
-     * @memberof WatchListEntryResponse
      */
     triggered_at?: string | null;
     /**
      * What the card cost when the alarm went off, in euro cents
-     * @type {number}
-     * @memberof WatchListEntryResponse
      */
     triggered_price_cents?: number | null;
     /**
      * Which printing was that cheap
-     * @type {string}
-     * @memberof WatchListEntryResponse
      */
     triggered_printing?: string | null;
     /**
      * Primary key
-     * @type {string}
-     * @memberof WatchListEntryResponse
      */
     uuid: string;
     /**
      * How many copies the account is after
-     * @type {number}
-     * @memberof WatchListEntryResponse
      */
     wanted: number;
 }
@@ -11262,64 +9436,44 @@ export interface WatchListEntryResponse {
 export interface WatchListOverviewResponse {
     /**
      * How many entries have a standing alarm
-     * @type {number}
-     * @memberof WatchListOverviewResponse
      */
     alarms: number;
     /**
      * Artwork of the dearest entries, at most two
-     * @type {Array<string>}
-     * @memberof WatchListOverviewResponse
      */
     arts: Array<string>;
     /**
      * The colours the list asks for, as the letters `WUBRG`
-     * @type {string}
-     * @memberof WatchListOverviewResponse
      */
     colors: string;
     /**
      * How many cards are on it
-     * @type {number}
-     * @memberof WatchListOverviewResponse
      */
     entries: number;
     /**
      * The list itself
-     * @type {WatchListResponse}
-     * @memberof WatchListOverviewResponse
      */
     list: WatchListResponse;
     /**
      * How many of those copies are still missing
      * 
      * Counted against the copies lying free in a collection only. A copy sleeved up in a deck is spoken for.
-     * @type {number}
-     * @memberof WatchListOverviewResponse
      */
     missing: number;
     /**
      * What the missing copies cost, in euro cents
-     * @type {number}
-     * @memberof WatchListOverviewResponse
      */
     price_eur_cents: number;
     /**
      * Wanted copies per rarity
-     * @type {WatchedRaritiesResponse}
-     * @memberof WatchListOverviewResponse
      */
     rarities: WatchedRaritiesResponse;
     /**
      * How many of those alarms the reader has not seen yet
-     * @type {number}
-     * @memberof WatchListOverviewResponse
      */
     unread: number;
     /**
      * How many copies they ask for between them
-     * @type {number}
-     * @memberof WatchListOverviewResponse
      */
     wanted: number;
 }
@@ -11331,38 +9485,26 @@ export interface WatchListOverviewResponse {
 export interface WatchListResponse {
     /**
      * The colour it is drawn in
-     * @type {string}
-     * @memberof WatchListResponse
      */
     color: string;
     /**
      * The point in time the list was created
-     * @type {string}
-     * @memberof WatchListResponse
      */
     created_at: string;
     /**
      * Description shown above the entries
-     * @type {string}
-     * @memberof WatchListResponse
      */
     description: string;
     /**
      * The pictogram drawn on it
-     * @type {string}
-     * @memberof WatchListResponse
      */
     icon: string;
     /**
      * What the list is called
-     * @type {string}
-     * @memberof WatchListResponse
      */
     name: string;
     /**
      * Primary key
-     * @type {string}
-     * @memberof WatchListResponse
      */
     uuid: string;
 }
@@ -11376,82 +9518,56 @@ export interface WatchedCardResponse {
      * Cardmarket's product id, `None` when Cardmarket does not stock it
      * 
      * Without one there is no price and therefore no alarm.
-     * @type {number}
-     * @memberof WatchedCardResponse
      */
     cardmarket_id?: number | null;
     /**
      * Collector number as printed
-     * @type {string}
-     * @memberof WatchedCardResponse
      */
     collector_number: string;
     /**
      * Comma separated finishes this printing exists in
-     * @type {string}
-     * @memberof WatchedCardResponse
      */
     finishes: string;
     /**
      * Artwork for a closer look
-     * @type {string}
-     * @memberof WatchedCardResponse
      */
     image_normal?: string | null;
     /**
      * Artwork for a list row
-     * @type {string}
-     * @memberof WatchedCardResponse
      */
     image_small?: string | null;
     /**
      * Language of the printing, as Scryfall's code
-     * @type {string}
-     * @memberof WatchedCardResponse
      */
     lang: string;
     /**
      * The printed name
-     * @type {string}
-     * @memberof WatchedCardResponse
      */
     name: string;
     /**
      * Groups every printing of the same card
-     * @type {string}
-     * @memberof WatchedCardResponse
      */
     oracle_id?: string | null;
     /**
      * Market price in euro cents
-     * @type {number}
-     * @memberof WatchedCardResponse
      */
     price_eur_cents?: number | null;
     /**
      * Foil market price in euro cents
-     * @type {number}
-     * @memberof WatchedCardResponse
      */
     price_eur_foil_cents?: number | null;
     /**
      * Set code, upper case
-     * @type {string}
-     * @memberof WatchedCardResponse
      */
     set_code: string;
     /**
      * Full set name
-     * @type {string}
-     * @memberof WatchedCardResponse
      */
     set_name: string;
     /**
      * When this printing last came out of a catalog sync
      * 
      * How old the prices on this row are: they do not move between syncs.
-     * @type {string}
-     * @memberof WatchedCardResponse
      */
     updated_at: string;
 }
@@ -11463,98 +9579,66 @@ export interface WatchedCardResponse {
 export interface WatchedCopyResponse {
     /**
      * The collection the stack lies in
-     * @type {string}
-     * @memberof WatchedCopyResponse
      */
     collection: string;
     /**
      * Its marker colour
-     * @type {string}
-     * @memberof WatchedCopyResponse
      */
     collection_color: string;
     /**
      * Its marker pictogram
-     * @type {string}
-     * @memberof WatchedCopyResponse
      */
     collection_icon: string;
     /**
      * What that collection is called
-     * @type {string}
-     * @memberof WatchedCopyResponse
      */
     collection_name: string;
     /**
      * Collector number as printed
-     * @type {string}
-     * @memberof WatchedCopyResponse
      */
     collector_number?: string | null;
     /**
      * Condition of the cards
-     * @type {CardCondition}
-     * @memberof WatchedCopyResponse
      */
     condition: CardCondition;
     /**
      * The deck the collection stands for, `None` for a collection on a shelf
-     * @type {string}
-     * @memberof WatchedCopyResponse
      */
     deck?: string | null;
     /**
      * What that deck is called
-     * @type {string}
-     * @memberof WatchedCopyResponse
      */
     deck_name?: string | null;
     /**
      * Finish of the cards
-     * @type {CardFinish}
-     * @memberof WatchedCopyResponse
      */
     finish: CardFinish;
     /**
      * Artwork for a list row
-     * @type {string}
-     * @memberof WatchedCopyResponse
      */
     image_small?: string | null;
     /**
      * Language of the printing, as Scryfall's code
-     * @type {string}
-     * @memberof WatchedCopyResponse
      */
     lang?: string | null;
     /**
      * The printed name, `None` while the catalog misses the printing
-     * @type {string}
-     * @memberof WatchedCopyResponse
      */
     name?: string | null;
     /**
      * Scryfall's id of the printing this stack holds
-     * @type {string}
-     * @memberof WatchedCopyResponse
      */
     printing: string;
     /**
      * How many copies the stack holds
-     * @type {number}
-     * @memberof WatchedCopyResponse
      */
     quantity: number;
     /**
      * Set code, upper case
-     * @type {string}
-     * @memberof WatchedCopyResponse
      */
     set_code?: string | null;
     /**
      * Full set name
-     * @type {string}
-     * @memberof WatchedCopyResponse
      */
     set_name?: string | null;
 }
@@ -11568,44 +9652,30 @@ export interface WatchedCopyResponse {
 export interface WatchedMarketResponse {
     /**
      * Cardmarket's id of the product it is sold as, `None` when unstocked
-     * @type {number}
-     * @memberof WatchedMarketResponse
      */
     cardmarket_id?: number | null;
     /**
      * Collector number as printed
-     * @type {string}
-     * @memberof WatchedMarketResponse
      */
     collector_number: string;
     /**
      * Language of the printing, as Scryfall's code
-     * @type {string}
-     * @memberof WatchedMarketResponse
      */
     lang: string;
     /**
      * The printed name
-     * @type {string}
-     * @memberof WatchedMarketResponse
      */
     name: string;
     /**
      * What one copy of it costs, in euro cents
-     * @type {number}
-     * @memberof WatchedMarketResponse
      */
     price_cents: number;
     /**
      * Scryfall's id of the printing being priced
-     * @type {string}
-     * @memberof WatchedMarketResponse
      */
     printing: string;
     /**
      * Set code, upper case
-     * @type {string}
-     * @memberof WatchedMarketResponse
      */
     set_code: string;
 }
@@ -11617,32 +9687,22 @@ export interface WatchedMarketResponse {
 export interface WatchedRaritiesResponse {
     /**
      * Wanted copies of common cards
-     * @type {number}
-     * @memberof WatchedRaritiesResponse
      */
     common: number;
     /**
      * Wanted copies of mythic rare cards
-     * @type {number}
-     * @memberof WatchedRaritiesResponse
      */
     mythic: number;
     /**
      * Wanted copies of everything else the catalog files separately
-     * @type {number}
-     * @memberof WatchedRaritiesResponse
      */
     other: number;
     /**
      * Wanted copies of rare cards
-     * @type {number}
-     * @memberof WatchedRaritiesResponse
      */
     rare: number;
     /**
      * Wanted copies of uncommon cards
-     * @type {number}
-     * @memberof WatchedRaritiesResponse
      */
     uncommon: number;
 }
@@ -11654,28 +9714,20 @@ export interface WatchedRaritiesResponse {
 export interface WatchedStockResponse {
     /**
      * Copies lying in a collection that is not a deck's
-     * @type {number}
-     * @memberof WatchedStockResponse
      */
     free: number;
     /**
      * Free copies a looser finish match would count, including [`Self::free`]
-     * @type {number}
-     * @memberof WatchedStockResponse
      */
     free_any_finish: number;
     /**
      * Free copies a wider printing match would count
      * 
      * Includes [`Self::free`]; the difference is what the entry's printing switch is turning away.
-     * @type {number}
-     * @memberof WatchedStockResponse
      */
     free_any_printing: number;
     /**
      * Copies sleeved up in a deck
-     * @type {number}
-     * @memberof WatchedStockResponse
      */
     sleeved: number;
 }

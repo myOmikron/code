@@ -581,8 +581,8 @@
                         "anyOf": [
                             {
                                 "type": "number",
-                                "maximum": 99,
-                                "minimum": 0
+                                "maximum": 99.0,
+                                "minimum": 0.0
                             },
                             {
                                 "type": "null"
@@ -594,8 +594,8 @@
                         "anyOf": [
                             {
                                 "type": "number",
-                                "maximum": 99,
-                                "minimum": 0
+                                "maximum": 99.0,
+                                "minimum": 0.0
                             },
                             {
                                 "type": "null"
@@ -640,12 +640,12 @@
                     "default_low": {
                         "type": "number",
                         "title": "Default Low",
-                        "default": 0
+                        "default": 0.0
                     },
                     "default_high": {
                         "type": "number",
                         "title": "Default High",
-                        "default": 0
+                        "default": 0.0
                     },
                     "cards": {
                         "items": {
@@ -798,8 +798,8 @@
                     },
                     "limit": {
                         "type": "integer",
-                        "maximum": 60,
-                        "minimum": 1,
+                        "maximum": 60.0,
+                        "minimum": 1.0,
                         "title": "Limit",
                         "default": 20
                     },
@@ -912,7 +912,7 @@
                     "default_target": {
                         "type": "number",
                         "title": "Default Target",
-                        "default": 0
+                        "default": 0.0
                     }
                 },
                 "type": "object",
@@ -927,14 +927,14 @@
                 "properties": {
                     "mv": {
                         "type": "integer",
-                        "maximum": 6,
-                        "minimum": 0,
+                        "maximum": 6.0,
+                        "minimum": 0.0,
                         "title": "Mv"
                     },
                     "share": {
                         "type": "number",
-                        "maximum": 1,
-                        "minimum": 0,
+                        "maximum": 1.0,
+                        "minimum": 0.0,
                         "title": "Share"
                     }
                 },
@@ -959,7 +959,7 @@
                     "cmc": {
                         "type": "number",
                         "title": "Cmc",
-                        "default": 0
+                        "default": 0.0
                     },
                     "type_line": {
                         "type": "string",
@@ -980,12 +980,12 @@
                     "playability": {
                         "type": "number",
                         "title": "Playability",
-                        "default": 0
+                        "default": 0.0
                     },
                     "score": {
                         "type": "number",
                         "title": "Score",
-                        "default": 0
+                        "default": 0.0
                     },
                     "reasons": {
                         "items": {
@@ -1052,8 +1052,8 @@
                     },
                     "qty": {
                         "type": "integer",
-                        "maximum": 99,
-                        "minimum": 1,
+                        "maximum": 99.0,
+                        "minimum": 1.0,
                         "title": "Qty",
                         "default": 1
                     }
@@ -1158,7 +1158,7 @@
                     "consistency": {
                         "type": "number",
                         "title": "Consistency",
-                        "default": 0
+                        "default": 0.0
                     },
                     "themed_cards": {
                         "type": "integer",
@@ -1273,8 +1273,8 @@
                     },
                     "speed": {
                         "type": "number",
-                        "maximum": 1,
-                        "minimum": 0,
+                        "maximum": 1.0,
+                        "minimum": 0.0,
                         "title": "Speed",
                         "default": 0.5
                     },
@@ -1325,8 +1325,8 @@
                     },
                     "deck_size": {
                         "type": "integer",
-                        "maximum": 250,
-                        "minimum": 1,
+                        "maximum": 250.0,
+                        "minimum": 1.0,
                         "title": "Deck Size",
                         "default": 99
                     },
@@ -1389,8 +1389,8 @@
                     },
                     "speed": {
                         "type": "number",
-                        "maximum": 1,
-                        "minimum": 0,
+                        "maximum": 1.0,
+                        "minimum": 0.0,
                         "title": "Speed",
                         "default": 0.5
                     },
@@ -1450,8 +1450,8 @@
                     },
                     "deck_size": {
                         "type": "integer",
-                        "maximum": 250,
-                        "minimum": 1,
+                        "maximum": 250.0,
+                        "minimum": 1.0,
                         "title": "Deck Size",
                         "default": 99
                     },
@@ -1459,7 +1459,7 @@
                         "anyOf": [
                             {
                                 "type": "number",
-                                "exclusiveMinimum": 0
+                                "exclusiveMinimum": 0.0
                             },
                             {
                                 "type": "null"
@@ -1559,12 +1559,12 @@
                     "total_price": {
                         "type": "number",
                         "title": "Total Price",
-                        "default": 0
+                        "default": 0.0
                     },
                     "solve_ms": {
                         "type": "number",
                         "title": "Solve Ms",
-                        "default": 0
+                        "default": 0.0
                     },
                     "notes": {
                         "items": {
@@ -2055,8 +2055,8 @@
                     },
                     "limit": {
                         "type": "integer",
-                        "maximum": 60,
-                        "minimum": 1,
+                        "maximum": 60.0,
+                        "minimum": 1.0,
                         "title": "Limit",
                         "default": 20
                     },
@@ -2096,8 +2096,8 @@
                     },
                     "speed": {
                         "type": "number",
-                        "maximum": 1,
-                        "minimum": 0,
+                        "maximum": 1.0,
+                        "minimum": 0.0,
                         "title": "Speed",
                         "default": 0.5
                     },
@@ -2442,8 +2442,8 @@
                     },
                     "speed": {
                         "type": "number",
-                        "maximum": 1,
-                        "minimum": 0,
+                        "maximum": 1.0,
+                        "minimum": 0.0,
                         "title": "Speed",
                         "default": 0.5
                     },
@@ -2491,8 +2491,8 @@
                     },
                     "limit": {
                         "type": "integer",
-                        "maximum": 40,
-                        "minimum": 1,
+                        "maximum": 40.0,
+                        "minimum": 1.0,
                         "title": "Limit",
                         "default": 10
                     },
@@ -2500,7 +2500,7 @@
                         "anyOf": [
                             {
                                 "type": "number",
-                                "exclusiveMinimum": 0
+                                "exclusiveMinimum": 0.0
                             },
                             {
                                 "type": "null"
@@ -2547,8 +2547,8 @@
                     },
                     "deck_size": {
                         "type": "integer",
-                        "maximum": 250,
-                        "minimum": 1,
+                        "maximum": 250.0,
+                        "minimum": 1.0,
                         "title": "Deck Size",
                         "default": 99
                     }
@@ -2609,7 +2609,7 @@
                     "cmc": {
                         "type": "number",
                         "title": "Cmc",
-                        "default": 0
+                        "default": 0.0
                     },
                     "type_line": {
                         "type": "string",
@@ -2630,7 +2630,7 @@
                     "playability": {
                         "type": "number",
                         "title": "Playability",
-                        "default": 0
+                        "default": 0.0
                     },
                     "game_changer": {
                         "type": "boolean",
@@ -2640,7 +2640,7 @@
                     "score": {
                         "type": "number",
                         "title": "Score",
-                        "default": 0
+                        "default": 0.0
                     },
                     "shared_roles": {
                         "items": {
@@ -2900,7 +2900,7 @@
                         "anyOf": [
                             {
                                 "type": "number",
-                                "exclusiveMinimum": 0
+                                "exclusiveMinimum": 0.0
                             },
                             {
                                 "type": "null"
@@ -2910,10 +2910,10 @@
                     },
                     "min_playability": {
                         "type": "number",
-                        "maximum": 1,
-                        "minimum": 0,
+                        "maximum": 1.0,
+                        "minimum": 0.0,
                         "title": "Min Playability",
-                        "default": 0
+                        "default": 0.0
                     },
                     "game_changers": {
                         "anyOf": [
@@ -2943,8 +2943,8 @@
                     },
                     "limit": {
                         "type": "integer",
-                        "maximum": 200,
-                        "minimum": 1,
+                        "maximum": 200.0,
+                        "minimum": 1.0,
                         "title": "Limit",
                         "default": 40
                     }
@@ -3003,7 +3003,7 @@
                     "cmc": {
                         "type": "number",
                         "title": "Cmc",
-                        "default": 0
+                        "default": 0.0
                     },
                     "type_line": {
                         "type": "string",
@@ -3053,7 +3053,7 @@
                     "playability": {
                         "type": "number",
                         "title": "Playability",
-                        "default": 0
+                        "default": 0.0
                     },
                     "game_changer": {
                         "type": "boolean",
@@ -3197,7 +3197,7 @@
                     "playability": {
                         "type": "number",
                         "title": "Playability",
-                        "default": 0
+                        "default": 0.0
                     },
                     "game_changer": {
                         "type": "boolean",
@@ -3390,8 +3390,8 @@
                     },
                     "limit": {
                         "type": "integer",
-                        "maximum": 120,
-                        "minimum": 1,
+                        "maximum": 120.0,
+                        "minimum": 1.0,
                         "title": "Limit",
                         "default": 40
                     },
@@ -3399,7 +3399,7 @@
                         "anyOf": [
                             {
                                 "type": "number",
-                                "exclusiveMinimum": 0
+                                "exclusiveMinimum": 0.0
                             },
                             {
                                 "type": "null"
@@ -3421,8 +3421,8 @@
                     },
                     "speed": {
                         "type": "number",
-                        "maximum": 1,
-                        "minimum": 0,
+                        "maximum": 1.0,
+                        "minimum": 0.0,
                         "title": "Speed",
                         "default": 0.5
                     },
@@ -3507,8 +3507,8 @@
                     },
                     "deck_size": {
                         "type": "integer",
-                        "maximum": 250,
-                        "minimum": 1,
+                        "maximum": 250.0,
+                        "minimum": 1.0,
                         "title": "Deck Size",
                         "default": 99
                     }
@@ -3611,8 +3611,8 @@
                     },
                     "speed": {
                         "type": "number",
-                        "maximum": 1,
-                        "minimum": 0,
+                        "maximum": 1.0,
+                        "minimum": 0.0,
                         "title": "Speed",
                         "default": 0.5
                     },
@@ -3672,15 +3672,15 @@
                     },
                     "limit": {
                         "type": "integer",
-                        "maximum": 60,
-                        "minimum": 1,
+                        "maximum": 60.0,
+                        "minimum": 1.0,
                         "title": "Limit",
                         "default": 24
                     },
                     "per_add": {
                         "type": "integer",
-                        "maximum": 10,
-                        "minimum": 1,
+                        "maximum": 10.0,
+                        "minimum": 1.0,
                         "title": "Per Add",
                         "default": 3
                     },
@@ -3688,7 +3688,7 @@
                         "anyOf": [
                             {
                                 "type": "number",
-                                "exclusiveMinimum": 0
+                                "exclusiveMinimum": 0.0
                             },
                             {
                                 "type": "null"
@@ -3735,8 +3735,8 @@
                     },
                     "deck_size": {
                         "type": "integer",
-                        "maximum": 250,
-                        "minimum": 1,
+                        "maximum": 250.0,
+                        "minimum": 1.0,
                         "title": "Deck Size",
                         "default": 99
                     },
@@ -3950,8 +3950,8 @@
                         "anyOf": [
                             {
                                 "type": "number",
-                                "maximum": 99,
-                                "minimum": 0
+                                "maximum": 99.0,
+                                "minimum": 0.0
                             },
                             {
                                 "type": "null"
@@ -3963,8 +3963,8 @@
                         "anyOf": [
                             {
                                 "type": "number",
-                                "maximum": 99,
-                                "minimum": 0
+                                "maximum": 99.0,
+                                "minimum": 0.0
                             },
                             {
                                 "type": "null"
@@ -4009,17 +4009,17 @@
                     "default_low": {
                         "type": "number",
                         "title": "Default Low",
-                        "default": 0
+                        "default": 0.0
                     },
                     "default_high": {
                         "type": "number",
                         "title": "Default High",
-                        "default": 0
+                        "default": 0.0
                     },
                     "flexible": {
                         "type": "number",
                         "title": "Flexible",
-                        "default": 0
+                        "default": 0.0
                     },
                     "cards": {
                         "items": {

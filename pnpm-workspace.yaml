@@ -7,6 +7,7 @@ allowBuilds:
   '@openapitools/openapi-generator-cli': false
   '@swc/core': true
   '@tsparticles/engine': false
+  protobufjs: false
   esbuild: true
   onnxruntime-node: true
   sharp: true
@@ -16,16 +17,16 @@ catalogs:
   dependencies:
     '@headlessui/react': ^2.2.10
     '@heroicons/react': ^2.2.0
-    '@simplewebauthn/browser': ^13.3.0
+    '@simplewebauthn/browser': ^14.0.0
     '@techstark/opencv-js': ^5.0.0-release.1
     '@tanstack/react-form': ^1.33.0
     '@tanstack/react-query': ^5.102.3
     '@tanstack/react-router': ^1.170.17
     '@tanstack/react-table': ^9.0.0
-    '@zxcvbn-ts/core': ^3.0.4
-    '@zxcvbn-ts/language-common': ^3.0.4
-    '@zxcvbn-ts/language-de': ^3.0.2
-    '@zxcvbn-ts/language-en': ^3.0.2
+    '@zxcvbn-ts/core': ^4.0.0
+    '@zxcvbn-ts/language-common': ^4.0.0
+    '@zxcvbn-ts/language-de': ^4.0.0
+    '@zxcvbn-ts/language-en': ^4.0.0
     clsx: ^2.1.1
     i18next: ^26.3.4
     i18next-browser-languagedetector: ^8.2.1
@@ -49,7 +50,7 @@ catalogs:
     tesseract.js-core: ^6.0.0
   devDependencies:
     '@eslint/js': 10.0.1
-    '@openapitools/openapi-generator-cli': 2.41.0
+    '@openapitools/openapi-generator-cli': 2.42.0
     '@tailwindcss/vite': ^4.3.2
     '@tanstack/router-devtools': ^1.167.0
     '@tanstack/router-plugin': ^1.168.19
@@ -61,20 +62,20 @@ catalogs:
     esbuild: 0.28.2
     eslint: 10.13.0
     onnxruntime-node: 1.30.0
-    eslint-plugin-jsdoc: 65.3.11
+    eslint-plugin-jsdoc: 65.4.2
     eslint-plugin-react-refresh: 0.5.7
-    prettier: 3.8.4
+    prettier: 3.9.10
     prettier-plugin-tailwindcss: 0.8.1
     sharp: ^0.35.0
     stream-json: ^3.0.0
     tailwindcss: 4.3.3
     typescript: 6.0.3
-    typescript-eslint: 8.71.2
-    vite: 8.1.6
+    typescript-eslint: 8.72.0
+    vite: 8.3.5
     vite-plugin-pwa: 2.0.0
     vite-plugin-static-copy: 4.1.1
     vite-plugin-svgr: 5.2.0
-    vitest: ^4.0.0
+    vitest: ^5.0.0
     yaml: 2.9.1
     workbox-window: ^7.4.1
 

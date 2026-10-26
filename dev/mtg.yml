@@ -11,7 +11,7 @@ name: mtg
 
 services:
   traefik:
-    image: traefik:v3.7.15
+    image: traefik:v3.7.16
     # Shares the tailscale container's network namespace, so it answers on the
     # tailnet address and can reach the internal CA. Ports are published by
     # that container — a namespace has one owner.
@@ -79,7 +79,7 @@ services:
   # The spec urls are same-origin paths, so the browser fetches them back
   # through traefik — no CORS, and no second host to configure.
   swagger:
-    image: swaggerapi/swagger-ui:v5.33.3
+    image: swaggerapi/swagger-ui:v5.34.0
     environment:
       - BASE_URL=/swagger-ui
       - 'URLS=[{ url: "/docs/frontend.json", name: "Frontend" }, { url: "/docs/openapi.json", name: "All routes" }]'
@@ -229,7 +229,7 @@ services:
     # Calendar-versioned releases superseded the 5.x line. Pinned to a minor so
     # a store-format change never arrives unannounced; the corpus re-ingests in
     # ~8s, so upgrading is a `down -v` away rather than a store migration.
-    image: neo4j:2026.06-community
+    image: neo4j:2026.10.1-community
     environment:
       # Only NEO4J_AUTH here: the entrypoint parses every other NEO4J_* var as
       # a config setting and hard-fails on unknown names.

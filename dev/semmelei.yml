@@ -11,7 +11,7 @@ name: semmelei
 
 services:
   traefik:
-    image: traefik:v3.7.15
+    image: traefik:v3.7.16
     # Shares the tailscale container's network namespace, so it answers on the
     # tailnet address and can reach the internal CA. Ports are published by
     # that container — a namespace has one owner.
@@ -48,7 +48,7 @@ services:
   # The spec urls are same-origin paths, so the browser fetches them back
   # through traefik — no CORS, and no second host to configure.
   swagger:
-    image: swaggerapi/swagger-ui:v5.33.3
+    image: swaggerapi/swagger-ui:v5.34.0
     environment:
       - BASE_URL=/swagger-ui
       - 'URLS=[{ url: "/docs/frontend.json", name: "Frontend" }, { url: "/docs/openapi.json", name: "All routes" }]'

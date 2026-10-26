@@ -7,12 +7,15 @@
   "labels": ["renovate"],
   "timezone": "Europe/Berlin",
   "schedule": ["before 6am on monday"],
-  "prConcurrentLimit": 10,
+  "prConcurrentLimit": 0,
+  "prHourlyLimit": 0,
   "platformCommit": "enabled",
   // supply chain cooldown: a compromised release is usually yanked within days;
   // vulnerability fixes skip it (vulnerabilityAlerts defaults to minimumReleaseAge null)
   "minimumReleaseAge": "7 days",
-  "internalChecksFilter": "strict",
+  // flexible: a branch moves to the newest release past the cooldown; strict holds back the
+  // whole branch, even a requested rebase, while a newer release is still cooling down
+  "internalChecksFilter": "flexible",
   // GitHub alerts need Dependabot alerts enabled and read access for the app;
   // OSV works without either, but only covers direct dependencies
   "osvVulnerabilityAlerts": true,

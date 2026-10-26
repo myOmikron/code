@@ -810,7 +810,7 @@
                             "description": "How many Accounts to return, capped server-side",
                             "default": 50,
                             "type": "integer",
-                            "minimum": 0,
+                            "minimum": 0.0,
                             "format": "uint32"
                         },
                         "style": "form"
@@ -1388,7 +1388,7 @@
                             "description": "How many Bug reports to return, capped server-side",
                             "default": 50,
                             "type": "integer",
-                            "minimum": 0,
+                            "minimum": 0.0,
                             "format": "uint32"
                         },
                         "style": "form"
@@ -1801,7 +1801,7 @@
                             "description": "How many entries to return, capped server-side",
                             "default": 50,
                             "type": "integer",
-                            "minimum": 0,
+                            "minimum": 0.0,
                             "format": "uint32"
                         },
                         "style": "form"
@@ -3226,7 +3226,7 @@
                             "description": "How many stacks to return, capped server-side",
                             "default": 60,
                             "type": "integer",
-                            "minimum": 0,
+                            "minimum": 0.0,
                             "format": "uint32"
                         },
                         "style": "form"
@@ -3238,7 +3238,7 @@
                             "description": "How many stacks to skip, ignored when `after` is given",
                             "default": 0,
                             "type": "integer",
-                            "minimum": 0,
+                            "minimum": 0.0,
                             "format": "uint32"
                         },
                         "style": "form"
@@ -6353,7 +6353,7 @@
                             "description": "How many Deck changes to return, capped server-side",
                             "default": 50,
                             "type": "integer",
-                            "minimum": 0,
+                            "minimum": 0.0,
                             "format": "uint32"
                         },
                         "style": "form"
@@ -7247,7 +7247,7 @@
                             "description": "How many decks the page holds",
                             "default": 24,
                             "type": "integer",
-                            "minimum": 0,
+                            "minimum": 0.0,
                             "format": "uint32"
                         },
                         "style": "form"
@@ -7259,7 +7259,7 @@
                             "description": "How many decks to skip",
                             "default": 0,
                             "type": "integer",
-                            "minimum": 0,
+                            "minimum": 0.0,
                             "format": "uint32"
                         },
                         "style": "form"
@@ -7665,7 +7665,7 @@
                             "description": "How many stacks to return, capped server-side",
                             "default": 60,
                             "type": "integer",
-                            "minimum": 0,
+                            "minimum": 0.0,
                             "format": "uint32"
                         },
                         "style": "form"
@@ -7677,7 +7677,7 @@
                             "description": "How many stacks to skip, ignored when `after` is given",
                             "default": 0,
                             "type": "integer",
-                            "minimum": 0,
+                            "minimum": 0.0,
                             "format": "uint32"
                         },
                         "style": "form"
@@ -9136,7 +9136,7 @@
                             "description": "How many stacks to return, capped server-side",
                             "default": 60,
                             "type": "integer",
-                            "minimum": 0,
+                            "minimum": 0.0,
                             "format": "uint32"
                         },
                         "style": "form"
@@ -9148,7 +9148,7 @@
                             "description": "How many stacks to skip, ignored when `after` is given",
                             "default": 0,
                             "type": "integer",
-                            "minimum": 0,
+                            "minimum": 0.0,
                             "format": "uint32"
                         },
                         "style": "form"
@@ -14615,7 +14615,7 @@
                     "passkeys": {
                         "description": "Passkeys the Account can log in with",
                         "type": "integer",
-                        "minimum": 0,
+                        "minimum": 0.0,
                         "format": "uint64"
                     }
                 },
@@ -15888,13 +15888,13 @@
                         "nullable": true,
                         "description": "How many Game Changers may be played, `null` for no limit",
                         "type": "integer",
-                        "minimum": 0,
+                        "minimum": 0.0,
                         "format": "uint8"
                     },
                     "number": {
                         "description": "Which bracket, one to five",
                         "type": "integer",
-                        "minimum": 0,
+                        "minimum": 0.0,
                         "format": "uint8"
                     },
                     "slug": {
@@ -16681,13 +16681,13 @@
                             "max": {
                                 "description": "Most cards in the commander zone, two for partners",
                                 "type": "integer",
-                                "minimum": 0,
+                                "minimum": 0.0,
                                 "format": "uint8"
                             },
                             "min": {
                                 "description": "Fewest cards in the commander zone",
                                 "type": "integer",
-                                "minimum": 0,
+                                "minimum": 0.0,
                                 "format": "uint8"
                             }
                         },
@@ -18088,7 +18088,7 @@
                             "cards": {
                                 "description": "The count",
                                 "type": "integer",
-                                "minimum": 0,
+                                "minimum": 0.0,
                                 "format": "uint16"
                             },
                             "kind": {
@@ -18110,7 +18110,7 @@
                             "cards": {
                                 "description": "The count",
                                 "type": "integer",
-                                "minimum": 0,
+                                "minimum": 0.0,
                                 "format": "uint16"
                             },
                             "kind": {
@@ -18890,7 +18890,7 @@
                     "filed": {
                         "description": "How many copies were filed as being in the deck",
                         "type": "integer",
-                        "minimum": 0,
+                        "minimum": 0.0,
                         "format": "uint32"
                     }
                 },
@@ -19926,7 +19926,7 @@
                     "max_copies": {
                         "description": "How many copies of one card may be played, ignoring basic lands",
                         "type": "integer",
-                        "minimum": 0,
+                        "minimum": 0.0,
                         "format": "uint8"
                     },
                     "role_bans": {
@@ -19940,7 +19940,7 @@
                     "sideboard": {
                         "description": "How many cards the sideboard may hold, zero when the format has none",
                         "type": "integer",
-                        "minimum": 0,
+                        "minimum": 0.0,
                         "format": "uint8"
                     },
                     "slug": {
@@ -20006,7 +20006,7 @@
                     "added": {
                         "description": "How many slots were added",
                         "type": "integer",
-                        "minimum": 0,
+                        "minimum": 0.0,
                         "format": "uint32"
                     }
                 },
@@ -20054,7 +20054,7 @@
                     "limit": {
                         "description": "The page size actually applied, which may be below what was asked for",
                         "type": "integer",
-                        "minimum": 0,
+                        "minimum": 0.0,
                         "format": "uint32"
                     },
                     "next_cursor": {
@@ -20069,7 +20069,7 @@
                     "offset": {
                         "description": "How many stacks were skipped",
                         "type": "integer",
-                        "minimum": 0,
+                        "minimum": 0.0,
                         "format": "uint32"
                     },
                     "total": {
@@ -22659,7 +22659,7 @@
                     "lookup": {
                         "description": "Which lookup this answers, as its position in the request\n\nAnswers carry their question rather than the list carrying a hole per unmatched row: a five-figure import is mostly cards the catalog knows, and the few it does not are what the client reports as unmatched.",
                         "type": "integer",
-                        "minimum": 0,
+                        "minimum": 0.0,
                         "format": "uint32"
                     },
                     "name": {
@@ -22784,13 +22784,13 @@
                     "left": {
                         "description": "How many stayed, because nobody said where they belong",
                         "type": "integer",
-                        "minimum": 0,
+                        "minimum": 0.0,
                         "format": "uint32"
                     },
                     "returned": {
                         "description": "How many stacks were sorted back",
                         "type": "integer",
-                        "minimum": 0,
+                        "minimum": 0.0,
                         "format": "uint32"
                     }
                 },
@@ -23391,13 +23391,13 @@
                     "limit": {
                         "description": "How many decks were asked for",
                         "type": "integer",
-                        "minimum": 0,
+                        "minimum": 0.0,
                         "format": "uint32"
                     },
                     "offset": {
                         "description": "How many decks were skipped",
                         "type": "integer",
-                        "minimum": 0,
+                        "minimum": 0.0,
                         "format": "uint32"
                     },
                     "total": {

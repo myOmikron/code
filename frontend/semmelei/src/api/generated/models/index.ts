@@ -8,32 +8,22 @@
 export interface AccountSchema {
     /**
      * The point in time the account was created
-     * @type {string}
-     * @memberof AccountSchema
      */
     created_at: string;
     /**
      * The point in time when the account logged in recently
-     * @type {string}
-     * @memberof AccountSchema
      */
     last_login_at?: string | null;
     /**
      * The account's role
-     * @type {Role}
-     * @memberof AccountSchema
      */
     role: Role;
     /**
      * The username of the account
-     * @type {string}
-     * @memberof AccountSchema
      */
     username: string;
     /**
      * Primary key
-     * @type {string}
-     * @memberof AccountSchema
      */
     uuid: string;
 }
@@ -47,56 +37,38 @@ export interface AccountSchema {
 export interface AdminItem {
     /**
      * Whether the item is currently orderable
-     * @type {boolean}
-     * @memberof AdminItem
      */
     active: boolean;
     /**
      * Optional customer-facing details such as allergens or ingredients
-     * @type {string}
-     * @memberof AdminItem
      */
     additional_info?: string | null;
     /**
      * The number the Bakery orders the item under, unset if it has none
-     * @type {string}
-     * @memberof AdminItem
      */
     bakery_article_number?: string | null;
     /**
      * The category the item belongs to
-     * @type {string}
-     * @memberof AdminItem
      */
     category?: string | null;
     /**
      * The point in time the item was created
-     * @type {string}
-     * @memberof AdminItem
      */
     created_at: string;
     /**
      * Cache-busting version of the item's image, unset if there is none
-     * @type {number}
-     * @memberof AdminItem
      */
     image_version?: number | null;
     /**
      * The name of the item
-     * @type {string}
-     * @memberof AdminItem
      */
     name: string;
     /**
      * The price in euro cents
-     * @type {number}
-     * @memberof AdminItem
      */
     price_cents: number;
     /**
      * Primary key
-     * @type {string}
-     * @memberof AdminItem
      */
     uuid: string;
 }
@@ -108,38 +80,26 @@ export interface AdminItem {
 export interface AdminNewsPost {
     /**
      * The text, as Markdown
-     * @type {string}
-     * @memberof AdminNewsPost
      */
     body: string;
     /**
      * The point in time the News Post was created
-     * @type {string}
-     * @memberof AdminNewsPost
      */
     created_at: string;
     /**
      * The point in time the News Post was published, unset for a Draft
-     * @type {string}
-     * @memberof AdminNewsPost
      */
     published_at?: string | null;
     /**
      * The title
-     * @type {string}
-     * @memberof AdminNewsPost
      */
     title: string;
     /**
      * The point in time the News Post was last changed
-     * @type {string}
-     * @memberof AdminNewsPost
      */
     updated_at: string;
     /**
      * Primary key
-     * @type {string}
-     * @memberof AdminNewsPost
      */
     uuid: string;
 }
@@ -151,50 +111,34 @@ export interface AdminNewsPost {
 export interface AdminPickupDay {
     /**
      * Whether the pickup day was called off
-     * @type {boolean}
-     * @memberof AdminPickupDay
      */
     closed: boolean;
     /**
      * The point in time orders close
-     * @type {string}
-     * @memberof AdminPickupDay
      */
     deadline: string;
     /**
      * Whether the day is frozen: past its deadline or locked early
-     * @type {boolean}
-     * @memberof AdminPickupDay
      */
     locked: boolean;
     /**
      * When the day was frozen, if it already was
-     * @type {string}
-     * @memberof AdminPickupDay
      */
     locked_at?: string | null;
     /**
      * How many orders are placed for this day (cancelled ones excluded)
-     * @type {number}
-     * @memberof AdminPickupDay
      */
     order_count: number;
     /**
      * Whether the day deviates from the rule
-     * @type {boolean}
-     * @memberof AdminPickupDay
      */
     overridden: boolean;
     /**
      * The date orders are actually picked up on
-     * @type {string}
-     * @memberof AdminPickupDay
      */
     pickup_date: string;
     /**
      * The date the recurring rule produced — the identity of this day
-     * @type {string}
-     * @memberof AdminPickupDay
      */
     rule_date: string;
 }
@@ -206,8 +150,6 @@ export interface AdminPickupDay {
 export interface ApiErrorResponse {
     /**
      * ID of the opentelemetry trace this error originated in
-     * @type {string}
-     * @memberof ApiErrorResponse
      */
     trace_id: string;
 }
@@ -219,14 +161,10 @@ export interface ApiErrorResponse {
 export interface BakeryAddresses {
     /**
      * The Bakery's mail address; no pickup day is Dispatched while unset
-     * @type {string}
-     * @memberof BakeryAddresses
      */
     bakery_email?: string | null;
     /**
      * The Nachbarschaftshilfe's mail address, in CC of the Bakery order
-     * @type {string}
-     * @memberof BakeryAddresses
      */
     copy_email?: string | null;
 }
@@ -238,8 +176,6 @@ export interface BakeryAddresses {
 export interface CategoryRequest {
     /**
      * The name of the category
-     * @type {string}
-     * @memberof CategoryRequest
      */
     name: string;
 }
@@ -251,14 +187,10 @@ export interface CategoryRequest {
 export interface CreateAccountRequest {
     /**
      * The account's role
-     * @type {Role}
-     * @memberof CreateAccountRequest
      */
     role: Role;
     /**
      * The username of the account
-     * @type {string}
-     * @memberof CreateAccountRequest
      */
     username: string;
 }
@@ -272,50 +204,34 @@ export interface CreateAccountRequest {
 export interface CreateOrderRequest {
     /**
      * Whether the customer wants to pick the order up early in the day
-     * @type {boolean}
-     * @memberof CreateOrderRequest
      */
     early_pickup?: boolean;
     /**
      * The customer's email address (this or `phone` must be set)
-     * @type {string}
-     * @memberof CreateOrderRequest
      */
     email?: string | null;
     /**
      * The customer's first name
-     * @type {string}
-     * @memberof CreateOrderRequest
      */
     first_name?: string | null;
     /**
      * The positions to order
-     * @type {Array<OrderPositionRequest>}
-     * @memberof CreateOrderRequest
      */
     items: Array<OrderPositionRequest>;
     /**
      * The language the shop was shown in — every mail about this order uses it
-     * @type {OrderLanguage}
-     * @memberof CreateOrderRequest
      */
     language?: OrderLanguage;
     /**
      * The customer's last name
-     * @type {string}
-     * @memberof CreateOrderRequest
      */
     last_name: string;
     /**
      * Optional free-text note
-     * @type {string}
-     * @memberof CreateOrderRequest
      */
     note?: string | null;
     /**
      * The customer's phone number (this or `email` must be set)
-     * @type {string}
-     * @memberof CreateOrderRequest
      */
     phone?: string | null;
 }
@@ -329,14 +245,10 @@ export interface CreateOrderRequest {
 export interface CreateOrderResponse {
     /**
      * The created order
-     * @type {PublicOrder}
-     * @memberof CreateOrderResponse
      */
     order: PublicOrder;
     /**
      * The customer-facing order code
-     * @type {string}
-     * @memberof CreateOrderResponse
      */
     pickup_code: string;
 }
@@ -348,8 +260,6 @@ export interface CreateOrderResponse {
 export interface FinishAddPasskeyRequest {
     /**
      * The browser's `RegisterPublicKeyCredential` response
-     * @type {any}
-     * @memberof FinishAddPasskeyRequest
      */
     credential: any | null;
 }
@@ -361,8 +271,6 @@ export interface FinishAddPasskeyRequest {
 export interface FinishLoginRequest {
     /**
      * The browser's `PublicKeyCredential` response
-     * @type {any}
-     * @memberof FinishLoginRequest
      */
     credential: any | null;
 }
@@ -374,14 +282,10 @@ export interface FinishLoginRequest {
 export interface FinishRegistrationRequest {
     /**
      * The browser's `RegisterPublicKeyCredential` response
-     * @type {any}
-     * @memberof FinishRegistrationRequest
      */
     credential: any | null;
     /**
      * The invite token from the registration link
-     * @type {string}
-     * @memberof FinishRegistrationRequest
      */
     token: string;
 }
@@ -393,94 +297,64 @@ export interface FinishRegistrationRequest {
 export interface FullOrder {
     /**
      * The point in time the order was placed
-     * @type {string}
-     * @memberof FullOrder
      */
     created_at: string;
     /**
      * Whether the order's pickup day was Dispatched: the Bakery has it
      * 
      * Staff may still cancel the order; what went to the Bakery stays as it is.
-     * @type {boolean}
-     * @memberof FullOrder
      */
     dispatched: boolean;
     /**
      * Whether the customer wants to pick the order up early in the day
-     * @type {boolean}
-     * @memberof FullOrder
      */
     early_pickup: boolean;
     /**
      * The customer's email address
-     * @type {string}
-     * @memberof FullOrder
      */
     email?: string | null;
     /**
      * The customer's first name, if given
-     * @type {string}
-     * @memberof FullOrder
      */
     first_name?: string | null;
     /**
      * The customer's last name
-     * @type {string}
-     * @memberof FullOrder
      */
     last_name: string;
     /**
      * Whether the order is frozen: the customer can no longer cancel it
-     * @type {boolean}
-     * @memberof FullOrder
      */
     locked: boolean;
     /**
      * Optional note
-     * @type {string}
-     * @memberof FullOrder
      */
     note?: string | null;
     /**
      * The customer's phone number
-     * @type {string}
-     * @memberof FullOrder
      */
     phone?: string | null;
     /**
      * The customer-facing order code
-     * @type {string}
-     * @memberof FullOrder
      */
     pickup_code: string;
     /**
      * The day the order is picked up on
-     * @type {string}
-     * @memberof FullOrder
      */
     pickup_date: string;
     /**
      * The order's positions
-     * @type {Array<FullOrderPosition>}
-     * @memberof FullOrder
      */
     positions: Array<FullOrderPosition>;
     /**
      * Current status
-     * @type {OrderStatus}
-     * @memberof FullOrder
      */
     status: OrderStatus;
     /**
      * Total over all positions in euro cents
-     * @type {number}
-     * @memberof FullOrder
      */
     total_cents: number;
     /**
      * Primary key
-     * @type {string}
-     * @memberof FullOrder
      */
     uuid: string;
 }
@@ -494,32 +368,22 @@ export interface FullOrder {
 export interface FullOrderPosition {
     /**
      * Item name (snapshot at order time)
-     * @type {string}
-     * @memberof FullOrderPosition
      */
     name: string;
     /**
      * Whether the position has been packed
-     * @type {boolean}
-     * @memberof FullOrderPosition
      */
     packed: boolean;
     /**
      * Price per unit in euro cents (snapshot at order time)
-     * @type {number}
-     * @memberof FullOrderPosition
      */
     price_cents: number;
     /**
      * How many units were ordered
-     * @type {number}
-     * @memberof FullOrderPosition
      */
     quantity: number;
     /**
      * Primary key (PATCH target for packing)
-     * @type {string}
-     * @memberof FullOrderPosition
      */
     uuid: string;
 }
@@ -531,14 +395,10 @@ export interface FullOrderPosition {
 export interface InviteResponse {
     /**
      * One-time link the new device opens to register its passkey
-     * @type {string}
-     * @memberof InviteResponse
      */
     registration_link: string;
     /**
      * Primary key of the account
-     * @type {string}
-     * @memberof InviteResponse
      */
     uuid: string;
 }
@@ -550,40 +410,28 @@ export interface InviteResponse {
 export interface ItemRequest {
     /**
      * Whether the item is currently orderable
-     * @type {boolean}
-     * @memberof ItemRequest
      */
     active: boolean;
     /**
      * Optional customer-facing details such as allergens or ingredients
-     * @type {string}
-     * @memberof ItemRequest
      */
     additional_info?: string | null;
     /**
      * The number the Bakery orders the item under (at most 32 bytes after trimming)
      * 
      * Surrounding whitespace is trimmed; blank or unset means the item has none.
-     * @type {string}
-     * @memberof ItemRequest
      */
     bakery_article_number?: string | null;
     /**
      * The category the item belongs to
-     * @type {string}
-     * @memberof ItemRequest
      */
     category?: string | null;
     /**
      * The name of the item
-     * @type {string}
-     * @memberof ItemRequest
      */
     name: string;
     /**
      * The price in euro cents
-     * @type {number}
-     * @memberof ItemRequest
      */
     price_cents: number;
 }
@@ -595,14 +443,10 @@ export interface ItemRequest {
 export interface LegalLinks {
     /**
      * Url of the imprint, unset while the operator has not configured one
-     * @type {string}
-     * @memberof LegalLinks
      */
     imprint_url?: string | null;
     /**
      * Url of the privacy policy, unset while the operator has not configured one
-     * @type {string}
-     * @memberof LegalLinks
      */
     privacy_url?: string | null;
 }
@@ -614,8 +458,6 @@ export interface LegalLinks {
 export interface ListAccountsResponse {
     /**
      * The accounts
-     * @type {Array<AccountSchema>}
-     * @memberof ListAccountsResponse
      */
     accounts: Array<AccountSchema>;
 }
@@ -627,8 +469,6 @@ export interface ListAccountsResponse {
 export interface ListAdminItemsResponse {
     /**
      * The items
-     * @type {Array<AdminItem>}
-     * @memberof ListAdminItemsResponse
      */
     items: Array<AdminItem>;
 }
@@ -640,8 +480,6 @@ export interface ListAdminItemsResponse {
 export interface ListAdminNewsPostsResponse {
     /**
      * The News Posts
-     * @type {Array<AdminNewsPost>}
-     * @memberof ListAdminNewsPostsResponse
      */
     news_posts: Array<AdminNewsPost>;
 }
@@ -653,8 +491,6 @@ export interface ListAdminNewsPostsResponse {
 export interface ListCategoriesResponse {
     /**
      * The categories
-     * @type {Array<PublicCategory>}
-     * @memberof ListCategoriesResponse
      */
     categories: Array<PublicCategory>;
 }
@@ -666,8 +502,6 @@ export interface ListCategoriesResponse {
 export interface ListItemsResponse {
     /**
      * The items
-     * @type {Array<PublicItem>}
-     * @memberof ListItemsResponse
      */
     items: Array<PublicItem>;
 }
@@ -679,8 +513,6 @@ export interface ListItemsResponse {
 export interface ListOrdersResponse {
     /**
      * The orders
-     * @type {Array<FullOrder>}
-     * @memberof ListOrdersResponse
      */
     orders: Array<FullOrder>;
 }
@@ -692,8 +524,6 @@ export interface ListOrdersResponse {
 export interface ListPasskeysResponse {
     /**
      * The passkeys
-     * @type {Array<PasskeySchema>}
-     * @memberof ListPasskeysResponse
      */
     passkeys: Array<PasskeySchema>;
 }
@@ -705,8 +535,6 @@ export interface ListPasskeysResponse {
 export interface ListPickupDaysResponse {
     /**
      * The days, earliest first
-     * @type {Array<AdminPickupDay>}
-     * @memberof ListPickupDaysResponse
      */
     days: Array<AdminPickupDay>;
 }
@@ -718,8 +546,6 @@ export interface ListPickupDaysResponse {
 export interface ListPublishedNewsPostsResponse {
     /**
      * The News Posts
-     * @type {Array<PublishedNewsPost>}
-     * @memberof ListPublishedNewsPostsResponse
      */
     news_posts: Array<PublishedNewsPost>;
 }
@@ -731,20 +557,14 @@ export interface ListPublishedNewsPostsResponse {
 export interface MeResponse {
     /**
      * The account's role
-     * @type {Role}
-     * @memberof MeResponse
      */
     role: Role;
     /**
      * The username of the account
-     * @type {string}
-     * @memberof MeResponse
      */
     username: string;
     /**
      * Primary key of the account
-     * @type {string}
-     * @memberof MeResponse
      */
     uuid: string;
 }
@@ -758,14 +578,10 @@ export interface MeResponse {
 export interface NewsPostRequest {
     /**
      * The text, as Markdown
-     * @type {string}
-     * @memberof NewsPostRequest
      */
     body: string;
     /**
      * The title
-     * @type {string}
-     * @memberof NewsPostRequest
      */
     title: string;
 }
@@ -784,7 +600,7 @@ export const NotDispatchedReason = {
     /**
     * No Bakery address is set, so the Dispatch waits for one
     */
-    NoBakeryAddress: 'NoBakeryAddress'
+    NoBakeryAddress: 'NoBakeryAddress',
 } as const;
 export type NotDispatchedReason = typeof NotDispatchedReason[keyof typeof NotDispatchedReason];
 
@@ -803,7 +619,7 @@ export const OrderLanguage = {
     /**
     * English
     */
-    En: 'En'
+    En: 'En',
 } as const;
 export type OrderLanguage = typeof OrderLanguage[keyof typeof OrderLanguage];
 
@@ -815,14 +631,10 @@ export type OrderLanguage = typeof OrderLanguage[keyof typeof OrderLanguage];
 export interface OrderPositionRequest {
     /**
      * The item to order
-     * @type {string}
-     * @memberof OrderPositionRequest
      */
     item: string;
     /**
      * How many units to order (1..=99)
-     * @type {number}
-     * @memberof OrderPositionRequest
      */
     quantity: number;
 }
@@ -849,7 +661,7 @@ export const OrderStatus = {
     /**
     * Cancelled by the shop
     */
-    Cancelled: 'Cancelled'
+    Cancelled: 'Cancelled',
 } as const;
 export type OrderStatus = typeof OrderStatus[keyof typeof OrderStatus];
 
@@ -861,26 +673,18 @@ export type OrderStatus = typeof OrderStatus[keyof typeof OrderStatus];
 export interface PasskeySchema {
     /**
      * The point in time this passkey was registered
-     * @type {string}
-     * @memberof PasskeySchema
      */
     created_at: string;
     /**
      * Human-readable device label
-     * @type {string}
-     * @memberof PasskeySchema
      */
     label: string;
     /**
      * The point in time this passkey was last used for a login
-     * @type {string}
-     * @memberof PasskeySchema
      */
     last_used_at?: string | null;
     /**
      * Primary key of the passkey
-     * @type {string}
-     * @memberof PasskeySchema
      */
     uuid: string;
 }
@@ -892,14 +696,10 @@ export interface PasskeySchema {
 export interface PickupDayChangeResponse {
     /**
      * How many orders were cancelled by calling the day off
-     * @type {number}
-     * @memberof PickupDayChangeResponse
      */
     cancelled_orders: number;
     /**
      * The day after the change
-     * @type {AdminPickupDay}
-     * @memberof PickupDayChangeResponse
      */
     day: AdminPickupDay;
 }
@@ -911,20 +711,14 @@ export interface PickupDayChangeResponse {
 export interface PickupWindowResponse {
     /**
      * The point in time orders close, unset while no day is open
-     * @type {string}
-     * @memberof PickupWindowResponse
      */
     deadline?: string | null;
     /**
      * The pickup date after this one, if the shop already knows it
-     * @type {string}
-     * @memberof PickupWindowResponse
      */
     next_pickup_date?: string | null;
     /**
      * The date orders are picked up on, unset while no day is open
-     * @type {string}
-     * @memberof PickupWindowResponse
      */
     pickup_date?: string | null;
 }
@@ -938,32 +732,22 @@ export interface ProcurementPosition {
      * The distinct Bakery Article Numbers of the line's Items, sorted
      * 
      * Read live from the Items: deleted Items and Items without a number add none.
-     * @type {Array<string>}
-     * @memberof ProcurementPosition
      */
     bakery_article_numbers: Array<string>;
     /**
      * Item name (snapshot at order time)
-     * @type {string}
-     * @memberof ProcurementPosition
      */
     name: string;
     /**
      * How many orders contain the item
-     * @type {number}
-     * @memberof ProcurementPosition
      */
     order_count: number;
     /**
      * Price per unit in euro cents (snapshot at order time)
-     * @type {number}
-     * @memberof ProcurementPosition
      */
     price_cents: number;
     /**
      * How many units to procure in total
-     * @type {number}
-     * @memberof ProcurementPosition
      */
     total_quantity: number;
 }
@@ -975,62 +759,42 @@ export interface ProcurementPosition {
 export interface ProcurementSummary {
     /**
      * Whether the day was called off
-     * @type {boolean}
-     * @memberof ProcurementSummary
      */
     closed: boolean;
     /**
      * The point in time orders close
-     * @type {string}
-     * @memberof ProcurementSummary
      */
     deadline: string;
     /**
      * The point in time the day is Dispatched: its Deadline plus the Review Window
-     * @type {string}
-     * @memberof ProcurementSummary
      */
     dispatch_due: string;
     /**
      * When the day was Dispatched; from then on the list is final
-     * @type {string}
-     * @memberof ProcurementSummary
      */
     dispatched_at?: string | null;
     /**
      * Whether the day is frozen: customers can no longer order or cancel
-     * @type {boolean}
-     * @memberof ProcurementSummary
      */
     locked: boolean;
     /**
      * Why a frozen day is not Dispatched (yet)
-     * @type {NotDispatchedReason}
-     * @memberof ProcurementSummary
      */
     not_dispatched_reason: NotDispatchedReason;
     /**
      * How many orders the summary covers (cancelled ones excluded)
-     * @type {number}
-     * @memberof ProcurementSummary
      */
     order_count: number;
     /**
      * The day the orders are picked up on
-     * @type {string}
-     * @memberof ProcurementSummary
      */
     pickup_date: string;
     /**
      * The items to procure, most units first
-     * @type {Array<ProcurementPosition>}
-     * @memberof ProcurementSummary
      */
     positions: Array<ProcurementPosition>;
     /**
      * Total over all positions in euro cents
-     * @type {number}
-     * @memberof ProcurementSummary
      */
     total_cents: number;
 }
@@ -1044,14 +808,10 @@ export interface ProcurementSummary {
 export interface PublicCategory {
     /**
      * The name of the category
-     * @type {string}
-     * @memberof PublicCategory
      */
     name: string;
     /**
      * Primary key
-     * @type {string}
-     * @memberof PublicCategory
      */
     uuid: string;
 }
@@ -1063,38 +823,26 @@ export interface PublicCategory {
 export interface PublicItem {
     /**
      * Optional customer-facing details such as allergens or ingredients
-     * @type {string}
-     * @memberof PublicItem
      */
     additional_info?: string | null;
     /**
      * The category the item belongs to
-     * @type {string}
-     * @memberof PublicItem
      */
     category?: string | null;
     /**
      * Cache-busting version of the item's image, unset if there is none
-     * @type {number}
-     * @memberof PublicItem
      */
     image_version?: number | null;
     /**
      * The name of the item
-     * @type {string}
-     * @memberof PublicItem
      */
     name: string;
     /**
      * The price in euro cents
-     * @type {number}
-     * @memberof PublicItem
      */
     price_cents: number;
     /**
      * Primary key
-     * @type {string}
-     * @memberof PublicItem
      */
     uuid: string;
 }
@@ -1106,68 +854,46 @@ export interface PublicItem {
 export interface PublicOrder {
     /**
      * The point in time the order became binding (or will)
-     * @type {string}
-     * @memberof PublicOrder
      */
     deadline: string;
     /**
      * Whether the customer wants to pick the order up early in the day
-     * @type {boolean}
-     * @memberof PublicOrder
      */
     early_pickup: boolean;
     /**
      * The customer's first name, if given
-     * @type {string}
-     * @memberof PublicOrder
      */
     first_name?: string | null;
     /**
      * The customer's last name
-     * @type {string}
-     * @memberof PublicOrder
      */
     last_name: string;
     /**
      * Whether the order is frozen: no cancelling anymore
-     * @type {boolean}
-     * @memberof PublicOrder
      */
     locked: boolean;
     /**
      * Optional note
-     * @type {string}
-     * @memberof PublicOrder
      */
     note?: string | null;
     /**
      * The customer-facing order code
-     * @type {string}
-     * @memberof PublicOrder
      */
     pickup_code: string;
     /**
      * The day the order is picked up on
-     * @type {string}
-     * @memberof PublicOrder
      */
     pickup_date: string;
     /**
      * The order's positions
-     * @type {Array<PublicOrderPosition>}
-     * @memberof PublicOrder
      */
     positions: Array<PublicOrderPosition>;
     /**
      * Current status
-     * @type {OrderStatus}
-     * @memberof PublicOrder
      */
     status: OrderStatus;
     /**
      * Total over all positions in euro cents
-     * @type {number}
-     * @memberof PublicOrder
      */
     total_cents: number;
 }
@@ -1181,20 +907,14 @@ export interface PublicOrder {
 export interface PublicOrderPosition {
     /**
      * Item name (snapshot at order time)
-     * @type {string}
-     * @memberof PublicOrderPosition
      */
     name: string;
     /**
      * Price per unit in euro cents (snapshot at order time)
-     * @type {number}
-     * @memberof PublicOrderPosition
      */
     price_cents: number;
     /**
      * How many units were ordered
-     * @type {number}
-     * @memberof PublicOrderPosition
      */
     quantity: number;
 }
@@ -1206,20 +926,14 @@ export interface PublicOrderPosition {
 export interface PublishedNewsPost {
     /**
      * The text, as Markdown
-     * @type {string}
-     * @memberof PublishedNewsPost
      */
     body: string;
     /**
      * The point in time the News Post was published
-     * @type {string}
-     * @memberof PublishedNewsPost
      */
     published_at: string;
     /**
      * The title
-     * @type {string}
-     * @memberof PublishedNewsPost
      */
     title: string;
 }
@@ -1238,7 +952,7 @@ export const Role = {
     /**
     * Processes incoming pre-orders in the shop
     */
-    Verkauf: 'Verkauf'
+    Verkauf: 'Verkauf',
 } as const;
 export type Role = typeof Role[keyof typeof Role];
 
@@ -1250,26 +964,18 @@ export type Role = typeof Role[keyof typeof Role];
 export interface ScheduleSchema {
     /**
      * How many days before the pickup date orders close (0 = the day itself)
-     * @type {number}
-     * @memberof ScheduleSchema
      */
     deadline_offset_days: number;
     /**
      * Wall-clock time (Europe/Berlin) orders close at, `13:00:00`
-     * @type {string}
-     * @memberof ScheduleSchema
      */
     deadline_time: string;
     /**
      * The weekday orders are picked up on
-     * @type {ScheduleWeekday}
-     * @memberof ScheduleSchema
      */
     pickup_weekday: ScheduleWeekday;
     /**
      * Minutes from a pickup day's Deadline to its Dispatch, 0 or more
-     * @type {number}
-     * @memberof ScheduleSchema
      */
     review_window_minutes: number;
 }
@@ -1310,7 +1016,7 @@ export const ScheduleWeekday = {
     /**
     * Sunday
     */
-    Sunday: 'Sunday'
+    Sunday: 'Sunday',
 } as const;
 export type ScheduleWeekday = typeof ScheduleWeekday[keyof typeof ScheduleWeekday];
 
@@ -1322,8 +1028,6 @@ export type ScheduleWeekday = typeof ScheduleWeekday[keyof typeof ScheduleWeekda
 export interface SetItemImageRequest {
     /**
      * The image file (jpeg/png/webp), base64 encoded
-     * @type {string}
-     * @memberof SetItemImageRequest
      */
     data: string;
 }
@@ -1335,8 +1039,6 @@ export interface SetItemImageRequest {
 export interface StartAddPasskeyResponse {
     /**
      * `PublicKeyCredentialCreationOptions` to pass to the browser
-     * @type {any}
-     * @memberof StartAddPasskeyResponse
      */
     options: any | null;
 }
@@ -1348,8 +1050,6 @@ export interface StartAddPasskeyResponse {
 export interface StartLoginRequest {
     /**
      * The username to authenticate
-     * @type {string}
-     * @memberof StartLoginRequest
      */
     username: string;
 }
@@ -1361,8 +1061,6 @@ export interface StartLoginRequest {
 export interface StartLoginResponse {
     /**
      * `PublicKeyCredentialRequestOptions` to pass to the browser
-     * @type {any}
-     * @memberof StartLoginResponse
      */
     options: any | null;
 }
@@ -1374,8 +1072,6 @@ export interface StartLoginResponse {
 export interface StartRegistrationRequest {
     /**
      * The invite token from the registration link
-     * @type {string}
-     * @memberof StartRegistrationRequest
      */
     token: string;
 }
@@ -1387,14 +1083,10 @@ export interface StartRegistrationRequest {
 export interface StartRegistrationResponse {
     /**
      * `PublicKeyCredentialCreationOptions` to pass to the browser
-     * @type {any}
-     * @memberof StartRegistrationResponse
      */
     options: any | null;
     /**
      * The username the passkey will be registered for
-     * @type {string}
-     * @memberof StartRegistrationResponse
      */
     username: string;
 }
@@ -1406,14 +1098,10 @@ export interface StartRegistrationResponse {
 export interface UpdateAccountRequest {
     /**
      * The account's role
-     * @type {Role}
-     * @memberof UpdateAccountRequest
      */
     role: Role;
     /**
      * The username of the account
-     * @type {string}
-     * @memberof UpdateAccountRequest
      */
     username: string;
 }
@@ -1427,8 +1115,6 @@ export interface UpdateAccountRequest {
 export interface UpdateOrderItemPackedRequest {
     /**
      * Whether the position has been packed
-     * @type {boolean}
-     * @memberof UpdateOrderItemPackedRequest
      */
     packed: boolean;
 }
@@ -1440,8 +1126,6 @@ export interface UpdateOrderItemPackedRequest {
 export interface UpdateOrderStatusRequest {
     /**
      * The new status
-     * @type {OrderStatus}
-     * @memberof UpdateOrderStatusRequest
      */
     status: OrderStatus;
 }
@@ -1457,20 +1141,14 @@ export interface UpdatePickupDayRequest {
      * Whether the pickup day is called off
      * 
      * Calling off a day cancels every order placed for it.
-     * @type {boolean}
-     * @memberof UpdatePickupDayRequest
      */
     closed: boolean;
     /**
      * The point in time orders close
-     * @type {string}
-     * @memberof UpdatePickupDayRequest
      */
     deadline: string;
     /**
      * The date orders are actually picked up on
-     * @type {string}
-     * @memberof UpdatePickupDayRequest
      */
     pickup_date: string;
 }

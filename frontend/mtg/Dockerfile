@@ -4,7 +4,7 @@
 ARG MTG_ASSETS_VERSION=v1
 FROM ghcr.io/myomikron/mtg/assets:${MTG_ASSETS_VERSION} AS scanner-assets
 
-FROM node:24-bookworm-slim@sha256:b506e7321f176aae77317f99d67a24b272c1f09f1d10f1761f2773447d8da26c AS build-frontend
+FROM node:24-bookworm-slim@sha256:55fb5f5a527ea2c5c4a95f963e48ef90aa38c7b346054fdc8ee9957a2b55d205 AS build-frontend
 
 WORKDIR /app
 
@@ -60,7 +60,7 @@ mv frontend/mtg/dist /frontend
 EOF
 
 
-FROM nginx:1.31.7@sha256:6c3fee1d7a4686ea271e9cc60d9c741cdfbc44ecf11d343025e1cff4c5522f47 AS final
+FROM nginx:1.31.8@sha256:6e67f8eaac94fc456588d4ff6c470d984841f5b5dc4279863d5cbe6ec5a60def AS final
 
 COPY frontend/mtg/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build-frontend /frontend /usr/share/nginx/html
