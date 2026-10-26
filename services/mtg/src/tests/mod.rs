@@ -23,6 +23,7 @@ mod tournament_afterwards;
 mod tournament_decks;
 mod tournament_drops;
 mod tournament_fees;
+mod tournament_final;
 mod tournament_lists;
 mod tournament_live;
 mod tournament_multiplayer;

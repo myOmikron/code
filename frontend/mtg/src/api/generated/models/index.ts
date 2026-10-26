@@ -6664,6 +6664,14 @@ export interface RoundsResponse {
      * @memberof RoundsResponse
      */
     top_cut_size?: number | null;
+    /**
+     * The Participant who won the Top cut, `null` without one or while its final has no Result
+     * 
+     * The winner of the final; a drawn multiplayer final goes to its highest seed, and a Participant who Dropped during the final cannot win it.
+     * @type {string}
+     * @memberof RoundsResponse
+     */
+    top_cut_winner?: string | null;
 }
 
 /**
@@ -8112,7 +8120,7 @@ export interface TopCardResponse {
 }
 
 /**
- * How many Participants a one-on-one Top cut takes
+ * How many Participants a Top cut takes: a bracket one-on-one, a final Match multiplayer
  * @export
  */
 export const TopCut = {
@@ -8123,7 +8131,11 @@ export const TopCut = {
     /**
     * The best eight: quarterfinals, semifinals and a final
     */
-    Top8: 'Top8'
+    Top8: 'Top8',
+    /**
+    * Multiplayer: one final Match of as many of the best as the Table size seats
+    */
+    Final: 'Final'
 } as const;
 export type TopCut = typeof TopCut[keyof typeof TopCut];
 
@@ -8592,7 +8604,7 @@ export interface TournamentResponse {
      */
     top_cut?: TopCut | null;
     /**
-     * How many Games a Top cut Match is played to, `null` without a Top cut
+     * How many Games a Top cut Match is played to, `null` without a Top 4 or Top 8
      * @type {BestOf}
      * @memberof TournamentResponse
      */
@@ -8667,7 +8679,7 @@ export interface TournamentSettingsErrors {
      */
     table_size_out_of_range: boolean;
     /**
-     * The Top cut's best-of is missing with a Top cut or given without one
+     * The Top cut's best-of is missing with a Top 4 or Top 8 or given without one
      * @type {boolean}
      * @memberof TournamentSettingsErrors
      */
@@ -8784,13 +8796,13 @@ export interface TournamentSettingsRequest {
      */
     table_size: number;
     /**
-     * The Top cut after the Swiss Rounds, at Table size 2 only; `null` for none
+     * The Top cut after the Swiss Rounds: Top 4 or Top 8 at Table size 2, the final above; `null` for none
      * @type {TopCut}
      * @memberof TournamentSettingsRequest
      */
     top_cut?: TopCut | null;
     /**
-     * How many Games a Top cut Match is played to: required with a Top cut, `null` without
+     * How many Games a Top cut Match is played to: required with a Top 4 or Top 8, `null` otherwise
      * @type {BestOf}
      * @memberof TournamentSettingsRequest
      */

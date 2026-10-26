@@ -30,6 +30,11 @@ pub struct RoundsResponse {
     /// Once it started the size it started with; before, the size the
     /// Participants who play on fill, so a Top 8 of seven reads 4.
     pub top_cut_size: Option<i16>,
+    /// The Participant who won the Top cut, `null` without one or while its final has no Result
+    ///
+    /// The winner of the final; a drawn multiplayer final goes to its highest
+    /// seed, and a Participant who Dropped during the final cannot win it.
+    pub top_cut_winner: Option<ParticipantUuid>,
 }
 
 /// One Round

@@ -23163,6 +23163,15 @@
                         "description": "How many Participants the Top cut takes, `null` without one\n\nOnce it started the size it started with; before, the size the Participants who play on fill, so a Top 8 of seven reads 4.",
                         "type": "integer",
                         "format": "int16"
+                    },
+                    "top_cut_winner": {
+                        "nullable": true,
+                        "description": "The Participant who won the Top cut, `null` without one or while its final has no Result\n\nThe winner of the final; a drawn multiplayer final goes to its highest seed, and a Participant who Dropped during the final cannot win it.",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ParticipantUuid"
+                            }
+                        ]
                     }
                 },
                 "required": [
@@ -25149,7 +25158,7 @@
                 ]
             },
             "TopCut": {
-                "description": "How many Participants a one-on-one Top cut takes",
+                "description": "How many Participants a Top cut takes: a bracket one-on-one, a final Match multiplayer",
                 "oneOf": [
                     {
                         "description": "The best four: two semifinals and a final",
@@ -25163,6 +25172,13 @@
                         "type": "string",
                         "enum": [
                             "Top8"
+                        ]
+                    },
+                    {
+                        "description": "Multiplayer: one final Match of as many of the best as the Table size seats",
+                        "type": "string",
+                        "enum": [
+                            "Final"
                         ]
                     }
                 ]
@@ -25568,7 +25584,7 @@
                     },
                     "top_cut_best_of": {
                         "nullable": true,
-                        "description": "How many Games a Top cut Match is played to, `null` without a Top cut",
+                        "description": "How many Games a Top cut Match is played to, `null` without a Top 4 or Top 8",
                         "allOf": [
                             {
                                 "$ref": "#/components/schemas/BestOf"
@@ -25641,7 +25657,7 @@
                         "type": "boolean"
                     },
                     "top_cut_best_of_mismatch": {
-                        "description": "The Top cut's best-of is missing with a Top cut or given without one",
+                        "description": "The Top cut's best-of is missing with a Top 4 or Top 8 or given without one",
                         "type": "boolean"
                     },
                     "top_cut_locked": {
@@ -25778,7 +25794,7 @@
                     },
                     "top_cut": {
                         "nullable": true,
-                        "description": "The Top cut after the Swiss Rounds, at Table size 2 only; `null` for none",
+                        "description": "The Top cut after the Swiss Rounds: Top 4 or Top 8 at Table size 2, the final above; `null` for none",
                         "allOf": [
                             {
                                 "$ref": "#/components/schemas/TopCut"
@@ -25787,7 +25803,7 @@
                     },
                     "top_cut_best_of": {
                         "nullable": true,
-                        "description": "How many Games a Top cut Match is played to: required with a Top cut, `null` without",
+                        "description": "How many Games a Top cut Match is played to: required with a Top 4 or Top 8, `null` otherwise",
                         "allOf": [
                             {
                                 "$ref": "#/components/schemas/BestOf"

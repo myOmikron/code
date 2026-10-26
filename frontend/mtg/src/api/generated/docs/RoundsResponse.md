@@ -12,6 +12,7 @@ Name | Type
 `suggested_swiss_rounds` | number
 `swiss_rounds` | number
 `top_cut_size` | number
+`top_cut_winner` | string
 
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)

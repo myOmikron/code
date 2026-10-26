@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { Ruleset } from "src/api/generated";
-import { fromLocalInput, rulesetFits, rulesetsFor, toLocalInput } from "src/utils/tournament-settings";
+import { Ruleset, TopCut } from "src/api/generated";
+import { fromLocalInput, rulesetFits, rulesetsFor, toLocalInput, topCutsFor } from "src/utils/tournament-settings";
 
 describe("rulesetsFor", () => {
     it("offers the MTR one-on-one only", () => {
@@ -20,6 +20,18 @@ describe("rulesetFits", () => {
         expect(rulesetFits(Ruleset.Mtr, 4)).toBe(false);
         expect(rulesetFits(Ruleset.TopDeck, 2)).toBe(false);
         expect(rulesetFits(Ruleset.MultiplayerAddendum, 5)).toBe(true);
+    });
+});
+
+describe("topCutsFor", () => {
+    it("offers a Top 4 or Top 8 one-on-one", () => {
+        expect(topCutsFor(2)).toEqual([TopCut.Top4, TopCut.Top8]);
+    });
+
+    it("offers the final Match multiplayer", () => {
+        for (const size of [3, 4, 5]) {
+            expect(topCutsFor(size)).toEqual([TopCut.Final]);
+        }
     });
 });
 

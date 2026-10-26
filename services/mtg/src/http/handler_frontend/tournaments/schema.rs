@@ -48,9 +48,9 @@ pub struct TournamentSettingsRequest {
     pub best_of: Option<BestOf>,
     /// How many minutes the round timer gives a Round, 1 to 240; `null` for no timer
     pub round_minutes: Option<i16>,
-    /// The Top cut after the Swiss Rounds, at Table size 2 only; `null` for none
+    /// The Top cut after the Swiss Rounds: Top 4 or Top 8 at Table size 2, the final above; `null` for none
     pub top_cut: Option<TopCut>,
-    /// How many Games a Top cut Match is played to: required with a Top cut, `null` without
+    /// How many Games a Top cut Match is played to: required with a Top 4 or Top 8, `null` otherwise
     pub top_cut_best_of: Option<BestOf>,
     /// Whether the Tournament is entered afterwards instead of run live: its Organizers
     /// set every pairing and Result, any date fits; `false` when left out
@@ -141,7 +141,7 @@ pub struct TournamentSettingsErrors {
     pub rules_locked: bool,
     /// The Top cut is not played at the Table size
     pub top_cut_mismatch: bool,
-    /// The Top cut's best-of is missing with a Top cut or given without one
+    /// The Top cut's best-of is missing with a Top 4 or Top 8 or given without one
     pub top_cut_best_of_mismatch: bool,
     /// The Top cut or its best-of changed after the Swiss Rounds were over
     pub top_cut_locked: bool,
@@ -200,7 +200,7 @@ pub struct TournamentResponse {
     pub round_minutes: Option<u16>,
     /// The Top cut after the Swiss Rounds, `null` for none
     pub top_cut: Option<TopCut>,
-    /// How many Games a Top cut Match is played to, `null` without a Top cut
+    /// How many Games a Top cut Match is played to, `null` without a Top 4 or Top 8
     pub top_cut_best_of: Option<BestOf>,
     /// Whether it is entered afterwards: its Organizers set every pairing and Result,
     /// Participants report nothing and get no pushes

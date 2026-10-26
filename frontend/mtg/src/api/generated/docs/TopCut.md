@@ -1,7 +1,7 @@
 
 # TopCut
 
-How many Participants a one-on-one Top cut takes
+How many Participants a Top cut takes: a bracket one-on-one, a final Match multiplayer
 
 ## Properties
 

@@ -57,7 +57,7 @@ custom_db_enum! {
 
 custom_db_enum! {
     enum: TopCut,
-    variants: [Top4, Top8],
+    variants: [Top4, Top8, Final],
     decoder: TopCutDecoder,
 }
 
@@ -130,7 +130,7 @@ pub struct Tournament {
     pub swiss_rounds: Option<i16>,
     /// The Top cut after the Swiss Rounds, `None` for none
     pub top_cut: Option<TopCut>,
-    /// How many Games a Top cut Match is played to, set exactly with [`Self::top_cut`]
+    /// How many Games a Top cut Match is played to, set exactly with a one-on-one [`Self::top_cut`]
     pub top_cut_best_of: Option<BestOf>,
     /// Whether it is entered afterwards: its Organizers set every pairing and
     /// Result, nobody is asked to report and nobody gets a push
