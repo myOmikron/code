@@ -7153,6 +7153,12 @@ export interface RegisterDeckRequest {
      * @memberof RegisterDeckRequest
      */
     deck: string;
+    /**
+     * Whether others may see the list once the Tournament is Finished, `null` for the default: shared for a public deck, not for any other
+     * @type {boolean}
+     * @memberof RegisterDeckRequest
+     */
+    shared?: boolean | null;
 }
 /**
  * The deck a Participant plays in a Tournament
@@ -7196,6 +7202,110 @@ export interface RegisteredDeckResponse {
      * @memberof RegisteredDeckResponse
      */
     pinned: boolean;
+    /**
+     * Whether its Participant lets others see the list once the Tournament is Finished
+     * @type {boolean}
+     * @memberof RegisteredDeckResponse
+     */
+    shared: boolean;
+}
+/**
+ * One Registered deck's list, with what the format warnings read
+ * @export
+ * @interface RegisteredListResponse
+ */
+export interface RegisteredListResponse {
+    /**
+     * Whether the table agreed to cards the format bans
+     * @type {boolean}
+     * @memberof RegisteredListResponse
+     */
+    allow_banned: boolean;
+    /**
+     * Whether the table agreed to more copies of a card than the format allows
+     * @type {boolean}
+     * @memberof RegisteredListResponse
+     */
+    allow_duplicates: boolean;
+    /**
+     * Whether the table agreed to more commanders than the format allows
+     * @type {boolean}
+     * @memberof RegisteredListResponse
+     */
+    allow_extra_commanders: boolean;
+    /**
+     * The colours the table agreed it may play, `null` for the commander's
+     * @type {string}
+     * @memberof RegisteredListResponse
+     */
+    allowed_color_identity?: string | null;
+    /**
+     * The Commander bracket it is built to, `null` when unset
+     * @type {number}
+     * @memberof RegisteredListResponse
+     */
+    bracket?: number | null;
+    /**
+     * Its Deck entries, joined against the card catalog
+     * @type {Array<DeckCardResponse>}
+     * @memberof RegisteredListResponse
+     */
+    cards: Array<DeckCardResponse>;
+    /**
+     * The deck it was made from, `null` once that deck is deleted
+     * @type {string}
+     * @memberof RegisteredListResponse
+     */
+    deck?: string | null;
+    /**
+     * How many cards the table agreed it is built to, `null` for the format's rule
+     * @type {number}
+     * @memberof RegisteredListResponse
+     */
+    deck_size?: number | null;
+    /**
+     * The format the deck is built for, a Scryfall slug
+     * @type {string}
+     * @memberof RegisteredListResponse
+     */
+    format: string;
+    /**
+     * The deck's name: as it is now until pinned, as it was when pinned afterwards
+     * @type {string}
+     * @memberof RegisteredListResponse
+     */
+    name: string;
+    /**
+     * The Participant playing it
+     * @type {string}
+     * @memberof RegisteredListResponse
+     */
+    participant: string;
+    /**
+     * Whether it is a copy that no longer changes with the deck
+     * @type {boolean}
+     * @memberof RegisteredListResponse
+     */
+    pinned: boolean;
+    /**
+     * Whether its Participant lets others see it once the Tournament is Finished
+     * @type {boolean}
+     * @memberof RegisteredListResponse
+     */
+    shared: boolean;
+}
+/**
+ * The Registered decks' lists a reader may see
+ * @export
+ * @interface RegisteredListsResponse
+ */
+export interface RegisteredListsResponse {
+    /**
+     * Every list for Organizers; for everybody else the shared ones once the Tournament is Finished and none before; in the order the Participants joined
+     * @type {Array<RegisteredListResponse>}
+     * @memberof RegisteredListsResponse
+     */
+    decks: Array<RegisteredListResponse>;
 }
 /**
  * Why a passkey registration could not be started or completed
@@ -8439,6 +8549,19 @@ export interface SetDeckVisibilityRequest {
 }
 
 
+/**
+ * Whether others may see the reader's list once the Tournament is Finished
+ * @export
+ * @interface SetListSharingRequest
+ */
+export interface SetListSharingRequest {
+    /**
+     * `true` to show it next to the standings once the Tournament is Finished
+     * @type {boolean}
+     * @memberof SetListSharingRequest
+     */
+    shared: boolean;
+}
 /**
  * Why a Participant could not be marked paid or unpaid
  * @export

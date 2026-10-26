@@ -151,6 +151,7 @@ import type {
     ReadDeckUrlResponse,
     RecoverAccountRequest,
     RegisterDeckRequest,
+    RegisteredListsResponse,
     RenameAccount200Response,
     RenameAccountRequest,
     RenamePasskeyRequest,
@@ -178,6 +179,7 @@ import type {
     SetDeckFolderRequest,
     SetDeckRuleZeroRequest,
     SetDeckVisibilityRequest,
+    SetListSharingRequest,
     SetPaidRequest,
     SetPushSettingsRequest,
     SetResultRequest,
@@ -713,6 +715,10 @@ export interface ListSharedTournamentParticipantsRequest {
     token: string;
 }
 
+export interface ListSharedTournamentRegisteredListsRequest {
+    token: string;
+}
+
 export interface ListSharedTournamentRoundsRequest {
     token: string;
 }
@@ -731,6 +737,10 @@ export interface ListTournamentParticipantsRequest {
 }
 
 export interface ListTournamentRegisteredDecksRequest {
+    tournament: string;
+}
+
+export interface ListTournamentRegisteredListsRequest {
     tournament: string;
 }
 
@@ -919,6 +929,11 @@ export interface SetDeckFolderOperationRequest {
 export interface SetDeckRuleZeroOperationRequest {
     deck: string;
     SetDeckRuleZeroRequest?: SetDeckRuleZeroRequest;
+}
+
+export interface SetMyTournamentListSharingRequest {
+    tournament: string;
+    SetListSharingRequest?: SetListSharingRequest;
 }
 
 export interface SetPushSettingsOperationRequest {
@@ -7050,6 +7065,53 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for listSharedTournamentRegisteredLists without sending the request
+     */
+    async listSharedTournamentRegisteredListsRequestOpts(requestParameters: ListSharedTournamentRegisteredListsRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['token'] == null) {
+            throw new runtime.RequiredError(
+                'token',
+                'Required parameter "token" was null or undefined when calling listSharedTournamentRegisteredLists().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/shared/tournaments/{token}/registered-lists`;
+        urlPath = urlPath.replace('{token}', encodeURIComponent(String(requestParameters['token'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * The shared lists of the Tournament a share link points at, once it is Finished  None before; a link never reads as an Organizer.
+     * The shared lists of the Tournament a share link points at, once it is Finished
+     */
+    async listSharedTournamentRegisteredListsRaw(requestParameters: ListSharedTournamentRegisteredListsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<RegisteredListsResponse>> {
+        const requestOptions = await this.listSharedTournamentRegisteredListsRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * The shared lists of the Tournament a share link points at, once it is Finished  None before; a link never reads as an Organizer.
+     * The shared lists of the Tournament a share link points at, once it is Finished
+     */
+    async listSharedTournamentRegisteredLists(requestParameters: ListSharedTournamentRegisteredListsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<RegisteredListsResponse> {
+        const response = await this.listSharedTournamentRegisteredListsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for listSharedTournamentRounds without sending the request
      */
     async listSharedTournamentRoundsRequestOpts(requestParameters: ListSharedTournamentRoundsRequest): Promise<runtime.RequestOpts> {
@@ -7289,6 +7351,53 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async listTournamentRegisteredDecks(requestParameters: ListTournamentRegisteredDecksRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListRegisteredDecksResponse> {
         const response = await this.listTournamentRegisteredDecksRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for listTournamentRegisteredLists without sending the request
+     */
+    async listTournamentRegisteredListsRequestOpts(requestParameters: ListTournamentRegisteredListsRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tournament'] == null) {
+            throw new runtime.RequiredError(
+                'tournament',
+                'Required parameter "tournament" was null or undefined when calling listTournamentRegisteredLists().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/tournaments/{tournament}/registered-lists`;
+        urlPath = urlPath.replace('{tournament}', encodeURIComponent(String(requestParameters['tournament'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * The Registered decks\' lists the reader may see  Organizers read every list at any time, to check them against the format. Everybody else reads none before the Tournament is Finished and the shared ones afterwards, also once their deck was deleted.
+     * The Registered decks\' lists the reader may see
+     */
+    async listTournamentRegisteredListsRaw(requestParameters: ListTournamentRegisteredListsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<RegisteredListsResponse>> {
+        const requestOptions = await this.listTournamentRegisteredListsRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * The Registered decks\' lists the reader may see  Organizers read every list at any time, to check them against the format. Everybody else reads none before the Tournament is Finished and the shared ones afterwards, also once their deck was deleted.
+     * The Registered decks\' lists the reader may see
+     */
+    async listTournamentRegisteredLists(requestParameters: ListTournamentRegisteredListsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<RegisteredListsResponse> {
+        const response = await this.listTournamentRegisteredListsRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -9359,6 +9468,60 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async setDeckRuleZero(requestParameters: SetDeckRuleZeroOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
         const response = await this.setDeckRuleZeroRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for setMyTournamentListSharing without sending the request
+     */
+    async setMyTournamentListSharingRequestOpts(requestParameters: SetMyTournamentListSharingRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tournament'] == null) {
+            throw new runtime.RequiredError(
+                'tournament',
+                'Required parameter "tournament" was null or undefined when calling setMyTournamentListSharing().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/tournaments/{tournament}/deck/sharing`;
+        urlPath = urlPath.replace('{tournament}', encodeURIComponent(String(requestParameters['tournament'])));
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['SetListSharingRequest'],
+        };
+    }
+
+    /**
+     * Choose whether others may see the logged-in Account\'s list once the Tournament is Finished  The Participant\'s own choice, open at any time.
+     * Choose whether others may see the logged-in Account\'s list once the
+     */
+    async setMyTournamentListSharingRaw(requestParameters: SetMyTournamentListSharingRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
+        const requestOptions = await this.setMyTournamentListSharingRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<any>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     * Choose whether others may see the logged-in Account\'s list once the Tournament is Finished  The Participant\'s own choice, open at any time.
+     * Choose whether others may see the logged-in Account\'s list once the
+     */
+    async setMyTournamentListSharing(requestParameters: SetMyTournamentListSharingRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
+        const response = await this.setMyTournamentListSharingRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

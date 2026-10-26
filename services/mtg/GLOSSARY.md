@@ -209,7 +209,7 @@ The playoff after the Swiss Rounds among the best Participants of the standings,
 _Avoid_: playoff, finals, bracket (that is how it is shown)
 
 **Registered deck**:
-The deck a Participant with an Account plays in a Tournament. Follows the deck until the first Round starts, or until a late Participant joins; from then on it is a copy of the deck's Deck entries that never changes with the deck and outlives it. Its list is hidden from other Participants until the Tournament is Finished, and shown afterwards only if its Participant shared it.
+The deck a Participant with an Account plays in a Tournament. Follows the deck until the first Round starts, or until a late Participant joins; from then on it is a copy of the deck's Deck entries that never changes with the deck and outlives it. Its list is hidden from other Participants until the Tournament is Finished, and shown afterwards only if its Participant shared it (the default for a public deck). Organizers see every list at any time, to be warned of format, legality and bracket mismatches, which never block.
 _Avoid_: decklist, submitted deck, tournament deck
 
 **Tournament push**:

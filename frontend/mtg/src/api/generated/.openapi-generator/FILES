@@ -264,6 +264,8 @@ docs/RecoverAccountRequest.md
 docs/RegisterDeckErrors.md
 docs/RegisterDeckRequest.md
 docs/RegisteredDeckResponse.md
+docs/RegisteredListResponse.md
+docs/RegisteredListsResponse.md
 docs/RegistrationErrors.md
 docs/RenameAccount200Response.md
 docs/RenameAccountErrors.md
@@ -310,6 +312,7 @@ docs/SetDeckColorsRequest.md
 docs/SetDeckFolderRequest.md
 docs/SetDeckRuleZeroRequest.md
 docs/SetDeckVisibilityRequest.md
+docs/SetListSharingRequest.md
 docs/SetPaidErrors.md
 docs/SetPaidRequest.md
 docs/SetPushSettingsRequest.md

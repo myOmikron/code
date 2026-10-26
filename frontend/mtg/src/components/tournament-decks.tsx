@@ -1,3 +1,4 @@
+import { ExclamationTriangleIcon } from "@heroicons/react/20/solid";
 import {
     Badge,
     Button,
@@ -13,6 +14,8 @@ import {
     ListboxLabel,
     ListboxOption,
     Subheading,
+    Switch,
+    SwitchField,
     Text,
     notify,
 } from "components";
@@ -26,8 +29,11 @@ import type {
     RegisteredDeckResponse,
     TournamentResponse,
 } from "src/api/generated";
+import { Visibility } from "src/api/generated";
+import { useDeckLabels } from "src/components/deck-labels";
 import { PrimaryButton } from "src/components/primary-button";
 import { isFormError } from "src/utils/error";
+import type { RegisteredListWarning } from "src/utils/tournament-registered-lists";
 
 /** A deck to choose from: its id and its name */
 type DeckChoice = {
@@ -35,6 +41,8 @@ type DeckChoice = {
     uuid: UUID;
     /** Its name */
     name: string;
+    /** Who may see it, which sets whether its list is shared by default */
+    visibility?: Visibility;
 };
 
 /**
@@ -56,6 +64,7 @@ export function MyTournamentDeck({ tournament }: MyTournamentDeckProps) {
     const [mine, setMine] = useState<MyRegisteredDeckResponse | null>(null);
     const [decks, setDecks] = useState<Array<DeckChoice>>([]);
     const [chosen, setChosen] = useState<UUID | null>(null);
+    const [shared, setShared] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [busy, setBusy] = useState(false);
 
@@ -63,13 +72,22 @@ export function MyTournamentDeck({ tournament }: MyTournamentDeckProps) {
         const loaded = await Api.tournaments.decks.mine(tournament.uuid);
         setMine(loaded);
         setChosen(loaded.deck?.deck ?? null);
+        setShared(loaded.deck?.shared ?? false);
     }, [tournament.uuid]);
 
     useEffect(() => {
         reload().catch(() => undefined);
         Api.decks
             .list()
-            .then((list) => setDecks(list.map((overview) => ({ uuid: overview.deck.uuid, name: overview.deck.name }))))
+            .then((list) =>
+                setDecks(
+                    list.map((overview) => ({
+                        uuid: overview.deck.uuid,
+                        name: overview.deck.name,
+                        visibility: overview.deck.visibility,
+                    })),
+                ),
+            )
             .catch(() => undefined);
     }, [reload]);
 
@@ -83,7 +101,7 @@ export function MyTournamentDeck({ tournament }: MyTournamentDeckProps) {
         if (chosen === null) return;
         setBusy(true);
         try {
-            const result = await Api.tournaments.decks.register(tournament.uuid, chosen);
+            const result = await Api.tournaments.decks.register(tournament.uuid, chosen, shared);
             if (isFormError<unknown, { result: "Err"; error: RegisterDeckErrors }>(result)) {
                 setError(refusal(result.error));
                 return;
@@ -94,6 +112,42 @@ export function MyTournamentDeck({ tournament }: MyTournamentDeckProps) {
         } finally {
             setBusy(false);
         }
+    }
+
+    /**
+     * Sets whether the list is shared after the Tournament: right away for the
+     * registered deck, with the registration for a deck about to be registered
+     *
+     * @param next the choice
+     */
+    async function share(next: boolean) {
+        setShared(next);
+        if (registered === null || chosen !== registered.deck) return;
+        setBusy(true);
+        try {
+            await Api.tournaments.decks.setSharing(tournament.uuid, next);
+            notify.success(next ? t("toast.list-shared") : t("toast.list-unshared"));
+            await reload();
+        } finally {
+            setBusy(false);
+        }
+    }
+
+    /**
+     * Picks a deck to register; a public deck's list is shared unless the
+     * reader says otherwise, any other deck's is not
+     *
+     * @param deck the deck picked
+     */
+    function pick(deck: UUID | null) {
+        setChosen(deck);
+        setError(null);
+        if (registered !== null && deck === registered.deck) {
+            setShared(registered.shared);
+            return;
+        }
+        const picked = decks.find((entry) => entry.uuid === deck);
+        setShared(picked?.visibility === Visibility.Public);
     }
 
     /**
@@ -144,10 +198,7 @@ export function MyTournamentDeck({ tournament }: MyTournamentDeckProps) {
                                     value={chosen}
                                     placeholder={t("label.no-deck")}
                                     invalid={error !== null}
-                                    onChange={(deck) => {
-                                        setChosen(deck);
-                                        setError(null);
-                                    }}
+                                    onChange={pick}
                                 >
                                     {decks.map((deck) => (
                                         <ListboxOption key={deck.uuid} value={deck.uuid}>
@@ -178,7 +229,63 @@ export function MyTournamentDeck({ tournament }: MyTournamentDeckProps) {
             ) : (
                 <Text>{registered?.pinned ? t("description.my-deck-pinned") : t("description.my-deck-closed")}</Text>
             )}
+            {(registered !== null || (mine.changeable && chosen !== null)) && (
+                <SwitchField>
+                    <Label>{t("label.share-list")}</Label>
+                    <Description>{t("description.share-list")}</Description>
+                    <Switch color={"lime"} checked={shared} disabled={busy} onChange={(next) => void share(next)} />
+                </SwitchField>
+            )}
         </section>
+    );
+}
+
+/**
+ * The properties for {@link RegisteredListWarnings}
+ */
+export type RegisteredListWarningsProps = {
+    /** What {@link registeredListWarnings} found in one Registered deck */
+    warnings: Array<RegisteredListWarning>;
+};
+
+/**
+ * An Organizer's warnings about one Registered deck, one badge each.
+ *
+ * Only a hint to talk to the player: the table may have agreed to it, so
+ * nothing here keeps the deck out.
+ *
+ * @returns the badges, nothing for a deck without warnings
+ */
+export function RegisteredListWarnings({ warnings }: RegisteredListWarningsProps) {
+    const [t] = useTranslation("tournament");
+    const deckLabels = useDeckLabels();
+
+    /**
+     * Says what one warning is about
+     *
+     * @param warning the warning
+     * @returns its badge text
+     */
+    function text(warning: RegisteredListWarning) {
+        switch (warning.kind) {
+            case "format":
+                return t("label.warning-format", { format: deckLabels.format(warning.format) });
+            case "legality":
+                return t("label.warning-legality", { count: warning.remarks });
+            case "bracket":
+                return t("label.warning-bracket", { bracket: warning.bracket });
+        }
+    }
+
+    return (
+        <>
+            {warnings.map((warning) => (
+                <Badge key={warning.kind} color={"amber"}>
+                    <ExclamationTriangleIcon className={"size-4"} aria-hidden={true} />
+                    {text(warning)}
+                </Badge>
+            ))}
+        </>
     );
 }
 

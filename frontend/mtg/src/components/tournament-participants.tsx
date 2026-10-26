@@ -35,9 +35,10 @@ import type {
     TournamentResponse,
 } from "src/api/generated";
 import { PrimaryButton } from "src/components/primary-button";
-import { MyTournamentDeck, RegisteredDeckDialog } from "src/components/tournament-decks";
+import { RegisteredListWarnings, MyTournamentDeck, RegisteredDeckDialog } from "src/components/tournament-decks";
 import { useAccount } from "src/context/account";
 import { isFormError } from "src/utils/error";
+import { type RegisteredListWarning, registeredListWarnings } from "src/utils/tournament-registered-lists";
 
 /** How long typing pauses before the usernames are searched */
 const SEARCH_DELAY_MS = 250;
@@ -76,6 +77,7 @@ export function TournamentParticipants({ tournament, load, signUp }: TournamentP
     const [dropping, setDropping] = useState<ParticipantResponse | null>(null);
     const [decks, setDecks] = useState<Map<string, RegisteredDeckResponse>>(new Map());
     const [deckOf, setDeckOf] = useState<ParticipantResponse | null>(null);
+    const [warnings, setWarnings] = useState<Map<string, Array<RegisteredListWarning>>>(new Map());
 
     const organizer = tournament.organizer_role != null;
     const registration = tournament.state === TournamentState.Registration;
@@ -100,9 +102,21 @@ export function TournamentParticipants({ tournament, load, signUp }: TournamentP
 
     const reloadDecks = useCallback(async () => {
         if (!organizer) return;
-        const registered = await Api.tournaments.decks.list(tournament.uuid);
+        const [registered, lists, rules] = await Promise.all([
+            Api.tournaments.decks.list(tournament.uuid),
+            Api.tournaments.decks.lists(tournament.uuid),
+            Api.decks.formats(),
+        ]);
         setDecks(new Map(registered.decks.map((deck) => [deck.participant, deck])));
-    }, [organizer, tournament.uuid]);
+        setWarnings(
+            new Map(
+                lists.decks.map((list) => [
+                    list.participant,
+                    registeredListWarnings(list, tournament.format, rules.formats, rules.brackets),
+                ]),
+            ),
+        );
+    }, [organizer, tournament.uuid, tournament.format]);
 
     useEffect(() => {
         reloadDecks().catch(() => undefined);
@@ -317,6 +331,7 @@ export function TournamentParticipants({ tournament, load, signUp }: TournamentP
                                     >
                                         {decks.get(participant.uuid)?.name ?? t("label.no-deck")}
                                     </span>
+                                    <RegisteredListWarnings warnings={warnings.get(participant.uuid) ?? []} />
                                     <Button
                                         plain
                                         disabled={busy}

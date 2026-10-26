@@ -1,0 +1,25 @@
+[Migration]
+Hash = "2218568815748504684"
+Initial = false
+Dependency = 67
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "tournament_registered_deck"
+
+[Migration.Operations.Field]
+Name = "list_shared"
+Type = "boolean"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "default_value"
+Value = false
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 541
+Column = 9

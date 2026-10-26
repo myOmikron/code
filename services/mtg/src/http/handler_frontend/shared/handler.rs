@@ -23,6 +23,8 @@ use crate::http::handler_frontend::shared::schema::SharedDeckResponse;
 use crate::http::handler_frontend::shared::schema::redact_entry;
 use crate::http::handler_frontend::shared::schema::redact_slot;
 use crate::http::handler_frontend::shared::schema::redact_statistics;
+use crate::http::handler_frontend::tournaments::decks;
+use crate::http::handler_frontend::tournaments::decks::schema::RegisteredListsResponse;
 use crate::http::handler_frontend::tournaments::participants;
 use crate::http::handler_frontend::tournaments::participants::schema::ListParticipantsResponse;
 use crate::http::handler_frontend::tournaments::participants::schema::ParticipantResponse;
@@ -42,6 +44,7 @@ use crate::models::deck::Deck;
 use crate::models::deck::listing::ListedSlot;
 use crate::models::deck::tag::DeckTag;
 use crate::models::tournament::Tournament;
+use crate::models::tournament::registered_deck::ListReader;
 
 /// Fetch the collection a share link points at
 #[get("/{token}")]
@@ -287,6 +290,28 @@ pub async fn get_shared_tournament_standings(
         return Err(unknown_link());
     };
     let response = rounds::handler::standings_view(&mut tx, &tournament).await?;
+
+    tx.commit().await?;
+
+    Ok(ApiJson(response))
+}
+
+/// The shared lists of the Tournament a share link points at, once it is Finished
+///
+/// None before; a link never reads as an Organizer.
+#[get("/{token}/registered-lists")]
+pub async fn list_shared_tournament_registered_lists(
+    Path(token): Path<String>,
+) -> ApiResult<ApiJson<RegisteredListsResponse>> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    let token = MaxStr::new(token).map_err(|_| unknown_link())?;
+    let Some(tournament) = Tournament::get_by_share_token(&mut tx, &token).await? else {
+        tx.rollback().await?;
+        return Err(unknown_link());
+    };
+    let response =
+        decks::handler::registered_lists_view(&mut tx, &tournament, ListReader::Other).await?;
 
     tx.commit().await?;
 

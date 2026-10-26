@@ -40,6 +40,7 @@ fn public_routes() -> GalvynRouter {
     GalvynRouter::new()
         .handler(handler::list_public_tournaments)
         .handler(handler::get_tournament)
+        .merge(decks::public_routes())
         .merge(participants::public_routes())
         .merge(rounds::public_routes())
 }
