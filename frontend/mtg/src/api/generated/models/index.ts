@@ -8128,6 +8128,356 @@ export const TopCut = {
 export type TopCut = typeof TopCut[keyof typeof TopCut];
 
 /**
+ * @type TournamentEvent
+ * Something changed in a Tournament; the reader fetches again what it shows of it
+ * 
+ * Sent as the `data` of one Server-Sent Event, as json.
+ * @export
+ */
+export type TournamentEvent = TournamentEventOneOf | TournamentEventOneOf1 | TournamentEventOneOf10 | TournamentEventOneOf11 | TournamentEventOneOf2 | TournamentEventOneOf3 | TournamentEventOneOf4 | TournamentEventOneOf5 | TournamentEventOneOf6 | TournamentEventOneOf7 | TournamentEventOneOf8 | TournamentEventOneOf9;
+/**
+ * Its settings or its state changed, or it was deleted
+ * @export
+ * @interface TournamentEventOneOf
+ */
+export interface TournamentEventOneOf {
+    /**
+     * 
+     * @type {TournamentEventOneOfKindEnum}
+     * @memberof TournamentEventOneOf
+     */
+    kind: TournamentEventOneOfKindEnum;
+}
+
+
+/**
+ * @export
+ */
+export const TournamentEventOneOfKindEnum = {
+    TournamentChanged: 'TournamentChanged'
+} as const;
+export type TournamentEventOneOfKindEnum = typeof TournamentEventOneOfKindEnum[keyof typeof TournamentEventOneOfKindEnum];
+
+/**
+ * Participants joined, left or Dropped
+ * @export
+ * @interface TournamentEventOneOf1
+ */
+export interface TournamentEventOneOf1 {
+    /**
+     * 
+     * @type {TournamentEventOneOf1KindEnum}
+     * @memberof TournamentEventOneOf1
+     */
+    kind: TournamentEventOneOf1KindEnum;
+}
+
+
+/**
+ * @export
+ */
+export const TournamentEventOneOf1KindEnum = {
+    ParticipantsChanged: 'ParticipantsChanged'
+} as const;
+export type TournamentEventOneOf1KindEnum = typeof TournamentEventOneOf1KindEnum[keyof typeof TournamentEventOneOf1KindEnum];
+
+/**
+ * The standings changed
+ * @export
+ * @interface TournamentEventOneOf10
+ */
+export interface TournamentEventOneOf10 {
+    /**
+     * 
+     * @type {TournamentEventOneOf10KindEnum}
+     * @memberof TournamentEventOneOf10
+     */
+    kind: TournamentEventOneOf10KindEnum;
+}
+
+
+/**
+ * @export
+ */
+export const TournamentEventOneOf10KindEnum = {
+    StandingsChanged: 'StandingsChanged'
+} as const;
+export type TournamentEventOneOf10KindEnum = typeof TournamentEventOneOf10KindEnum[keyof typeof TournamentEventOneOf10KindEnum];
+
+/**
+ * The stream missed events; the reader fetches everything again
+ * @export
+ * @interface TournamentEventOneOf11
+ */
+export interface TournamentEventOneOf11 {
+    /**
+     * 
+     * @type {TournamentEventOneOf11KindEnum}
+     * @memberof TournamentEventOneOf11
+     */
+    kind: TournamentEventOneOf11KindEnum;
+}
+
+
+/**
+ * @export
+ */
+export const TournamentEventOneOf11KindEnum = {
+    Resync: 'Resync'
+} as const;
+export type TournamentEventOneOf11KindEnum = typeof TournamentEventOneOf11KindEnum[keyof typeof TournamentEventOneOf11KindEnum];
+
+/**
+ * A Round was paired as a preview, or its preview was edited; only Organizers hear it
+ * @export
+ * @interface TournamentEventOneOf2
+ */
+export interface TournamentEventOneOf2 {
+    /**
+     * 
+     * @type {TournamentEventOneOf2KindEnum}
+     * @memberof TournamentEventOneOf2
+     */
+    kind: TournamentEventOneOf2KindEnum;
+    /**
+     * The Round's number
+     * @type {number}
+     * @memberof TournamentEventOneOf2
+     */
+    round: number;
+}
+
+
+/**
+ * @export
+ */
+export const TournamentEventOneOf2KindEnum = {
+    RoundPaired: 'RoundPaired'
+} as const;
+export type TournamentEventOneOf2KindEnum = typeof TournamentEventOneOf2KindEnum[keyof typeof TournamentEventOneOf2KindEnum];
+
+/**
+ * A previewed Round was thrown away; only Organizers hear it
+ * @export
+ * @interface TournamentEventOneOf3
+ */
+export interface TournamentEventOneOf3 {
+    /**
+     * 
+     * @type {TournamentEventOneOf3KindEnum}
+     * @memberof TournamentEventOneOf3
+     */
+    kind: TournamentEventOneOf3KindEnum;
+    /**
+     * The Round's number
+     * @type {number}
+     * @memberof TournamentEventOneOf3
+     */
+    round: number;
+}
+
+
+/**
+ * @export
+ */
+export const TournamentEventOneOf3KindEnum = {
+    RoundDiscarded: 'RoundDiscarded'
+} as const;
+export type TournamentEventOneOf3KindEnum = typeof TournamentEventOneOf3KindEnum[keyof typeof TournamentEventOneOf3KindEnum];
+
+/**
+ * A Round started and shows to everybody
+ * @export
+ * @interface TournamentEventOneOf4
+ */
+export interface TournamentEventOneOf4 {
+    /**
+     * 
+     * @type {TournamentEventOneOf4KindEnum}
+     * @memberof TournamentEventOneOf4
+     */
+    kind: TournamentEventOneOf4KindEnum;
+    /**
+     * The Round's number
+     * @type {number}
+     * @memberof TournamentEventOneOf4
+     */
+    round: number;
+}
+
+
+/**
+ * @export
+ */
+export const TournamentEventOneOf4KindEnum = {
+    RoundStarted: 'RoundStarted'
+} as const;
+export type TournamentEventOneOf4KindEnum = typeof TournamentEventOneOf4KindEnum[keyof typeof TournamentEventOneOf4KindEnum];
+
+/**
+ * A Round ended
+ * @export
+ * @interface TournamentEventOneOf5
+ */
+export interface TournamentEventOneOf5 {
+    /**
+     * 
+     * @type {TournamentEventOneOf5KindEnum}
+     * @memberof TournamentEventOneOf5
+     */
+    kind: TournamentEventOneOf5KindEnum;
+    /**
+     * The Round's number
+     * @type {number}
+     * @memberof TournamentEventOneOf5
+     */
+    round: number;
+}
+
+
+/**
+ * @export
+ */
+export const TournamentEventOneOf5KindEnum = {
+    RoundEnded: 'RoundEnded'
+} as const;
+export type TournamentEventOneOf5KindEnum = typeof TournamentEventOneOf5KindEnum[keyof typeof TournamentEventOneOf5KindEnum];
+
+/**
+ * An ended Round was taken back and runs again
+ * @export
+ * @interface TournamentEventOneOf6
+ */
+export interface TournamentEventOneOf6 {
+    /**
+     * 
+     * @type {TournamentEventOneOf6KindEnum}
+     * @memberof TournamentEventOneOf6
+     */
+    kind: TournamentEventOneOf6KindEnum;
+    /**
+     * The Round's number
+     * @type {number}
+     * @memberof TournamentEventOneOf6
+     */
+    round: number;
+}
+
+
+/**
+ * @export
+ */
+export const TournamentEventOneOf6KindEnum = {
+    RoundTakenBack: 'RoundTakenBack'
+} as const;
+export type TournamentEventOneOf6KindEnum = typeof TournamentEventOneOf6KindEnum[keyof typeof TournamentEventOneOf6KindEnum];
+
+/**
+ * A Participant reported a Result
+ * @export
+ * @interface TournamentEventOneOf7
+ */
+export interface TournamentEventOneOf7 {
+    /**
+     * 
+     * @type {TournamentEventOneOf7KindEnum}
+     * @memberof TournamentEventOneOf7
+     */
+    kind: TournamentEventOneOf7KindEnum;
+    /**
+     * The Match
+     * @type {string}
+     * @memberof TournamentEventOneOf7
+     */
+    match_uuid: string;
+    /**
+     * The Round of the Match
+     * @type {number}
+     * @memberof TournamentEventOneOf7
+     */
+    round: number;
+}
+
+
+/**
+ * @export
+ */
+export const TournamentEventOneOf7KindEnum = {
+    ResultReported: 'ResultReported'
+} as const;
+export type TournamentEventOneOf7KindEnum = typeof TournamentEventOneOf7KindEnum[keyof typeof TournamentEventOneOf7KindEnum];
+
+/**
+ * A Participant disputed a Result
+ * @export
+ * @interface TournamentEventOneOf8
+ */
+export interface TournamentEventOneOf8 {
+    /**
+     * 
+     * @type {TournamentEventOneOf8KindEnum}
+     * @memberof TournamentEventOneOf8
+     */
+    kind: TournamentEventOneOf8KindEnum;
+    /**
+     * The Match
+     * @type {string}
+     * @memberof TournamentEventOneOf8
+     */
+    match_uuid: string;
+    /**
+     * The Round of the Match
+     * @type {number}
+     * @memberof TournamentEventOneOf8
+     */
+    round: number;
+}
+
+
+/**
+ * @export
+ */
+export const TournamentEventOneOf8KindEnum = {
+    ResultDisputed: 'ResultDisputed'
+} as const;
+export type TournamentEventOneOf8KindEnum = typeof TournamentEventOneOf8KindEnum[keyof typeof TournamentEventOneOf8KindEnum];
+
+/**
+ * An Organizer set or corrected a Result
+ * @export
+ * @interface TournamentEventOneOf9
+ */
+export interface TournamentEventOneOf9 {
+    /**
+     * 
+     * @type {TournamentEventOneOf9KindEnum}
+     * @memberof TournamentEventOneOf9
+     */
+    kind: TournamentEventOneOf9KindEnum;
+    /**
+     * The Match
+     * @type {string}
+     * @memberof TournamentEventOneOf9
+     */
+    match_uuid: string;
+    /**
+     * The Round of the Match
+     * @type {number}
+     * @memberof TournamentEventOneOf9
+     */
+    round: number;
+}
+
+
+/**
+ * @export
+ */
+export const TournamentEventOneOf9KindEnum = {
+    ResultSet: 'ResultSet'
+} as const;
+export type TournamentEventOneOf9KindEnum = typeof TournamentEventOneOf9KindEnum[keyof typeof TournamentEventOneOf9KindEnum];
+
+/**
  * A Tournament as one reader sees it
  * @export
  * @interface TournamentResponse

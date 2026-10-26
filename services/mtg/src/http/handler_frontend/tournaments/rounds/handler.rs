@@ -16,6 +16,8 @@ use galvyn::rorm::Database;
 use galvyn::rorm::db::transaction::Transaction;
 
 use crate::http::handler_frontend::tournaments::handler::denied;
+use crate::http::handler_frontend::tournaments::live::TournamentEvent;
+use crate::http::handler_frontend::tournaments::live::emit;
 use crate::http::handler_frontend::tournaments::participants::schema::ParticipantResponse;
 use crate::http::handler_frontend::tournaments::results::handler::announce;
 use crate::http::handler_frontend::tournaments::rounds::schema::ArrangeRoundErrors;
@@ -127,6 +129,10 @@ pub async fn pair_tournament_round(
 
     tx.commit().await?;
 
+    emit(
+        tournament.uuid,
+        TournamentEvent::RoundPaired { round: number },
+    );
     Ok(ApiJson(PairedRoundResponse { number }))
 }
 
@@ -159,6 +165,10 @@ pub async fn discard_tournament_round(
 
     tx.commit().await?;
 
+    emit(
+        tournament.uuid,
+        TournamentEvent::RoundDiscarded { round: number },
+    );
     Ok(ApiJson(()))
 }
 
@@ -186,6 +196,11 @@ pub async fn start_tournament_round(
     tx.commit().await?;
     tournament.push_round_paired(number).await;
 
+    emit(
+        tournament.uuid,
+        TournamentEvent::RoundStarted { round: number },
+    );
+    emit(tournament.uuid, TournamentEvent::StandingsChanged);
     Ok(ApiJson(()))
 }
 
@@ -215,6 +230,10 @@ pub async fn end_tournament_round(
 
     tx.commit().await?;
 
+    emit(
+        tournament.uuid,
+        TournamentEvent::RoundEnded { round: number },
+    );
     Ok(ApiJson(TournamentStateResponse { state }))
 }
 
@@ -268,6 +287,10 @@ pub async fn arrange_tournament_round(
 
     tx.commit().await?;
 
+    emit(
+        tournament.uuid,
+        TournamentEvent::RoundPaired { round: number },
+    );
     Ok(ApiJson(()))
 }
 
@@ -298,6 +321,10 @@ pub async fn take_back_tournament_round(
 
     tx.commit().await?;
 
+    emit(
+        tournament.uuid,
+        TournamentEvent::RoundTakenBack { round: number },
+    );
     Ok(ApiJson(TournamentStateResponse { state }))
 }
 
@@ -373,6 +400,7 @@ pub async fn set_tournament_swiss_rounds(
 
     tx.commit().await?;
 
+    emit(tournament.uuid, TournamentEvent::TournamentChanged);
     Ok(ApiJson(TournamentStateResponse { state }))
 }
 
@@ -400,6 +428,7 @@ pub async fn cancel_tournament(
 
     tx.commit().await?;
 
+    emit(tournament.uuid, TournamentEvent::TournamentChanged);
     Ok(ApiJson(()))
 }
 

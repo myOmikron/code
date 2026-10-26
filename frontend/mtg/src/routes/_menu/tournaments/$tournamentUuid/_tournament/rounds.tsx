@@ -2,6 +2,7 @@ import { createFileRoute, getRouteApi, useRouter } from "@tanstack/react-router"
 import { useCallback } from "react";
 import { Api } from "src/api/api";
 import { TournamentRounds } from "src/components/tournament-rounds";
+import { useLiveVersion } from "src/context/tournament-live-context";
 import { useLoaded } from "src/utils/use-loaded";
 
 /** The frame this tab sits in, which already loaded the Tournament */
@@ -21,7 +22,8 @@ function RouteComponent() {
     const { tournament } = frame.useLoaderData();
     const router = useRouter();
     const uuid = tournament?.uuid ?? null;
-    const load = useCallback(() => Api.tournaments.rounds.list(uuid ?? ""), [uuid]);
+    const version = useLiveVersion("rounds");
+    const load = useCallback(() => Api.tournaments.rounds.list(uuid ?? ""), [uuid, version]);
     const participants = useLoaded(
         async () => (uuid === null ? null : Api.tournaments.participants.list(uuid)),
         [uuid],

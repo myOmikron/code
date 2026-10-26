@@ -17,6 +17,8 @@ use galvyn::rorm::db::transaction::Transaction;
 use galvyn::rorm::fields::types::MaxStr;
 
 use crate::http::handler_frontend::tournaments::handler::denied;
+use crate::http::handler_frontend::tournaments::live::TournamentEvent;
+use crate::http::handler_frontend::tournaments::live::emit;
 use crate::http::handler_frontend::tournaments::participants::schema::AddAccountParticipantErrors;
 use crate::http::handler_frontend::tournaments::participants::schema::AddAccountParticipantRequest;
 use crate::http::handler_frontend::tournaments::participants::schema::AddGuestParticipantErrors;
@@ -131,6 +133,8 @@ pub async fn add_tournament_account(
 
     tx.commit().await?;
 
+    roster_changed(tournament.uuid);
+
     Ok(ApiJson(ParticipantResponse::for_organizers(Participant {
         uuid: participant,
         player: Player::Account {
@@ -181,6 +185,8 @@ pub async fn add_tournament_guest(
 
     tx.commit().await?;
 
+    roster_changed(tournament.uuid);
+
     Ok(ApiJson(ParticipantResponse::for_organizers(Participant {
         uuid: participant,
         player: Player::Guest { name },
@@ -217,6 +223,7 @@ pub async fn remove_tournament_participant(
 
     tx.commit().await?;
 
+    roster_changed(tournament.uuid);
     Ok(ApiJson(()))
 }
 
@@ -238,7 +245,7 @@ pub async fn drop_tournament_participant(
         return Err(denied());
     };
     let response = drop_participant(&mut tx, &tournament, participant).await;
-    finish(tx, response).await
+    finish_roster_change(tx, tournament.uuid, response).await
 }
 
 /// Mark a Participant paid or unpaid, as an Organizer
@@ -272,7 +279,7 @@ pub async fn set_tournament_participant_paid(
             errors.fail()
         }
     };
-    finish(tx, response).await
+    finish_roster_change(tx, tournament.uuid, response).await
 }
 
 /// Drop the logged-in Account out of a Tournament it plays in
@@ -302,7 +309,7 @@ pub async fn drop_out_of_tournament(
         return Err(ApiError::bad_request("Not a participant"));
     };
     let response = drop_participant(&mut tx, &tournament, participant).await;
-    finish(tx, response).await
+    finish_roster_change(tx, tournament.uuid, response).await
 }
 
 /// Accounts whose username starts with what an Organizer typed, to add as Participants
@@ -377,7 +384,7 @@ pub async fn sign_up_for_tournament(
         return Err(denied());
     };
     let response = sign_up(&mut tx, &tournament, &account).await;
-    finish(tx, response).await
+    finish_roster_change(tx, tournament.uuid, response).await
 }
 
 /// Withdraw the logged-in Account's own sign-up
@@ -408,6 +415,7 @@ pub async fn withdraw_tournament_sign_up(
 
     tx.commit().await?;
 
+    roster_changed(tournament.uuid);
     Ok(ApiJson(()))
 }
 
@@ -511,4 +519,23 @@ pub async fn finish<T, E>(tx: Transaction, response: ApiResult<T, E>) -> ApiResu
             Err(error)
         }
     }
+}
+
+/// [`finish`] a change to the roster of `tournament`, telling its followers once it is committed
+pub async fn finish_roster_change<T, E>(
+    tx: Transaction,
+    tournament: TournamentUuid,
+    response: ApiResult<T, E>,
+) -> ApiResult<T, E> {
+    let response = finish(tx, response).await;
+    if response.is_ok() {
+        roster_changed(tournament);
+    }
+    response
+}
+
+/// Tell the followers of `tournament` that its roster changed, and with it the standings
+fn roster_changed(tournament: TournamentUuid) {
+    emit(tournament, TournamentEvent::ParticipantsChanged);
+    emit(tournament, TournamentEvent::StandingsChanged);
 }

@@ -204,6 +204,7 @@ import type {
     SwapDeckCardRequest,
     TakeDeckCardsRequest,
     Timeframe,
+    TournamentEvent,
     TournamentResponse,
     TournamentSettingsRequest,
     UpdateCollectionEntryRequest,
@@ -773,6 +774,14 @@ export interface FinishRegistrationOperationRequest {
      * 
      */
     FinishRegistrationRequest?: FinishRegistrationRequest;
+}
+
+export interface FollowSharedTournamentRequest {
+    token: string;
+}
+
+export interface FollowTournamentRequest {
+    tournament: string;
 }
 
 export interface GetBracketFlagsRequest {
@@ -5223,6 +5232,100 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async finishRegistration(requestParameters: FinishRegistrationOperationRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FormErrorResponseForRegistrationErrors> {
         const response = await this.finishRegistrationRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for followSharedTournament without sending the request
+     */
+    async followSharedTournamentRequestOpts(requestParameters: FollowSharedTournamentRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['token'] == null) {
+            throw new runtime.RequiredError(
+                'token',
+                'Required parameter "token" was null or undefined when calling followSharedTournament().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/shared/tournaments/{token}/events`;
+        urlPath = urlPath.replace('{token}', encodeURIComponent(String(requestParameters['token'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Follow what changes in the Tournament a share link points at, as Server-Sent Events  What anybody sees: never the previewed Round.
+     * Follow what changes in the Tournament a share link points at, as Server-Sent Events
+     */
+    async followSharedTournamentRaw(requestParameters: FollowSharedTournamentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<TournamentEvent>> {
+        const requestOptions = await this.followSharedTournamentRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Follow what changes in the Tournament a share link points at, as Server-Sent Events  What anybody sees: never the previewed Round.
+     * Follow what changes in the Tournament a share link points at, as Server-Sent Events
+     */
+    async followSharedTournament(requestParameters: FollowSharedTournamentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<TournamentEvent> {
+        const response = await this.followSharedTournamentRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for followTournament without sending the request
+     */
+    async followTournamentRequestOpts(requestParameters: FollowTournamentRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tournament'] == null) {
+            throw new runtime.RequiredError(
+                'tournament',
+                'Required parameter "tournament" was null or undefined when calling followTournament().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/tournaments/{tournament}/events`;
+        urlPath = urlPath.replace('{tournament}', encodeURIComponent(String(requestParameters['tournament'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Follow what changes in a Tournament the reader may see, as Server-Sent Events  Each event names what changed; the reader fetches that again. Organizers also hear about the previewed Round.
+     * Follow what changes in a Tournament the reader may see, as Server-Sent Events
+     */
+    async followTournamentRaw(requestParameters: FollowTournamentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<TournamentEvent>> {
+        const requestOptions = await this.followTournamentRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Follow what changes in a Tournament the reader may see, as Server-Sent Events  Each event names what changed; the reader fetches that again. Organizers also hear about the previewed Round.
+     * Follow what changes in a Tournament the reader may see, as Server-Sent Events
+     */
+    async followTournament(requestParameters: FollowTournamentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<TournamentEvent> {
+        const response = await this.followTournamentRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

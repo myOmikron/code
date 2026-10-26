@@ -1,11 +1,14 @@
-import { Outlet, createFileRoute } from "@tanstack/react-router";
+import { Outlet, createFileRoute, useRouter } from "@tanstack/react-router";
 import { LinkSlashIcon } from "@heroicons/react/20/solid";
 import { Badge, EmptyState, Tab, TabLayout, TabMenu } from "components";
+import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import { useTournamentLabels } from "src/components/tournament-labels";
+import { TournamentLiveProvider } from "src/context/tournament-live-context";
 import i18n from "src/i18n";
 import { isDeadShareLink } from "src/utils/share-link";
+import { sharedTournamentEventsUrl } from "src/utils/tournament-live";
 
 export const Route = createFileRoute("/_menu/shared/tournaments/$token/_shared")({
     loader: async ({ params }) => {
@@ -34,6 +37,8 @@ function RouteComponent() {
     const { token } = Route.useParams();
     const { tournament } = Route.useLoaderData();
     const labels = useTournamentLabels();
+    const router = useRouter();
+    const refresh = useCallback(() => void router.invalidate(), [router]);
 
     if (tournament === null) {
         return (
@@ -76,7 +81,9 @@ function RouteComponent() {
                 </TabMenu>
             }
         >
-            <Outlet />
+            <TournamentLiveProvider url={sharedTournamentEventsUrl(token)} onTournamentChanged={refresh}>
+                <Outlet />
+            </TournamentLiveProvider>
         </TabLayout>
     );
 }

@@ -25,6 +25,8 @@ use crate::http::handler_frontend::shared::schema::redact_slot;
 use crate::http::handler_frontend::shared::schema::redact_statistics;
 use crate::http::handler_frontend::tournaments::decks;
 use crate::http::handler_frontend::tournaments::decks::schema::RegisteredListsResponse;
+use crate::http::handler_frontend::tournaments::live;
+use crate::http::handler_frontend::tournaments::live::schema::EventStream;
 use crate::http::handler_frontend::tournaments::participants;
 use crate::http::handler_frontend::tournaments::participants::schema::ListParticipantsResponse;
 use crate::http::handler_frontend::tournaments::participants::schema::ParticipantResponse;
@@ -253,7 +255,7 @@ pub async fn sign_up_for_shared_tournament(
         return Err(unknown_link());
     };
     let response = participants::handler::sign_up(&mut tx, &tournament, &account).await;
-    participants::handler::finish(tx, response).await
+    participants::handler::finish_roster_change(tx, tournament.uuid, response).await
 }
 
 /// The Rounds of the Tournament a share link points at
@@ -316,6 +318,24 @@ pub async fn list_shared_tournament_registered_lists(
     tx.commit().await?;
 
     Ok(ApiJson(response))
+}
+
+/// Follow what changes in the Tournament a share link points at, as Server-Sent Events
+///
+/// What anybody sees: never the previewed Round.
+#[get("/{token}/events")]
+pub async fn follow_shared_tournament(Path(token): Path<String>) -> ApiResult<EventStream> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    let token = MaxStr::new(token).map_err(|_| unknown_link())?;
+    let Some(tournament) = Tournament::get_by_share_token(&mut tx, &token).await? else {
+        tx.rollback().await?;
+        return Err(unknown_link());
+    };
+
+    tx.commit().await?;
+
+    Ok(EventStream::new(live::hub::follow(tournament.uuid, false)))
 }
 
 /// Resolve a share token into the collection it unlocks

@@ -71,6 +71,8 @@ All URIs are relative to *http://localhost*
 | [**finishLogin**](DefaultApi.md#finishloginoperation) | **POST** /api/frontend/v1/auth/login/finish | Finish a passkey login |
 | [**finishOidcLogin**](DefaultApi.md#finishoidclogin) | **GET** /api/frontend/v1/auth/oidc/callback | Finish an OIDC login: the provider sends the browser back here |
 | [**finishRegistration**](DefaultApi.md#finishregistrationoperation) | **POST** /api/frontend/v1/auth/register/finish | Finish a passkey registration |
+| [**followSharedTournament**](DefaultApi.md#followsharedtournament) | **GET** /api/frontend/v1/shared/tournaments/{token}/events | Follow what changes in the Tournament a share link points at, as Server-Sent Events |
+| [**followTournament**](DefaultApi.md#followtournament) | **GET** /api/frontend/v1/tournaments/{tournament}/events | Follow what changes in a Tournament the reader may see, as Server-Sent Events |
 | [**getAllCollections**](DefaultApi.md#getallcollections) | **GET** /api/frontend/v1/collections |  |
 | [**getAllDeckFolders**](DefaultApi.md#getalldeckfolders) | **GET** /api/frontend/v1/folders | List every folder the account keeps |
 | [**getAllDecks**](DefaultApi.md#getalldecks) | **GET** /api/frontend/v1/decks | The decks an account owns |
@@ -5002,6 +5004,146 @@ No authorization required
 
 - **Content-Type**: `application/json`
 - **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## followSharedTournament
+
+> TournamentEvent followSharedTournament(token)
+
+Follow what changes in the Tournament a share link points at, as Server-Sent Events
+
+Follow what changes in the Tournament a share link points at, as Server-Sent Events  What anybody sees: never the previewed Round.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { FollowSharedTournamentRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    token: token_example,
+  } satisfies FollowSharedTournamentRequest;
+
+  try {
+    const data = await api.followSharedTournament(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **token** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**TournamentEvent**](TournamentEvent.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `text/event-stream`, `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## followTournament
+
+> TournamentEvent followTournament(tournament)
+
+Follow what changes in a Tournament the reader may see, as Server-Sent Events
+
+Follow what changes in a Tournament the reader may see, as Server-Sent Events  Each event names what changed; the reader fetches that again. Organizers also hear about the previewed Round.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { FollowTournamentRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    tournament: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies FollowTournamentRequest;
+
+  try {
+    const data = await api.followTournament(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **tournament** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**TournamentEvent**](TournamentEvent.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `text/event-stream`, `application/json`
 
 
 ### HTTP response details
