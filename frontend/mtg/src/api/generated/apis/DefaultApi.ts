@@ -99,6 +99,7 @@ import type {
     FormErrorResponseForRoundErrors,
     FormErrorResponseForSetPaidErrors,
     FormErrorResponseForSetResultErrors,
+    FormErrorResponseForSubscribePushDeviceErrors,
     GetPendingOidcLoginResponse,
     ImportDeckCardsRequest,
     ImportDeckCardsResponse,
@@ -141,6 +142,9 @@ import type {
     PublicDeckResponse,
     PublicDeckSort,
     PublicProfileResponse,
+    PushDeviceRequest,
+    PushDeviceResponse,
+    PushSettingsResponse,
     PutDeckCollaborator200Response,
     PutDeckCollaboratorRequest,
     ReadDeckUrlRequest,
@@ -175,6 +179,7 @@ import type {
     SetDeckRuleZeroRequest,
     SetDeckVisibilityRequest,
     SetPaidRequest,
+    SetPushSettingsRequest,
     SetResultRequest,
     SetSwissRoundsRequest,
     SetTournamentSwissRounds200Response,
@@ -193,6 +198,7 @@ import type {
     StartOidcLoginRequest,
     StartRegistration200Response,
     StartRegistrationRequest,
+    SubscribePushDeviceRequest,
     SwapDeckCardRequest,
     TakeDeckCardsRequest,
     Timeframe,
@@ -489,6 +495,10 @@ export interface AttachDeckCollectionRequest {
 
 export interface CancelTournamentRequest {
     tournament: string;
+}
+
+export interface CheckPushDeviceRequest {
+    PushDeviceRequest?: PushDeviceRequest;
 }
 
 export interface ChooseUsernameOperationRequest {
@@ -1514,6 +1524,10 @@ export interface SetDeckRuleZeroOperationRequest {
     SetDeckRuleZeroRequest?: SetDeckRuleZeroRequest;
 }
 
+export interface SetPushSettingsOperationRequest {
+    SetPushSettingsRequest?: SetPushSettingsRequest;
+}
+
 export interface SetTournamentMatchResultRequest {
     tournament: string;
     match: string;
@@ -1609,6 +1623,10 @@ export interface StartTournamentRoundRequest {
     number: number;
 }
 
+export interface SubscribePushDeviceOperationRequest {
+    SubscribePushDeviceRequest?: SubscribePushDeviceRequest;
+}
+
 export interface SwapDeckCardOperationRequest {
     /**
      * 
@@ -1675,6 +1693,10 @@ export interface UndoDeckChangeRequest {
      * 
      */
     deck: string;
+}
+
+export interface UnsubscribePushDeviceRequest {
+    PushDeviceRequest?: PushDeviceRequest;
 }
 
 export interface UpdateCollectionOperationRequest {
@@ -3380,6 +3402,48 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async cancelTournament(requestParameters: CancelTournamentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
         const response = await this.cancelTournamentRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for checkPushDevice without sending the request
+     */
+    async checkPushDeviceRequestOpts(requestParameters: CheckPushDeviceRequest): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/accounts/me/push/devices/check`;
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['PushDeviceRequest'],
+        };
+    }
+
+    /**
+     * Whether a device gets the logged-in account\'s pushes  The browser knows it has a subscription, not whose it is: another account may have taken the device over since.
+     * Whether a device gets the logged-in account\'s pushes
+     */
+    async checkPushDeviceRaw(requestParameters: CheckPushDeviceRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PushDeviceResponse>> {
+        const requestOptions = await this.checkPushDeviceRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Whether a device gets the logged-in account\'s pushes  The browser knows it has a subscription, not whose it is: another account may have taken the device over since.
+     * Whether a device gets the logged-in account\'s pushes
+     */
+    async checkPushDevice(requestParameters: CheckPushDeviceRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PushDeviceResponse> {
+        const response = await this.checkPushDeviceRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -6375,6 +6439,45 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async getPublicProfile(requestParameters: GetPublicProfileRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PublicProfileResponse> {
         const response = await this.getPublicProfileRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for getPushSettings without sending the request
+     */
+    async getPushSettingsRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/accounts/me/push`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * The logged-in account\'s push settings and the key its devices subscribe with
+     * The logged-in account\'s push settings and the key its devices subscribe with
+     */
+    async getPushSettingsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PushSettingsResponse>> {
+        const requestOptions = await this.getPushSettingsRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * The logged-in account\'s push settings and the key its devices subscribe with
+     * The logged-in account\'s push settings and the key its devices subscribe with
+     */
+    async getPushSettings(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PushSettingsResponse> {
+        const response = await this.getPushSettingsRaw(initOverrides);
         return await response.value();
     }
 
@@ -10013,6 +10116,52 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for setPushSettings without sending the request
+     */
+    async setPushSettingsRequestOpts(requestParameters: SetPushSettingsOperationRequest): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/accounts/me/push`;
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['SetPushSettingsRequest'],
+        };
+    }
+
+    /**
+     * Turn tournament pushes on or off for every device of the logged-in account
+     * Turn tournament pushes on or off for every device of the logged-in account
+     */
+    async setPushSettingsRaw(requestParameters: SetPushSettingsOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
+        const requestOptions = await this.setPushSettingsRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<any>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     * Turn tournament pushes on or off for every device of the logged-in account
+     * Turn tournament pushes on or off for every device of the logged-in account
+     */
+    async setPushSettings(requestParameters: SetPushSettingsOperationRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
+        const response = await this.setPushSettingsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for setTournamentMatchResult without sending the request
      */
     async setTournamentMatchResultRequestOpts(requestParameters: SetTournamentMatchResultRequest): Promise<runtime.RequestOpts> {
@@ -10701,6 +10850,48 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for subscribePushDevice without sending the request
+     */
+    async subscribePushDeviceRequestOpts(requestParameters: SubscribePushDeviceOperationRequest): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/accounts/me/push/devices`;
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['SubscribePushDeviceRequest'],
+        };
+    }
+
+    /**
+     * Subscribe this device to the logged-in account\'s pushes  A device subscribed for another account before gets this one\'s pushes from now on.
+     * Subscribe this device to the logged-in account\'s pushes
+     */
+    async subscribePushDeviceRaw(requestParameters: SubscribePushDeviceOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FormErrorResponseForSubscribePushDeviceErrors>> {
+        const requestOptions = await this.subscribePushDeviceRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Subscribe this device to the logged-in account\'s pushes  A device subscribed for another account before gets this one\'s pushes from now on.
+     * Subscribe this device to the logged-in account\'s pushes
+     */
+    async subscribePushDevice(requestParameters: SubscribePushDeviceOperationRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FormErrorResponseForSubscribePushDeviceErrors> {
+        const response = await this.subscribePushDeviceRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for swapDeckCard without sending the request
      */
     async swapDeckCardRequestOpts(requestParameters: SwapDeckCardOperationRequest): Promise<runtime.RequestOpts> {
@@ -11045,6 +11236,52 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async undoDeckChange(requestParameters: UndoDeckChangeRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DeckUndoResponse> {
         const response = await this.undoDeckChangeRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for unsubscribePushDevice without sending the request
+     */
+    async unsubscribePushDeviceRequestOpts(requestParameters: UnsubscribePushDeviceRequest): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/accounts/me/push/devices/unsubscribe`;
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['PushDeviceRequest'],
+        };
+    }
+
+    /**
+     * Unsubscribe one of the logged-in account\'s devices; a device that is none of its is left alone
+     * Unsubscribe one of the logged-in account\'s devices; a device that is none of its is left alone
+     */
+    async unsubscribePushDeviceRaw(requestParameters: UnsubscribePushDeviceRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
+        const requestOptions = await this.unsubscribePushDeviceRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<any>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     * Unsubscribe one of the logged-in account\'s devices; a device that is none of its is left alone
+     * Unsubscribe one of the logged-in account\'s devices; a device that is none of its is left alone
+     */
+    async unsubscribePushDevice(requestParameters: UnsubscribePushDeviceRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
+        const response = await this.unsubscribePushDeviceRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

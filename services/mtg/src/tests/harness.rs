@@ -20,6 +20,7 @@ use std::future::Future;
 use std::net::IpAddr;
 use std::net::Ipv4Addr;
 use std::num::NonZeroU16;
+use std::sync::Arc;
 use std::sync::LazyLock;
 use std::sync::atomic::AtomicU32;
 use std::sync::atomic::Ordering;
@@ -61,6 +62,9 @@ use crate::models::account::Account;
 use crate::models::account::AccountUuid;
 use crate::models::account::Role;
 use crate::models::account::Username;
+use crate::modules::web_push::RecordingSender;
+use crate::modules::web_push::VapidKey;
+use crate::modules::web_push::WebPushSetup;
 
 /// Prefix of every database the harness creates
 const DATABASE_PREFIX: &str = "mtg_test_";
@@ -90,6 +94,15 @@ pub fn run<F: Future>(test: F) -> F::Output {
             .expect("build the test runtime")
     });
     RUNTIME.block_on(test)
+}
+
+/// Every push the service sent, to every device
+///
+/// The service runs with this recorder as its push sender, so a test reads
+/// what reached its own devices' endpoints instead of any push service.
+pub fn pushes() -> Arc<RecordingSender> {
+    static PUSHES: LazyLock<Arc<RecordingSender>> = LazyLock::new(Arc::default);
+    Arc::clone(&PUSHES)
 }
 
 /// The initialized service, shared by all tests of the binary
@@ -128,8 +141,13 @@ impl App {
                     listen_address: IpAddr::V4(Ipv4Addr::LOCALHOST),
                     listen_port: NonZeroU16::MIN,
                     openid_providers: vec![fake.provider_setup("google", true)],
+                    vapid_key: None,
                 },
                 nats: None,
+                web_push: WebPushSetup {
+                    public_key: Some(VapidKey::generate().public_key()),
+                    sender: Some(pushes()),
+                },
             },
         )
         .await

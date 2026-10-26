@@ -8,6 +8,8 @@ use service_bootstrap::config::ConfigError;
 use service_bootstrap::config::EnvLoader;
 use url::Url;
 
+use crate::modules::web_push::VapidKey;
+
 #[derive(Debug, Clone)]
 pub struct Config {
     /// Public origin the app is served from.
@@ -30,6 +32,10 @@ pub struct Config {
     pub listen_port: NonZeroU16,
     /// The OpenID providers people may log in through, none to turn OIDC login off
     pub openid_providers: Vec<OpenIdProviderSetup>,
+    /// The key Web Push is signed with, `None` to send no pushes
+    ///
+    /// Every subscription is bound to it: a new key orphans them all.
+    pub vapid_key: Option<VapidKey>,
 }
 
 /// The MPCFill server used when none is configured
@@ -57,6 +63,7 @@ pub fn load() -> Result<Config, ConfigError> {
     let listen_port = env.require_parse::<NonZeroU16>("LISTEN_PORT");
 
     let google = load_google(&mut env);
+    let vapid_key = load_vapid_key(&mut env);
 
     env.finish()?;
 
@@ -74,6 +81,7 @@ pub fn load() -> Result<Config, ConfigError> {
         listen_address: listen_address.unwrap(),
         listen_port: listen_port.unwrap(),
         openid_providers: google.into_iter().collect(),
+        vapid_key,
     })
 }
 
@@ -98,4 +106,17 @@ fn load_google(env: &mut EnvLoader) -> Option<OpenIdProviderSetup> {
         client_secret: ClientSecret::Shared(client_secret?),
         admits_on_first_login: true,
     })
+}
+
+/// The VAPID key from `VAPID_PRIVATE_KEY`, `None` while it is empty
+///
+/// `mtg generate-vapid-key` prints a fresh one. The push services learn who
+/// sends from the public origin, so no contact address is configured.
+fn load_vapid_key(env: &mut EnvLoader) -> Option<VapidKey> {
+    const PRIVATE_KEY: &str = "VAPID_PRIVATE_KEY";
+
+    if env.optional(PRIVATE_KEY, "").is_empty() {
+        return None;
+    }
+    env.require_parse(PRIVATE_KEY)
 }

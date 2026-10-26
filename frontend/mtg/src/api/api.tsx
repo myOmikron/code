@@ -44,6 +44,7 @@ import {
     SetResultRequest,
     SignupRequest,
     SplitCollectionEntryRequest,
+    SubscribePushDeviceRequest,
     UpdateCollectionEntryRequest,
     UpdateCollectionRequest,
     SwapDeckCardRequest,
@@ -119,6 +120,17 @@ export const Api = {
             rename: async (uuid: string, label: string) =>
                 handleError(defaultApi.renamePasskey({ uuid, RenamePasskeyRequest: { label } })),
             delete: async (uuid: string) => handleError(defaultApi.deletePasskey({ uuid })),
+        },
+        push: {
+            settings: async () => handleError(defaultApi.getPushSettings()),
+            setTournamentPushes: async (tournament_pushes: boolean) =>
+                handleError(defaultApi.setPushSettings({ SetPushSettingsRequest: { tournament_pushes } })),
+            subscribe: async (request: SubscribePushDeviceRequest) =>
+                handleError(defaultApi.subscribePushDevice({ SubscribePushDeviceRequest: request })),
+            unsubscribe: async (endpoint: string) =>
+                handleError(defaultApi.unsubscribePushDevice({ PushDeviceRequest: { endpoint } })),
+            check: async (endpoint: string) =>
+                handleError(defaultApi.checkPushDevice({ PushDeviceRequest: { endpoint } })),
         },
         rename: async (username: string) =>
             handleError(defaultApi.renameAccount({ RenameAccountRequest: { username } })),

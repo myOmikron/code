@@ -40,6 +40,8 @@ services:
       # "Continue with Google", off while both are empty
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
+      # Web Push signing key, no pushes while empty
+      - VAPID_PRIVATE_KEY=${VAPID_PRIVATE_KEY:-}
       # An empty OTLP endpoint disables trace export.
       - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT:-}
       - ALERTMANAGER_URL=${ALERTMANAGER_URL:-http://localhost}

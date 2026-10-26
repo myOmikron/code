@@ -36,6 +36,7 @@ pub mod handover;
 pub mod listing;
 pub mod organizer;
 pub mod participant;
+pub mod push;
 pub mod registered_deck;
 pub mod result;
 pub mod round;

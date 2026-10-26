@@ -27,10 +27,13 @@
         "language": "Applies to the interface. Card names come from Scryfall and are unaffected.",
         "passkeys": "These devices can sign you in. Add a passkey per device — if you lose one, the others still get you in.",
         "proxy-fade": "Cards marked as proxies are drawn washed out in the deck, so a stand-in never passes for the real card at a glance.",
+        "push-device": "Get notifications on this device. You sign up each device on its own.",
+        "push-unavailable": "This browser cannot receive notifications. On iPhone and iPad they only work once the app is added to the home screen.",
         "remove-passkey": "You will no longer be able to sign in with \"{{label}}\". The only way back is to add the device again.",
         "rename-account": "Your old name is free for others right away, and links to your old profile stop working. Links to your decks and your passkeys keep working. From then on, log in with the new name.",
         "rename-passkey": "Only you see this name. It tells your devices apart in this list.",
-        "theme": "“Match system” follows your device's setting and changes along with it."
+        "theme": "“Match system” follows your device's setting and changes along with it.",
+        "tournament-pushes": "For example when a round is paired, with your table and seat. Applies to all your devices."
     },
     "error": {
         "aborted": "Cancelled. Press \"Add this device\" again and confirm your device's prompt.",
@@ -50,6 +53,7 @@
         "delete-account": "Delete account",
         "delete-account-confirm": "Delete this account for good?",
         "display": "Display",
+        "notifications": "Notifications",
         "passkeys": "Passkeys",
         "profile": "Profile",
         "remove-passkey": "Remove passkey?",
@@ -76,10 +80,12 @@
         "only-passkey": "Only passkey",
         "passkey-label": "Name",
         "proxy-fade": "Fade out proxy artwork",
+        "push-device": "This device",
         "theme": "Theme",
         "theme-dark": "Dark",
         "theme-light": "Light",
-        "theme-system": "Match system"
+        "theme-system": "Match system",
+        "tournament-pushes": "Tournaments"
     },
     "toast": {
         "account-deleted": "Account deleted",
@@ -90,6 +96,8 @@
         "foil-tilt-silent": "Your browser is not reporting any motion. Brave blocks the sensors by default: allow them under Settings → Site settings → Motion sensors. They are also unavailable over http rather than https.",
         "passkey-added": "Passkey added",
         "passkey-removed": "Passkey removed",
-        "passkey-renamed": "Passkey renamed"
+        "passkey-renamed": "Passkey renamed",
+        "push-denied": "Notifications are blocked for this site. Allow them in your browser's settings.",
+        "push-failed": "This device could not be signed up."
     }
 }

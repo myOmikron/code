@@ -51,6 +51,9 @@ use crate::modules::graph::GraphClient;
 use crate::modules::graph::GraphClientSetup;
 use crate::modules::mpcfill::MpcFill;
 use crate::modules::mpcfill::MpcFillSetup;
+use crate::modules::web_push::VapidKey;
+use crate::modules::web_push::WebPush;
+use crate::modules::web_push::WebPushSetup;
 use crate::utils::catalog_sync::SyncOutcome;
 use crate::utils::catalog_sync::sync_catalog;
 use crate::utils::price_sync::PriceOutcome;
@@ -118,6 +121,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
         Command::SetRole { username, role } => {
             set_role_command(username, Role::from(*role)).await?;
         }
+        Command::GenerateVapidKey => {
+            let key = VapidKey::generate();
+            println!("VAPID_PRIVATE_KEY={}", key.private_key());
+            println!("public key: {}", key.public_key());
+        }
     }
 
     Ok(())
@@ -131,6 +139,8 @@ pub struct ModuleSetups {
     ///
     /// Only mail goes through NATS, so tests can leave it out.
     pub nats: Option<NatsSetup>,
+    /// Where Web Push goes; tests record the pushes instead
+    pub web_push: WebPushSetup,
 }
 
 /// Registers and initializes all modules of the service
@@ -138,7 +148,11 @@ pub async fn init_modules(
     builder: &mut ModuleBuilder,
     setups: ModuleSetups,
 ) -> Result<RouterBuilder, GalvynError> {
-    let ModuleSetups { config, nats } = setups;
+    let ModuleSetups {
+        config,
+        nats,
+        web_push,
+    } = setups;
     builder
         .register_module::<Conf>(Some(config.clone()))
         .register_module::<Database>(DatabaseSetup::Custom(DatabaseConfiguration::new(
@@ -161,7 +175,8 @@ pub async fn init_modules(
         })
         .register_module::<MpcFill>(MpcFillSetup {
             base_url: Some(config.mpcfill_url.clone()),
-        });
+        })
+        .register_module::<WebPush>(web_push);
     if let Some(nats) = nats {
         builder.register_module::<Nats>(nats);
     }
@@ -172,11 +187,18 @@ async fn run(mut builder: ModuleBuilder, config: Config) -> Result<RouterBuilder
     migrate(config.database_driver.clone()).await?;
 
     let listen = SocketAddr::new(config.listen_address, config.listen_port.get());
+    let web_push = WebPushSetup::from_key(config.vapid_key.clone(), &config.public_origin)
+        .map_err(|error| {
+            GalvynError::Io(io::Error::other(format!(
+                "Failed to build the Web Push client: {error}"
+            )))
+        })?;
     let mut builder = init_modules(
         &mut builder,
         ModuleSetups {
             config,
             nats: Some(NatsSetup::FromEnv),
+            web_push,
         },
     )
     .await?;

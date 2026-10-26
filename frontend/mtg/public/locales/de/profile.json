@@ -27,10 +27,13 @@
         "language": "Gilt für die Oberfläche. Kartennamen kommen von Scryfall und bleiben davon unberührt.",
         "passkeys": "Mit diesen Geräten kannst du dich anmelden. Lege für jedes Gerät einen eigenen Passkey an — geht eines verloren, kommst du mit den anderen weiterhin rein.",
         "proxy-fade": "Als Proxy markierte Karten werden im Deck ausgewaschen gezeichnet, damit ein Platzhalter nicht auf den ersten Blick als echte Karte durchgeht.",
+        "push-device": "Benachrichtigungen auf diesem Gerät empfangen. Jedes Gerät meldest du einzeln an.",
+        "push-unavailable": "Dieser Browser kann keine Benachrichtigungen empfangen. Auf iPhone und iPad geht es nur, wenn die App zum Home-Bildschirm hinzugefügt ist.",
         "remove-passkey": "Mit \"{{label}}\" kannst du dich danach nicht mehr anmelden. Das lässt sich nur rückgängig machen, indem du das Gerät neu hinzufügst.",
         "rename-account": "Dein alter Name ist danach sofort für andere frei, und Links auf dein altes Profil funktionieren nicht mehr. Links auf deine Decks und deine Passkeys bleiben gültig. Melde dich ab dann mit dem neuen Namen an.",
         "rename-passkey": "Den Namen siehst nur du. Er hilft dir, deine Geräte in dieser Liste auseinanderzuhalten.",
-        "theme": "„Wie das System“ folgt der Einstellung deines Geräts und wechselt mit ihr mit."
+        "theme": "„Wie das System“ folgt der Einstellung deines Geräts und wechselt mit ihr mit.",
+        "tournament-pushes": "Zum Beispiel, wenn eine Runde gepaart ist, mit deinem Tisch und Sitz. Gilt für alle deine Geräte."
     },
     "error": {
         "aborted": "Abgebrochen. Tippe erneut auf \"Dieses Gerät hinzufügen\" und bestätige die Abfrage deines Geräts.",
@@ -50,6 +53,7 @@
         "delete-account": "Konto löschen",
         "delete-account-confirm": "Konto endgültig löschen?",
         "display": "Darstellung",
+        "notifications": "Benachrichtigungen",
         "passkeys": "Passkeys",
         "profile": "Profil",
         "remove-passkey": "Passkey entfernen?",
@@ -76,10 +80,12 @@
         "only-passkey": "Einziger Passkey",
         "passkey-label": "Name",
         "proxy-fade": "Proxy-Bilder ausbleichen",
+        "push-device": "Dieses Gerät",
         "theme": "Erscheinungsbild",
         "theme-dark": "Dunkel",
         "theme-light": "Hell",
-        "theme-system": "Wie das System"
+        "theme-system": "Wie das System",
+        "tournament-pushes": "Turniere"
     },
     "toast": {
         "account-deleted": "Konto gelöscht",
@@ -90,6 +96,8 @@
         "foil-tilt-silent": "Dein Browser liefert keine Bewegungsdaten. Brave blockiert die Sensoren standardmäßig: unter Einstellungen → Website-Einstellungen → Bewegungssensoren erlauben. Über http statt https gibt es sie ebenfalls nicht.",
         "passkey-added": "Passkey hinzugefügt",
         "passkey-removed": "Passkey entfernt",
-        "passkey-renamed": "Passkey umbenannt"
+        "passkey-renamed": "Passkey umbenannt",
+        "push-denied": "Benachrichtigungen sind für diese Seite blockiert. Erlaube sie in den Einstellungen deines Browsers.",
+        "push-failed": "Dieses Gerät konnte nicht angemeldet werden."
     }
 }

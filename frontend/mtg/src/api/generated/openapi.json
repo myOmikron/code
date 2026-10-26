@@ -497,6 +497,292 @@
                 }
             }
         },
+        "/api/frontend/v1/accounts/me/push": {
+            "get": {
+                "summary": "The logged-in account's push settings and the key its devices subscribe with",
+                "description": "The logged-in account's push settings and the key its devices subscribe with",
+                "operationId": "get_push_settings",
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PushSettingsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "summary": "Turn tournament pushes on or off for every device of the logged-in account",
+                "description": "Turn tournament pushes on or off for every device of the logged-in account",
+                "operationId": "set_push_settings",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SetPushSettingsRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "nullable": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/accounts/me/push/devices": {
+            "post": {
+                "summary": "Subscribe this device to the logged-in account's pushes",
+                "description": "Subscribe this device to the logged-in account's pushes\n\nA device subscribed for another account before gets this one's pushes\nfrom now on.",
+                "operationId": "subscribe_push_device",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SubscribePushDeviceRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "nullable": true
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/FormErrorResponse_for_SubscribePushDeviceErrors"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/accounts/me/push/devices/unsubscribe": {
+            "post": {
+                "summary": "Unsubscribe one of the logged-in account's devices; a device that is none of its is left alone",
+                "description": "Unsubscribe one of the logged-in account's devices; a device that is none of its is left alone",
+                "operationId": "unsubscribe_push_device",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PushDeviceRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "nullable": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/accounts/me/push/devices/check": {
+            "post": {
+                "summary": "Whether a device gets the logged-in account's pushes",
+                "description": "Whether a device gets the logged-in account's pushes\n\nThe browser knows it has a subscription, not whose it is: another\naccount may have taken the device over since.",
+                "operationId": "check_push_device",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PushDeviceRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PushDeviceResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/frontend/v1/admin/accounts": {
             "get": {
                 "summary": "List Accounts, newest first",
@@ -19237,6 +19523,32 @@
                     "result"
                 ]
             },
+            "FormErrorResponse_for_SubscribePushDeviceErrors": {
+                "description": "The response that is sent in a case of an error the caller should present his user",
+                "type": "object",
+                "properties": {
+                    "error": {
+                        "description": "The actual error struct",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SubscribePushDeviceErrors"
+                            }
+                        ]
+                    },
+                    "result": {
+                        "description": "A constant `\"Err\"` used to differentiate this schema from any other \"Ok\" schema",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ErrorConstant"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "error",
+                    "result"
+                ]
+            },
             "FormErrorResponse_for_TournamentSettingsErrors": {
                 "description": "The response that is sent in a case of an error the caller should present his user",
                 "type": "object",
@@ -21306,6 +21618,73 @@
                     "username"
                 ]
             },
+            "PushDeviceRequest": {
+                "description": "Names one device by its push endpoint",
+                "type": "object",
+                "properties": {
+                    "endpoint": {
+                        "description": "The device's push endpoint",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_2048"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "endpoint"
+                ]
+            },
+            "PushDeviceResponse": {
+                "description": "Whether a device is subscribed for the account",
+                "type": "object",
+                "properties": {
+                    "subscribed": {
+                        "description": "True if the device gets this account's pushes",
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "subscribed"
+                ]
+            },
+            "PushLanguage": {
+                "description": "The language a device's pushes are written in\n\nThe one its app showed when it subscribed: the text has to be readable on the lock screen, without asking the service for anything.",
+                "oneOf": [
+                    {
+                        "description": "German, the app's primary language",
+                        "type": "string",
+                        "enum": [
+                            "De"
+                        ]
+                    },
+                    {
+                        "description": "English",
+                        "type": "string",
+                        "enum": [
+                            "En"
+                        ]
+                    }
+                ]
+            },
+            "PushSettingsResponse": {
+                "description": "The account's push settings and what a device subscribes with",
+                "type": "object",
+                "properties": {
+                    "public_key": {
+                        "nullable": true,
+                        "description": "The public VAPID key to pass to `PushManager.subscribe`, `None` while the service sends no pushes",
+                        "type": "string"
+                    },
+                    "tournament_pushes": {
+                        "description": "Whether the account's devices get tournament pushes",
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "tournament_pushes"
+                ]
+            },
             "PutDeckCollaboratorErrors": {
                 "description": "Why an Account could not be named on a deck",
                 "type": "object",
@@ -23022,6 +23401,19 @@
                     "paid"
                 ]
             },
+            "SetPushSettingsRequest": {
+                "description": "Changes the account's push settings",
+                "type": "object",
+                "properties": {
+                    "tournament_pushes": {
+                        "description": "Whether the account's devices get tournament pushes",
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "tournament_pushes"
+                ]
+            },
             "SetResultErrors": {
                 "description": "Why a Result could not be set",
                 "type": "object",
@@ -24003,6 +24395,63 @@
                 "required": [
                     "cards",
                     "key"
+                ]
+            },
+            "SubscribePushDeviceErrors": {
+                "description": "Why a device could not subscribe",
+                "type": "object",
+                "properties": {
+                    "invalid_endpoint": {
+                        "description": "The endpoint is no https url",
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "invalid_endpoint"
+                ]
+            },
+            "SubscribePushDeviceRequest": {
+                "description": "A device's push subscription, as `PushSubscription.toJSON()` reports it",
+                "type": "object",
+                "properties": {
+                    "auth": {
+                        "description": "The device's authentication secret, base64url",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_64"
+                            }
+                        ]
+                    },
+                    "endpoint": {
+                        "description": "Where pushes for the device are posted",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_2048"
+                            }
+                        ]
+                    },
+                    "language": {
+                        "description": "The language the app shows on the device, which its pushes are written in",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/PushLanguage"
+                            }
+                        ]
+                    },
+                    "p256dh": {
+                        "description": "The device's P-256 public key, base64url",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_128"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "auth",
+                    "endpoint",
+                    "language",
+                    "p256dh"
                 ]
             },
             "SwapDeckCardRequest": {

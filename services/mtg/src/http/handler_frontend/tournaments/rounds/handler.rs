@@ -184,6 +184,7 @@ pub async fn start_tournament_round(
     }
 
     tx.commit().await?;
+    tournament.push_round_paired(number).await;
 
     Ok(ApiJson(()))
 }

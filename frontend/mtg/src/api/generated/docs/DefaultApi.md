@@ -34,6 +34,7 @@ All URIs are relative to *http://localhost*
 | [**assignDeckCardTag**](DefaultApi.md#assigndeckcardtag) | **POST** /api/frontend/v1/decks/{deck}/cards/{card}/tags/{tag} | Put a tag on a card |
 | [**attachDeckCollection**](DefaultApi.md#attachdeckcollection) | **POST** /api/frontend/v1/decks/{deck}/collection | Start keeping the cards that are physically in this deck |
 | [**cancelTournament**](DefaultApi.md#canceltournament) | **POST** /api/frontend/v1/tournaments/{tournament}/cancel | Cancel a Tournament, as an Organizer |
+| [**checkPushDevice**](DefaultApi.md#checkpushdevice) | **POST** /api/frontend/v1/accounts/me/push/devices/check | Whether a device gets the logged-in account\&#39;s pushes |
 | [**chooseUsername**](DefaultApi.md#chooseusernameoperation) | **POST** /api/frontend/v1/auth/oidc/username | Finish the username step: create the External Account and log it in |
 | [**createCollection**](DefaultApi.md#createcollectionoperation) | **POST** /api/frontend/v1/collections |  |
 | [**createDeck**](DefaultApi.md#createdeckoperation) | **POST** /api/frontend/v1/decks | Create a deck |
@@ -98,6 +99,7 @@ All URIs are relative to *http://localhost*
 | [**getPublicCollectionStatistics**](DefaultApi.md#getpubliccollectionstatistics) | **GET** /api/frontend/v1/explore/collections/{collection}/statistics | Count a public collection\&#39;s statistics |
 | [**getPublicDeck**](DefaultApi.md#getpublicdeck) | **GET** /api/frontend/v1/explore/decks/{deck} | Fetch one deck its owner put on show |
 | [**getPublicProfile**](DefaultApi.md#getpublicprofile) | **GET** /api/frontend/v1/explore/profiles/{username} | Fetch an account\&#39;s public profile: what it put on show |
+| [**getPushSettings**](DefaultApi.md#getpushsettings) | **GET** /api/frontend/v1/accounts/me/push | The logged-in account\&#39;s push settings and the key its devices subscribe with |
 | [**getScannerSession**](DefaultApi.md#getscannersession) | **GET** /api/frontend/v1/scanner-sessions/{session} | Read one session from any signed-in device |
 | [**getSharedCollection**](DefaultApi.md#getsharedcollection) | **GET** /api/frontend/v1/shared/collections/{token} | Fetch the collection a share link points at |
 | [**getSharedCollectionStatistics**](DefaultApi.md#getsharedcollectionstatistics) | **GET** /api/frontend/v1/shared/collections/{token}/statistics | Count a shared collection\&#39;s statistics |
@@ -169,6 +171,7 @@ All URIs are relative to *http://localhost*
 | [**setDeckColors**](DefaultApi.md#setdeckcolorsoperation) | **PUT** /api/frontend/v1/decks/{deck}/colors | Overrule which colours the deck may play |
 | [**setDeckFolder**](DefaultApi.md#setdeckfolderoperation) | **POST** /api/frontend/v1/decks/{deck}/folder | File a deck into one of the account\&#39;s folders |
 | [**setDeckRuleZero**](DefaultApi.md#setdeckrulezerooperation) | **PUT** /api/frontend/v1/decks/{deck}/rule-zero | Record the house rules the deck is played under, colours included |
+| [**setPushSettings**](DefaultApi.md#setpushsettingsoperation) | **PUT** /api/frontend/v1/accounts/me/push | Turn tournament pushes on or off for every device of the logged-in account |
 | [**setTournamentMatchResult**](DefaultApi.md#settournamentmatchresult) | **PUT** /api/frontend/v1/tournaments/{tournament}/matches/{match}/result | Set or correct the Result of a Match, as an Organizer |
 | [**setTournamentParticipantPaid**](DefaultApi.md#settournamentparticipantpaid) | **PUT** /api/frontend/v1/tournaments/{tournament}/participants/{participant}/paid | Mark a Participant paid or unpaid, as an Organizer |
 | [**setTournamentSwissRounds**](DefaultApi.md#settournamentswissrounds) | **PUT** /api/frontend/v1/tournaments/{tournament}/swiss-rounds | Set how many Swiss Rounds are played, as an Organizer |
@@ -183,12 +186,14 @@ All URIs are relative to *http://localhost*
 | [**startOidcLogin**](DefaultApi.md#startoidcloginoperation) | **POST** /api/frontend/v1/auth/oidc/start | Start an OIDC login, for signing up and logging in alike |
 | [**startRegistration**](DefaultApi.md#startregistrationoperation) | **POST** /api/frontend/v1/auth/register/start | Start a passkey registration |
 | [**startTournamentRound**](DefaultApi.md#starttournamentround) | **POST** /api/frontend/v1/tournaments/{tournament}/rounds/{number}/start | Start a previewed Round, as an Organizer: from now on everybody sees it |
+| [**subscribePushDevice**](DefaultApi.md#subscribepushdeviceoperation) | **POST** /api/frontend/v1/accounts/me/push/devices | Subscribe this device to the logged-in account\&#39;s pushes |
 | [**swapDeckCard**](DefaultApi.md#swapdeckcardoperation) | **POST** /api/frontend/v1/decks/{deck}/cards/{card}/swap | Give up copies of a Deck entry for another card in the same zone |
 | [**takeBackTournamentRound**](DefaultApi.md#takebacktournamentround) | **POST** /api/frontend/v1/tournaments/{tournament}/rounds/{number}/take-back | Take back the latest ended Round, as an Organizer: it runs again |
 | [**takeDeckCards**](DefaultApi.md#takedeckcardsoperation) | **POST** /api/frontend/v1/decks/{deck}/sourcing/take | Move copies out of a collection and into the deck |
 | [**unassignCollectionEntryTag**](DefaultApi.md#unassigncollectionentrytag) | **DELETE** /api/frontend/v1/collections/{collection}/entries/{entry}/tags/{tag} | Take a card-wide tag off a stack, see [&#x60;assign_collection_entry_tag&#x60;] |
 | [**unassignDeckCardTag**](DefaultApi.md#unassigndeckcardtag) | **DELETE** /api/frontend/v1/decks/{deck}/cards/{card}/tags/{tag} | Take a tag off a card |
 | [**undoDeckChange**](DefaultApi.md#undodeckchange) | **POST** /api/frontend/v1/decks/{deck}/history/undo | Take back the latest Deck change that is not undone yet |
+| [**unsubscribePushDevice**](DefaultApi.md#unsubscribepushdevice) | **POST** /api/frontend/v1/accounts/me/push/devices/unsubscribe | Unsubscribe one of the logged-in account\&#39;s devices; a device that is none of its is left alone |
 | [**updateCollection**](DefaultApi.md#updatecollectionoperation) | **PUT** /api/frontend/v1/collections/{collection} |  |
 | [**updateCollectionEntry**](DefaultApi.md#updatecollectionentryoperation) | **PATCH** /api/frontend/v1/collections/{collection}/entries/{entry} | Change a stack: its count, condition, finish, signature, price, date or printing |
 | [**updateDeck**](DefaultApi.md#updatedeckoperation) | **PUT** /api/frontend/v1/decks/{deck} | Rename a deck, change its description or the format it is built for |
@@ -2363,6 +2368,76 @@ No authorization required
 ### HTTP request headers
 
 - **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## checkPushDevice
+
+> PushDeviceResponse checkPushDevice(PushDeviceRequest)
+
+Whether a device gets the logged-in account\&#39;s pushes
+
+Whether a device gets the logged-in account\&#39;s pushes  The browser knows it has a subscription, not whose it is: another account may have taken the device over since.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { CheckPushDeviceRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // PushDeviceRequest (optional)
+    PushDeviceRequest: ...,
+  } satisfies CheckPushDeviceRequest;
+
+  try {
+    const data = await api.checkPushDevice(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **PushDeviceRequest** | [PushDeviceRequest](PushDeviceRequest.md) |  | [Optional] |
+
+### Return type
+
+[**PushDeviceResponse**](PushDeviceResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
 - **Accept**: `application/json`
 
 
@@ -6792,6 +6867,68 @@ example().catch(console.error);
 ### Return type
 
 [**PublicProfileResponse**](PublicProfileResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## getPushSettings
+
+> PushSettingsResponse getPushSettings()
+
+The logged-in account\&#39;s push settings and the key its devices subscribe with
+
+The logged-in account\&#39;s push settings and the key its devices subscribe with
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { GetPushSettingsRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  try {
+    const data = await api.getPushSettings();
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+This endpoint does not need any parameter.
+
+### Return type
+
+[**PushSettingsResponse**](PushSettingsResponse.md)
 
 ### Authorization
 
@@ -11940,6 +12077,76 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## setPushSettings
+
+> any setPushSettings(SetPushSettingsRequest)
+
+Turn tournament pushes on or off for every device of the logged-in account
+
+Turn tournament pushes on or off for every device of the logged-in account
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { SetPushSettingsOperationRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // SetPushSettingsRequest (optional)
+    SetPushSettingsRequest: ...,
+  } satisfies SetPushSettingsOperationRequest;
+
+  try {
+    const data = await api.setPushSettings(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **SetPushSettingsRequest** | [SetPushSettingsRequest](SetPushSettingsRequest.md) |  | [Optional] |
+
+### Return type
+
+**any**
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## setTournamentMatchResult
 
 > FormErrorResponseForSetResultErrors setTournamentMatchResult(tournament, match, SetResultRequest)
@@ -12942,6 +13149,76 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## subscribePushDevice
+
+> FormErrorResponseForSubscribePushDeviceErrors subscribePushDevice(SubscribePushDeviceRequest)
+
+Subscribe this device to the logged-in account\&#39;s pushes
+
+Subscribe this device to the logged-in account\&#39;s pushes  A device subscribed for another account before gets this one\&#39;s pushes from now on.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { SubscribePushDeviceOperationRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // SubscribePushDeviceRequest (optional)
+    SubscribePushDeviceRequest: ...,
+  } satisfies SubscribePushDeviceOperationRequest;
+
+  try {
+    const data = await api.subscribePushDevice(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **SubscribePushDeviceRequest** | [SubscribePushDeviceRequest](SubscribePushDeviceRequest.md) |  | [Optional] |
+
+### Return type
+
+[**FormErrorResponseForSubscribePushDeviceErrors**](FormErrorResponseForSubscribePushDeviceErrors.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## swapDeckCard
 
 > DeckCardResponse swapDeckCard(deck, card, SwapDeckCardRequest)
@@ -13372,6 +13649,76 @@ No authorization required
 ### HTTP request headers
 
 - **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## unsubscribePushDevice
+
+> any unsubscribePushDevice(PushDeviceRequest)
+
+Unsubscribe one of the logged-in account\&#39;s devices; a device that is none of its is left alone
+
+Unsubscribe one of the logged-in account\&#39;s devices; a device that is none of its is left alone
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { UnsubscribePushDeviceRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // PushDeviceRequest (optional)
+    PushDeviceRequest: ...,
+  } satisfies UnsubscribePushDeviceRequest;
+
+  try {
+    const data = await api.unsubscribePushDevice(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **PushDeviceRequest** | [PushDeviceRequest](PushDeviceRequest.md) |  | [Optional] |
+
+### Return type
+
+**any**
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
 - **Accept**: `application/json`
 
 

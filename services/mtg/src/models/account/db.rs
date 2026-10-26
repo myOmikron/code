@@ -74,6 +74,12 @@ pub struct AccountModel {
     /// Deleting the identity deletes the account with it.
     #[rorm(unique, on_delete = "Cascade", on_update = "Cascade")]
     pub identity: ForeignModel<IdentityModel>,
+
+    /// Whether the account's devices get tournament pushes
+    ///
+    /// On until the account turns them off in its settings.
+    #[rorm(default = true)]
+    pub tournament_pushes: bool,
 }
 
 /// Insert patch for [`AccountModel`]

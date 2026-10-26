@@ -17,6 +17,8 @@ import type { Lang } from "components";
 import { useState, useSyncExternalStore } from "react";
 import { useTranslation } from "react-i18next";
 import { CardmarketSettings } from "src/components/cardmarket-settings";
+import { PushSettings } from "src/components/push-settings";
+import { useAccount } from "src/context/account";
 import { foilTiltEnabled, foilTiltSupported, setFoilTilt, subscribeFoilTilt } from "src/utils/foil-tilt";
 import { proxyFadeEnabled, setProxyFade, subscribeProxyFade } from "src/utils/proxy-fade";
 import { applyTheme, currentTheme } from "src/utils/theme";
@@ -32,6 +34,7 @@ export const Route = createFileRoute("/_menu/profile/_profile/settings")({
 function RouteComponent() {
     const [t, i18n] = useTranslation("profile");
     const [tg] = useTranslation();
+    const { account } = useAccount();
     const [theme, setTheme] = useState<Theme>(currentTheme);
     const tilt = useSyncExternalStore(subscribeFoilTilt, foilTiltEnabled);
     const proxyFade = useSyncExternalStore(subscribeProxyFade, proxyFadeEnabled);
@@ -141,6 +144,13 @@ function RouteComponent() {
                     </ListboxOption>
                 </Listbox>
             </HorizontalField>
+
+            {account && (
+                <>
+                    <Divider />
+                    <PushSettings />
+                </>
+            )}
 
             <Divider />
 

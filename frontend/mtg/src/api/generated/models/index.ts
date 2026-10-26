@@ -4096,6 +4096,27 @@ export interface FormErrorResponseForStartOidcLoginErrors {
 /**
  * The response that is sent in a case of an error the caller should present his user
  * @export
+ * @interface FormErrorResponseForSubscribePushDeviceErrors
+ */
+export interface FormErrorResponseForSubscribePushDeviceErrors {
+    /**
+     * The actual error struct
+     * @type {SubscribePushDeviceErrors}
+     * @memberof FormErrorResponseForSubscribePushDeviceErrors
+     */
+    error: SubscribePushDeviceErrors;
+    /**
+     * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
+     * @type {ErrorConstant}
+     * @memberof FormErrorResponseForSubscribePushDeviceErrors
+     */
+    result: ErrorConstant;
+}
+
+
+/**
+ * The response that is sent in a case of an error the caller should present his user
+ * @export
  * @interface FormErrorResponseForTournamentSettingsErrors
  */
 export interface FormErrorResponseForTournamentSettingsErrors {
@@ -5589,6 +5610,70 @@ export interface PublicProfileResponse {
     username: string;
 }
 /**
+ * Names one device by its push endpoint
+ * @export
+ * @interface PushDeviceRequest
+ */
+export interface PushDeviceRequest {
+    /**
+     * The device's push endpoint
+     * @type {string}
+     * @memberof PushDeviceRequest
+     */
+    endpoint: string;
+}
+/**
+ * Whether a device is subscribed for the account
+ * @export
+ * @interface PushDeviceResponse
+ */
+export interface PushDeviceResponse {
+    /**
+     * True if the device gets this account's pushes
+     * @type {boolean}
+     * @memberof PushDeviceResponse
+     */
+    subscribed: boolean;
+}
+
+/**
+ * The language a device's pushes are written in
+ * 
+ * The one its app showed when it subscribed: the text has to be readable on the lock screen, without asking the service for anything.
+ * @export
+ */
+export const PushLanguage = {
+    /**
+    * German, the app&#39;s primary language
+    */
+    De: 'De',
+    /**
+    * English
+    */
+    En: 'En'
+} as const;
+export type PushLanguage = typeof PushLanguage[keyof typeof PushLanguage];
+
+/**
+ * The account's push settings and what a device subscribes with
+ * @export
+ * @interface PushSettingsResponse
+ */
+export interface PushSettingsResponse {
+    /**
+     * The public VAPID key to pass to `PushManager.subscribe`, `None` while the service sends no pushes
+     * @type {string}
+     * @memberof PushSettingsResponse
+     */
+    public_key?: string | null;
+    /**
+     * Whether the account's devices get tournament pushes
+     * @type {boolean}
+     * @memberof PushSettingsResponse
+     */
+    tournament_pushes: boolean;
+}
+/**
  * @type PutDeckCollaborator200Response
  * 
  * @export
@@ -6903,6 +6988,19 @@ export interface SetPaidRequest {
     paid: boolean;
 }
 /**
+ * Changes the account's push settings
+ * @export
+ * @interface SetPushSettingsRequest
+ */
+export interface SetPushSettingsRequest {
+    /**
+     * Whether the account's devices get tournament pushes
+     * @type {boolean}
+     * @memberof SetPushSettingsRequest
+     */
+    tournament_pushes: boolean;
+}
+/**
  * Why a Result could not be set
  * @export
  * @interface SetResultErrors
@@ -7651,6 +7749,52 @@ export interface StatBucketResponse {
      */
     key: string;
 }
+/**
+ * Why a device could not subscribe
+ * @export
+ * @interface SubscribePushDeviceErrors
+ */
+export interface SubscribePushDeviceErrors {
+    /**
+     * The endpoint is no https url
+     * @type {boolean}
+     * @memberof SubscribePushDeviceErrors
+     */
+    invalid_endpoint: boolean;
+}
+/**
+ * A device's push subscription, as `PushSubscription.toJSON()` reports it
+ * @export
+ * @interface SubscribePushDeviceRequest
+ */
+export interface SubscribePushDeviceRequest {
+    /**
+     * The device's authentication secret, base64url
+     * @type {string}
+     * @memberof SubscribePushDeviceRequest
+     */
+    auth: string;
+    /**
+     * Where pushes for the device are posted
+     * @type {string}
+     * @memberof SubscribePushDeviceRequest
+     */
+    endpoint: string;
+    /**
+     * The language the app shows on the device, which its pushes are written in
+     * @type {PushLanguage}
+     * @memberof SubscribePushDeviceRequest
+     */
+    language: PushLanguage;
+    /**
+     * The device's P-256 public key, base64url
+     * @type {string}
+     * @memberof SubscribePushDeviceRequest
+     */
+    p256dh: string;
+}
+
+
 /**
  * Copies of a Deck entry to give up for another card in the same zone
  * @export
