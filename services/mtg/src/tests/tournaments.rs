@@ -368,7 +368,7 @@ fn changed_settings_are_validated_like_new_ones() {
 }
 
 #[test]
-fn nobody_but_the_owner_changes_the_settings() {
+fn a_stranger_does_not_change_the_settings() {
     run(async {
         let mut fixture = Fixture::new("Public").await;
         let url = fixture.url();

@@ -68,7 +68,9 @@ export type TournamentRoundsProps = {
  *
  * A paired Round is a preview only Organizers see until they start it.
  * Participants report the Results of their own Matches while the Round runs,
- * or dispute one the other Participant reported.
+ * or dispute one the other Participant reported. In a Tournament entered
+ * afterwards the Organizers set every Swiss pairing themselves; its Top cut
+ * is seeded as usual.
  *
  * @returns the Rounds with their actions
  */
@@ -100,7 +102,13 @@ export function TournamentRounds({ tournament, load, onTournamentChanged, me = n
             ? lastEnded
             : null;
 
-    // A Top cut Match is played to the Top cut's own best-of.
+    /**
+     * The best-of a Match is played to: a Top cut Match to the Top cut's own
+     *
+     * @param played the Match
+     *
+     * @returns its best-of
+     */
     const bestOfFor = (played: MatchResponse | null) => {
         const stage = rounds.find((round) => round.matches.some((other) => other.uuid === played?.uuid))?.stage;
         return stage === RoundStage.TopCut ? (tournament.top_cut_best_of ?? tournament.best_of) : tournament.best_of;
@@ -212,7 +220,6 @@ export function TournamentRounds({ tournament, load, onTournamentChanged, me = n
     }
 
     const nextNumber = rounds.length + 1;
-    // Entered afterwards, the Organizers set every Swiss pairing themselves; the Top cut is seeded as usual.
     const entering = tournament.entered_afterwards && tournament.state !== TournamentState.TopCut;
 
     return (
@@ -324,11 +331,7 @@ export function TournamentRounds({ tournament, load, onTournamentChanged, me = n
                         skewMs={skewMs}
                         multiplayer={multiplayer}
                         editable={organizer && round.state !== RoundState.Previewed}
-                        me={
-                            organizer || over || tournament.entered_afterwards || round.state !== RoundState.Running
-                                ? null
-                                : me
-                        }
+                        me={over || tournament.entered_afterwards || round.state !== RoundState.Running ? null : me}
                         busy={busy}
                         onEdit={setEditing}
                         onReport={setReporting}
@@ -385,7 +388,7 @@ export function TournamentRounds({ tournament, load, onTournamentChanged, me = n
                 />
             )}
 
-            {!organizer && me !== null && multiplayer && (
+            {me !== null && multiplayer && (
                 <TournamentWinnerDialog
                     played={reporting}
                     title={t("heading.report-result", { table: reporting?.table_number ?? "" })}
@@ -401,7 +404,7 @@ export function TournamentRounds({ tournament, load, onTournamentChanged, me = n
                 />
             )}
 
-            {!organizer && me !== null && !multiplayer && reportingBestOf != null && (
+            {me !== null && !multiplayer && reportingBestOf != null && (
                 <TournamentResultDialog
                     played={reporting}
                     bestOf={reportingBestOf}
@@ -683,26 +686,28 @@ function RoundTable({
                             </TableCell>
                             {actions && (
                                 <TableCell>
-                                    {editable && played.table_number != null && (
-                                        <Button
-                                            plain
-                                            aria-label={t("accessibility.set-result", {
-                                                table: played.table_number,
-                                            })}
-                                            onClick={() => onEdit(played)}
-                                        >
-                                            <PencilSquareIcon />
-                                        </Button>
-                                    )}
-                                    {!editable && mine(played) && (
-                                        <MatchActions
-                                            played={played}
-                                            me={me ?? ""}
-                                            busy={busy}
-                                            onReport={onReport}
-                                            onDispute={onDispute}
-                                        />
-                                    )}
+                                    <div className={"flex flex-wrap items-center gap-2"}>
+                                        {editable && played.table_number != null && (
+                                            <Button
+                                                plain
+                                                aria-label={t("accessibility.set-result", {
+                                                    table: played.table_number,
+                                                })}
+                                                onClick={() => onEdit(played)}
+                                            >
+                                                <PencilSquareIcon />
+                                            </Button>
+                                        )}
+                                        {mine(played) && (
+                                            <MatchActions
+                                                played={played}
+                                                me={me ?? ""}
+                                                busy={busy}
+                                                onReport={onReport}
+                                                onDispute={onDispute}
+                                            />
+                                        )}
+                                    </div>
                                 </TableCell>
                             )}
                         </TableRow>

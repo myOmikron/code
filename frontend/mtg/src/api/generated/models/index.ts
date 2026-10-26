@@ -9830,7 +9830,7 @@ export type TopCut = typeof TopCut[keyof typeof TopCut];
  * Sent as the `data` of one Server-Sent Event, as json.
  * @export
  */
-export type TournamentEvent = TournamentEventOneOf | TournamentEventOneOf1 | TournamentEventOneOf10 | TournamentEventOneOf11 | TournamentEventOneOf2 | TournamentEventOneOf3 | TournamentEventOneOf4 | TournamentEventOneOf5 | TournamentEventOneOf6 | TournamentEventOneOf7 | TournamentEventOneOf8 | TournamentEventOneOf9;
+export type TournamentEvent = TournamentEventOneOf | TournamentEventOneOf1 | TournamentEventOneOf10 | TournamentEventOneOf11 | TournamentEventOneOf12 | TournamentEventOneOf13 | TournamentEventOneOf14 | TournamentEventOneOf2 | TournamentEventOneOf3 | TournamentEventOneOf4 | TournamentEventOneOf5 | TournamentEventOneOf6 | TournamentEventOneOf7 | TournamentEventOneOf8 | TournamentEventOneOf9;
 /**
  * Its settings or its state changed, or it was deleted
  * @export
@@ -9878,7 +9878,7 @@ export const TournamentEventOneOf1KindEnum = {
 export type TournamentEventOneOf1KindEnum = typeof TournamentEventOneOf1KindEnum[keyof typeof TournamentEventOneOf1KindEnum];
 
 /**
- * The standings changed
+ * A Participant reported a Result
  * @export
  * @interface TournamentEventOneOf10
  */
@@ -9889,6 +9889,18 @@ export interface TournamentEventOneOf10 {
      * @memberof TournamentEventOneOf10
      */
     kind: TournamentEventOneOf10KindEnum;
+    /**
+     * The Match
+     * @type {string}
+     * @memberof TournamentEventOneOf10
+     */
+    match_uuid: string;
+    /**
+     * The Round of the Match
+     * @type {number}
+     * @memberof TournamentEventOneOf10
+     */
+    round: number;
 }
 
 
@@ -9896,12 +9908,12 @@ export interface TournamentEventOneOf10 {
  * @export
  */
 export const TournamentEventOneOf10KindEnum = {
-    StandingsChanged: 'StandingsChanged'
+    ResultReported: 'ResultReported'
 } as const;
 export type TournamentEventOneOf10KindEnum = typeof TournamentEventOneOf10KindEnum[keyof typeof TournamentEventOneOf10KindEnum];
 
 /**
- * The stream missed events; the reader fetches everything again
+ * A Participant disputed a Result
  * @export
  * @interface TournamentEventOneOf11
  */
@@ -9912,6 +9924,18 @@ export interface TournamentEventOneOf11 {
      * @memberof TournamentEventOneOf11
      */
     kind: TournamentEventOneOf11KindEnum;
+    /**
+     * The Match
+     * @type {string}
+     * @memberof TournamentEventOneOf11
+     */
+    match_uuid: string;
+    /**
+     * The Round of the Match
+     * @type {number}
+     * @memberof TournamentEventOneOf11
+     */
+    round: number;
 }
 
 
@@ -9919,12 +9943,93 @@ export interface TournamentEventOneOf11 {
  * @export
  */
 export const TournamentEventOneOf11KindEnum = {
-    Resync: 'Resync'
+    ResultDisputed: 'ResultDisputed'
 } as const;
 export type TournamentEventOneOf11KindEnum = typeof TournamentEventOneOf11KindEnum[keyof typeof TournamentEventOneOf11KindEnum];
 
 /**
- * A Round was paired as a preview, or its preview was edited; only Organizers hear it
+ * An Organizer set or corrected a Result
+ * @export
+ * @interface TournamentEventOneOf12
+ */
+export interface TournamentEventOneOf12 {
+    /**
+     * 
+     * @type {TournamentEventOneOf12KindEnum}
+     * @memberof TournamentEventOneOf12
+     */
+    kind: TournamentEventOneOf12KindEnum;
+    /**
+     * The Match
+     * @type {string}
+     * @memberof TournamentEventOneOf12
+     */
+    match_uuid: string;
+    /**
+     * The Round of the Match
+     * @type {number}
+     * @memberof TournamentEventOneOf12
+     */
+    round: number;
+}
+
+
+/**
+ * @export
+ */
+export const TournamentEventOneOf12KindEnum = {
+    ResultSet: 'ResultSet'
+} as const;
+export type TournamentEventOneOf12KindEnum = typeof TournamentEventOneOf12KindEnum[keyof typeof TournamentEventOneOf12KindEnum];
+
+/**
+ * The standings changed
+ * @export
+ * @interface TournamentEventOneOf13
+ */
+export interface TournamentEventOneOf13 {
+    /**
+     * 
+     * @type {TournamentEventOneOf13KindEnum}
+     * @memberof TournamentEventOneOf13
+     */
+    kind: TournamentEventOneOf13KindEnum;
+}
+
+
+/**
+ * @export
+ */
+export const TournamentEventOneOf13KindEnum = {
+    StandingsChanged: 'StandingsChanged'
+} as const;
+export type TournamentEventOneOf13KindEnum = typeof TournamentEventOneOf13KindEnum[keyof typeof TournamentEventOneOf13KindEnum];
+
+/**
+ * The stream missed events; the reader fetches everything again
+ * @export
+ * @interface TournamentEventOneOf14
+ */
+export interface TournamentEventOneOf14 {
+    /**
+     * 
+     * @type {TournamentEventOneOf14KindEnum}
+     * @memberof TournamentEventOneOf14
+     */
+    kind: TournamentEventOneOf14KindEnum;
+}
+
+
+/**
+ * @export
+ */
+export const TournamentEventOneOf14KindEnum = {
+    Resync: 'Resync'
+} as const;
+export type TournamentEventOneOf14KindEnum = typeof TournamentEventOneOf14KindEnum[keyof typeof TournamentEventOneOf14KindEnum];
+
+/**
+ * Co-organizers were named or removed, or a handover was offered, withdrawn, accepted or declined
  * @export
  * @interface TournamentEventOneOf2
  */
@@ -9935,12 +10040,6 @@ export interface TournamentEventOneOf2 {
      * @memberof TournamentEventOneOf2
      */
     kind: TournamentEventOneOf2KindEnum;
-    /**
-     * The Round's number
-     * @type {number}
-     * @memberof TournamentEventOneOf2
-     */
-    round: number;
 }
 
 
@@ -9948,12 +10047,12 @@ export interface TournamentEventOneOf2 {
  * @export
  */
 export const TournamentEventOneOf2KindEnum = {
-    RoundPaired: 'RoundPaired'
+    OrganizersChanged: 'OrganizersChanged'
 } as const;
 export type TournamentEventOneOf2KindEnum = typeof TournamentEventOneOf2KindEnum[keyof typeof TournamentEventOneOf2KindEnum];
 
 /**
- * A previewed Round was thrown away; only Organizers hear it
+ * A Registered deck was registered, swapped or removed, or its list sharing changed
  * @export
  * @interface TournamentEventOneOf3
  */
@@ -9964,12 +10063,6 @@ export interface TournamentEventOneOf3 {
      * @memberof TournamentEventOneOf3
      */
     kind: TournamentEventOneOf3KindEnum;
-    /**
-     * The Round's number
-     * @type {number}
-     * @memberof TournamentEventOneOf3
-     */
-    round: number;
 }
 
 
@@ -9977,12 +10070,12 @@ export interface TournamentEventOneOf3 {
  * @export
  */
 export const TournamentEventOneOf3KindEnum = {
-    RoundDiscarded: 'RoundDiscarded'
+    DecksChanged: 'DecksChanged'
 } as const;
 export type TournamentEventOneOf3KindEnum = typeof TournamentEventOneOf3KindEnum[keyof typeof TournamentEventOneOf3KindEnum];
 
 /**
- * A Round started and shows to everybody
+ * A Round was paired as a preview, or its preview was edited; only Organizers hear it
  * @export
  * @interface TournamentEventOneOf4
  */
@@ -10006,12 +10099,12 @@ export interface TournamentEventOneOf4 {
  * @export
  */
 export const TournamentEventOneOf4KindEnum = {
-    RoundStarted: 'RoundStarted'
+    RoundPaired: 'RoundPaired'
 } as const;
 export type TournamentEventOneOf4KindEnum = typeof TournamentEventOneOf4KindEnum[keyof typeof TournamentEventOneOf4KindEnum];
 
 /**
- * A Round ended
+ * A previewed Round was thrown away; only Organizers hear it
  * @export
  * @interface TournamentEventOneOf5
  */
@@ -10035,12 +10128,12 @@ export interface TournamentEventOneOf5 {
  * @export
  */
 export const TournamentEventOneOf5KindEnum = {
-    RoundEnded: 'RoundEnded'
+    RoundDiscarded: 'RoundDiscarded'
 } as const;
 export type TournamentEventOneOf5KindEnum = typeof TournamentEventOneOf5KindEnum[keyof typeof TournamentEventOneOf5KindEnum];
 
 /**
- * An ended Round was taken back and runs again
+ * A change to the Participants threw the previewed Round away, since it no longer fits them; only Organizers hear it
  * @export
  * @interface TournamentEventOneOf6
  */
@@ -10064,12 +10157,12 @@ export interface TournamentEventOneOf6 {
  * @export
  */
 export const TournamentEventOneOf6KindEnum = {
-    RoundTakenBack: 'RoundTakenBack'
+    PreviewOutdated: 'PreviewOutdated'
 } as const;
 export type TournamentEventOneOf6KindEnum = typeof TournamentEventOneOf6KindEnum[keyof typeof TournamentEventOneOf6KindEnum];
 
 /**
- * A Participant reported a Result
+ * A Round started and shows to everybody
  * @export
  * @interface TournamentEventOneOf7
  */
@@ -10081,13 +10174,7 @@ export interface TournamentEventOneOf7 {
      */
     kind: TournamentEventOneOf7KindEnum;
     /**
-     * The Match
-     * @type {string}
-     * @memberof TournamentEventOneOf7
-     */
-    match_uuid: string;
-    /**
-     * The Round of the Match
+     * The Round's number
      * @type {number}
      * @memberof TournamentEventOneOf7
      */
@@ -10099,12 +10186,12 @@ export interface TournamentEventOneOf7 {
  * @export
  */
 export const TournamentEventOneOf7KindEnum = {
-    ResultReported: 'ResultReported'
+    RoundStarted: 'RoundStarted'
 } as const;
 export type TournamentEventOneOf7KindEnum = typeof TournamentEventOneOf7KindEnum[keyof typeof TournamentEventOneOf7KindEnum];
 
 /**
- * A Participant disputed a Result
+ * A Round ended
  * @export
  * @interface TournamentEventOneOf8
  */
@@ -10116,13 +10203,7 @@ export interface TournamentEventOneOf8 {
      */
     kind: TournamentEventOneOf8KindEnum;
     /**
-     * The Match
-     * @type {string}
-     * @memberof TournamentEventOneOf8
-     */
-    match_uuid: string;
-    /**
-     * The Round of the Match
+     * The Round's number
      * @type {number}
      * @memberof TournamentEventOneOf8
      */
@@ -10134,12 +10215,12 @@ export interface TournamentEventOneOf8 {
  * @export
  */
 export const TournamentEventOneOf8KindEnum = {
-    ResultDisputed: 'ResultDisputed'
+    RoundEnded: 'RoundEnded'
 } as const;
 export type TournamentEventOneOf8KindEnum = typeof TournamentEventOneOf8KindEnum[keyof typeof TournamentEventOneOf8KindEnum];
 
 /**
- * An Organizer set or corrected a Result
+ * An ended Round was taken back and runs again
  * @export
  * @interface TournamentEventOneOf9
  */
@@ -10151,13 +10232,7 @@ export interface TournamentEventOneOf9 {
      */
     kind: TournamentEventOneOf9KindEnum;
     /**
-     * The Match
-     * @type {string}
-     * @memberof TournamentEventOneOf9
-     */
-    match_uuid: string;
-    /**
-     * The Round of the Match
+     * The Round's number
      * @type {number}
      * @memberof TournamentEventOneOf9
      */
@@ -10169,7 +10244,7 @@ export interface TournamentEventOneOf9 {
  * @export
  */
 export const TournamentEventOneOf9KindEnum = {
-    ResultSet: 'ResultSet'
+    RoundTakenBack: 'RoundTakenBack'
 } as const;
 export type TournamentEventOneOf9KindEnum = typeof TournamentEventOneOf9KindEnum[keyof typeof TournamentEventOneOf9KindEnum];
 

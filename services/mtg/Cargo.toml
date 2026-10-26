@@ -66,7 +66,7 @@ rand = { workspace = true }
 regex = { workspace = true }
 
 # Exact fractions for the Tiebreakers, whose averages outgrow any fixed-width integer
-num-bigint = { version = "~0.4" }
+num-bigint = { workspace = true }
 
 # Error handling
 anyhow = { workspace = true }

@@ -69,6 +69,109 @@ fn followers_hear_the_roster_change() {
 }
 
 #[test]
+fn organizers_hear_when_a_roster_change_throws_the_preview_away() {
+    run(async {
+        let mut event = Event::new("Three", 4).await;
+        event.pair().await;
+        let mut organizer_stream = follow_as_owner(&mut event).await;
+        let mut watching = TestClient::new();
+        let mut stream = follow(&event, &mut watching).await;
+
+        event.add_guest("Late Guest").await;
+
+        let mut heard = organizer_stream.kinds().await;
+        heard.sort();
+        assert_eq!(
+            heard,
+            ["ParticipantsChanged", "PreviewOutdated", "StandingsChanged"]
+        );
+        assert_eq!(
+            stream.kinds().await,
+            ["ParticipantsChanged", "StandingsChanged"]
+        );
+
+        event.add_guest("Later Guest").await;
+        assert_eq!(
+            organizer_stream.kinds().await,
+            ["ParticipantsChanged", "StandingsChanged"],
+            "no preview, nothing outdated"
+        );
+    });
+}
+
+#[test]
+fn followers_hear_the_organizers_change() {
+    run(async {
+        let mut event = Event::new("Three", 2).await;
+        let mut watching = TestClient::new();
+        let mut stream = follow(&event, &mut watching).await;
+        let co_organizer = create_account(Role::Member).await;
+
+        let url = event.url("organizers");
+        event
+            .owner
+            .json(
+                Method::POST,
+                &url,
+                &json!({ "username": co_organizer.username }),
+            )
+            .await
+            .ok_json();
+        assert_eq!(stream.kinds().await, ["OrganizersChanged"]);
+
+        let url = event.url(&format!("organizers/{}", co_organizer.uuid.into_inner()));
+        event
+            .owner
+            .json(Method::DELETE, &url, &json!(null))
+            .await
+            .ok_json();
+        assert_eq!(stream.kinds().await, ["OrganizersChanged"]);
+    });
+}
+
+#[test]
+fn followers_hear_a_registered_deck_change() {
+    run(async {
+        let mut event = Event::new("Three", 1).await;
+        let player = create_account(Role::Member).await;
+        let mut client = TestClient::logged_in(&player).await;
+        event.add_account(&player.username).await;
+        let deck = client
+            .json(
+                Method::POST,
+                &api("decks"),
+                &json!({
+                    "name": "Burn",
+                    "description": null,
+                    "format": "modern",
+                    "visibility": "Public",
+                }),
+            )
+            .await
+            .ok_json();
+        let mut watching = TestClient::new();
+        let mut stream = follow(&event, &mut watching).await;
+
+        let url = event.url("deck");
+        client
+            .json(Method::PUT, &url, &json!({ "deck": deck["uuid"] }))
+            .await
+            .ok_json();
+        assert_eq!(stream.kinds().await, ["DecksChanged"]);
+
+        client
+            .json(
+                Method::PUT,
+                &event.url("deck/sharing"),
+                &json!({ "shared": false }),
+            )
+            .await
+            .ok_json();
+        assert_eq!(stream.kinds().await, ["DecksChanged"]);
+    });
+}
+
+#[test]
 fn followers_hear_a_round_run_and_only_organizers_hear_its_preview() {
     run(async {
         let mut event = Event::new("Three", 4).await;

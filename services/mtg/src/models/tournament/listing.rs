@@ -228,15 +228,37 @@ impl ListedTournament {
         .limit(PROFILE_LIMIT)
         .all()
         .await?;
-        let played = Self::played_in_by(tx, account).await?;
+        let played = rorm::query(
+            &mut *tx,
+            (
+                TournamentParticipantModel
+                    .tournament
+                    .query_as(TournamentModel),
+                TournamentParticipantModel.tournament.owner.username,
+                TournamentParticipantModel.tournament.owner.tombstone,
+            ),
+        )
+        .condition(rorm::and![
+            TournamentParticipantModel
+                .account
+                .equals(Some(account.into_inner())),
+            TournamentParticipantModel
+                .tournament
+                .visibility
+                .equals(Visibility::Public),
+        ])
+        .order_desc(TournamentParticipantModel.tournament.starts_at)
+        .order_desc(TournamentParticipantModel.tournament.uuid)
+        .limit(PROFILE_LIMIT)
+        .all()
+        .await?;
 
         let mut tournaments: Vec<_> = owned.into_iter().map(listed).collect();
-        for tournament in played {
-            let public = tournament.tournament.visibility == Visibility::Public;
+        for tournament in played.into_iter().map(listed) {
             let known = tournaments
                 .iter()
                 .any(|listed| listed.tournament.uuid == tournament.tournament.uuid);
-            if public && !known {
+            if !known {
                 tournaments.push(tournament);
             }
         }

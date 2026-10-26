@@ -10873,7 +10873,7 @@
         "/api/frontend/v1/tournaments/{tournament}/deck": {
             "get": {
                 "summary": "The logged-in Account's own Registered deck in a Tournament it plays in",
-                "description": "The logged-in Account's own Registered deck in a Tournament it plays in\n\nSays whether it may still change it itself, which ends when the first Round starts.",
+                "description": "The logged-in Account's own Registered deck in a Tournament it plays in\n\nSays whether it may still change it itself, which ends when the first Round\nstarts; a late Participant registers its own until it is pinned.",
                 "operationId": "get_my_tournament_deck",
                 "parameters": [
                     {
@@ -10933,7 +10933,7 @@
             },
             "put": {
                 "summary": "Register one of the logged-in Account's decks for a Tournament it plays in,",
-                "description": "Register one of the logged-in Account's decks for a Tournament it plays in,\nor swap the one registered\n\nOnly while the Tournament is in Registration; until the first Round starts\nthe Registered deck follows the deck.",
+                "description": "Register one of the logged-in Account's decks for a Tournament it plays in,\nor swap the one registered\n\nWhile the Tournament is in Registration, where the Registered deck follows\nthe deck until the first Round starts; a late Participant registers its own\nafterwards, pinned at once, and can no longer swap it then.",
                 "operationId": "register_my_tournament_deck",
                 "parameters": [
                     {
@@ -11805,7 +11805,7 @@
         "/api/frontend/v1/tournaments/{tournament}/participants/{participant}/decks": {
             "get": {
                 "summary": "The decks a Participant's Account owns, as an Organizer about to register one",
-                "description": "The decks a Participant's Account owns, as an Organizer about to register one",
+                "description": "The decks a Participant's Account owns, as an Organizer about to register one\n\nPrivate decks are left out: an Organizer registers none of them.",
                 "operationId": "list_tournament_participant_decks",
                 "parameters": [
                     {
@@ -11874,7 +11874,7 @@
         "/api/frontend/v1/tournaments/{tournament}/participants/{participant}/deck": {
             "put": {
                 "summary": "Register or swap a Participant's Registered deck, as an Organizer",
-                "description": "Register or swap a Participant's Registered deck, as an Organizer\n\nAt any time; after the first Round started the new Registered deck is\npinned at once and sets its own Deck checkpoint.",
+                "description": "Register or swap a Participant's Registered deck, as an Organizer\n\nAt any time, with any of the Participant's decks that is not private;\nafter the first Round started the new Registered deck is pinned at once\nand sets its own Deck checkpoint.",
                 "operationId": "register_tournament_participant_deck",
                 "parameters": [
                     {
@@ -12093,7 +12093,7 @@
             },
             "post": {
                 "summary": "Name an Account a Co-organizer by its username, as one of the Organizers",
-                "description": "Name an Account a Co-organizer by its username, as one of the Organizers\n\nUnknown usernames are capped per caller, see [`UNKNOWN_USERNAMES`].",
+                "description": "Name an Account a Co-organizer by its username, as one of the Organizers\n\nUnknown usernames are capped per caller, see [`unknown_username`].",
                 "operationId": "add_tournament_co_organizer",
                 "parameters": [
                     {
@@ -12240,7 +12240,7 @@
         "/api/frontend/v1/tournaments/{tournament}/participants/accounts": {
             "post": {
                 "summary": "Add an Account as a Participant by its username, as an Organizer",
-                "description": "Add an Account as a Participant by its username, as an Organizer\n\nAn Organizer may add itself. In Registration, and as a late Participant\nuntil the Swiss Rounds are over; the participant limit does not hold\nOrganizers back. Unknown usernames are capped per caller, see\n[`UNKNOWN_USERNAMES`].",
+                "description": "Add an Account as a Participant by its username, as an Organizer\n\nAn Organizer may add itself. In Registration, and as a late Participant\nuntil the Swiss Rounds are over; the participant limit does not hold\nOrganizers back. Unknown usernames are capped per caller, see\n[`unknown_username`].",
                 "operationId": "add_tournament_account",
                 "parameters": [
                     {
@@ -13320,7 +13320,7 @@
         "/api/frontend/v1/tournaments/{tournament}/handover": {
             "put": {
                 "summary": "Offer a Tournament to an Account by its username, as its Owner",
-                "description": "Offer a Tournament to an Account by its username, as its Owner\n\nReplaces a pending offer. Nothing changes until the Account accepts.\nUnknown usernames are capped per caller, see [`UNKNOWN_USERNAMES`].",
+                "description": "Offer a Tournament to an Account by its username, as its Owner\n\nReplaces a pending offer. Nothing changes until the Account accepts.\nUnknown usernames are capped per caller, see [`unknown_username`].",
                 "operationId": "offer_tournament_handover",
                 "parameters": [
                     {
@@ -25226,6 +25226,36 @@
                         ]
                     },
                     {
+                        "description": "Co-organizers were named or removed, or a handover was offered, withdrawn, accepted or declined",
+                        "type": "object",
+                        "properties": {
+                            "kind": {
+                                "type": "string",
+                                "enum": [
+                                    "OrganizersChanged"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "kind"
+                        ]
+                    },
+                    {
+                        "description": "A Registered deck was registered, swapped or removed, or its list sharing changed",
+                        "type": "object",
+                        "properties": {
+                            "kind": {
+                                "type": "string",
+                                "enum": [
+                                    "DecksChanged"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "kind"
+                        ]
+                    },
+                    {
                         "description": "A Round was paired as a preview, or its preview was edited; only Organizers hear it",
                         "type": "object",
                         "properties": {
@@ -25254,6 +25284,27 @@
                                 "type": "string",
                                 "enum": [
                                     "RoundDiscarded"
+                                ]
+                            },
+                            "round": {
+                                "description": "The Round's number",
+                                "type": "integer",
+                                "format": "int16"
+                            }
+                        },
+                        "required": [
+                            "kind",
+                            "round"
+                        ]
+                    },
+                    {
+                        "description": "A change to the Participants threw the previewed Round away, since it no longer fits them; only Organizers hear it",
+                        "type": "object",
+                        "properties": {
+                            "kind": {
+                                "type": "string",
+                                "enum": [
+                                    "PreviewOutdated"
                                 ]
                             },
                             "round": {

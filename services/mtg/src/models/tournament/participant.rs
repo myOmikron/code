@@ -40,6 +40,7 @@ use crate::models::tournament::db::TournamentParticipantInsertPatch;
 use crate::models::tournament::db::TournamentParticipantModel;
 use crate::models::tournament::db::TournamentRoundModel;
 use crate::models::tournament::db::participant_key;
+use crate::models::tournament::result::ResultChange;
 use crate::models::tournament::round::RoundState;
 use crate::models::visibility::Visibility;
 use crate::tournament::record::EntrantId;
@@ -59,6 +60,14 @@ pub struct Participant {
     ///
     /// For Organizers' eyes only.
     pub unpaid: bool,
+}
+
+/// What a Drop did
+#[derive(Debug)]
+pub struct Dropped {
+    /// The Result of the running Top cut Match the Participant lost by
+    /// dropping: the other Seat wins it
+    pub forfeit: Option<ResultChange>,
 }
 
 impl Participant {
@@ -412,14 +421,14 @@ impl Tournament {
     /// Result; a running Top cut Match it loses. A previewed Round is
     /// discarded, since it seats the Participant: paired again before the Top
     /// cut started, the next in the standings takes its place. Dropping
-    /// a Participant that Dropped already changes nothing. Answers `false` if
+    /// a Participant that Dropped already changes nothing. Answers `None` if
     /// it is none of this Tournament's. The caller holds [`Self::lock_roster`].
     #[instrument(name = "Tournament::drop_participant", skip(tx, self), fields(tournament = ?self.uuid))]
     pub async fn drop_participant(
         &self,
         tx: &mut Transaction,
         participant: ParticipantUuid,
-    ) -> Result<Result<bool, DropRefusal>, rorm::Error> {
+    ) -> Result<Result<Option<Dropped>, DropRefusal>, rorm::Error> {
         let started = self.started_rounds(tx).await?;
         if let Some(refusal) = self.drop_refusal(started) {
             return Ok(Err(refusal));
@@ -434,8 +443,8 @@ impl Tournament {
             .optional()
             .await?;
         match known {
-            None => Ok(Ok(false)),
-            Some(Some(_)) => Ok(Ok(true)),
+            None => Ok(Ok(None)),
+            Some(Some(_)) => Ok(Ok(Some(Dropped { forfeit: None }))),
             Some(None) => {
                 rorm::update(&mut *tx, TournamentParticipantModel)
                     .set(
@@ -445,8 +454,8 @@ impl Tournament {
                     .condition(TournamentParticipantModel.uuid.equals(participant.0))
                     .await?;
                 self.discard_preview(tx).await?;
-                self.forfeit_top_cut_match(tx, participant).await?;
-                Ok(Ok(true))
+                let forfeit = self.forfeit_top_cut_match(tx, participant).await?;
+                Ok(Ok(Some(Dropped { forfeit })))
             }
         }
     }

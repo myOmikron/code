@@ -13,3 +13,5 @@ A Registered deck follows its deck until the first Round of the Tournament start
 - One copy of the Deck entries per Registered deck: about 100 entries for a Commander deck. Cards are named by their printings, which stay in the catalog.
 - An Organizer swapping a Registered deck after the first Round started takes a new copy at that moment and sets a new Deck checkpoint.
 - Renaming or removing the Deck checkpoint, editing the deck or deleting it leaves the Registered deck as it is.
+- A Deck change carries at most one Deck checkpoint (ADR 0001). If the latest Deck change already has one when the deck is pinned, named by the owner or set by another Tournament that pinned the same version, it keeps that name and this Tournament sets none. A Deck change of its own that changes nothing would give every Tournament its checkpoint, but it would sit on the undo stack and in the Deck history like an edit; we accept the missing checkpoint instead, since the copy, not the checkpoint, is the record.
+- A late Participant registers its own deck once, pinned at once; swapping it afterwards is up to the Organizers, like for everybody once the first Round started.

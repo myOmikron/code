@@ -121,15 +121,15 @@ pub fn blank_layout(record: &TournamentRecord) -> Layout {
         let tables = entrants.len().div_ceil(full);
         if full > 2 && remainder + 1 == full {
             sizes.push(remainder);
-        } else if record.ruleset.gives_byes() {
-            // the remainder sits out with Byes
-        } else if full > 2 && tables * (full - 1) <= entrants.len() {
-            let full_tables = entrants.len() - tables * (full - 1);
-            sizes = (0..tables)
-                .map(|table| if table < full_tables { full } else { full - 1 })
-                .collect();
-        } else {
-            sizes.push(remainder);
+        } else if !record.ruleset.gives_byes() {
+            if full > 2 && tables * (full - 1) <= entrants.len() {
+                let full_tables = entrants.len() - tables * (full - 1);
+                sizes = (0..tables)
+                    .map(|table| if table < full_tables { full } else { full - 1 })
+                    .collect();
+            } else {
+                sizes.push(remainder);
+            }
         }
     }
 

@@ -540,9 +540,6 @@ export const Api = {
         // already holds them all, nothing is fetched from Scryfall for it.
         languages: async (printing: UUID) => handleError(defaultApi.getPrintingLanguages({ printing })),
     },
-    // The cards an account is still after. Each entry carries its own two
-    // switches, so how strictly a copy or a price counts is answered
-    // server-side and the client is handed numbers rather than the whole shelf.
     // Reads are open to anybody and answer 400 for what the reader may not see,
     // so the public ones skip `handleError` like `explore`. The writes answer
     // form errors for settings the Ruleset or Table size refuse.
@@ -669,6 +666,9 @@ export const Api = {
         // Keeps the Rounds played so far; only a previewed one goes.
         cancel: async (tournament: UUID) => handleError(defaultApi.cancelTournament({ tournament })),
     },
+    // The cards an account is still after. Each entry carries its own two
+    // switches, so how strictly a copy or a price counts is answered
+    // server-side and the client is handed numbers rather than the whole shelf.
     watchLists: {
         list: async () => handleError(defaultApi.getAllWatchLists()),
         create: async (req: CreateWatchListRequest) =>

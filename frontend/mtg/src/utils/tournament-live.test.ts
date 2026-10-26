@@ -18,6 +18,14 @@ describe("topicsOf", () => {
         expect(topicsOf({ kind: "ParticipantsChanged" })).toEqual(["participants", "rounds"]);
     });
 
+    it("refetches the Tournament when its Organizers changed, since the reader's role may follow", () => {
+        expect(topicsOf({ kind: "OrganizersChanged" })).toEqual(["tournament"]);
+    });
+
+    it("refetches the Participants and the standings when a Registered deck changed", () => {
+        expect(topicsOf({ kind: "DecksChanged" })).toEqual(["participants", "standings"]);
+    });
+
     it("refetches everything on a resync", () => {
         expect(topicsOf({ kind: "Resync" })).toEqual(["tournament", "participants", "rounds", "standings"]);
     });

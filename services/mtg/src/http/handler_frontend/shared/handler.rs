@@ -28,6 +28,7 @@ use crate::http::handler_frontend::tournaments::decks::schema::RegisteredListsRe
 use crate::http::handler_frontend::tournaments::live;
 use crate::http::handler_frontend::tournaments::live::schema::EventStream;
 use crate::http::handler_frontend::tournaments::participants;
+use crate::http::handler_frontend::tournaments::participants::handler::RosterChange;
 use crate::http::handler_frontend::tournaments::participants::schema::ListParticipantsResponse;
 use crate::http::handler_frontend::tournaments::participants::schema::ParticipantResponse;
 use crate::http::handler_frontend::tournaments::participants::schema::SignUpErrors;
@@ -254,8 +255,9 @@ pub async fn sign_up_for_shared_tournament(
         tx.rollback().await?;
         return Err(unknown_link());
     };
+    let change = RosterChange::begin(&mut tx, &tournament).await?;
     let response = participants::handler::sign_up(&mut tx, &tournament, &account).await;
-    participants::handler::finish_roster_change(tx, tournament.uuid, response).await
+    change.finish(tx, &tournament, response).await
 }
 
 /// The Rounds of the Tournament a share link points at

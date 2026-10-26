@@ -23,6 +23,8 @@ use crate::http::handler_frontend::tournaments::decks::schema::RegisteredListRes
 use crate::http::handler_frontend::tournaments::decks::schema::RegisteredListsResponse;
 use crate::http::handler_frontend::tournaments::decks::schema::SetListSharingRequest;
 use crate::http::handler_frontend::tournaments::handler::denied;
+use crate::http::handler_frontend::tournaments::live::TournamentEvent;
+use crate::http::handler_frontend::tournaments::live::emit;
 use crate::models::account::Account;
 use crate::models::account::extractor::Viewer;
 use crate::models::tournament::Tournament;
@@ -35,7 +37,8 @@ use crate::models::tournament::registered_deck::list_visible;
 
 /// The logged-in Account's own Registered deck in a Tournament it plays in
 ///
-/// Says whether it may still change it itself, which ends when the first Round starts.
+/// Says whether it may still change it itself, which ends when the first Round
+/// starts; a late Participant registers its own until it is pinned.
 #[get("/{tournament}/deck")]
 pub async fn get_my_tournament_deck(
     account: Account,
@@ -53,20 +56,24 @@ pub async fn get_my_tournament_deck(
         return Err(ApiError::bad_request("Not a participant"));
     };
     let deck = tournament.registered_deck(&mut tx, participant).await?;
+    let changeable = tournament
+        .changes_own_deck(&mut tx, tournament.state, participant)
+        .await?;
 
     tx.commit().await?;
 
     Ok(ApiJson(MyRegisteredDeckResponse {
         deck: deck.map(RegisteredDeckResponse::from),
-        changeable: tournament.roster_open(),
+        changeable,
     }))
 }
 
 /// Register one of the logged-in Account's decks for a Tournament it plays in,
 /// or swap the one registered
 ///
-/// Only while the Tournament is in Registration; until the first Round starts
-/// the Registered deck follows the deck.
+/// While the Tournament is in Registration, where the Registered deck follows
+/// the deck until the first Round starts; a late Participant registers its own
+/// afterwards, pinned at once, and can no longer swap it then.
 #[put("/{tournament}/deck")]
 pub async fn register_my_tournament_deck(
     account: Account,
@@ -99,6 +106,7 @@ pub async fn register_my_tournament_deck(
     }
 
     tx.commit().await?;
+    emit(tournament.uuid, TournamentEvent::DecksChanged);
 
     Ok(ApiJson(()))
 }
@@ -131,6 +139,7 @@ pub async fn remove_my_tournament_deck(
     }
 
     tx.commit().await?;
+    emit(tournament.uuid, TournamentEvent::DecksChanged);
 
     Ok(ApiJson(()))
 }
@@ -161,6 +170,8 @@ pub async fn list_tournament_registered_decks(
 }
 
 /// The decks a Participant's Account owns, as an Organizer about to register one
+///
+/// Private decks are left out: an Organizer registers none of them.
 #[get("/{tournament}/participants/{participant}/decks")]
 pub async fn list_tournament_participant_decks(
     account: Account,
@@ -191,8 +202,9 @@ pub async fn list_tournament_participant_decks(
 
 /// Register or swap a Participant's Registered deck, as an Organizer
 ///
-/// At any time; after the first Round started the new Registered deck is
-/// pinned at once and sets its own Deck checkpoint.
+/// At any time, with any of the Participant's decks that is not private;
+/// after the first Round started the new Registered deck is pinned at once
+/// and sets its own Deck checkpoint.
 #[put("/{tournament}/participants/{participant}/deck")]
 pub async fn register_tournament_participant_deck(
     account: Account,
@@ -215,6 +227,7 @@ pub async fn register_tournament_participant_deck(
     }
 
     tx.commit().await?;
+    emit(tournament.uuid, TournamentEvent::DecksChanged);
 
     Ok(ApiJson(()))
 }
@@ -241,6 +254,7 @@ pub async fn remove_tournament_participant_deck(
     }
 
     tx.commit().await?;
+    emit(tournament.uuid, TournamentEvent::DecksChanged);
 
     Ok(ApiJson(()))
 }
@@ -275,6 +289,7 @@ pub async fn set_my_tournament_list_sharing(
     }
 
     tx.commit().await?;
+    emit(tournament.uuid, TournamentEvent::DecksChanged);
 
     Ok(ApiJson(()))
 }

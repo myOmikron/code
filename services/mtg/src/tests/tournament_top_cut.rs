@@ -211,6 +211,28 @@ fn a_drop_during_the_cut_loses_the_running_match_and_the_opponent_advances() {
 }
 
 #[test]
+fn a_drop_during_the_cut_announces_the_forfeited_result() {
+    run(async {
+        let (mut event, seeds) = after_swiss(8, "Three").await;
+        pair_and_start(&mut event).await;
+        let url = event.url("events");
+        let mut stream = event.stranger.follow(&url).await;
+
+        drop_out(&mut event, &seeds[0]).await;
+
+        let heard = stream.kinds().await;
+        assert!(
+            heard.iter().any(|kind| kind == "ResultSet"),
+            "the forfeit is announced: {heard:?}"
+        );
+        assert!(
+            heard.iter().any(|kind| kind == "ParticipantsChanged"),
+            "{heard:?}"
+        );
+    });
+}
+
+#[test]
 fn a_top_cut_match_is_played_to_its_own_best_of_and_has_a_winner() {
     run(async {
         let (mut event, _) = after_swiss(4, "One").await;

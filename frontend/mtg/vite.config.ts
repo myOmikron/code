@@ -69,7 +69,6 @@ export default defineConfig({
                 // before the app is usable; all of it is content-addressed and cached on first
                 // use by the runtime rules below.
                 globIgnores: ["data/**", "tesseract/**", "models/**", "assets/scan-worker-*.js", "push-sw.js"],
-                // Web Push (`push` and `notificationclick`), see public/push-sw.js.
                 importScripts: ["push-sw.js"],
                 // The plugin defaults this to index.html, hence turning it off by hand:
                 // it registers a route that answers every

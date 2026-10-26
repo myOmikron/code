@@ -142,6 +142,10 @@ The swap search is a local search; it need not be optimal, it needs to be determ
 
 **Decision** (#313): under the Multiplayer Addendum "a Participant in a smaller Match at most once" yields to "no repeat opponent", as the cost order above says, against canivete, which keeps people out of a second smaller Match before avoiding a rematch. It can matter: with 10 Participants at Table size 4 (4, 3, 3), the four who played the Match of four in Round 1 cannot fill both Matches of three in Round 2 without meeting again, so two Participants of Round 1's smaller Matches play another one. The engine guarantees the fewest repeat opponents first and then the fewest second smaller Matches among those, tested against every split of 10 and 11 Participants. To reach that the swap search also exchanges two Participants of one Match for two of another when no single swap helps, since moving someone out of a smaller Match often costs a repeat opponent unless a second swap makes up for it. An Organizer who prefers canivete's order edits the preview.
 
+### When Participants hear about a pairing
+
+**Decision** (#323): the "Round paired" push goes out when the Round starts, not when it is paired. Until then the pairing is a preview only Organizers see and may still edit or discard, so a push at pairing time could name a table that changes before play.
+
 ## Seats
 
 - **MTR**: in a one-on-one Swiss Match the winner of a random method chooses play or draw (MTR 2.2); in the Top cut the higher-ranked Participant chooses. **Decision**: Seat 1 is the Participant who chooses: random in Swiss Rounds, the higher seed in the Top cut. The game score is not tied to Seats.
@@ -156,6 +160,7 @@ Shared rules (Decision unless marked):
 - A Participant's opponents are a list, not a set: everyone it shared a Swiss Match with, once per Match. A dropped opponent counts with its record up to its Drop. A late Participant's Matches played start in its first Round (MTR App. C: "in those Rounds"); it gets no losses for the Rounds it missed.
 - Compare exact fractions; round only for display (two decimals, as in MTR App. C). canivete and TopDeck round to four decimals before comparing; exact comparison only differs on near ties.
 - Participants equal on everything are ordered at random from the Tournament's seed (Source: TopDeck help "tied players resolve randomly"; canivete shuffles). The standings show them on the same rank; pairing and the Top cut use the drawn order.
+- **Decision** (#308): a disputed Result counts in the standings as reported until an Organizer settles it. The standings stay complete while the Round runs, and ending the Round waits for the dispute anyway, so no Round is paired on a disputed Result.
 
 ### MTR (Source, MTR 3.1 and App. C)
 

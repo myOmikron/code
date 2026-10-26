@@ -159,6 +159,7 @@ fn every_round_started_pushes_again() {
         let mut event = Event::new("One", 0).await;
         let one = player(&mut event, PushLanguage::En).await;
         player(&mut event, PushLanguage::En).await;
+        set_swiss_rounds(&mut event, 2).await;
 
         event.play_round().await;
         event.end(1).await;
@@ -392,13 +393,20 @@ fn reaching_the_top_cut_pushes_the_participants_in_it_once() {
             event.result(&uuid, [1, 0], 0).await;
         }
         event.end(2).await;
+        let url = event.url("rounds/2/take-back");
+        event
+            .owner
+            .json(Method::POST, &url, &json!({}))
+            .await
+            .ok_json();
+        event.end(2).await;
         event.pair().await;
         event.start(3).await;
         let received = bodies(&top.endpoint);
         assert_eq!(
             received.iter().filter(|body| **body == reached).count(),
             1,
-            "the final pushes no second top cut push: {received:?}"
+            "neither taking back the first cut Round nor the final pushes a second top cut push: {received:?}"
         );
     });
 }

@@ -1,14 +1,13 @@
 
 # TournamentEventOneOf8
 
-A Participant disputed a Result
+A Round ended
 
 ## Properties
 
 Name | Type
 ------------ | -------------
 `kind` | string
-`match_uuid` | string
 `round` | number
 
 

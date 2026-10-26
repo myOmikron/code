@@ -1,7 +1,7 @@
 
 # TournamentEventOneOf4
 
-A Round started and shows to everybody
+A Round was paired as a preview, or its preview was edited; only Organizers hear it
 
 ## Properties
 

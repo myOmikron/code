@@ -19,6 +19,7 @@ import { Api } from "src/api/api";
 import { OrganizerRole } from "src/api/generated";
 import type { OrganizerResponse, TournamentResponse } from "src/api/generated";
 import { useAccount } from "src/context/account";
+import { useLiveVersion } from "src/context/tournament-live-context";
 import { isFormError } from "src/utils/error";
 import { useLoaded } from "src/utils/use-loaded";
 
@@ -44,7 +45,8 @@ export function TournamentOrganizers({ tournament, role }: TournamentOrganizersP
     const [t] = useTranslation("tournament");
     const { account } = useAccount();
     const navigate = useNavigate();
-    const organizers = useLoaded(() => Api.tournaments.organizers.list(tournament.uuid), [tournament.uuid]);
+    const version = useLiveVersion("tournament");
+    const organizers = useLoaded(() => Api.tournaments.organizers.list(tournament.uuid), [tournament.uuid, version]);
 
     const [username, setUsername] = useState("");
     const [addError, setAddError] = useState<string | null>(null);

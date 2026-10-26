@@ -19,6 +19,8 @@ type TournamentLiveProviderProps = {
     url: string;
     /** Fetches the Tournament itself again */
     onTournamentChanged: () => void;
+    /** Called with the Round whose preview a change to the Participants threw away; only Organizers hear it */
+    onPreviewOutdated?: (round: number) => void;
     /** The tabs that follow the changes */
     children: ReactNode;
 };
@@ -29,13 +31,20 @@ type TournamentLiveProviderProps = {
  * The browser reconnects a dropped stream by itself; after a reconnect everything is
  * fetched again, since events may have been missed in between.
  */
-export function TournamentLiveProvider({ url, onTournamentChanged, children }: TournamentLiveProviderProps) {
+export function TournamentLiveProvider({
+    url,
+    onTournamentChanged,
+    onPreviewOutdated,
+    children,
+}: TournamentLiveProviderProps) {
     const [versions, setVersions] = useState<LiveVersions>(START);
     const tournamentChanged = useRef(onTournamentChanged);
+    const previewOutdated = useRef(onPreviewOutdated);
 
     useEffect(() => {
         tournamentChanged.current = onTournamentChanged;
-    }, [onTournamentChanged]);
+        previewOutdated.current = onPreviewOutdated;
+    }, [onTournamentChanged, onPreviewOutdated]);
 
     useEffect(() => {
         const source = new EventSource(url);
@@ -59,7 +68,11 @@ export function TournamentLiveProvider({ url, onTournamentChanged, children }: T
             if (reconnect) changed(ALL_TOPICS);
             reconnect = true;
         };
-        source.onmessage = (message: MessageEvent<string>) => changed(topicsOf(parseTournamentEvent(message.data)));
+        source.onmessage = (message: MessageEvent<string>) => {
+            const event = parseTournamentEvent(message.data);
+            changed(topicsOf(event));
+            if (event.kind === "PreviewOutdated") previewOutdated.current?.(event.round);
+        };
         return () => source.close();
     }, [url]);
 

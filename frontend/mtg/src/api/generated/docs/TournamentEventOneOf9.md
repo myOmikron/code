@@ -1,14 +1,13 @@
 
 # TournamentEventOneOf9
 
-An Organizer set or corrected a Result
+An ended Round was taken back and runs again
 
 ## Properties
 
 Name | Type
 ------------ | -------------
 `kind` | string
-`match_uuid` | string
 `round` | number
 
 

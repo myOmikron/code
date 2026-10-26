@@ -21,6 +21,9 @@ export type RegisteredListWarning =
 /**
  * Check a Registered deck against the Tournament it is played in
  *
+ * The rules are those of the Tournament's format, whatever format the deck
+ * claims; without a Tournament format, the deck's own.
+ *
  * @param list the Registered deck's list
  * @param tournamentFormat the Tournament's format, `null` when it names none
  * @param formats every format's rules
@@ -39,7 +42,6 @@ export function registeredListWarnings(
         warnings.push({ kind: "format", format: list.format });
     }
 
-    // The Tournament's format is the one played, whatever the deck claims.
     const format = tournamentFormat ?? list.format;
     const rules = formats.find((entry) => entry.slug === format);
     const legality = checkDeck({ ...list, format }, list.cards, rules);
