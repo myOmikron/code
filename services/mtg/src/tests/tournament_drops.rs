@@ -201,7 +201,7 @@ fn a_drop_discards_the_preview() {
 #[test]
 fn dropping_twice_changes_nothing() {
     run(async {
-        let mut event = Event::new("Three", 4).await;
+        let mut event = Event::new("Three", 6).await;
         play_and_end(&mut event).await;
         let leaver = event.players[0].clone();
         drop_as_owner(&mut event, &leaver).await;
