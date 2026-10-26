@@ -18,6 +18,35 @@ pub enum TournamentPush {
         /// Where the Participant plays
         place: RoundPlace,
     },
+    /// A Participant disputed the Result of a Match
+    ResultDisputed {
+        /// The Tournament
+        tournament: TournamentUuid,
+        /// Its name
+        name: String,
+        /// The number of the Round the Match is played in
+        round: i16,
+        /// The Match's table number
+        table: i16,
+        /// Whether the push goes to a Participant of the Match or to an Organizer
+        to: DisputeRecipient,
+    },
+    /// The Participant plays in the Top cut, whose first Round just started
+    ReachedTopCut {
+        /// The Tournament
+        tournament: TournamentUuid,
+        /// Its name
+        name: String,
+    },
+}
+
+/// Who a push about a disputed Result goes to
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DisputeRecipient {
+    /// A Participant of the Match: an Organizer settles it
+    Player,
+    /// An Organizer: it is to settle it
+    Organizer,
 }
 
 /// Where a Participant plays in a Round
@@ -64,6 +93,48 @@ impl TournamentPush {
                     body,
                     url: format!("/tournaments/{tournament}/rounds"),
                     tag: format!("tournament-{tournament}-round"),
+                }
+            }
+            TournamentPush::ResultDisputed {
+                tournament,
+                name,
+                round,
+                table,
+                to,
+            } => {
+                let body = match (language, to) {
+                    (PushLanguage::De, DisputeRecipient::Player) => format!(
+                        "Euer Ergebnis an Tisch {table} in Runde {round} wurde angefochten. Ein Organisator legt es fest."
+                    ),
+                    (PushLanguage::De, DisputeRecipient::Organizer) => format!(
+                        "Das Ergebnis an Tisch {table} in Runde {round} wurde angefochten. Lege es fest."
+                    ),
+                    (PushLanguage::En, DisputeRecipient::Player) => format!(
+                        "Your result at table {table} in Round {round} was disputed. An organizer settles it."
+                    ),
+                    (PushLanguage::En, DisputeRecipient::Organizer) => format!(
+                        "The result at table {table} in Round {round} was disputed. Settle it."
+                    ),
+                };
+                let tournament = tournament.into_inner();
+                PushMessage {
+                    title: name.clone(),
+                    body,
+                    url: format!("/tournaments/{tournament}/rounds"),
+                    tag: format!("tournament-{tournament}-round-{round}-table-{table}-disputed"),
+                }
+            }
+            TournamentPush::ReachedTopCut { tournament, name } => {
+                let body = match language {
+                    PushLanguage::De => "Du hast den Top Cut erreicht. Bleib in der Nähe!",
+                    PushLanguage::En => "You reached the top cut. Stay around!",
+                };
+                let tournament = tournament.into_inner();
+                PushMessage {
+                    title: name.clone(),
+                    body: body.to_string(),
+                    url: format!("/tournaments/{tournament}/top-cut"),
+                    tag: format!("tournament-{tournament}-top-cut"),
                 }
             }
         }
@@ -121,6 +192,92 @@ mod tests {
         assert_eq!(
             message.tag,
             "tournament-00000000-0000-0000-0000-000000000007-round"
+        );
+    }
+
+    fn result_disputed(to: DisputeRecipient) -> TournamentPush {
+        TournamentPush::ResultDisputed {
+            tournament: serde_json::from_str("\"00000000-0000-0000-0000-000000000007\"")
+                .expect("a tournament uuid"),
+            name: "Friday Night Magic".to_string(),
+            round: 3,
+            table: 5,
+            to,
+        }
+    }
+
+    #[test]
+    fn a_disputed_result_tells_the_players_an_organizer_settles_it() {
+        let message = result_disputed(DisputeRecipient::Player).render(PushLanguage::De);
+        assert_eq!(message.title, "Friday Night Magic");
+        assert_eq!(
+            message.body,
+            "Euer Ergebnis an Tisch 5 in Runde 3 wurde angefochten. Ein Organisator legt es fest."
+        );
+        assert_eq!(
+            result_disputed(DisputeRecipient::Player)
+                .render(PushLanguage::En)
+                .body,
+            "Your result at table 5 in Round 3 was disputed. An organizer settles it."
+        );
+    }
+
+    #[test]
+    fn a_disputed_result_asks_the_organizers_to_settle_it() {
+        assert_eq!(
+            result_disputed(DisputeRecipient::Organizer)
+                .render(PushLanguage::De)
+                .body,
+            "Das Ergebnis an Tisch 5 in Runde 3 wurde angefochten. Lege es fest."
+        );
+        assert_eq!(
+            result_disputed(DisputeRecipient::Organizer)
+                .render(PushLanguage::En)
+                .body,
+            "The result at table 5 in Round 3 was disputed. Settle it."
+        );
+    }
+
+    #[test]
+    fn each_disputed_table_keeps_its_own_push() {
+        let message = result_disputed(DisputeRecipient::Organizer).render(PushLanguage::En);
+        assert_eq!(
+            message.url,
+            "/tournaments/00000000-0000-0000-0000-000000000007/rounds"
+        );
+        assert_eq!(
+            message.tag,
+            "tournament-00000000-0000-0000-0000-000000000007-round-3-table-5-disputed"
+        );
+    }
+
+    fn reached_top_cut() -> TournamentPush {
+        TournamentPush::ReachedTopCut {
+            tournament: serde_json::from_str("\"00000000-0000-0000-0000-000000000007\"")
+                .expect("a tournament uuid"),
+            name: "Friday Night Magic".to_string(),
+        }
+    }
+
+    #[test]
+    fn reaching_the_top_cut_tells_to_stay_around() {
+        let message = reached_top_cut().render(PushLanguage::De);
+        assert_eq!(message.title, "Friday Night Magic");
+        assert_eq!(
+            message.body,
+            "Du hast den Top Cut erreicht. Bleib in der Nähe!"
+        );
+        assert_eq!(
+            reached_top_cut().render(PushLanguage::En).body,
+            "You reached the top cut. Stay around!"
+        );
+        assert_eq!(
+            message.url,
+            "/tournaments/00000000-0000-0000-0000-000000000007/top-cut"
+        );
+        assert_eq!(
+            message.tag,
+            "tournament-00000000-0000-0000-0000-000000000007-top-cut"
         );
     }
 }

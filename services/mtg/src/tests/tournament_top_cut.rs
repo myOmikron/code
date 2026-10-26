@@ -14,7 +14,7 @@ use crate::tests::tournament_rounds::round;
 use crate::tests::tournament_rounds::seated;
 
 /// Set the Top cut and its best-of as the Owner, returning the body
-async fn set_top_cut(event: &mut Event, top_cut: Value, best_of: Value) -> Value {
+pub(super) async fn set_top_cut(event: &mut Event, top_cut: Value, best_of: Value) -> Value {
     let mut request = event.settings.clone();
     request["top_cut"] = top_cut;
     request["top_cut_best_of"] = best_of;
@@ -29,7 +29,7 @@ async fn set_top_cut(event: &mut Event, top_cut: Value, best_of: Value) -> Value
 }
 
 /// Set how many Swiss Rounds are played, returning the body
-async fn set_swiss_rounds(event: &mut Event, swiss_rounds: i64) -> Value {
+pub(super) async fn set_swiss_rounds(event: &mut Event, swiss_rounds: i64) -> Value {
     let url = event.url("swiss-rounds");
     event
         .owner
@@ -59,7 +59,7 @@ async fn take_back(event: &mut Event, number: i64) -> Value {
 }
 
 /// The Participants by their place in the standings: seed 1 first
-async fn standing_order(event: &mut Event) -> Vec<String> {
+pub(super) async fn standing_order(event: &mut Event) -> Vec<String> {
     event.standings().await["standings"]
         .as_array()
         .expect("standings")

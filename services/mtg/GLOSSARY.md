@@ -213,7 +213,7 @@ The deck a Participant with an Account plays in a Tournament. Follows the deck u
 _Avoid_: decklist, submitted deck, tournament deck
 
 **Tournament push**:
-A Web Push notification to the devices an Account subscribed, about a Tournament it takes part in, such as "Round paired" with its table and Seat. Each device is subscribed on its own; one setting turns tournament pushes off for all of an Account's devices. A Tournament entered afterwards sends none, and the tournament planner never sends mail.
+A Web Push notification to the devices an Account subscribed, about a Tournament it takes part in, such as "Round paired" with its table and Seat, a disputed Result (to the Match's other Participants and to the Organizers) or reaching the Top cut. Each device is subscribed on its own; one setting turns tournament pushes off for all of an Account's devices. A Tournament entered afterwards sends none, and the tournament planner never sends mail.
 _Avoid_: notification mail, alert, message
 
 **Tournament states**:
