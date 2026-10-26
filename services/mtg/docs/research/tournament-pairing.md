@@ -247,6 +247,15 @@ The table lists 512 in two rows; canivete starts the last row at 513. "For each 
 - If Drops leave fewer Participants than the Top cut size before it starts, **Decision** (#314): shrink to the next size that fits, Top 8 to Top 4 to a final of two; with fewer than two left there is no Top cut and the last Swiss Round finishes the Tournament. A multiplayer final shrinks to the Participants left (#315).
 - **Decision** (#314): a one-on-one Top cut Match needs a winner (MTR 2.4), so a Result with equal games is refused. A Participant who Drops during a running Top cut Round loses its Match by the games the Match needs; one who Drops between Top cut Rounds is not paired again and the other half of its pairing advances with a Bye (MTR 2.10).
 
+## Time up and extra turns
+
+Read on 2026-10-26 for #309.
+
+- **MTR** (Source, MTR 2.4 "End-of-Match Procedure"): "the player whose turn it is finishes their turn and five additional turns are played in total". A pass of the turn already announced at time up counts as the next turn. A game still going after them is a draw; no new game begins once time is called.
+- **TopDeck** (Source, MTRA 2.4 "End of Round"): "There are no additional turns." The game ends when the active player passes the turn, 20 minutes past the end of the Round, or with a winner, whichever comes first.
+- **Multiplayer Addendum** (Source, Addendum 2.4A, 2.4B): the active player finishes the turn; without a winner by then the Match is a draw. Extra turns granted by cards are still played. A "last turn time limit" ends the Match as a draw if reached (Appendix B recommends 15 minutes in Swiss Rounds).
+- **Decision**: mtg shows the extra turns at time up as information only (`Ruleset::extra_turns`: 5, 0, 0) with one sentence per Ruleset, and enforces nothing: neither the turns nor TopDeck's 20 minutes nor the Addendum's last-turn limit. The Round ends when an Organizer ends it.
+
 ## Still uncertain
 
 - TopDeck's exact Tiebreaker formulas and its handling of smaller Matches; only names, order and the 0.2 floor are published.

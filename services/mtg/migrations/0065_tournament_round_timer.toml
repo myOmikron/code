@@ -1,0 +1,47 @@
+[Migration]
+Hash = "8624872469621550260"
+Initial = false
+Dependency = 64
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "tournament"
+
+[Migration.Operations.Field]
+Name = "round_minutes"
+Type = "int16"
+Annotations = []
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 97
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "tournament_round"
+
+[Migration.Operations.Field]
+Name = "timer_seconds"
+Type = "int32"
+Annotations = []
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 349
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "tournament_round"
+
+[Migration.Operations.Field]
+Name = "timer_ends_at"
+Type = "datetime"
+Annotations = []
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 352
+Column = 9

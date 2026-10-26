@@ -87,6 +87,7 @@ docs/CreateGlobalTagRequest.md
 docs/CreateScannerSessionRequest.md
 docs/CreateTournament200Response.md
 docs/CreateWatchListRequest.md
+docs/CurrentRoundResponse.md
 docs/DeckCardCatalogResponse.md
 docs/DeckCardResponse.md
 docs/DeckChangeKind.md
@@ -218,6 +219,7 @@ docs/MpcFillCardbacksResponse.md
 docs/MpcFillImageResponse.md
 docs/MpcFillSearchRequest.md
 docs/MpcFillSearchResponse.md
+docs/MyMatchResponse.md
 docs/MyRegisteredDeckResponse.md
 docs/MyTournamentsResponse.md
 docs/NameAccountRequest.md
@@ -282,6 +284,7 @@ docs/RoundErrors.md
 docs/RoundResponse.md
 docs/RoundStage.md
 docs/RoundState.md
+docs/RoundTimerResponse.md
 docs/RoundsResponse.md
 docs/Ruleset.md
 docs/ScannerSessionDetailResponse.md

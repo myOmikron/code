@@ -58,7 +58,13 @@ function round(
  * @returns the Rounds as the service sends them
  */
 function rounds(size: number | null, list: Array<RoundResponse>): RoundsResponse {
-    return { rounds: list, swiss_rounds: 1, suggested_swiss_rounds: 1, top_cut_size: size };
+    return {
+        rounds: list,
+        swiss_rounds: 1,
+        suggested_swiss_rounds: 1,
+        top_cut_size: size,
+        server_time: "2026-11-07T18:30:00Z",
+    };
 }
 
 describe("winnerSeat", () => {

@@ -10916,6 +10916,68 @@
                 }
             }
         },
+        "/api/frontend/v1/tournaments/{tournament}/my-match": {
+            "get": {
+                "summary": "The reader's Match in the running Round of a Tournament, with the round timer",
+                "description": "The reader's Match in the running Round of a Tournament, with the round timer\n\nFor a Participant with an Account: its table, its opponents and its Seat,\nor its Bye. An Account playing in none gets the Round and timer only.",
+                "operationId": "get_my_tournament_match",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tournament",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of a [`Tournament`]",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MyMatchResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/frontend/v1/tournaments/{tournament}/matches/{match}/report": {
             "post": {
                 "summary": "Report the Result of one's own Match, as its Participant",
@@ -16326,6 +16388,38 @@
                     "name"
                 ]
             },
+            "CurrentRoundResponse": {
+                "description": "The running Round as one Participant sees it",
+                "type": "object",
+                "properties": {
+                    "my_match": {
+                        "nullable": true,
+                        "description": "The reader's Match or Bye in it; `null` if the reader is not seated in it",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MatchResponse"
+                            }
+                        ]
+                    },
+                    "number": {
+                        "description": "Its number",
+                        "type": "integer",
+                        "format": "int16"
+                    },
+                    "timer": {
+                        "nullable": true,
+                        "description": "Its round timer, `null` for a Tournament without one",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/RoundTimerResponse"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "number"
+                ]
+            },
             "DeckCardCatalogResponse": {
                 "description": "What the catalog knows about a deck card's printing",
                 "type": "object",
@@ -20290,6 +20384,41 @@
                     "results"
                 ]
             },
+            "MyMatchResponse": {
+                "description": "The reader's Match in the running Round of a Tournament",
+                "type": "object",
+                "properties": {
+                    "participant": {
+                        "nullable": true,
+                        "description": "The reader's Participant, `null` if the reader plays in none",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ParticipantUuid"
+                            }
+                        ]
+                    },
+                    "round": {
+                        "nullable": true,
+                        "description": "The running Round, `null` while none runs",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CurrentRoundResponse"
+                            }
+                        ]
+                    },
+                    "server_time": {
+                        "description": "The server's clock when it answered, to count the round timer down against",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDateTime"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "server_time"
+                ]
+            },
             "MyRegisteredDeckResponse": {
                 "description": "The reader's own Registered deck in a Tournament",
                 "type": "object",
@@ -22076,6 +22205,15 @@
                                 "$ref": "#/components/schemas/RoundState"
                             }
                         ]
+                    },
+                    "timer": {
+                        "nullable": true,
+                        "description": "Its round timer while it runs; `null` before and after, and for a Tournament without one",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/RoundTimerResponse"
+                            }
+                        ]
                     }
                 },
                 "required": [
@@ -22130,6 +22268,49 @@
                     }
                 ]
             },
+            "RoundTimerResponse": {
+                "description": "The round timer of a running Round",
+                "type": "object",
+                "properties": {
+                    "ends_at": {
+                        "description": "When time is up",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDateTime"
+                            }
+                        ]
+                    },
+                    "extra_turns": {
+                        "description": "How many turns follow the active player's turn once time is up, under the Tournament's Ruleset\n\nInformation only: 5 under MTR, 0 under the multiplayer Rulesets.",
+                        "type": "integer",
+                        "minimum": 0,
+                        "format": "uint8"
+                    },
+                    "length_seconds": {
+                        "description": "How long the Round runs, in seconds",
+                        "type": "integer",
+                        "minimum": 0,
+                        "format": "uint32"
+                    },
+                    "remaining_seconds": {
+                        "description": "Seconds left when the server answered, 0 once time is up",
+                        "type": "integer",
+                        "minimum": 0,
+                        "format": "uint32"
+                    },
+                    "time_up": {
+                        "description": "Whether time was up when the server answered",
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "ends_at",
+                    "extra_turns",
+                    "length_seconds",
+                    "remaining_seconds",
+                    "time_up"
+                ]
+            },
             "RoundsResponse": {
                 "description": "The Rounds of a Tournament the reader may see, and how many are planned",
                 "type": "object",
@@ -22140,6 +22321,14 @@
                         "items": {
                             "$ref": "#/components/schemas/RoundResponse"
                         }
+                    },
+                    "server_time": {
+                        "description": "The server's clock when it answered, to count a round timer down against",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDateTime"
+                            }
+                        ]
                     },
                     "suggested_swiss_rounds": {
                         "nullable": true,
@@ -22161,7 +22350,8 @@
                     }
                 },
                 "required": [
-                    "rounds"
+                    "rounds",
+                    "server_time"
                 ]
             },
             "Ruleset": {
@@ -24141,6 +24331,13 @@
                         "type": "integer",
                         "format": "int32"
                     },
+                    "round_minutes": {
+                        "nullable": true,
+                        "description": "How many minutes the round timer gives a Round, `null` for no timer",
+                        "type": "integer",
+                        "minimum": 0,
+                        "format": "uint16"
+                    },
                     "ruleset": {
                         "description": "The Ruleset it follows",
                         "allOf": [
@@ -24245,6 +24442,10 @@
                         "description": "The participant limit is below two",
                         "type": "boolean"
                     },
+                    "round_minutes_out_of_range": {
+                        "description": "The round timer is below a minute or above 240",
+                        "type": "boolean"
+                    },
                     "rules_locked": {
                         "description": "Table size, Ruleset or best-of changed, or an entry fee was taken up or dropped, after the first Round started",
                         "type": "boolean"
@@ -24286,6 +24487,7 @@
                     "best_of_mismatch",
                     "entry_fee_not_positive",
                     "participant_limit_too_small",
+                    "round_minutes_out_of_range",
                     "rules_locked",
                     "ruleset_mismatch",
                     "self_sign_up_needs_visibility",
@@ -24359,6 +24561,12 @@
                         "description": "How many Participants self sign-up admits at most, two or more; `null` for no limit",
                         "type": "integer",
                         "format": "int32"
+                    },
+                    "round_minutes": {
+                        "nullable": true,
+                        "description": "How many minutes the round timer gives a Round, 1 to 240; `null` for no timer",
+                        "type": "integer",
+                        "format": "int16"
                     },
                     "ruleset": {
                         "description": "The Ruleset to follow: `Mtr` at 2, `TopDeck` or `MultiplayerAddendum` at 3 to 5",

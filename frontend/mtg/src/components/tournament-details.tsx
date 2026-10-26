@@ -60,6 +60,12 @@ export function TournamentDetails({ tournament }: TournamentDetailsProps) {
                     </>
                 )}
 
+                <DescriptionTerm>{t("label.round-minutes")}</DescriptionTerm>
+                <DescriptionDetails>
+                    {tournament.round_minutes == null
+                        ? t("label.no-round-timer")
+                        : t("label.round-minutes-value", { count: tournament.round_minutes })}
+                </DescriptionDetails>
                 {tournament.table_size === 2 && (
                     <>
                         <DescriptionTerm>{t("label.top-cut")}</DescriptionTerm>

@@ -49,6 +49,7 @@ use crate::tournament::record::RoundRecord;
 use crate::tournament::record::TournamentRecord;
 use crate::tournament::reporting::ResultState;
 use crate::tournament::rounds::suggested_swiss_rounds;
+use crate::tournament::timer::RoundTimer;
 use crate::tournament::top_cut::TopCutError;
 use crate::tournament::top_cut::bracket_size;
 use crate::tournament::top_cut::cut_over;
@@ -97,6 +98,8 @@ pub struct Round {
     pub state: RoundState,
     /// Its Matches by table number, then its Byes
     pub matches: Vec<Match>,
+    /// Its round timer since it started, `None` before and for a Round without one
+    pub timer: Option<RoundTimer>,
 }
 
 /// One Match of a Round, or a Bye
@@ -278,6 +281,12 @@ impl Tournament {
             .map(|round| {
                 let mut matches = matches_of.remove(&round.uuid).unwrap_or_default();
                 matches.sort_by_key(|played| (played.table_number.is_none(), played.table_number));
+                let timer = round.timer_seconds.zip(round.timer_ends_at).map(
+                    |(length_seconds, ends_at)| RoundTimer {
+                        length_seconds: u32::try_from(length_seconds).unwrap_or(0),
+                        ends_at,
+                    },
+                );
                 for played in matches.iter_mut().filter(|played| !played.is_bye()) {
                     let seats: Vec<Uuid> = played
                         .seats
@@ -291,6 +300,7 @@ impl Tournament {
                     stage: round.stage,
                     state: round.state,
                     matches,
+                    timer,
                 };
                 meetings.add(&round_record(&round));
                 round
@@ -512,9 +522,10 @@ impl Tournament {
 
     /// Start the previewed Round `number`: from now on everybody sees it
     ///
-    /// The first Round also closes Registration and settles the number of
-    /// Swiss Rounds, if no Organizer set one, to the suggestion, and pins
-    /// every Registered deck, see [`Self::pin_registered_decks`].
+    /// Its round timer starts with it, if the Tournament has a round timer
+    /// length. The first Round also closes Registration and settles the
+    /// number of Swiss Rounds, if no Organizer set one, to the suggestion,
+    /// and pins every Registered deck, see [`Self::pin_registered_decks`].
     #[instrument(name = "Tournament::start_round", skip(tx, self), fields(tournament = ?self.uuid))]
     pub async fn start_round(
         &self,
@@ -524,11 +535,20 @@ impl Tournament {
         if self.over() {
             return Ok(Err(RoundRefusal::TournamentOver));
         }
+        let now = OffsetDateTime::now_utc();
+        let timer = self
+            .round_minutes
+            .map(|minutes| RoundTimer::start(minutes, now));
         let started = rorm::update(&mut *tx, TournamentRoundModel)
             .set(TournamentRoundModel.state, RoundState::Running)
+            .set(TournamentRoundModel.started_at, Some(now))
             .set(
-                TournamentRoundModel.started_at,
-                Some(OffsetDateTime::now_utc()),
+                TournamentRoundModel.timer_seconds,
+                timer.map(|timer| i32::try_from(timer.length_seconds).unwrap_or(i32::MAX)),
+            )
+            .set(
+                TournamentRoundModel.timer_ends_at,
+                timer.map(|timer| timer.ends_at),
             )
             .condition(rorm::and![
                 TournamentRoundModel

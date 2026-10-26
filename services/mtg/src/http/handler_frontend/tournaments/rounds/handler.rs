@@ -2,10 +2,12 @@ use std::collections::HashMap;
 
 use galvyn::core::Module;
 use galvyn::core::re_exports::axum::extract::Path;
+use galvyn::core::re_exports::time::OffsetDateTime;
 use galvyn::core::stuff::api_error::ApiError;
 use galvyn::core::stuff::api_error::ApiResult;
 use galvyn::core::stuff::api_error::FormErrors;
 use galvyn::core::stuff::api_json::ApiJson;
+use galvyn::core::stuff::schema::SchemaDateTime;
 use galvyn::delete;
 use galvyn::get;
 use galvyn::post;
@@ -18,11 +20,14 @@ use crate::http::handler_frontend::tournaments::participants::schema::Participan
 use crate::http::handler_frontend::tournaments::results::handler::announce;
 use crate::http::handler_frontend::tournaments::rounds::schema::ArrangeRoundErrors;
 use crate::http::handler_frontend::tournaments::rounds::schema::ArrangeRoundRequest;
+use crate::http::handler_frontend::tournaments::rounds::schema::CurrentRoundResponse;
 use crate::http::handler_frontend::tournaments::rounds::schema::MatchResponse;
+use crate::http::handler_frontend::tournaments::rounds::schema::MyMatchResponse;
 use crate::http::handler_frontend::tournaments::rounds::schema::PairedRoundResponse;
 use crate::http::handler_frontend::tournaments::rounds::schema::ResultResponse;
 use crate::http::handler_frontend::tournaments::rounds::schema::RoundErrors;
 use crate::http::handler_frontend::tournaments::rounds::schema::RoundResponse;
+use crate::http::handler_frontend::tournaments::rounds::schema::RoundTimerResponse;
 use crate::http::handler_frontend::tournaments::rounds::schema::RoundsResponse;
 use crate::http::handler_frontend::tournaments::rounds::schema::SeatResponse;
 use crate::http::handler_frontend::tournaments::rounds::schema::SetResultErrors;
@@ -37,8 +42,10 @@ use crate::models::account::extractor::Viewer;
 use crate::models::tournament::Tournament;
 use crate::models::tournament::TournamentUuid;
 use crate::models::tournament::participant::ParticipantUuid;
+use crate::models::tournament::round::Match;
 use crate::models::tournament::round::MatchUuid;
 use crate::models::tournament::round::ResultRefusal;
+use crate::models::tournament::round::Round;
 use crate::models::tournament::round::RoundState;
 use crate::models::tournament::round_edit::ArrangeRefusal;
 use crate::tournament::layout::Layout;
@@ -404,6 +411,7 @@ pub async fn rounds_view(
     let names = names(tx, tournament).await?;
     let rounds = tournament.rounds(tx, organizer).await?;
     let suggested_swiss_rounds = tournament.suggested_swiss_rounds(tx).await?;
+    let now = OffsetDateTime::now_utc();
     let top_cut_size = tournament.top_cut_size(tx).await?;
     Ok(RoundsResponse {
         rounds: rounds
@@ -412,51 +420,127 @@ pub async fn rounds_view(
                 number: round.number,
                 stage: round.stage,
                 state: round.state,
+                timer: running_timer(tournament, &round, now),
                 matches: round
                     .matches
                     .into_iter()
-                    .map(|played| {
-                        let result = played.games_drawn.and_then(|games_drawn| {
-                            let games_won = played
-                                .seats
-                                .iter()
-                                .map(|seat| seat.games_won)
-                                .collect::<Option<Vec<i16>>>()?;
-                            Some(ResultResponse {
-                                games_won,
-                                games_drawn,
-                                state: played.result_state?,
-                                reported_by: played.reported_by,
-                                disputed_by: played.disputed_by,
-                            })
-                        });
-                        MatchResponse {
-                            uuid: played.uuid,
-                            table_number: played.table_number,
-                            seats: played
-                                .seats
-                                .into_iter()
-                                .map(|seat| {
-                                    let (name, guest) = name_of(&names, seat.participant);
-                                    SeatResponse {
-                                        participant: seat.participant,
-                                        name,
-                                        guest,
-                                        seat: seat.seat,
-                                    }
-                                })
-                                .collect(),
-                            result,
-                            rematch: played.rematch,
-                        }
-                    })
+                    .map(|played| match_response(&names, played))
                     .collect(),
             })
             .collect(),
         swiss_rounds: tournament.swiss_rounds,
         suggested_swiss_rounds,
+        server_time: SchemaDateTime(now),
         top_cut_size,
     })
+}
+
+/// The reader's Match in the running Round of a Tournament, with the round timer
+///
+/// For a Participant with an Account: its table, its opponents and its Seat,
+/// or its Bye. An Account playing in none gets the Round and timer only.
+#[get("/{tournament}/my-match")]
+pub async fn get_my_tournament_match(
+    account: Account,
+    Path(tournament): Path<TournamentUuid>,
+) -> ApiResult<ApiJson<MyMatchResponse>> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    let Some(tournament) = Tournament::get_visible(&mut tx, tournament, Some(account.uuid)).await?
+    else {
+        tx.rollback().await?;
+        return Err(denied());
+    };
+    let participant = tournament.participant_of(&mut tx, account.uuid).await?;
+    let names = names(&mut tx, &tournament).await?;
+    let running = tournament
+        .rounds(&mut tx, false)
+        .await?
+        .into_iter()
+        .find(|round| round.state == RoundState::Running);
+
+    tx.commit().await?;
+
+    let now = OffsetDateTime::now_utc();
+    let round = running.map(|round| CurrentRoundResponse {
+        number: round.number,
+        timer: running_timer(&tournament, &round, now),
+        my_match: participant.and_then(|participant| {
+            round
+                .matches
+                .into_iter()
+                .find(|played| {
+                    played
+                        .seats
+                        .iter()
+                        .any(|seat| seat.participant == participant)
+                })
+                .map(|played| match_response(&names, played))
+        }),
+    });
+    Ok(ApiJson(MyMatchResponse {
+        participant,
+        round,
+        server_time: SchemaDateTime(now),
+    }))
+}
+
+/// The round timer of `round` while it runs, read at `now`
+fn running_timer(
+    tournament: &Tournament,
+    round: &Round,
+    now: OffsetDateTime,
+) -> Option<RoundTimerResponse> {
+    if round.state != RoundState::Running {
+        return None;
+    }
+    round.timer.map(|timer| RoundTimerResponse {
+        length_seconds: timer.length_seconds,
+        ends_at: SchemaDateTime(timer.ends_at),
+        remaining_seconds: timer.remaining_seconds(now),
+        time_up: timer.time_up(now),
+        extra_turns: tournament.ruleset.extra_turns(),
+    })
+}
+
+/// A Match or Bye with its Participants' names
+fn match_response(
+    names: &HashMap<ParticipantUuid, (String, bool)>,
+    played: Match,
+) -> MatchResponse {
+    let result = played.games_drawn.and_then(|games_drawn| {
+        let games_won = played
+            .seats
+            .iter()
+            .map(|seat| seat.games_won)
+            .collect::<Option<Vec<i16>>>()?;
+        Some(ResultResponse {
+            games_won,
+            games_drawn,
+            state: played.result_state?,
+            reported_by: played.reported_by,
+            disputed_by: played.disputed_by,
+        })
+    });
+    MatchResponse {
+        uuid: played.uuid,
+        table_number: played.table_number,
+        seats: played
+            .seats
+            .into_iter()
+            .map(|seat| {
+                let (name, guest) = name_of(names, seat.participant);
+                SeatResponse {
+                    participant: seat.participant,
+                    name,
+                    guest,
+                    seat: seat.seat,
+                }
+            })
+            .collect(),
+        result,
+        rematch: played.rematch,
+    }
 }
 
 /// The standings of `tournament`

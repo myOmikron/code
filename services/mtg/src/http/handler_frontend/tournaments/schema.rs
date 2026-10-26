@@ -46,6 +46,8 @@ pub struct TournamentSettingsRequest {
     pub self_sign_up: bool,
     /// How many Games a one-on-one Match is played to: required at Table size 2, `null` above
     pub best_of: Option<BestOf>,
+    /// How many minutes the round timer gives a Round, 1 to 240; `null` for no timer
+    pub round_minutes: Option<i16>,
     /// The Top cut after the Swiss Rounds, at Table size 2 only; `null` for none
     pub top_cut: Option<TopCut>,
     /// How many Games a Top cut Match is played to: required with a Top cut, `null` without
@@ -100,6 +102,7 @@ impl From<TournamentSettingsRequest> for RawTournamentSettings {
             participant_limit: value.participant_limit,
             self_sign_up: value.self_sign_up,
             best_of: value.best_of,
+            round_minutes: value.round_minutes,
             top_cut: value.top_cut,
             top_cut_best_of: value.top_cut_best_of,
             entry_fee: value.entry_fee.map(EntryFee::from),
@@ -126,6 +129,8 @@ pub struct TournamentSettingsErrors {
     pub entry_fee_not_positive: bool,
     /// The entry fee's currency is not three capital letters
     pub unknown_currency: bool,
+    /// The round timer is below a minute or above 240
+    pub round_minutes_out_of_range: bool,
     /// Table size, Ruleset or best-of changed, or an entry fee was taken up
     /// or dropped, after the first Round started
     pub rules_locked: bool,
@@ -148,6 +153,7 @@ impl From<SettingsRefusal> for TournamentSettingsErrors {
             best_of_mismatch: value.best_of_mismatch,
             entry_fee_not_positive: value.entry_fee_not_positive,
             unknown_currency: value.unknown_currency,
+            round_minutes_out_of_range: value.round_minutes_out_of_range,
             rules_locked: false,
             top_cut_mismatch: value.top_cut_mismatch,
             top_cut_best_of_mismatch: value.top_cut_best_of_mismatch,
@@ -185,6 +191,8 @@ pub struct TournamentResponse {
     pub self_sign_up: bool,
     /// How many Games a one-on-one Match is played to, `null` for a multiplayer one
     pub best_of: Option<BestOf>,
+    /// How many minutes the round timer gives a Round, `null` for no timer
+    pub round_minutes: Option<u16>,
     /// The Top cut after the Swiss Rounds, `null` for none
     pub top_cut: Option<TopCut>,
     /// How many Games a Top cut Match is played to, `null` without a Top cut
@@ -222,6 +230,7 @@ impl TournamentResponse {
             participant_limit: tournament.participant_limit,
             self_sign_up: tournament.self_sign_up,
             best_of: tournament.best_of,
+            round_minutes: tournament.round_minutes,
             top_cut: tournament.top_cut,
             top_cut_best_of: tournament.top_cut_best_of,
             entry_fee: tournament.entry_fee.map(EntryFeeSchema::from),

@@ -15,6 +15,11 @@ pub fn public_routes() -> GalvynRouter {
         .handler(handler::get_tournament_standings)
 }
 
+/// What any logged-in Account may do
+pub fn account_routes() -> GalvynRouter {
+    GalvynRouter::new().handler(handler::get_my_tournament_match)
+}
+
 /// What the Organizers of a Tournament may do
 pub fn organizer_routes() -> GalvynRouter {
     GalvynRouter::new()

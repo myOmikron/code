@@ -1,0 +1,60 @@
+import { describe, expect, it } from "vitest";
+import { clockSkew, formatClock, readClock } from "src/utils/round-clock";
+
+/** A fixed instant to measure everything against */
+const NOW = Date.parse("2026-11-07T18:30:00.000Z");
+
+/**
+ * The end of a round timer `seconds` after {@link NOW}
+ *
+ * @param seconds how far out time is up
+ *
+ * @returns the end as the API sends it
+ */
+function endsIn(seconds: number): string {
+    return new Date(NOW + seconds * 1000).toISOString();
+}
+
+describe("readClock", () => {
+    it("counts down to the end", () => {
+        expect(readClock(endsIn(600), NOW, 0)).toEqual({ seconds: 600, timeUp: false });
+        expect(readClock(endsIn(600), NOW + 60_000, 0)).toEqual({ seconds: 540, timeUp: false });
+    });
+
+    it("counts a started second as a whole one until time is up", () => {
+        expect(readClock(endsIn(1), NOW + 500, 0)).toEqual({ seconds: 1, timeUp: false });
+    });
+
+    it("stops at zero once time is up", () => {
+        expect(readClock(endsIn(600), NOW + 600_000, 0)).toEqual({ seconds: 0, timeUp: true });
+        expect(readClock(endsIn(600), NOW + 900_000, 0)).toEqual({ seconds: 0, timeUp: true });
+    });
+
+    it("corrects for a device whose own clock is wrong", () => {
+        // This phone believes it is five minutes later than it is.
+        expect(readClock(endsIn(600), NOW + 300_000, 300_000)).toEqual({ seconds: 600, timeUp: false });
+    });
+});
+
+describe("formatClock", () => {
+    it("writes minutes and seconds", () => {
+        expect(formatClock(724)).toBe("12:04");
+        expect(formatClock(59)).toBe("0:59");
+        expect(formatClock(0)).toBe("0:00");
+    });
+
+    it("adds hours only once there is one", () => {
+        expect(formatClock(3599)).toBe("59:59");
+        expect(formatClock(3750)).toBe("1:02:30");
+    });
+});
+
+describe("clockSkew", () => {
+    it("is zero for a device that agrees with the server", () => {
+        expect(clockSkew(new Date(NOW).toISOString(), NOW)).toBe(0);
+    });
+
+    it("is positive for a device running ahead", () => {
+        expect(clockSkew(new Date(NOW).toISOString(), NOW + 4000)).toBe(4000);
+    });
+});

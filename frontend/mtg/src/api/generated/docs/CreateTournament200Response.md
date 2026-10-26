@@ -15,6 +15,7 @@ Name | Type
 `organizer_role` | [OrganizerRole](OrganizerRole.md)
 `owner` | string
 `participant_limit` | number
+`round_minutes` | number
 `ruleset` | [Ruleset](Ruleset.md)
 `self_sign_up` | boolean
 `share_token` | string

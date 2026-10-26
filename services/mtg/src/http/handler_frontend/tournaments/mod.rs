@@ -52,6 +52,7 @@ fn account_routes() -> GalvynRouter {
         .merge(decks::account_routes())
         .merge(organizers::account_routes())
         .merge(participants::account_routes())
+        .merge(rounds::account_routes())
         .merge(results::account_routes())
 }
 

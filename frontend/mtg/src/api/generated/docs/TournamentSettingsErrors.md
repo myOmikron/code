@@ -10,6 +10,7 @@ Name | Type
 `best_of_mismatch` | boolean
 `entry_fee_not_positive` | boolean
 `participant_limit_too_small` | boolean
+`round_minutes_out_of_range` | boolean
 `rules_locked` | boolean
 `ruleset_mismatch` | boolean
 `self_sign_up_needs_visibility` | boolean

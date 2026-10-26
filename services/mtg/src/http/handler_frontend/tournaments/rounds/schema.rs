@@ -1,5 +1,6 @@
 use galvyn::core::re_exports::schemars;
 use galvyn::core::re_exports::schemars::JsonSchema;
+use galvyn::core::stuff::schema::SchemaDateTime;
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -22,6 +23,8 @@ pub struct RoundsResponse {
     /// How many Swiss Rounds mtg suggests for the Participants there are now;
     /// `null` for a Ruleset mtg does not pair yet
     pub suggested_swiss_rounds: Option<i16>,
+    /// The server's clock when it answered, to count a round timer down against
+    pub server_time: SchemaDateTime,
     /// How many Participants the Top cut takes, `null` without one
     ///
     /// Once it started the size it started with; before, the size the
@@ -40,6 +43,47 @@ pub struct RoundResponse {
     pub state: RoundState,
     /// Its Matches by table number, then its Byes
     pub matches: Vec<MatchResponse>,
+    /// Its round timer while it runs; `null` before and after, and for a Tournament without one
+    pub timer: Option<RoundTimerResponse>,
+}
+
+/// The round timer of a running Round
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct RoundTimerResponse {
+    /// How long the Round runs, in seconds
+    pub length_seconds: u32,
+    /// When time is up
+    pub ends_at: SchemaDateTime,
+    /// Seconds left when the server answered, 0 once time is up
+    pub remaining_seconds: u32,
+    /// Whether time was up when the server answered
+    pub time_up: bool,
+    /// How many turns follow the active player's turn once time is up, under the Tournament's Ruleset
+    ///
+    /// Information only: 5 under MTR, 0 under the multiplayer Rulesets.
+    pub extra_turns: u8,
+}
+
+/// The reader's Match in the running Round of a Tournament
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct MyMatchResponse {
+    /// The reader's Participant, `null` if the reader plays in none
+    pub participant: Option<ParticipantUuid>,
+    /// The running Round, `null` while none runs
+    pub round: Option<CurrentRoundResponse>,
+    /// The server's clock when it answered, to count the round timer down against
+    pub server_time: SchemaDateTime,
+}
+
+/// The running Round as one Participant sees it
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct CurrentRoundResponse {
+    /// Its number
+    pub number: i16,
+    /// Its round timer, `null` for a Tournament without one
+    pub timer: Option<RoundTimerResponse>,
+    /// The reader's Match or Bye in it; `null` if the reader is not seated in it
+    pub my_match: Option<MatchResponse>,
 }
 
 /// One Match, or a Bye
