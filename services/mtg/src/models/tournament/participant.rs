@@ -55,12 +55,21 @@ pub struct Participant {
     pub late_from_round: Option<i16>,
     /// The last Round started before it Dropped, `None` while it plays on
     pub dropped_after_round: Option<i16>,
+    /// Whether it still owes the entry fee, see [`Tournament::owes_entry_fee`]
+    ///
+    /// For Organizers' eyes only.
+    pub unpaid: bool,
 }
 
 impl Participant {
     /// Whether the next Round pairs it, as far as the roster goes
     pub fn plays_on(&self) -> bool {
         self.dropped_after_round.is_none()
+    }
+
+    /// Whether the next Round pairs it: it plays on and owes no entry fee
+    pub fn pairable(&self) -> bool {
+        self.plays_on() && !self.unpaid
     }
 }
 
@@ -122,6 +131,15 @@ pub enum DropRefusal {
     TournamentOver,
 }
 
+/// Why an Organizer may not mark a Participant paid or unpaid
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PaidRefusal {
+    /// The Tournament has no entry fee, so nobody is unpaid
+    NoEntryFee,
+    /// The Tournament is Finished or Cancelled
+    TournamentOver,
+}
+
 /// The first Round a Participant added after `started_rounds` Rounds started plays
 ///
 /// `None` while no Round started: Round 1 pairs everybody, nobody is late.
@@ -174,6 +192,25 @@ impl Tournament {
             .participant_limit
             .is_some_and(|limit| participants >= u64::try_from(limit).unwrap_or(0));
         full.then_some(SignUpRefusal::Full)
+    }
+
+    /// Whether a Participant `paid` or not owes the entry fee
+    ///
+    /// Without an entry fee nobody does; with one, everybody until an
+    /// Organizer marks it paid.
+    pub fn owes_entry_fee(&self, paid: bool) -> bool {
+        self.entry_fee.is_some() && !paid
+    }
+
+    /// Why Organizers may not mark Participants paid or unpaid, `None` if they may
+    pub fn paid_refusal(&self) -> Option<PaidRefusal> {
+        if self.entry_fee.is_none() {
+            Some(PaidRefusal::NoEntryFee)
+        } else if self.over() {
+            Some(PaidRefusal::TournamentOver)
+        } else {
+            None
+        }
     }
 
     /// Lock the Tournament's row until the transaction ends, before a roster write
@@ -241,6 +278,7 @@ impl Tournament {
                     player,
                     late_from_round: row.late_from_round,
                     dropped_after_round: row.dropped_after_round,
+                    unpaid: self.owes_entry_fee(row.paid),
                 }
             })
             .collect())
@@ -298,6 +336,7 @@ impl Tournament {
                 account: Some(ForeignModelByField(account.into_inner())),
                 guest_name: None,
                 late_from_round,
+                paid: false,
             })
             .await?;
         self.discard_preview(tx).await?;
@@ -324,6 +363,7 @@ impl Tournament {
                 account: None,
                 guest_name: Some(name),
                 late_from_round,
+                paid: false,
             })
             .await?;
         self.discard_preview(tx).await?;
@@ -412,6 +452,45 @@ impl Tournament {
     }
 }
 
+impl Tournament {
+    /// Mark `participant` paid or unpaid, `false` if it is none of this Tournament
+    ///
+    /// Who pays changes who is pairable, so a previewed Round is discarded
+    /// when the flag changes. The caller holds [`Self::lock_roster`].
+    #[instrument(name = "Tournament::mark_paid", skip(tx, self), fields(tournament = ?self.uuid))]
+    pub async fn mark_paid(
+        &self,
+        tx: &mut Transaction,
+        participant: ParticipantUuid,
+        paid: bool,
+    ) -> Result<Result<bool, PaidRefusal>, rorm::Error> {
+        if let Some(refusal) = self.paid_refusal() {
+            return Ok(Err(refusal));
+        }
+        let known = rorm::query(&mut *tx, TournamentParticipantModel.paid)
+            .condition(rorm::and![
+                TournamentParticipantModel.uuid.equals(participant.0),
+                TournamentParticipantModel
+                    .tournament
+                    .equals(self.uuid.into_inner()),
+            ])
+            .optional()
+            .await?;
+        match known {
+            None => Ok(Ok(false)),
+            Some(was) if was == paid => Ok(Ok(true)),
+            Some(_) => {
+                rorm::update(&mut *tx, TournamentParticipantModel)
+                    .set(TournamentParticipantModel.paid, paid)
+                    .condition(TournamentParticipantModel.uuid.equals(participant.0))
+                    .await?;
+                self.discard_preview(tx).await?;
+                Ok(Ok(true))
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use galvyn::core::re_exports::time::OffsetDateTime;
@@ -419,12 +498,17 @@ mod tests {
     use uuid::Uuid;
 
     use super::DropRefusal;
+    use super::PaidRefusal;
+    use super::Participant;
+    use super::ParticipantUuid;
+    use super::Player;
     use super::SignUpRefusal;
     use super::late_from_round;
     use crate::models::account::AccountUuid;
     use crate::models::tournament::Tournament;
     use crate::models::tournament::TournamentState;
     use crate::models::tournament::TournamentUuid;
+    use crate::models::tournament::settings::EntryFee;
     use crate::models::visibility::Visibility;
     use crate::tournament::ruleset::Ruleset;
     use crate::tournament::ruleset::TableSize;
@@ -446,11 +530,88 @@ mod tests {
             participant_limit: Some(8),
             self_sign_up: true,
             best_of: None,
+            entry_fee: None,
             swiss_rounds: None,
             top_cut: None,
             top_cut_best_of: None,
             state: TournamentState::Registration,
             created_at: OffsetDateTime::UNIX_EPOCH,
+        }
+    }
+
+    /// [`open_tournament`] with an entry fee of 5 euros
+    fn paying_tournament() -> Tournament {
+        Tournament {
+            entry_fee: Some(EntryFee {
+                amount: 500,
+                currency: MaxStr::new("EUR".to_string()).expect("short"),
+            }),
+            ..open_tournament()
+        }
+    }
+
+    /// A Guest who plays on, `unpaid` or not
+    fn guest(unpaid: bool) -> Participant {
+        Participant {
+            uuid: ParticipantUuid(Uuid::nil()),
+            player: Player::Guest {
+                name: MaxStr::new("Guest".to_string()).expect("short"),
+            },
+            late_from_round: None,
+            dropped_after_round: None,
+            unpaid,
+        }
+    }
+
+    #[test]
+    fn without_an_entry_fee_nobody_is_unpaid() {
+        assert!(!open_tournament().owes_entry_fee(false));
+        assert!(!open_tournament().owes_entry_fee(true));
+    }
+
+    #[test]
+    fn with_an_entry_fee_a_participant_is_unpaid_until_marked_paid() {
+        assert!(paying_tournament().owes_entry_fee(false));
+        assert!(!paying_tournament().owes_entry_fee(true));
+    }
+
+    #[test]
+    fn the_next_round_pairs_neither_the_unpaid_nor_the_dropped() {
+        assert!(guest(false).pairable());
+        assert!(!guest(true).pairable());
+        let dropped = Participant {
+            dropped_after_round: Some(1),
+            ..guest(false)
+        };
+        assert!(!dropped.pairable());
+    }
+
+    #[test]
+    fn only_a_tournament_with_an_entry_fee_takes_payments() {
+        assert_eq!(
+            open_tournament().paid_refusal(),
+            Some(PaidRefusal::NoEntryFee)
+        );
+        assert_eq!(paying_tournament().paid_refusal(), None);
+    }
+
+    #[test]
+    fn payments_are_taken_until_the_tournament_is_over() {
+        for (state, refusal) in [
+            (TournamentState::Registration, None),
+            (TournamentState::Swiss, None),
+            (TournamentState::TopCut, None),
+            (TournamentState::Finished, Some(PaidRefusal::TournamentOver)),
+            (
+                TournamentState::Cancelled,
+                Some(PaidRefusal::TournamentOver),
+            ),
+        ] {
+            let tournament = Tournament {
+                state,
+                ..paying_tournament()
+            };
+            assert_eq!(tournament.paid_refusal(), refusal, "{state:?}");
         }
     }
 

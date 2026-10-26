@@ -11875,6 +11875,91 @@
                 }
             }
         },
+        "/api/frontend/v1/tournaments/{tournament}/participants/{participant}/paid": {
+            "put": {
+                "summary": "Mark a Participant paid or unpaid, as an Organizer",
+                "description": "Mark a Participant paid or unpaid, as an Organizer\n\nOnly in a Tournament with an entry fee, until it is over. An unpaid\nParticipant is left out of the pairing; changing the flag discards a\npreviewed Round.",
+                "operationId": "set_tournament_participant_paid",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tournament",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/TournamentUuid"
+                        },
+                        "style": "simple"
+                    },
+                    {
+                        "in": "path",
+                        "name": "participant",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/ParticipantUuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SetPaidRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "nullable": true
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/FormErrorResponse_for_SetPaidErrors"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/frontend/v1/tournaments/{tournament}/player-search": {
             "get": {
                 "summary": "Accounts whose username starts with what an Organizer typed, to add as Participants",
@@ -17649,6 +17734,29 @@
                     "tournament_over"
                 ]
             },
+            "EntryFeeSchema": {
+                "description": "What playing in a Tournament costs",
+                "type": "object",
+                "properties": {
+                    "amount": {
+                        "description": "The amount in the currency's smallest unit, cents for euros; above zero",
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "currency": {
+                        "description": "The ISO 4217 code of the currency, three capital letters like `EUR`",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_3"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "amount",
+                    "currency"
+                ]
+            },
             "EntrySort": {
                 "description": "What a collection can be ordered by",
                 "oneOf": [
@@ -18853,6 +18961,32 @@
                     "result"
                 ]
             },
+            "FormErrorResponse_for_SetPaidErrors": {
+                "description": "The response that is sent in a case of an error the caller should present his user",
+                "type": "object",
+                "properties": {
+                    "error": {
+                        "description": "The actual error struct",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SetPaidErrors"
+                            }
+                        ]
+                    },
+                    "result": {
+                        "description": "A constant `\"Err\"` used to differentiate this schema from any other \"Ok\" schema",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ErrorConstant"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "error",
+                    "result"
+                ]
+            },
             "FormErrorResponse_for_SetResultErrors": {
                 "description": "The response that is sent in a case of an error the caller should present his user",
                 "type": "object",
@@ -19940,6 +20074,10 @@
                 "type": "string",
                 "maxLength": 255
             },
+            "MaxStr_3": {
+                "type": "string",
+                "maxLength": 3
+            },
             "MaxStr_32": {
                 "type": "string",
                 "maxLength": 32
@@ -20541,6 +20679,11 @@
                     "name": {
                         "description": "The Account's username as it is now, or the Guest's name",
                         "type": "string"
+                    },
+                    "unpaid": {
+                        "nullable": true,
+                        "description": "Whether it still owes the entry fee, which keeps it out of the pairing\n\nOnly Organizers learn it, `null` for every other reader. Always `false` while the Tournament has no entry fee.",
+                        "type": "boolean"
                     },
                     "uuid": {
                         "description": "Primary key",
@@ -22658,6 +22801,37 @@
                     "visibility"
                 ]
             },
+            "SetPaidErrors": {
+                "description": "Why a Participant could not be marked paid or unpaid",
+                "type": "object",
+                "properties": {
+                    "no_entry_fee": {
+                        "description": "The Tournament has no entry fee, so nobody is unpaid",
+                        "type": "boolean"
+                    },
+                    "tournament_over": {
+                        "description": "The Tournament is Finished or Cancelled",
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "no_entry_fee",
+                    "tournament_over"
+                ]
+            },
+            "SetPaidRequest": {
+                "description": "Whether a Participant paid the entry fee",
+                "type": "object",
+                "properties": {
+                    "paid": {
+                        "description": "`true` once it paid, `false` to take that back",
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "paid"
+                ]
+            },
             "SetResultErrors": {
                 "description": "Why a Result could not be set",
                 "type": "object",
@@ -23912,6 +24086,15 @@
                             }
                         ]
                     },
+                    "entry_fee": {
+                        "nullable": true,
+                        "description": "What playing costs, `null` for nothing",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/EntryFeeSchema"
+                            }
+                        ]
+                    },
                     "format": {
                         "nullable": true,
                         "description": "The format played, `null` for any",
@@ -24054,12 +24237,16 @@
                         "description": "Best-of is missing at Table size 2 or given above it",
                         "type": "boolean"
                     },
+                    "entry_fee_not_positive": {
+                        "description": "The entry fee is zero or less",
+                        "type": "boolean"
+                    },
                     "participant_limit_too_small": {
                         "description": "The participant limit is below two",
                         "type": "boolean"
                     },
                     "rules_locked": {
-                        "description": "Table size, Ruleset or best-of changed after the first Round started",
+                        "description": "Table size, Ruleset or best-of changed, or an entry fee was taken up or dropped, after the first Round started",
                         "type": "boolean"
                     },
                     "ruleset_mismatch": {
@@ -24086,6 +24273,10 @@
                         "description": "The Top cut is not played at the Table size",
                         "type": "boolean"
                     },
+                    "unknown_currency": {
+                        "description": "The entry fee's currency is not three capital letters",
+                        "type": "boolean"
+                    },
                     "unknown_format": {
                         "description": "The format is not one a deck can be built for",
                         "type": "boolean"
@@ -24093,6 +24284,7 @@
                 },
                 "required": [
                     "best_of_mismatch",
+                    "entry_fee_not_positive",
                     "participant_limit_too_small",
                     "rules_locked",
                     "ruleset_mismatch",
@@ -24101,6 +24293,7 @@
                     "top_cut_best_of_mismatch",
                     "top_cut_locked",
                     "top_cut_mismatch",
+                    "unknown_currency",
                     "unknown_format"
                 ]
             },
@@ -24123,6 +24316,15 @@
                         "allOf": [
                             {
                                 "$ref": "#/components/schemas/MaxStr_4096"
+                            }
+                        ]
+                    },
+                    "entry_fee": {
+                        "nullable": true,
+                        "description": "What playing costs, `null` or left out for nothing\n\nWith a fee every Participant starts unpaid and is only paired once an Organizer marked it paid. Taking a fee up or dropping it is refused after the first Round started; amount and currency stay editable.",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/EntryFeeSchema"
                             }
                         ]
                     },

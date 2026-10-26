@@ -79,6 +79,14 @@ pub struct TournamentModel {
     /// How many Games a one-on-one Match is played to; `None` for a multiplayer Tournament
     pub best_of: Option<BestOf>,
 
+    /// The entry fee in the currency's smallest unit, `None` for no fee
+    ///
+    /// Set exactly when [`Self::entry_fee_currency`] is.
+    pub entry_fee_amount: Option<i32>,
+
+    /// The ISO 4217 code of the entry fee's currency, `None` for no fee
+    pub entry_fee_currency: Option<MaxStr<3>>,
+
     /// How many Swiss Rounds are played
     ///
     /// `None` until an Organizer sets it or the first Round starts, which
@@ -136,6 +144,10 @@ pub struct TournamentInsertPatch {
     pub top_cut: Option<TopCut>,
     /// How many Games a Top cut Match is played to
     pub top_cut_best_of: Option<BestOf>,
+    /// The entry fee in the currency's smallest unit
+    pub entry_fee_amount: Option<i32>,
+    /// The ISO 4217 code of the entry fee's currency
+    pub entry_fee_currency: Option<MaxStr<3>>,
     /// Where the Tournament stands
     pub state: TournamentState,
 }
@@ -171,6 +183,13 @@ pub struct TournamentParticipantModel {
     /// The last Round started before the Participant Dropped, `None` while it plays on
     pub dropped_after_round: Option<i16>,
 
+    /// Whether an Organizer marked the entry fee paid
+    ///
+    /// Only means something while the Tournament has an entry fee: without
+    /// one nobody is unpaid, whatever this says.
+    #[rorm(default = false)]
+    pub paid: bool,
+
     /// The point in time the Participant was added or signed up
     #[rorm(auto_create_time)]
     pub created_at: OffsetDateTime,
@@ -190,6 +209,8 @@ pub struct TournamentParticipantInsertPatch {
     pub guest_name: Option<MaxStr<64>>,
     /// The first Round a late Participant plays
     pub late_from_round: Option<i16>,
+    /// Whether the entry fee is paid
+    pub paid: bool,
 }
 
 /// The primary key of an Account's Participant row in a Tournament

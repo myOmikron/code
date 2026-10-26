@@ -581,6 +581,11 @@ export const Api = {
             drop: async (tournament: UUID, participant: UUID) =>
                 handleError(defaultApi.dropTournamentParticipant({ tournament, participant })),
             dropOut: async (tournament: UUID) => handleError(defaultApi.dropOutOfTournament({ tournament })),
+            // Only with an entry fee: the unpaid are left out of the pairing.
+            setPaid: async (tournament: UUID, participant: UUID, paid: boolean) =>
+                handleError(
+                    defaultApi.setTournamentParticipantPaid({ tournament, participant, SetPaidRequest: { paid } }),
+                ),
         },
         decks: {
             mine: async (tournament: UUID) => handleError(defaultApi.getMyTournamentDeck({ tournament })),

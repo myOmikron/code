@@ -169,6 +169,7 @@ All URIs are relative to *http://localhost*
 | [**setDeckFolder**](DefaultApi.md#setdeckfolderoperation) | **POST** /api/frontend/v1/decks/{deck}/folder | File a deck into one of the account\&#39;s folders |
 | [**setDeckRuleZero**](DefaultApi.md#setdeckrulezerooperation) | **PUT** /api/frontend/v1/decks/{deck}/rule-zero | Record the house rules the deck is played under, colours included |
 | [**setTournamentMatchResult**](DefaultApi.md#settournamentmatchresult) | **PUT** /api/frontend/v1/tournaments/{tournament}/matches/{match}/result | Set or correct the Result of a Match, as an Organizer |
+| [**setTournamentParticipantPaid**](DefaultApi.md#settournamentparticipantpaid) | **PUT** /api/frontend/v1/tournaments/{tournament}/participants/{participant}/paid | Mark a Participant paid or unpaid, as an Organizer |
 | [**setTournamentSwissRounds**](DefaultApi.md#settournamentswissrounds) | **PUT** /api/frontend/v1/tournaments/{tournament}/swiss-rounds | Set how many Swiss Rounds are played, as an Organizer |
 | [**setVisibilityCollection**](DefaultApi.md#setvisibilitycollection) | **POST** /api/frontend/v1/collections/{collection} | Change who may see a collection |
 | [**setVisibilityDeck**](DefaultApi.md#setvisibilitydeck) | **POST** /api/frontend/v1/decks/{deck} | Change who may see a deck |
@@ -11922,6 +11923,82 @@ example().catch(console.error);
 ### Return type
 
 [**FormErrorResponseForSetResultErrors**](FormErrorResponseForSetResultErrors.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## setTournamentParticipantPaid
+
+> FormErrorResponseForSetPaidErrors setTournamentParticipantPaid(tournament, participant, SetPaidRequest)
+
+Mark a Participant paid or unpaid, as an Organizer
+
+Mark a Participant paid or unpaid, as an Organizer  Only in a Tournament with an entry fee, until it is over. An unpaid Participant is left out of the pairing; changing the flag discards a previewed Round.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { SetTournamentParticipantPaidRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    tournament: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string
+    participant: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // SetPaidRequest (optional)
+    SetPaidRequest: ...,
+  } satisfies SetTournamentParticipantPaidRequest;
+
+  try {
+    const data = await api.setTournamentParticipantPaid(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **tournament** | `string` |  | [Defaults to `undefined`] |
+| **participant** | `string` |  | [Defaults to `undefined`] |
+| **SetPaidRequest** | [SetPaidRequest](SetPaidRequest.md) |  | [Optional] |
+
+### Return type
+
+[**FormErrorResponseForSetPaidErrors**](FormErrorResponseForSetPaidErrors.md)
 
 ### Authorization
 

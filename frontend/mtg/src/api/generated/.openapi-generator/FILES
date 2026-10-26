@@ -122,6 +122,7 @@ docs/DeletionMode.md
 docs/DisputeResultErrors.md
 docs/DropErrors.md
 docs/EndTournamentRound200Response.md
+docs/EntryFeeSchema.md
 docs/EntrySort.md
 docs/ErrorConstant.md
 docs/ExtraTurnRule.md
@@ -169,6 +170,7 @@ docs/FormErrorResponseForRenamePasskeyErrors.md
 docs/FormErrorResponseForReportResultErrors.md
 docs/FormErrorResponseForRoundErrors.md
 docs/FormErrorResponseForSendBugReportErrors.md
+docs/FormErrorResponseForSetPaidErrors.md
 docs/FormErrorResponseForSetResultErrors.md
 docs/FormErrorResponseForSetSwissRoundsErrors.md
 docs/FormErrorResponseForSignUpErrors.md
@@ -300,6 +302,8 @@ docs/SetDeckColorsRequest.md
 docs/SetDeckFolderRequest.md
 docs/SetDeckRuleZeroRequest.md
 docs/SetDeckVisibilityRequest.md
+docs/SetPaidErrors.md
+docs/SetPaidRequest.md
 docs/SetResultErrors.md
 docs/SetResultRequest.md
 docs/SetSwissRoundsErrors.md

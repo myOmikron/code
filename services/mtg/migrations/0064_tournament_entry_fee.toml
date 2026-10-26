@@ -1,0 +1,56 @@
+[Migration]
+Hash = "12128609757877387268"
+Initial = false
+Dependency = 63
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "tournament"
+
+[Migration.Operations.Field]
+Name = "entry_fee_amount"
+Type = "int32"
+Annotations = []
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 85
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "tournament"
+
+[Migration.Operations.Field]
+Name = "entry_fee_currency"
+Type = "text"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "max_length"
+Value = 3
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 88
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "tournament_participant"
+
+[Migration.Operations.Field]
+Name = "paid"
+Type = "boolean"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "default_value"
+Value = false
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 191
+Column = 9

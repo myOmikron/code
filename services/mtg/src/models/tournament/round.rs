@@ -313,7 +313,7 @@ impl Tournament {
                 .iter()
                 .map(|participant| Entrant {
                     id: participant.uuid.into_inner(),
-                    pairable: participant.plays_on(),
+                    pairable: participant.pairable(),
                 })
                 .collect(),
             rounds: rounds.iter().map(round_record).collect(),
@@ -339,14 +339,14 @@ impl Tournament {
     /// How many Participants the Top cut takes, `None` without one
     ///
     /// Once the cut started, the size it started with; before, the size the
-    /// Participants who play on fill (a Top 8 of seven is a Top 4).
+    /// pairable Participants fill (a Top 8 of seven is a Top 4).
     pub async fn top_cut_size(&self, tx: &mut Transaction) -> Result<Option<i16>, rorm::Error> {
         let Some(top_cut) = self.top_cut else {
             return Ok(None);
         };
         let size = match bracket_size(&self.top_cut_record(tx).await?) {
             Some(size) => Some(size),
-            None => cut_size(top_cut, self.playing_on(tx).await?),
+            None => cut_size(top_cut, self.pairable(tx).await?),
         };
         Ok(size.and_then(|size| i16::try_from(size).ok()))
     }
@@ -359,24 +359,25 @@ impl Tournament {
         )
     }
 
-    /// How many Participants play on: everybody but those who Dropped
-    async fn playing_on(&self, tx: &mut Transaction) -> Result<usize, rorm::Error> {
+    /// How many Participants the next Round pairs: not those who Dropped nor those who owe the entry fee
+    async fn pairable(&self, tx: &mut Transaction) -> Result<usize, rorm::Error> {
         Ok(self
             .participants(tx)
             .await?
             .iter()
-            .filter(|participant| participant.plays_on())
+            .filter(|participant| participant.pairable())
             .count())
     }
 
     /// The number of Swiss Rounds the engine suggests for the Participants there are now
     ///
-    /// Counts the Participants the next Round pairs, not those who Dropped.
+    /// Counts the Participants the next Round pairs, not those who Dropped
+    /// nor those who owe the entry fee.
     pub async fn suggested_swiss_rounds(
         &self,
         tx: &mut Transaction,
     ) -> Result<Option<i16>, rorm::Error> {
-        let participants = self.playing_on(tx).await?;
+        let participants = self.pairable(tx).await?;
         Ok(suggested_swiss_rounds(self.ruleset, participants)
             .map(|rounds| i16::try_from(rounds).unwrap_or(MAX_SWISS_ROUNDS)))
     }
@@ -815,10 +816,8 @@ impl Tournament {
         } else {
             let planned = self.planned_swiss_rounds(tx).await?;
             if planned.is_some_and(|planned| ended >= planned) {
-                let playing_on = self.playing_on(tx).await?;
-                let cut = self
-                    .top_cut
-                    .and_then(|top_cut| cut_size(top_cut, playing_on));
+                let pairable = self.pairable(tx).await?;
+                let cut = self.top_cut.and_then(|top_cut| cut_size(top_cut, pairable));
                 Some(match cut {
                     Some(_) => TournamentState::TopCut,
                     None => TournamentState::Finished,

@@ -8,6 +8,7 @@ Why a Tournament\'s settings were refused
 Name | Type
 ------------ | -------------
 `best_of_mismatch` | boolean
+`entry_fee_not_positive` | boolean
 `participant_limit_too_small` | boolean
 `rules_locked` | boolean
 `ruleset_mismatch` | boolean
@@ -16,6 +17,7 @@ Name | Type
 `top_cut_best_of_mismatch` | boolean
 `top_cut_locked` | boolean
 `top_cut_mismatch` | boolean
+`unknown_currency` | boolean
 `unknown_format` | boolean
 
 
