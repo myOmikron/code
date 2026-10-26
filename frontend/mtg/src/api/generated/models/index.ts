@@ -4589,6 +4589,27 @@ export interface FormErrorResponseForPutDeckCollaboratorErrors {
 /**
  * The response that is sent in a case of an error the caller should present his user
  * @export
+ * @interface FormErrorResponseForRegisterDeckErrors
+ */
+export interface FormErrorResponseForRegisterDeckErrors {
+    /**
+     * The actual error struct
+     * @type {RegisterDeckErrors}
+     * @memberof FormErrorResponseForRegisterDeckErrors
+     */
+    error: RegisterDeckErrors;
+    /**
+     * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
+     * @type {ErrorConstant}
+     * @memberof FormErrorResponseForRegisterDeckErrors
+     */
+    result: ErrorConstant;
+}
+
+
+/**
+ * The response that is sent in a case of an error the caller should present his user
+ * @export
  * @interface FormErrorResponseForRegistrationErrors
  */
 export interface FormErrorResponseForRegistrationErrors {
@@ -5175,6 +5196,19 @@ export interface ListOrganizersResponse {
     owner?: OrganizerResponse | null;
 }
 /**
+ * The decks a Participant's Account owns, for an Organizer to register one
+ * @export
+ * @interface ListParticipantDecksResponse
+ */
+export interface ListParticipantDecksResponse {
+    /**
+     * Alphabetically by name; empty for a Guest
+     * @type {Array<ParticipantDeckResponse>}
+     * @memberof ListParticipantDecksResponse
+     */
+    decks: Array<ParticipantDeckResponse>;
+}
+/**
  * The Participants of a Tournament
  * @export
  * @interface ListParticipantsResponse
@@ -5205,6 +5239,19 @@ export interface ListPasskeysResponse {
      * @memberof ListPasskeysResponse
      */
     passkeys: Array<SimplePasskey>;
+}
+/**
+ * Every Registered deck of a Tournament, for its Organizers
+ * @export
+ * @interface ListRegisteredDecksResponse
+ */
+export interface ListRegisteredDecksResponse {
+    /**
+     * One per Participant that registered one, in the order they joined
+     * @type {Array<RegisteredDeckResponse>}
+     * @memberof ListRegisteredDecksResponse
+     */
+    decks: Array<RegisteredDeckResponse>;
 }
 /**
  * All scanner sessions owned by the account
@@ -5773,6 +5820,25 @@ export interface MpcFillSearchResponse {
     results: Array<MpcFillArtResponse>;
 }
 /**
+ * The reader's own Registered deck in a Tournament
+ * @export
+ * @interface MyRegisteredDeckResponse
+ */
+export interface MyRegisteredDeckResponse {
+    /**
+     * Whether the reader may still register, swap or remove it itself
+     * @type {boolean}
+     * @memberof MyRegisteredDeckResponse
+     */
+    changeable: boolean;
+    /**
+     * The Registered deck, `null` while the reader plays without one
+     * @type {RegisteredDeckResponse}
+     * @memberof MyRegisteredDeckResponse
+     */
+    deck?: RegisteredDeckResponse | null;
+}
+/**
  * The Tournaments an Account runs and the ones it plays in
  * @export
  * @interface MyTournamentsResponse
@@ -6065,6 +6131,31 @@ export interface PairedRoundResponse {
      * @memberof PairedRoundResponse
      */
     number: number;
+}
+/**
+ * One deck a Participant's Account owns
+ * @export
+ * @interface ParticipantDeckResponse
+ */
+export interface ParticipantDeckResponse {
+    /**
+     * The format it is built for, a Scryfall slug
+     * @type {string}
+     * @memberof ParticipantDeckResponse
+     */
+    format: string;
+    /**
+     * Its name
+     * @type {string}
+     * @memberof ParticipantDeckResponse
+     */
+    name: string;
+    /**
+     * The deck
+     * @type {string}
+     * @memberof ParticipantDeckResponse
+     */
+    uuid: string;
 }
 /**
  * One Participant of a Tournament
@@ -6735,6 +6826,87 @@ export interface RecoverAccountRequest {
 }
 
 
+/**
+ * Why a Registered deck could not be registered, swapped or removed
+ * @export
+ * @interface RegisterDeckErrors
+ */
+export interface RegisterDeckErrors {
+    /**
+     * The Participant is a Guest, which has no decks
+     * @type {boolean}
+     * @memberof RegisterDeckErrors
+     */
+    guest: boolean;
+    /**
+     * The deck does not exist or the Participant's Account does not own it
+     * @type {boolean}
+     * @memberof RegisterDeckErrors
+     */
+    not_their_deck: boolean;
+    /**
+     * The first Round started, so only Organizers change it
+     * @type {boolean}
+     * @memberof RegisterDeckErrors
+     */
+    registration_over: boolean;
+}
+/**
+ * The deck to register
+ * @export
+ * @interface RegisterDeckRequest
+ */
+export interface RegisterDeckRequest {
+    /**
+     * One of the Participant's Account's decks
+     * @type {string}
+     * @memberof RegisterDeckRequest
+     */
+    deck: string;
+}
+/**
+ * The deck a Participant plays in a Tournament
+ * @export
+ * @interface RegisteredDeckResponse
+ */
+export interface RegisteredDeckResponse {
+    /**
+     * The Commander bracket it is built to, `null` when unset
+     * @type {number}
+     * @memberof RegisteredDeckResponse
+     */
+    bracket?: number | null;
+    /**
+     * The deck it was made from, `null` once that deck is deleted
+     * @type {string}
+     * @memberof RegisteredDeckResponse
+     */
+    deck?: string | null;
+    /**
+     * The format the deck is built for, a Scryfall slug
+     * @type {string}
+     * @memberof RegisteredDeckResponse
+     */
+    format: string;
+    /**
+     * The deck's name: as it is now until pinned, as it was when pinned afterwards
+     * @type {string}
+     * @memberof RegisteredDeckResponse
+     */
+    name: string;
+    /**
+     * The Participant playing it
+     * @type {string}
+     * @memberof RegisteredDeckResponse
+     */
+    participant: string;
+    /**
+     * Whether it is a copy that no longer changes with the deck
+     * @type {boolean}
+     * @memberof RegisteredDeckResponse
+     */
+    pinned: boolean;
+}
 /**
  * Why a passkey registration could not be started or completed
  * @export

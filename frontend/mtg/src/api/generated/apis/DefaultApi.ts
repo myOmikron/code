@@ -90,6 +90,7 @@ import type {
     FormErrorResponseForDisputeResultErrors,
     FormErrorResponseForDropErrors,
     FormErrorResponseForFinishLoginErrors,
+    FormErrorResponseForRegisterDeckErrors,
     FormErrorResponseForRegistrationErrors,
     FormErrorResponseForRenamePasskeyErrors,
     FormErrorResponseForReportResultErrors,
@@ -108,8 +109,10 @@ import type {
     ListOnLoanResponse,
     ListOpenIdProvidersResponse,
     ListOrganizersResponse,
+    ListParticipantDecksResponse,
     ListParticipantsResponse,
     ListPasskeysResponse,
+    ListRegisteredDecksResponse,
     ListScannerSessionsResponse,
     ListSharedWithMeResponse,
     ListTournamentsResponse,
@@ -122,6 +125,7 @@ import type {
     MpcFillCardbacksResponse,
     MpcFillSearchRequest,
     MpcFillSearchResponse,
+    MyRegisteredDeckResponse,
     MyTournamentsResponse,
     NameAccountRequest,
     OfferTournamentHandover200Response,
@@ -138,6 +142,7 @@ import type {
     ReadDeckUrlRequest,
     ReadDeckUrlResponse,
     RecoverAccountRequest,
+    RegisterDeckRequest,
     RenameAccount200Response,
     RenameAccountRequest,
     RenamePasskeyRequest,
@@ -534,6 +539,10 @@ export interface GetDeckSourcingRequest {
     deck: string;
 }
 
+export interface GetMyTournamentDeckRequest {
+    tournament: string;
+}
+
 export interface GetPriceHistoryRequest {
     printing: string;
 }
@@ -687,7 +696,16 @@ export interface ListTournamentOrganizersRequest {
     tournament: string;
 }
 
+export interface ListTournamentParticipantDecksRequest {
+    tournament: string;
+    participant: string;
+}
+
 export interface ListTournamentParticipantsRequest {
+    tournament: string;
+}
+
+export interface ListTournamentRegisteredDecksRequest {
     tournament: string;
 }
 
@@ -735,6 +753,17 @@ export interface RedoDeckChangeRequest {
     deck: string;
 }
 
+export interface RegisterMyTournamentDeckRequest {
+    tournament: string;
+    RegisterDeckRequest?: RegisterDeckRequest;
+}
+
+export interface RegisterTournamentParticipantDeckRequest {
+    tournament: string;
+    participant: string;
+    RegisterDeckRequest?: RegisterDeckRequest;
+}
+
 export interface RemoveDeckCheckpointRequest {
     deck: string;
     change: string;
@@ -745,12 +774,21 @@ export interface RemoveDeckCollaboratorRequest {
     account: string;
 }
 
+export interface RemoveMyTournamentDeckRequest {
+    tournament: string;
+}
+
 export interface RemoveTournamentCoOrganizerRequest {
     tournament: string;
     account: string;
 }
 
 export interface RemoveTournamentParticipantRequest {
+    tournament: string;
+    participant: string;
+}
+
+export interface RemoveTournamentParticipantDeckRequest {
     tournament: string;
     participant: string;
 }
@@ -5050,6 +5088,53 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for getMyTournamentDeck without sending the request
+     */
+    async getMyTournamentDeckRequestOpts(requestParameters: GetMyTournamentDeckRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tournament'] == null) {
+            throw new runtime.RequiredError(
+                'tournament',
+                'Required parameter "tournament" was null or undefined when calling getMyTournamentDeck().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/tournaments/{tournament}/deck`;
+        urlPath = urlPath.replace('{tournament}', encodeURIComponent(String(requestParameters['tournament'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * The logged-in Account\'s own Registered deck in a Tournament it plays in  Says whether it may still change it itself, which ends when the first Round starts.
+     * The logged-in Account\'s own Registered deck in a Tournament it plays in
+     */
+    async getMyTournamentDeckRaw(requestParameters: GetMyTournamentDeckRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MyRegisteredDeckResponse>> {
+        const requestOptions = await this.getMyTournamentDeckRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * The logged-in Account\'s own Registered deck in a Tournament it plays in  Says whether it may still change it itself, which ends when the first Round starts.
+     * The logged-in Account\'s own Registered deck in a Tournament it plays in
+     */
+    async getMyTournamentDeck(requestParameters: GetMyTournamentDeckRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MyRegisteredDeckResponse> {
+        const response = await this.getMyTournamentDeckRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for getMyTournaments without sending the request
      */
     async getMyTournamentsRequestOpts(): Promise<runtime.RequestOpts> {
@@ -6825,6 +6910,61 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for listTournamentParticipantDecks without sending the request
+     */
+    async listTournamentParticipantDecksRequestOpts(requestParameters: ListTournamentParticipantDecksRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tournament'] == null) {
+            throw new runtime.RequiredError(
+                'tournament',
+                'Required parameter "tournament" was null or undefined when calling listTournamentParticipantDecks().'
+            );
+        }
+
+        if (requestParameters['participant'] == null) {
+            throw new runtime.RequiredError(
+                'participant',
+                'Required parameter "participant" was null or undefined when calling listTournamentParticipantDecks().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/tournaments/{tournament}/participants/{participant}/decks`;
+        urlPath = urlPath.replace('{tournament}', encodeURIComponent(String(requestParameters['tournament'])));
+        urlPath = urlPath.replace('{participant}', encodeURIComponent(String(requestParameters['participant'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * The decks a Participant\'s Account owns, as an Organizer about to register one
+     * The decks a Participant\'s Account owns, as an Organizer about to register one
+     */
+    async listTournamentParticipantDecksRaw(requestParameters: ListTournamentParticipantDecksRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListParticipantDecksResponse>> {
+        const requestOptions = await this.listTournamentParticipantDecksRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * The decks a Participant\'s Account owns, as an Organizer about to register one
+     * The decks a Participant\'s Account owns, as an Organizer about to register one
+     */
+    async listTournamentParticipantDecks(requestParameters: ListTournamentParticipantDecksRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListParticipantDecksResponse> {
+        const response = await this.listTournamentParticipantDecksRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for listTournamentParticipants without sending the request
      */
     async listTournamentParticipantsRequestOpts(requestParameters: ListTournamentParticipantsRequest): Promise<runtime.RequestOpts> {
@@ -6868,6 +7008,53 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async listTournamentParticipants(requestParameters: ListTournamentParticipantsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListParticipantsResponse> {
         const response = await this.listTournamentParticipantsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for listTournamentRegisteredDecks without sending the request
+     */
+    async listTournamentRegisteredDecksRequestOpts(requestParameters: ListTournamentRegisteredDecksRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tournament'] == null) {
+            throw new runtime.RequiredError(
+                'tournament',
+                'Required parameter "tournament" was null or undefined when calling listTournamentRegisteredDecks().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/tournaments/{tournament}/registered-decks`;
+        urlPath = urlPath.replace('{tournament}', encodeURIComponent(String(requestParameters['tournament'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Every Registered deck of a Tournament, as an Organizer
+     * Every Registered deck of a Tournament, as an Organizer
+     */
+    async listTournamentRegisteredDecksRaw(requestParameters: ListTournamentRegisteredDecksRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListRegisteredDecksResponse>> {
+        const requestOptions = await this.listTournamentRegisteredDecksRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Every Registered deck of a Tournament, as an Organizer
+     * Every Registered deck of a Tournament, as an Organizer
+     */
+    async listTournamentRegisteredDecks(requestParameters: ListTournamentRegisteredDecksRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListRegisteredDecksResponse> {
+        const response = await this.listTournamentRegisteredDecksRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -7430,6 +7617,114 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for registerMyTournamentDeck without sending the request
+     */
+    async registerMyTournamentDeckRequestOpts(requestParameters: RegisterMyTournamentDeckRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tournament'] == null) {
+            throw new runtime.RequiredError(
+                'tournament',
+                'Required parameter "tournament" was null or undefined when calling registerMyTournamentDeck().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/tournaments/{tournament}/deck`;
+        urlPath = urlPath.replace('{tournament}', encodeURIComponent(String(requestParameters['tournament'])));
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['RegisterDeckRequest'],
+        };
+    }
+
+    /**
+     * Register one of the logged-in Account\'s decks for a Tournament it plays in, or swap the one registered  Only while the Tournament is in Registration; until the first Round starts the Registered deck follows the deck.
+     * Register one of the logged-in Account\'s decks for a Tournament it plays in,
+     */
+    async registerMyTournamentDeckRaw(requestParameters: RegisterMyTournamentDeckRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FormErrorResponseForRegisterDeckErrors>> {
+        const requestOptions = await this.registerMyTournamentDeckRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Register one of the logged-in Account\'s decks for a Tournament it plays in, or swap the one registered  Only while the Tournament is in Registration; until the first Round starts the Registered deck follows the deck.
+     * Register one of the logged-in Account\'s decks for a Tournament it plays in,
+     */
+    async registerMyTournamentDeck(requestParameters: RegisterMyTournamentDeckRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FormErrorResponseForRegisterDeckErrors> {
+        const response = await this.registerMyTournamentDeckRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for registerTournamentParticipantDeck without sending the request
+     */
+    async registerTournamentParticipantDeckRequestOpts(requestParameters: RegisterTournamentParticipantDeckRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tournament'] == null) {
+            throw new runtime.RequiredError(
+                'tournament',
+                'Required parameter "tournament" was null or undefined when calling registerTournamentParticipantDeck().'
+            );
+        }
+
+        if (requestParameters['participant'] == null) {
+            throw new runtime.RequiredError(
+                'participant',
+                'Required parameter "participant" was null or undefined when calling registerTournamentParticipantDeck().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/tournaments/{tournament}/participants/{participant}/deck`;
+        urlPath = urlPath.replace('{tournament}', encodeURIComponent(String(requestParameters['tournament'])));
+        urlPath = urlPath.replace('{participant}', encodeURIComponent(String(requestParameters['participant'])));
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['RegisterDeckRequest'],
+        };
+    }
+
+    /**
+     * Register or swap a Participant\'s Registered deck, as an Organizer  At any time; after the first Round started the new Registered deck is pinned at once and sets its own Deck checkpoint.
+     * Register or swap a Participant\'s Registered deck, as an Organizer
+     */
+    async registerTournamentParticipantDeckRaw(requestParameters: RegisterTournamentParticipantDeckRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FormErrorResponseForRegisterDeckErrors>> {
+        const requestOptions = await this.registerTournamentParticipantDeckRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Register or swap a Participant\'s Registered deck, as an Organizer  At any time; after the first Round started the new Registered deck is pinned at once and sets its own Deck checkpoint.
+     * Register or swap a Participant\'s Registered deck, as an Organizer
+     */
+    async registerTournamentParticipantDeck(requestParameters: RegisterTournamentParticipantDeckRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FormErrorResponseForRegisterDeckErrors> {
+        const response = await this.registerTournamentParticipantDeckRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for removeDeckCheckpoint without sending the request
      */
     async removeDeckCheckpointRequestOpts(requestParameters: RemoveDeckCheckpointRequest): Promise<runtime.RequestOpts> {
@@ -7548,6 +7843,53 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for removeMyTournamentDeck without sending the request
+     */
+    async removeMyTournamentDeckRequestOpts(requestParameters: RemoveMyTournamentDeckRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tournament'] == null) {
+            throw new runtime.RequiredError(
+                'tournament',
+                'Required parameter "tournament" was null or undefined when calling removeMyTournamentDeck().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/tournaments/{tournament}/deck`;
+        urlPath = urlPath.replace('{tournament}', encodeURIComponent(String(requestParameters['tournament'])));
+
+        return {
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Remove the logged-in Account\'s own Registered deck, to play without one  Only while the Tournament is in Registration.
+     * Remove the logged-in Account\'s own Registered deck, to play without one
+     */
+    async removeMyTournamentDeckRaw(requestParameters: RemoveMyTournamentDeckRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FormErrorResponseForRegisterDeckErrors>> {
+        const requestOptions = await this.removeMyTournamentDeckRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Remove the logged-in Account\'s own Registered deck, to play without one  Only while the Tournament is in Registration.
+     * Remove the logged-in Account\'s own Registered deck, to play without one
+     */
+    async removeMyTournamentDeck(requestParameters: RemoveMyTournamentDeckRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FormErrorResponseForRegisterDeckErrors> {
+        const response = await this.removeMyTournamentDeckRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for removeTournamentCoOrganizer without sending the request
      */
     async removeTournamentCoOrganizerRequestOpts(requestParameters: RemoveTournamentCoOrganizerRequest): Promise<runtime.RequestOpts> {
@@ -7662,6 +8004,61 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async removeTournamentParticipant(requestParameters: RemoveTournamentParticipantRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
         const response = await this.removeTournamentParticipantRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for removeTournamentParticipantDeck without sending the request
+     */
+    async removeTournamentParticipantDeckRequestOpts(requestParameters: RemoveTournamentParticipantDeckRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tournament'] == null) {
+            throw new runtime.RequiredError(
+                'tournament',
+                'Required parameter "tournament" was null or undefined when calling removeTournamentParticipantDeck().'
+            );
+        }
+
+        if (requestParameters['participant'] == null) {
+            throw new runtime.RequiredError(
+                'participant',
+                'Required parameter "participant" was null or undefined when calling removeTournamentParticipantDeck().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/tournaments/{tournament}/participants/{participant}/deck`;
+        urlPath = urlPath.replace('{tournament}', encodeURIComponent(String(requestParameters['tournament'])));
+        urlPath = urlPath.replace('{participant}', encodeURIComponent(String(requestParameters['participant'])));
+
+        return {
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Remove a Participant\'s Registered deck, as an Organizer, at any time
+     * Remove a Participant\'s Registered deck, as an Organizer, at any time
+     */
+    async removeTournamentParticipantDeckRaw(requestParameters: RemoveTournamentParticipantDeckRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FormErrorResponseForRegisterDeckErrors>> {
+        const requestOptions = await this.removeTournamentParticipantDeckRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Remove a Participant\'s Registered deck, as an Organizer, at any time
+     * Remove a Participant\'s Registered deck, as an Organizer, at any time
+     */
+    async removeTournamentParticipantDeck(requestParameters: RemoveTournamentParticipantDeckRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FormErrorResponseForRegisterDeckErrors> {
+        const response = await this.removeTournamentParticipantDeckRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

@@ -8,6 +8,8 @@ use galvyn::rorm::fields::types::MaxStr;
 use uuid::Uuid;
 
 use crate::models::account::db::AccountModel;
+use crate::models::deck::DeckZone;
+use crate::models::deck::db::DeckModel;
 use crate::models::tournament::TournamentState;
 use crate::models::tournament::round::RoundState;
 use crate::models::visibility::Visibility;
@@ -417,4 +419,121 @@ pub struct TournamentSeatInsertPatch {
     pub seat: i16,
     /// Games this Seat won
     pub games_won: Option<i16>,
+}
+
+/// The deck a Participant with an Account registered for a Tournament
+///
+/// Follows [`Self::deck`] until it is pinned; pinning copies the deck's
+/// settings into the columns below and its Deck entries into
+/// [`TournamentRegisteredCardModel`] rows, which never change with the deck.
+#[derive(Model, Debug)]
+#[rorm(rename = "tournament_registered_deck")]
+pub struct TournamentRegisteredDeckModel {
+    /// Primary key
+    #[rorm(primary_key)]
+    pub uuid: Uuid,
+
+    /// The Participant playing it; one Registered deck per Participant
+    #[rorm(unique, on_update = "Cascade", on_delete = "Cascade")]
+    pub participant: ForeignModel<TournamentParticipantModel>,
+
+    /// The deck it was made from, `None` once that deck is deleted
+    ///
+    /// Indexed for the deck's foreign key action.
+    #[rorm(index, on_update = "Cascade", on_delete = "SetNull")]
+    pub deck: Option<ForeignModel<DeckModel>>,
+
+    /// The point in time it became a copy, `None` while it follows the deck
+    pub pinned_at: Option<OffsetDateTime>,
+
+    /// The deck's name when pinned
+    pub name: Option<MaxStr<255>>,
+
+    /// The deck's format when pinned
+    pub format: Option<MaxStr<32>>,
+
+    /// The deck's Commander bracket when pinned
+    pub bracket: Option<i16>,
+
+    /// The colours the deck could play when pinned
+    pub allowed_color_identity: Option<MaxStr<8>>,
+
+    /// Whether the table had agreed to extra commanders when pinned
+    #[rorm(default = false)]
+    pub allow_extra_commanders: bool,
+
+    /// Whether the table had agreed to extra copies of a card when pinned
+    #[rorm(default = false)]
+    pub allow_duplicates: bool,
+
+    /// Whether the table had agreed to banned cards when pinned
+    #[rorm(default = false)]
+    pub allow_banned: bool,
+
+    /// How many cards the deck was built to when pinned
+    pub deck_size: Option<i16>,
+
+    /// The point in time it was registered
+    #[rorm(auto_create_time)]
+    pub registered_at: OffsetDateTime,
+}
+
+/// Insert patch for [`TournamentRegisteredDeckModel`], following its deck
+#[derive(Patch)]
+#[rorm(model = "TournamentRegisteredDeckModel")]
+pub struct TournamentRegisteredDeckInsertPatch {
+    /// Primary key
+    pub uuid: Uuid,
+    /// The Participant playing it
+    pub participant: ForeignModel<TournamentParticipantModel>,
+    /// The deck it is made from
+    pub deck: Option<ForeignModel<DeckModel>>,
+}
+
+/// One Deck entry of a pinned Registered deck, copied from its deck
+#[derive(Model, Debug)]
+#[rorm(rename = "tournament_registered_card")]
+pub struct TournamentRegisteredCardModel {
+    /// Primary key
+    #[rorm(primary_key)]
+    pub uuid: Uuid,
+
+    /// The Registered deck it belongs to
+    #[rorm(index, on_update = "Cascade", on_delete = "Cascade")]
+    pub registered_deck: ForeignModel<TournamentRegisteredDeckModel>,
+
+    /// Scryfall's id of the printing; no foreign key, like a Deck entry's
+    pub printing: Uuid,
+
+    /// How many copies the zone held
+    pub quantity: i32,
+
+    /// Which zone the card sat in
+    pub zone: DeckZone,
+
+    /// Whether the copies were the foil ones
+    pub foil: bool,
+
+    /// Whether the copies were stand-ins rather than the real cards
+    pub proxy: bool,
+}
+
+/// Insert patch for [`TournamentRegisteredCardModel`]
+#[derive(Patch)]
+#[rorm(model = "TournamentRegisteredCardModel")]
+pub struct TournamentRegisteredCardInsertPatch {
+    /// Primary key
+    pub uuid: Uuid,
+    /// The Registered deck it belongs to
+    pub registered_deck: ForeignModel<TournamentRegisteredDeckModel>,
+    /// Scryfall's id of the printing
+    pub printing: Uuid,
+    /// How many copies the zone held
+    pub quantity: i32,
+    /// Which zone the card sat in
+    pub zone: DeckZone,
+    /// Whether the copies were the foil ones
+    pub foil: bool,
+    /// Whether the copies were stand-ins
+    pub proxy: bool,
 }

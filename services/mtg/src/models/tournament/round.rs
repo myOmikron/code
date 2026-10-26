@@ -408,7 +408,8 @@ impl Tournament {
     /// Start the previewed Round `number`: from now on everybody sees it
     ///
     /// The first Round also closes Registration and settles the number of
-    /// Swiss Rounds, if no Organizer set one, to the suggestion.
+    /// Swiss Rounds, if no Organizer set one, to the suggestion, and pins
+    /// every Registered deck, see [`Self::pin_registered_decks`].
     #[instrument(name = "Tournament::start_round", skip(tx, self), fields(tournament = ?self.uuid))]
     pub async fn start_round(
         &self,
@@ -441,6 +442,7 @@ impl Tournament {
                 .set(TournamentModel.swiss_rounds, swiss_rounds)
                 .condition(TournamentModel.uuid.equals(self.uuid.into_inner()))
                 .await?;
+            self.pin_registered_decks(tx).await?;
         }
         Ok(Ok(()))
     }

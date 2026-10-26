@@ -159,6 +159,7 @@ docs/FormErrorResponseForFinishLoginErrors.md
 docs/FormErrorResponseForMeErrors.md
 docs/FormErrorResponseForOfferHandoverErrors.md
 docs/FormErrorResponseForPutDeckCollaboratorErrors.md
+docs/FormErrorResponseForRegisterDeckErrors.md
 docs/FormErrorResponseForRegistrationErrors.md
 docs/FormErrorResponseForRenameAccountErrors.md
 docs/FormErrorResponseForRenamePasskeyErrors.md
@@ -187,8 +188,10 @@ docs/ListGlobalTagsResponse.md
 docs/ListOnLoanResponse.md
 docs/ListOpenIdProvidersResponse.md
 docs/ListOrganizersResponse.md
+docs/ListParticipantDecksResponse.md
 docs/ListParticipantsResponse.md
 docs/ListPasskeysResponse.md
+docs/ListRegisteredDecksResponse.md
 docs/ListScannerSessionsResponse.md
 docs/ListSharedWithMeResponse.md
 docs/ListTournamentsResponse.md
@@ -210,6 +213,7 @@ docs/MpcFillCardbacksResponse.md
 docs/MpcFillImageResponse.md
 docs/MpcFillSearchRequest.md
 docs/MpcFillSearchResponse.md
+docs/MyRegisteredDeckResponse.md
 docs/MyTournamentsResponse.md
 docs/NameAccountRequest.md
 docs/NewCollectionEntry.md
@@ -222,6 +226,7 @@ docs/OrganizerResponse.md
 docs/OrganizerRole.md
 docs/PairTournamentRound200Response.md
 docs/PairedRoundResponse.md
+docs/ParticipantDeckResponse.md
 docs/ParticipantResponse.md
 docs/PendingOidcLogin.md
 docs/PlayerCandidateResponse.md
@@ -244,6 +249,9 @@ docs/ReadDeckCardResponse.md
 docs/ReadDeckUrlRequest.md
 docs/ReadDeckUrlResponse.md
 docs/RecoverAccountRequest.md
+docs/RegisterDeckErrors.md
+docs/RegisterDeckRequest.md
+docs/RegisteredDeckResponse.md
 docs/RegistrationErrors.md
 docs/RenameAccount200Response.md
 docs/RenameAccountErrors.md

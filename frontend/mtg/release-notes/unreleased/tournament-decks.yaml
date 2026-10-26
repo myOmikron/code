@@ -1,0 +1,3 @@
+kind: new
+de: Spieler melden eines ihrer Decks zum Turnier an. Mit dem Start der ersten Runde wird eine Kopie festgehalten, die auch spätere Änderungen und das Löschen des Decks übersteht, und ein Checkpoint im Deck-Verlauf markiert den gespielten Stand.
+en: Players register one of their decks for a tournament. When the first round starts a copy is kept that survives later changes and even deleting the deck, and a checkpoint in the deck history marks the version played.
