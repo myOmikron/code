@@ -18076,6 +18076,10 @@
                         "description": "An Organizer set the Result",
                         "type": "boolean"
                     },
+                    "entered_afterwards": {
+                        "description": "The Tournament is entered afterwards: its Organizers set every Result",
+                        "type": "boolean"
+                    },
                     "no_result": {
                         "description": "The Match has no Result to dispute",
                         "type": "boolean"
@@ -18091,6 +18095,7 @@
                 },
                 "required": [
                     "confirmed",
+                    "entered_afterwards",
                     "no_result",
                     "not_running",
                     "own_report"
@@ -22119,6 +22124,10 @@
                         "description": "The Result is disputed; an Organizer settles it",
                         "type": "boolean"
                     },
+                    "entered_afterwards": {
+                        "description": "The Tournament is entered afterwards: its Organizers set every Result",
+                        "type": "boolean"
+                    },
                     "invalid_score": {
                         "description": "The game score does not fit a Match of this Tournament",
                         "type": "boolean"
@@ -22135,6 +22144,7 @@
                 "required": [
                     "confirmed",
                     "disputed",
+                    "entered_afterwards",
                     "invalid_score",
                     "not_running",
                     "reported_by_other"
@@ -24739,6 +24749,10 @@
                             }
                         ]
                     },
+                    "entered_afterwards": {
+                        "description": "Whether it is entered afterwards: its Organizers set every pairing and Result, Participants report nothing and get no pushes",
+                        "type": "boolean"
+                    },
                     "entry_fee": {
                         "nullable": true,
                         "description": "What playing costs, `null` for nothing",
@@ -24879,6 +24893,7 @@
                     }
                 },
                 "required": [
+                    "entered_afterwards",
                     "name",
                     "ruleset",
                     "self_sign_up",
@@ -24910,7 +24925,7 @@
                         "type": "boolean"
                     },
                     "rules_locked": {
-                        "description": "Table size, Ruleset or best-of changed, or an entry fee was taken up or dropped, after the first Round started",
+                        "description": "Table size, Ruleset, best-of or entering afterwards changed, or an entry fee was taken up or dropped, after the first Round started",
                         "type": "boolean"
                     },
                     "ruleset_mismatch": {
@@ -24983,6 +24998,11 @@
                                 "$ref": "#/components/schemas/MaxStr_4096"
                             }
                         ]
+                    },
+                    "entered_afterwards": {
+                        "description": "Whether the Tournament is entered afterwards instead of run live: its Organizers set every pairing and Result, any date fits; `false` when left out",
+                        "default": false,
+                        "type": "boolean"
                     },
                     "entry_fee": {
                         "nullable": true,

@@ -82,6 +82,7 @@ function initialValues(tournament: TournamentResponse | null) {
         roundMinutes: tournament?.round_minutes == null ? "" : String(tournament.round_minutes),
         topCut: (tournament?.top_cut ?? NO_TOP_CUT) as TopCut | typeof NO_TOP_CUT,
         topCutBestOf: tournament?.top_cut_best_of ?? BestOf.Three,
+        enteredAfterwards: tournament?.entered_afterwards ?? false,
         entryFee:
             tournament?.entry_fee == null
                 ? ""
@@ -115,7 +116,7 @@ export function TournamentDialog({ open, tournament, formats, onClose, onSaved }
     const [tg] = useTranslation();
     const labels = useTournamentLabels();
     const deckLabels = useDeckLabels();
-    // Table size, Ruleset and best-of are fixed once the first Round started.
+    // Table size, Ruleset, best-of and entering afterwards are fixed once the first Round started.
     const rulesLocked = tournament !== null && tournament.state !== TournamentState.Registration;
     // The Top cut stays open until the Swiss Rounds are over.
     const topCutLocked =
@@ -151,6 +152,7 @@ export function TournamentDialog({ open, tournament, formats, onClose, onSaved }
                     round_minutes: value.roundMinutes === "" ? null : Number(value.roundMinutes),
                     top_cut: value.tableSize === 2 && value.topCut !== NO_TOP_CUT ? value.topCut : null,
                     top_cut_best_of: value.tableSize === 2 && value.topCut !== NO_TOP_CUT ? value.topCutBestOf : null,
+                    entered_afterwards: value.enteredAfterwards,
                     entry_fee: amount === null ? null : { amount, currency: value.currency },
                 };
                 const response =
@@ -246,6 +248,24 @@ export function TournamentDialog({ open, tournament, formats, onClose, onSaved }
                                         onChange={(event) => fieldApi.handleChange(event.target.value)}
                                     />
                                 </Field>
+                            )}
+                        </form.Field>
+
+                        <form.Field name={"enteredAfterwards"}>
+                            {(fieldApi) => (
+                                <SwitchField disabled={rulesLocked}>
+                                    <Label>{t("label.entered-afterwards")}</Label>
+                                    <Description>
+                                        {rulesLocked
+                                            ? t("description.entered-afterwards-locked")
+                                            : t("description.entered-afterwards")}
+                                    </Description>
+                                    <Switch
+                                        color={"lime"}
+                                        checked={fieldApi.state.value}
+                                        onChange={fieldApi.handleChange}
+                                    />
+                                </SwitchField>
                             )}
                         </form.Field>
 

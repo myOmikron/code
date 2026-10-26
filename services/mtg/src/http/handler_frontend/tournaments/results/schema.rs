@@ -15,6 +15,8 @@ pub struct ReportResultRequest {
 /// Why a Participant's report was refused
 #[derive(Debug, Clone, Default, Serialize, JsonSchema)]
 pub struct ReportResultErrors {
+    /// The Tournament is entered afterwards: its Organizers set every Result
+    pub entered_afterwards: bool,
     /// The Match's Round is not running, or the Tournament is over
     pub not_running: bool,
     /// The game score does not fit a Match of this Tournament
@@ -30,6 +32,8 @@ pub struct ReportResultErrors {
 /// Why a Participant's dispute was refused
 #[derive(Debug, Clone, Default, Serialize, JsonSchema)]
 pub struct DisputeResultErrors {
+    /// The Tournament is entered afterwards: its Organizers set every Result
+    pub entered_afterwards: bool,
     /// The Match's Round is not running, or the Tournament is over
     pub not_running: bool,
     /// The Match has no Result to dispute

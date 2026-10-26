@@ -42,6 +42,8 @@ pub struct RawTournamentSettings {
     pub top_cut: Option<TopCut>,
     /// How many Games a Top cut Match is played to
     pub top_cut_best_of: Option<BestOf>,
+    /// Whether the Tournament is entered afterwards instead of run live
+    pub entered_afterwards: bool,
     /// What playing costs, `None` for nothing
     pub entry_fee: Option<EntryFee>,
 }
@@ -90,6 +92,10 @@ pub struct TournamentSettings {
     pub top_cut: Option<TopCut>,
     /// How many Games a Top cut Match is played to; set exactly with [`Self::top_cut`]
     pub top_cut_best_of: Option<BestOf>,
+    /// Whether the Tournament is entered afterwards instead of run live
+    ///
+    /// Any date fits, also one long past.
+    pub entered_afterwards: bool,
     /// What playing costs, `None` for nothing
     ///
     /// With a fee every Participant starts unpaid and is left out of the
@@ -107,14 +113,15 @@ impl TournamentSettings {
 
     /// Whether these settings change how `tournament` is played
     ///
-    /// Table size, Ruleset and best-of are fixed once the first Round started,
-    /// and so is whether there is an entry fee: taking one up would leave every
+    /// Table size, Ruleset, best-of and whether it is entered afterwards are
+    /// fixed once the first Round started, and so is whether there is an entry fee: taking one up would leave every
     /// Participant out of the next pairing, dropping one would pair the unpaid.
     /// Amount and currency stay editable.
     pub fn changes_rules_of(&self, tournament: &Tournament) -> bool {
         self.table_size != tournament.table_size
             || self.ruleset != tournament.ruleset
             || self.best_of != tournament.best_of
+            || self.entered_afterwards != tournament.entered_afterwards
             || self.entry_fee.is_some() != tournament.entry_fee.is_some()
     }
 }
@@ -203,6 +210,7 @@ impl TournamentSettings {
                 round_minutes: round_minutes.flatten(),
                 top_cut: raw.top_cut,
                 top_cut_best_of: raw.top_cut_best_of,
+                entered_afterwards: raw.entered_afterwards,
                 entry_fee: raw.entry_fee,
             }),
             _ => Err(refusal),
@@ -239,6 +247,7 @@ mod tests {
             best_of: None,
             top_cut: None,
             top_cut_best_of: None,
+            entered_afterwards: false,
             entry_fee: None,
             round_minutes: None,
         }

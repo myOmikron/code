@@ -8,6 +8,7 @@ Name | Type
 ------------ | -------------
 `best_of` | [BestOf](BestOf.md)
 `description` | string
+`entered_afterwards` | boolean
 `entry_fee` | [EntryFeeSchema](EntryFeeSchema.md)
 `format` | string
 `location` | string

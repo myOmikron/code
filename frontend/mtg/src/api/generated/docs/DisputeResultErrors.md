@@ -8,6 +8,7 @@ Why a Participant\'s dispute was refused
 Name | Type
 ------------ | -------------
 `confirmed` | boolean
+`entered_afterwards` | boolean
 `no_result` | boolean
 `not_running` | boolean
 `own_report` | boolean

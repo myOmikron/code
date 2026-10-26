@@ -3711,6 +3711,12 @@ export interface DisputeResultErrors {
      */
     confirmed: boolean;
     /**
+     * The Tournament is entered afterwards: its Organizers set every Result
+     * @type {boolean}
+     * @memberof DisputeResultErrors
+     */
+    entered_afterwards: boolean;
+    /**
      * The Match has no Result to dispute
      * @type {boolean}
      * @memberof DisputeResultErrors
@@ -7354,6 +7360,12 @@ export interface ReportResultErrors {
      */
     disputed: boolean;
     /**
+     * The Tournament is entered afterwards: its Organizers set every Result
+     * @type {boolean}
+     * @memberof ReportResultErrors
+     */
+    entered_afterwards: boolean;
+    /**
      * The game score does not fit a Match of this Tournament
      * @type {boolean}
      * @memberof ReportResultErrors
@@ -9693,6 +9705,12 @@ export interface TournamentResponse {
      */
     description?: string | null;
     /**
+     * Whether it is entered afterwards: its Organizers set every pairing and Result, Participants report nothing and get no pushes
+     * @type {boolean}
+     * @memberof TournamentResponse
+     */
+    entered_afterwards: boolean;
+    /**
      * What playing costs, `null` for nothing
      * @type {EntryFeeSchema}
      * @memberof TournamentResponse
@@ -9834,7 +9852,7 @@ export interface TournamentSettingsErrors {
      */
     round_minutes_out_of_range: boolean;
     /**
-     * Table size, Ruleset or best-of changed, or an entry fee was taken up or dropped, after the first Round started
+     * Table size, Ruleset, best-of or entering afterwards changed, or an entry fee was taken up or dropped, after the first Round started
      * @type {boolean}
      * @memberof TournamentSettingsErrors
      */
@@ -9906,6 +9924,12 @@ export interface TournamentSettingsRequest {
      * @memberof TournamentSettingsRequest
      */
     description?: string | null;
+    /**
+     * Whether the Tournament is entered afterwards instead of run live: its Organizers set every pairing and Result, any date fits; `false` when left out
+     * @type {boolean}
+     * @memberof TournamentSettingsRequest
+     */
+    entered_afterwards?: boolean;
     /**
      * What playing costs, `null` or left out for nothing
      * 

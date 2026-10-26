@@ -40,6 +40,9 @@ use crate::models::tournament::result::ResultChange;
 use crate::models::tournament::result::ResultChangeKind;
 use crate::models::tournament::result::store_result;
 use crate::tournament::layout::Meetings;
+use crate::tournament::layout::blank_layout;
+use crate::tournament::pairing::PairedMatch;
+use crate::tournament::pairing::Pairing;
 use crate::tournament::pairing::PairingError;
 use crate::tournament::pairing::pair_next_round;
 use crate::tournament::record::Entrant;
@@ -405,6 +408,10 @@ impl Tournament {
     }
 
     /// Pair the next Round as a preview, returning its number
+    ///
+    /// A Tournament entered afterwards is not paired: its Swiss preview seats
+    /// the Participants in roster order (see [`blank_layout`]) for an Organizer
+    /// to lay out as it was played. Its Top cut is seeded as usual.
     #[instrument(name = "Tournament::pair_round", skip(tx, self), fields(tournament = ?self.uuid))]
     pub async fn pair_round(
         &self,
@@ -438,13 +445,34 @@ impl Tournament {
             {
                 return Ok(Err(RoundRefusal::AllRoundsPaired));
             }
-            match pair_next_round(&record, seed) {
-                Ok(pairing) => (RoundStage::Swiss, pairing),
-                Err(PairingError::TooFewEntrants) => {
+            if self.entered_afterwards {
+                let blank = blank_layout(&record);
+                if blank.matches.is_empty() {
                     return Ok(Err(RoundRefusal::TooFewParticipants));
                 }
-                Err(PairingError::RulesetNotPaired(_)) => {
-                    return Ok(Err(RoundRefusal::RulesetNotPaired));
+                (
+                    RoundStage::Swiss,
+                    Pairing {
+                        matches: blank
+                            .matches
+                            .into_iter()
+                            .map(|seats| PairedMatch {
+                                seats,
+                                rematch: false,
+                            })
+                            .collect(),
+                        byes: blank.byes,
+                    },
+                )
+            } else {
+                match pair_next_round(&record, seed) {
+                    Ok(pairing) => (RoundStage::Swiss, pairing),
+                    Err(PairingError::TooFewEntrants) => {
+                        return Ok(Err(RoundRefusal::TooFewParticipants));
+                    }
+                    Err(PairingError::RulesetNotPaired(_)) => {
+                        return Ok(Err(RoundRefusal::RulesetNotPaired));
+                    }
                 }
             }
         };

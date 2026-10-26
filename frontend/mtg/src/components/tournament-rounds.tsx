@@ -213,6 +213,8 @@ export function TournamentRounds({ tournament, load, onTournamentChanged, me = n
     }
 
     const nextNumber = rounds.length + 1;
+    // Entered afterwards, the Organizers set every Swiss pairing themselves; the Top cut is seeded as usual.
+    const entering = tournament.entered_afterwards && tournament.state !== TournamentState.TopCut;
 
     return (
         <div className={"flex flex-col gap-8"}>
@@ -237,10 +239,16 @@ export function TournamentRounds({ tournament, load, onTournamentChanged, me = n
                     {open === null && (
                         <PrimaryButton
                             disabled={busy}
-                            onClick={() => void act(() => Api.tournaments.rounds.pair(tournament.uuid))}
+                            onClick={() =>
+                                void act(() => Api.tournaments.rounds.pair(tournament.uuid)).then(() => {
+                                    if (entering) setArranging(true);
+                                })
+                            }
                         >
                             <ArrowPathIcon />
-                            {t("button.pair-round", { number: nextNumber })}
+                            {entering
+                                ? t("button.enter-round", { number: nextNumber })
+                                : t("button.pair-round", { number: nextNumber })}
                         </PrimaryButton>
                     )}
                     {open?.state === RoundState.Previewed && (
@@ -260,20 +268,22 @@ export function TournamentRounds({ tournament, load, onTournamentChanged, me = n
                                     {t("button.edit-pairing")}
                                 </Button>
                             )}
-                            <Button
-                                outline
-                                disabled={busy}
-                                onClick={() =>
-                                    void act(async () => {
-                                        setArranging(false);
-                                        await Api.tournaments.rounds.discard(tournament.uuid, open.number);
-                                        return Api.tournaments.rounds.pair(tournament.uuid);
-                                    })
-                                }
-                            >
-                                <ArrowPathIcon />
-                                {t("button.pair-again")}
-                            </Button>
+                            {!entering && (
+                                <Button
+                                    outline
+                                    disabled={busy}
+                                    onClick={() =>
+                                        void act(async () => {
+                                            setArranging(false);
+                                            await Api.tournaments.rounds.discard(tournament.uuid, open.number);
+                                            return Api.tournaments.rounds.pair(tournament.uuid);
+                                        })
+                                    }
+                                >
+                                    <ArrowPathIcon />
+                                    {t("button.pair-again")}
+                                </Button>
+                            )}
                         </>
                     )}
                     {disputed > 0 && <Badge color={"red"}>{t("label.results-disputed", { count: disputed })}</Badge>}
@@ -288,6 +298,8 @@ export function TournamentRounds({ tournament, load, onTournamentChanged, me = n
                     )}
                 </div>
             )}
+
+            {organizer && !over && entering && <Text>{t("description.enter-rounds")}</Text>}
 
             {list !== null && rounds.length === 0 && <Text>{t("description.no-rounds")}</Text>}
 
@@ -313,7 +325,11 @@ export function TournamentRounds({ tournament, load, onTournamentChanged, me = n
                         skewMs={skewMs}
                         multiplayer={multiplayer}
                         editable={organizer && round.state !== RoundState.Previewed}
-                        me={organizer || over || round.state !== RoundState.Running ? null : me}
+                        me={
+                            organizer || over || tournament.entered_afterwards || round.state !== RoundState.Running
+                                ? null
+                                : me
+                        }
                         busy={busy}
                         onEdit={setEditing}
                         onReport={setReporting}

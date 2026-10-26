@@ -1,0 +1,25 @@
+[Migration]
+Hash = "14941125849458624620"
+Initial = false
+Dependency = 66
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "tournament"
+
+[Migration.Operations.Field]
+Name = "entered_afterwards"
+Type = "boolean"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "default_value"
+Value = false
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 108
+Column = 9

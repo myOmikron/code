@@ -52,6 +52,10 @@ pub struct TournamentSettingsRequest {
     pub top_cut: Option<TopCut>,
     /// How many Games a Top cut Match is played to: required with a Top cut, `null` without
     pub top_cut_best_of: Option<BestOf>,
+    /// Whether the Tournament is entered afterwards instead of run live: its Organizers
+    /// set every pairing and Result, any date fits; `false` when left out
+    #[serde(default)]
+    pub entered_afterwards: bool,
     /// What playing costs, `null` or left out for nothing
     ///
     /// With a fee every Participant starts unpaid and is only paired once an
@@ -105,6 +109,7 @@ impl From<TournamentSettingsRequest> for RawTournamentSettings {
             round_minutes: value.round_minutes,
             top_cut: value.top_cut,
             top_cut_best_of: value.top_cut_best_of,
+            entered_afterwards: value.entered_afterwards,
             entry_fee: value.entry_fee.map(EntryFee::from),
         }
     }
@@ -131,8 +136,8 @@ pub struct TournamentSettingsErrors {
     pub unknown_currency: bool,
     /// The round timer is below a minute or above 240
     pub round_minutes_out_of_range: bool,
-    /// Table size, Ruleset or best-of changed, or an entry fee was taken up
-    /// or dropped, after the first Round started
+    /// Table size, Ruleset, best-of or entering afterwards changed, or an entry
+    /// fee was taken up or dropped, after the first Round started
     pub rules_locked: bool,
     /// The Top cut is not played at the Table size
     pub top_cut_mismatch: bool,
@@ -197,6 +202,9 @@ pub struct TournamentResponse {
     pub top_cut: Option<TopCut>,
     /// How many Games a Top cut Match is played to, `null` without a Top cut
     pub top_cut_best_of: Option<BestOf>,
+    /// Whether it is entered afterwards: its Organizers set every pairing and Result,
+    /// Participants report nothing and get no pushes
+    pub entered_afterwards: bool,
     /// What playing costs, `null` for nothing
     pub entry_fee: Option<EntryFeeSchema>,
     /// Its Owner's username, `null` while the Tombstone holds it
@@ -233,6 +241,7 @@ impl TournamentResponse {
             round_minutes: tournament.round_minutes,
             top_cut: tournament.top_cut,
             top_cut_best_of: tournament.top_cut_best_of,
+            entered_afterwards: tournament.entered_afterwards,
             entry_fee: tournament.entry_fee.map(EntryFeeSchema::from),
             owner: owner.map(|owner| owner.as_str().to_string()),
             organizer_role,

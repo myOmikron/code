@@ -64,6 +64,7 @@ pub async fn report_tournament_match_result(
                 | ReportResultRefusal::Refused(ReportRefusal::NotInMatch) => {
                     return Err(no_such_match());
                 }
+                ReportResultRefusal::EnteredAfterwards => errors.entered_afterwards = true,
                 ReportResultRefusal::NotRunning => errors.not_running = true,
                 ReportResultRefusal::InvalidScore => errors.invalid_score = true,
                 ReportResultRefusal::Refused(ReportRefusal::ReportedByOther) => {
@@ -118,6 +119,7 @@ pub async fn dispute_tournament_match_result(
                 | DisputeResultRefusal::Refused(DisputeRefusal::NotInMatch) => {
                     return Err(no_such_match());
                 }
+                DisputeResultRefusal::EnteredAfterwards => errors.entered_afterwards = true,
                 DisputeResultRefusal::NotRunning => errors.not_running = true,
                 DisputeResultRefusal::Refused(DisputeRefusal::NoResult) => errors.no_result = true,
                 DisputeResultRefusal::Refused(DisputeRefusal::OwnReport) => {
@@ -143,6 +145,8 @@ pub async fn dispute_tournament_match_result(
 ///
 /// Called once the change is committed, from every route that changes a
 /// Result. Only logged so far; live updates and Web Push hang off here.
+/// Web Push skips a Tournament entered afterwards
+/// ([`Tournament::entered_afterwards`]); live updates do not need to.
 pub fn announce(tournament: &Tournament, change: &ResultChange) {
     info!(
         tournament = ?tournament.uuid,

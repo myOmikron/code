@@ -88,6 +88,54 @@ pub fn check_layout(record: &TournamentRecord, layout: &Layout) -> Vec<LayoutErr
     errors
 }
 
+/// A layout to start from for a Round an Organizer enters by hand, without pairing
+///
+/// For a Tournament entered afterwards: the pairable Participants fill the
+/// tables in roster order, nothing is weighed. One-on-one the odd one out has a
+/// Bye; multiplayer a remainder of one Seat fewer than a full table plays,
+/// a smaller one has Byes, and under the Multiplayer Addendum, which gives no
+/// Byes, the last tables seat one fewer each where that seats everybody. The
+/// Organizer then lays it out as it was played, see [`check_layout`].
+pub fn blank_layout(record: &TournamentRecord) -> Layout {
+    let entrants: Vec<EntrantId> = record
+        .entrants
+        .iter()
+        .filter(|entrant| entrant.pairable)
+        .map(|entrant| entrant.id)
+        .collect();
+    let full = usize::try_from(record.table_size.get()).unwrap_or(2);
+    let remainder = entrants.len() % full;
+
+    let mut sizes = vec![full; entrants.len() / full];
+    if remainder > 0 {
+        let tables = entrants.len().div_ceil(full);
+        if full > 2 && remainder + 1 == full {
+            sizes.push(remainder);
+        } else if record.ruleset.gives_byes() {
+            // the remainder sits out with Byes
+        } else if full > 2 && tables * (full - 1) <= entrants.len() {
+            let full_tables = entrants.len() - tables * (full - 1);
+            sizes = (0..tables)
+                .map(|table| if table < full_tables { full } else { full - 1 })
+                .collect();
+        } else {
+            sizes.push(remainder);
+        }
+    }
+
+    let mut rest = entrants.as_slice();
+    let mut matches = Vec::with_capacity(sizes.len());
+    for size in sizes {
+        let (seats, after) = rest.split_at(size);
+        matches.push(seats.to_vec());
+        rest = after;
+    }
+    Layout {
+        matches,
+        byes: rest.to_vec(),
+    }
+}
+
 /// Who met whom in some Rounds
 #[derive(Debug, Clone, Default)]
 pub struct Meetings {
@@ -142,6 +190,7 @@ mod tests {
     use super::Layout;
     use super::LayoutError;
     use super::Meetings;
+    use super::blank_layout;
     use super::check_layout;
     use crate::tournament::record::Entrant;
     use crate::tournament::record::EntrantId;
@@ -265,6 +314,47 @@ mod tests {
         assert_eq!(
             check_layout(&record, &layout(&[&[1, 2, 3, 4]], &[5])),
             vec![LayoutError::NoByes]
+        );
+    }
+
+    #[test]
+    fn a_blank_layout_seats_one_on_one_in_roster_order_and_gives_the_last_a_bye() {
+        let record = tournament(Ruleset::Mtr, 2, 5);
+        let blank = blank_layout(&record);
+        assert_eq!(blank, layout(&[&[1, 2], &[3, 4]], &[5]));
+        assert_eq!(check_layout(&record, &blank), vec![]);
+    }
+
+    #[test]
+    fn a_blank_layout_leaves_out_who_is_not_pairable() {
+        let mut record = tournament(Ruleset::Mtr, 2, 4);
+        record.entrants[1].pairable = false;
+        assert_eq!(blank_layout(&record), layout(&[&[1, 3]], &[4]));
+    }
+
+    #[test]
+    fn a_blank_multiplayer_layout_seats_one_fewer_at_the_last_table_or_gives_byes() {
+        let record = tournament(Ruleset::TopDeck, 4, 11);
+        assert_eq!(
+            blank_layout(&record),
+            layout(&[&[1, 2, 3, 4], &[5, 6, 7, 8], &[9, 10, 11]], &[])
+        );
+        let record = tournament(Ruleset::TopDeck, 4, 10);
+        let blank = blank_layout(&record);
+        assert_eq!(blank, layout(&[&[1, 2, 3, 4], &[5, 6, 7, 8]], &[9, 10]));
+        assert_eq!(check_layout(&record, &blank), vec![]);
+    }
+
+    #[test]
+    fn a_blank_layout_under_the_multiplayer_addendum_plays_smaller_tables_instead_of_byes() {
+        let record = tournament(Ruleset::MultiplayerAddendum, 4, 9);
+        let blank = blank_layout(&record);
+        assert_eq!(blank, layout(&[&[1, 2, 3], &[4, 5, 6], &[7, 8, 9]], &[]));
+        assert_eq!(check_layout(&record, &blank), vec![]);
+        let record = tournament(Ruleset::MultiplayerAddendum, 4, 10);
+        assert_eq!(
+            blank_layout(&record),
+            layout(&[&[1, 2, 3, 4], &[5, 6, 7], &[8, 9, 10]], &[])
         );
     }
 

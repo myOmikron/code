@@ -60,6 +60,8 @@ pub enum ResultChangeKind {
 pub enum ReportResultRefusal {
     /// The Match is none of this Tournament's, or a Bye
     NoSuchMatch,
+    /// The Tournament is entered afterwards: its Organizers set every Result
+    EnteredAfterwards,
     /// Its Round is not running, or the Tournament is over
     NotRunning,
     /// The game score does not fit the Match
@@ -73,6 +75,8 @@ pub enum ReportResultRefusal {
 pub enum DisputeResultRefusal {
     /// The Match is none of this Tournament's, or a Bye
     NoSuchMatch,
+    /// The Tournament is entered afterwards: its Organizers set every Result
+    EnteredAfterwards,
     /// Its Round is not running, or the Tournament is over
     NotRunning,
     /// The rules of reporting refuse it
@@ -123,6 +127,9 @@ impl Tournament {
         let Some(reported) = self.reported_match(tx, played).await? else {
             return Ok(Err(ReportResultRefusal::NoSuchMatch));
         };
+        if self.entered_afterwards {
+            return Ok(Err(ReportResultRefusal::EnteredAfterwards));
+        }
         if self.over() || reported.round_state != RoundState::Running {
             return Ok(Err(ReportResultRefusal::NotRunning));
         }
@@ -179,6 +186,9 @@ impl Tournament {
         let Some(reported) = self.reported_match(tx, played).await? else {
             return Ok(Err(DisputeResultRefusal::NoSuchMatch));
         };
+        if self.entered_afterwards {
+            return Ok(Err(DisputeResultRefusal::EnteredAfterwards));
+        }
         if self.over() || reported.round_state != RoundState::Running {
             return Ok(Err(DisputeResultRefusal::NotRunning));
         }
