@@ -11,6 +11,8 @@ pub mod handler;
 pub mod schema;
 
 /// What any logged-in Account may do: answer the offers made to it
+///
+/// The offer is the check, so these sit in no Tournament's route group.
 pub fn account_routes() -> GalvynRouter {
     GalvynRouter::new()
         .handler(handler::get_tournament_handovers)
@@ -18,7 +20,7 @@ pub fn account_routes() -> GalvynRouter {
         .handler(handler::decline_tournament_handover)
 }
 
-/// What the Organizers of a Tournament may do
+/// What the Organizers of the Tournament may do
 pub fn organizer_routes() -> GalvynRouter {
     GalvynRouter::new()
         .handler(handler::list_tournament_organizers)
@@ -26,7 +28,7 @@ pub fn organizer_routes() -> GalvynRouter {
         .handler(handler::remove_tournament_co_organizer)
 }
 
-/// What only the Owner of a Tournament may do
+/// What only the Owner of the Tournament may do
 pub fn owner_routes() -> GalvynRouter {
     GalvynRouter::new()
         .handler(handler::offer_tournament_handover)

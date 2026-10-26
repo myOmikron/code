@@ -7,8 +7,9 @@
 //!
 //! Multiplayer, the Top cut is one final Match of the Table size best, Seats
 //! by seed with the top seed first (MTRA Appendix, Addendum 2.2B). A drawn
-//! final goes to the highest seed in it (MTRA 2.1, Addendum 2.4C), a
-//! Participant who Drops during it loses it, see [`top_cut_winner`].
+//! final goes to the highest seed in it who did not Drop (MTRA 2.1, Addendum
+//! 2.4C), see [`top_cut_winner`]; a Participant who Drops during it cannot win
+//! it, see [`names_dropped_winner`].
 
 use std::collections::BTreeMap;
 use std::collections::HashMap;
@@ -22,6 +23,7 @@ use serde::Serialize;
 use crate::tournament::pairing::PairedMatch;
 use crate::tournament::pairing::Pairing;
 use crate::tournament::record::EntrantId;
+use crate::tournament::record::MatchResult;
 use crate::tournament::record::RoundRecord;
 use crate::tournament::record::TournamentRecord;
 use crate::tournament::ruleset::Ruleset;
@@ -231,8 +233,9 @@ pub fn pair_top_cut(
 /// Who won the Top cut `cut`, `None` while its final has no Result
 ///
 /// The winner of the final, or the one who advanced with a Bye. A drawn final
-/// goes to the best Swiss seed in it, and a Participant who Dropped during the
-/// final loses it: then the best seed in it who did not Drop wins.
+/// goes to the best Swiss seed in it who did not Drop. A Result naming a
+/// Participant who Dropped as the winner of a multiplayer final is refused
+/// before it is stored, see [`names_dropped_winner`].
 pub fn top_cut_winner(record: &TournamentRecord, cut: &[RoundRecord]) -> Option<EntrantId> {
     if !cut_over(cut) {
         return None;
@@ -242,21 +245,39 @@ pub fn top_cut_winner(record: &TournamentRecord, cut: &[RoundRecord]) -> Option<
         return last.byes.first().copied();
     };
     let result = played.result.as_ref()?;
-    let pairable: HashSet<EntrantId> = record
-        .entrants
-        .iter()
-        .filter(|entrant| entrant.pairable)
-        .map(|entrant| entrant.id)
-        .collect();
-    if let Some(winner) = result.winner().and_then(|seat| played.seats.get(seat))
-        && pairable.contains(winner)
-    {
+    if let Some(winner) = result.winner().and_then(|seat| played.seats.get(seat)) {
         return Some(*winner);
     }
+    let pairable = pairable(record);
     standings(record)
         .iter()
         .map(|line| line.entrant)
         .find(|entrant| pairable.contains(entrant) && played.seats.contains(entrant))
+}
+
+/// Whether `result` of a multiplayer final seating `seats` names a Participant who Dropped as its winner
+///
+/// A Participant who Drops during the final cannot win it; such a Result is
+/// refused, whoever sets or reports it. A draw names nobody.
+pub fn names_dropped_winner(
+    record: &TournamentRecord,
+    seats: &[EntrantId],
+    result: &MatchResult,
+) -> bool {
+    result
+        .winner()
+        .and_then(|seat| seats.get(seat))
+        .is_some_and(|winner| !pairable(record).contains(winner))
+}
+
+/// The Participants of `record` who may still play: those who neither Dropped nor owe the entry fee
+fn pairable(record: &TournamentRecord) -> HashSet<EntrantId> {
+    record
+        .entrants
+        .iter()
+        .filter(|entrant| entrant.pairable)
+        .map(|entrant| entrant.id)
+        .collect()
 }
 
 /// How many Rounds a cut of `size` Participants takes
@@ -284,6 +305,7 @@ mod tests {
     use super::bracket_size;
     use super::cut_over;
     use super::cut_size;
+    use super::names_dropped_winner;
     use super::pair_top_cut;
     use super::suggested_top_cut;
     use super::top_cut_winner;
@@ -663,13 +685,23 @@ mod tests {
     }
 
     #[test]
-    fn a_participant_who_dropped_during_the_final_loses_it() {
+    fn a_final_result_may_not_name_a_participant_who_dropped_as_winner() {
         let mut record = multiplayer(8, 4);
         let fin = pair_top_cut(&record, TopCut::Final, &[]).expect("the final");
+        let seats = fin.matches[0].seats.clone();
         let third = seeded(&record, 3);
+        let third_wins = MatchResult {
+            games_won: vec![0, 0, 1, 0],
+            games_drawn: 0,
+        };
+        let draw = MatchResult {
+            games_won: vec![0, 0, 0, 0],
+            games_drawn: 1,
+        };
+        assert!(!names_dropped_winner(&record, &seats, &third_wins));
         drop_out(&mut record, third);
-        let cut = vec![final_played(&fin, &[0, 0, 1, 0], 0)];
-        assert_eq!(top_cut_winner(&record, &cut), Some(seeded(&record, 1)));
+        assert!(names_dropped_winner(&record, &seats, &third_wins));
+        assert!(!names_dropped_winner(&record, &seats, &draw));
     }
 
     #[test]

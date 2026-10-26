@@ -118,6 +118,13 @@ pub struct SetListSharingRequest {
     pub shared: bool,
 }
 
+/// Why the list sharing could not be changed
+#[derive(Debug, Clone, Default, Serialize, JsonSchema)]
+pub struct SetListSharingErrors {
+    /// The Tournament is Finished or Cancelled, so the choice is fixed
+    pub tournament_over: bool,
+}
+
 /// One Registered deck's list, with what the format warnings read
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct RegisteredListResponse {

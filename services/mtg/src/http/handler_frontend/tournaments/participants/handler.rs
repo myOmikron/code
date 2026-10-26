@@ -1,9 +1,5 @@
-use std::sync::LazyLock;
-use std::time::Duration;
-
 use galvyn::core::Module;
 use galvyn::core::re_exports::axum::extract::Path;
-use galvyn::core::re_exports::axum::extract::Query;
 use galvyn::core::stuff::api_error::ApiError;
 use galvyn::core::stuff::api_error::ApiResult;
 use galvyn::core::stuff::api_error::FormErrors;
@@ -29,9 +25,6 @@ use crate::http::handler_frontend::tournaments::participants::schema::AddGuestPa
 use crate::http::handler_frontend::tournaments::participants::schema::DropErrors;
 use crate::http::handler_frontend::tournaments::participants::schema::ListParticipantsResponse;
 use crate::http::handler_frontend::tournaments::participants::schema::ParticipantResponse;
-use crate::http::handler_frontend::tournaments::participants::schema::PlayerCandidateResponse;
-use crate::http::handler_frontend::tournaments::participants::schema::PlayerCandidatesResponse;
-use crate::http::handler_frontend::tournaments::participants::schema::SearchPlayersQuery;
 use crate::http::handler_frontend::tournaments::participants::schema::SetPaidErrors;
 use crate::http::handler_frontend::tournaments::participants::schema::SetPaidRequest;
 use crate::http::handler_frontend::tournaments::participants::schema::SignUpErrors;
@@ -40,6 +33,7 @@ use crate::models::account::Account;
 use crate::models::account::extractor::Viewer;
 use crate::models::tournament::Tournament;
 use crate::models::tournament::TournamentUuid;
+use crate::models::tournament::access::TournamentGrant;
 use crate::models::tournament::participant::DropRefusal;
 use crate::models::tournament::participant::PaidRefusal;
 use crate::models::tournament::participant::Participant;
@@ -48,17 +42,6 @@ use crate::models::tournament::participant::Player;
 use crate::models::tournament::participant::SignUpRefusal;
 use crate::models::tournament::participant::late_from_round;
 use crate::models::tournament::result::ResultChange;
-use crate::utils::account_budget::AccountBudget;
-
-/// Username searches an Organizer may run per hour, about one per typed letter
-static PLAYER_SEARCHES: LazyLock<AccountBudget> =
-    LazyLock::new(|| AccountBudget::new(120, Duration::from_secs(60 * 60)));
-
-/// How many Accounts a username search answers with at most
-const CANDIDATE_LIMIT: u64 = 10;
-
-/// How many characters a username search needs before it searches
-const CANDIDATE_MIN_CHARS: usize = 2;
 
 /// The Participants of a Tournament the reader may see
 ///
@@ -66,15 +49,12 @@ const CANDIDATE_MIN_CHARS: usize = 2;
 #[get("/{tournament}/participants")]
 pub async fn list_tournament_participants(
     viewer: Viewer,
-    Path(tournament): Path<TournamentUuid>,
+    grant: TournamentGrant,
+    Path(_): Path<TournamentUuid>,
 ) -> ApiResult<ApiJson<ListParticipantsResponse>> {
     let mut tx = Database::global().start_transaction().await?;
 
-    let Some(tournament) = Tournament::get_visible(&mut tx, tournament, viewer.account()).await?
-    else {
-        tx.rollback().await?;
-        return Err(denied());
-    };
+    let tournament = grant.tournament;
     let response = list(&mut tx, &tournament, viewer).await?;
 
     tx.commit().await?;
@@ -91,14 +71,13 @@ pub async fn list_tournament_participants(
 #[post("/{tournament}/participants/accounts")]
 pub async fn add_tournament_account(
     account: Account,
-    Path(tournament): Path<TournamentUuid>,
+    grant: TournamentGrant,
+    Path(_): Path<TournamentUuid>,
     ApiJson(AddAccountParticipantRequest { username }): ApiJson<AddAccountParticipantRequest>,
 ) -> ApiResult<ApiJson<ParticipantResponse>, AddAccountParticipantErrors> {
     let mut tx = Database::global().start_transaction().await?;
 
-    let Some(tournament) =
-        Tournament::get_as_organizer_for_update(&mut tx, tournament, account.uuid).await?
-    else {
+    let Some(tournament) = grant.tournament.lock_for_update(&mut tx).await? else {
         tx.rollback().await?;
         return Err(denied());
     };
@@ -142,8 +121,8 @@ pub async fn add_tournament_account(
 /// over. The name is trimmed; two Guests may share one.
 #[post("/{tournament}/participants/guests")]
 pub async fn add_tournament_guest(
-    account: Account,
-    Path(tournament): Path<TournamentUuid>,
+    grant: TournamentGrant,
+    Path(_): Path<TournamentUuid>,
     ApiJson(AddGuestParticipantRequest { name }): ApiJson<AddGuestParticipantRequest>,
 ) -> ApiResult<ApiJson<ParticipantResponse>, AddGuestParticipantErrors> {
     let trimmed = name.trim();
@@ -157,9 +136,7 @@ pub async fn add_tournament_guest(
 
     let mut tx = Database::global().start_transaction().await?;
 
-    let Some(tournament) =
-        Tournament::get_as_organizer_for_update(&mut tx, tournament, account.uuid).await?
-    else {
+    let Some(tournament) = grant.tournament.lock_for_update(&mut tx).await? else {
         tx.rollback().await?;
         return Err(denied());
     };
@@ -189,16 +166,12 @@ pub async fn add_tournament_guest(
 /// Only before the first Round starts; afterwards a Participant leaves by a Drop.
 #[delete("/{tournament}/participants/{participant}")]
 pub async fn remove_tournament_participant(
-    account: Account,
-    Path((tournament, participant)): Path<(TournamentUuid, ParticipantUuid)>,
+    grant: TournamentGrant,
+    Path((_, participant)): Path<(TournamentUuid, ParticipantUuid)>,
 ) -> ApiResult<ApiJson<()>> {
     let mut tx = Database::global().start_transaction().await?;
 
-    let Some(tournament) = Tournament::get_as_organizer(&mut tx, tournament, account.uuid).await?
-    else {
-        tx.rollback().await?;
-        return Err(denied());
-    };
+    let tournament = grant.tournament;
     tournament.lock_roster(&mut tx).await?;
     if !tournament.roster_open() {
         tx.rollback().await?;
@@ -219,14 +192,12 @@ pub async fn remove_tournament_participant(
 /// Round pairs it; it stays in the standings with its Results so far.
 #[post("/{tournament}/participants/{participant}/drop")]
 pub async fn drop_tournament_participant(
-    account: Account,
-    Path((tournament, participant)): Path<(TournamentUuid, ParticipantUuid)>,
+    grant: TournamentGrant,
+    Path((_, participant)): Path<(TournamentUuid, ParticipantUuid)>,
 ) -> ApiResult<ApiJson<()>, DropErrors> {
     let mut tx = Database::global().start_transaction().await?;
 
-    let Some(tournament) =
-        Tournament::get_as_organizer_for_update(&mut tx, tournament, account.uuid).await?
-    else {
+    let Some(tournament) = grant.tournament.lock_for_update(&mut tx).await? else {
         tx.rollback().await?;
         return Err(denied());
     };
@@ -246,15 +217,13 @@ pub async fn drop_tournament_participant(
 /// previewed Round.
 #[put("/{tournament}/participants/{participant}/paid")]
 pub async fn set_tournament_participant_paid(
-    account: Account,
-    Path((tournament, participant)): Path<(TournamentUuid, ParticipantUuid)>,
+    grant: TournamentGrant,
+    Path((_, participant)): Path<(TournamentUuid, ParticipantUuid)>,
     ApiJson(SetPaidRequest { paid }): ApiJson<SetPaidRequest>,
 ) -> ApiResult<ApiJson<()>, SetPaidErrors> {
     let mut tx = Database::global().start_transaction().await?;
 
-    let Some(tournament) =
-        Tournament::get_as_organizer_for_update(&mut tx, tournament, account.uuid).await?
-    else {
+    let Some(tournament) = grant.tournament.lock_for_update(&mut tx).await? else {
         tx.rollback().await?;
         return Err(denied());
     };
@@ -281,24 +250,18 @@ pub async fn set_tournament_participant_paid(
 /// pairs it; it stays in the standings with its Results so far.
 #[post("/{tournament}/drop")]
 pub async fn drop_out_of_tournament(
-    account: Account,
-    Path(tournament): Path<TournamentUuid>,
+    grant: TournamentGrant,
+    Path(_): Path<TournamentUuid>,
 ) -> ApiResult<ApiJson<()>, DropErrors> {
     let mut tx = Database::global().start_transaction().await?;
 
-    let Some(seen) = Tournament::get_visible(&mut tx, tournament, Some(account.uuid)).await? else {
+    let Some(participant) = grant.participant else {
         tx.rollback().await?;
         return Err(denied());
     };
-    seen.lock_roster(&mut tx).await?;
-    let Some(tournament) = Tournament::get_visible(&mut tx, tournament, Some(account.uuid)).await?
-    else {
+    let Some(tournament) = grant.tournament.lock_for_update(&mut tx).await? else {
         tx.rollback().await?;
         return Err(denied());
-    };
-    let Some(participant) = tournament.participant_of(&mut tx, account.uuid).await? else {
-        tx.rollback().await?;
-        return Err(ApiError::bad_request("Not a participant"));
     };
     let change = RosterChange::begin(&mut tx, &tournament).await?;
     let response = drop_participant(&mut tx, &tournament, participant).await;
@@ -307,59 +270,6 @@ pub async fn drop_out_of_tournament(
         announce(&tournament, &forfeit);
     }
     Ok(ApiJson(()))
-}
-
-/// Accounts whose username starts with what an Organizer typed, to add as Participants
-///
-/// Answers with up to ten Accounts, the caller among them if it matches,
-/// alphabetically by username. Fewer than two characters search nothing.
-/// Searches are capped per caller, see [`PLAYER_SEARCHES`]; past the cap
-/// the answer is empty and says so.
-#[get("/{tournament}/player-search")]
-pub async fn search_tournament_players(
-    account: Account,
-    Path(tournament): Path<TournamentUuid>,
-    Query(SearchPlayersQuery { query }): Query<SearchPlayersQuery>,
-) -> ApiResult<ApiJson<PlayerCandidatesResponse>> {
-    let mut tx = Database::global().start_transaction().await?;
-
-    if Tournament::get_as_organizer(&mut tx, tournament, account.uuid)
-        .await?
-        .is_none()
-    {
-        tx.rollback().await?;
-        return Err(denied());
-    }
-
-    let prefix = query.trim();
-    if prefix.chars().count() < CANDIDATE_MIN_CHARS {
-        tx.commit().await?;
-        return Ok(ApiJson(PlayerCandidatesResponse {
-            accounts: Vec::new(),
-            too_many_searches: false,
-        }));
-    }
-    if !PLAYER_SEARCHES.take(account.uuid) {
-        tx.commit().await?;
-        return Ok(ApiJson(PlayerCandidatesResponse {
-            accounts: Vec::new(),
-            too_many_searches: true,
-        }));
-    }
-    let found = Account::search_by_username_prefix(&mut tx, prefix, CANDIDATE_LIMIT).await?;
-
-    tx.commit().await?;
-
-    Ok(ApiJson(PlayerCandidatesResponse {
-        accounts: found
-            .into_iter()
-            .map(|(account, username)| PlayerCandidateResponse {
-                account,
-                username: username.as_str().to_string(),
-            })
-            .collect(),
-        too_many_searches: false,
-    }))
 }
 
 /// Sign the logged-in Account up for a Tournament it sees by its id
@@ -371,15 +281,12 @@ pub async fn search_tournament_players(
 #[post("/{tournament}/sign-up")]
 pub async fn sign_up_for_tournament(
     account: Account,
-    Path(tournament): Path<TournamentUuid>,
+    grant: TournamentGrant,
+    Path(_): Path<TournamentUuid>,
 ) -> ApiResult<ApiJson<ParticipantResponse>, SignUpErrors> {
     let mut tx = Database::global().start_transaction().await?;
 
-    let Some(tournament) = Tournament::get_visible(&mut tx, tournament, Some(account.uuid)).await?
-    else {
-        tx.rollback().await?;
-        return Err(denied());
-    };
+    let tournament = grant.tournament;
     let change = RosterChange::begin(&mut tx, &tournament).await?;
     let response = sign_up(&mut tx, &tournament, &account).await;
     change.finish(tx, &tournament, response).await
@@ -390,25 +297,23 @@ pub async fn sign_up_for_tournament(
 /// Only before the first Round starts; afterwards a Participant leaves by a Drop.
 #[delete("/{tournament}/sign-up")]
 pub async fn withdraw_tournament_sign_up(
-    account: Account,
-    Path(tournament): Path<TournamentUuid>,
+    grant: TournamentGrant,
+    Path(_): Path<TournamentUuid>,
 ) -> ApiResult<ApiJson<()>> {
     let mut tx = Database::global().start_transaction().await?;
 
-    let Some(tournament) = Tournament::get_visible(&mut tx, tournament, Some(account.uuid)).await?
-    else {
+    let Some(participant) = grant.participant else {
         tx.rollback().await?;
         return Err(denied());
     };
-    tournament.lock_roster(&mut tx).await?;
+    let Some(tournament) = grant.tournament.lock_for_update(&mut tx).await? else {
+        tx.rollback().await?;
+        return Err(denied());
+    };
     if !tournament.roster_open() {
         tx.rollback().await?;
         return Err(ApiError::bad_request("Registration is over"));
     }
-    let Some(participant) = tournament.participant_of(&mut tx, account.uuid).await? else {
-        tx.rollback().await?;
-        return Err(ApiError::bad_request("Not a participant"));
-    };
     let change = RosterChange::begin(&mut tx, &tournament).await?;
     tournament.remove_participant(&mut tx, participant).await?;
 

@@ -167,7 +167,6 @@ All URIs are relative to *http://localhost*
 | [**searchCollaboratorCandidates**](DefaultApi.md#searchcollaboratorcandidates) | **GET** /api/frontend/v1/decks/{deck}/collaborators/candidates | Accounts whose username starts with what the owner typed, to name on a deck |
 | [**searchMpcfillArt**](DefaultApi.md#searchmpcfillart) | **POST** /api/frontend/v1/mpcfill/search | The art MPCFill has for these cards |
 | [**searchPublicDecks**](DefaultApi.md#searchpublicdecks) | **GET** /api/frontend/v1/explore/decks | Search the decks their owners put on show |
-| [**searchTournamentPlayers**](DefaultApi.md#searchtournamentplayers) | **GET** /api/frontend/v1/tournaments/{tournament}/player-search | Accounts whose username starts with what an Organizer typed, to add as Participants |
 | [**sendBugReport**](DefaultApi.md#sendbugreportoperation) | **POST** /api/frontend/v1/bug-reports | Send a Bug report |
 | [**setDeckAdvisorSettings**](DefaultApi.md#setdeckadvisorsettings) | **PUT** /api/frontend/v1/decks/{deck}/advisor-settings | Replace this deck\&#39;s advisor settings |
 | [**setDeckBracket**](DefaultApi.md#setdeckbracketoperation) | **PUT** /api/frontend/v1/decks/{deck}/bracket | Say which Commander bracket the deck is built to |
@@ -3164,7 +3163,7 @@ No authorization required
 
 Delete the logged-in account
 
-Delete the logged-in account  The account, its passkeys, its collections, its watch lists and every deck it kept to itself are gone for good. What stays are the decks it put on show: those are handed to a tombstone, so a decklist somebody linked to keeps working while nothing points back at the account that built it.  The request has to spell the account\&#39;s own username. It is authenticated either way, so this is not what makes the deletion safe: it is what makes it deliberate.
+Delete the logged-in account  The account, its passkeys, its collections, its watch lists and every deck it kept to itself are gone for good. What stays are the decks it put on show: those are handed to a tombstone, so a decklist somebody linked to keeps working while nothing points back at the account that built it.  Its Participants in other people\&#39;s Tournaments stay as Guests, named \&quot;Gelöschter Spieler N\&quot; unless the request asks to keep the last username.  The request has to spell the account\&#39;s own username. It is authenticated either way, so this is not what makes the deletion safe: it is what makes it deliberate.
 
 ### Example
 
@@ -11775,79 +11774,6 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
-## searchTournamentPlayers
-
-> PlayerCandidatesResponse searchTournamentPlayers(tournament, query)
-
-Accounts whose username starts with what an Organizer typed, to add as Participants
-
-Accounts whose username starts with what an Organizer typed, to add as Participants  Answers with up to ten Accounts, the caller among them if it matches, alphabetically by username. Fewer than two characters search nothing. Searches are capped per caller, see [&#x60;PLAYER_SEARCHES&#x60;]; past the cap the answer is empty and says so.
-
-### Example
-
-```ts
-import {
-  Configuration,
-  DefaultApi,
-} from '';
-import type { SearchTournamentPlayersRequest } from '';
-
-async function example() {
-  console.log("🚀 Testing  SDK...");
-  const api = new DefaultApi();
-
-  const body = {
-    // string
-    tournament: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
-    // string (optional)
-    query: ...,
-  } satisfies SearchTournamentPlayersRequest;
-
-  try {
-    const data = await api.searchTournamentPlayers(body);
-    console.log(data);
-  } catch (error) {
-    console.error(error);
-  }
-}
-
-// Run the test
-example().catch(console.error);
-```
-
-### Parameters
-
-
-| Name | Type | Description  | Notes |
-|------------- | ------------- | ------------- | -------------|
-| **tournament** | `string` |  | [Defaults to `undefined`] |
-| **query** | `string` |  | [Optional] [Defaults to `undefined`] |
-
-### Return type
-
-[**PlayerCandidatesResponse**](PlayerCandidatesResponse.md)
-
-### Authorization
-
-No authorization required
-
-### HTTP request headers
-
-- **Content-Type**: Not defined
-- **Accept**: `application/json`
-
-
-### HTTP response details
-| Status code | Description | Response headers |
-|-------------|-------------|------------------|
-| **200** |  |  -  |
-| **400** |  |  -  |
-| **500** |  |  -  |
-| **401** |  |  -  |
-
-[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
-
-
 ## sendBugReport
 
 > SendBugReport200Response sendBugReport(report, images)
@@ -12364,11 +12290,11 @@ No authorization required
 
 ## setMyTournamentListSharing
 
-> any setMyTournamentListSharing(tournament, SetListSharingRequest)
+> FormErrorResponseForSetListSharingErrors setMyTournamentListSharing(tournament, SetListSharingRequest)
 
 Choose whether others may see the logged-in Account\&#39;s list once the
 
-Choose whether others may see the logged-in Account\&#39;s list once the Tournament is Finished  The Participant\&#39;s own choice, open at any time.
+Choose whether others may see the logged-in Account\&#39;s list once the Tournament is Finished  The Participant\&#39;s own choice, open until the Tournament is Finished or Cancelled; from then on it is refused.
 
 ### Example
 
@@ -12412,7 +12338,7 @@ example().catch(console.error);
 
 ### Return type
 
-**any**
+[**FormErrorResponseForSetListSharingErrors**](FormErrorResponseForSetListSharingErrors.md)
 
 ### Authorization
 

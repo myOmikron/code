@@ -23,6 +23,7 @@ use crate::tests::tournament_organizers::co_organizer_names;
 use crate::tests::tournament_organizers::offer;
 use crate::tests::tournament_organizers::organizers_url;
 use crate::tests::tournament_participants::add_account;
+use crate::tests::tournament_participants::add_guest;
 use crate::tests::tournament_participants::names;
 use crate::tests::tournament_participants::roster;
 use crate::tests::tournament_participants::start;
@@ -298,6 +299,80 @@ fn a_deleted_accounts_participants_become_guests_named_by_its_last_username() {
         assert_eq!(names(&body), [last.as_str()], "{body}");
         assert_eq!(body["participants"][0]["uuid"], added["uuid"], "{body}");
         assert_eq!(body["participants"][0]["guest"], true, "{body}");
+    });
+}
+
+/// The Account named `username` deletes itself through `client`, with `request` beside its username
+async fn delete_self(client: &mut TestClient, username: &str, mut request: Value) {
+    request["username"] = json!(username);
+    let response = client
+        .json(Method::DELETE, &api("accounts/me"), &request)
+        .await;
+    assert_eq!(response.status, StatusCode::OK, "{response:?}");
+}
+
+#[test]
+fn a_deleted_account_appears_anonymously_in_other_peoples_tournaments_by_default() {
+    run(async {
+        let mut first = Fixture::new("Public").await;
+        let mut second = Fixture::new("Public").await;
+        let member = create_account(Role::Member).await;
+        add_guest(&mut first.owner, &first.tournament, "Gelöschter Spieler 1").await;
+        let added = add_account(&mut first.owner, &first.tournament, &member.username).await;
+        add_account(&mut second.owner, &second.tournament, &member.username).await;
+
+        let mut as_member = TestClient::logged_in(&member).await;
+        delete_self(&mut as_member, &member.username, json!({})).await;
+
+        let body = roster(&mut first.owner, &first.tournament).await;
+        assert_eq!(
+            names(&body),
+            ["Gelöschter Spieler 1", "Gelöschter Spieler 2"],
+            "{body}"
+        );
+        assert_eq!(body["participants"][1]["uuid"], added["uuid"], "{body}");
+        assert_eq!(body["participants"][1]["guest"], true, "{body}");
+        let body = roster(&mut second.owner, &second.tournament).await;
+        assert_eq!(names(&body), ["Gelöschter Spieler 1"], "{body}");
+    });
+}
+
+#[test]
+fn a_deleted_account_that_chose_so_keeps_its_last_username_in_other_peoples_tournaments() {
+    run(async {
+        let mut fixture = Fixture::new("Public").await;
+        let member = create_account(Role::Member).await;
+        add_account(&mut fixture.owner, &fixture.tournament, &member.username).await;
+
+        let mut as_member = TestClient::logged_in(&member).await;
+        delete_self(
+            &mut as_member,
+            &member.username,
+            json!({ "appear_anonymously": false }),
+        )
+        .await;
+
+        let body = roster(&mut fixture.owner, &fixture.tournament).await;
+        assert_eq!(names(&body), [member.username.as_str()], "{body}");
+    });
+}
+
+#[test]
+fn a_deleted_account_keeps_its_last_username_in_the_tournaments_it_owned() {
+    run(async {
+        let mut fixture = Fixture::new("Public").await;
+        let username = fixture.owner_account.username.clone();
+        add_account(&mut fixture.owner, &fixture.tournament, &username).await;
+
+        delete_self(
+            &mut fixture.owner,
+            &username,
+            json!({ "appear_anonymously": true }),
+        )
+        .await;
+
+        let body = roster(&mut TestClient::new(), &fixture.tournament).await;
+        assert_eq!(names(&body), [username.as_str()], "{body}");
     });
 }
 

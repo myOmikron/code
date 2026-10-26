@@ -7,6 +7,7 @@ Why a Result could not be set
 
 Name | Type
 ------------ | -------------
+`dropped_winner` | boolean
 `invalid_score` | boolean
 `not_started` | boolean
 

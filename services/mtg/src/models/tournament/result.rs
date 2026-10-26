@@ -53,6 +53,8 @@ pub enum ResultChangeKind {
     Disputed,
     /// An Organizer set or corrected it
     Set,
+    /// An Organizer set it while it was disputed, settling the dispute
+    Settled,
 }
 
 /// Why a Participant's report was refused
@@ -66,6 +68,8 @@ pub enum ReportResultRefusal {
     NotRunning,
     /// The game score does not fit the Match
     InvalidScore,
+    /// It names a Participant who Dropped as the winner of a multiplayer final
+    DroppedWinner,
     /// The rules of reporting refuse it
     Refused(ReportRefusal),
 }
@@ -114,7 +118,7 @@ impl Tournament {
     ///
     /// It counts at once. `None` if the Match has that Result already.
     /// The caller made sure `by` is the acting Account's Participant and holds
-    /// [`Tournament::get_visible_for_update`]'s lock.
+    /// [`Tournament::lock_for_update`]'s lock.
     #[instrument(name = "Tournament::report_result", skip(tx, self), fields(tournament = ?self.uuid))]
     pub async fn report_result(
         &self,
@@ -138,6 +142,13 @@ impl Tournament {
         {
             return Ok(Err(ReportResultRefusal::InvalidScore));
         }
+        let seats = reported.participants();
+        if self
+            .names_dropped_winner(tx, reported.stage, &seats, games_won, games_drawn)
+            .await?
+        {
+            return Ok(Err(ReportResultRefusal::DroppedWinner));
+        }
         let same_score = reported.games_drawn == Some(games_drawn)
             && reported.seats.len() == games_won.len()
             && reported
@@ -145,7 +156,6 @@ impl Tournament {
                 .iter()
                 .zip(games_won)
                 .all(|((_, stored), won)| *stored == Some(*won));
-        let seats = reported.participants();
         let entrants: Vec<_> = seats.iter().map(|seat| seat.into_inner()).collect();
         match report(&entrants, reported.stored, by.into_inner(), same_score) {
             Err(refusal) => Ok(Err(ReportResultRefusal::Refused(refusal))),
@@ -175,7 +185,7 @@ impl Tournament {
     ///
     /// `None` if it is disputed already. The caller made sure `by` is the
     /// acting Account's Participant and holds
-    /// [`Tournament::get_visible_for_update`]'s lock.
+    /// [`Tournament::lock_for_update`]'s lock.
     #[instrument(name = "Tournament::dispute_result", skip(tx, self), fields(tournament = ?self.uuid))]
     pub async fn dispute_result(
         &self,

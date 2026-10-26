@@ -13,6 +13,8 @@ export type EditMatch = {
     bye: boolean;
     /** Who sits there, in Seat order */
     seats: Array<string>;
+    /** Whether it holds the Participants who could play but sit out, see {@link withBench} */
+    bench?: true;
 };
 
 /** A Round's Matches in table order, then its Byes */
@@ -32,6 +34,20 @@ export function layoutFrom(round: RoundResponse): EditLayout {
         seats: played.seats.map((seat) => seat.participant),
     }));
     return [...all.filter((entry) => !entry.bye), ...all.filter((entry) => entry.bye)];
+}
+
+/**
+ * Adds the Participants who could play but sit out, to trade places with
+ * those who play: a Top cut entered afterwards seats whom the Organizer says
+ *
+ * @param layout the layout
+ * @param bench who could play but sits nowhere in it
+ *
+ * @returns the layout with the bench last, the same layout for an empty bench
+ */
+export function withBench(layout: EditLayout, bench: Array<string>): EditLayout {
+    if (bench.length === 0) return layout;
+    return [...layout, { key: "bench", bye: true, bench: true, seats: bench }];
 }
 
 /**
@@ -137,11 +153,11 @@ export function isRematch(seats: Array<string>, met: Set<string>): boolean {
  *
  * @param layout the layout
  *
- * @returns the Matches in table order and the Byes
+ * @returns the Matches in table order and the Byes, the bench left out
  */
 export function toRequest(layout: EditLayout): ArrangeRoundRequest {
     return {
         matches: layout.filter((entry) => !entry.bye).map((entry) => entry.seats),
-        byes: layout.filter((entry) => entry.bye).flatMap((entry) => entry.seats),
+        byes: layout.filter((entry) => entry.bye && !entry.bench).flatMap((entry) => entry.seats),
     };
 }

@@ -39,6 +39,7 @@ use crate::models::admin_log::AdminActor;
 use crate::models::admin_log::AdminLogAction;
 use crate::models::admin_log::AdminLogEntry;
 use crate::models::admin_log::NewAdminLogEntry;
+use crate::models::tournament::deletion::GuestNaming;
 use crate::utils::mail::send_new_username;
 
 /// List Accounts, newest first
@@ -276,7 +277,7 @@ pub async fn admin_delete_account(
         },
     )
     .await?;
-    Account::delete(&mut tx, uuid, request.mode).await?;
+    Account::delete(&mut tx, uuid, request.mode, GuestNaming::LastUsername).await?;
     tx.commit().await?;
 
     Ok(ApiJson(()))

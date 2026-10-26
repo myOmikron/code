@@ -2,6 +2,7 @@ use galvyn::core::Module;
 use galvyn::core::re_exports::axum::extract::Path;
 use galvyn::core::stuff::api_error::ApiError;
 use galvyn::core::stuff::api_error::ApiResult;
+use galvyn::core::stuff::api_error::FormErrors;
 use galvyn::core::stuff::api_json::ApiJson;
 use galvyn::delete;
 use galvyn::get;
@@ -21,17 +22,19 @@ use crate::http::handler_frontend::tournaments::decks::schema::RegisterDeckReque
 use crate::http::handler_frontend::tournaments::decks::schema::RegisteredDeckResponse;
 use crate::http::handler_frontend::tournaments::decks::schema::RegisteredListResponse;
 use crate::http::handler_frontend::tournaments::decks::schema::RegisteredListsResponse;
+use crate::http::handler_frontend::tournaments::decks::schema::SetListSharingErrors;
 use crate::http::handler_frontend::tournaments::decks::schema::SetListSharingRequest;
 use crate::http::handler_frontend::tournaments::handler::denied;
 use crate::http::handler_frontend::tournaments::live::TournamentEvent;
 use crate::http::handler_frontend::tournaments::live::emit;
-use crate::models::account::Account;
 use crate::models::account::extractor::Viewer;
 use crate::models::tournament::Tournament;
 use crate::models::tournament::TournamentUuid;
+use crate::models::tournament::access::TournamentGrant;
 use crate::models::tournament::participant::ParticipantUuid;
 use crate::models::tournament::registered_deck::DeckRegistrar;
 use crate::models::tournament::registered_deck::ListReader;
+use crate::models::tournament::registered_deck::ListSharingRefusal;
 use crate::models::tournament::registered_deck::RegisterDeckRefusal;
 use crate::models::tournament::registered_deck::list_visible;
 
@@ -41,20 +44,16 @@ use crate::models::tournament::registered_deck::list_visible;
 /// starts; a late Participant registers its own until it is pinned.
 #[get("/{tournament}/deck")]
 pub async fn get_my_tournament_deck(
-    account: Account,
-    Path(tournament): Path<TournamentUuid>,
+    grant: TournamentGrant,
+    Path(_): Path<TournamentUuid>,
 ) -> ApiResult<ApiJson<MyRegisteredDeckResponse>> {
     let mut tx = Database::global().start_transaction().await?;
 
-    let Some(tournament) = Tournament::get_visible(&mut tx, tournament, Some(account.uuid)).await?
-    else {
+    let Some(participant) = grant.participant else {
         tx.rollback().await?;
         return Err(denied());
     };
-    let Some(participant) = tournament.participant_of(&mut tx, account.uuid).await? else {
-        tx.rollback().await?;
-        return Err(ApiError::bad_request("Not a participant"));
-    };
+    let tournament = grant.tournament;
     let deck = tournament.registered_deck(&mut tx, participant).await?;
     let changeable = tournament
         .changes_own_deck(&mut tx, tournament.state, participant)
@@ -76,21 +75,17 @@ pub async fn get_my_tournament_deck(
 /// afterwards, pinned at once, and can no longer swap it then.
 #[put("/{tournament}/deck")]
 pub async fn register_my_tournament_deck(
-    account: Account,
-    Path(tournament): Path<TournamentUuid>,
+    grant: TournamentGrant,
+    Path(_): Path<TournamentUuid>,
     ApiJson(RegisterDeckRequest { deck, shared }): ApiJson<RegisterDeckRequest>,
 ) -> ApiResult<ApiJson<()>, RegisterDeckErrors> {
     let mut tx = Database::global().start_transaction().await?;
 
-    let Some(tournament) = Tournament::get_visible(&mut tx, tournament, Some(account.uuid)).await?
-    else {
+    let Some(participant) = grant.participant else {
         tx.rollback().await?;
         return Err(denied());
     };
-    let Some(participant) = tournament.participant_of(&mut tx, account.uuid).await? else {
-        tx.rollback().await?;
-        return Err(ApiError::bad_request("Not a participant"));
-    };
+    let tournament = grant.tournament;
     if let Err(refusal) = tournament
         .register_deck(
             &mut tx,
@@ -116,20 +111,16 @@ pub async fn register_my_tournament_deck(
 /// Only while the Tournament is in Registration.
 #[delete("/{tournament}/deck")]
 pub async fn remove_my_tournament_deck(
-    account: Account,
-    Path(tournament): Path<TournamentUuid>,
+    grant: TournamentGrant,
+    Path(_): Path<TournamentUuid>,
 ) -> ApiResult<ApiJson<()>, RegisterDeckErrors> {
     let mut tx = Database::global().start_transaction().await?;
 
-    let Some(tournament) = Tournament::get_visible(&mut tx, tournament, Some(account.uuid)).await?
-    else {
+    let Some(participant) = grant.participant else {
         tx.rollback().await?;
         return Err(denied());
     };
-    let Some(participant) = tournament.participant_of(&mut tx, account.uuid).await? else {
-        tx.rollback().await?;
-        return Err(ApiError::bad_request("Not a participant"));
-    };
+    let tournament = grant.tournament;
     if let Err(refusal) = tournament
         .remove_registered_deck(&mut tx, participant, DeckRegistrar::Participant)
         .await?
@@ -147,16 +138,12 @@ pub async fn remove_my_tournament_deck(
 /// Every Registered deck of a Tournament, as an Organizer
 #[get("/{tournament}/registered-decks")]
 pub async fn list_tournament_registered_decks(
-    account: Account,
-    Path(tournament): Path<TournamentUuid>,
+    grant: TournamentGrant,
+    Path(_): Path<TournamentUuid>,
 ) -> ApiResult<ApiJson<ListRegisteredDecksResponse>> {
     let mut tx = Database::global().start_transaction().await?;
 
-    let Some(tournament) = Tournament::get_as_organizer(&mut tx, tournament, account.uuid).await?
-    else {
-        tx.rollback().await?;
-        return Err(denied());
-    };
+    let tournament = grant.tournament;
     let decks = tournament.registered_decks(&mut tx).await?;
 
     tx.commit().await?;
@@ -174,16 +161,12 @@ pub async fn list_tournament_registered_decks(
 /// Private decks are left out: an Organizer registers none of them.
 #[get("/{tournament}/participants/{participant}/decks")]
 pub async fn list_tournament_participant_decks(
-    account: Account,
-    Path((tournament, participant)): Path<(TournamentUuid, ParticipantUuid)>,
+    grant: TournamentGrant,
+    Path((_, participant)): Path<(TournamentUuid, ParticipantUuid)>,
 ) -> ApiResult<ApiJson<ListParticipantDecksResponse>> {
     let mut tx = Database::global().start_transaction().await?;
 
-    let Some(tournament) = Tournament::get_as_organizer(&mut tx, tournament, account.uuid).await?
-    else {
-        tx.rollback().await?;
-        return Err(denied());
-    };
+    let tournament = grant.tournament;
     let decks = tournament.participant_decks(&mut tx, participant).await?;
 
     tx.commit().await?;
@@ -207,17 +190,13 @@ pub async fn list_tournament_participant_decks(
 /// and sets its own Deck checkpoint.
 #[put("/{tournament}/participants/{participant}/deck")]
 pub async fn register_tournament_participant_deck(
-    account: Account,
-    Path((tournament, participant)): Path<(TournamentUuid, ParticipantUuid)>,
+    grant: TournamentGrant,
+    Path((_, participant)): Path<(TournamentUuid, ParticipantUuid)>,
     ApiJson(RegisterDeckRequest { deck, shared }): ApiJson<RegisterDeckRequest>,
 ) -> ApiResult<ApiJson<()>, RegisterDeckErrors> {
     let mut tx = Database::global().start_transaction().await?;
 
-    let Some(tournament) = Tournament::get_as_organizer(&mut tx, tournament, account.uuid).await?
-    else {
-        tx.rollback().await?;
-        return Err(denied());
-    };
+    let tournament = grant.tournament;
     if let Err(refusal) = tournament
         .register_deck(&mut tx, participant, deck, shared, DeckRegistrar::Organizer)
         .await?
@@ -235,16 +214,12 @@ pub async fn register_tournament_participant_deck(
 /// Remove a Participant's Registered deck, as an Organizer, at any time
 #[delete("/{tournament}/participants/{participant}/deck")]
 pub async fn remove_tournament_participant_deck(
-    account: Account,
-    Path((tournament, participant)): Path<(TournamentUuid, ParticipantUuid)>,
+    grant: TournamentGrant,
+    Path((_, participant)): Path<(TournamentUuid, ParticipantUuid)>,
 ) -> ApiResult<ApiJson<()>, RegisterDeckErrors> {
     let mut tx = Database::global().start_transaction().await?;
 
-    let Some(tournament) = Tournament::get_as_organizer(&mut tx, tournament, account.uuid).await?
-    else {
-        tx.rollback().await?;
-        return Err(denied());
-    };
+    let tournament = grant.tournament;
     if let Err(refusal) = tournament
         .remove_registered_deck(&mut tx, participant, DeckRegistrar::Organizer)
         .await?
@@ -262,30 +237,36 @@ pub async fn remove_tournament_participant_deck(
 /// Choose whether others may see the logged-in Account's list once the
 /// Tournament is Finished
 ///
-/// The Participant's own choice, open at any time.
+/// The Participant's own choice, open until the Tournament is Finished or
+/// Cancelled; from then on it is refused.
 #[put("/{tournament}/deck/sharing")]
 pub async fn set_my_tournament_list_sharing(
-    account: Account,
-    Path(tournament): Path<TournamentUuid>,
+    grant: TournamentGrant,
+    Path(_): Path<TournamentUuid>,
     ApiJson(SetListSharingRequest { shared }): ApiJson<SetListSharingRequest>,
-) -> ApiResult<ApiJson<()>> {
+) -> ApiResult<ApiJson<()>, SetListSharingErrors> {
     let mut tx = Database::global().start_transaction().await?;
 
-    let Some(tournament) = Tournament::get_visible(&mut tx, tournament, Some(account.uuid)).await?
-    else {
+    let Some(participant) = grant.participant else {
         tx.rollback().await?;
         return Err(denied());
     };
-    let Some(participant) = tournament.participant_of(&mut tx, account.uuid).await? else {
-        tx.rollback().await?;
-        return Err(ApiError::bad_request("Not a participant"));
-    };
-    if !tournament
+    let tournament = grant.tournament;
+    match tournament
         .set_list_sharing(&mut tx, participant, shared)
         .await?
     {
-        tx.rollback().await?;
-        return Err(ApiError::bad_request("No registered deck"));
+        Ok(()) => {}
+        Err(ListSharingRefusal::NoRegisteredDeck) => {
+            tx.rollback().await?;
+            return Err(ApiError::bad_request("No registered deck"));
+        }
+        Err(ListSharingRefusal::TournamentOver) => {
+            tx.rollback().await?;
+            let mut errors = FormErrors::<SetListSharingErrors>::new();
+            errors.tournament_over = true;
+            return errors.fail();
+        }
     }
 
     tx.commit().await?;
@@ -302,15 +283,12 @@ pub async fn set_my_tournament_list_sharing(
 #[get("/{tournament}/registered-lists")]
 pub async fn list_tournament_registered_lists(
     viewer: Viewer,
-    Path(tournament): Path<TournamentUuid>,
+    grant: TournamentGrant,
+    Path(_): Path<TournamentUuid>,
 ) -> ApiResult<ApiJson<RegisteredListsResponse>> {
     let mut tx = Database::global().start_transaction().await?;
 
-    let Some(tournament) = Tournament::get_visible(&mut tx, tournament, viewer.account()).await?
-    else {
-        tx.rollback().await?;
-        return Err(denied());
-    };
+    let tournament = grant.tournament;
     let reader = match viewer.account() {
         Some(account) if tournament.organizer_role(&mut tx, account).await?.is_some() => {
             ListReader::Organizer

@@ -4,12 +4,11 @@ use galvyn::core::stuff::api_error::ApiResult;
 use galvyn::get;
 use galvyn::rorm::Database;
 
-use crate::http::handler_frontend::tournaments::handler::denied;
 use crate::http::handler_frontend::tournaments::live::hub::follow;
 use crate::http::handler_frontend::tournaments::live::schema::EventStream;
 use crate::models::account::extractor::Viewer;
-use crate::models::tournament::Tournament;
 use crate::models::tournament::TournamentUuid;
+use crate::models::tournament::access::TournamentGrant;
 
 /// Follow what changes in a Tournament the reader may see, as Server-Sent Events
 ///
@@ -18,15 +17,12 @@ use crate::models::tournament::TournamentUuid;
 #[get("/{tournament}/events")]
 pub async fn follow_tournament(
     viewer: Viewer,
-    Path(tournament): Path<TournamentUuid>,
+    grant: TournamentGrant,
+    Path(_): Path<TournamentUuid>,
 ) -> ApiResult<EventStream> {
     let mut tx = Database::global().start_transaction().await?;
 
-    let Some(tournament) = Tournament::get_visible(&mut tx, tournament, viewer.account()).await?
-    else {
-        tx.rollback().await?;
-        return Err(denied());
-    };
+    let tournament = grant.tournament;
     let organizer = match viewer.account() {
         Some(account) => tournament.organizer_role(&mut tx, account).await?.is_some(),
         None => false,

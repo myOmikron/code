@@ -2,8 +2,8 @@
 //!
 //! Every route that changes a Tournament calls [`emit`] once its transaction
 //! is committed; the stream tells each reader what changed, and the reader
-//! fetches it again. Viewing rights are the Tournament's own, checked when the
-//! stream opens.
+//! fetches it again. Viewing rights are the Tournament's own, checked by the
+//! Viewer group's middleware when the stream opens.
 
 use galvyn::core::GalvynRouter;
 
@@ -14,7 +14,7 @@ pub mod schema;
 pub use self::hub::emit;
 pub use self::schema::TournamentEvent;
 
-/// What anybody may read, whatever the Tournament shows them
-pub fn public_routes() -> GalvynRouter {
+/// What whoever sees the Tournament may read, logged in or not
+pub fn viewer_routes() -> GalvynRouter {
     GalvynRouter::new().handler(handler::follow_tournament)
 }

@@ -1,7 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { RoundStage, RoundState } from "src/api/generated";
 import type { MatchResponse, RoundResponse } from "src/api/generated";
-import { isChanged, isRematch, layoutFrom, meetingsBefore, moveTable, swap, toRequest } from "src/utils/pairing-edit";
+import {
+    isChanged,
+    isRematch,
+    layoutFrom,
+    meetingsBefore,
+    moveTable,
+    swap,
+    toRequest,
+    withBench,
+} from "src/utils/pairing-edit";
 
 /**
  * A Match or, without a table number, a Bye
@@ -130,5 +139,23 @@ describe("toRequest", () => {
             ],
             byes: ["d"],
         });
+    });
+});
+
+describe("withBench", () => {
+    it("brings somebody off the bench into a Match and sends only who plays", () => {
+        const layout = swap(withBench(layoutFrom(preview), ["x", "y"]), "x", "b");
+        expect(toRequest(layout)).toEqual({
+            matches: [
+                ["a", "x"],
+                ["c", "d"],
+            ],
+            byes: ["e"],
+        });
+        expect(layout.at(-1)).toEqual({ key: "bench", bye: true, bench: true, seats: ["b", "y"] });
+    });
+
+    it("leaves the layout alone without anybody on the bench", () => {
+        expect(withBench(layoutFrom(preview), [])).toEqual(layoutFrom(preview));
     });
 });

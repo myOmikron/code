@@ -39,6 +39,8 @@ pub enum LayoutError {
     },
     /// The Ruleset never gives a Bye
     NoByes,
+    /// A Top cut Round seats more or fewer Matches or Byes than its size takes
+    CutSize,
 }
 
 /// Every mistake in `layout` for the next Round of `record`, none if it fits
@@ -94,6 +96,54 @@ pub fn check_layout(record: &TournamentRecord, layout: &Layout) -> Vec<LayoutErr
     }
     if !layout.byes.is_empty() && !record.ruleset.gives_byes() {
         errors.push(LayoutError::NoByes);
+    }
+    errors
+}
+
+/// Every mistake in `layout` for a Top cut Round of `record` previewed as `preview`, none if it fits
+///
+/// For a Tournament entered afterwards, whose Top cut the Organizer lays out
+/// as it was played. The size of the cut stays the settings': the layout has
+/// as many Matches as the preview, each seating as many, and as many Byes.
+/// Who plays is the Organizer's call: any pairable Participant, each at most
+/// once, and in a later cut Round only one of `first`, the Participants of
+/// the first cut Round, so the bracket goes on from there.
+pub fn check_cut_layout(
+    record: &TournamentRecord,
+    preview: &Layout,
+    first: Option<&[EntrantId]>,
+    layout: &Layout,
+) -> Vec<LayoutError> {
+    let mut errors = Vec::new();
+    let mut seated: HashMap<EntrantId, usize> = HashMap::new();
+    let mut order = Vec::new();
+    for entrant in layout.matches.iter().flatten().chain(&layout.byes) {
+        let count = seated.entry(*entrant).or_default();
+        if *count == 0 {
+            order.push(*entrant);
+        }
+        *count += 1;
+    }
+    for entrant in &order {
+        let pairable = record
+            .entrants
+            .iter()
+            .any(|listed| listed.id == *entrant && listed.pairable)
+            && first.is_none_or(|first| first.contains(entrant));
+        if !pairable {
+            errors.push(LayoutError::NotPairable(*entrant));
+        } else if seated[entrant] > 1 {
+            errors.push(LayoutError::SeatedTwice(*entrant));
+        }
+    }
+    if layout.matches.len() != preview.matches.len() || layout.byes.len() != preview.byes.len() {
+        errors.push(LayoutError::CutSize);
+        return errors;
+    }
+    for (index, (seats, previewed)) in layout.matches.iter().zip(&preview.matches).enumerate() {
+        if seats.len() != previewed.len() {
+            errors.push(LayoutError::MatchSize { table: index + 1 });
+        }
     }
     errors
 }
@@ -201,6 +251,7 @@ mod tests {
     use super::LayoutError;
     use super::Meetings;
     use super::blank_layout;
+    use super::check_cut_layout;
     use super::check_layout;
     use crate::tournament::record::Entrant;
     use crate::tournament::record::EntrantId;
@@ -238,6 +289,65 @@ mod tests {
                 .collect(),
             byes: byes.iter().copied().map(p).collect(),
         }
+    }
+
+    #[test]
+    fn a_top_cut_layout_seats_any_pairable_participants_in_the_shape_of_its_preview() {
+        let record = tournament(Ruleset::Mtr, 2, 10);
+        let preview = layout(&[&[1, 4], &[2, 3]], &[]);
+        assert_eq!(
+            check_cut_layout(&record, &preview, None, &layout(&[&[7, 2], &[9, 5]], &[])),
+            vec![]
+        );
+    }
+
+    #[test]
+    fn a_top_cut_layout_keeps_the_size_of_its_preview() {
+        let record = tournament(Ruleset::Mtr, 2, 10);
+        let preview = layout(&[&[1, 4], &[2, 3]], &[]);
+        assert_eq!(
+            check_cut_layout(&record, &preview, None, &layout(&[&[1, 4]], &[])),
+            vec![LayoutError::CutSize]
+        );
+        assert_eq!(
+            check_cut_layout(&record, &preview, None, &layout(&[&[1, 4], &[2, 3]], &[5])),
+            vec![LayoutError::CutSize]
+        );
+        let multiplayer = tournament(Ruleset::TopDeck, 4, 10);
+        let fin = layout(&[&[1, 2, 3, 4]], &[]);
+        assert_eq!(
+            check_cut_layout(&multiplayer, &fin, None, &layout(&[&[1, 2, 3]], &[])),
+            vec![LayoutError::MatchSize { table: 1 }]
+        );
+    }
+
+    #[test]
+    fn a_top_cut_layout_seats_nobody_twice_and_nobody_who_dropped() {
+        let mut record = tournament(Ruleset::Mtr, 2, 10);
+        record.entrants[5].pairable = false;
+        let preview = layout(&[&[1, 4], &[2, 3]], &[]);
+        assert_eq!(
+            check_cut_layout(&record, &preview, None, &layout(&[&[1, 6], &[2, 1]], &[])),
+            vec![
+                LayoutError::SeatedTwice(p(1)),
+                LayoutError::NotPairable(p(6))
+            ]
+        );
+    }
+
+    #[test]
+    fn a_later_top_cut_round_seats_only_participants_of_the_first() {
+        let record = tournament(Ruleset::Mtr, 2, 10);
+        let preview = layout(&[&[1, 2]], &[]);
+        let first: Vec<EntrantId> = [1, 2, 3, 4].into_iter().map(p).collect();
+        assert_eq!(
+            check_cut_layout(&record, &preview, Some(&first), &layout(&[&[3, 4]], &[])),
+            vec![]
+        );
+        assert_eq!(
+            check_cut_layout(&record, &preview, Some(&first), &layout(&[&[3, 9]], &[])),
+            vec![LayoutError::NotPairable(p(9))]
+        );
     }
 
     #[test]

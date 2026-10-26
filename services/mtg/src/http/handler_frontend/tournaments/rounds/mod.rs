@@ -1,26 +1,26 @@
 //! Running a Tournament: pairing, starting and ending Rounds, Results, standings
 //!
 //! Grouped by who may call a route, like [`super`]; [`super::initialize_routes`]
-//! merges each group into its own.
+//! merges each group into its own and wraps it in the group's checks.
 
 use galvyn::core::GalvynRouter;
 
 pub mod handler;
 pub mod schema;
 
-/// What anybody may read, whatever the Tournament shows them
-pub fn public_routes() -> GalvynRouter {
+/// What whoever sees the Tournament may read, logged in or not
+pub fn viewer_routes() -> GalvynRouter {
     GalvynRouter::new()
         .handler(handler::list_tournament_rounds)
         .handler(handler::get_tournament_standings)
 }
 
-/// What any logged-in Account may do
-pub fn account_routes() -> GalvynRouter {
+/// What a logged-in Account that sees the Tournament may do
+pub fn signed_in_viewer_routes() -> GalvynRouter {
     GalvynRouter::new().handler(handler::get_my_tournament_match)
 }
 
-/// What the Organizers of a Tournament may do
+/// What the Organizers of the Tournament may do
 pub fn organizer_routes() -> GalvynRouter {
     GalvynRouter::new()
         .handler(handler::pair_tournament_round)

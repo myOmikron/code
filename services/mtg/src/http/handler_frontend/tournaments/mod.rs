@@ -1,20 +1,24 @@
 //! Tournaments: creating, reading, running and deleting them
 //!
-//! Grouped by who may call a route. The public group carries no auth layer:
-//! its handlers take a [`Viewer`] and the models decide what it sees. The
-//! Account, Organizer and Owner groups sit behind [`AccountRequiredLayer`];
-//! being an Organizer or the Owner is a question about one Tournament, which
-//! the handler answers with [`Tournament::get_as_organizer`] or
-//! [`Tournament::get_as_owner`] before it acts. Reading by share link lives in
+//! Grouped by who may call a route. A route on one Tournament sits in the
+//! group of the part its caller has to play there, a [`TournamentAccess`]:
+//! Owner, Organizer, Participant or Viewer. Each group is wrapped in a
+//! [`TournamentAccessLayer`] that fetches the Tournament, refuses the caller
+//! or hands the handler the [`TournamentGrant`]; handlers check no roles
+//! themselves. Every group but the public Viewer one also sits behind
+//! [`AccountRequiredLayer`], which runs first. Routes on no Tournament in
+//! particular (the overview, creating, "mine", answering a handover offer)
+//! need a logged-in Account only. Reading by share link lives in
 //! [`super::shared`], next to the other share links.
 //!
-//! [`Viewer`]: crate::models::account::extractor::Viewer
-//! [`Tournament::get_as_organizer`]: crate::models::tournament::Tournament::get_as_organizer
-//! [`Tournament::get_as_owner`]: crate::models::tournament::Tournament::get_as_owner
+//! [`TournamentAccess`]: crate::models::tournament::access::TournamentAccess
+//! [`TournamentGrant`]: crate::models::tournament::access::TournamentGrant
 
 use galvyn::core::GalvynRouter;
 
 use crate::http::middleware::account_required::AccountRequiredLayer;
+use crate::http::middleware::tournament_access::TournamentAccessLayer;
+use crate::models::tournament::access::TournamentAccess;
 
 pub mod decks;
 pub mod handler;
@@ -27,39 +31,58 @@ pub mod schema;
 
 /// Initialize the routes for Tournaments
 pub fn initialize_routes() -> GalvynRouter {
-    GalvynRouter::new().merge(public_routes()).merge(
-        GalvynRouter::new()
-            .merge(account_routes())
-            .merge(organizer_routes())
-            .merge(owner_routes())
-            .wrap(AccountRequiredLayer),
-    )
-}
-
-/// What anybody may read, whatever the Tournament shows them
-fn public_routes() -> GalvynRouter {
     GalvynRouter::new()
         .handler(handler::list_public_tournaments)
-        .handler(handler::get_tournament)
-        .merge(decks::public_routes())
-        .merge(participants::public_routes())
-        .merge(rounds::public_routes())
-        .merge(live::public_routes())
+        .merge(viewer_routes().wrap(TournamentAccessLayer(TournamentAccess::Viewer)))
+        .merge(
+            GalvynRouter::new()
+                .merge(account_routes())
+                .merge(
+                    signed_in_viewer_routes().wrap(TournamentAccessLayer(TournamentAccess::Viewer)),
+                )
+                .merge(
+                    participant_routes().wrap(TournamentAccessLayer(TournamentAccess::Participant)),
+                )
+                .merge(organizer_routes().wrap(TournamentAccessLayer(TournamentAccess::Organizer)))
+                .merge(owner_routes().wrap(TournamentAccessLayer(TournamentAccess::Owner)))
+                .wrap(AccountRequiredLayer),
+        )
 }
 
-/// What any logged-in Account may do
+/// What whoever sees the Tournament may read, logged in or not
+fn viewer_routes() -> GalvynRouter {
+    GalvynRouter::new()
+        .handler(handler::get_tournament)
+        .merge(decks::viewer_routes())
+        .merge(participants::viewer_routes())
+        .merge(rounds::viewer_routes())
+        .merge(live::viewer_routes())
+}
+
+/// What any logged-in Account may do, on no Tournament in particular
 fn account_routes() -> GalvynRouter {
     GalvynRouter::new()
         .handler(handler::get_my_tournaments)
         .handler(handler::create_tournament)
-        .merge(decks::account_routes())
         .merge(organizers::account_routes())
-        .merge(participants::account_routes())
-        .merge(rounds::account_routes())
-        .merge(results::account_routes())
 }
 
-/// What the Organizers of a Tournament may do
+/// What a logged-in Account that sees the Tournament may do
+fn signed_in_viewer_routes() -> GalvynRouter {
+    GalvynRouter::new()
+        .merge(participants::signed_in_viewer_routes())
+        .merge(rounds::signed_in_viewer_routes())
+}
+
+/// What the Accounts playing in the Tournament may do
+fn participant_routes() -> GalvynRouter {
+    GalvynRouter::new()
+        .merge(decks::participant_routes())
+        .merge(participants::participant_routes())
+        .merge(results::participant_routes())
+}
+
+/// What the Organizers of the Tournament may do
 fn organizer_routes() -> GalvynRouter {
     GalvynRouter::new()
         .handler(handler::update_tournament)
@@ -69,7 +92,7 @@ fn organizer_routes() -> GalvynRouter {
         .merge(rounds::organizer_routes())
 }
 
-/// What only the Owner of a Tournament may do
+/// What only the Owner of the Tournament may do
 fn owner_routes() -> GalvynRouter {
     GalvynRouter::new()
         .handler(handler::delete_tournament)

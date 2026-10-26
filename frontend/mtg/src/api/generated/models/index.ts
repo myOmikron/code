@@ -1057,6 +1057,10 @@ export interface ApiErrorResponse {
  */
 export interface ArrangeRoundErrors {
     /**
+     * A Top cut Round seats more or fewer Matches or Byes than its size takes
+     */
+    cut_size: boolean;
+    /**
      * A Match seats a number of Participants it cannot have
      */
     match_size: boolean;
@@ -1081,7 +1085,7 @@ export interface ArrangeRoundErrors {
      */
     seated_twice: boolean;
     /**
-     * The Round is one of the Top cut, which the standings seed
+     * The Round is one of the Top cut, which the standings seed, and the Tournament is not entered afterwards
      */
     top_cut: boolean;
     /**
@@ -2842,6 +2846,10 @@ export interface DeleteAccountErrors {
  */
 export interface DeleteAccountRequest {
     /**
+     * Whether its Participants appear as "Gelöschter Spieler N" in Tournaments it does not own, `true` if left out; `false` keeps its last username there
+     */
+    appear_anonymously?: boolean;
+    /**
      * The account's own username, typed out
      * 
      * Proof that the request means the account it is authenticated as, and not a stray click on a red button.
@@ -3845,6 +3853,23 @@ export interface FormErrorResponseForSendBugReportErrors {
      * The actual error struct
      */
     error: SendBugReportErrors;
+    /**
+     * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
+     */
+    result: ErrorConstant;
+}
+
+
+/**
+ * The response that is sent in a case of an error the caller should present his user
+ * @export
+ * @interface FormErrorResponseForSetListSharingErrors
+ */
+export interface FormErrorResponseForSetListSharingErrors {
+    /**
+     * The actual error struct
+     */
+    error: SetListSharingErrors;
     /**
      * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
      */
@@ -5084,36 +5109,6 @@ export interface PendingOidcLogin {
     provider: string;
 }
 /**
- * An Account whose username starts with what the Organizer typed
- * @export
- * @interface PlayerCandidateResponse
- */
-export interface PlayerCandidateResponse {
-    /**
-     * The Account
-     */
-    account: string;
-    /**
-     * The Account's username as it is now
-     */
-    username: string;
-}
-/**
- * The Accounts whose username starts with what the Organizer typed
- * @export
- * @interface PlayerCandidatesResponse
- */
-export interface PlayerCandidatesResponse {
-    /**
-     * Up to ten Accounts, alphabetically by username
-     */
-    accounts: Array<PlayerCandidateResponse>;
-    /**
-     * The caller searched too often lately, so nothing was searched
-     */
-    too_many_searches: boolean;
-}
-/**
  * What one card cost on one day
  * 
  * All four are euro cents and all four may be absent: Cardmarket quotes no foil price for a card that was never printed in foil, and no price at all for a product nobody is offering that day.
@@ -5873,6 +5868,10 @@ export interface ReportResultErrors {
      * The Result is disputed; an Organizer settles it
      */
     disputed: boolean;
+    /**
+     * It names a Participant who Dropped as the winner of a multiplayer final
+     */
+    dropped_winner: boolean;
     /**
      * The Tournament is entered afterwards: its Organizers set every Result
      */
@@ -6716,6 +6715,17 @@ export interface SetDeckVisibilityRequest {
 
 
 /**
+ * Why the list sharing could not be changed
+ * @export
+ * @interface SetListSharingErrors
+ */
+export interface SetListSharingErrors {
+    /**
+     * The Tournament is Finished or Cancelled, so the choice is fixed
+     */
+    tournament_over: boolean;
+}
+/**
  * Whether others may see the reader's list once the Tournament is Finished
  * @export
  * @interface SetListSharingRequest
@@ -6769,6 +6779,10 @@ export interface SetPushSettingsRequest {
  * @interface SetResultErrors
  */
 export interface SetResultErrors {
+    /**
+     * It names a Participant who Dropped as the winner of a multiplayer final
+     */
+    dropped_winner: boolean;
     /**
      * The game score does not fit a Match of this Tournament
      */

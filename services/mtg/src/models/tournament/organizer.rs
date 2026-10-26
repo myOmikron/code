@@ -1,9 +1,12 @@
 //! Co-organizers: Accounts named to run a Tournament with its Owner
 //!
-//! What a Co-organizer may do is decided by the access check a handler picks,
-//! see [`super::access`]: [`Tournament::get_as_organizer`] lets it in,
-//! [`Tournament::get_as_owner`] does not. An Account is at most one of Owner
+//! What a Co-organizer may do is decided by the route group a route sits in,
+//! see [`super::access`]: [`TournamentAccess::Organizer`] lets it in,
+//! [`TournamentAccess::Owner`] does not. An Account is at most one of Owner
 //! and Co-organizer of a Tournament.
+//!
+//! [`TournamentAccess::Organizer`]: super::access::TournamentAccess::Organizer
+//! [`TournamentAccess::Owner`]: super::access::TournamentAccess::Owner
 
 use galvyn::rorm;
 use galvyn::rorm::db::transaction::Transaction;

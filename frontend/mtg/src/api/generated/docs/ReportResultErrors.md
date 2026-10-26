@@ -9,6 +9,7 @@ Name | Type
 ------------ | -------------
 `confirmed` | boolean
 `disputed` | boolean
+`dropped_winner` | boolean
 `entered_afterwards` | boolean
 `invalid_score` | boolean
 `not_running` | boolean

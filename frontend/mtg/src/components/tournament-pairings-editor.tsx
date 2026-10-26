@@ -8,7 +8,19 @@ import type { RoundResponse } from "src/api/generated";
 import { PrimaryButton } from "src/components/primary-button";
 import { isFormError } from "src/utils/error";
 import type { EditLayout } from "src/utils/pairing-edit";
-import { isChanged, isRematch, layoutFrom, meetingsBefore, moveTable, swap, toRequest } from "src/utils/pairing-edit";
+import {
+    isChanged,
+    isRematch,
+    layoutFrom,
+    meetingsBefore,
+    moveTable,
+    swap,
+    toRequest,
+    withBench,
+} from "src/utils/pairing-edit";
+
+/** A bench nobody sits on */
+const NO_BENCH: Array<{ participant: string; name: string }> = [];
 
 /** The properties for {@link TournamentPairingsEditor} */
 export type TournamentPairingsEditorProps = {
@@ -20,22 +32,44 @@ export type TournamentPairingsEditorProps = {
     rounds: Array<RoundResponse>;
     /** Called when the Organizer is done, with whether the layout was saved */
     onDone: (saved: boolean) => void | Promise<void>;
+    /** Who could play but sits out, to trade places with those who play; none by default */
+    bench?: Array<{ participant: string; name: string }>;
 };
 
 /**
  * An Organizer's edit of a previewed Round: tap two Participants to trade
  * their places (also to hand on the Bye), move Matches between tables with
- * the arrows. What is saved is what starts.
+ * the arrows. What is saved is what starts. Participants on the bench sit
+ * out until traded in.
  *
  * @returns the editor
  */
-export function TournamentPairingsEditor({ tournamentUuid, round, rounds, onDone }: TournamentPairingsEditorProps) {
+export function TournamentPairingsEditor({
+    tournamentUuid,
+    round,
+    rounds,
+    onDone,
+    bench = NO_BENCH,
+}: TournamentPairingsEditorProps) {
     const [t] = useTranslation("tournament");
-    const base = useMemo(() => layoutFrom(round), [round]);
+    const base = useMemo(
+        () =>
+            withBench(
+                layoutFrom(round),
+                bench.map((entry) => entry.participant),
+            ),
+        [round, bench],
+    );
     const met = useMemo(() => meetingsBefore(rounds, round.number), [rounds, round.number]);
     const names = useMemo(
-        () => new Map(round.matches.flatMap((played) => played.seats.map((seat) => [seat.participant, seat.name]))),
-        [round],
+        () =>
+            new Map([
+                ...round.matches.flatMap((played) =>
+                    played.seats.map((seat): [string, string] => [seat.participant, seat.name]),
+                ),
+                ...bench.map((entry): [string, string] => [entry.participant, entry.name]),
+            ]),
+        [round, bench],
     );
     const [layout, setLayout] = useState<EditLayout>(base);
     const [picked, setPicked] = useState<string | null>(null);
@@ -65,7 +99,9 @@ export function TournamentPairingsEditor({ tournamentUuid, round, rounds, onDone
         try {
             const response = await Api.tournaments.rounds.arrange(tournamentUuid, round.number, toRequest(layout));
             if (isFormError(response)) {
-                notify.error(response.error.not_previewed ? t("error.round-changed") : t("error.invalid-layout"));
+                if (response.error.not_previewed) notify.error(t("error.round-changed"));
+                else if (response.error.cut_size) notify.error(t("error.cut-size"));
+                else notify.error(t("error.invalid-layout"));
                 return;
             }
             notify.success(t("toast.pairing-saved"));
@@ -94,7 +130,7 @@ export function TournamentPairingsEditor({ tournamentUuid, round, rounds, onDone
                         <span
                             className={"w-12 shrink-0 text-sm font-semibold text-zinc-950 tabular-nums dark:text-white"}
                         >
-                            {entry.bye ? t("label.bye") : index + 1}
+                            {entry.bench ? t("label.bench") : entry.bye ? t("label.bye") : index + 1}
                         </span>
                         <div className={"flex min-w-0 flex-1 flex-wrap items-center gap-1.5"}>
                             {entry.seats.map((participant) => (

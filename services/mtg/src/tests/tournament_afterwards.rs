@@ -258,3 +258,70 @@ fn entering_afterwards_is_settled_once_the_first_round_started() {
         assert_eq!(refused["error"]["rules_locked"], true, "{refused}");
     });
 }
+
+#[test]
+fn the_top_cut_of_a_tournament_entered_afterwards_is_laid_out_by_hand() {
+    run(async {
+        let owner_account = create_account(Role::Member).await;
+        let mut owner = TestClient::logged_in(&owner_account).await;
+        let mut request = afterwards(2, "Mtr");
+        request["top_cut"] = json!("Top4");
+        request["top_cut_best_of"] = json!("One");
+        let created = create(&mut owner, &request).await;
+        let tournament = created["uuid"].as_str().expect("uuid").to_string();
+        let stranger = TestClient::logged_in(&create_account(Role::Member).await).await;
+        let mut event = Event {
+            owner,
+            stranger,
+            tournament,
+            settings: request,
+            players: Vec::new(),
+            games_to_win: 1,
+        };
+        for index in 0..6 {
+            event.add_guest(&format!("Guest {index}")).await;
+        }
+        let url = event.url("swiss-rounds");
+        event
+            .owner
+            .json(Method::PUT, &url, &json!({ "swiss_rounds": 1 }))
+            .await
+            .ok_json();
+        let players = event.players.clone();
+        let p: Vec<&str> = players.iter().map(String::as_str).collect();
+
+        event.pair().await;
+        event.start(1).await;
+        event.first_seats_win(1).await;
+        event.end(1).await;
+        assert_eq!(event.state().await, "TopCut");
+
+        event.pair().await;
+        let refused = event.enter_layout(2, &[[p[5], p[1]]], &[]).await;
+        assert_eq!(refused["error"]["cut_size"], true, "{refused}");
+        let laid = event
+            .enter_layout(2, &[[p[5], p[1]], [p[4], p[0]]], &[])
+            .await;
+        assert_ne!(laid["result"], "Err", "{laid}");
+        event.start(2).await;
+        let rounds = event.rounds().await;
+        assert_eq!(
+            layout(round(&rounds, 2)),
+            vec![vec![p[5], p[1]], vec![p[4], p[0]]],
+            "the Top cut as entered: {rounds}"
+        );
+        event.first_seats_win(2).await;
+        event.end(2).await;
+
+        event.pair().await;
+        let refused = event.enter_layout(3, &[[p[5], p[2]]], &[]).await;
+        assert_eq!(refused["error"]["not_pairable"], true, "{refused}");
+        let laid = event.enter_layout(3, &[[p[4], p[5]]], &[]).await;
+        assert_ne!(laid["result"], "Err", "{laid}");
+        event.start(3).await;
+        event.first_seats_win(3).await;
+        event.end(3).await;
+        assert_eq!(event.state().await, "Finished");
+        assert_eq!(event.rounds().await["top_cut_winner"], json!(p[4]));
+    });
+}

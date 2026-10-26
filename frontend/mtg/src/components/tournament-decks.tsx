@@ -29,7 +29,7 @@ import type {
     RegisteredDeckResponse,
     TournamentResponse,
 } from "src/api/generated";
-import { Visibility } from "src/api/generated";
+import { TournamentState, Visibility } from "src/api/generated";
 import { useDeckLabels } from "src/components/deck-labels";
 import { PrimaryButton } from "src/components/primary-button";
 import { isFormError } from "src/utils/error";
@@ -93,6 +93,8 @@ export function MyTournamentDeck({ tournament }: MyTournamentDeckProps) {
 
     if (mine === null) return null;
     const registered = mine.deck ?? null;
+    const sharingFixed =
+        tournament.state === TournamentState.Finished || tournament.state === TournamentState.Cancelled;
 
     /**
      * Registers the chosen deck, or swaps the registered one for it
@@ -125,7 +127,12 @@ export function MyTournamentDeck({ tournament }: MyTournamentDeckProps) {
         if (registered === null || chosen !== registered.deck) return;
         setBusy(true);
         try {
-            await Api.tournaments.decks.setSharing(tournament.uuid, next);
+            const result = await Api.tournaments.decks.setSharing(tournament.uuid, next);
+            if (isFormError(result)) {
+                notify.error(t("error.share-list-fixed"));
+                await reload();
+                return;
+            }
             notify.success(next ? t("toast.list-shared") : t("toast.list-unshared"));
             await reload();
         } finally {
@@ -236,8 +243,15 @@ export function MyTournamentDeck({ tournament }: MyTournamentDeckProps) {
             {(registered !== null || (mine.changeable && chosen !== null)) && (
                 <SwitchField>
                     <Label>{t("label.share-list")}</Label>
-                    <Description>{t("description.share-list")}</Description>
-                    <Switch color={"lime"} checked={shared} disabled={busy} onChange={(next) => void share(next)} />
+                    <Description>
+                        {sharingFixed ? t("description.share-list-fixed") : t("description.share-list")}
+                    </Description>
+                    <Switch
+                        color={"lime"}
+                        checked={shared}
+                        disabled={busy || sharingFixed}
+                        onChange={(next) => void share(next)}
+                    />
                 </SwitchField>
             )}
         </section>

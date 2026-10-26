@@ -258,10 +258,10 @@ impl History {
 /// an earlier part, whatever a win is worth in Match points.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord)]
 struct Cost {
-    /// Pairs of Participants in a Match who met before, once per earlier meeting
-    repeats: u64,
     /// Participants in a smaller Match who already played one
     smaller_again: u64,
+    /// Pairs of Participants in a Match who met before, once per earlier meeting
+    repeats: u64,
     /// Per Match the squared distance between its highest and lowest point
     /// group, summed: pair-ups and pair-downs, counted in point groups
     spread: u64,
@@ -662,7 +662,7 @@ mod tests {
     }
 
     #[test]
-    fn under_the_addendum_nobody_plays_a_smaller_match_twice_while_avoidable() {
+    fn under_the_addendum_second_smaller_matches_come_before_repeat_opponents() {
         let mut rng = SplitMix64::seeded(313);
         for case in 0..60 {
             let entrants = [10, 11][case % 2];
@@ -684,14 +684,65 @@ mod tests {
             let field: Vec<EntrantId> = tables.iter().flatten().copied().collect();
             let best = splits(&field, &sizes(&pairing))
                 .iter()
-                .map(|split| (repeats(split, &met), smaller_again(split, &before)))
+                .map(|split| (smaller_again(split, &before), repeats(split, &met)))
                 .min()
                 .expect("a split");
             assert_eq!(
-                (repeats(&tables, &met), smaller_again(&tables, &before)),
+                (smaller_again(&tables, &before), repeats(&tables, &met)),
                 best,
                 "case {case}"
             );
+        }
+    }
+
+    #[test]
+    fn ten_at_four_keep_second_smaller_matches_fewest_before_repeat_opponents_in_round_two() {
+        for seed in 0..8 {
+            for mut record in [addendum(10), topdeck(10)] {
+                let first = pair_next_round(&record, seed).expect("pairs");
+                play(&mut record, &first, |table| Some(table % 3));
+                let before = smaller_matches(&record);
+                let met = meetings(&record);
+                let second = pair_next_round(&record, seed + 100).expect("pairs");
+                let tables: Vec<Vec<EntrantId>> = second
+                    .matches
+                    .iter()
+                    .map(|paired| paired.seats.clone())
+                    .collect();
+                let field: Vec<EntrantId> = tables.iter().flatten().copied().collect();
+                let best = splits(&field, &sizes(&second))
+                    .iter()
+                    .map(|split| (smaller_again(split, &before), repeats(split, &met)))
+                    .min()
+                    .expect("a split");
+                assert_eq!(
+                    (smaller_again(&tables, &before), repeats(&tables, &met)),
+                    best,
+                    "{:?}, seed {seed}",
+                    record.ruleset
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn under_the_addendum_ten_at_four_play_two_second_smaller_matches_and_four_repeat_opponents_in_round_two()
+     {
+        for seed in 0..8 {
+            let mut record = addendum(10);
+            let first = pair_next_round(&record, seed).expect("pairs");
+            assert_eq!(sizes(&first), vec![4, 3, 3]);
+            play(&mut record, &first, |table| Some(table % 3));
+            let before = smaller_matches(&record);
+            let met = meetings(&record);
+            let second = pair_next_round(&record, seed + 100).expect("pairs");
+            let tables: Vec<Vec<EntrantId>> = second
+                .matches
+                .iter()
+                .map(|paired| paired.seats.clone())
+                .collect();
+            assert_eq!(smaller_again(&tables, &before), 2, "seed {seed}");
+            assert_eq!(repeats(&tables, &met), 4, "seed {seed}");
         }
     }
 
@@ -850,7 +901,7 @@ mod tests {
     }
 
     #[test]
-    fn no_split_of_the_field_repeats_fewer_opponents_than_the_one_chosen() {
+    fn no_split_of_the_field_seats_fewer_at_a_second_smaller_match_or_repeats_fewer_opponents() {
         let mut rng = SplitMix64::seeded(312);
         for case in 0..60 {
             let entrants = [8, 9, 11][case % 3];
@@ -862,6 +913,7 @@ mod tests {
                 play(&mut record, &pairing, |table| Some(winners[table].min(2)));
             }
             let pairing = pair_next_round(&record, rng.next_u64()).expect("pairs");
+            let before = smaller_matches(&record);
             let met = meetings(&record);
             let tables: Vec<Vec<EntrantId>> = pairing
                 .matches
@@ -871,10 +923,14 @@ mod tests {
             let field: Vec<EntrantId> = tables.iter().flatten().copied().collect();
             let fewest = splits(&field, &sizes(&pairing))
                 .iter()
-                .map(|split| repeats(split, &met))
+                .map(|split| (smaller_again(split, &before), repeats(split, &met)))
                 .min()
                 .expect("a split");
-            assert_eq!(repeats(&tables, &met), fewest, "case {case}");
+            assert_eq!(
+                (smaller_again(&tables, &before), repeats(&tables, &met)),
+                fewest,
+                "case {case}"
+            );
             for (paired, table) in pairing.matches.iter().zip(&tables) {
                 assert_eq!(
                     paired.rematch,

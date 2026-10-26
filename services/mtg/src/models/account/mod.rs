@@ -37,6 +37,7 @@ use crate::models::admin_log::NewAdminLogEntry;
 use crate::models::collection::Collection;
 use crate::models::deck::Deck;
 use crate::models::tournament::Tournament;
+use crate::models::tournament::deletion::GuestNaming;
 pub(in crate::models) mod db;
 pub mod extractor;
 pub mod overview;
@@ -638,9 +639,10 @@ impl Account {
     /// goes with it through the cascades on the foreign keys: passkeys,
     /// registration links, collections, watch lists, folders, tags, its places
     /// as a Collaborator on other decks, its Bug reports, and every deck it did
-    /// not put on show. Its Participants turn into Guests and the Tournaments
-    /// it owns pass on, see `Tournament::part_with_account`; a full Deletion
-    /// takes the ones that would go to the tombstone.
+    /// not put on show. Its Participants turn into Guests, named in other
+    /// people's Tournaments as `naming` says, and the Tournaments it owns pass
+    /// on, see `Tournament::part_with_account`; a full Deletion takes the ones
+    /// that would go to the tombstone.
     ///
     /// Returns `false` if the account does not exist.
     #[instrument(name = "Account::delete", skip(tx))]
@@ -648,6 +650,7 @@ impl Account {
         tx: &mut Transaction,
         uuid: AccountUuid,
         mode: DeletionMode,
+        naming: GuestNaming,
     ) -> Result<bool, rorm::Error> {
         let Some(account) = Self::get_by_uuid(&mut *tx, uuid).await? else {
             return Ok(false);
@@ -663,7 +666,7 @@ impl Account {
             Deck::hand_over_public(&mut *tx, uuid, tombstone).await?;
         }
 
-        Tournament::part_with_account(&mut *tx, uuid, &account.username, tombstone).await?;
+        Tournament::part_with_account(&mut *tx, uuid, &account.username, naming, tombstone).await?;
 
         // Also before the delete, see `Collection::delete_all_of_account`.
         Collection::delete_all_of_account(&mut *tx, uuid).await?;

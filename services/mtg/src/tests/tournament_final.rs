@@ -232,6 +232,66 @@ fn a_drop_during_the_final_does_not_stop_the_match() {
 }
 
 #[test]
+fn an_organizer_cannot_name_a_participant_who_dropped_as_winner_of_the_final() {
+    run(async {
+        let mut event = Final::new(8).await;
+        let seeds = event.play_swiss().await;
+        let number = event.pair_and_start().await;
+        let played = the_final(&mut event, number).await;
+        event.post(&format!("participants/{}/drop", seeds[2])).await;
+
+        let refused = event.result(&played, &[0, 0, 1, 0], 0).await;
+        assert_eq!(refused["error"]["dropped_winner"], true, "{refused}");
+        assert!(event.rounds().await["top_cut_winner"].is_null());
+
+        event.result(&played, &[0, 1, 0, 0], 0).await;
+        assert_eq!(event.rounds().await["top_cut_winner"], json!(seeds[1]));
+    });
+}
+
+#[test]
+fn a_participant_cannot_report_one_who_dropped_as_winner_of_the_final() {
+    run(async {
+        let mut event = Final::new(3).await;
+        let player = create_account(Role::Member).await;
+        let added = event
+            .post_json(
+                "participants/accounts",
+                &json!({ "username": player.username }),
+            )
+            .await;
+        let mine = added["uuid"].as_str().expect("uuid").to_string();
+        let mut client = TestClient::logged_in(&player).await;
+        event.play_swiss().await;
+        let number = event.pair_and_start().await;
+        let played = the_final(&mut event, number).await;
+        let seats = seated(&played);
+        let dropped = seats
+            .iter()
+            .position(|seat| *seat != mine)
+            .expect("a Guest in the final");
+        event
+            .post(&format!("participants/{}/drop", seats[dropped]))
+            .await;
+
+        let games_won: Vec<i64> = (0..seats.len())
+            .map(|seat| i64::from(seat == dropped))
+            .collect();
+        let uuid = played["uuid"].as_str().expect("uuid");
+        let url = event.url(&format!("matches/{uuid}/report"));
+        let refused = client
+            .json(
+                Method::POST,
+                &url,
+                &json!({ "games_won": games_won, "games_drawn": 0 }),
+            )
+            .await
+            .ok_json();
+        assert_eq!(refused["error"]["dropped_winner"], true, "{refused}");
+    });
+}
+
+#[test]
 fn a_drop_before_the_final_is_replaced_by_the_next_in_the_standings() {
     run(async {
         let mut event = Final::new(8).await;

@@ -38,6 +38,7 @@ use crate::http::handler_frontend::auth::handler::no_passkeys_for_external;
 use crate::models::account::Account;
 use crate::models::account::AccountPasskeyUuid;
 use crate::models::account::DeletionMode;
+use crate::models::tournament::deletion::GuestNaming;
 
 /// The account the current session belongs to
 ///
@@ -224,6 +225,9 @@ pub async fn delete_passkey(
 /// show: those are handed to a tombstone, so a decklist somebody linked to
 /// keeps working while nothing points back at the account that built it.
 ///
+/// Its Participants in other people's Tournaments stay as Guests, named
+/// "Gelöschter Spieler N" unless the request asks to keep the last username.
+///
 /// The request has to spell the account's own username. It is authenticated
 /// either way, so this is not what makes the deletion safe: it is what makes it
 /// deliberate.
@@ -243,7 +247,12 @@ pub async fn delete_account(
     }
 
     let mut tx = Database::global().start_transaction().await?;
-    Account::delete(&mut tx, account.uuid, DeletionMode::Tombstone).await?;
+    let naming = if request.appear_anonymously {
+        GuestNaming::Anonymous
+    } else {
+        GuestNaming::LastUsername
+    };
+    Account::delete(&mut tx, account.uuid, DeletionMode::Tombstone, naming).await?;
     tx.commit().await?;
 
     IdentityModule::global()
