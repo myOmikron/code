@@ -48,6 +48,18 @@ impl Ruleset {
         1
     }
 
+    /// How many turns are played in total after the active player's turn once time is up
+    ///
+    /// MTR 2.4: the active player finishes the turn, then five more turns
+    /// follow. TopDeck (MTRA 2.4) and the Multiplayer Addendum (2.4A) play
+    /// none: the Match ends with the active player's turn.
+    pub fn extra_turns(self) -> u8 {
+        match self {
+            Self::Mtr => 5,
+            Self::TopDeck | Self::MultiplayerAddendum => 0,
+        }
+    }
+
     /// Whether a Participant can have a Bye; the Multiplayer Addendum plays smaller Matches instead
     pub fn gives_byes(self) -> bool {
         match self {
@@ -187,6 +199,13 @@ mod tests {
         assert!(BestOf::One.admits(0, 0, 1));
         assert!(!BestOf::One.admits(1, 1, 0));
         assert!(!BestOf::One.admits(2, 0, 0));
+    }
+
+    #[test]
+    fn only_mtr_plays_extra_turns_when_time_is_up() {
+        assert_eq!(Ruleset::Mtr.extra_turns(), 5);
+        assert_eq!(Ruleset::TopDeck.extra_turns(), 0);
+        assert_eq!(Ruleset::MultiplayerAddendum.extra_turns(), 0);
     }
 
     #[test]

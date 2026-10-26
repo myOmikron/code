@@ -93,6 +93,8 @@ pub struct TournamentModel {
     /// stores the engine's suggestion; until then the suggestion applies.
     pub swiss_rounds: Option<i16>,
 
+    /// How many minutes the round timer gives a Round, `None` for no timer
+    pub round_minutes: Option<i16>,
     /// The Top cut after the Swiss Rounds, `None` for none
     pub top_cut: Option<TopCut>,
 
@@ -140,6 +142,8 @@ pub struct TournamentInsertPatch {
     pub self_sign_up: bool,
     /// How many Games a one-on-one Match is played to
     pub best_of: Option<BestOf>,
+    /// How many minutes the round timer gives a Round
+    pub round_minutes: Option<i16>,
     /// The Top cut after the Swiss Rounds
     pub top_cut: Option<TopCut>,
     /// How many Games a Top cut Match is played to
@@ -338,6 +342,14 @@ pub struct TournamentRoundModel {
 
     /// The point in time it ended, `None` until then
     pub ended_at: Option<OffsetDateTime>,
+
+    /// How many seconds its round timer ran for, `None` for a Round without one
+    ///
+    /// Taken from the Tournament's round timer length when the Round started.
+    pub timer_seconds: Option<i32>,
+
+    /// When time is up, set exactly with [`Self::timer_seconds`]
+    pub timer_ends_at: Option<OffsetDateTime>,
 }
 
 /// Insert patch for [`TournamentRoundModel`]

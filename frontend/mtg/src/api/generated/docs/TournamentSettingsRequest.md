@@ -14,6 +14,7 @@ Name | Type
 `location` | string
 `name` | string
 `participant_limit` | number
+`round_minutes` | number
 `ruleset` | [Ruleset](Ruleset.md)
 `self_sign_up` | boolean
 `starts_at` | string

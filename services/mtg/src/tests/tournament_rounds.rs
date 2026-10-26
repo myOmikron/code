@@ -160,6 +160,22 @@ impl Event {
         body["state"].as_str().expect("a state").to_string()
     }
 
+    /// Give the Tournament a round timer of `minutes`, `null` for none, as the Owner
+    pub(super) async fn set_round_minutes(&mut self, minutes: Value) {
+        self.settings["round_minutes"] = minutes;
+        let url = api(&format!("tournaments/{}", self.tournament));
+        let settings = self.settings.clone();
+        let body = self
+            .owner
+            .json(Method::PUT, &url, &settings)
+            .await
+            .ok_json();
+        assert_eq!(
+            body["round_minutes"], self.settings["round_minutes"],
+            "{body}"
+        );
+    }
+
     /// Pair and start the next Round, then let Seat 1 win every Match in it without losing a game
     pub(super) async fn play_round(&mut self) -> Value {
         let number = self.pair().await["number"].as_i64().expect("a number");

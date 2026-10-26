@@ -11,8 +11,10 @@
 //! - [`rounds::suggested_swiss_rounds`]: how many Swiss Rounds to play;
 //! - [`layout::check_layout`]: whether an Organizer's layout of a Round fits,
 //!   and [`layout::Meetings`]: which Matches are rematches;
-//! - [`ruleset`]: what a Ruleset scores and which game scores a Match takes;
-//! - [`reporting`]: who may report or dispute a Result, and what it does.
+//! - [`ruleset`]: what a Ruleset scores, which game scores a Match takes and
+//!   how many extra turns follow when time is up;
+//! - [`reporting`]: who may report or dispute a Result, and what it does;
+//! - [`timer`]: how long a Round has left on its round timer.
 //!
 //! Everything else (who met whom, who had a Bye, who sat where) the engine
 //! derives from the record, so a new rule reads the same input. The rules
@@ -27,4 +29,5 @@ pub mod rng;
 pub mod rounds;
 pub mod ruleset;
 pub mod standings;
+pub mod timer;
 pub mod top_cut;

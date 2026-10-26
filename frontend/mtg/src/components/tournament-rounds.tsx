@@ -41,7 +41,9 @@ import { PrimaryButton } from "src/components/primary-button";
 import { useTournamentLabels } from "src/components/tournament-labels";
 import { TournamentPairingsEditor } from "src/components/tournament-pairings-editor";
 import { TournamentResultDialog } from "src/components/tournament-result-dialog";
+import { TournamentRoundClock } from "src/components/tournament-round-clock";
 import { isFormError } from "src/utils/error";
+import { clockSkew } from "src/utils/round-clock";
 import { cutRoundSize } from "src/utils/top-cut";
 import { formatResult } from "src/utils/tournament-rounds";
 
@@ -72,6 +74,7 @@ export type TournamentRoundsProps = {
 export function TournamentRounds({ tournament, load, onTournamentChanged, me = null }: TournamentRoundsProps) {
     const [t] = useTranslation("tournament");
     const [list, setList] = useState<RoundsResponse | null>(null);
+    const [skewMs, setSkewMs] = useState(0);
     const [busy, setBusy] = useState(false);
     const [editing, setEditing] = useState<MatchResponse | null>(null);
     const [reporting, setReporting] = useState<MatchResponse | null>(null);
@@ -104,14 +107,18 @@ export function TournamentRounds({ tournament, load, onTournamentChanged, me = n
     const reportingBestOf = bestOfFor(reporting);
 
     const reload = useCallback(async () => {
-        setList(await load());
+        const loaded = await load();
+        setSkewMs(clockSkew(loaded.server_time, Date.now()));
+        setList(loaded);
     }, [load]);
 
     useEffect(() => {
         let gone = false;
         load()
             .then((loaded) => {
-                if (!gone) setList(loaded);
+                if (gone) return;
+                setSkewMs(clockSkew(loaded.server_time, Date.now()));
+                setList(loaded);
             })
             .catch(() => undefined);
         return () => {
@@ -275,6 +282,8 @@ export function TournamentRounds({ tournament, load, onTournamentChanged, me = n
                     <RoundTable
                         key={round.number}
                         round={round}
+                        tournament={tournament}
+                        skewMs={skewMs}
                         editable={organizer && round.state !== RoundState.Previewed}
                         me={organizer || over || round.state !== RoundState.Running ? null : me}
                         busy={busy}
@@ -464,6 +473,10 @@ function RoundPlan({ tournament, rounds, editable, onChanged }: RoundPlanProps) 
 type RoundTableProps = {
     /** The Round */
     round: RoundResponse;
+    /** The Tournament it belongs to */
+    tournament: TournamentResponse;
+    /** How far this device's clock is ahead of the server's, in milliseconds */
+    skewMs: number;
     /** Whether the reader may set Results, as an Organizer */
     editable: boolean;
     /** The reader's Participant while it may report and dispute in this Round, else `null` */
@@ -481,11 +494,22 @@ type RoundTableProps = {
 };
 
 /**
- * One Round: its Matches by table, their Results, and its Byes.
+ * One Round: its Matches by table, their Results, and its Byes; while it runs, its round timer.
  *
  * @returns the Round's heading and table
  */
-function RoundTable({ round, editable, me, busy, onEdit, onReport, onDispute, onTakeBack }: RoundTableProps) {
+function RoundTable({
+    round,
+    tournament,
+    skewMs,
+    editable,
+    me,
+    busy,
+    onEdit,
+    onReport,
+    onDispute,
+    onTakeBack,
+}: RoundTableProps) {
     const [t] = useTranslation("tournament");
     const labels = useTournamentLabels();
     const mine = (played: MatchResponse) =>
@@ -514,6 +538,9 @@ function RoundTable({ round, editable, me, busy, onEdit, onReport, onDispute, on
                 )}
             </div>
             {round.state === RoundState.Previewed && <Text>{t("description.round-preview")}</Text>}
+            {round.timer != null && (
+                <TournamentRoundClock timer={round.timer} ruleset={tournament.ruleset} skewMs={skewMs} />
+            )}
             <Table striped={true}>
                 <TableHead>
                     <TableRow>

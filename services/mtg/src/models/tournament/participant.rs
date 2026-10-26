@@ -531,6 +531,7 @@ mod tests {
             self_sign_up: true,
             best_of: None,
             entry_fee: None,
+            round_minutes: None,
             swiss_rounds: None,
             top_cut: None,
             top_cut_best_of: None,

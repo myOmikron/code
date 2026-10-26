@@ -2464,6 +2464,31 @@ export interface CreateWatchListRequest {
     name: string;
 }
 /**
+ * The running Round as one Participant sees it
+ * @export
+ * @interface CurrentRoundResponse
+ */
+export interface CurrentRoundResponse {
+    /**
+     * The reader's Match or Bye in it; `null` if the reader is not seated in it
+     * @type {MatchResponse}
+     * @memberof CurrentRoundResponse
+     */
+    my_match?: MatchResponse | null;
+    /**
+     * Its number
+     * @type {number}
+     * @memberof CurrentRoundResponse
+     */
+    number: number;
+    /**
+     * Its round timer, `null` for a Tournament without one
+     * @type {RoundTimerResponse}
+     * @memberof CurrentRoundResponse
+     */
+    timer?: RoundTimerResponse | null;
+}
+/**
  * What the catalog knows about a deck card's printing
  * @export
  * @interface DeckCardCatalogResponse
@@ -5961,6 +5986,31 @@ export interface MpcFillSearchResponse {
     results: Array<MpcFillArtResponse>;
 }
 /**
+ * The reader's Match in the running Round of a Tournament
+ * @export
+ * @interface MyMatchResponse
+ */
+export interface MyMatchResponse {
+    /**
+     * The reader's Participant, `null` if the reader plays in none
+     * @type {string}
+     * @memberof MyMatchResponse
+     */
+    participant?: string | null;
+    /**
+     * The running Round, `null` while none runs
+     * @type {CurrentRoundResponse}
+     * @memberof MyMatchResponse
+     */
+    round?: CurrentRoundResponse | null;
+    /**
+     * The server's clock when it answered, to count the round timer down against
+     * @type {string}
+     * @memberof MyMatchResponse
+     */
+    server_time: string;
+}
+/**
  * The reader's own Registered deck in a Tournament
  * @export
  * @interface MyRegisteredDeckResponse
@@ -7641,6 +7691,12 @@ export interface RoundResponse {
      * @memberof RoundResponse
      */
     state: RoundState;
+    /**
+     * Its round timer while it runs; `null` before and after, and for a Tournament without one
+     * @type {RoundTimerResponse}
+     * @memberof RoundResponse
+     */
+    timer?: RoundTimerResponse | null;
 }
 
 
@@ -7683,6 +7739,45 @@ export const RoundState = {
 export type RoundState = typeof RoundState[keyof typeof RoundState];
 
 /**
+ * The round timer of a running Round
+ * @export
+ * @interface RoundTimerResponse
+ */
+export interface RoundTimerResponse {
+    /**
+     * When time is up
+     * @type {string}
+     * @memberof RoundTimerResponse
+     */
+    ends_at: string;
+    /**
+     * How many turns follow the active player's turn once time is up, under the Tournament's Ruleset
+     * 
+     * Information only: 5 under MTR, 0 under the multiplayer Rulesets.
+     * @type {number}
+     * @memberof RoundTimerResponse
+     */
+    extra_turns: number;
+    /**
+     * How long the Round runs, in seconds
+     * @type {number}
+     * @memberof RoundTimerResponse
+     */
+    length_seconds: number;
+    /**
+     * Seconds left when the server answered, 0 once time is up
+     * @type {number}
+     * @memberof RoundTimerResponse
+     */
+    remaining_seconds: number;
+    /**
+     * Whether time was up when the server answered
+     * @type {boolean}
+     * @memberof RoundTimerResponse
+     */
+    time_up: boolean;
+}
+/**
  * The Rounds of a Tournament the reader may see, and how many are planned
  * @export
  * @interface RoundsResponse
@@ -7694,6 +7789,12 @@ export interface RoundsResponse {
      * @memberof RoundsResponse
      */
     rounds: Array<RoundResponse>;
+    /**
+     * The server's clock when it answered, to count a round timer down against
+     * @type {string}
+     * @memberof RoundsResponse
+     */
+    server_time: string;
     /**
      * How many Swiss Rounds mtg suggests for the Participants there are now; `null` for a Ruleset mtg does not pair yet
      * @type {number}
@@ -9482,6 +9583,12 @@ export interface TournamentResponse {
      */
     participant_limit?: number | null;
     /**
+     * How many minutes the round timer gives a Round, `null` for no timer
+     * @type {number}
+     * @memberof TournamentResponse
+     */
+    round_minutes?: number | null;
+    /**
      * The Ruleset it follows
      * @type {Ruleset}
      * @memberof TournamentResponse
@@ -9568,6 +9675,12 @@ export interface TournamentSettingsErrors {
      * @memberof TournamentSettingsErrors
      */
     participant_limit_too_small: boolean;
+    /**
+     * The round timer is below a minute or above 240
+     * @type {boolean}
+     * @memberof TournamentSettingsErrors
+     */
+    round_minutes_out_of_range: boolean;
     /**
      * Table size, Ruleset or best-of changed, or an entry fee was taken up or dropped, after the first Round started
      * @type {boolean}
@@ -9673,6 +9786,12 @@ export interface TournamentSettingsRequest {
      * @memberof TournamentSettingsRequest
      */
     participant_limit?: number | null;
+    /**
+     * How many minutes the round timer gives a Round, 1 to 240; `null` for no timer
+     * @type {number}
+     * @memberof TournamentSettingsRequest
+     */
+    round_minutes?: number | null;
     /**
      * The Ruleset to follow: `Mtr` at 2, `TopDeck` or `MultiplayerAddendum` at 3 to 5
      * @type {Ruleset}

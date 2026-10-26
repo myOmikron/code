@@ -11,6 +11,7 @@ Name | Type
 `number` | number
 `stage` | [RoundStage](RoundStage.md)
 `state` | [RoundState](RoundState.md)
+`timer` | [RoundTimerResponse](RoundTimerResponse.md)
 
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)

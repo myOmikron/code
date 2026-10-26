@@ -36,6 +36,8 @@ pub struct RawTournamentSettings {
     pub self_sign_up: bool,
     /// How many Games a one-on-one Match is played to
     pub best_of: Option<BestOf>,
+    /// How many minutes the round timer gives a Round, `None` for no timer
+    pub round_minutes: Option<i16>,
     /// The Top cut after the Swiss Rounds, `None` for none
     pub top_cut: Option<TopCut>,
     /// How many Games a Top cut Match is played to
@@ -80,6 +82,10 @@ pub struct TournamentSettings {
     pub self_sign_up: bool,
     /// How many Games a one-on-one Match is played to; set exactly at Table size 2
     pub best_of: Option<BestOf>,
+    /// How many minutes the round timer gives a Round, 1 to [`MAX_ROUND_MINUTES`]; `None` for no timer
+    ///
+    /// A Round takes the length it had when it started, so a change applies from the next one.
+    pub round_minutes: Option<u16>,
     /// The Top cut after the Swiss Rounds, one fitting [`Self::table_size`]; `None` for none
     pub top_cut: Option<TopCut>,
     /// How many Games a Top cut Match is played to; set exactly with [`Self::top_cut`]
@@ -116,6 +122,9 @@ impl TournamentSettings {
 /// The smallest participant limit: a Tournament takes at least two Participants
 pub const MIN_PARTICIPANT_LIMIT: i32 = 2;
 
+/// The longest round timer, in minutes
+pub const MAX_ROUND_MINUTES: u16 = 240;
+
 /// Why settings were refused; several can hold at once
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct SettingsRefusal {
@@ -131,6 +140,8 @@ pub struct SettingsRefusal {
     pub self_sign_up_needs_visibility: bool,
     /// Best-of is missing one-on-one or given for a multiplayer Tournament
     pub best_of_mismatch: bool,
+    /// The round timer is below a minute or above [`MAX_ROUND_MINUTES`]
+    pub round_minutes_out_of_range: bool,
     /// The Top cut is not played at the Table size
     pub top_cut_mismatch: bool,
     /// The Top cut's best-of is missing with a Top cut or given without one
@@ -159,6 +170,12 @@ impl TournamentSettings {
             .is_some_and(|limit| limit < MIN_PARTICIPANT_LIMIT);
         refusal.self_sign_up_needs_visibility =
             raw.self_sign_up && raw.visibility == Visibility::Private;
+        let round_minutes = raw.round_minutes.map(|minutes| {
+            u16::try_from(minutes)
+                .ok()
+                .filter(|minutes| (1..=MAX_ROUND_MINUTES).contains(minutes))
+        });
+        refusal.round_minutes_out_of_range = round_minutes.is_some_and(|minutes| minutes.is_none());
         if let Some(table_size) = table_size {
             refusal.best_of_mismatch = (table_size.get() == 2) != raw.best_of.is_some();
             refusal.top_cut_mismatch = raw.top_cut.is_some_and(|top_cut| !top_cut.fits(table_size));
@@ -183,6 +200,7 @@ impl TournamentSettings {
                 participant_limit: raw.participant_limit,
                 self_sign_up: raw.self_sign_up,
                 best_of: raw.best_of,
+                round_minutes: round_minutes.flatten(),
                 top_cut: raw.top_cut,
                 top_cut_best_of: raw.top_cut_best_of,
                 entry_fee: raw.entry_fee,
@@ -222,6 +240,7 @@ mod tests {
             top_cut: None,
             top_cut_best_of: None,
             entry_fee: None,
+            round_minutes: None,
         }
     }
 
@@ -307,6 +326,37 @@ mod tests {
                 Err(refusal) => {
                     assert!(!valid, "{currency}");
                     assert!(refusal.unknown_currency, "{currency}");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn a_tournament_needs_no_round_timer() {
+        let settings = TournamentSettings::check(raw(Visibility::Public)).expect("valid");
+        assert_eq!(settings.round_minutes, None);
+    }
+
+    #[test]
+    fn a_round_timer_runs_one_minute_to_four_hours() {
+        for (minutes, valid) in [
+            (-5, false),
+            (0, false),
+            (1, true),
+            (50, true),
+            (240, true),
+            (241, false),
+        ] {
+            let mut settings = raw(Visibility::Public);
+            settings.round_minutes = Some(minutes);
+            match TournamentSettings::check(settings) {
+                Ok(settings) => {
+                    assert!(valid, "{minutes}");
+                    assert_eq!(settings.round_minutes, u16::try_from(minutes).ok());
+                }
+                Err(refusal) => {
+                    assert!(!valid, "{minutes}");
+                    assert!(refusal.round_minutes_out_of_range, "{minutes}");
                 }
             }
         }

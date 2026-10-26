@@ -89,6 +89,7 @@ All URIs are relative to *http://localhost*
 | [**getDecksSharedWithMe**](DefaultApi.md#getdeckssharedwithme) | **GET** /api/frontend/v1/decks/shared-with-me | The decks other Accounts named the caller on, alphabetically by name |
 | [**getMpcfillCardbacks**](DefaultApi.md#getmpcfillcardbacks) | **GET** /api/frontend/v1/mpcfill/cardbacks | The card backs MPCFill offers |
 | [**getMyTournamentDeck**](DefaultApi.md#getmytournamentdeck) | **GET** /api/frontend/v1/tournaments/{tournament}/deck | The logged-in Account\&#39;s own Registered deck in a Tournament it plays in |
+| [**getMyTournamentMatch**](DefaultApi.md#getmytournamentmatch) | **GET** /api/frontend/v1/tournaments/{tournament}/my-match | The reader\&#39;s Match in the running Round of a Tournament, with the round timer |
 | [**getMyTournaments**](DefaultApi.md#getmytournaments) | **GET** /api/frontend/v1/tournaments/mine | The Tournaments the logged-in Account organizes and the ones it plays in |
 | [**getPendingOidcLogin**](DefaultApi.md#getpendingoidclogin) | **GET** /api/frontend/v1/auth/oidc/pending | The session\&#39;s OIDC login waiting for its username step |
 | [**getPriceHistory**](DefaultApi.md#getpricehistory) | **GET** /api/frontend/v1/printings/{printing}/price-history | What a card has cost over time |
@@ -6177,6 +6178,76 @@ example().catch(console.error);
 ### Return type
 
 [**MyRegisteredDeckResponse**](MyRegisteredDeckResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## getMyTournamentMatch
+
+> MyMatchResponse getMyTournamentMatch(tournament)
+
+The reader\&#39;s Match in the running Round of a Tournament, with the round timer
+
+The reader\&#39;s Match in the running Round of a Tournament, with the round timer  For a Participant with an Account: its table, its opponents and its Seat, or its Bye. An Account playing in none gets the Round and timer only.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { GetMyTournamentMatchRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    tournament: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies GetMyTournamentMatchRequest;
+
+  try {
+    const data = await api.getMyTournamentMatch(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **tournament** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**MyMatchResponse**](MyMatchResponse.md)
 
 ### Authorization
 

@@ -128,6 +128,7 @@ import type {
     MpcFillCardbacksResponse,
     MpcFillSearchRequest,
     MpcFillSearchResponse,
+    MyMatchResponse,
     MyRegisteredDeckResponse,
     MyTournamentsResponse,
     NameAccountRequest,
@@ -550,6 +551,10 @@ export interface GetDeckSourcingRequest {
 }
 
 export interface GetMyTournamentDeckRequest {
+    tournament: string;
+}
+
+export interface GetMyTournamentMatchRequest {
     tournament: string;
 }
 
@@ -5210,6 +5215,53 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async getMyTournamentDeck(requestParameters: GetMyTournamentDeckRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MyRegisteredDeckResponse> {
         const response = await this.getMyTournamentDeckRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for getMyTournamentMatch without sending the request
+     */
+    async getMyTournamentMatchRequestOpts(requestParameters: GetMyTournamentMatchRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tournament'] == null) {
+            throw new runtime.RequiredError(
+                'tournament',
+                'Required parameter "tournament" was null or undefined when calling getMyTournamentMatch().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/tournaments/{tournament}/my-match`;
+        urlPath = urlPath.replace('{tournament}', encodeURIComponent(String(requestParameters['tournament'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * The reader\'s Match in the running Round of a Tournament, with the round timer  For a Participant with an Account: its table, its opponents and its Seat, or its Bye. An Account playing in none gets the Round and timer only.
+     * The reader\'s Match in the running Round of a Tournament, with the round timer
+     */
+    async getMyTournamentMatchRaw(requestParameters: GetMyTournamentMatchRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MyMatchResponse>> {
+        const requestOptions = await this.getMyTournamentMatchRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * The reader\'s Match in the running Round of a Tournament, with the round timer  For a Participant with an Account: its table, its opponents and its Seat, or its Bye. An Account playing in none gets the Round and timer only.
+     * The reader\'s Match in the running Round of a Tournament, with the round timer
+     */
+    async getMyTournamentMatch(requestParameters: GetMyTournamentMatchRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MyMatchResponse> {
+        const response = await this.getMyTournamentMatchRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

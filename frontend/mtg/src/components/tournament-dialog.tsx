@@ -79,6 +79,7 @@ function initialValues(tournament: TournamentResponse | null) {
         participantLimit: tournament?.participant_limit == null ? "" : String(tournament.participant_limit),
         selfSignUp: tournament?.self_sign_up ?? false,
         bestOf: tournament?.best_of ?? BestOf.Three,
+        roundMinutes: tournament?.round_minutes == null ? "" : String(tournament.round_minutes),
         topCut: (tournament?.top_cut ?? NO_TOP_CUT) as TopCut | typeof NO_TOP_CUT,
         topCutBestOf: tournament?.top_cut_best_of ?? BestOf.Three,
         entryFee:
@@ -147,6 +148,7 @@ export function TournamentDialog({ open, tournament, formats, onClose, onSaved }
                     participant_limit: value.participantLimit === "" ? null : Number(value.participantLimit),
                     self_sign_up: value.selfSignUp,
                     best_of: value.tableSize === 2 ? value.bestOf : null,
+                    round_minutes: value.roundMinutes === "" ? null : Number(value.roundMinutes),
                     top_cut: value.tableSize === 2 && value.topCut !== NO_TOP_CUT ? value.topCut : null,
                     top_cut_best_of: value.tableSize === 2 && value.topCut !== NO_TOP_CUT ? value.topCutBestOf : null,
                     entry_fee: amount === null ? null : { amount, currency: value.currency },
@@ -180,6 +182,9 @@ export function TournamentDialog({ open, tournament, formats, onClose, onSaved }
                         },
                         unknown_currency: (errors) => {
                             errors.fields.entryFee = t("error.entry-fee-invalid");
+                        },
+                        round_minutes_out_of_range: (errors) => {
+                            errors.fields.roundMinutes = t("error.round-minutes-out-of-range");
                         },
                         rules_locked: (errors) => {
                             errors.fields.tableSize = t("error.rules-locked");
@@ -592,6 +597,27 @@ export function TournamentDialog({ open, tournament, formats, onClose, onSaved }
                                 }
                             </form.Subscribe>
                         </Field>
+                        <form.Field name={"roundMinutes"}>
+                            {(fieldApi) => (
+                                <Field>
+                                    <Label>{t("label.round-minutes")}</Label>
+                                    <Description>{t("description.round-minutes")}</Description>
+                                    <Input
+                                        type={"number"}
+                                        min={1}
+                                        max={240}
+                                        step={1}
+                                        inputMode={"numeric"}
+                                        value={fieldApi.state.value}
+                                        invalid={fieldApi.state.meta.errors.length > 0}
+                                        onChange={(event) => fieldApi.handleChange(event.target.value)}
+                                    />
+                                    {fieldApi.state.meta.errors.map((error) => (
+                                        <ErrorMessage key={String(error)}>{String(error)}</ErrorMessage>
+                                    ))}
+                                </Field>
+                            )}
+                        </form.Field>
                     </FieldGroup>
                 </DialogBody>
                 <DialogActions>

@@ -26,6 +26,7 @@ pub(super) fn settings(visibility: &str) -> Value {
         "visibility": visibility,
         "participant_limit": null,
         "self_sign_up": false,
+        "round_minutes": null,
     })
 }
 

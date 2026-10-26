@@ -8,6 +8,7 @@ The Rounds of a Tournament the reader may see, and how many are planned
 Name | Type
 ------------ | -------------
 `rounds` | [Array&lt;RoundResponse&gt;](RoundResponse.md)
+`server_time` | string
 `suggested_swiss_rounds` | number
 `swiss_rounds` | number
 `top_cut_size` | number

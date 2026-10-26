@@ -123,6 +123,8 @@ pub struct Tournament {
     pub best_of: Option<BestOf>,
     /// What playing costs, `None` for nothing
     pub entry_fee: Option<EntryFee>,
+    /// How many minutes the round timer gives a Round, `None` for no timer
+    pub round_minutes: Option<u16>,
     /// How many Swiss Rounds are played, `None` while the suggestion applies
     pub swiss_rounds: Option<i16>,
     /// The Top cut after the Swiss Rounds, `None` for none
@@ -174,6 +176,7 @@ impl Tournament {
                 participant_limit: settings.participant_limit,
                 self_sign_up: settings.self_sign_up,
                 best_of: settings.best_of,
+                round_minutes: settings.round_minutes.map(stored_minutes),
                 top_cut: settings.top_cut,
                 top_cut_best_of: settings.top_cut_best_of,
                 entry_fee_amount: settings.entry_fee.as_ref().map(|fee| fee.amount),
@@ -215,6 +218,10 @@ impl Tournament {
             )
             .set(TournamentModel.self_sign_up, settings.self_sign_up)
             .set(TournamentModel.best_of, settings.best_of)
+            .set(
+                TournamentModel.round_minutes,
+                settings.round_minutes.map(stored_minutes),
+            )
             .set(TournamentModel.top_cut, settings.top_cut)
             .set(TournamentModel.top_cut_best_of, settings.top_cut_best_of)
             .set(
@@ -240,6 +247,7 @@ impl Tournament {
             participant_limit: settings.participant_limit,
             self_sign_up: settings.self_sign_up,
             best_of: settings.best_of,
+            round_minutes: settings.round_minutes,
             top_cut: settings.top_cut,
             top_cut_best_of: settings.top_cut_best_of,
             entry_fee: settings.entry_fee,
@@ -279,6 +287,7 @@ impl Tournament {
             top_cut: settings.top_cut,
             top_cut_best_of: settings.top_cut_best_of,
             entry_fee: settings.entry_fee,
+            round_minutes: settings.round_minutes,
             swiss_rounds: None,
             state: TournamentState::Registration,
             created_at: OffsetDateTime::UNIX_EPOCH,
@@ -309,6 +318,9 @@ impl From<TournamentModel> for Tournament {
                 (Some(amount), Some(currency)) => Some(EntryFee { amount, currency }),
                 _ => None,
             },
+            round_minutes: value
+                .round_minutes
+                .and_then(|minutes| u16::try_from(minutes).ok()),
             swiss_rounds: value.swiss_rounds,
             top_cut: value.top_cut,
             top_cut_best_of: value.top_cut_best_of,
@@ -316,4 +328,11 @@ impl From<TournamentModel> for Tournament {
             created_at: value.created_at,
         }
     }
+}
+
+/// A round timer length as its column stores it
+///
+/// Checked settings stay far below [`i16::MAX`] minutes.
+fn stored_minutes(minutes: u16) -> i16 {
+    i16::try_from(minutes).unwrap_or(i16::MAX)
 }

@@ -611,6 +611,9 @@ export const Api = {
         rounds: {
             list: (tournament: UUID) => defaultApi.listTournamentRounds({ tournament }),
             standings: (tournament: UUID) => defaultApi.getTournamentStandings({ tournament }),
+            // The reader's own Match in the running Round with the round
+            // timer; open to any Account that sees the Tournament.
+            myMatch: async (tournament: UUID) => handleError(defaultApi.getMyTournamentMatch({ tournament })),
             pair: async (tournament: UUID) => handleError(defaultApi.pairTournamentRound({ tournament })),
             discard: async (tournament: UUID, number: number) =>
                 handleError(defaultApi.discardTournamentRound({ tournament, number })),

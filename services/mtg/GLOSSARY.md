@@ -168,6 +168,10 @@ _Avoid_: rules, scoring system, format (that is the deck format)
 One turn of the Tournament in which every paired Participant plays one Match at the same time, in the Swiss part or in the Top cut. Its pairings are a preview only Organizers see and may change until it starts; it ends when every Match has a Result and none is disputed. **Taking back** the latest ended Round, while no later Round started, makes it run again with its Results.
 _Avoid_: turn (that is a turn within a game), pairing
 
+**Round timer**:
+The countdown of a running Round, set by the Tournament's optional round timer length; it starts when the Round starts, and a Round started without a length has none. At **time up** the Ruleset's **extra turns** apply, shown as information only: MTR plays five turns after the active player's turn, TopDeck and the Multiplayer Addendum none. Time up ends nothing by itself: the Round still ends when an Organizer ends it.
+_Avoid_: clock, round length, overtime
+
 **Match**:
 The Participants playing each other in one Round at one numbered table, each in a Seat, until it has a Result. One-on-one Matches are best of one or best of three Games; a multiplayer Match is one Game.
 _Avoid_: pod, table, game (a Match can hold several Games)
