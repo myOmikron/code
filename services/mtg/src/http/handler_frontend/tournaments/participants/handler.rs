@@ -11,6 +11,7 @@ use galvyn::core::stuff::api_json::ApiJson;
 use galvyn::delete;
 use galvyn::get;
 use galvyn::post;
+use galvyn::put;
 use galvyn::rorm::Database;
 use galvyn::rorm::db::transaction::Transaction;
 use galvyn::rorm::fields::types::MaxStr;
@@ -26,6 +27,8 @@ use crate::http::handler_frontend::tournaments::participants::schema::Participan
 use crate::http::handler_frontend::tournaments::participants::schema::PlayerCandidateResponse;
 use crate::http::handler_frontend::tournaments::participants::schema::PlayerCandidatesResponse;
 use crate::http::handler_frontend::tournaments::participants::schema::SearchPlayersQuery;
+use crate::http::handler_frontend::tournaments::participants::schema::SetPaidErrors;
+use crate::http::handler_frontend::tournaments::participants::schema::SetPaidRequest;
 use crate::http::handler_frontend::tournaments::participants::schema::SignUpErrors;
 use crate::models::account::Account;
 use crate::models::account::Username;
@@ -33,6 +36,7 @@ use crate::models::account::extractor::Viewer;
 use crate::models::tournament::Tournament;
 use crate::models::tournament::TournamentUuid;
 use crate::models::tournament::participant::DropRefusal;
+use crate::models::tournament::participant::PaidRefusal;
 use crate::models::tournament::participant::Participant;
 use crate::models::tournament::participant::ParticipantUuid;
 use crate::models::tournament::participant::Player;
@@ -127,7 +131,7 @@ pub async fn add_tournament_account(
 
     tx.commit().await?;
 
-    Ok(ApiJson(ParticipantResponse::from(Participant {
+    Ok(ApiJson(ParticipantResponse::for_organizers(Participant {
         uuid: participant,
         player: Player::Account {
             account: named.uuid,
@@ -135,6 +139,7 @@ pub async fn add_tournament_account(
         },
         late_from_round,
         dropped_after_round: None,
+        unpaid: tournament.owes_entry_fee(false),
     })))
 }
 
@@ -176,11 +181,12 @@ pub async fn add_tournament_guest(
 
     tx.commit().await?;
 
-    Ok(ApiJson(ParticipantResponse::from(Participant {
+    Ok(ApiJson(ParticipantResponse::for_organizers(Participant {
         uuid: participant,
         player: Player::Guest { name },
         late_from_round,
         dropped_after_round: None,
+        unpaid: tournament.owes_entry_fee(false),
     })))
 }
 
@@ -232,6 +238,40 @@ pub async fn drop_tournament_participant(
         return Err(denied());
     };
     let response = drop_participant(&mut tx, &tournament, participant).await;
+    finish(tx, response).await
+}
+
+/// Mark a Participant paid or unpaid, as an Organizer
+///
+/// Only in a Tournament with an entry fee, until it is over. An unpaid
+/// Participant is left out of the pairing; changing the flag discards a
+/// previewed Round.
+#[put("/{tournament}/participants/{participant}/paid")]
+pub async fn set_tournament_participant_paid(
+    account: Account,
+    Path((tournament, participant)): Path<(TournamentUuid, ParticipantUuid)>,
+    ApiJson(SetPaidRequest { paid }): ApiJson<SetPaidRequest>,
+) -> ApiResult<ApiJson<()>, SetPaidErrors> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    let Some(tournament) =
+        Tournament::get_as_organizer_for_update(&mut tx, tournament, account.uuid).await?
+    else {
+        tx.rollback().await?;
+        return Err(denied());
+    };
+    let response = match tournament.mark_paid(&mut tx, participant, paid).await? {
+        Ok(true) => Ok(ApiJson(())),
+        Ok(false) => Err(ApiError::bad_request("No such participant")),
+        Err(refusal) => {
+            let mut errors = FormErrors::<SetPaidErrors>::new();
+            match refusal {
+                PaidRefusal::NoEntryFee => errors.no_entry_fee = true,
+                PaidRefusal::TournamentOver => errors.tournament_over = true,
+            }
+            errors.fail()
+        }
+    };
     finish(tx, response).await
 }
 
@@ -378,15 +418,20 @@ pub async fn list(
     viewer: Viewer,
 ) -> ApiResult<ListParticipantsResponse> {
     let participants = tournament.participants(tx).await?;
-    let me = match viewer.account() {
-        Some(account) => tournament.participant_of(tx, account).await?,
-        None => None,
+    let (me, organizer) = match viewer.account() {
+        Some(account) => (
+            tournament.participant_of(tx, account).await?,
+            tournament.organizer_role(tx, account).await?.is_some(),
+        ),
+        None => (None, false),
+    };
+    let view = if organizer {
+        ParticipantResponse::for_organizers
+    } else {
+        ParticipantResponse::from
     };
     Ok(ListParticipantsResponse {
-        participants: participants
-            .into_iter()
-            .map(ParticipantResponse::from)
-            .collect(),
+        participants: participants.into_iter().map(view).collect(),
         me,
     })
 }
@@ -450,6 +495,7 @@ pub async fn sign_up(
         },
         late_from_round: None,
         dropped_after_round: None,
+        unpaid: tournament.owes_entry_fee(false),
     })))
 }
 

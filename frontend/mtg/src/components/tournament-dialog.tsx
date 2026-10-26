@@ -34,6 +34,7 @@ import { useDeckLabels } from "src/components/deck-labels";
 import { PrimaryButton } from "src/components/primary-button";
 import { useTournamentLabels } from "src/components/tournament-labels";
 import { handleFormError, isFormError } from "src/utils/error";
+import { CURRENCIES, fromMinorUnits, toMinorUnits } from "src/utils/entry-fee";
 import { TABLE_SIZES, fromLocalInput, rulesetFits, rulesetsFor, toLocalInput } from "src/utils/tournament-settings";
 
 /** The Table size a new Tournament starts out with: a Commander table */
@@ -80,6 +81,11 @@ function initialValues(tournament: TournamentResponse | null) {
         bestOf: tournament?.best_of ?? BestOf.Three,
         topCut: (tournament?.top_cut ?? NO_TOP_CUT) as TopCut | typeof NO_TOP_CUT,
         topCutBestOf: tournament?.top_cut_best_of ?? BestOf.Three,
+        entryFee:
+            tournament?.entry_fee == null
+                ? ""
+                : fromMinorUnits(tournament.entry_fee.amount, tournament.entry_fee.currency),
+        currency: tournament?.entry_fee?.currency ?? CURRENCIES[0],
     };
 }
 
@@ -115,11 +121,20 @@ export function TournamentDialog({ open, tournament, formats, onClose, onSaved }
         tournament !== null &&
         tournament.state !== TournamentState.Registration &&
         tournament.state !== TournamentState.Swiss;
+    // So is whether there is an entry fee; its amount and currency stay editable.
+    const feeLocked = rulesLocked && tournament?.entry_fee == null;
 
     const form = useForm({
         defaultValues: initialValues(tournament),
         validators: {
             onSubmitAsync: async ({ value }) => {
+                const amount = value.entryFee.trim() === "" ? null : toMinorUnits(value.entryFee, value.currency);
+                if (value.entryFee.trim() !== "" && (amount === null || amount <= 0)) {
+                    return { fields: { entryFee: t("error.entry-fee-invalid") } };
+                }
+                if (rulesLocked && amount === null && tournament?.entry_fee != null) {
+                    return { fields: { entryFee: t("error.entry-fee-locked") } };
+                }
                 const request = {
                     name: value.name,
                     description: value.description === "" ? null : value.description,
@@ -134,6 +149,7 @@ export function TournamentDialog({ open, tournament, formats, onClose, onSaved }
                     best_of: value.tableSize === 2 ? value.bestOf : null,
                     top_cut: value.tableSize === 2 && value.topCut !== NO_TOP_CUT ? value.topCut : null,
                     top_cut_best_of: value.tableSize === 2 && value.topCut !== NO_TOP_CUT ? value.topCutBestOf : null,
+                    entry_fee: amount === null ? null : { amount, currency: value.currency },
                 };
                 const response =
                     tournament === null
@@ -158,6 +174,12 @@ export function TournamentDialog({ open, tournament, formats, onClose, onSaved }
                         },
                         best_of_mismatch: (errors) => {
                             errors.fields.bestOf = t("error.best-of-mismatch");
+                        },
+                        entry_fee_not_positive: (errors) => {
+                            errors.fields.entryFee = t("error.entry-fee-invalid");
+                        },
+                        unknown_currency: (errors) => {
+                            errors.fields.entryFee = t("error.entry-fee-invalid");
                         },
                         rules_locked: (errors) => {
                             errors.fields.tableSize = t("error.rules-locked");
@@ -522,6 +544,54 @@ export function TournamentDialog({ open, tournament, formats, onClose, onSaved }
                                 </Field>
                             )}
                         </form.Field>
+
+                        <Field>
+                            <Label>{t("label.entry-fee")}</Label>
+                            <Description>
+                                {feeLocked ? t("description.entry-fee-locked") : t("description.entry-fee")}
+                            </Description>
+                            <div className={"flex items-start gap-2"}>
+                                <form.Field name={"entryFee"}>
+                                    {(fieldApi) => (
+                                        <Input
+                                            className={"min-w-0 flex-1"}
+                                            inputMode={"decimal"}
+                                            placeholder={t("label.entry-fee-none")}
+                                            aria-label={t("label.entry-fee")}
+                                            disabled={feeLocked}
+                                            value={fieldApi.state.value}
+                                            invalid={fieldApi.state.meta.errors.length > 0}
+                                            onChange={(event) => fieldApi.handleChange(event.target.value)}
+                                        />
+                                    )}
+                                </form.Field>
+                                <form.Field name={"currency"}>
+                                    {(fieldApi) => (
+                                        <div className={"w-28 shrink-0"}>
+                                            <Listbox<string>
+                                                aria-label={t("label.currency")}
+                                                disabled={feeLocked}
+                                                value={fieldApi.state.value}
+                                                onChange={fieldApi.handleChange}
+                                            >
+                                                {CURRENCIES.map((currency) => (
+                                                    <ListboxOption key={currency} value={currency}>
+                                                        <ListboxLabel>{currency}</ListboxLabel>
+                                                    </ListboxOption>
+                                                ))}
+                                            </Listbox>
+                                        </div>
+                                    )}
+                                </form.Field>
+                            </div>
+                            <form.Subscribe selector={(state) => state.fieldMeta.entryFee?.errors ?? []}>
+                                {(errors) =>
+                                    errors.map((error) => (
+                                        <ErrorMessage key={String(error)}>{String(error)}</ErrorMessage>
+                                    ))
+                                }
+                            </form.Subscribe>
+                        </Field>
                     </FieldGroup>
                 </DialogBody>
                 <DialogActions>

@@ -40,6 +40,17 @@ pub struct RawTournamentSettings {
     pub top_cut: Option<TopCut>,
     /// How many Games a Top cut Match is played to
     pub top_cut_best_of: Option<BestOf>,
+    /// What playing costs, `None` for nothing
+    pub entry_fee: Option<EntryFee>,
+}
+
+/// What playing in a Tournament costs
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EntryFee {
+    /// The amount in the currency's smallest unit, cents for euros; above zero
+    pub amount: i32,
+    /// The ISO 4217 code of the currency, three capital letters like `EUR`
+    pub currency: MaxStr<3>,
 }
 
 /// A Tournament's settings that passed [`TournamentSettings::check`]
@@ -73,6 +84,11 @@ pub struct TournamentSettings {
     pub top_cut: Option<TopCut>,
     /// How many Games a Top cut Match is played to; set exactly with [`Self::top_cut`]
     pub top_cut_best_of: Option<BestOf>,
+    /// What playing costs, `None` for nothing
+    ///
+    /// With a fee every Participant starts unpaid and is left out of the
+    /// pairing until an Organizer marks it paid.
+    pub entry_fee: Option<EntryFee>,
 }
 
 impl TournamentSettings {
@@ -85,11 +101,15 @@ impl TournamentSettings {
 
     /// Whether these settings change how `tournament` is played
     ///
-    /// Table size, Ruleset and best-of are fixed once the first Round started.
+    /// Table size, Ruleset and best-of are fixed once the first Round started,
+    /// and so is whether there is an entry fee: taking one up would leave every
+    /// Participant out of the next pairing, dropping one would pair the unpaid.
+    /// Amount and currency stay editable.
     pub fn changes_rules_of(&self, tournament: &Tournament) -> bool {
         self.table_size != tournament.table_size
             || self.ruleset != tournament.ruleset
             || self.best_of != tournament.best_of
+            || self.entry_fee.is_some() != tournament.entry_fee.is_some()
     }
 }
 
@@ -115,6 +135,10 @@ pub struct SettingsRefusal {
     pub top_cut_mismatch: bool,
     /// The Top cut's best-of is missing with a Top cut or given without one
     pub top_cut_best_of_mismatch: bool,
+    /// The entry fee is zero or less
+    pub entry_fee_not_positive: bool,
+    /// The entry fee's currency is not three capital letters
+    pub unknown_currency: bool,
 }
 
 impl TournamentSettings {
@@ -140,6 +164,11 @@ impl TournamentSettings {
             refusal.top_cut_mismatch = raw.top_cut.is_some_and(|top_cut| !top_cut.fits(table_size));
         }
         refusal.top_cut_best_of_mismatch = raw.top_cut.is_some() != raw.top_cut_best_of.is_some();
+        if let Some(fee) = &raw.entry_fee {
+            refusal.entry_fee_not_positive = fee.amount <= 0;
+            refusal.unknown_currency = !(fee.currency.len() == 3
+                && fee.currency.bytes().all(|byte| byte.is_ascii_uppercase()));
+        }
 
         match table_size {
             Some(table_size) if refusal == SettingsRefusal::default() => Ok(Self {
@@ -156,6 +185,7 @@ impl TournamentSettings {
                 best_of: raw.best_of,
                 top_cut: raw.top_cut,
                 top_cut_best_of: raw.top_cut_best_of,
+                entry_fee: raw.entry_fee,
             }),
             _ => Err(refusal),
         }
@@ -167,8 +197,10 @@ mod tests {
     use galvyn::core::re_exports::time::OffsetDateTime;
     use galvyn::rorm::fields::types::MaxStr;
 
+    use super::EntryFee;
     use super::RawTournamentSettings;
     use super::TournamentSettings;
+    use crate::models::tournament::Tournament;
     use crate::models::visibility::Visibility;
     use crate::tournament::ruleset::BestOf;
     use crate::tournament::ruleset::Ruleset;
@@ -189,6 +221,94 @@ mod tests {
             best_of: None,
             top_cut: None,
             top_cut_best_of: None,
+            entry_fee: None,
+        }
+    }
+
+    fn fee(amount: i32, currency: &str) -> Option<EntryFee> {
+        Some(EntryFee {
+            amount,
+            currency: MaxStr::new(currency.to_string()).expect("short"),
+        })
+    }
+
+    #[test]
+    fn taking_up_or_dropping_an_entry_fee_changes_the_rules_but_a_new_amount_does_not() {
+        let mut tournament_settings = raw(Visibility::Public);
+        tournament_settings.entry_fee = fee(500, "EUR");
+        let tournament = Tournament::from_settings_for_test(
+            TournamentSettings::check(tournament_settings.clone()).expect("valid"),
+        );
+        for (entry_fee, changes) in [
+            (fee(500, "EUR"), false),
+            (fee(800, "CHF"), false),
+            (None, true),
+        ] {
+            let settings = TournamentSettings::check(RawTournamentSettings {
+                entry_fee: entry_fee.clone(),
+                ..tournament_settings.clone()
+            })
+            .expect("valid");
+            assert_eq!(
+                settings.changes_rules_of(&tournament),
+                changes,
+                "{entry_fee:?}"
+            );
+        }
+        let free = Tournament::from_settings_for_test(
+            TournamentSettings::check(raw(Visibility::Public)).expect("valid"),
+        );
+        let settings = TournamentSettings::check(tournament_settings).expect("valid");
+        assert!(settings.changes_rules_of(&free));
+    }
+
+    #[test]
+    fn a_tournament_needs_no_entry_fee() {
+        let settings = TournamentSettings::check(raw(Visibility::Public)).expect("valid");
+        assert_eq!(settings.entry_fee, None);
+    }
+
+    #[test]
+    fn an_entry_fee_is_a_positive_amount_in_cents() {
+        for (amount, valid) in [(-500, false), (0, false), (1, true), (500, true)] {
+            let settings = RawTournamentSettings {
+                entry_fee: fee(amount, "EUR"),
+                ..raw(Visibility::Public)
+            };
+            match TournamentSettings::check(settings) {
+                Ok(settings) => {
+                    assert!(valid, "{amount}");
+                    assert_eq!(settings.entry_fee, fee(amount, "EUR"));
+                }
+                Err(refusal) => {
+                    assert!(!valid, "{amount}");
+                    assert!(refusal.entry_fee_not_positive, "{amount}");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn an_entry_fee_is_in_a_currency_named_by_three_capital_letters() {
+        for (currency, valid) in [
+            ("EUR", true),
+            ("CHF", true),
+            ("eur", false),
+            ("EU", false),
+            ("", false),
+            ("E1R", false),
+        ] {
+            let settings = RawTournamentSettings {
+                entry_fee: fee(500, currency),
+                ..raw(Visibility::Public)
+            };
+            match TournamentSettings::check(settings) {
+                Ok(_) => assert!(valid, "{currency}"),
+                Err(refusal) => {
+                    assert!(!valid, "{currency}");
+                    assert!(refusal.unknown_currency, "{currency}");
+                }
+            }
         }
     }
 

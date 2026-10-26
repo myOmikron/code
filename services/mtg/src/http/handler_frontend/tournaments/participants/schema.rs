@@ -22,6 +22,22 @@ pub struct ParticipantResponse {
     pub late_from_round: Option<i16>,
     /// The last Round started before it Dropped, `null` while it plays on
     pub dropped_after_round: Option<i16>,
+    /// Whether it still owes the entry fee, which keeps it out of the pairing
+    ///
+    /// Only Organizers learn it, `null` for every other reader. Always
+    /// `false` while the Tournament has no entry fee.
+    pub unpaid: Option<bool>,
+}
+
+impl ParticipantResponse {
+    /// The Participant as its Tournament's Organizers see it, with the paid flag
+    pub fn for_organizers(value: Participant) -> Self {
+        let unpaid = value.unpaid;
+        Self {
+            unpaid: Some(unpaid),
+            ..Self::from(value)
+        }
+    }
 }
 
 impl From<Participant> for ParticipantResponse {
@@ -36,6 +52,7 @@ impl From<Participant> for ParticipantResponse {
             guest,
             late_from_round: value.late_from_round,
             dropped_after_round: value.dropped_after_round,
+            unpaid: None,
         }
     }
 }
@@ -103,6 +120,22 @@ pub struct DropErrors {
     /// No Round started yet: before the first Round a Participant withdraws
     /// or is removed instead
     pub not_started: bool,
+    /// The Tournament is Finished or Cancelled
+    pub tournament_over: bool,
+}
+
+/// Whether a Participant paid the entry fee
+#[derive(Debug, Clone, Deserialize, JsonSchema)]
+pub struct SetPaidRequest {
+    /// `true` once it paid, `false` to take that back
+    pub paid: bool,
+}
+
+/// Why a Participant could not be marked paid or unpaid
+#[derive(Debug, Clone, Default, Serialize, JsonSchema)]
+pub struct SetPaidErrors {
+    /// The Tournament has no entry fee, so nobody is unpaid
+    pub no_entry_fee: bool,
     /// The Tournament is Finished or Cancelled
     pub tournament_over: bool,
 }

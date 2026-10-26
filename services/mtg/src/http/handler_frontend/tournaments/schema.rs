@@ -13,6 +13,7 @@ use crate::models::tournament::access::OrganizerRole;
 use crate::models::tournament::listing::ListedTournament;
 use crate::models::tournament::listing::OverviewFilter;
 use crate::models::tournament::listing::Timeframe;
+use crate::models::tournament::settings::EntryFee;
 use crate::models::tournament::settings::RawTournamentSettings;
 use crate::models::tournament::settings::SettingsRefusal;
 use crate::models::visibility::Visibility;
@@ -49,6 +50,40 @@ pub struct TournamentSettingsRequest {
     pub top_cut: Option<TopCut>,
     /// How many Games a Top cut Match is played to: required with a Top cut, `null` without
     pub top_cut_best_of: Option<BestOf>,
+    /// What playing costs, `null` or left out for nothing
+    ///
+    /// With a fee every Participant starts unpaid and is only paired once an
+    /// Organizer marked it paid. Taking a fee up or dropping it is refused
+    /// after the first Round started; amount and currency stay editable.
+    #[serde(default)]
+    pub entry_fee: Option<EntryFeeSchema>,
+}
+
+/// What playing in a Tournament costs
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct EntryFeeSchema {
+    /// The amount in the currency's smallest unit, cents for euros; above zero
+    pub amount: i32,
+    /// The ISO 4217 code of the currency, three capital letters like `EUR`
+    pub currency: MaxStr<3>,
+}
+
+impl From<EntryFeeSchema> for EntryFee {
+    fn from(value: EntryFeeSchema) -> Self {
+        Self {
+            amount: value.amount,
+            currency: value.currency,
+        }
+    }
+}
+
+impl From<EntryFee> for EntryFeeSchema {
+    fn from(value: EntryFee) -> Self {
+        Self {
+            amount: value.amount,
+            currency: value.currency,
+        }
+    }
 }
 
 impl From<TournamentSettingsRequest> for RawTournamentSettings {
@@ -67,6 +102,7 @@ impl From<TournamentSettingsRequest> for RawTournamentSettings {
             best_of: value.best_of,
             top_cut: value.top_cut,
             top_cut_best_of: value.top_cut_best_of,
+            entry_fee: value.entry_fee.map(EntryFee::from),
         }
     }
 }
@@ -86,7 +122,12 @@ pub struct TournamentSettingsErrors {
     pub self_sign_up_needs_visibility: bool,
     /// Best-of is missing at Table size 2 or given above it
     pub best_of_mismatch: bool,
-    /// Table size, Ruleset or best-of changed after the first Round started
+    /// The entry fee is zero or less
+    pub entry_fee_not_positive: bool,
+    /// The entry fee's currency is not three capital letters
+    pub unknown_currency: bool,
+    /// Table size, Ruleset or best-of changed, or an entry fee was taken up
+    /// or dropped, after the first Round started
     pub rules_locked: bool,
     /// The Top cut is not played at the Table size
     pub top_cut_mismatch: bool,
@@ -105,6 +146,8 @@ impl From<SettingsRefusal> for TournamentSettingsErrors {
             participant_limit_too_small: value.participant_limit_too_small,
             self_sign_up_needs_visibility: value.self_sign_up_needs_visibility,
             best_of_mismatch: value.best_of_mismatch,
+            entry_fee_not_positive: value.entry_fee_not_positive,
+            unknown_currency: value.unknown_currency,
             rules_locked: false,
             top_cut_mismatch: value.top_cut_mismatch,
             top_cut_best_of_mismatch: value.top_cut_best_of_mismatch,
@@ -146,6 +189,8 @@ pub struct TournamentResponse {
     pub top_cut: Option<TopCut>,
     /// How many Games a Top cut Match is played to, `null` without a Top cut
     pub top_cut_best_of: Option<BestOf>,
+    /// What playing costs, `null` for nothing
+    pub entry_fee: Option<EntryFeeSchema>,
     /// Its Owner's username, `null` while the Tombstone holds it
     pub owner: Option<String>,
     /// The part the reader plays in running it, `null` for none
@@ -179,6 +224,7 @@ impl TournamentResponse {
             best_of: tournament.best_of,
             top_cut: tournament.top_cut,
             top_cut_best_of: tournament.top_cut_best_of,
+            entry_fee: tournament.entry_fee.map(EntryFeeSchema::from),
             owner: owner.map(|owner| owner.as_str().to_string()),
             organizer_role,
             share_token: organizer_role.and(tournament.share_token),

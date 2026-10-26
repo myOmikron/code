@@ -20,6 +20,7 @@ use crate::models::account::AccountUuid;
 use crate::models::share::generate_share_token;
 use crate::models::tournament::db::TournamentInsertPatch;
 use crate::models::tournament::db::TournamentModel;
+use crate::models::tournament::settings::EntryFee;
 use crate::models::tournament::settings::TournamentSettings;
 use crate::models::visibility::Visibility;
 use crate::tournament::reporting::ResultState;
@@ -120,6 +121,8 @@ pub struct Tournament {
     pub self_sign_up: bool,
     /// How many Games a one-on-one Match is played to, `None` multiplayer
     pub best_of: Option<BestOf>,
+    /// What playing costs, `None` for nothing
+    pub entry_fee: Option<EntryFee>,
     /// How many Swiss Rounds are played, `None` while the suggestion applies
     pub swiss_rounds: Option<i16>,
     /// The Top cut after the Swiss Rounds, `None` for none
@@ -173,6 +176,8 @@ impl Tournament {
                 best_of: settings.best_of,
                 top_cut: settings.top_cut,
                 top_cut_best_of: settings.top_cut_best_of,
+                entry_fee_amount: settings.entry_fee.as_ref().map(|fee| fee.amount),
+                entry_fee_currency: settings.entry_fee.as_ref().map(|fee| fee.currency.clone()),
                 state: TournamentState::Registration,
             })
             .await?;
@@ -212,6 +217,14 @@ impl Tournament {
             .set(TournamentModel.best_of, settings.best_of)
             .set(TournamentModel.top_cut, settings.top_cut)
             .set(TournamentModel.top_cut_best_of, settings.top_cut_best_of)
+            .set(
+                TournamentModel.entry_fee_amount,
+                settings.entry_fee.as_ref().map(|fee| fee.amount),
+            )
+            .set(
+                TournamentModel.entry_fee_currency,
+                settings.entry_fee.as_ref().map(|fee| fee.currency.clone()),
+            )
             .condition(TournamentModel.uuid.equals(self.uuid.0))
             .await?;
         Ok(Tournament {
@@ -229,6 +242,7 @@ impl Tournament {
             best_of: settings.best_of,
             top_cut: settings.top_cut,
             top_cut_best_of: settings.top_cut_best_of,
+            entry_fee: settings.entry_fee,
             ..self
         })
     }
@@ -240,6 +254,35 @@ impl Tournament {
             .condition(TournamentModel.uuid.equals(self.uuid.0))
             .await?;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+impl Tournament {
+    /// A Tournament in Registration with `settings`, as [`Self::create`] makes one, without a database
+    pub(in crate::models) fn from_settings_for_test(settings: TournamentSettings) -> Self {
+        Self {
+            uuid: TournamentUuid(Uuid::nil()),
+            owner: AccountUuid::new(Uuid::nil()),
+            name: settings.name,
+            description: settings.description,
+            location: settings.location,
+            starts_at: settings.starts_at,
+            table_size: settings.table_size,
+            ruleset: settings.ruleset,
+            format: settings.format,
+            visibility: settings.visibility,
+            share_token: None,
+            participant_limit: settings.participant_limit,
+            self_sign_up: settings.self_sign_up,
+            best_of: settings.best_of,
+            top_cut: settings.top_cut,
+            top_cut_best_of: settings.top_cut_best_of,
+            entry_fee: settings.entry_fee,
+            swiss_rounds: None,
+            state: TournamentState::Registration,
+            created_at: OffsetDateTime::UNIX_EPOCH,
+        }
     }
 }
 
@@ -262,6 +305,10 @@ impl From<TournamentModel> for Tournament {
             participant_limit: value.participant_limit,
             self_sign_up: value.self_sign_up,
             best_of: value.best_of,
+            entry_fee: match (value.entry_fee_amount, value.entry_fee_currency) {
+                (Some(amount), Some(currency)) => Some(EntryFee { amount, currency }),
+                _ => None,
+            },
             swiss_rounds: value.swiss_rounds,
             top_cut: value.top_cut,
             top_cut_best_of: value.top_cut_best_of,

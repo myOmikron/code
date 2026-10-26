@@ -127,6 +127,7 @@ async fn create_tournament(tx: &mut Transaction, owner: AccountUuid) -> Tourname
             best_of: None,
             top_cut: None,
             top_cut_best_of: None,
+            entry_fee: None,
         },
     )
     .await

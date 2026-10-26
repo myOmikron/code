@@ -2965,6 +2965,25 @@ export interface DropErrors {
  * @export
  */
 export type EndTournamentRound200Response = FormErrorResponseForRoundErrors | TournamentStateResponse;
+/**
+ * What playing in a Tournament costs
+ * @export
+ * @interface EntryFeeSchema
+ */
+export interface EntryFeeSchema {
+    /**
+     * The amount in the currency's smallest unit, cents for euros; above zero
+     * @type {number}
+     * @memberof EntryFeeSchema
+     */
+    amount: number;
+    /**
+     * The ISO 4217 code of the currency, three capital letters like `EUR`
+     * @type {string}
+     * @memberof EntryFeeSchema
+     */
+    currency: string;
+}
 
 /**
  * What a collection can be ordered by
@@ -3909,6 +3928,27 @@ export interface FormErrorResponseForSendBugReportErrors {
     error: SendBugReportErrors;
     /**
      * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
+     */
+    result: ErrorConstant;
+}
+
+
+/**
+ * The response that is sent in a case of an error the caller should present his user
+ * @export
+ * @interface FormErrorResponseForSetPaidErrors
+ */
+export interface FormErrorResponseForSetPaidErrors {
+    /**
+     * The actual error struct
+     * @type {SetPaidErrors}
+     * @memberof FormErrorResponseForSetPaidErrors
+     */
+    error: SetPaidErrors;
+    /**
+     * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
+     * @type {ErrorConstant}
+     * @memberof FormErrorResponseForSetPaidErrors
      */
     result: ErrorConstant;
 }
@@ -5144,6 +5184,14 @@ export interface ParticipantResponse {
      * @memberof ParticipantResponse
      */
     name: string;
+    /**
+     * Whether it still owes the entry fee, which keeps it out of the pairing
+     * 
+     * Only Organizers learn it, `null` for every other reader. Always `false` while the Tournament has no entry fee.
+     * @type {boolean}
+     * @memberof ParticipantResponse
+     */
+    unpaid?: boolean | null;
     /**
      * Primary key
      * @type {string}
@@ -6722,6 +6770,38 @@ export interface SetDeckVisibilityRequest {
 
 
 /**
+ * Why a Participant could not be marked paid or unpaid
+ * @export
+ * @interface SetPaidErrors
+ */
+export interface SetPaidErrors {
+    /**
+     * The Tournament has no entry fee, so nobody is unpaid
+     * @type {boolean}
+     * @memberof SetPaidErrors
+     */
+    no_entry_fee: boolean;
+    /**
+     * The Tournament is Finished or Cancelled
+     * @type {boolean}
+     * @memberof SetPaidErrors
+     */
+    tournament_over: boolean;
+}
+/**
+ * Whether a Participant paid the entry fee
+ * @export
+ * @interface SetPaidRequest
+ */
+export interface SetPaidRequest {
+    /**
+     * `true` once it paid, `false` to take that back
+     * @type {boolean}
+     * @memberof SetPaidRequest
+     */
+    paid: boolean;
+}
+/**
  * Why a Result could not be set
  * @export
  * @interface SetResultErrors
@@ -7678,6 +7758,12 @@ export interface TournamentResponse {
      */
     description?: string | null;
     /**
+     * What playing costs, `null` for nothing
+     * @type {EntryFeeSchema}
+     * @memberof TournamentResponse
+     */
+    entry_fee?: EntryFeeSchema | null;
+    /**
      * The format played, `null` for any
      * @type {string}
      * @memberof TournamentResponse
@@ -7789,13 +7875,19 @@ export interface TournamentSettingsErrors {
      */
     best_of_mismatch: boolean;
     /**
+     * The entry fee is zero or less
+     * @type {boolean}
+     * @memberof TournamentSettingsErrors
+     */
+    entry_fee_not_positive: boolean;
+    /**
      * The participant limit is below two
      * @type {boolean}
      * @memberof TournamentSettingsErrors
      */
     participant_limit_too_small: boolean;
     /**
-     * Table size, Ruleset or best-of changed after the first Round started
+     * Table size, Ruleset or best-of changed, or an entry fee was taken up or dropped, after the first Round started
      * @type {boolean}
      * @memberof TournamentSettingsErrors
      */
@@ -7837,6 +7929,12 @@ export interface TournamentSettingsErrors {
      */
     top_cut_mismatch: boolean;
     /**
+     * The entry fee's currency is not three capital letters
+     * @type {boolean}
+     * @memberof TournamentSettingsErrors
+     */
+    unknown_currency: boolean;
+    /**
      * The format is not one a deck can be built for
      * @type {boolean}
      * @memberof TournamentSettingsErrors
@@ -7861,6 +7959,14 @@ export interface TournamentSettingsRequest {
      * @memberof TournamentSettingsRequest
      */
     description?: string | null;
+    /**
+     * What playing costs, `null` or left out for nothing
+     * 
+     * With a fee every Participant starts unpaid and is only paired once an Organizer marked it paid. Taking a fee up or dropping it is refused after the first Round started; amount and currency stay editable.
+     * @type {EntryFeeSchema}
+     * @memberof TournamentSettingsRequest
+     */
+    entry_fee?: EntryFeeSchema | null;
     /**
      * The format played, a slug from the deck formats; `null` for any
      * @type {string}

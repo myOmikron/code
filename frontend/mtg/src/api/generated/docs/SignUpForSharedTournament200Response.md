@@ -10,6 +10,7 @@ Name | Type
 `guest` | boolean
 `late_from_round` | number
 `name` | string
+`unpaid` | boolean
 `uuid` | string
 `error` | [SignUpErrors](SignUpErrors.md)
 `result` | [ErrorConstant](ErrorConstant.md)

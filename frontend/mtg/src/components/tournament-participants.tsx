@@ -1,4 +1,11 @@
-import { PlusIcon, RectangleStackIcon, TrashIcon, UserMinusIcon, UserPlusIcon } from "@heroicons/react/20/solid";
+import {
+    BanknotesIcon,
+    PlusIcon,
+    RectangleStackIcon,
+    TrashIcon,
+    UserMinusIcon,
+    UserPlusIcon,
+} from "@heroicons/react/20/solid";
 import {
     Badge,
     Button,
@@ -78,6 +85,13 @@ export function TournamentParticipants({ tournament, load, signUp }: TournamentP
     const mine = participants.find((participant) => participant.uuid === list?.me) ?? null;
     const limit = tournament.participant_limit ?? null;
     const full = limit !== null && participants.length >= limit;
+    // Only Organizers learn who paid; the list says so by carrying the flag at all.
+    const collectsFees =
+        organizer &&
+        tournament.entry_fee != null &&
+        tournament.state !== TournamentState.Finished &&
+        tournament.state !== TournamentState.Cancelled;
+    const unpaidCount = participants.filter((participant) => participant.unpaid === true).length;
     const signUpOpen = tournament.self_sign_up && tournament.visibility !== Visibility.Private && registration;
 
     const reload = useCallback(async () => {
@@ -167,6 +181,25 @@ export function TournamentParticipants({ tournament, load, signUp }: TournamentP
     }
 
     /**
+     * Marks a Participant paid or, taking it back, unpaid, as an Organizer
+     *
+     * @param participant the Participant
+     * @param paid whether it paid
+     */
+    async function markPaid(participant: ParticipantResponse, paid: boolean) {
+        setBusy(true);
+        try {
+            const result = await Api.tournaments.participants.setPaid(tournament.uuid, participant.uuid, paid);
+            if (isFormError(result)) {
+                notify.error(result.error.no_entry_fee ? t("error.no-entry-fee") : t("error.tournament-over"));
+            }
+            await reload();
+        } finally {
+            setBusy(false);
+        }
+    }
+
+    /**
      * Takes a Participant out, as an Organizer
      *
      * @param participant the Participant to remove
@@ -214,6 +247,14 @@ export function TournamentParticipants({ tournament, load, signUp }: TournamentP
 
             {account !== null && list?.me != null && <MyTournamentDeck tournament={tournament} />}
 
+            {collectsFees && (
+                <Text>
+                    {unpaidCount === 0
+                        ? t("description.everybody-paid")
+                        : t("description.unpaid-count", { count: unpaidCount })}
+                </Text>
+            )}
+
             {organizer && takesParticipants && (
                 <ParticipantAdder tournament={tournament} late={!registration} onAdded={reload} />
             )}
@@ -238,6 +279,24 @@ export function TournamentParticipants({ tournament, load, signUp }: TournamentP
                                 <Badge color={"amber"}>
                                     {t("label.dropped-after-round", { number: participant.dropped_after_round })}
                                 </Badge>
+                            )}
+                            {participant.unpaid === true && tournament.entry_fee != null && (
+                                <Badge color={"red"}>{t("label.unpaid")}</Badge>
+                            )}
+                            {collectsFees && participant.unpaid != null && (
+                                <Button
+                                    plain
+                                    disabled={busy}
+                                    aria-label={
+                                        participant.unpaid
+                                            ? t("accessibility.mark-paid", { name: participant.name })
+                                            : t("accessibility.mark-unpaid", { name: participant.name })
+                                    }
+                                    title={participant.unpaid ? t("button.mark-paid") : t("button.mark-unpaid")}
+                                    onClick={() => void markPaid(participant, participant.unpaid === true)}
+                                >
+                                    <BanknotesIcon />
+                                </Button>
                             )}
                             {organizer && dropsOpen && participant.dropped_after_round == null && (
                                 <Button

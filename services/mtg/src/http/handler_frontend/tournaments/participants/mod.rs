@@ -29,5 +29,6 @@ pub fn organizer_routes() -> GalvynRouter {
         .handler(handler::add_tournament_guest)
         .handler(handler::remove_tournament_participant)
         .handler(handler::drop_tournament_participant)
+        .handler(handler::set_tournament_participant_paid)
         .handler(handler::search_tournament_players)
 }

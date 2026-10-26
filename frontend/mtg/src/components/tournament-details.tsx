@@ -5,6 +5,7 @@ import type { TournamentResponse } from "src/api/generated";
 import { useDeckLabels } from "src/components/deck-labels";
 import { formatStart, useTournamentLabels } from "src/components/tournament-labels";
 import { tournamentShareLink } from "src/utils/share-link";
+import { formatEntryFee } from "src/utils/entry-fee";
 
 /**
  * The properties for {@link TournamentDetails}
@@ -85,6 +86,11 @@ export function TournamentDetails({ tournament }: TournamentDetailsProps) {
                         <DescriptionDetails>{tournament.participant_limit}</DescriptionDetails>
                     </>
                 )}
+
+                <DescriptionTerm>{t("label.entry-fee")}</DescriptionTerm>
+                <DescriptionDetails>
+                    {tournament.entry_fee == null ? t("label.entry-fee-none") : formatEntryFee(tournament.entry_fee)}
+                </DescriptionDetails>
 
                 <DescriptionTerm>{t("label.state")}</DescriptionTerm>
                 <DescriptionDetails>{labels.state(tournament.state)}</DescriptionDetails>

@@ -97,6 +97,7 @@ import type {
     FormErrorResponseForRenamePasskeyErrors,
     FormErrorResponseForReportResultErrors,
     FormErrorResponseForRoundErrors,
+    FormErrorResponseForSetPaidErrors,
     FormErrorResponseForSetResultErrors,
     GetPendingOidcLoginResponse,
     ImportDeckCardsRequest,
@@ -172,6 +173,7 @@ import type {
     SetDeckFolderRequest,
     SetDeckRuleZeroRequest,
     SetDeckVisibilityRequest,
+    SetPaidRequest,
     SetResultRequest,
     SetSwissRoundsRequest,
     SetTournamentSwissRounds200Response,
@@ -1511,6 +1513,12 @@ export interface SetTournamentMatchResultRequest {
     tournament: string;
     match: string;
     SetResultRequest?: SetResultRequest;
+}
+
+export interface SetTournamentParticipantPaidRequest {
+    tournament: string;
+    participant: string;
+    SetPaidRequest?: SetPaidRequest;
 }
 
 export interface SetTournamentSwissRoundsRequest {
@@ -10007,6 +10015,64 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async setTournamentMatchResult(requestParameters: SetTournamentMatchResultRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FormErrorResponseForSetResultErrors> {
         const response = await this.setTournamentMatchResultRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for setTournamentParticipantPaid without sending the request
+     */
+    async setTournamentParticipantPaidRequestOpts(requestParameters: SetTournamentParticipantPaidRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tournament'] == null) {
+            throw new runtime.RequiredError(
+                'tournament',
+                'Required parameter "tournament" was null or undefined when calling setTournamentParticipantPaid().'
+            );
+        }
+
+        if (requestParameters['participant'] == null) {
+            throw new runtime.RequiredError(
+                'participant',
+                'Required parameter "participant" was null or undefined when calling setTournamentParticipantPaid().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/tournaments/{tournament}/participants/{participant}/paid`;
+        urlPath = urlPath.replace('{tournament}', encodeURIComponent(String(requestParameters['tournament'])));
+        urlPath = urlPath.replace('{participant}', encodeURIComponent(String(requestParameters['participant'])));
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['SetPaidRequest'],
+        };
+    }
+
+    /**
+     * Mark a Participant paid or unpaid, as an Organizer  Only in a Tournament with an entry fee, until it is over. An unpaid Participant is left out of the pairing; changing the flag discards a previewed Round.
+     * Mark a Participant paid or unpaid, as an Organizer
+     */
+    async setTournamentParticipantPaidRaw(requestParameters: SetTournamentParticipantPaidRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FormErrorResponseForSetPaidErrors>> {
+        const requestOptions = await this.setTournamentParticipantPaidRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Mark a Participant paid or unpaid, as an Organizer  Only in a Tournament with an entry fee, until it is over. An unpaid Participant is left out of the pairing; changing the flag discards a previewed Round.
+     * Mark a Participant paid or unpaid, as an Organizer
+     */
+    async setTournamentParticipantPaid(requestParameters: SetTournamentParticipantPaidRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FormErrorResponseForSetPaidErrors> {
+        const response = await this.setTournamentParticipantPaidRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
