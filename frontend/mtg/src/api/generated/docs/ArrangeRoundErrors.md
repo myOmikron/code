@@ -7,6 +7,7 @@ Why a layout of a previewed Round was refused
 
 Name | Type
 ------------ | -------------
+`cut_size` | boolean
 `match_size` | boolean
 `no_byes` | boolean
 `not_pairable` | boolean

@@ -8,8 +8,8 @@
 //! ended once every Match has a Result. The Swiss Rounds come first; a Top
 //! cut, if the Tournament has one, follows with Rounds of its own that go on
 //! counting. Every operation here expects the
-//! Tournament fetched with [`Tournament::get_as_organizer_for_update`], so
-//! two Organizers acting at once are served one after the other.
+//! Tournament taken with [`Tournament::lock_for_update`], so two Organizers
+//! acting at once are served one after the other.
 
 use std::collections::HashMap;
 
@@ -59,6 +59,7 @@ use crate::tournament::top_cut::TopCutError;
 use crate::tournament::top_cut::bracket_size;
 use crate::tournament::top_cut::cut_over;
 use crate::tournament::top_cut::cut_size;
+use crate::tournament::top_cut::names_dropped_winner;
 use crate::tournament::top_cut::pair_top_cut;
 use crate::tournament::top_cut::top_cut_winner;
 
@@ -203,6 +204,8 @@ pub enum ResultRefusal {
     NotStarted,
     /// The game score does not fit the Match
     InvalidScore,
+    /// It names a Participant who Dropped as the winner of a multiplayer final
+    DroppedWinner,
 }
 
 /// The most Swiss Rounds an Organizer can set
@@ -674,7 +677,8 @@ impl Tournament {
     ///
     /// An Organizer may set or correct a Result at any time once the Round
     /// started, also after the Tournament is over; the pairings stay as they are.
-    /// It settles a disputed Result: what an Organizer sets is confirmed.
+    /// It settles a disputed Result: what an Organizer sets is confirmed, and
+    /// the change says [`ResultChangeKind::Settled`] then.
     #[instrument(name = "Tournament::set_result", skip(tx, self), fields(tournament = ?self.uuid))]
     pub async fn set_result(
         &self,
@@ -683,13 +687,14 @@ impl Tournament {
         games_won: &[i16],
         games_drawn: i16,
     ) -> Result<Result<ResultChange, ResultRefusal>, rorm::Error> {
-        let Some((stage, round_state, round_number, table_number)) = rorm::query(
+        let Some((stage, round_state, round_number, table_number, result_state)) = rorm::query(
             &mut *tx,
             (
                 TournamentMatchModel.round.stage,
                 TournamentMatchModel.round.state,
                 TournamentMatchModel.round.number,
                 TournamentMatchModel.table_number,
+                TournamentMatchModel.result_state,
             ),
         )
         .condition(rorm::and![
@@ -710,13 +715,22 @@ impl Tournament {
         if round_state == RoundState::Previewed {
             return Ok(Err(ResultRefusal::NotStarted));
         }
-        let seats = rorm::query(&mut *tx, TournamentSeatModel.uuid)
+        let seated: Vec<ParticipantUuid> = rorm::query(&mut *tx, TournamentSeatModel.participant)
             .condition(TournamentSeatModel.tournament_match.equals(played.0))
+            .order_asc(TournamentSeatModel.seat)
             .all()
             .await?
-            .len();
-        if games_won.len() != seats || !self.admits(stage, games_won, games_drawn) {
+            .into_iter()
+            .map(|participant| ParticipantUuid::new(participant.0))
+            .collect();
+        if games_won.len() != seated.len() || !self.admits(stage, games_won, games_drawn) {
             return Ok(Err(ResultRefusal::InvalidScore));
+        }
+        if self
+            .names_dropped_winner(tx, stage, &seated, games_won, games_drawn)
+            .await?
+        {
+            return Ok(Err(ResultRefusal::DroppedWinner));
         }
 
         let seats = store_result(
@@ -728,10 +742,15 @@ impl Tournament {
             None,
         )
         .await?;
+        let kind = if result_state == Some(ResultState::Disputed) {
+            ResultChangeKind::Settled
+        } else {
+            ResultChangeKind::Set
+        };
         Ok(Ok(ResultChange {
             round: round_number,
             played,
-            kind: ResultChangeKind::Set,
+            kind,
             by: None,
             seats,
         }))
@@ -796,6 +815,35 @@ impl Tournament {
         };
         let decided = stage == RoundStage::Swiss || first != second;
         decided && best_of.is_some_and(|best_of| best_of.admits(first, second, drawn))
+    }
+
+    /// Whether `games_won` and `games_drawn` for the Match seating `seated` in a
+    /// Round of `stage` name a Participant who Dropped as winner of a multiplayer final
+    ///
+    /// Only a multiplayer Top cut is a final; see
+    /// [`crate::tournament::top_cut::names_dropped_winner`]. The caller made
+    /// sure the game score [`Self::admits`] the Match.
+    pub(in crate::models::tournament) async fn names_dropped_winner(
+        &self,
+        tx: &mut Transaction,
+        stage: RoundStage,
+        seated: &[ParticipantUuid],
+        games_won: &[i16],
+        games_drawn: i16,
+    ) -> Result<bool, rorm::Error> {
+        if stage != RoundStage::TopCut || self.table_size.get() <= 2 {
+            return Ok(false);
+        }
+        let result = MatchResult {
+            games_won: games_won
+                .iter()
+                .map(|won| u8::try_from(*won).unwrap_or(0))
+                .collect(),
+            games_drawn: u8::try_from(games_drawn).unwrap_or(0),
+        };
+        let seats: Vec<EntrantId> = seated.iter().map(|seat| seat.into_inner()).collect();
+        let record = self.record(tx).await?;
+        Ok(names_dropped_winner(&record, &seats, &result))
     }
 
     /// `participant` Dropped during the Top cut: it loses its Match of the running Round
@@ -951,7 +999,7 @@ pub(in crate::models::tournament) async fn insert_matches(
 }
 
 /// A Round as the engine reads it
-fn round_record(round: &Round) -> RoundRecord {
+pub(in crate::models::tournament) fn round_record(round: &Round) -> RoundRecord {
     let mut record = RoundRecord {
         matches: Vec::new(),
         byes: Vec::new(),

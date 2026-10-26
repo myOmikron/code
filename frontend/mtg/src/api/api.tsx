@@ -137,7 +137,10 @@ export const Api = {
         // Takes the account and everything private to it with it. Bypasses
         // `handleError`, since the typed username not matching is a message
         // next to the field rather than the error screen.
-        delete: (username: string) => defaultApi.deleteAccount({ DeleteAccountRequest: { username } }),
+        delete: (username: string, appearAnonymously: boolean) =>
+            defaultApi.deleteAccount({
+                DeleteAccountRequest: { username, appear_anonymously: appearAnonymously },
+            }),
     },
     // Answers 403 to anyone but an Admin. The admin pages check the Role before
     // asking, so reaching the error screen through here means the Role changed
@@ -585,8 +588,6 @@ export const Api = {
                 handleError(defaultApi.addTournamentGuest({ tournament, AddGuestParticipantRequest: { name } })),
             remove: async (tournament: UUID, participant: UUID) =>
                 handleError(defaultApi.removeTournamentParticipant({ tournament, participant })),
-            candidates: async (tournament: UUID, query: string) =>
-                quietly(defaultApi.searchTournamentPlayers({ tournament, query })),
             signUp: async (tournament: UUID) => handleError(defaultApi.signUpForTournament({ tournament })),
             withdraw: async (tournament: UUID) => handleError(defaultApi.withdrawTournamentSignUp({ tournament })),
             drop: async (tournament: UUID, participant: UUID) =>

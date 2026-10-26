@@ -208,7 +208,8 @@ pub struct ArrangeRoundErrors {
     pub tournament_over: bool,
     /// No Round of that number is previewed
     pub not_previewed: bool,
-    /// The Round is one of the Top cut, which the standings seed
+    /// The Round is one of the Top cut, which the standings seed, and the
+    /// Tournament is not entered afterwards
     pub top_cut: bool,
     /// Somebody sits who is no Participant the Round pairs
     pub not_pairable: bool,
@@ -220,6 +221,8 @@ pub struct ArrangeRoundErrors {
     pub match_size: bool,
     /// The Ruleset never gives a Bye
     pub no_byes: bool,
+    /// A Top cut Round seats more or fewer Matches or Byes than its size takes
+    pub cut_size: bool,
 }
 
 /// The Result an Organizer sets for a Match
@@ -238,6 +241,8 @@ pub struct SetResultErrors {
     pub not_started: bool,
     /// The game score does not fit a Match of this Tournament
     pub invalid_score: bool,
+    /// It names a Participant who Dropped as the winner of a multiplayer final
+    pub dropped_winner: bool,
 }
 
 /// How many Swiss Rounds an Organizer wants played

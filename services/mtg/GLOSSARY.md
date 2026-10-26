@@ -37,7 +37,7 @@ The one Account nobody can name, log into or sign up as, that holds the public d
 _Avoid_: ghost account, deleted user
 
 **Deletion**:
-Removing an Account with everything it owns. By default its public decks go to the Tombstone; a **full Deletion** takes them too. An Account deletes itself, or an Admin deletes it after typing its username.
+Removing an Account with everything it owns. By default its public decks go to the Tombstone; a **full Deletion** takes them too. An Account deletes itself, or an Admin deletes it after typing its username. An Account deleting itself **appears anonymously** in other people's Tournaments unless it unticks that: its Guests there are named "Gelöschter Spieler N", N counting up per Tournament from 1, a stored name in German like any Guest name, never translated. Otherwise, in its own Tournaments and after an Admin's Deletion, they keep its last username.
 _Avoid_: removal, purge
 
 **Rename**:
@@ -145,7 +145,7 @@ One player in a Tournament: an Account or a Guest. Stays in the standings with i
 _Avoid_: player (alone), entrant, attendee, member
 
 **Guest**:
-A Participant without an Account, known only by the name an Organizer gave it. A deleted Account's Participants become Guests named by its last username.
+A Participant without an Account, known only by the name an Organizer gave it. A deleted Account's Participants become Guests, named by its last username or anonymously (see Deletion).
 _Avoid_: anonymous player, unregistered user
 
 **Self sign-up**:
@@ -205,15 +205,15 @@ A number the Ruleset defines to order Participants with equal Match points, such
 _Avoid_: secondary score, resistance
 
 **Top cut**:
-The playoff after the Swiss Rounds among the best Participants of the standings, seeded by them: Top 4 or Top 8 single elimination one-on-one, one final Match multiplayer. Its Rounds go on counting after the Swiss Rounds and do not count for the standings; with fewer Participants left than its size it shrinks to the next size that fits.
+The playoff after the Swiss Rounds among the best Participants of the standings, seeded by them: Top 4 or Top 8 single elimination one-on-one, one final Match multiplayer. Its Rounds go on counting after the Swiss Rounds and do not count for the standings; with fewer Participants left than its size it shrinks to the next size that fits. In a Tournament entered afterwards its size is the settings' and its Organizers seat it as it was played.
 _Avoid_: playoff, finals, bracket (that is how it is shown)
 
 **Registered deck**:
-The deck a Participant with an Account plays in a Tournament. Follows the deck until the first Round starts, or until a late Participant joins; from then on it is a copy of the deck's Deck entries that never changes with the deck and outlives it. Its list is hidden from other Participants until the Tournament is Finished, and shown afterwards only if its Participant shared it (the default for a public deck). Organizers see every list at any time, to be warned of format, legality and bracket mismatches, which never block.
+The deck a Participant with an Account plays in a Tournament. Follows the deck until the first Round starts, or until a late Participant joins; from then on it is a copy of the deck's Deck entries that never changes with the deck and outlives it. Its list is hidden from other Participants until the Tournament is Finished, and shown afterwards only if its Participant shared it (the default for a public deck), a choice fixed once the Tournament is Finished or Cancelled. Organizers see every list at any time, to be warned of format, legality and bracket mismatches, which never block. Organizers may also register or swap one for a Participant at any time, during Registration too, but only from its Account's decks that are not private.
 _Avoid_: decklist, submitted deck, tournament deck
 
 **Tournament push**:
-A Web Push notification to the devices an Account subscribed, about a Tournament it takes part in, such as "Round paired" with its table and Seat, a disputed Result (to the Match's other Participants and to the Organizers) or reaching the Top cut. Each device is subscribed on its own; one setting turns tournament pushes off for all of an Account's devices. A Tournament entered afterwards sends none, and the tournament planner never sends mail.
+A Web Push notification to the devices an Account subscribed, about a Tournament it takes part in, such as "Round paired" with its table and Seat, a disputed Result (to the Match's other Participants and to the Organizers), its settling (to the Match's Participants, not to the Organizer who settled it) or reaching the Top cut. Each device is subscribed on its own; one setting turns tournament pushes off for all of an Account's devices. A Tournament entered afterwards sends none, and the tournament planner never sends mail.
 _Avoid_: notification mail, alert, message
 
 **Tournament states**:
@@ -234,11 +234,12 @@ _Avoid_: status, phase, closed, completed
 - A **Bug report** belongs to the Account that sent it and goes with it on any **Deletion**; it is open until an **Admin** marks it done
 - Undoing or resetting a **Deck change** restores **Deck entries** without their card tags, and never moves cards of the deck's collection
 - A **Tournament** has exactly one **Owner** and any number of **Co-organizers**, each an **Account**; an **Account** is at most one of the two
+- A **Tournament**'s Visibility decides who sees it by its id: everybody a public one, nobody else an unlisted or private one; its **Organizers** and **Participants** see it whatever its Visibility, and so does an **Account** it is offered to for a handover, but only while the offer stands
 - A **Participant** is exactly one **Account** or one **Guest**; an **Account** is at most one Participant per **Tournament**, and can be an **Organizer** of it at the same time
 - A **Tournament** has one **Table size** and one **Ruleset** fitting it: MTR for 2, TopDeck or Multiplayer Addendum for 3 to 5
 - A **Round** has **Matches**; a **Match** has one **Seat** per Participant and at most one **Result**; a Participant plays at most one Match per Round, or has a **Bye**
 - A **Participant** has at most one **Registered deck**, made from one of its Account's decks; when it becomes a copy, a **Deck checkpoint** named after the Tournament marks that **Deck change** in the deck's **Deck history**. Renaming or removing that Deck checkpoint, or deleting the deck, leaves the Registered deck as it is
-- **Deletion** of an Account turns its Participants into **Guests**, passes the Tournaments it owns to a Co-organizer, else hands a public or unlisted one to the **Tombstone** and deletes a private one (a full Deletion deletes those too); its Registered decks stay. The Guests keep the Participants' names and places, so Matches and standings stay intact; the Co-organizer taking over is the one named first
+- **Deletion** of an Account turns its Participants into **Guests** (anonymous ones in other people's Tournaments unless it chose otherwise), passes the Tournaments it owns to a Co-organizer, else hands a public or unlisted one to the **Tombstone** and deletes a private one (a full Deletion deletes those too); its Registered decks stay. The Guests keep the Participants' places, so Matches and standings stay intact; the Co-organizer taking over is the one named first
 - A locked Account (**Lock**) reports and disputes no **Result**; Organizers do it for it, as for a **Guest**
 - A **Statistics snapshot** counts Tournaments, all and **Finished** ones
 

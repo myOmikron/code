@@ -1,7 +1,7 @@
 //! Correcting Rounds: an Organizer's own layout of the preview, and taking back an ended Round
 //!
 //! Like [`super::round`], every operation here expects the Tournament fetched
-//! with [`Tournament::get_as_organizer_for_update`].
+//! with [`Tournament::lock_for_update`].
 
 use galvyn::rorm;
 use galvyn::rorm::db::transaction::Transaction;
@@ -13,12 +13,15 @@ use crate::models::tournament::db::TournamentMatchModel;
 use crate::models::tournament::db::TournamentModel;
 use crate::models::tournament::db::TournamentRoundModel;
 use crate::models::tournament::db::round_key;
+use crate::models::tournament::round::Round;
 use crate::models::tournament::round::RoundRefusal;
 use crate::models::tournament::round::RoundStage;
 use crate::models::tournament::round::RoundState;
 use crate::models::tournament::round::insert_matches;
+use crate::models::tournament::round::round_record;
 use crate::tournament::layout::Layout;
 use crate::tournament::layout::LayoutError;
+use crate::tournament::layout::check_cut_layout;
 use crate::tournament::layout::check_layout;
 use crate::tournament::record::EntrantId;
 
@@ -29,7 +32,8 @@ pub enum ArrangeRefusal {
     TournamentOver,
     /// No Round of that number is previewed
     NotPreviewed,
-    /// The Round is one of the Top cut, which the standings seed
+    /// The Round is one of the Top cut, which the standings seed, and the
+    /// Tournament is not entered afterwards
     TopCut,
     /// The layout does not fit the Tournament
     Invalid(Vec<LayoutError>),
@@ -39,7 +43,9 @@ impl Tournament {
     /// Replace the Matches of the previewed Round `number` with `layout`
     ///
     /// Table numbers follow the order of the Matches, Seats the order within
-    /// each; starting the Round starts exactly this layout.
+    /// each; starting the Round starts exactly this layout. The standings seed
+    /// the Top cut, so its Rounds are laid out by hand only in a Tournament
+    /// entered afterwards, in the shape the preview has (see [`check_cut_layout`]).
     #[instrument(name = "Tournament::arrange_preview", skip(tx, self, layout), fields(tournament = ?self.uuid))]
     pub async fn arrange_preview(
         &self,
@@ -50,7 +56,7 @@ impl Tournament {
         if self.over() {
             return Ok(Err(ArrangeRefusal::TournamentOver));
         }
-        if self.state == TournamentState::TopCut {
+        if self.state == TournamentState::TopCut && !self.entered_afterwards {
             return Ok(Err(ArrangeRefusal::TopCut));
         }
         let round = round_key(self.uuid.into_inner(), number);
@@ -65,7 +71,34 @@ impl Tournament {
             return Ok(Err(ArrangeRefusal::NotPreviewed));
         }
         let record = self.record(tx).await?;
-        let errors = check_layout(&record, layout);
+        let errors = if self.state == TournamentState::TopCut {
+            let rounds = self.rounds(tx, true).await?;
+            let mut cut = rounds
+                .iter()
+                .filter(|round| round.stage == RoundStage::TopCut);
+            let first = cut.next();
+            let preview = rounds
+                .iter()
+                .find(|round| round.number == number)
+                .map(cut_layout)
+                .unwrap_or_else(|| Layout {
+                    matches: Vec::new(),
+                    byes: Vec::new(),
+                });
+            let first: Option<Vec<EntrantId>> =
+                first.filter(|first| first.number != number).map(|first| {
+                    let layout = cut_layout(first);
+                    layout
+                        .matches
+                        .into_iter()
+                        .flatten()
+                        .chain(layout.byes)
+                        .collect()
+                });
+            check_cut_layout(&record, &preview, first.as_deref(), layout)
+        } else {
+            check_layout(&record, layout)
+        };
         if !errors.is_empty() {
             return Ok(Err(ArrangeRefusal::Invalid(errors)));
         }
@@ -129,6 +162,19 @@ impl Tournament {
                 .await?;
         }
         Ok(Ok(state))
+    }
+}
+
+/// The Matches and Byes of `round` as a layout
+fn cut_layout(round: &Round) -> Layout {
+    let record = round_record(round);
+    Layout {
+        matches: record
+            .matches
+            .into_iter()
+            .map(|played| played.seats)
+            .collect(),
+        byes: record.byes,
     }
 }
 

@@ -43,6 +43,7 @@ use crate::models::account::Account;
 use crate::models::account::extractor::Viewer;
 use crate::models::tournament::Tournament;
 use crate::models::tournament::TournamentUuid;
+use crate::models::tournament::access::TournamentGrant;
 use crate::models::tournament::participant::ParticipantUuid;
 use crate::models::tournament::round::Match;
 use crate::models::tournament::round::MatchUuid;
@@ -61,15 +62,12 @@ use crate::tournament::standings::standings;
 #[get("/{tournament}/rounds")]
 pub async fn list_tournament_rounds(
     viewer: Viewer,
-    Path(tournament): Path<TournamentUuid>,
+    grant: TournamentGrant,
+    Path(_): Path<TournamentUuid>,
 ) -> ApiResult<ApiJson<RoundsResponse>> {
     let mut tx = Database::global().start_transaction().await?;
 
-    let Some(tournament) = Tournament::get_visible(&mut tx, tournament, viewer.account()).await?
-    else {
-        tx.rollback().await?;
-        return Err(denied());
-    };
+    let tournament = grant.tournament;
     let organizer = match viewer.account() {
         Some(account) => tournament.organizer_role(&mut tx, account).await?.is_some(),
         None => false,
@@ -84,16 +82,12 @@ pub async fn list_tournament_rounds(
 /// The standings of a Tournament: Match points from every Result so far
 #[get("/{tournament}/standings")]
 pub async fn get_tournament_standings(
-    viewer: Viewer,
-    Path(tournament): Path<TournamentUuid>,
+    grant: TournamentGrant,
+    Path(_): Path<TournamentUuid>,
 ) -> ApiResult<ApiJson<StandingsResponse>> {
     let mut tx = Database::global().start_transaction().await?;
 
-    let Some(tournament) = Tournament::get_visible(&mut tx, tournament, viewer.account()).await?
-    else {
-        tx.rollback().await?;
-        return Err(denied());
-    };
+    let tournament = grant.tournament;
     let response = standings_view(&mut tx, &tournament).await?;
 
     tx.commit().await?;
@@ -108,14 +102,12 @@ pub async fn get_tournament_standings(
 /// another Round is previewed or running and once every Swiss Round was paired.
 #[post("/{tournament}/rounds")]
 pub async fn pair_tournament_round(
-    account: Account,
-    Path(tournament): Path<TournamentUuid>,
+    grant: TournamentGrant,
+    Path(_): Path<TournamentUuid>,
 ) -> ApiResult<ApiJson<PairedRoundResponse>, RoundErrors> {
     let mut tx = Database::global().start_transaction().await?;
 
-    let Some(tournament) =
-        Tournament::get_as_organizer_for_update(&mut tx, tournament, account.uuid).await?
-    else {
+    let Some(tournament) = grant.tournament.lock_for_update(&mut tx).await? else {
         tx.rollback().await?;
         return Err(denied());
     };
@@ -139,14 +131,12 @@ pub async fn pair_tournament_round(
 /// Throw a previewed Round away, as an Organizer, to pair it again
 #[delete("/{tournament}/rounds/{number}")]
 pub async fn discard_tournament_round(
-    account: Account,
-    Path((tournament, number)): Path<(TournamentUuid, i16)>,
+    grant: TournamentGrant,
+    Path((_, number)): Path<(TournamentUuid, i16)>,
 ) -> ApiResult<ApiJson<()>, RoundErrors> {
     let mut tx = Database::global().start_transaction().await?;
 
-    let Some(tournament) =
-        Tournament::get_as_organizer_for_update(&mut tx, tournament, account.uuid).await?
-    else {
+    let Some(tournament) = grant.tournament.lock_for_update(&mut tx).await? else {
         tx.rollback().await?;
         return Err(denied());
     };
@@ -177,14 +167,12 @@ pub async fn discard_tournament_round(
 /// Starting Round 1 closes Registration and settles the number of Swiss Rounds.
 #[post("/{tournament}/rounds/{number}/start")]
 pub async fn start_tournament_round(
-    account: Account,
-    Path((tournament, number)): Path<(TournamentUuid, i16)>,
+    grant: TournamentGrant,
+    Path((_, number)): Path<(TournamentUuid, i16)>,
 ) -> ApiResult<ApiJson<()>, RoundErrors> {
     let mut tx = Database::global().start_transaction().await?;
 
-    let Some(tournament) =
-        Tournament::get_as_organizer_for_update(&mut tx, tournament, account.uuid).await?
-    else {
+    let Some(tournament) = grant.tournament.lock_for_update(&mut tx).await? else {
         tx.rollback().await?;
         return Err(denied());
     };
@@ -209,14 +197,12 @@ pub async fn start_tournament_round(
 /// After the last Swiss Round the Tournament is Finished.
 #[post("/{tournament}/rounds/{number}/end")]
 pub async fn end_tournament_round(
-    account: Account,
-    Path((tournament, number)): Path<(TournamentUuid, i16)>,
+    grant: TournamentGrant,
+    Path((_, number)): Path<(TournamentUuid, i16)>,
 ) -> ApiResult<ApiJson<TournamentStateResponse>, RoundErrors> {
     let mut tx = Database::global().start_transaction().await?;
 
-    let Some(tournament) =
-        Tournament::get_as_organizer_for_update(&mut tx, tournament, account.uuid).await?
-    else {
+    let Some(tournament) = grant.tournament.lock_for_update(&mut tx).await? else {
         tx.rollback().await?;
         return Err(denied());
     };
@@ -243,8 +229,8 @@ pub async fn end_tournament_round(
 /// in Seat order, and the Byes. Starting the Round starts this layout.
 #[put("/{tournament}/rounds/{number}/layout")]
 pub async fn arrange_tournament_round(
-    account: Account,
-    Path((tournament, number)): Path<(TournamentUuid, i16)>,
+    grant: TournamentGrant,
+    Path((_, number)): Path<(TournamentUuid, i16)>,
     ApiJson(request): ApiJson<ArrangeRoundRequest>,
 ) -> ApiResult<ApiJson<()>, ArrangeRoundErrors> {
     let layout = Layout {
@@ -257,9 +243,7 @@ pub async fn arrange_tournament_round(
     };
     let mut tx = Database::global().start_transaction().await?;
 
-    let Some(tournament) =
-        Tournament::get_as_organizer_for_update(&mut tx, tournament, account.uuid).await?
-    else {
+    let Some(tournament) = grant.tournament.lock_for_update(&mut tx).await? else {
         tx.rollback().await?;
         return Err(denied());
     };
@@ -278,6 +262,7 @@ pub async fn arrange_tournament_round(
                         LayoutError::NotSeated(_) => errors.not_seated = true,
                         LayoutError::MatchSize { .. } => errors.match_size = true,
                         LayoutError::NoByes => errors.no_byes = true,
+                        LayoutError::CutSize => errors.cut_size = true,
                     }
                 }
             }
@@ -300,14 +285,12 @@ pub async fn arrange_tournament_round(
 /// Results stay. A Tournament its last Swiss Round finished is back in Swiss.
 #[post("/{tournament}/rounds/{number}/take-back")]
 pub async fn take_back_tournament_round(
-    account: Account,
-    Path((tournament, number)): Path<(TournamentUuid, i16)>,
+    grant: TournamentGrant,
+    Path((_, number)): Path<(TournamentUuid, i16)>,
 ) -> ApiResult<ApiJson<TournamentStateResponse>, RoundErrors> {
     let mut tx = Database::global().start_transaction().await?;
 
-    let Some(tournament) =
-        Tournament::get_as_organizer_for_update(&mut tx, tournament, account.uuid).await?
-    else {
+    let Some(tournament) = grant.tournament.lock_for_update(&mut tx).await? else {
         tx.rollback().await?;
         return Err(denied());
     };
@@ -336,14 +319,13 @@ pub async fn take_back_tournament_round(
 #[put("/{tournament}/matches/{match}/result")]
 pub async fn set_tournament_match_result(
     account: Account,
-    Path((tournament, played)): Path<(TournamentUuid, MatchUuid)>,
+    grant: TournamentGrant,
+    Path((_, played)): Path<(TournamentUuid, MatchUuid)>,
     ApiJson(request): ApiJson<SetResultRequest>,
 ) -> ApiResult<ApiJson<()>, SetResultErrors> {
     let mut tx = Database::global().start_transaction().await?;
 
-    let Some(tournament) =
-        Tournament::get_as_organizer_for_update(&mut tx, tournament, account.uuid).await?
-    else {
+    let Some(tournament) = grant.tournament.lock_for_update(&mut tx).await? else {
         tx.rollback().await?;
         return Err(denied());
     };
@@ -359,6 +341,7 @@ pub async fn set_tournament_match_result(
                 ResultRefusal::NoSuchMatch => return Err(ApiError::bad_request("No such match")),
                 ResultRefusal::NotStarted => errors.not_started = true,
                 ResultRefusal::InvalidScore => errors.invalid_score = true,
+                ResultRefusal::DroppedWinner => errors.dropped_winner = true,
             }
             return errors.fail();
         }
@@ -367,6 +350,7 @@ pub async fn set_tournament_match_result(
     tx.commit().await?;
 
     announce(&tournament, &change);
+    tournament.push_result_settled(&change, account.uuid).await;
     Ok(ApiJson(()))
 }
 
@@ -376,15 +360,13 @@ pub async fn set_tournament_match_result(
 /// them ended, the Tournament is Finished.
 #[put("/{tournament}/swiss-rounds")]
 pub async fn set_tournament_swiss_rounds(
-    account: Account,
-    Path(tournament): Path<TournamentUuid>,
+    grant: TournamentGrant,
+    Path(_): Path<TournamentUuid>,
     ApiJson(request): ApiJson<SetSwissRoundsRequest>,
 ) -> ApiResult<ApiJson<TournamentStateResponse>, SetSwissRoundsErrors> {
     let mut tx = Database::global().start_transaction().await?;
 
-    let Some(tournament) =
-        Tournament::get_as_organizer_for_update(&mut tx, tournament, account.uuid).await?
-    else {
+    let Some(tournament) = grant.tournament.lock_for_update(&mut tx).await? else {
         tx.rollback().await?;
         return Err(denied());
     };
@@ -410,14 +392,12 @@ pub async fn set_tournament_swiss_rounds(
 /// so far stay visible.
 #[post("/{tournament}/cancel")]
 pub async fn cancel_tournament(
-    account: Account,
-    Path(tournament): Path<TournamentUuid>,
+    grant: TournamentGrant,
+    Path(_): Path<TournamentUuid>,
 ) -> ApiResult<ApiJson<()>> {
     let mut tx = Database::global().start_transaction().await?;
 
-    let Some(tournament) =
-        Tournament::get_as_organizer_for_update(&mut tx, tournament, account.uuid).await?
-    else {
+    let Some(tournament) = grant.tournament.lock_for_update(&mut tx).await? else {
         tx.rollback().await?;
         return Err(denied());
     };
@@ -473,17 +453,16 @@ pub async fn rounds_view(
 /// or its Bye. An Account playing in none gets the Round and timer only.
 #[get("/{tournament}/my-match")]
 pub async fn get_my_tournament_match(
-    account: Account,
-    Path(tournament): Path<TournamentUuid>,
+    grant: TournamentGrant,
+    Path(_): Path<TournamentUuid>,
 ) -> ApiResult<ApiJson<MyMatchResponse>> {
     let mut tx = Database::global().start_transaction().await?;
 
-    let Some(tournament) = Tournament::get_visible(&mut tx, tournament, Some(account.uuid)).await?
-    else {
-        tx.rollback().await?;
-        return Err(denied());
-    };
-    let participant = tournament.participant_of(&mut tx, account.uuid).await?;
+    let TournamentGrant {
+        tournament,
+        participant,
+        ..
+    } = grant;
     let names = names(&mut tx, &tournament).await?;
     let running = tournament
         .rounds(&mut tx, false)

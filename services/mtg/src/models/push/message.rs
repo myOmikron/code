@@ -31,6 +31,17 @@ pub enum TournamentPush {
         /// Whether the push goes to a Participant of the Match or to an Organizer
         to: DisputeRecipient,
     },
+    /// An Organizer settled the disputed Result of the Participant's Match
+    ResultSettled {
+        /// The Tournament
+        tournament: TournamentUuid,
+        /// Its name
+        name: String,
+        /// The number of the Round the Match is played in
+        round: i16,
+        /// The Match's table number
+        table: i16,
+    },
     /// The Participant plays in the Top cut, whose first Round just started
     ReachedTopCut {
         /// The Tournament
@@ -115,6 +126,28 @@ impl TournamentPush {
                     (PushLanguage::En, DisputeRecipient::Organizer) => format!(
                         "The result at table {table} in Round {round} was disputed. Settle it."
                     ),
+                };
+                let tournament = tournament.into_inner();
+                PushMessage {
+                    title: name.clone(),
+                    body,
+                    url: format!("/tournaments/{tournament}/rounds"),
+                    tag: format!("tournament-{tournament}-round-{round}-table-{table}-disputed"),
+                }
+            }
+            TournamentPush::ResultSettled {
+                tournament,
+                name,
+                round,
+                table,
+            } => {
+                let body = match language {
+                    PushLanguage::De => {
+                        format!("Das Ergebnis an Tisch {table} in Runde {round} wurde festgelegt.")
+                    }
+                    PushLanguage::En => {
+                        format!("The result at table {table} in Round {round} was set.")
+                    }
                 };
                 let tournament = tournament.into_inner();
                 PushMessage {
@@ -244,6 +277,34 @@ mod tests {
         assert_eq!(
             message.url,
             "/tournaments/00000000-0000-0000-0000-000000000007/rounds"
+        );
+        assert_eq!(
+            message.tag,
+            "tournament-00000000-0000-0000-0000-000000000007-round-3-table-5-disputed"
+        );
+    }
+
+    fn result_settled() -> TournamentPush {
+        TournamentPush::ResultSettled {
+            tournament: serde_json::from_str("\"00000000-0000-0000-0000-000000000007\"")
+                .expect("a tournament uuid"),
+            name: "Friday Night Magic".to_string(),
+            round: 3,
+            table: 5,
+        }
+    }
+
+    #[test]
+    fn a_settled_result_names_its_table_and_replaces_the_dispute_push() {
+        let message = result_settled().render(PushLanguage::De);
+        assert_eq!(message.title, "Friday Night Magic");
+        assert_eq!(
+            message.body,
+            "Das Ergebnis an Tisch 5 in Runde 3 wurde festgelegt."
+        );
+        assert_eq!(
+            result_settled().render(PushLanguage::En).body,
+            "The result at table 5 in Round 3 was set."
         );
         assert_eq!(
             message.tag,

@@ -21,6 +21,8 @@ pub struct ReportResultErrors {
     pub not_running: bool,
     /// The game score does not fit a Match of this Tournament
     pub invalid_score: bool,
+    /// It names a Participant who Dropped as the winner of a multiplayer final
+    pub dropped_winner: bool,
     /// Another Participant reported a different Result; dispute it instead
     pub reported_by_other: bool,
     /// The Result is disputed; an Organizer settles it

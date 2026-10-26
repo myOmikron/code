@@ -1,5 +1,8 @@
 import {
     Button,
+    Checkbox,
+    CheckboxField,
+    Description,
     Dialog,
     DialogActions,
     DialogBody,
@@ -36,6 +39,7 @@ export type DeleteAccountDialogProps = {
  *
  * The username has to be typed out. A red button alone is a click; a name
  * spelled into a field is a decision, and this one cannot be taken back.
+ * Appearing anonymously in other people's Tournaments is checked by default.
  *
  * @returns the dialog
  */
@@ -43,11 +47,13 @@ export function DeleteAccountDialog({ open, username, onClose, onDeleted }: Dele
     const [t] = useTranslation("profile");
     const [tg] = useTranslation();
     const [typed, setTyped] = useState("");
+    const [anonymous, setAnonymous] = useState(true);
     const [message, setMessage] = useState<string>();
     const [busy, setBusy] = useState(false);
 
     useEffect(() => {
         setTyped("");
+        setAnonymous(true);
         setMessage(undefined);
     }, [open]);
 
@@ -68,7 +74,7 @@ export function DeleteAccountDialog({ open, username, onClose, onDeleted }: Dele
         try {
             await notify.promise(
                 (async () => {
-                    const response = await Api.accounts.delete(typed.trim());
+                    const response = await Api.accounts.delete(typed.trim(), anonymous);
                     if (isFormError(response)) {
                         mismatch = true;
                         throw new Error("the typed username is not the account's");
@@ -99,6 +105,11 @@ export function DeleteAccountDialog({ open, username, onClose, onDeleted }: Dele
                 <div className={"flex flex-col gap-4"}>
                     <Text>{t("description.delete-account-decks")}</Text>
                     <Text>{t("description.delete-account-tournaments")}</Text>
+                    <CheckboxField>
+                        <Checkbox checked={anonymous} onChange={setAnonymous} />
+                        <Label>{t("label.delete-account-anonymous")}</Label>
+                        <Description>{t("description.delete-account-anonymous")}</Description>
+                    </CheckboxField>
                     <Field>
                         <Label>{t("label.delete-account-confirm", { username })}</Label>
                         <Input

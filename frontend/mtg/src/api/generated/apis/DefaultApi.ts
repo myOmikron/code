@@ -97,6 +97,7 @@ import type {
     FormErrorResponseForRenamePasskeyErrors,
     FormErrorResponseForReportResultErrors,
     FormErrorResponseForRoundErrors,
+    FormErrorResponseForSetListSharingErrors,
     FormErrorResponseForSetPaidErrors,
     FormErrorResponseForSetResultErrors,
     FormErrorResponseForSubscribePushDeviceErrors,
@@ -135,7 +136,6 @@ import type {
     NameAccountRequest,
     OfferTournamentHandover200Response,
     PairTournamentRound200Response,
-    PlayerCandidatesResponse,
     PriceHistoryResponse,
     PrintingLanguagesResponse,
     PublicCollectionResponse,
@@ -1644,17 +1644,6 @@ export interface SearchPublicDecksRequest {
      * 
      */
     sort?: PublicDeckSort;
-}
-
-export interface SearchTournamentPlayersRequest {
-    /**
-     * 
-     */
-    tournament: string;
-    /**
-     * 
-     */
-    query?: string;
 }
 
 export interface SendBugReportOperationRequest {
@@ -4191,7 +4180,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Delete the logged-in account  The account, its passkeys, its collections, its watch lists and every deck it kept to itself are gone for good. What stays are the decks it put on show: those are handed to a tombstone, so a decklist somebody linked to keeps working while nothing points back at the account that built it.  The request has to spell the account\'s own username. It is authenticated either way, so this is not what makes the deletion safe: it is what makes it deliberate.
+     * Delete the logged-in account  The account, its passkeys, its collections, its watch lists and every deck it kept to itself are gone for good. What stays are the decks it put on show: those are handed to a tombstone, so a decklist somebody linked to keeps working while nothing points back at the account that built it.  Its Participants in other people\'s Tournaments stay as Guests, named \"Gelöschter Spieler N\" unless the request asks to keep the last username.  The request has to spell the account\'s own username. It is authenticated either way, so this is not what makes the deletion safe: it is what makes it deliberate.
      * Delete the logged-in account
      */
     async deleteAccountRaw(requestParameters: DeleteAccountOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FormErrorResponseForDeleteAccountErrors>> {
@@ -4202,7 +4191,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Delete the logged-in account  The account, its passkeys, its collections, its watch lists and every deck it kept to itself are gone for good. What stays are the decks it put on show: those are handed to a tombstone, so a decklist somebody linked to keeps working while nothing points back at the account that built it.  The request has to spell the account\'s own username. It is authenticated either way, so this is not what makes the deletion safe: it is what makes it deliberate.
+     * Delete the logged-in account  The account, its passkeys, its collections, its watch lists and every deck it kept to itself are gone for good. What stays are the decks it put on show: those are handed to a tombstone, so a decklist somebody linked to keeps working while nothing points back at the account that built it.  Its Participants in other people\'s Tournaments stay as Guests, named \"Gelöschter Spieler N\" unless the request asks to keep the last username.  The request has to spell the account\'s own username. It is authenticated either way, so this is not what makes the deletion safe: it is what makes it deliberate.
      * Delete the logged-in account
      */
     async deleteAccount(requestParameters: DeleteAccountOperationRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FormErrorResponseForDeleteAccountErrors> {
@@ -10135,57 +10124,6 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Creates request options for searchTournamentPlayers without sending the request
-     */
-    async searchTournamentPlayersRequestOpts(requestParameters: SearchTournamentPlayersRequest): Promise<runtime.RequestOpts> {
-        if (requestParameters['tournament'] == null) {
-            throw new runtime.RequiredError(
-                'tournament',
-                'Required parameter "tournament" was null or undefined when calling searchTournamentPlayers().'
-            );
-        }
-
-        const queryParameters: any = {};
-
-        if (requestParameters['query'] != null) {
-            queryParameters['query'] = requestParameters['query'];
-        }
-
-        const headerParameters: runtime.HTTPHeaders = {};
-
-
-        let urlPath = `/api/frontend/v1/tournaments/{tournament}/player-search`;
-        urlPath = urlPath.replace('{tournament}', encodeURIComponent(String(requestParameters['tournament'])));
-
-        return {
-            path: urlPath,
-            method: 'GET',
-            headers: headerParameters,
-            query: queryParameters,
-        };
-    }
-
-    /**
-     * Accounts whose username starts with what an Organizer typed, to add as Participants  Answers with up to ten Accounts, the caller among them if it matches, alphabetically by username. Fewer than two characters search nothing. Searches are capped per caller, see [`PLAYER_SEARCHES`]; past the cap the answer is empty and says so.
-     * Accounts whose username starts with what an Organizer typed, to add as Participants
-     */
-    async searchTournamentPlayersRaw(requestParameters: SearchTournamentPlayersRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PlayerCandidatesResponse>> {
-        const requestOptions = await this.searchTournamentPlayersRequestOpts(requestParameters);
-        const response = await this.request(requestOptions, initOverrides);
-
-        return new runtime.JSONApiResponse(response);
-    }
-
-    /**
-     * Accounts whose username starts with what an Organizer typed, to add as Participants  Answers with up to ten Accounts, the caller among them if it matches, alphabetically by username. Fewer than two characters search nothing. Searches are capped per caller, see [`PLAYER_SEARCHES`]; past the cap the answer is empty and says so.
-     * Accounts whose username starts with what an Organizer typed, to add as Participants
-     */
-    async searchTournamentPlayers(requestParameters: SearchTournamentPlayersRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PlayerCandidatesResponse> {
-        const response = await this.searchTournamentPlayersRaw(requestParameters, initOverrides);
-        return await response.value();
-    }
-
-    /**
      * Creates request options for sendBugReport without sending the request
      */
     async sendBugReportRequestOpts(requestParameters: SendBugReportOperationRequest): Promise<runtime.RequestOpts> {
@@ -10622,25 +10560,21 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Choose whether others may see the logged-in Account\'s list once the Tournament is Finished  The Participant\'s own choice, open at any time.
+     * Choose whether others may see the logged-in Account\'s list once the Tournament is Finished  The Participant\'s own choice, open until the Tournament is Finished or Cancelled; from then on it is refused.
      * Choose whether others may see the logged-in Account\'s list once the
      */
-    async setMyTournamentListSharingRaw(requestParameters: SetMyTournamentListSharingRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
+    async setMyTournamentListSharingRaw(requestParameters: SetMyTournamentListSharingRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FormErrorResponseForSetListSharingErrors>> {
         const requestOptions = await this.setMyTournamentListSharingRequestOpts(requestParameters);
         const response = await this.request(requestOptions, initOverrides);
 
-        if (this.isJsonMime(response.headers.get('content-type'))) {
-            return new runtime.JSONApiResponse<any>(response);
-        } else {
-            return new runtime.TextApiResponse(response) as any;
-        }
+        return new runtime.JSONApiResponse(response);
     }
 
     /**
-     * Choose whether others may see the logged-in Account\'s list once the Tournament is Finished  The Participant\'s own choice, open at any time.
+     * Choose whether others may see the logged-in Account\'s list once the Tournament is Finished  The Participant\'s own choice, open until the Tournament is Finished or Cancelled; from then on it is refused.
      * Choose whether others may see the logged-in Account\'s list once the
      */
-    async setMyTournamentListSharing(requestParameters: SetMyTournamentListSharingRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
+    async setMyTournamentListSharing(requestParameters: SetMyTournamentListSharingRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FormErrorResponseForSetListSharingErrors> {
         const response = await this.setMyTournamentListSharingRaw(requestParameters, initOverrides);
         return await response.value();
     }

@@ -14,9 +14,9 @@ use crate::http::handler_frontend::tournaments::live::emit;
 use crate::http::handler_frontend::tournaments::results::schema::DisputeResultErrors;
 use crate::http::handler_frontend::tournaments::results::schema::ReportResultErrors;
 use crate::http::handler_frontend::tournaments::results::schema::ReportResultRequest;
-use crate::models::account::Account;
 use crate::models::tournament::Tournament;
 use crate::models::tournament::TournamentUuid;
+use crate::models::tournament::access::TournamentGrant;
 use crate::models::tournament::result::DisputeResultRefusal;
 use crate::models::tournament::result::ReportResultRefusal;
 use crate::models::tournament::result::ResultChange;
@@ -32,21 +32,19 @@ use crate::tournament::reporting::ReportRefusal;
 /// cannot report: an Organizer sets its Result.
 #[post("/{tournament}/matches/{match}/report")]
 pub async fn report_tournament_match_result(
-    account: Account,
-    Path((tournament, played)): Path<(TournamentUuid, MatchUuid)>,
+    grant: TournamentGrant,
+    Path((_, played)): Path<(TournamentUuid, MatchUuid)>,
     ApiJson(request): ApiJson<ReportResultRequest>,
 ) -> ApiResult<ApiJson<()>, ReportResultErrors> {
     let mut tx = Database::global().start_transaction().await?;
 
-    let Some(tournament) =
-        Tournament::get_visible_for_update(&mut tx, tournament, account.uuid).await?
-    else {
+    let Some(participant) = grant.participant else {
         tx.rollback().await?;
         return Err(denied());
     };
-    let Some(participant) = tournament.participant_of(&mut tx, account.uuid).await? else {
+    let Some(tournament) = grant.tournament.lock_for_update(&mut tx).await? else {
         tx.rollback().await?;
-        return Err(no_such_match());
+        return Err(denied());
     };
     let outcome = tournament
         .report_result(
@@ -70,6 +68,7 @@ pub async fn report_tournament_match_result(
                 ReportResultRefusal::EnteredAfterwards => errors.entered_afterwards = true,
                 ReportResultRefusal::NotRunning => errors.not_running = true,
                 ReportResultRefusal::InvalidScore => errors.invalid_score = true,
+                ReportResultRefusal::DroppedWinner => errors.dropped_winner = true,
                 ReportResultRefusal::Refused(ReportRefusal::ReportedByOther) => {
                     errors.reported_by_other = true;
                 }
@@ -94,20 +93,18 @@ pub async fn report_tournament_match_result(
 /// settles the Result. A locked Account cannot dispute.
 #[post("/{tournament}/matches/{match}/dispute")]
 pub async fn dispute_tournament_match_result(
-    account: Account,
-    Path((tournament, played)): Path<(TournamentUuid, MatchUuid)>,
+    grant: TournamentGrant,
+    Path((_, played)): Path<(TournamentUuid, MatchUuid)>,
 ) -> ApiResult<ApiJson<()>, DisputeResultErrors> {
     let mut tx = Database::global().start_transaction().await?;
 
-    let Some(tournament) =
-        Tournament::get_visible_for_update(&mut tx, tournament, account.uuid).await?
-    else {
+    let Some(participant) = grant.participant else {
         tx.rollback().await?;
         return Err(denied());
     };
-    let Some(participant) = tournament.participant_of(&mut tx, account.uuid).await? else {
+    let Some(tournament) = grant.tournament.lock_for_update(&mut tx).await? else {
         tx.rollback().await?;
-        return Err(no_such_match());
+        return Err(denied());
     };
     let change = match tournament
         .dispute_result(&mut tx, played, participant)
@@ -166,7 +163,9 @@ pub fn announce(tournament: &Tournament, change: &ResultChange) {
         match change.kind {
             ResultChangeKind::Reported => TournamentEvent::ResultReported { round, match_uuid },
             ResultChangeKind::Disputed => TournamentEvent::ResultDisputed { round, match_uuid },
-            ResultChangeKind::Set => TournamentEvent::ResultSet { round, match_uuid },
+            ResultChangeKind::Set | ResultChangeKind::Settled => {
+                TournamentEvent::ResultSet { round, match_uuid }
+            }
         },
     );
     emit(tournament.uuid, TournamentEvent::StandingsChanged);

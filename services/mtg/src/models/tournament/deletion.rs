@@ -2,8 +2,13 @@
 //!
 //! Runs before the Account's identity is deleted: its Participants would go
 //! with the cascade, and the Tournaments it owns hold the Account back.
+//! The Account chooses how its Participants appear in other people's
+//! Tournaments afterwards, see [`GuestNaming`].
 
 use galvyn::rorm;
+use galvyn::rorm::db::Executor;
+use galvyn::rorm::db::executor::All;
+use galvyn::rorm::db::sql::value::Value;
 use galvyn::rorm::db::transaction::Transaction;
 use galvyn::rorm::fields::types::ForeignModelByField;
 use galvyn::rorm::fields::types::MaxStr;
@@ -17,11 +22,44 @@ use crate::models::tournament::db::TournamentModel;
 use crate::models::tournament::db::TournamentParticipantModel;
 use crate::models::visibility::Visibility;
 
+/// The stored Guest name of a Participant that appears anonymously, before its number
+///
+/// Stored, not translated: it is a name like any an Organizer gives a Guest,
+/// in German, mtg's first language.
+const ANONYMOUS_GUEST: &str = "Gelöschter Spieler";
+
+/// How a deleted Account's Participants appear in Tournaments it does not own
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+pub enum GuestNaming {
+    /// As "Gelöschter Spieler N", N counting up per Tournament
+    #[default]
+    Anonymous,
+    /// By the Account's last username
+    LastUsername,
+}
+
+/// The Guest name of the next Participant to appear anonymously among Guests named `names`
+///
+/// One more than the highest number an anonymous Guest name there carries,
+/// so the first in a Tournament is 1; a Guest an Organizer named the same way
+/// counts too, so no two Guests share a name.
+fn anonymous_name<'a>(names: impl IntoIterator<Item = &'a str>) -> MaxStr<64> {
+    let highest = names
+        .into_iter()
+        .filter_map(|name| name.strip_prefix(ANONYMOUS_GUEST)?.strip_prefix(' '))
+        .filter_map(|number| number.parse::<u32>().ok())
+        .max()
+        .unwrap_or(0);
+    MaxStr::new(format!("{ANONYMOUS_GUEST} {}", highest.saturating_add(1)))
+        .unwrap_or_else(|_| unreachable!("an anonymous Guest name is short"))
+}
+
 impl Tournament {
     /// Let the Tournaments `account` plays in or owns go on without it
     ///
-    /// Its Participants become Guests named `username`, its last one, and
-    /// keep their primary keys, so whatever points at them stays. Each
+    /// Its Participants become Guests and keep their primary keys, so
+    /// whatever points at them stays. In the Tournaments it owns they are
+    /// named `username`, its last one; in the others as `naming` says. Each
     /// Tournament it owns passes to its longest-standing Co-organizer, else to
     /// `tombstone` when public or unlisted, else it is deleted; `tombstone` is
     /// `None` for a full Deletion. A pending handover of an owned Tournament
@@ -33,8 +71,12 @@ impl Tournament {
         tx: &mut Transaction,
         account: AccountUuid,
         username: &Username,
+        naming: GuestNaming,
         tombstone: Option<AccountUuid>,
     ) -> Result<(), rorm::Error> {
+        if naming == GuestNaming::Anonymous {
+            appear_anonymously(tx, account).await?;
+        }
         let guest_name = MaxStr::new(username.as_str().to_owned())
             .unwrap_or_else(|_| unreachable!("a username is shorter than a Guest name"));
         rorm::update(&mut *tx, TournamentParticipantModel)
@@ -97,6 +139,51 @@ impl Tournament {
     }
 }
 
+/// Turn `account`'s Participants in Tournaments it does not own into anonymous Guests
+///
+/// Each Tournament's row is locked first, so two Deletions at once count on
+/// from each other. Its Participants in the Tournaments it owns stay with it.
+async fn appear_anonymously(tx: &mut Transaction, account: AccountUuid) -> Result<(), rorm::Error> {
+    let played = rorm::query(
+        &mut *tx,
+        (
+            TournamentParticipantModel.uuid,
+            TournamentParticipantModel.tournament.uuid,
+            TournamentParticipantModel.tournament.owner,
+        ),
+    )
+    .condition(
+        TournamentParticipantModel
+            .account
+            .equals(Some(account.into_inner())),
+    )
+    .order_asc(TournamentParticipantModel.uuid)
+    .all()
+    .await?;
+    for (participant, tournament, owner) in played {
+        if AccountUuid::new_from_field(owner) == account {
+            continue;
+        }
+        (&mut *tx)
+            .execute::<All>(
+                "SELECT uuid FROM tournament WHERE uuid = $1 FOR NO KEY UPDATE".to_string(),
+                vec![Value::Uuid(tournament)],
+            )
+            .await?;
+        let names = rorm::query(&mut *tx, TournamentParticipantModel.guest_name)
+            .condition(TournamentParticipantModel.tournament.equals(tournament))
+            .all()
+            .await?;
+        let name = anonymous_name(names.iter().flatten().map(|name| &**name));
+        rorm::update(&mut *tx, TournamentParticipantModel)
+            .set(TournamentParticipantModel.account, None)
+            .set(TournamentParticipantModel.guest_name, Some(name))
+            .condition(TournamentParticipantModel.uuid.equals(participant))
+            .await?;
+    }
+    Ok(())
+}
+
 /// Who takes over a Tournament whose Owner's Account goes
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(in crate::models) enum Successor {
@@ -133,12 +220,38 @@ mod tests {
     use uuid::Uuid;
 
     use super::Successor;
+    use super::anonymous_name;
     use super::successor;
     use crate::models::account::AccountUuid;
     use crate::models::visibility::Visibility;
 
     fn account(n: u128) -> AccountUuid {
         AccountUuid::new(Uuid::from_u128(n))
+    }
+
+    #[test]
+    fn the_first_participant_to_appear_anonymously_is_number_one() {
+        assert_eq!(&*anonymous_name(["Alice", "Bob"]), "Gelöschter Spieler 1");
+    }
+
+    #[test]
+    fn the_next_participant_to_appear_anonymously_counts_on() {
+        assert_eq!(
+            &*anonymous_name(["Gelöschter Spieler 1", "Alice", "Gelöschter Spieler 3"]),
+            "Gelöschter Spieler 4"
+        );
+    }
+
+    #[test]
+    fn a_guest_name_that_only_looks_anonymous_counts_too() {
+        assert_eq!(
+            &*anonymous_name([
+                "Gelöschter Spieler 2",
+                "Gelöschter Spieler x",
+                "Gelöschter Spieler"
+            ]),
+            "Gelöschter Spieler 3"
+        );
     }
 
     #[test]

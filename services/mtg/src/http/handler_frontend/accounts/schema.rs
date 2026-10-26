@@ -90,6 +90,15 @@ pub struct DeleteAccountRequest {
     /// Proof that the request means the account it is authenticated as, and not
     /// a stray click on a red button.
     pub username: String,
+    /// Whether its Participants appear as "Gelöschter Spieler N" in Tournaments
+    /// it does not own, `true` if left out; `false` keeps its last username there
+    #[serde(default = "appear_anonymously_by_default")]
+    pub appear_anonymously: bool,
+}
+
+/// Deleted accounts appear anonymously in other people's Tournaments unless they say otherwise
+fn appear_anonymously_by_default() -> bool {
+    true
 }
 
 /// Why an account could not be deleted

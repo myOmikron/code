@@ -171,6 +171,7 @@ docs/FormErrorResponseForRenamePasskeyErrors.md
 docs/FormErrorResponseForReportResultErrors.md
 docs/FormErrorResponseForRoundErrors.md
 docs/FormErrorResponseForSendBugReportErrors.md
+docs/FormErrorResponseForSetListSharingErrors.md
 docs/FormErrorResponseForSetPaidErrors.md
 docs/FormErrorResponseForSetResultErrors.md
 docs/FormErrorResponseForSetSwissRoundsErrors.md
@@ -237,8 +238,6 @@ docs/PairedRoundResponse.md
 docs/ParticipantDeckResponse.md
 docs/ParticipantResponse.md
 docs/PendingOidcLogin.md
-docs/PlayerCandidateResponse.md
-docs/PlayerCandidatesResponse.md
 docs/PriceDayResponse.md
 docs/PriceHistoryResponse.md
 docs/PricePointResponse.md
@@ -312,6 +311,7 @@ docs/SetDeckColorsRequest.md
 docs/SetDeckFolderRequest.md
 docs/SetDeckRuleZeroRequest.md
 docs/SetDeckVisibilityRequest.md
+docs/SetListSharingErrors.md
 docs/SetListSharingRequest.md
 docs/SetPaidErrors.md
 docs/SetPaidRequest.md

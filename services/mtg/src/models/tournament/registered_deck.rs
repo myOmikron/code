@@ -128,6 +128,15 @@ pub enum RegisterDeckRefusal {
     NotTheirDeck,
 }
 
+/// Why a Participant may not change whether its list is shared
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ListSharingRefusal {
+    /// The Participant has no Registered deck, or is none of this Tournament
+    NoRegisteredDeck,
+    /// The Tournament is Finished or Cancelled, see [`list_sharing_open`]
+    TournamentOver,
+}
+
 /// Who reads a Registered deck's list
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ListReader {
@@ -142,6 +151,35 @@ pub enum ListReader {
 /// A public deck is out in the open already; anything else stays to itself.
 pub fn shared_by_default(visibility: Visibility) -> bool {
     visibility == Visibility::Public
+}
+
+/// Whether a Participant may still change whether its list is shared
+///
+/// Until the Tournament is Finished or Cancelled; from then on the lists
+/// shown next to the standings stay as they are.
+pub fn list_sharing_open(state: TournamentState) -> bool {
+    !matches!(
+        state,
+        TournamentState::Finished | TournamentState::Cancelled
+    )
+}
+
+/// Whether a Registered deck registered in `state` is shared
+///
+/// `previous` is the choice of the Registered deck it replaces, if any,
+/// `asked` the choice sent with the registration. Once the Tournament is over
+/// the choice is fixed, so a deck an Organizer swaps then keeps it; before,
+/// it is the one asked for, else the default for a deck at `visibility`.
+pub fn sharing_after_swap(
+    state: TournamentState,
+    previous: Option<bool>,
+    asked: Option<bool>,
+    visibility: Visibility,
+) -> bool {
+    match previous {
+        Some(previous) if !list_sharing_open(state) => previous,
+        _ => asked.unwrap_or_else(|| shared_by_default(visibility)),
+    }
 }
 
 /// Whether `reader` sees a Registered deck's list
@@ -362,6 +400,14 @@ impl Tournament {
             return Ok(Err(RegisterDeckRefusal::NotTheirDeck));
         };
 
+        let previous = rorm::query(&mut *tx, TournamentRegisteredDeckModel.list_shared)
+            .condition(
+                TournamentRegisteredDeckModel
+                    .participant
+                    .equals(participant.into_inner()),
+            )
+            .optional()
+            .await?;
         delete_registered(tx, participant).await?;
         rorm::insert(&mut *tx, TournamentRegisteredDeckModel)
             .return_nothing()
@@ -369,7 +415,7 @@ impl Tournament {
                 uuid: Uuid::now_v7(),
                 participant: ForeignModelByField(participant.into_inner()),
                 deck: Some(ForeignModelByField(deck.into_inner())),
-                list_shared: shared.unwrap_or_else(|| shared_by_default(visibility)),
+                list_shared: sharing_after_swap(state, previous, shared, visibility),
             })
             .await?;
         if state != TournamentState::Registration {
@@ -380,17 +426,20 @@ impl Tournament {
 
     /// Set whether `participant`'s list is shared once the Tournament is Finished
     ///
-    /// The Participant's own choice, which it may change at any time. Answers
-    /// `false` if it has no Registered deck.
+    /// The Participant's own choice, which it may change until the Tournament
+    /// is over, see [`list_sharing_open`].
     #[instrument(name = "Tournament::set_list_sharing", skip(tx, self), fields(tournament = ?self.uuid))]
     pub async fn set_list_sharing(
         &self,
         tx: &mut Transaction,
         participant: ParticipantUuid,
         shared: bool,
-    ) -> Result<bool, rorm::Error> {
+    ) -> Result<Result<(), ListSharingRefusal>, rorm::Error> {
         if self.participant_account(tx, participant).await?.is_none() {
-            return Ok(false);
+            return Ok(Err(ListSharingRefusal::NoRegisteredDeck));
+        }
+        if !list_sharing_open(self.state) {
+            return Ok(Err(ListSharingRefusal::TournamentOver));
         }
         let updated = rorm::update(&mut *tx, TournamentRegisteredDeckModel)
             .set(TournamentRegisteredDeckModel.list_shared, shared)
@@ -400,7 +449,10 @@ impl Tournament {
                     .equals(participant.into_inner()),
             )
             .await?;
-        Ok(updated > 0)
+        if updated == 0 {
+            return Ok(Err(ListSharingRefusal::NoRegisteredDeck));
+        }
+        Ok(Ok(()))
     }
 
     /// The list of a Registered deck, its Deck entries joined against the card
@@ -722,10 +774,12 @@ mod tests {
     use super::DeckRegistrar;
     use super::ListReader;
     use super::checkpoint_name;
+    use super::list_sharing_open;
     use super::list_visible;
     use super::may_register;
     use super::participant_changes_deck;
     use super::shared_by_default;
+    use super::sharing_after_swap;
     use crate::models::tournament::TournamentState;
     use crate::models::visibility::Visibility;
 
@@ -734,6 +788,60 @@ mod tests {
         assert!(shared_by_default(Visibility::Public));
         assert!(!shared_by_default(Visibility::Unlisted));
         assert!(!shared_by_default(Visibility::Private));
+    }
+
+    #[test]
+    fn a_deck_swapped_after_the_tournament_is_over_keeps_the_sharing_choice() {
+        for state in [TournamentState::Finished, TournamentState::Cancelled] {
+            assert!(!sharing_after_swap(
+                state,
+                Some(false),
+                Some(true),
+                Visibility::Public
+            ));
+            assert!(sharing_after_swap(
+                state,
+                Some(true),
+                None,
+                Visibility::Private
+            ));
+            assert!(sharing_after_swap(state, None, None, Visibility::Public));
+        }
+    }
+
+    #[test]
+    fn a_deck_swapped_before_the_tournament_is_over_takes_the_choice_given_or_the_default() {
+        assert!(sharing_after_swap(
+            TournamentState::Swiss,
+            Some(false),
+            Some(true),
+            Visibility::Private
+        ));
+        assert!(sharing_after_swap(
+            TournamentState::Registration,
+            Some(false),
+            None,
+            Visibility::Public
+        ));
+        assert!(!sharing_after_swap(
+            TournamentState::TopCut,
+            Some(true),
+            None,
+            Visibility::Unlisted
+        ));
+    }
+
+    #[test]
+    fn the_list_sharing_changes_until_the_tournament_is_over() {
+        for (state, open) in [
+            (TournamentState::Registration, true),
+            (TournamentState::Swiss, true),
+            (TournamentState::TopCut, true),
+            (TournamentState::Finished, false),
+            (TournamentState::Cancelled, false),
+        ] {
+            assert_eq!(list_sharing_open(state), open, "{state:?}");
+        }
     }
 
     #[test]

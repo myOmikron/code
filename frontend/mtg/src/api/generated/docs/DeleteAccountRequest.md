@@ -7,6 +7,7 @@ Request to delete the logged-in account
 
 Name | Type
 ------------ | -------------
+`appear_anonymously` | boolean
 `username` | string
 
 

@@ -33,11 +33,11 @@ use crate::http::handler_frontend::tournaments::schema::TournamentSummaryRespons
 use crate::models::account::Account;
 use crate::models::account::AccountUuid;
 use crate::models::account::Username;
-use crate::models::account::extractor::Viewer;
 use crate::models::tournament::Tournament;
 use crate::models::tournament::TournamentState;
 use crate::models::tournament::TournamentUuid;
 use crate::models::tournament::access::OrganizerRole;
+use crate::models::tournament::access::TournamentGrant;
 use crate::models::tournament::listing::ListedTournament;
 use crate::models::tournament::listing::OverviewFilter;
 use crate::models::tournament::settings::TournamentSettings;
@@ -72,25 +72,20 @@ pub async fn list_public_tournaments(
 /// An unlisted one is read through its share link, see `get_shared_tournament`.
 #[get("/{tournament}")]
 pub async fn get_tournament(
-    viewer: Viewer,
-    Path(tournament): Path<TournamentUuid>,
+    grant: TournamentGrant,
+    Path(_): Path<TournamentUuid>,
 ) -> ApiResult<ApiJson<TournamentResponse>> {
     let mut tx = Database::global().start_transaction().await?;
 
-    let Some(tournament) = Tournament::get_visible(&mut tx, tournament, viewer.account()).await?
-    else {
-        tx.rollback().await?;
-        return Err(denied());
-    };
-    let owner = tournament.owner_name(&mut tx).await?;
-    let role = match viewer.account() {
-        Some(account) => tournament.organizer_role(&mut tx, account).await?,
-        None => None,
-    };
+    let owner = grant.tournament.owner_name(&mut tx).await?;
 
     tx.commit().await?;
 
-    Ok(ApiJson(TournamentResponse::new(tournament, owner, role)))
+    Ok(ApiJson(TournamentResponse::new(
+        grant.tournament,
+        owner,
+        grant.role,
+    )))
 }
 
 /// The Tournaments the logged-in Account organizes and the ones it plays in
@@ -145,8 +140,8 @@ pub async fn create_tournament(
 /// the Top cut and its best-of once the Swiss Rounds are over.
 #[put("/{tournament}")]
 pub async fn update_tournament(
-    account: Account,
-    Path(tournament): Path<TournamentUuid>,
+    grant: TournamentGrant,
+    Path(_): Path<TournamentUuid>,
     ApiJson(request): ApiJson<TournamentSettingsRequest>,
 ) -> ApiResult<ApiJson<TournamentResponse>, TournamentSettingsErrors> {
     let settings = TournamentSettings::check(request.into())
@@ -154,12 +149,9 @@ pub async fn update_tournament(
 
     let mut tx = Database::global().start_transaction().await?;
 
-    let Some((tournament, role)) =
-        Tournament::get_with_role(&mut tx, tournament, account.uuid).await?
-    else {
-        tx.rollback().await?;
-        return Err(denied());
-    };
+    let TournamentGrant {
+        tournament, role, ..
+    } = grant;
     if tournament.state != TournamentState::Registration && settings.changes_rules_of(&tournament) {
         tx.rollback().await?;
         let mut errors = FormErrors::<TournamentSettingsErrors>::new();
@@ -178,26 +170,18 @@ pub async fn update_tournament(
     tx.commit().await?;
 
     emit(tournament.uuid, TournamentEvent::TournamentChanged);
-    Ok(ApiJson(TournamentResponse::new(
-        tournament,
-        owner,
-        Some(role),
-    )))
+    Ok(ApiJson(TournamentResponse::new(tournament, owner, role)))
 }
 
 /// Delete a Tournament and everything in it, as its Owner
 #[delete("/{tournament}")]
 pub async fn delete_tournament(
-    account: Account,
-    Path(tournament): Path<TournamentUuid>,
+    grant: TournamentGrant,
+    Path(_): Path<TournamentUuid>,
 ) -> ApiResult<ApiJson<()>> {
     let mut tx = Database::global().start_transaction().await?;
 
-    let Some(tournament) = Tournament::get_as_owner(&mut tx, tournament, account.uuid).await?
-    else {
-        tx.rollback().await?;
-        return Err(denied());
-    };
+    let tournament = grant.tournament;
     let deleted = tournament.uuid;
     tournament.delete(&mut tx).await?;
 

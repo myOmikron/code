@@ -226,11 +226,6 @@ fn nobody_but_an_organizer_adds_or_removes_participants() {
             )
             .await;
         assert_eq!(removed.status.as_u16(), 400, "{removed:?}");
-        let searched = fixture
-            .stranger
-            .get(&below(&fixture.tournament, "player-search?query=ab"))
-            .await;
-        assert_eq!(searched.status.as_u16(), 400, "{searched:?}");
 
         assert_eq!(
             names(&roster(&mut fixture.owner, &fixture.tournament).await),
@@ -304,31 +299,6 @@ fn an_organizer_can_be_a_participant_of_its_own_tournament() {
         let body = roster(&mut fixture.owner, &fixture.tournament).await;
         assert_eq!(names(&body), vec![username], "{body}");
         assert_eq!(body["me"], added["uuid"], "{body}");
-    });
-}
-
-#[test]
-fn the_player_search_finds_accounts_by_prefix() {
-    run(async {
-        let mut fixture = Fixture::new("Public").await;
-        let (alice, _) = player().await;
-
-        let body = fixture
-            .owner
-            .get(&below(
-                &fixture.tournament,
-                &format!("player-search?query={}", &alice.username[..8]),
-            ))
-            .await
-            .ok_json();
-
-        let found: Vec<&str> = body["accounts"]
-            .as_array()
-            .expect("accounts")
-            .iter()
-            .map(|account| account["username"].as_str().expect("username"))
-            .collect();
-        assert!(found.contains(&alice.username.as_str()), "{body}");
     });
 }
 

@@ -4,7 +4,6 @@ use galvyn::rorm::fields::types::MaxStr;
 use serde::Deserialize;
 use serde::Serialize;
 
-use crate::models::account::AccountUuid;
 use crate::models::tournament::participant::Participant;
 use crate::models::tournament::participant::ParticipantUuid;
 use crate::models::tournament::participant::Player;
@@ -138,29 +137,4 @@ pub struct SetPaidErrors {
     pub no_entry_fee: bool,
     /// The Tournament is Finished or Cancelled
     pub tournament_over: bool,
-}
-
-/// What an Organizer typed while looking for an Account to add
-#[derive(Debug, Clone, Deserialize, JsonSchema)]
-pub struct SearchPlayersQuery {
-    /// The start of a username, case ignored
-    pub query: MaxStr<32>,
-}
-
-/// An Account whose username starts with what the Organizer typed
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
-pub struct PlayerCandidateResponse {
-    /// The Account
-    pub account: AccountUuid,
-    /// The Account's username as it is now
-    pub username: String,
-}
-
-/// The Accounts whose username starts with what the Organizer typed
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
-pub struct PlayerCandidatesResponse {
-    /// Up to ten Accounts, alphabetically by username
-    pub accounts: Vec<PlayerCandidateResponse>,
-    /// The caller searched too often lately, so nothing was searched
-    pub too_many_searches: bool,
 }

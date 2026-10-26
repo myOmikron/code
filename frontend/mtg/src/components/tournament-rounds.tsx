@@ -69,8 +69,8 @@ export type TournamentRoundsProps = {
  * A paired Round is a preview only Organizers see until they start it.
  * Participants report the Results of their own Matches while the Round runs,
  * or dispute one the other Participant reported. In a Tournament entered
- * afterwards the Organizers set every Swiss pairing themselves; its Top cut
- * is seeded as usual.
+ * afterwards the Organizers set every pairing themselves, its Top cut too:
+ * the size stays the settings', who plays is theirs.
  *
  * @returns the Rounds with their actions
  */
@@ -83,6 +83,7 @@ export function TournamentRounds({ tournament, load, onTournamentChanged, me = n
     const [reporting, setReporting] = useState<MatchResponse | null>(null);
     const [arranging, setArranging] = useState(false);
     const [takingBack, setTakingBack] = useState(false);
+    const [bench, setBench] = useState<Array<{ participant: string; name: string }>>([]);
 
     const organizer = tournament.organizer_role != null;
     const over = tournament.state === TournamentState.Finished || tournament.state === TournamentState.Cancelled;
@@ -123,8 +124,11 @@ export function TournamentRounds({ tournament, load, onTournamentChanged, me = n
      *
      * @returns the message
      */
-    const explainSet = (error: Record<string, boolean>): string =>
-        error.not_started ? t("error.round-not-started") : t("error.invalid-score");
+    const explainSet = (error: Record<string, boolean>): string => {
+        if (error.not_started) return t("error.round-not-started");
+        if (error.dropped_winner) return t("error.dropped-winner");
+        return t("error.invalid-score");
+    };
 
     /**
      * Says why a Participant's report was refused
@@ -138,6 +142,7 @@ export function TournamentRounds({ tournament, load, onTournamentChanged, me = n
         if (error.reported_by_other) return t("error.result-reported-by-other");
         if (error.disputed) return t("error.result-disputed");
         if (error.confirmed) return t("error.result-confirmed");
+        if (error.dropped_winner) return t("error.dropped-winner");
         return t("error.invalid-score");
     };
 
@@ -220,7 +225,43 @@ export function TournamentRounds({ tournament, load, onTournamentChanged, me = n
     }
 
     const nextNumber = rounds.length + 1;
-    const entering = tournament.entered_afterwards && tournament.state !== TournamentState.TopCut;
+    const entering = tournament.entered_afterwards;
+    const cutPreview =
+        entering && open?.state === RoundState.Previewed && open.stage === RoundStage.TopCut ? open : null;
+
+    useEffect(() => {
+        if (!arranging || cutPreview === null) {
+            setBench([]);
+            return;
+        }
+        let gone = false;
+        const firstCut = rounds.find((round) => round.stage === RoundStage.TopCut);
+        const firstPlayers =
+            firstCut !== undefined && firstCut.number !== cutPreview.number
+                ? new Set(firstCut.matches.flatMap((played) => played.seats.map((seat) => seat.participant)))
+                : null;
+        const seated = new Set(cutPreview.matches.flatMap((played) => played.seats.map((seat) => seat.participant)));
+        Api.tournaments.participants
+            .list(tournament.uuid)
+            .then((roster) => {
+                if (gone) return;
+                setBench(
+                    roster.participants
+                        .filter(
+                            (participant) =>
+                                participant.dropped_after_round == null &&
+                                participant.unpaid !== true &&
+                                !seated.has(participant.uuid) &&
+                                (firstPlayers === null || firstPlayers.has(participant.uuid)),
+                        )
+                        .map((participant) => ({ participant: participant.uuid, name: participant.name })),
+                );
+            })
+            .catch(() => undefined);
+        return () => {
+            gone = true;
+        };
+    }, [arranging, cutPreview, rounds, tournament.uuid]);
 
     return (
         <div className={"flex flex-col gap-8"}>
@@ -268,7 +309,7 @@ export function TournamentRounds({ tournament, load, onTournamentChanged, me = n
                                 <PlayIcon />
                                 {t("button.start-round", { number: open.number })}
                             </PrimaryButton>
-                            {open.stage === RoundStage.Swiss && (
+                            {(open.stage === RoundStage.Swiss || entering) && (
                                 <Button outline disabled={busy || arranging} onClick={() => setArranging(true)}>
                                     <PencilSquareIcon />
                                     {t("button.edit-pairing")}
@@ -317,6 +358,7 @@ export function TournamentRounds({ tournament, load, onTournamentChanged, me = n
                             tournamentUuid={tournament.uuid}
                             round={round}
                             rounds={rounds}
+                            bench={bench}
                             onDone={async (saved) => {
                                 setArranging(false);
                                 if (saved) await reload();

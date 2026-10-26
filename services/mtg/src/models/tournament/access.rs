@@ -1,13 +1,12 @@
 //! Who may see a Tournament and who runs it
 //!
-//! Reading goes through [`Tournament::get_visible`] (by id) and
-//! [`Tournament::get_by_share_token`] (by link). Running it goes through
-//! [`Tournament::get_as_organizer`] (the Owner and its Co-organizers),
-//! deleting and the other Owner-only operations through
-//! [`Tournament::get_as_owner`]: a handler fetches the
-//! Tournament with the check its operation needs, then acts on what came back.
-//! `None` covers "no such Tournament" and "not yours" alike, so a refusal says
-//! nothing about whether a private Tournament exists.
+//! A route on one Tournament sits in a group named after the part its caller
+//! has to play there, a [`TournamentAccess`]; the group's middleware fetches
+//! the Tournament with [`Tournament::get_granted`] and hands the handler the
+//! [`TournamentGrant`]. Reading by share link goes through
+//! [`Tournament::get_by_share_token`]. `None` covers "no such Tournament" and
+//! "not yours" alike, so a refusal says nothing about whether a private
+//! Tournament exists.
 
 use galvyn::core::re_exports::schemars;
 use galvyn::core::re_exports::schemars::JsonSchema;
@@ -28,7 +27,58 @@ use crate::models::tournament::db::TournamentCoOrganizerModel;
 use crate::models::tournament::db::TournamentHandoverModel;
 use crate::models::tournament::db::TournamentModel;
 use crate::models::tournament::db::co_organizer_key;
+use crate::models::tournament::participant::ParticipantUuid;
 use crate::models::visibility::Visibility;
+
+/// The part a caller has to play in a Tournament to pass a route group
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum TournamentAccess {
+    /// Be its Owner
+    Owner,
+    /// Be one of its Organizers: the Owner or a Co-organizer
+    Organizer,
+    /// Play in it: an Account Participant
+    Participant,
+    /// See it, see [`Tournament::get_visible`]
+    Viewer,
+}
+
+/// What a caller is to one Tournament
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct Standing {
+    /// The part it plays in running the Tournament, `None` for none
+    pub role: Option<OrganizerRole>,
+    /// Whether it plays in the Tournament
+    pub participant: bool,
+    /// Whether it sees the Tournament by its id
+    pub sees: bool,
+}
+
+impl TournamentAccess {
+    /// Whether a caller of `standing` passes
+    pub fn grants(self, standing: Standing) -> bool {
+        match self {
+            Self::Owner => standing.role == Some(OrganizerRole::Owner),
+            Self::Organizer => standing.role.is_some(),
+            Self::Participant => standing.participant,
+            Self::Viewer => standing.sees,
+        }
+    }
+}
+
+/// A Tournament as a route group's middleware let its caller through to it
+///
+/// Read once before the handler runs; a handler that writes takes the
+/// Tournament afresh under its lock, see [`Tournament::lock_for_update`].
+#[derive(Clone, Debug)]
+pub struct TournamentGrant {
+    /// The Tournament
+    pub tournament: Tournament,
+    /// The part the caller plays in running it, `None` for none
+    pub role: Option<OrganizerRole>,
+    /// The caller's Participant, `None` if it plays in it not, or nobody is logged in
+    pub participant: Option<ParticipantUuid>,
+}
 
 /// The part an Account plays in running a Tournament
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -120,6 +170,66 @@ impl Tournament {
         Ok(visible.then_some(tournament))
     }
 
+    /// Fetch a Tournament for `caller` through a route group that needs `access`, `None` if refused
+    ///
+    /// `caller` is `None` for nobody logged in, who only sees a public
+    /// Tournament.
+    #[instrument(name = "Tournament::get_granted", skip(tx))]
+    pub async fn get_granted(
+        tx: &mut Transaction,
+        uuid: TournamentUuid,
+        caller: Option<AccountUuid>,
+        access: TournamentAccess,
+    ) -> Result<Option<TournamentGrant>, rorm::Error> {
+        let Some(tournament) = Self::get(tx, uuid).await? else {
+            return Ok(None);
+        };
+        let (role, participant) = match caller {
+            Some(account) => (
+                tournament.organizer_role(tx, account).await?,
+                tournament.participant_of(tx, account).await?,
+            ),
+            None => (None, None),
+        };
+        let mut sees =
+            tournament.visibility == Visibility::Public || role.is_some() || participant.is_some();
+        if !sees
+            && access == TournamentAccess::Viewer
+            && let Some(account) = caller
+        {
+            sees = tournament.is_offered_to(tx, account).await?;
+        }
+        let standing = Standing {
+            role,
+            participant: participant.is_some(),
+            sees,
+        };
+        Ok(access.grants(standing).then_some(TournamentGrant {
+            tournament,
+            role,
+            participant,
+        }))
+    }
+
+    /// Lock this Tournament's row until the transaction ends and read it afresh, `None` once it is gone
+    ///
+    /// For running it: pairing, starting and ending Rounds, Results, the
+    /// roster. The lock comes first, so what is read afterwards is what the
+    /// last writer left, and a second writer acting at once waits for this one.
+    #[instrument(name = "Tournament::lock_for_update", skip(tx, self), fields(tournament = ?self.uuid))]
+    pub async fn lock_for_update(
+        &self,
+        tx: &mut Transaction,
+    ) -> Result<Option<Tournament>, rorm::Error> {
+        (&mut *tx)
+            .execute::<All>(
+                "SELECT uuid FROM tournament WHERE uuid = $1 FOR NO KEY UPDATE".to_string(),
+                vec![Value::Uuid(self.uuid.into_inner())],
+            )
+            .await?;
+        Self::get(tx, self.uuid).await
+    }
+
     /// Fetch a Tournament by the secret in its share link
     ///
     /// The Visibility is part of the condition, so a token left on a
@@ -137,82 +247,6 @@ impl Tournament {
             .optional()
             .await?;
         Ok(tournament.map(Tournament::from))
-    }
-
-    /// Fetch a Tournament if `account` is one of its Organizers
-    #[instrument(name = "Tournament::get_as_organizer", skip(tx))]
-    pub async fn get_as_organizer(
-        tx: &mut Transaction,
-        uuid: TournamentUuid,
-        account: AccountUuid,
-    ) -> Result<Option<Tournament>, rorm::Error> {
-        Ok(Self::get_with_role(tx, uuid, account)
-            .await?
-            .map(|(tournament, _)| tournament))
-    }
-
-    /// Fetch a Tournament with the part `account` plays in running it, if any
-    #[instrument(name = "Tournament::get_with_role", skip(tx))]
-    pub async fn get_with_role(
-        tx: &mut Transaction,
-        uuid: TournamentUuid,
-        account: AccountUuid,
-    ) -> Result<Option<(Tournament, OrganizerRole)>, rorm::Error> {
-        let Some(tournament) = Self::get(tx, uuid).await? else {
-            return Ok(None);
-        };
-        let role = tournament.organizer_role(tx, account).await?;
-        Ok(role.map(|role| (tournament, role)))
-    }
-
-    /// Fetch a Tournament if `account` is one of its Organizers, locking it until the transaction ends
-    ///
-    /// For running it: pairing, starting and ending Rounds, Results. The lock
-    /// comes first, so what is read afterwards is what the last Organizer
-    /// left, and a second Organizer acting at once waits for this one.
-    #[instrument(name = "Tournament::get_as_organizer_for_update", skip(tx))]
-    pub async fn get_as_organizer_for_update(
-        tx: &mut Transaction,
-        uuid: TournamentUuid,
-        account: AccountUuid,
-    ) -> Result<Option<Tournament>, rorm::Error> {
-        (&mut *tx)
-            .execute::<All>(
-                "SELECT uuid FROM tournament WHERE uuid = $1 FOR NO KEY UPDATE".to_string(),
-                vec![Value::Uuid(uuid.into_inner())],
-            )
-            .await?;
-        Self::get_as_organizer(tx, uuid, account).await
-    }
-
-    /// Fetch a Tournament if `account` may see it by its id, locking it until the transaction ends
-    ///
-    /// For Participants acting in a running Tournament, such as reporting a
-    /// Result: like [`Self::get_as_organizer_for_update`], the lock comes first.
-    #[instrument(name = "Tournament::get_visible_for_update", skip(tx))]
-    pub async fn get_visible_for_update(
-        tx: &mut Transaction,
-        uuid: TournamentUuid,
-        account: AccountUuid,
-    ) -> Result<Option<Tournament>, rorm::Error> {
-        (&mut *tx)
-            .execute::<All>(
-                "SELECT uuid FROM tournament WHERE uuid = $1 FOR NO KEY UPDATE".to_string(),
-                vec![Value::Uuid(uuid.into_inner())],
-            )
-            .await?;
-        Self::get_visible(tx, uuid, Some(account)).await
-    }
-
-    /// Fetch a Tournament if `account` is its Owner
-    #[instrument(name = "Tournament::get_as_owner", skip(tx))]
-    pub async fn get_as_owner(
-        tx: &mut Transaction,
-        uuid: TournamentUuid,
-        account: AccountUuid,
-    ) -> Result<Option<Tournament>, rorm::Error> {
-        let tournament = Self::get(tx, uuid).await?;
-        Ok(tournament.filter(|tournament| tournament.owner == account))
     }
 
     /// Fetch a Tournament without asking who wants it
@@ -233,10 +267,52 @@ mod tests {
     use uuid::Uuid;
 
     use super::OrganizerRole;
+    use super::Standing;
+    use super::TournamentAccess;
     use crate::models::account::AccountUuid;
 
     fn account() -> AccountUuid {
         AccountUuid::new(Uuid::new_v4())
+    }
+
+    fn standing(role: Option<OrganizerRole>, participant: bool, sees: bool) -> Standing {
+        Standing {
+            role,
+            participant,
+            sees,
+        }
+    }
+
+    #[test]
+    fn only_the_owner_is_granted_the_owner_routes() {
+        let access = TournamentAccess::Owner;
+        assert!(access.grants(standing(Some(OrganizerRole::Owner), false, true)));
+        assert!(!access.grants(standing(Some(OrganizerRole::CoOrganizer), true, true)));
+        assert!(!access.grants(standing(None, true, true)));
+    }
+
+    #[test]
+    fn the_owner_and_its_co_organizers_are_granted_the_organizer_routes() {
+        let access = TournamentAccess::Organizer;
+        assert!(access.grants(standing(Some(OrganizerRole::Owner), false, true)));
+        assert!(access.grants(standing(Some(OrganizerRole::CoOrganizer), false, true)));
+        assert!(!access.grants(standing(None, true, true)));
+    }
+
+    #[test]
+    fn only_an_account_that_plays_is_granted_the_participant_routes() {
+        let access = TournamentAccess::Participant;
+        assert!(access.grants(standing(None, true, true)));
+        assert!(access.grants(standing(Some(OrganizerRole::Owner), true, true)));
+        assert!(!access.grants(standing(Some(OrganizerRole::Owner), false, true)));
+        assert!(!access.grants(standing(None, false, true)));
+    }
+
+    #[test]
+    fn whoever_sees_the_tournament_is_granted_the_viewer_routes() {
+        let access = TournamentAccess::Viewer;
+        assert!(access.grants(standing(None, false, true)));
+        assert!(!access.grants(standing(None, false, false)));
     }
 
     #[test]

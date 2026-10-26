@@ -1,7 +1,8 @@
 //! Who a Tournament pushes, and with what
 //!
-//! Account Participants get pushes about their Rounds, Results and the Top
-//! cut, Organizers about disputed Results; Guests have no devices. A
+//! Account Participants get pushes about their Rounds, Results (disputed and
+//! settled) and the Top cut, Organizers about disputed Results; Guests have
+//! no devices. A
 //! Tournament entered afterwards sends none, see [`Tournament::sends_pushes`].
 
 use galvyn::core::Module;
@@ -100,14 +101,7 @@ impl Tournament {
             return Ok(());
         }
         let mut tx = Database::global().start_transaction().await?;
-        let rounds = self.rounds(&mut tx, false).await?;
-        let Some(table) = rounds
-            .iter()
-            .filter(|round| round.number == change.round)
-            .flat_map(|round| &round.matches)
-            .find(|played| played.uuid == change.played)
-            .and_then(|played| played.table_number)
-        else {
+        let Some(table) = self.table_of(&mut tx, change).await? else {
             tx.rollback().await?;
             return Ok(());
         };
@@ -129,6 +123,60 @@ impl Tournament {
         PushSubscription::push_tournament(&mut tx, &pushes).await?;
         tx.commit().await?;
         Ok(())
+    }
+
+    /// Push the Match's Account Participants that `change` settled its disputed Result
+    ///
+    /// Called once the Result is committed; any other change pushes nobody.
+    /// `settler` is the Organizer's Account, which hears nothing of its own
+    /// settling. A push that cannot go out is logged.
+    #[instrument(name = "Tournament::push_result_settled", skip(self, change), fields(tournament = ?self.uuid))]
+    pub async fn push_result_settled(&self, change: &ResultChange, settler: AccountUuid) {
+        if let Err(error) = self.send_result_settled(change, settler).await {
+            warn!(%error, "Could not push the settled Result");
+        }
+    }
+
+    /// Hand the pushes for the settled Result to [`crate::modules::web_push::WebPush`]
+    async fn send_result_settled(
+        &self,
+        change: &ResultChange,
+        settler: AccountUuid,
+    ) -> anyhow::Result<()> {
+        if !self.sends_pushes() || change.kind != ResultChangeKind::Settled {
+            return Ok(());
+        }
+        let mut tx = Database::global().start_transaction().await?;
+        let Some(table) = self.table_of(&mut tx, change).await? else {
+            tx.rollback().await?;
+            return Ok(());
+        };
+        let participants = self.participants(&mut tx).await?;
+        let pushes = result_settled(
+            (self.uuid, &self.name),
+            change,
+            table,
+            &participants,
+            settler,
+        );
+        PushSubscription::push_tournament(&mut tx, &pushes).await?;
+        tx.commit().await?;
+        Ok(())
+    }
+
+    /// The table number of the Match `change` is about, `None` for a Bye
+    async fn table_of(
+        &self,
+        tx: &mut Transaction,
+        change: &ResultChange,
+    ) -> Result<Option<i16>, rorm::Error> {
+        let rounds = self.rounds(tx, false).await?;
+        Ok(rounds
+            .iter()
+            .filter(|round| round.number == change.round)
+            .flat_map(|round| &round.matches)
+            .find(|played| played.uuid == change.played)
+            .and_then(|played| played.table_number))
     }
 }
 
@@ -206,6 +254,36 @@ fn result_disputed(
         }
     }
     pushes
+}
+
+/// The pushes for the settled dispute `change` of the Match at `table`
+///
+/// Every Account Participant of the Match is told, but the Organizer who
+/// settled it, should it play there.
+fn result_settled(
+    (tournament, name): (TournamentUuid, &str),
+    change: &ResultChange,
+    table: i16,
+    participants: &[Participant],
+    settler: AccountUuid,
+) -> Vec<(AccountUuid, TournamentPush)> {
+    change
+        .seats
+        .iter()
+        .filter_map(|seat| account_of(participants, *seat))
+        .filter(|account| *account != settler)
+        .map(|account| {
+            (
+                account,
+                TournamentPush::ResultSettled {
+                    tournament,
+                    name: name.to_string(),
+                    round: change.round,
+                    table,
+                },
+            )
+        })
+        .collect()
 }
 
 /// The push each Account Participant seated in `round` gets, with its table and Seat
@@ -324,6 +402,55 @@ mod tests {
             other => panic!("not a dispute push: {other:?}"),
         })
         .collect()
+    }
+
+    fn settled(seats: &[u128]) -> ResultChange {
+        ResultChange {
+            kind: ResultChangeKind::Settled,
+            by: None,
+            ..dispute(seats[0], seats)
+        }
+    }
+
+    fn settled_to(
+        change: &ResultChange,
+        participants: &[Participant],
+        settler: AccountUuid,
+    ) -> Vec<AccountUuid> {
+        result_settled(
+            (TournamentUuid(Uuid::nil()), "Friday Night Magic"),
+            change,
+            4,
+            participants,
+            settler,
+        )
+        .into_iter()
+        .map(|(to, push)| match push {
+            TournamentPush::ResultSettled { round, table, .. } => {
+                assert_eq!((round, table), (2, 4));
+                to
+            }
+            other => panic!("not a settled push: {other:?}"),
+        })
+        .collect()
+    }
+
+    #[test]
+    fn a_settled_dispute_reaches_the_account_participants_of_the_match() {
+        let participants = [of_account(1, 11), guest(2), of_account(3, 13)];
+        assert_eq!(
+            settled_to(&settled(&[1, 2, 3]), &participants, account(20)),
+            [account(11), account(13)]
+        );
+    }
+
+    #[test]
+    fn the_organizer_who_settles_at_its_own_table_hears_nothing_of_it() {
+        let participants = [of_account(1, 20), of_account(2, 12)];
+        assert_eq!(
+            settled_to(&settled(&[1, 2]), &participants, account(20)),
+            [account(12)]
+        );
     }
 
     #[test]

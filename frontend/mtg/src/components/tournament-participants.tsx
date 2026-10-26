@@ -9,10 +9,6 @@ import {
 import {
     Badge,
     Button,
-    Combobox,
-    ComboboxDescription,
-    ComboboxLabel,
-    ComboboxOption,
     ConfirmDialog,
     Description,
     ErrorMessage,
@@ -40,12 +36,6 @@ import { useAccount } from "src/context/account";
 import { useLiveVersion } from "src/context/tournament-live-context";
 import { isFormError } from "src/utils/error";
 import { type RegisteredListWarning, registeredListWarnings } from "src/utils/tournament-registered-lists";
-
-/** How long typing pauses before the usernames are searched */
-const SEARCH_DELAY_MS = 250;
-
-/** How many characters a username search needs, as the service counts them */
-const SEARCH_MIN_CHARS = 2;
 
 /**
  * The properties for {@link TournamentParticipants}
@@ -403,53 +393,24 @@ type ParticipantAdderProps = {
 };
 
 /**
- * An Organizer's two ways to add a Participant: an Account by username,
- * picked from a search as it is typed, or a Guest by name.
+ * An Organizer's two ways to add a Participant: an Account by its exact
+ * username, or a Guest by name.
  *
  * @returns the two fields with their buttons
  */
 function ParticipantAdder({ tournament, late, onAdded }: ParticipantAdderProps) {
     const [t] = useTranslation("tournament");
-    const [username, setUsername] = useState<string | null>(null);
-    const [query, setQuery] = useState("");
-    const [suggestions, setSuggestions] = useState<Array<string>>([]);
-    const [searchLimited, setSearchLimited] = useState(false);
+    const [username, setUsername] = useState("");
     const [accountError, setAccountError] = useState<string | null>(null);
     const [guestName, setGuestName] = useState("");
     const [guestError, setGuestError] = useState<string | null>(null);
     const [busy, setBusy] = useState(false);
 
-    useEffect(() => {
-        const prefix = query.trim();
-        if (prefix.length < SEARCH_MIN_CHARS) {
-            setSuggestions([]);
-            return;
-        }
-        let gone = false;
-        const timer = window.setTimeout(() => {
-            Api.tournaments.participants
-                .candidates(tournament.uuid, prefix)
-                .then((found) => {
-                    if (gone || found === null) return;
-                    setSuggestions(found.accounts.map((candidate) => candidate.username));
-                    setSearchLimited(found.too_many_searches);
-                })
-                .catch(() => undefined);
-        }, SEARCH_DELAY_MS);
-        return () => {
-            gone = true;
-            window.clearTimeout(timer);
-        };
-    }, [tournament.uuid, query]);
-
-    const typed = query.trim();
-    const options = typed === "" || suggestions.length > 0 ? suggestions : [typed];
-
     /**
      * Adds the Account named in the field
      */
     async function addAccount() {
-        const name = username?.trim() ?? "";
+        const name = username.trim();
         if (name === "") return;
         setBusy(true);
         try {
@@ -462,8 +423,7 @@ function ParticipantAdder({ tournament, late, onAdded }: ParticipantAdderProps) 
                 return;
             }
             setAccountError(null);
-            setUsername(null);
-            setQuery("");
+            setUsername("");
             notify.success(t("toast.participant-added", { name: result.name }));
             await onAdded();
         } finally {
@@ -500,49 +460,34 @@ function ParticipantAdder({ tournament, late, onAdded }: ParticipantAdderProps) 
             <div className={"grid gap-4 sm:grid-cols-2"}>
                 <Field>
                     <Label>{t("label.add-account")}</Label>
-                    <div className={"flex items-start gap-2"}>
-                        <div className={"min-w-0 flex-1"}>
-                            <Combobox<string | null>
-                                value={username}
-                                options={options}
-                                displayValue={(name) => name ?? ""}
-                                filter={(name, search) =>
-                                    name?.toLowerCase().startsWith(search.trim().toLowerCase()) ?? false
-                                }
-                                placeholder={t("label.username")}
-                                aria-label={t("label.add-account")}
-                                invalid={accountError !== null}
-                                onQueryChange={setQuery}
-                                onChange={(name) => {
-                                    setUsername(name);
-                                    setAccountError(null);
-                                }}
-                            >
-                                {(name) => (
-                                    <ComboboxOption value={name}>
-                                        <ComboboxLabel>{name}</ComboboxLabel>
-                                        {suggestions.length === 0 && (
-                                            <ComboboxDescription>{t("label.username-as-typed")}</ComboboxDescription>
-                                        )}
-                                    </ComboboxOption>
-                                )}
-                            </Combobox>
-                        </div>
-                        <Button
-                            disabled={busy || username === null}
-                            onClick={() => void addAccount()}
-                            className={"shrink-0"}
-                        >
+                    <form
+                        className={"flex items-start gap-2"}
+                        onSubmit={(event) => {
+                            event.preventDefault();
+                            void addAccount();
+                        }}
+                    >
+                        <Input
+                            className={"min-w-0 flex-1"}
+                            maxLength={32}
+                            value={username}
+                            invalid={accountError !== null}
+                            placeholder={t("label.username")}
+                            aria-label={t("label.add-account")}
+                            onChange={(event) => {
+                                setUsername(event.target.value);
+                                setAccountError(null);
+                            }}
+                        />
+                        <Button type={"submit"} disabled={busy || username.trim() === ""} className={"shrink-0"}>
                             <PlusIcon />
                             {t("button.add-participant")}
                         </Button>
-                    </div>
+                    </form>
                     {accountError !== null ? (
                         <ErrorMessage>{accountError}</ErrorMessage>
                     ) : (
-                        <Description>
-                            {searchLimited ? t("description.search-limited") : t("description.add-account")}
-                        </Description>
+                        <Description>{t("description.add-account")}</Description>
                     )}
                 </Field>
                 <Field>

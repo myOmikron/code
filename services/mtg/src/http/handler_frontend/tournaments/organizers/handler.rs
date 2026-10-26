@@ -27,6 +27,7 @@ use crate::models::account::AccountUuid;
 use crate::models::tournament::Tournament;
 use crate::models::tournament::TournamentUuid;
 use crate::models::tournament::access::OrganizerRole;
+use crate::models::tournament::access::TournamentGrant;
 use crate::models::tournament::listing::ListedTournament;
 use crate::models::tournament::organizer::AddCoOrganizerRefusal;
 
@@ -35,16 +36,12 @@ use crate::models::tournament::organizer::AddCoOrganizerRefusal;
 /// Every Organizer reads it.
 #[get("/{tournament}/organizers")]
 pub async fn list_tournament_organizers(
-    account: Account,
-    Path(tournament): Path<TournamentUuid>,
+    grant: TournamentGrant,
+    Path(_): Path<TournamentUuid>,
 ) -> ApiResult<ApiJson<ListOrganizersResponse>> {
     let mut tx = Database::global().start_transaction().await?;
 
-    let Some(tournament) = Tournament::get_as_organizer(&mut tx, tournament, account.uuid).await?
-    else {
-        tx.rollback().await?;
-        return Err(denied());
-    };
+    let tournament = grant.tournament;
     let owner = tournament.owner_name(&mut tx).await?;
     let co_organizers = tournament.co_organizers(&mut tx).await?;
     let handover = tournament.handover(&mut tx).await?;
@@ -67,16 +64,13 @@ pub async fn list_tournament_organizers(
 #[post("/{tournament}/organizers")]
 pub async fn add_tournament_co_organizer(
     account: Account,
-    Path(tournament): Path<TournamentUuid>,
+    grant: TournamentGrant,
+    Path(_): Path<TournamentUuid>,
     ApiJson(NameAccountRequest { username }): ApiJson<NameAccountRequest>,
 ) -> ApiResult<ApiJson<OrganizerResponse>, AddCoOrganizerErrors> {
     let mut tx = Database::global().start_transaction().await?;
 
-    let Some(tournament) = Tournament::get_as_organizer(&mut tx, tournament, account.uuid).await?
-    else {
-        tx.rollback().await?;
-        return Err(denied());
-    };
+    let tournament = grant.tournament;
     let Some(named) = named_account(&mut tx, &username).await? else {
         tx.rollback().await?;
         return unknown_username(account.uuid);
@@ -103,17 +97,15 @@ pub async fn add_tournament_co_organizer(
 #[delete("/{tournament}/organizers/{account}")]
 pub async fn remove_tournament_co_organizer(
     account: Account,
-    Path((tournament, co_organizer)): Path<(TournamentUuid, AccountUuid)>,
+    grant: TournamentGrant,
+    Path((_, co_organizer)): Path<(TournamentUuid, AccountUuid)>,
 ) -> ApiResult<ApiJson<()>> {
     let mut tx = Database::global().start_transaction().await?;
 
-    let Some((tournament, role)) =
-        Tournament::get_with_role(&mut tx, tournament, account.uuid).await?
-    else {
-        tx.rollback().await?;
-        return Err(denied());
-    };
-    if !role.may_remove(account.uuid, co_organizer) {
+    let TournamentGrant {
+        tournament, role, ..
+    } = grant;
+    if !role.is_some_and(|role| role.may_remove(account.uuid, co_organizer)) {
         tx.rollback().await?;
         return Err(denied());
     }
@@ -134,16 +126,13 @@ pub async fn remove_tournament_co_organizer(
 #[put("/{tournament}/handover")]
 pub async fn offer_tournament_handover(
     account: Account,
-    Path(tournament): Path<TournamentUuid>,
+    grant: TournamentGrant,
+    Path(_): Path<TournamentUuid>,
     ApiJson(NameAccountRequest { username }): ApiJson<NameAccountRequest>,
 ) -> ApiResult<ApiJson<OrganizerResponse>, OfferHandoverErrors> {
     let mut tx = Database::global().start_transaction().await?;
 
-    let Some(tournament) = Tournament::get_as_owner(&mut tx, tournament, account.uuid).await?
-    else {
-        tx.rollback().await?;
-        return Err(denied());
-    };
+    let tournament = grant.tournament;
     let Some(named) = named_account(&mut tx, &username).await? else {
         tx.rollback().await?;
         return unknown_username(account.uuid);
@@ -165,16 +154,12 @@ pub async fn offer_tournament_handover(
 /// Withdraw the pending offer of a Tournament, as its Owner
 #[delete("/{tournament}/handover")]
 pub async fn withdraw_tournament_handover(
-    account: Account,
-    Path(tournament): Path<TournamentUuid>,
+    grant: TournamentGrant,
+    Path(_): Path<TournamentUuid>,
 ) -> ApiResult<ApiJson<()>> {
     let mut tx = Database::global().start_transaction().await?;
 
-    let Some(tournament) = Tournament::get_as_owner(&mut tx, tournament, account.uuid).await?
-    else {
-        tx.rollback().await?;
-        return Err(denied());
-    };
+    let tournament = grant.tournament;
     tournament.withdraw_handover(&mut tx).await?;
 
     tx.commit().await?;

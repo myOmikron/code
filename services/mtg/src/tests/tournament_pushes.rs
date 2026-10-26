@@ -3,7 +3,8 @@
 //! it turned tournament pushes off. Guests and the preview push nobody.
 //!
 //! A disputed Result pushes the Match's other Participants and the
-//! Organizers; starting the Top cut pushes every Participant in it once.
+//! Organizers, and settling it pushes the Match's Participants; starting the
+//! Top cut pushes every Participant in it once.
 //! A Tournament entered afterwards pushes nobody.
 
 use galvyn::core::re_exports::axum::http::Method;
@@ -325,6 +326,74 @@ fn an_account_that_turned_tournament_pushes_off_hears_of_no_dispute() {
 
         assert!(bodies(&owner).is_empty());
         assert!(bodies(&reporter.endpoint).is_empty());
+    });
+}
+
+#[test]
+fn settling_a_dispute_pushes_the_participants_of_the_match_but_not_the_organizer() {
+    run(async {
+        let mut event = Event::new("Three", 0).await;
+        let mut reporter = player(&mut event, PushLanguage::De).await;
+        let mut disputer = player(&mut event, PushLanguage::En).await;
+        let owner = device(&mut event.owner).await;
+
+        event.pair().await;
+        event.start(1).await;
+        let (played, table) = only_match(&mut event).await;
+        report(&event, &mut reporter, &played).await;
+        dispute(&event, &mut disputer, &played).await;
+        let set = event.result(&played, [2, 1], 0).await;
+        assert_ne!(set["result"], "Err", "{set}");
+
+        assert_eq!(
+            bodies(&reporter.endpoint).last(),
+            Some(&format!(
+                "Das Ergebnis an Tisch {table} in Runde 1 wurde festgelegt."
+            ))
+        );
+        assert_eq!(
+            bodies(&disputer.endpoint).last(),
+            Some(&format!("The result at table {table} in Round 1 was set."))
+        );
+        assert_eq!(bodies(&owner).len(), 1, "only the request to settle it");
+    });
+}
+
+#[test]
+fn a_result_set_without_a_dispute_pushes_nobody() {
+    run(async {
+        let mut event = Event::new("Three", 0).await;
+        let reporter = player(&mut event, PushLanguage::En).await;
+        let other = player(&mut event, PushLanguage::En).await;
+
+        event.pair().await;
+        event.start(1).await;
+        let (played, _) = only_match(&mut event).await;
+        let set = event.result(&played, [2, 0], 0).await;
+        assert_ne!(set["result"], "Err", "{set}");
+
+        assert_eq!(bodies(&reporter.endpoint).len(), 1, "only Round paired");
+        assert_eq!(bodies(&other.endpoint).len(), 1, "only Round paired");
+    });
+}
+
+#[test]
+fn an_account_that_turned_tournament_pushes_off_hears_of_no_settled_dispute() {
+    run(async {
+        let mut event = Event::new("Three", 0).await;
+        let mut reporter = player(&mut event, PushLanguage::En).await;
+        let mut disputer = player(&mut event, PushLanguage::En).await;
+        set_tournament_pushes(&mut reporter.client, false).await;
+
+        event.pair().await;
+        event.start(1).await;
+        let (played, _) = only_match(&mut event).await;
+        report(&event, &mut reporter, &played).await;
+        dispute(&event, &mut disputer, &played).await;
+        event.result(&played, [2, 1], 0).await;
+
+        assert!(bodies(&reporter.endpoint).is_empty());
+        assert_eq!(bodies(&disputer.endpoint).len(), 2);
     });
 }
 

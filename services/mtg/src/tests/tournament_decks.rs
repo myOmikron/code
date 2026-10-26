@@ -814,6 +814,77 @@ fn a_participant_chooses_and_changes_whether_its_list_is_shared() {
 }
 
 #[test]
+fn the_list_sharing_is_fixed_once_the_tournament_is_finished() {
+    run(async {
+        let mut event = Event::new().await;
+        let deck = event.players[0].deck.clone();
+        event.register_sharing(0, &deck, true).await;
+        event.finish().await;
+
+        let url = event.url("deck/sharing");
+        let body = event.players[0]
+            .client
+            .json(Method::PUT, &url, &json!({ "shared": false }))
+            .await
+            .ok_json();
+
+        assert_eq!(body["result"], "Err", "{body}");
+        assert_eq!(body["error"]["tournament_over"], true, "{body}");
+        assert_eq!(event.mine(0).await["deck"]["shared"], true);
+    });
+}
+
+#[test]
+fn a_deck_an_organizer_swaps_after_the_tournament_is_finished_keeps_the_sharing_choice() {
+    run(async {
+        let mut event = Event::new().await;
+        let deck = event.players[0].deck.clone();
+        event.register_sharing(0, &deck, false).await;
+        let other = deck_with(&mut event.players[0].client, "Jund", "modern", "Public").await;
+        event.finish().await;
+
+        let participant = event.players[0].participant.clone();
+        let url = event.url(&format!("participants/{participant}/deck"));
+        let body = event
+            .owner
+            .json(Method::PUT, &url, &json!({ "deck": other, "shared": true }))
+            .await
+            .ok_json();
+        assert_ne!(body["result"], "Err", "{body}");
+
+        let mine = event.mine(0).await;
+        assert_eq!(mine["deck"]["name"], "Jund", "{mine}");
+        assert_eq!(mine["deck"]["shared"], false, "{mine}");
+    });
+}
+
+#[test]
+fn the_list_sharing_is_fixed_once_the_tournament_is_cancelled() {
+    run(async {
+        let mut event = Event::new().await;
+        let deck = event.players[0].deck.clone();
+        event.register_sharing(0, &deck, false).await;
+        let url = event.url("cancel");
+        event
+            .owner
+            .json(Method::POST, &url, &json!({}))
+            .await
+            .ok_json();
+
+        let url = event.url("deck/sharing");
+        let body = event.players[0]
+            .client
+            .json(Method::PUT, &url, &json!({ "shared": true }))
+            .await
+            .ok_json();
+
+        assert_eq!(body["result"], "Err", "{body}");
+        assert_eq!(body["error"]["tournament_over"], true, "{body}");
+        assert_eq!(event.mine(0).await["deck"]["shared"], false);
+    });
+}
+
+#[test]
 fn no_list_is_visible_to_participants_before_the_tournament_is_finished() {
     run(async {
         let mut event = Event::new().await;

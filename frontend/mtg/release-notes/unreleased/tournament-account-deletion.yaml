@@ -1,3 +1,3 @@
 kind: new
-de: Turniere überstehen gelöschte Konten. Wer sein Konto löscht, bleibt als Gast in der Spielerliste, und seine Turniere übernimmt ein Mitorganisator.
-en: Tournaments survive deleted accounts. Whoever deletes their account stays on the player list as a guest, and a co-organizer takes over their tournaments.
+de: Turniere überstehen gelöschte Konten. Löschst du dein Konto, bleibst du als Gast in der Spielerliste, in Turnieren anderer anonym als „Gelöschter Spieler“, sofern du das nicht abwählst, und deine Turniere übernimmt ein Mitorganisator.
+en: Tournaments survive deleted accounts. If you delete your account, you stay on the player list as a guest, anonymously as "Gelöschter Spieler" in other people's tournaments unless you untick that, and a co-organizer takes over your tournaments.
