@@ -1,0 +1,79 @@
+[Migration]
+Hash = "2428293032125154992"
+Initial = false
+Dependency = 60
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "tournament_match"
+
+[Migration.Operations.Field]
+Name = "result_state"
+Type = "text"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "max_length"
+Value = 255
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 349
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "tournament_match"
+
+[Migration.Operations.Field]
+Name = "reported_by"
+Type = "uuid"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "foreign_key"
+
+[Migration.Operations.Field.Annotations.Value]
+TableName = "tournament_participant"
+ColumnName = "uuid"
+OnDelete = "SetNull"
+OnUpdate = "Cascade"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 353
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "tournament_match"
+
+[Migration.Operations.Field]
+Name = "disputed_by"
+Type = "uuid"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "foreign_key"
+
+[Migration.Operations.Field.Annotations.Value]
+TableName = "tournament_participant"
+ColumnName = "uuid"
+OnDelete = "SetNull"
+OnUpdate = "Cascade"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 357
+Column = 9
+
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+UPDATE "tournament_match" SET "result_state" = 'Confirmed' WHERE "games_drawn" IS NOT NULL;
+"""

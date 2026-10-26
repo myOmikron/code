@@ -308,7 +308,13 @@ fn a_round_ends_only_once_every_match_has_a_result() {
             .clone();
         assert_eq!(
             first["result"],
-            json!({ "games_won": [2, 1], "games_drawn": 0 }),
+            json!({
+                "games_won": [2, 1],
+                "games_drawn": 0,
+                "state": "Confirmed",
+                "reported_by": null,
+                "disputed_by": null,
+            }),
             "{first}"
         );
     });

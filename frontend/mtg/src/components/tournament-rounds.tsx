@@ -1,4 +1,4 @@
-import { ArrowPathIcon, PencilSquareIcon, PlayIcon, StopIcon } from "@heroicons/react/20/solid";
+import { ArrowPathIcon, FlagIcon, PencilSquareIcon, PlayIcon, StopIcon } from "@heroicons/react/20/solid";
 import {
     Badge,
     Button,
@@ -20,8 +20,15 @@ import {
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
-import { RoundState, TournamentState } from "src/api/generated";
-import type { MatchResponse, RoundErrors, RoundResponse, RoundsResponse, TournamentResponse } from "src/api/generated";
+import { ResultState, RoundState, TournamentState } from "src/api/generated";
+import type {
+    DisputeResultErrors,
+    MatchResponse,
+    RoundErrors,
+    RoundResponse,
+    RoundsResponse,
+    TournamentResponse,
+} from "src/api/generated";
 import { PrimaryButton } from "src/components/primary-button";
 import { useTournamentLabels } from "src/components/tournament-labels";
 import { TournamentResultDialog } from "src/components/tournament-result-dialog";
@@ -38,6 +45,8 @@ export type TournamentRoundsProps = {
     load: () => Promise<RoundsResponse>;
     /** Called after an Organizer changed something the Tournament itself shows, like its state */
     onTournamentChanged?: () => void;
+    /** The reader's own Participant, so it reports and disputes its Matches; `null` if it is none */
+    me?: string | null;
 };
 
 /**
@@ -45,19 +54,26 @@ export type TournamentRoundsProps = {
  * Organizers pairing, starting and ending them and setting Results.
  *
  * A paired Round is a preview only Organizers see until they start it.
+ * Participants report the Results of their own Matches while the Round runs,
+ * or dispute one the other Participant reported.
  *
  * @returns the Rounds with their actions
  */
-export function TournamentRounds({ tournament, load, onTournamentChanged }: TournamentRoundsProps) {
+export function TournamentRounds({ tournament, load, onTournamentChanged, me = null }: TournamentRoundsProps) {
     const [t] = useTranslation("tournament");
     const [list, setList] = useState<RoundsResponse | null>(null);
     const [busy, setBusy] = useState(false);
     const [editing, setEditing] = useState<MatchResponse | null>(null);
+    const [reporting, setReporting] = useState<MatchResponse | null>(null);
 
     const organizer = tournament.organizer_role != null;
     const over = tournament.state === TournamentState.Finished || tournament.state === TournamentState.Cancelled;
     const rounds = list?.rounds ?? [];
     const open = rounds.find((round) => round.state !== RoundState.Ended) ?? null;
+    const disputed =
+        open?.state === RoundState.Running
+            ? open.matches.filter((played) => played.result?.state === ResultState.Disputed).length
+            : 0;
 
     const reload = useCallback(async () => {
         setList(await load());
@@ -81,7 +97,8 @@ export function TournamentRounds({ tournament, load, onTournamentChanged }: Tour
      * @param error what the service refused
      */
     function refused(error: RoundErrors) {
-        if (error.results_missing) notify.error(t("error.results-missing"));
+        if (error.results_disputed) notify.error(t("error.results-disputed"));
+        else if (error.results_missing) notify.error(t("error.results-missing"));
         else if (error.too_few_participants) notify.error(t("error.too-few-participants"));
         else if (error.ruleset_not_paired) notify.error(t("error.ruleset-not-paired"));
         else if (error.all_rounds_paired) notify.error(t("error.all-rounds-paired"));
@@ -103,6 +120,30 @@ export function TournamentRounds({ tournament, load, onTournamentChanged }: Tour
             }
             await reload();
             onTournamentChanged?.();
+        } finally {
+            setBusy(false);
+        }
+    }
+
+    /**
+     * Disputes the Result of the reader's Match
+     *
+     * @param played the Match
+     */
+    async function dispute(played: MatchResponse) {
+        setBusy(true);
+        try {
+            const result = await Api.tournaments.results.dispute(tournament.uuid, played.uuid);
+            if (isFormError<unknown, { result: "Err"; error: DisputeResultErrors }>(result)) {
+                const error = result.error;
+                if (error.not_running) notify.error(t("error.round-not-running"));
+                else if (error.confirmed) notify.error(t("error.result-confirmed"));
+                else if (error.own_report) notify.error(t("error.result-own-report"));
+                else notify.error(t("error.result-missing"));
+            } else {
+                notify.success(t("toast.result-disputed"));
+            }
+            await reload();
         } finally {
             setBusy(false);
         }
@@ -161,6 +202,7 @@ export function TournamentRounds({ tournament, load, onTournamentChanged }: Tour
                             </Button>
                         </>
                     )}
+                    {disputed > 0 && <Badge color={"red"}>{t("label.results-disputed", { count: disputed })}</Badge>}
                     {open?.state === RoundState.Running && (
                         <PrimaryButton
                             disabled={busy}
@@ -180,7 +222,11 @@ export function TournamentRounds({ tournament, load, onTournamentChanged }: Tour
                     key={round.number}
                     round={round}
                     editable={organizer && round.state !== RoundState.Previewed}
+                    me={organizer || over || round.state !== RoundState.Running ? null : me}
+                    busy={busy}
                     onEdit={setEditing}
+                    onReport={setReporting}
+                    onDispute={(played) => void dispute(played)}
                 />
             ))}
 
@@ -188,11 +234,37 @@ export function TournamentRounds({ tournament, load, onTournamentChanged }: Tour
                 <TournamentResultDialog
                     played={editing}
                     bestOf={tournament.best_of}
+                    title={t("heading.set-result", { table: editing?.table_number ?? "" })}
+                    description={t("description.set-result")}
                     onClose={() => setEditing(null)}
                     save={(result) => Api.tournaments.rounds.setResult(tournament.uuid, editing?.uuid ?? "", result)}
+                    explain={(error) => (error.not_started ? t("error.round-not-started") : t("error.invalid-score"))}
                     onSaved={async () => {
                         setEditing(null);
                         notify.success(t("toast.result-saved"));
+                        await reload();
+                    }}
+                />
+            )}
+
+            {!organizer && me !== null && tournament.best_of != null && (
+                <TournamentResultDialog
+                    played={reporting}
+                    bestOf={tournament.best_of}
+                    title={t("heading.report-result", { table: reporting?.table_number ?? "" })}
+                    description={t("description.report-result")}
+                    onClose={() => setReporting(null)}
+                    save={(result) => Api.tournaments.results.report(tournament.uuid, reporting?.uuid ?? "", result)}
+                    explain={(error) => {
+                        if (error.not_running) return t("error.round-not-running");
+                        if (error.reported_by_other) return t("error.result-reported-by-other");
+                        if (error.disputed) return t("error.result-disputed");
+                        if (error.confirmed) return t("error.result-confirmed");
+                        return t("error.invalid-score");
+                    }}
+                    onSaved={async () => {
+                        setReporting(null);
+                        notify.success(t("toast.result-reported"));
                         await reload();
                     }}
                 />
@@ -311,10 +383,18 @@ function RoundPlan({ tournament, rounds, editable, onChanged }: RoundPlanProps) 
 type RoundTableProps = {
     /** The Round */
     round: RoundResponse;
-    /** Whether the reader may set Results */
+    /** Whether the reader may set Results, as an Organizer */
     editable: boolean;
+    /** The reader's Participant while it may report and dispute in this Round, else `null` */
+    me: string | null;
+    /** Whether an action is under way */
+    busy: boolean;
     /** Called with the Match whose Result the reader wants to set */
     onEdit: (played: MatchResponse) => void;
+    /** Called with the reader's Match whose Result it wants to report */
+    onReport: (played: MatchResponse) => void;
+    /** Called with the reader's Match whose Result it disputes */
+    onDispute: (played: MatchResponse) => void;
 };
 
 /**
@@ -322,9 +402,12 @@ type RoundTableProps = {
  *
  * @returns the Round's heading and table
  */
-function RoundTable({ round, editable, onEdit }: RoundTableProps) {
+function RoundTable({ round, editable, me, busy, onEdit, onReport, onDispute }: RoundTableProps) {
     const [t] = useTranslation("tournament");
     const labels = useTournamentLabels();
+    const mine = (played: MatchResponse) =>
+        me !== null && played.table_number != null && played.seats.some((seat) => seat.participant === me);
+    const actions = editable || round.matches.some(mine);
 
     return (
         <section className={"flex flex-col gap-3"}>
@@ -342,7 +425,7 @@ function RoundTable({ round, editable, onEdit }: RoundTableProps) {
                         <TableHeader>{t("label.seat-one")}</TableHeader>
                         <TableHeader>{t("label.seat-two")}</TableHeader>
                         <TableHeader>{t("label.result")}</TableHeader>
-                        {editable && <TableHeader />}
+                        {actions && <TableHeader />}
                     </TableRow>
                 </TableHead>
                 <TableBody>
@@ -352,15 +435,20 @@ function RoundTable({ round, editable, onEdit }: RoundTableProps) {
                             <TableCell>{played.seats[0]?.name ?? ""}</TableCell>
                             <TableCell>{played.table_number == null ? "" : (played.seats[1]?.name ?? "")}</TableCell>
                             <TableCell>
-                                {played.table_number == null
-                                    ? t("label.bye-result")
-                                    : played.result == null
-                                      ? t("label.no-result")
-                                      : formatResult(played.result)}
+                                <div className={"flex flex-wrap items-center gap-2"}>
+                                    {played.table_number == null
+                                        ? t("label.bye-result")
+                                        : played.result == null
+                                          ? t("label.no-result")
+                                          : formatResult(played.result)}
+                                    {played.result?.state === ResultState.Disputed && (
+                                        <Badge color={"red"}>{t("label.result-disputed")}</Badge>
+                                    )}
+                                </div>
                             </TableCell>
-                            {editable && (
+                            {actions && (
                                 <TableCell>
-                                    {played.table_number != null && (
+                                    {editable && played.table_number != null && (
                                         <Button
                                             plain
                                             aria-label={t("accessibility.set-result", {
@@ -371,6 +459,15 @@ function RoundTable({ round, editable, onEdit }: RoundTableProps) {
                                             <PencilSquareIcon />
                                         </Button>
                                     )}
+                                    {!editable && mine(played) && (
+                                        <MatchActions
+                                            played={played}
+                                            me={me ?? ""}
+                                            busy={busy}
+                                            onReport={onReport}
+                                            onDispute={onDispute}
+                                        />
+                                    )}
                                 </TableCell>
                             )}
                         </TableRow>
@@ -378,5 +475,53 @@ function RoundTable({ round, editable, onEdit }: RoundTableProps) {
                 </TableBody>
             </Table>
         </section>
+    );
+}
+
+/**
+ * The properties for {@link MatchActions}
+ */
+type MatchActionsProps = {
+    /** The reader's Match */
+    played: MatchResponse;
+    /** The reader's Participant */
+    me: string;
+    /** Whether an action is under way */
+    busy: boolean;
+    /** Called when the reader wants to report the Result */
+    onReport: (played: MatchResponse) => void;
+    /** Called when the reader disputes the Result */
+    onDispute: (played: MatchResponse) => void;
+};
+
+/**
+ * What a Participant can do about its own Match's Result while the Round
+ * runs: report it, correct its own report, or dispute another's.
+ *
+ * @returns the button, or a note why there is none
+ */
+function MatchActions({ played, me, busy, onReport, onDispute }: MatchActionsProps) {
+    const [t] = useTranslation("tournament");
+    const result = played.result;
+
+    if (result?.state === ResultState.Disputed) {
+        return <Text>{t("label.waiting-for-organizer")}</Text>;
+    }
+    if (result?.state === ResultState.Confirmed) {
+        return null;
+    }
+    if (result != null && result.reported_by !== me) {
+        return (
+            <Button outline disabled={busy} onClick={() => onDispute(played)}>
+                <FlagIcon />
+                {t("button.dispute-result")}
+            </Button>
+        );
+    }
+    return (
+        <Button outline disabled={busy} onClick={() => onReport(played)}>
+            <PencilSquareIcon />
+            {t("button.report-result")}
+        </Button>
     );
 }

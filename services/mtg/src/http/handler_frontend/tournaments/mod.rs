@@ -19,6 +19,7 @@ use crate::http::middleware::account_required::AccountRequiredLayer;
 pub mod handler;
 pub mod organizers;
 pub mod participants;
+pub mod results;
 pub mod rounds;
 pub mod schema;
 
@@ -49,6 +50,7 @@ fn account_routes() -> GalvynRouter {
         .handler(handler::create_tournament)
         .merge(organizers::account_routes())
         .merge(participants::account_routes())
+        .merge(results::account_routes())
 }
 
 /// What the Organizers of a Tournament may do

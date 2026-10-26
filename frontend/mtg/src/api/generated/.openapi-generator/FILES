@@ -117,6 +117,7 @@ docs/DeleteAccountErrors.md
 docs/DeleteAccountRequest.md
 docs/DeletePasskeyErrors.md
 docs/DeletionMode.md
+docs/DisputeResultErrors.md
 docs/DropErrors.md
 docs/EndTournamentRound200Response.md
 docs/EntrySort.md
@@ -152,6 +153,7 @@ docs/FormErrorResponseForAdminUnlockAccountErrors.md
 docs/FormErrorResponseForChooseUsernameErrors.md
 docs/FormErrorResponseForDeleteAccountErrors.md
 docs/FormErrorResponseForDeletePasskeyErrors.md
+docs/FormErrorResponseForDisputeResultErrors.md
 docs/FormErrorResponseForDropErrors.md
 docs/FormErrorResponseForFinishLoginErrors.md
 docs/FormErrorResponseForMeErrors.md
@@ -160,6 +162,7 @@ docs/FormErrorResponseForPutDeckCollaboratorErrors.md
 docs/FormErrorResponseForRegistrationErrors.md
 docs/FormErrorResponseForRenameAccountErrors.md
 docs/FormErrorResponseForRenamePasskeyErrors.md
+docs/FormErrorResponseForReportResultErrors.md
 docs/FormErrorResponseForRoundErrors.md
 docs/FormErrorResponseForSendBugReportErrors.md
 docs/FormErrorResponseForSetResultErrors.md
@@ -248,10 +251,13 @@ docs/RenameAccountRequest.md
 docs/RenameAccountResponse.md
 docs/RenamePasskeyErrors.md
 docs/RenamePasskeyRequest.md
+docs/ReportResultErrors.md
+docs/ReportResultRequest.md
 docs/ResolvePrintingsRequest.md
 docs/ResolvePrintingsResponse.md
 docs/ResolvedPrintingResponse.md
 docs/ResultResponse.md
+docs/ResultState.md
 docs/ReturnAllDeckCardsRequest.md
 docs/ReturnAllDeckCardsResponse.md
 docs/ReturnDeckCardsRequest.md

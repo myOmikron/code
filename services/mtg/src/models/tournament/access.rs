@@ -185,6 +185,25 @@ impl Tournament {
         Self::get_as_organizer(tx, uuid, account).await
     }
 
+    /// Fetch a Tournament if `account` may see it by its id, locking it until the transaction ends
+    ///
+    /// For Participants acting in a running Tournament, such as reporting a
+    /// Result: like [`Self::get_as_organizer_for_update`], the lock comes first.
+    #[instrument(name = "Tournament::get_visible_for_update", skip(tx))]
+    pub async fn get_visible_for_update(
+        tx: &mut Transaction,
+        uuid: TournamentUuid,
+        account: AccountUuid,
+    ) -> Result<Option<Tournament>, rorm::Error> {
+        (&mut *tx)
+            .execute::<All>(
+                "SELECT uuid FROM tournament WHERE uuid = $1 FOR NO KEY UPDATE".to_string(),
+                vec![Value::Uuid(uuid.into_inner())],
+            )
+            .await?;
+        Self::get_visible(tx, uuid, Some(account)).await
+    }
+
     /// Fetch a Tournament if `account` is its Owner
     #[instrument(name = "Tournament::get_as_owner", skip(tx))]
     pub async fn get_as_owner(

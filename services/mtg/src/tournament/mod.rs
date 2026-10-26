@@ -9,7 +9,8 @@
 //!   and Byes, rolled from a seed the caller stores;
 //! - [`standings::standings`]: every Participant's Match points, Tiebreakers and place;
 //! - [`rounds::suggested_swiss_rounds`]: how many Swiss Rounds to play;
-//! - [`ruleset`]: what a Ruleset scores and which game scores a Match takes.
+//! - [`ruleset`]: what a Ruleset scores and which game scores a Match takes;
+//! - [`reporting`]: who may report or dispute a Result, and what it does.
 //!
 //! Everything else (who met whom, who had a Bye, who sat where) the engine
 //! derives from the record, so a new rule reads the same input. The rules
@@ -18,6 +19,7 @@
 pub mod matching;
 pub mod pairing;
 pub mod record;
+pub mod reporting;
 pub mod rng;
 pub mod rounds;
 pub mod ruleset;

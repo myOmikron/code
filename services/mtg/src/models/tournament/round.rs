@@ -34,6 +34,9 @@ use crate::models::tournament::db::TournamentSeatInsertPatch;
 use crate::models::tournament::db::TournamentSeatModel;
 use crate::models::tournament::db::round_key;
 use crate::models::tournament::participant::ParticipantUuid;
+use crate::models::tournament::result::ResultChange;
+use crate::models::tournament::result::ResultChangeKind;
+use crate::models::tournament::result::store_result;
 use crate::tournament::pairing::PairingError;
 use crate::tournament::pairing::pair_next_round;
 use crate::tournament::record::Entrant;
@@ -41,6 +44,7 @@ use crate::tournament::record::MatchRecord;
 use crate::tournament::record::MatchResult;
 use crate::tournament::record::RoundRecord;
 use crate::tournament::record::TournamentRecord;
+use crate::tournament::reporting::ResultState;
 use crate::tournament::rounds::suggested_swiss_rounds;
 
 /// How far a Round got
@@ -50,7 +54,7 @@ pub enum RoundState {
     Previewed,
     /// Started: its Matches are being played
     Running,
-    /// Over: every Match has its Result
+    /// Over: every Match has its Result, none disputed
     Ended,
 }
 custom_db_enum! {
@@ -81,6 +85,12 @@ pub struct Match {
     pub seats: Vec<Seat>,
     /// Games nobody won, `None` while it has no Result
     pub games_drawn: Option<i16>,
+    /// Where its Result stands, `None` while it has none
+    pub result_state: Option<ResultState>,
+    /// The Participant who reported the Result, `None` when an Organizer set it
+    pub reported_by: Option<ParticipantUuid>,
+    /// The Participant who disputed the Result, `None` unless it is disputed
+    pub disputed_by: Option<ParticipantUuid>,
 }
 
 impl Match {
@@ -92,6 +102,12 @@ impl Match {
     /// Whether its Result is in; a Bye needs none
     pub fn settled(&self) -> bool {
         self.is_bye() || self.games_drawn.is_some()
+    }
+
+    /// Whether its Result is disputed, holding the Round open until an Organizer settles it
+    pub fn disputed(&self) -> bool {
+        self.result_state
+            .is_some_and(|state| state.holds_round_open())
     }
 }
 
@@ -136,6 +152,8 @@ pub enum RoundRefusal {
     NotRunning,
     /// A Match of the Round has no Result yet
     ResultsMissing,
+    /// A Result of the Round is disputed; an Organizer settles it first
+    ResultsDisputed,
 }
 
 /// Why a Result could not be set
@@ -212,6 +230,13 @@ impl Tournament {
                 table_number: row.table_number,
                 seats: seats_of.remove(&row.uuid).unwrap_or_default(),
                 games_drawn: row.games_drawn,
+                result_state: row.result_state,
+                reported_by: row
+                    .reported_by
+                    .map(|participant| ParticipantUuid::new(participant.0)),
+                disputed_by: row
+                    .disputed_by
+                    .map(|participant| ParticipantUuid::new(participant.0)),
             });
         }
         Ok(rounds
@@ -339,6 +364,9 @@ impl Tournament {
                 round: ForeignModelByField(round),
                 table_number,
                 games_drawn: None,
+                result_state: None,
+                reported_by: None,
+                disputed_by: None,
             });
             for (index, participant) in seats.iter().enumerate() {
                 seat_rows.push(TournamentSeatInsertPatch {
@@ -417,7 +445,7 @@ impl Tournament {
         Ok(Ok(()))
     }
 
-    /// End the running Round `number` once every Match has its Result
+    /// End the running Round `number` once every Match has its Result and none is disputed
     ///
     /// After the last Swiss Round the Tournament is Finished. Answers the
     /// state the Tournament is in afterwards.
@@ -439,6 +467,9 @@ impl Tournament {
         };
         if !round.matches.iter().all(Match::settled) {
             return Ok(Err(RoundRefusal::ResultsMissing));
+        }
+        if round.matches.iter().any(Match::disputed) {
+            return Ok(Err(RoundRefusal::ResultsDisputed));
         }
         rorm::update(&mut *tx, TournamentRoundModel)
             .set(TournamentRoundModel.state, RoundState::Ended)
@@ -494,6 +525,7 @@ impl Tournament {
     ///
     /// An Organizer may set or correct a Result at any time once the Round
     /// started, also after the Tournament is over; the pairings stay as they are.
+    /// It settles a disputed Result: what an Organizer sets is confirmed.
     #[instrument(name = "Tournament::set_result", skip(tx, self), fields(tournament = ?self.uuid))]
     pub async fn set_result(
         &self,
@@ -501,11 +533,12 @@ impl Tournament {
         played: MatchUuid,
         games_won: &[i16],
         games_drawn: i16,
-    ) -> Result<Result<(), ResultRefusal>, rorm::Error> {
-        let Some((round_state, table_number)) = rorm::query(
+    ) -> Result<Result<ResultChange, ResultRefusal>, rorm::Error> {
+        let Some((round_state, round_number, table_number)) = rorm::query(
             &mut *tx,
             (
                 TournamentMatchModel.round.state,
+                TournamentMatchModel.round.number,
                 TournamentMatchModel.table_number,
             ),
         )
@@ -531,22 +564,22 @@ impl Tournament {
             return Ok(Err(ResultRefusal::InvalidScore));
         }
 
-        rorm::update(&mut *tx, TournamentMatchModel)
-            .set(TournamentMatchModel.games_drawn, Some(games_drawn))
-            .condition(TournamentMatchModel.uuid.equals(played.0))
-            .await?;
-        for (index, won) in games_won.iter().enumerate() {
-            rorm::update(&mut *tx, TournamentSeatModel)
-                .set(TournamentSeatModel.games_won, Some(*won))
-                .condition(rorm::and![
-                    TournamentSeatModel.tournament_match.equals(played.0),
-                    TournamentSeatModel
-                        .seat
-                        .equals(i16::try_from(index + 1).unwrap_or(i16::MAX)),
-                ])
-                .await?;
-        }
-        Ok(Ok(()))
+        let seats = store_result(
+            tx,
+            played,
+            games_won,
+            games_drawn,
+            ResultState::Confirmed,
+            None,
+        )
+        .await?;
+        Ok(Ok(ResultChange {
+            round: round_number,
+            played,
+            kind: ResultChangeKind::Set,
+            by: None,
+            seats,
+        }))
     }
 
     /// Cancel the Tournament, `false` if it is over already
@@ -576,7 +609,11 @@ impl Tournament {
     /// Whether `games_won` per Seat and `games_drawn` is a Result a two-Seat Match can have
     ///
     /// Only one-on-one Tournaments are paired so far, so a Result has two Seats.
-    fn admits(&self, games_won: &[i16], games_drawn: i16) -> bool {
+    pub(in crate::models::tournament) fn admits(
+        &self,
+        games_won: &[i16],
+        games_drawn: i16,
+    ) -> bool {
         let [first, second] = games_won else {
             return false;
         };

@@ -59,6 +59,7 @@ All URIs are relative to *http://localhost*
 | [**deleteWatchListEntry**](DefaultApi.md#deletewatchlistentry) | **DELETE** /api/frontend/v1/watch-lists/{list}/entries/{entry} | Take a card off a watch list |
 | [**detachDeckCollection**](DefaultApi.md#detachdeckcollection) | **DELETE** /api/frontend/v1/decks/{deck}/collection | Stop keeping them |
 | [**discardTournamentRound**](DefaultApi.md#discardtournamentround) | **DELETE** /api/frontend/v1/tournaments/{tournament}/rounds/{number} | Throw a previewed Round away, as an Organizer, to pair it again |
+| [**disputeTournamentMatchResult**](DefaultApi.md#disputetournamentmatchresult) | **POST** /api/frontend/v1/tournaments/{tournament}/matches/{match}/dispute | Dispute the Result another Participant reported for one\&#39;s own Match |
 | [**dropOutOfTournament**](DefaultApi.md#dropoutoftournament) | **POST** /api/frontend/v1/tournaments/{tournament}/drop | Drop the logged-in Account out of a Tournament it plays in |
 | [**dropTournamentParticipant**](DefaultApi.md#droptournamentparticipant) | **POST** /api/frontend/v1/tournaments/{tournament}/participants/{participant}/drop | Drop a Participant, as an Organizer |
 | [**endTournamentRound**](DefaultApi.md#endtournamentround) | **POST** /api/frontend/v1/tournaments/{tournament}/rounds/{number}/end | End a running Round once every Match has its Result, as an Organizer |
@@ -141,6 +142,7 @@ All URIs are relative to *http://localhost*
 | [**removeTournamentParticipant**](DefaultApi.md#removetournamentparticipant) | **DELETE** /api/frontend/v1/tournaments/{tournament}/participants/{participant} | Take a Participant out of a Tournament, as an Organizer |
 | [**renameAccount**](DefaultApi.md#renameaccountoperation) | **PUT** /api/frontend/v1/accounts/me/username | Rename the logged-in account |
 | [**renamePasskey**](DefaultApi.md#renamepasskeyoperation) | **PUT** /api/frontend/v1/accounts/passkeys/{uuid} | Rename one of the logged-in account\&#39;s passkeys |
+| [**reportTournamentMatchResult**](DefaultApi.md#reporttournamentmatchresult) | **POST** /api/frontend/v1/tournaments/{tournament}/matches/{match}/report | Report the Result of one\&#39;s own Match, as its Participant |
 | [**resetDeck**](DefaultApi.md#resetdeck) | **POST** /api/frontend/v1/decks/{deck}/history/{change}/reset | Bring the deck back to how it was right after one of its Deck changes |
 | [**resolvePrintings**](DefaultApi.md#resolveprintingsoperation) | **POST** /api/frontend/v1/printings/resolve | Place cards in the catalog |
 | [**returnAllDeckCards**](DefaultApi.md#returnalldeckcardsoperation) | **POST** /api/frontend/v1/decks/{deck}/sourcing/return-all | Sort everything in the deck back where it came from |
@@ -4103,6 +4105,79 @@ example().catch(console.error);
 ### Return type
 
 [**FormErrorResponseForRoundErrors**](FormErrorResponseForRoundErrors.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## disputeTournamentMatchResult
+
+> FormErrorResponseForDisputeResultErrors disputeTournamentMatchResult(tournament, match)
+
+Dispute the Result another Participant reported for one\&#39;s own Match
+
+Dispute the Result another Participant reported for one\&#39;s own Match  Possible while the Round runs. The Round cannot end until an Organizer settles the Result. A locked Account cannot dispute.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { DisputeTournamentMatchResultRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    tournament: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string
+    match: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies DisputeTournamentMatchResultRequest;
+
+  try {
+    const data = await api.disputeTournamentMatchResult(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **tournament** | `string` |  | [Defaults to `undefined`] |
+| **match** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**FormErrorResponseForDisputeResultErrors**](FormErrorResponseForDisputeResultErrors.md)
 
 ### Authorization
 
@@ -9877,6 +9952,82 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## reportTournamentMatchResult
+
+> FormErrorResponseForReportResultErrors reportTournamentMatchResult(tournament, match, ReportResultRequest)
+
+Report the Result of one\&#39;s own Match, as its Participant
+
+Report the Result of one\&#39;s own Match, as its Participant  It counts at once. The reporter may correct it while the Round runs; another Participant who disagrees disputes it instead. A locked Account cannot report: an Organizer sets its Result.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { ReportTournamentMatchResultRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    tournament: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string
+    match: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // ReportResultRequest (optional)
+    ReportResultRequest: ...,
+  } satisfies ReportTournamentMatchResultRequest;
+
+  try {
+    const data = await api.reportTournamentMatchResult(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **tournament** | `string` |  | [Defaults to `undefined`] |
+| **match** | `string` |  | [Defaults to `undefined`] |
+| **ReportResultRequest** | [ReportResultRequest](ReportResultRequest.md) |  | [Optional] |
+
+### Return type
+
+[**FormErrorResponseForReportResultErrors**](FormErrorResponseForReportResultErrors.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## resetDeck
 
 > DeckUndoResponse resetDeck(deck, change)
@@ -11133,7 +11284,7 @@ No authorization required
 
 Set or correct the Result of a Match, as an Organizer
 
-Set or correct the Result of a Match, as an Organizer  Any time once its Round started, also after the Tournament is over; the standings follow, the pairings stay as they are.
+Set or correct the Result of a Match, as an Organizer  Any time once its Round started, also after the Tournament is over; the standings follow, the pairings stay as they are. This is how an Organizer settles a disputed Result and reports for Guests and locked Accounts.
 
 ### Example
 

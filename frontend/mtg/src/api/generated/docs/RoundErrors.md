@@ -10,6 +10,7 @@ Name | Type
 `all_rounds_paired` | boolean
 `not_previewed` | boolean
 `not_running` | boolean
+`results_disputed` | boolean
 `results_missing` | boolean
 `round_open` | boolean
 `ruleset_not_paired` | boolean
