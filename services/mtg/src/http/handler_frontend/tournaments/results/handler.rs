@@ -140,6 +140,7 @@ pub async fn dispute_tournament_match_result(
 
     if let Some(change) = change {
         announce(&tournament, &change);
+        tournament.push_result_disputed(&change).await;
     }
     Ok(ApiJson(()))
 }
@@ -147,9 +148,9 @@ pub async fn dispute_tournament_match_result(
 /// Tell whoever follows `tournament` that a Result was reported, disputed or set
 ///
 /// Called once the change is committed, from every route that changes a
-/// Result. Logs it and hands it to the live updates; Web Push hangs off here.
-/// Web Push skips a Tournament entered afterwards
-/// ([`Tournament::entered_afterwards`]); live updates do not need to.
+/// Result. Logs it and hands it to the live updates. The dispute route
+/// pushes beside it ([`Tournament::push_result_disputed`]), which skips a
+/// Tournament entered afterwards; live updates do not need to.
 pub fn announce(tournament: &Tournament, change: &ResultChange) {
     info!(
         tournament = ?tournament.uuid,

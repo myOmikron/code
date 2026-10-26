@@ -1,8 +1,14 @@
 //! "Round paired" pushes: when a Round starts, every Account Participant in
 //! it gets a push naming its table and Seat on each subscribed device, unless
 //! it turned tournament pushes off. Guests and the preview push nobody.
+//!
+//! A disputed Result pushes the Match's other Participants and the
+//! Organizers; starting the Top cut pushes every Participant in it once.
+//! A Tournament entered afterwards pushes nobody.
 
+use galvyn::core::re_exports::axum::http::Method;
 use serde_json::Value;
+use serde_json::json;
 
 use crate::models::account::Role;
 use crate::models::push::PushLanguage;
@@ -14,8 +20,14 @@ use crate::tests::harness::run;
 use crate::tests::push::new_endpoint;
 use crate::tests::push::set_tournament_pushes;
 use crate::tests::push::subscribe;
+use crate::tests::tournament_afterwards::entered;
+use crate::tests::tournament_organizers::add;
 use crate::tests::tournament_rounds::Event;
+use crate::tests::tournament_rounds::matches;
 use crate::tests::tournament_rounds::round;
+use crate::tests::tournament_top_cut::set_swiss_rounds;
+use crate::tests::tournament_top_cut::set_top_cut;
+use crate::tests::tournament_top_cut::standing_order;
 
 /// An Account Participant with one subscribed device
 struct Player {
@@ -195,5 +207,227 @@ fn every_subscribed_device_gets_the_push_in_its_own_language() {
 
         assert!(pushes().to(&both.endpoint)[0].body.starts_with("Runde 1"));
         assert!(pushes().to(&english)[0].body.starts_with("Round 1"));
+    });
+}
+
+/// The bodies of every push the device at `endpoint` got
+fn bodies(endpoint: &str) -> Vec<String> {
+    pushes()
+        .to(endpoint)
+        .into_iter()
+        .map(|push| push.body)
+        .collect()
+}
+
+/// A subscribed device for `client`'s Account, in English
+async fn device(client: &mut TestClient) -> String {
+    let endpoint = new_endpoint();
+    subscribe(client, &endpoint, "En").await;
+    endpoint
+}
+
+/// Round 1's one Match of a two-player event: its uuid and table number
+async fn only_match(event: &mut Event) -> (String, i64) {
+    let rounds = event.rounds().await;
+    let played = matches(round(&rounds, 1))[0].clone();
+    (
+        played["uuid"].as_str().expect("uuid").to_string(),
+        played["table_number"].as_i64().expect("a table"),
+    )
+}
+
+/// `player` reports Seat 1 winning 2-0 for `played`
+async fn report(event: &Event, player: &mut Player, played: &str) {
+    let url = event.url(&format!("matches/{played}/report"));
+    let body = player
+        .client
+        .json(
+            Method::POST,
+            &url,
+            &json!({ "games_won": [2, 0], "games_drawn": 0 }),
+        )
+        .await
+        .ok_json();
+    assert_ne!(body["result"], "Err", "{body}");
+}
+
+/// `player` disputes the Result of `played`
+async fn dispute(event: &Event, player: &mut Player, played: &str) {
+    let url = event.url(&format!("matches/{played}/dispute"));
+    let body = player
+        .client
+        .json(Method::POST, &url, &json!({}))
+        .await
+        .ok_json();
+    assert_ne!(body["result"], "Err", "{body}");
+}
+
+#[test]
+fn a_dispute_pushes_the_other_participants_of_the_match_and_the_organizers() {
+    run(async {
+        let mut event = Event::new("Three", 0).await;
+        let mut reporter = player(&mut event, PushLanguage::De).await;
+        let mut disputer = player(&mut event, PushLanguage::En).await;
+        let owner = device(&mut event.owner).await;
+        let co_account = create_account(Role::Member).await;
+        let mut co_client = TestClient::logged_in(&co_account).await;
+        let co_organizer = device(&mut co_client).await;
+        let organizers = event.url("organizers");
+        add(&mut event.owner, &organizers, &co_account.username).await;
+        let stranger = device(&mut event.stranger).await;
+
+        event.pair().await;
+        event.start(1).await;
+        let (played, table) = only_match(&mut event).await;
+        report(&event, &mut reporter, &played).await;
+        assert!(bodies(&owner).is_empty(), "a report pushes nobody");
+
+        dispute(&event, &mut disputer, &played).await;
+
+        assert_eq!(
+            bodies(&reporter.endpoint)[1..],
+            [format!(
+                "Euer Ergebnis an Tisch {table} in Runde 1 wurde angefochten. Ein Organisator legt es fest."
+            )]
+        );
+        assert_eq!(
+            bodies(&disputer.endpoint).len(),
+            1,
+            "the disputer gets only Round paired"
+        );
+        let settle = format!("The result at table {table} in Round 1 was disputed. Settle it.");
+        assert_eq!(bodies(&owner), std::slice::from_ref(&settle));
+        assert_eq!(bodies(&co_organizer), [settle]);
+        assert_eq!(
+            pushes().to(&owner)[0].url,
+            format!("/tournaments/{}/rounds", event.tournament)
+        );
+        assert!(bodies(&stranger).is_empty());
+    });
+}
+
+#[test]
+fn an_account_that_turned_tournament_pushes_off_hears_of_no_dispute() {
+    run(async {
+        let mut event = Event::new("Three", 0).await;
+        let mut reporter = player(&mut event, PushLanguage::En).await;
+        let mut disputer = player(&mut event, PushLanguage::En).await;
+        let owner = device(&mut event.owner).await;
+        set_tournament_pushes(&mut event.owner, false).await;
+        set_tournament_pushes(&mut reporter.client, false).await;
+
+        event.pair().await;
+        event.start(1).await;
+        let (played, _) = only_match(&mut event).await;
+        report(&event, &mut reporter, &played).await;
+        dispute(&event, &mut disputer, &played).await;
+
+        assert!(bodies(&owner).is_empty());
+        assert!(bodies(&reporter.endpoint).is_empty());
+    });
+}
+
+#[test]
+fn reaching_the_top_cut_pushes_the_participants_in_it_once() {
+    run(async {
+        let mut event = Event::new("Three", 0).await;
+        let mut players = Vec::new();
+        for _ in 0..5 {
+            players.push(player(&mut event, PushLanguage::En).await);
+        }
+        set_top_cut(&mut event, json!("Top4"), json!("One")).await;
+        set_swiss_rounds(&mut event, 1).await;
+        event.play_round().await;
+        let ended = event.end(1).await;
+        assert_eq!(ended["state"], "TopCut", "{ended}");
+        let seeds = standing_order(&mut event).await;
+
+        event.pair().await;
+        let before = players
+            .iter()
+            .map(|player| bodies(&player.endpoint).len())
+            .collect::<Vec<_>>();
+        assert!(
+            before.iter().all(|count| *count == 1),
+            "the cut's preview pushes: {before:?}"
+        );
+        event.start(2).await;
+
+        let reached = "You reached the top cut. Stay around!".to_string();
+        for player in &players {
+            let seed = seeds
+                .iter()
+                .position(|seed| *seed == player.participant)
+                .expect("a seed");
+            let received = bodies(&player.endpoint);
+            if seed < 4 {
+                assert!(received[1..].contains(&reached), "{received:?}");
+                assert!(
+                    received[1..]
+                        .iter()
+                        .any(|body| body.starts_with("Round 2 is paired")),
+                    "{received:?}"
+                );
+            } else {
+                assert_eq!(received.len(), 1, "seed {seed} is out: {received:?}");
+            }
+        }
+        let top = players
+            .iter()
+            .find(|player| player.participant == seeds[0])
+            .expect("the top seed");
+        assert_eq!(
+            pushes()
+                .to(&top.endpoint)
+                .iter()
+                .find(|push| push.body == reached)
+                .expect("the top cut push")
+                .url,
+            format!("/tournaments/{}/top-cut", event.tournament)
+        );
+
+        let rounds = event.rounds().await;
+        for played in matches(round(&rounds, 2)) {
+            let uuid = played["uuid"].as_str().expect("uuid").to_string();
+            event.result(&uuid, [1, 0], 0).await;
+        }
+        event.end(2).await;
+        event.pair().await;
+        event.start(3).await;
+        let received = bodies(&top.endpoint);
+        assert_eq!(
+            received.iter().filter(|body| **body == reached).count(),
+            1,
+            "the final pushes no second top cut push: {received:?}"
+        );
+    });
+}
+
+#[test]
+fn a_tournament_entered_afterwards_pushes_nobody() {
+    run(async {
+        let mut event = entered(2, "Mtr", 0).await;
+        let owner = device(&mut event.owner).await;
+        let mut players = Vec::new();
+        for _ in 0..5 {
+            players.push(player(&mut event, PushLanguage::En).await);
+        }
+        set_top_cut(&mut event, json!("Top4"), json!("One")).await;
+        set_swiss_rounds(&mut event, 1).await;
+
+        event.play_round().await;
+        let ended = event.end(1).await;
+        assert_eq!(ended["state"], "TopCut", "{ended}");
+        event.pair().await;
+        let started = event.start(2).await;
+        assert_ne!(started["result"], "Err", "{started}");
+
+        assert!(bodies(&owner).is_empty());
+        for player in &players {
+            assert!(
+                bodies(&player.endpoint).is_empty(),
+                "neither Round paired nor the Top cut"
+            );
+        }
     });
 }

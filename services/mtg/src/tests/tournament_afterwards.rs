@@ -36,7 +36,7 @@ fn afterwards(table_size: i64, ruleset: &str) -> Value {
 }
 
 /// An Owner entering a Tournament of `players` Guests afterwards
-async fn entered(table_size: i64, ruleset: &str, players: usize) -> Event {
+pub(super) async fn entered(table_size: i64, ruleset: &str, players: usize) -> Event {
     let owner_account = create_account(Role::Member).await;
     let mut owner = TestClient::logged_in(&owner_account).await;
     let request = afterwards(table_size, ruleset);
