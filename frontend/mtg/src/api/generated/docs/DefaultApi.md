@@ -875,7 +875,7 @@ No authorization required
 
 Delete an Account
 
-Delete an Account  By default its public decks go to the Tombstone, as on a self-deletion; a full Deletion takes them too. The Admin types the Account\&#39;s username to confirm, and cannot delete itself. The Admin log entry is written first, so it keeps the username once the Account is gone.
+Delete an Account  By default its public decks go to the Tombstone, as on a self-deletion; a full Deletion takes them too. The Admin types the Account\&#39;s username to confirm, and cannot delete itself. The Admin log entry is written first, so it keeps the username once the Account is gone. Its Participants in other people\&#39;s Tournaments always appear anonymously.
 
 ### Example
 
