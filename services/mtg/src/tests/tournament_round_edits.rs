@@ -69,7 +69,7 @@ fn the_preview_as_an_organizer_laid_it_out_is_what_starts() {
         let [a, b, c, d, e] = [0, 1, 2, 3, 4].map(|index| players[index].as_str());
 
         let arranged = event.arrange(1, &[[e, d], [a, c]], &[b]).await;
-        assert_eq!(arranged["result"], "Ok", "{arranged}");
+        assert_eq!(arranged, Value::Null, "{arranged}");
 
         let rounds = event.rounds().await;
         let preview = round(&rounds, 1);
@@ -177,7 +177,8 @@ fn a_rematch_laid_out_by_hand_is_flagged() {
             .collect();
         let arranged = event.arrange(2, &tables, &[]).await;
         assert_eq!(
-            arranged["result"], "Ok",
+            arranged,
+            Value::Null,
             "a rematch is the Organizer's call: {arranged}"
         );
 
