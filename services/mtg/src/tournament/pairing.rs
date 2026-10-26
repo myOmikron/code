@@ -338,6 +338,46 @@ mod tests {
     }
 
     #[test]
+    fn a_dropped_participant_is_not_paired_again() {
+        let mut record = mtr(5);
+        record.rounds = vec![round(vec![won(1, 2), won(3, 4)], vec![5])];
+        record.entrants[0].pairable = false;
+        for seed in 0..5 {
+            let mut seated = seated(&record, seed);
+            seated.sort();
+            assert_eq!(seated, vec![p(2), p(3), p(4), p(5)], "seed {seed}");
+        }
+    }
+
+    #[test]
+    fn a_late_participant_starts_with_no_match_points_at_the_bottom() {
+        let mut record = mtr(7);
+        record.rounds = vec![
+            round(vec![won(1, 2), won(3, 4), won(5, 6)], vec![]),
+            round(vec![won(1, 5), won(3, 2), won(4, 6)], vec![]),
+        ];
+        let points = points(&record);
+        assert_eq!(points[&p(7)], 0, "missed Rounds bring no Match points");
+        for seed in 0..10 {
+            let pairing = pair_next_round(&record, seed).expect("pairs");
+            let seated = seated(&record, seed);
+            assert_eq!(
+                seated.iter().filter(|entrant| **entrant == p(7)).count(),
+                1,
+                "seed {seed}"
+            );
+            for paired in &pairing.matches {
+                if paired.seats.contains(&p(7)) {
+                    assert!(
+                        paired.seats.iter().all(|entrant| points[entrant] == 0),
+                        "seed {seed}: the latecomer plays down in its own point group"
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
     fn the_multiplayer_rulesets_are_not_paired_yet() {
         for ruleset in [Ruleset::TopDeck, Ruleset::MultiplayerAddendum] {
             let record = TournamentRecord {

@@ -17,7 +17,8 @@ export type TournamentStandingsProps = {
  * The standings of a Tournament: every Participant's place, Match points,
  * record of wins, losses and draws, and the Ruleset's Tiebreakers.
  *
- * Participants equal on Match points and every Tiebreaker share a place.
+ * Participants equal on Match points and every Tiebreaker share a place;
+ * a Participant that Dropped keeps its line and is marked.
  *
  * @returns the standings table
  */
@@ -67,6 +68,9 @@ export function TournamentStandings({ load }: TournamentStandingsProps) {
                                 <span className={"flex items-center gap-2"}>
                                     {line.name}
                                     {line.guest && <Badge color={"zinc"}>{t("label.guest")}</Badge>}
+                                    {line.dropped_after_round != null && (
+                                        <Badge color={"amber"}>{t("label.dropped")}</Badge>
+                                    )}
                                 </span>
                             </TableCell>
                             <TableCell>{line.match_points}</TableCell>

@@ -241,7 +241,7 @@ impl Tournament {
                 .iter()
                 .map(|participant| Entrant {
                     id: participant.uuid.into_inner(),
-                    pairable: true,
+                    pairable: participant.plays_on(),
                 })
                 .collect(),
             rounds: rounds.iter().map(round_record).collect(),
@@ -250,12 +250,18 @@ impl Tournament {
     }
 
     /// The number of Swiss Rounds the engine suggests for the Participants there are now
+    ///
+    /// Counts the Participants the next Round pairs, not those who Dropped.
     pub async fn suggested_swiss_rounds(
         &self,
         tx: &mut Transaction,
     ) -> Result<Option<i16>, rorm::Error> {
-        let participants = self.count_participants(tx).await?;
-        let participants = usize::try_from(participants).unwrap_or(usize::MAX);
+        let participants = self
+            .participants(tx)
+            .await?
+            .iter()
+            .filter(|participant| participant.plays_on())
+            .count();
         Ok(suggested_swiss_rounds(self.ruleset, participants)
             .map(|rounds| i16::try_from(rounds).unwrap_or(MAX_SWISS_ROUNDS)))
     }

@@ -364,6 +364,12 @@ pub async fn standings_view(
     tournament: &Tournament,
 ) -> ApiResult<StandingsResponse> {
     let names = names(tx, tournament).await?;
+    let dropped: HashMap<ParticipantUuid, i16> = tournament
+        .participants(tx)
+        .await?
+        .into_iter()
+        .filter_map(|participant| Some((participant.uuid, participant.dropped_after_round?)))
+        .collect();
     let record = tournament.record(tx).await?;
     Ok(StandingsResponse {
         tiebreakers: record.ruleset.tiebreakers().to_vec(),
@@ -383,6 +389,7 @@ pub async fn standings_view(
                     draws: line.draws,
                     byes: line.byes,
                     tiebreakers: line.tiebreakers.iter().map(Share::to_f64).collect(),
+                    dropped_after_round: dropped.get(&participant).copied(),
                 }
             })
             .collect(),

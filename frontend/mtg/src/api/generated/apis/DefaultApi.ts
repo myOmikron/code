@@ -87,6 +87,7 @@ import type {
     FormErrorResponseForChooseUsernameErrors,
     FormErrorResponseForDeleteAccountErrors,
     FormErrorResponseForDeletePasskeyErrors,
+    FormErrorResponseForDropErrors,
     FormErrorResponseForFinishLoginErrors,
     FormErrorResponseForRegistrationErrors,
     FormErrorResponseForRenamePasskeyErrors,
@@ -442,6 +443,15 @@ export interface DetachDeckCollectionRequest {
 export interface DiscardTournamentRoundRequest {
     tournament: string;
     number: number;
+}
+
+export interface DropOutOfTournamentRequest {
+    tournament: string;
+}
+
+export interface DropTournamentParticipantRequest {
+    tournament: string;
+    participant: string;
 }
 
 export interface EndTournamentRoundRequest {
@@ -1286,7 +1296,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Add an Account as a Participant by its username, as an Organizer  An Organizer may add itself. Only while the Tournament is in Registration; the participant limit does not hold Organizers back. Unknown usernames are capped per caller, see [`UNKNOWN_USERNAMES`].
+     * Add an Account as a Participant by its username, as an Organizer  An Organizer may add itself. In Registration, and as a late Participant until the Swiss Rounds are over; the participant limit does not hold Organizers back. Unknown usernames are capped per caller, see [`UNKNOWN_USERNAMES`].
      * Add an Account as a Participant by its username, as an Organizer
      */
     async addTournamentAccountRaw(requestParameters: AddTournamentAccountRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<AddTournamentAccount200Response>> {
@@ -1297,7 +1307,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Add an Account as a Participant by its username, as an Organizer  An Organizer may add itself. Only while the Tournament is in Registration; the participant limit does not hold Organizers back. Unknown usernames are capped per caller, see [`UNKNOWN_USERNAMES`].
+     * Add an Account as a Participant by its username, as an Organizer  An Organizer may add itself. In Registration, and as a late Participant until the Swiss Rounds are over; the participant limit does not hold Organizers back. Unknown usernames are capped per caller, see [`UNKNOWN_USERNAMES`].
      * Add an Account as a Participant by its username, as an Organizer
      */
     async addTournamentAccount(requestParameters: AddTournamentAccountRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AddTournamentAccount200Response> {
@@ -1386,7 +1396,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Add a Guest by name, as an Organizer  Only while the Tournament is in Registration. The name is trimmed; two Guests may share one.
+     * Add a Guest by name, as an Organizer  In Registration, and as a late Participant until the Swiss Rounds are over. The name is trimmed; two Guests may share one.
      * Add a Guest by name, as an Organizer
      */
     async addTournamentGuestRaw(requestParameters: AddTournamentGuestRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<AddTournamentGuest200Response>> {
@@ -1397,7 +1407,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Add a Guest by name, as an Organizer  Only while the Tournament is in Registration. The name is trimmed; two Guests may share one.
+     * Add a Guest by name, as an Organizer  In Registration, and as a late Participant until the Swiss Rounds are over. The name is trimmed; two Guests may share one.
      * Add a Guest by name, as an Organizer
      */
     async addTournamentGuest(requestParameters: AddTournamentGuestRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AddTournamentGuest200Response> {
@@ -3757,6 +3767,108 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async discardTournamentRound(requestParameters: DiscardTournamentRoundRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FormErrorResponseForRoundErrors> {
         const response = await this.discardTournamentRoundRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for dropOutOfTournament without sending the request
+     */
+    async dropOutOfTournamentRequestOpts(requestParameters: DropOutOfTournamentRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tournament'] == null) {
+            throw new runtime.RequiredError(
+                'tournament',
+                'Required parameter "tournament" was null or undefined when calling dropOutOfTournament().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/tournaments/{tournament}/drop`;
+        urlPath = urlPath.replace('{tournament}', encodeURIComponent(String(requestParameters['tournament'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Drop the logged-in Account out of a Tournament it plays in  Once the first Round started, until the Tournament is over; before the first Round an Account withdraws its sign-up instead. No later Round pairs it; it stays in the standings with its Results so far.
+     * Drop the logged-in Account out of a Tournament it plays in
+     */
+    async dropOutOfTournamentRaw(requestParameters: DropOutOfTournamentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FormErrorResponseForDropErrors>> {
+        const requestOptions = await this.dropOutOfTournamentRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Drop the logged-in Account out of a Tournament it plays in  Once the first Round started, until the Tournament is over; before the first Round an Account withdraws its sign-up instead. No later Round pairs it; it stays in the standings with its Results so far.
+     * Drop the logged-in Account out of a Tournament it plays in
+     */
+    async dropOutOfTournament(requestParameters: DropOutOfTournamentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FormErrorResponseForDropErrors> {
+        const response = await this.dropOutOfTournamentRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for dropTournamentParticipant without sending the request
+     */
+    async dropTournamentParticipantRequestOpts(requestParameters: DropTournamentParticipantRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tournament'] == null) {
+            throw new runtime.RequiredError(
+                'tournament',
+                'Required parameter "tournament" was null or undefined when calling dropTournamentParticipant().'
+            );
+        }
+
+        if (requestParameters['participant'] == null) {
+            throw new runtime.RequiredError(
+                'participant',
+                'Required parameter "participant" was null or undefined when calling dropTournamentParticipant().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/tournaments/{tournament}/participants/{participant}/drop`;
+        urlPath = urlPath.replace('{tournament}', encodeURIComponent(String(requestParameters['tournament'])));
+        urlPath = urlPath.replace('{participant}', encodeURIComponent(String(requestParameters['participant'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Drop a Participant, as an Organizer  Once the first Round started, until the Tournament is over. No later Round pairs it; it stays in the standings with its Results so far.
+     * Drop a Participant, as an Organizer
+     */
+    async dropTournamentParticipantRaw(requestParameters: DropTournamentParticipantRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FormErrorResponseForDropErrors>> {
+        const requestOptions = await this.dropTournamentParticipantRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Drop a Participant, as an Organizer  Once the first Round started, until the Tournament is over. No later Round pairs it; it stays in the standings with its Results so far.
+     * Drop a Participant, as an Organizer
+     */
+    async dropTournamentParticipant(requestParameters: DropTournamentParticipantRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FormErrorResponseForDropErrors> {
+        const response = await this.dropTournamentParticipantRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

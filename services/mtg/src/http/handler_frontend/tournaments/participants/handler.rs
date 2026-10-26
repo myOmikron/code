@@ -20,6 +20,7 @@ use crate::http::handler_frontend::tournaments::participants::schema::AddAccount
 use crate::http::handler_frontend::tournaments::participants::schema::AddAccountParticipantRequest;
 use crate::http::handler_frontend::tournaments::participants::schema::AddGuestParticipantErrors;
 use crate::http::handler_frontend::tournaments::participants::schema::AddGuestParticipantRequest;
+use crate::http::handler_frontend::tournaments::participants::schema::DropErrors;
 use crate::http::handler_frontend::tournaments::participants::schema::ListParticipantsResponse;
 use crate::http::handler_frontend::tournaments::participants::schema::ParticipantResponse;
 use crate::http::handler_frontend::tournaments::participants::schema::PlayerCandidateResponse;
@@ -31,9 +32,12 @@ use crate::models::account::Username;
 use crate::models::account::extractor::Viewer;
 use crate::models::tournament::Tournament;
 use crate::models::tournament::TournamentUuid;
+use crate::models::tournament::participant::DropRefusal;
+use crate::models::tournament::participant::Participant;
 use crate::models::tournament::participant::ParticipantUuid;
 use crate::models::tournament::participant::Player;
 use crate::models::tournament::participant::SignUpRefusal;
+use crate::models::tournament::participant::late_from_round;
 use crate::utils::account_budget::AccountBudget;
 
 /// Unknown usernames an Organizer may try to add per hour
@@ -74,9 +78,10 @@ pub async fn list_tournament_participants(
 
 /// Add an Account as a Participant by its username, as an Organizer
 ///
-/// An Organizer may add itself. Only while the Tournament is in Registration;
-/// the participant limit does not hold Organizers back. Unknown usernames are
-/// capped per caller, see [`UNKNOWN_USERNAMES`].
+/// An Organizer may add itself. In Registration, and as a late Participant
+/// until the Swiss Rounds are over; the participant limit does not hold
+/// Organizers back. Unknown usernames are capped per caller, see
+/// [`UNKNOWN_USERNAMES`].
 #[post("/{tournament}/participants/accounts")]
 pub async fn add_tournament_account(
     account: Account,
@@ -85,16 +90,16 @@ pub async fn add_tournament_account(
 ) -> ApiResult<ApiJson<ParticipantResponse>, AddAccountParticipantErrors> {
     let mut tx = Database::global().start_transaction().await?;
 
-    let Some(tournament) = Tournament::get_as_organizer(&mut tx, tournament, account.uuid).await?
+    let Some(tournament) =
+        Tournament::get_as_organizer_for_update(&mut tx, tournament, account.uuid).await?
     else {
         tx.rollback().await?;
         return Err(denied());
     };
-    tournament.lock_roster(&mut tx).await?;
-    if !tournament.roster_open() {
+    if !tournament.takes_participants() {
         tx.rollback().await?;
         let mut errors = FormErrors::<AddAccountParticipantErrors>::new();
-        errors.registration_over = true;
+        errors.roster_closed = true;
         return errors.fail();
     }
 
@@ -112,6 +117,7 @@ pub async fn add_tournament_account(
         }
         return errors.fail();
     };
+    let late_from_round = late_from_round(tournament.started_rounds(&mut tx).await?);
     let Some(participant) = tournament.add_account(&mut tx, named.uuid).await? else {
         tx.rollback().await?;
         let mut errors = FormErrors::<AddAccountParticipantErrors>::new();
@@ -121,17 +127,21 @@ pub async fn add_tournament_account(
 
     tx.commit().await?;
 
-    Ok(ApiJson(ParticipantResponse {
+    Ok(ApiJson(ParticipantResponse::from(Participant {
         uuid: participant,
-        name: named.username.as_str().to_string(),
-        guest: false,
-    }))
+        player: Player::Account {
+            account: named.uuid,
+            username: named.username,
+        },
+        late_from_round,
+        dropped_after_round: None,
+    })))
 }
 
 /// Add a Guest by name, as an Organizer
 ///
-/// Only while the Tournament is in Registration. The name is trimmed; two
-/// Guests may share one.
+/// In Registration, and as a late Participant until the Swiss Rounds are
+/// over. The name is trimmed; two Guests may share one.
 #[post("/{tournament}/participants/guests")]
 pub async fn add_tournament_guest(
     account: Account,
@@ -149,28 +159,29 @@ pub async fn add_tournament_guest(
 
     let mut tx = Database::global().start_transaction().await?;
 
-    let Some(tournament) = Tournament::get_as_organizer(&mut tx, tournament, account.uuid).await?
+    let Some(tournament) =
+        Tournament::get_as_organizer_for_update(&mut tx, tournament, account.uuid).await?
     else {
         tx.rollback().await?;
         return Err(denied());
     };
-    tournament.lock_roster(&mut tx).await?;
-    if !tournament.roster_open() {
+    if !tournament.takes_participants() {
         tx.rollback().await?;
         let mut errors = FormErrors::<AddGuestParticipantErrors>::new();
-        errors.registration_over = true;
+        errors.roster_closed = true;
         return errors.fail();
     }
+    let late_from_round = late_from_round(tournament.started_rounds(&mut tx).await?);
     let participant = tournament.add_guest(&mut tx, name.clone()).await?;
 
     tx.commit().await?;
 
-    Ok(ApiJson(ParticipantResponse::from(
-        crate::models::tournament::participant::Participant {
-            uuid: participant,
-            player: Player::Guest { name },
-        },
-    )))
+    Ok(ApiJson(ParticipantResponse::from(Participant {
+        uuid: participant,
+        player: Player::Guest { name },
+        late_from_round,
+        dropped_after_round: None,
+    })))
 }
 
 /// Take a Participant out of a Tournament, as an Organizer
@@ -201,6 +212,57 @@ pub async fn remove_tournament_participant(
     tx.commit().await?;
 
     Ok(ApiJson(()))
+}
+
+/// Drop a Participant, as an Organizer
+///
+/// Once the first Round started, until the Tournament is over. No later
+/// Round pairs it; it stays in the standings with its Results so far.
+#[post("/{tournament}/participants/{participant}/drop")]
+pub async fn drop_tournament_participant(
+    account: Account,
+    Path((tournament, participant)): Path<(TournamentUuid, ParticipantUuid)>,
+) -> ApiResult<ApiJson<()>, DropErrors> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    let Some(tournament) =
+        Tournament::get_as_organizer_for_update(&mut tx, tournament, account.uuid).await?
+    else {
+        tx.rollback().await?;
+        return Err(denied());
+    };
+    let response = drop_participant(&mut tx, &tournament, participant).await;
+    finish(tx, response).await
+}
+
+/// Drop the logged-in Account out of a Tournament it plays in
+///
+/// Once the first Round started, until the Tournament is over; before the
+/// first Round an Account withdraws its sign-up instead. No later Round
+/// pairs it; it stays in the standings with its Results so far.
+#[post("/{tournament}/drop")]
+pub async fn drop_out_of_tournament(
+    account: Account,
+    Path(tournament): Path<TournamentUuid>,
+) -> ApiResult<ApiJson<()>, DropErrors> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    let Some(seen) = Tournament::get_visible(&mut tx, tournament, Some(account.uuid)).await? else {
+        tx.rollback().await?;
+        return Err(denied());
+    };
+    seen.lock_roster(&mut tx).await?;
+    let Some(tournament) = Tournament::get_visible(&mut tx, tournament, Some(account.uuid)).await?
+    else {
+        tx.rollback().await?;
+        return Err(denied());
+    };
+    let Some(participant) = tournament.participant_of(&mut tx, account.uuid).await? else {
+        tx.rollback().await?;
+        return Err(ApiError::bad_request("Not a participant"));
+    };
+    let response = drop_participant(&mut tx, &tournament, participant).await;
+    finish(tx, response).await
 }
 
 /// Accounts whose username starts with what an Organizer typed, to add as Participants
@@ -329,6 +391,29 @@ pub async fn list(
     })
 }
 
+/// Drop `participant` out of `tournament`, under the roster lock
+///
+/// Leaves the transaction to the caller, see [`finish`].
+async fn drop_participant(
+    tx: &mut Transaction,
+    tournament: &Tournament,
+    participant: ParticipantUuid,
+) -> ApiResult<ApiJson<()>, DropErrors> {
+    tournament.lock_roster(tx).await?;
+    match tournament.drop_participant(tx, participant).await? {
+        Ok(true) => Ok(ApiJson(())),
+        Ok(false) => Err(ApiError::bad_request("No such participant")),
+        Err(refusal) => {
+            let mut errors = FormErrors::<DropErrors>::new();
+            match refusal {
+                DropRefusal::NotStarted => errors.not_started = true,
+                DropRefusal::TournamentOver => errors.tournament_over = true,
+            }
+            errors.fail()
+        }
+    }
+}
+
 /// Sign `account` up for `tournament`, which it reached by id or by share link
 ///
 /// Leaves the transaction to the caller, see [`finish`].
@@ -340,7 +425,11 @@ pub async fn sign_up(
     tournament.lock_roster(tx).await?;
     let participants = tournament.count_participants(tx).await?;
     let already = tournament.participant_of(tx, account.uuid).await?.is_some();
-    if let Some(refusal) = tournament.sign_up_refusal(participants, already) {
+    let refusal = match tournament.started_rounds(tx).await? {
+        0 => tournament.sign_up_refusal(participants, already),
+        _ => Some(SignUpRefusal::Closed),
+    };
+    if let Some(refusal) = refusal {
         let mut errors = FormErrors::<SignUpErrors>::new();
         match refusal {
             SignUpRefusal::Closed => errors.closed = true,
@@ -353,11 +442,15 @@ pub async fn sign_up(
         .add_account(tx, account.uuid)
         .await?
         .ok_or_else(|| ApiError::server_error("Participant appeared under the roster lock"))?;
-    Ok(ApiJson(ParticipantResponse {
+    Ok(ApiJson(ParticipantResponse::from(Participant {
         uuid: participant,
-        name: account.username.as_str().to_string(),
-        guest: false,
-    }))
+        player: Player::Account {
+            account: account.uuid,
+            username: account.username.clone(),
+        },
+        late_from_round: None,
+        dropped_after_round: None,
+    })))
 }
 
 /// Commit the transaction behind a successful `response`, roll it back behind a refusal

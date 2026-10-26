@@ -22,15 +22,15 @@ pub(super) struct Event {
     /// Logged in as the Owner
     pub(super) owner: TestClient,
     /// Logged in as an Account unrelated to the Tournament
-    stranger: TestClient,
+    pub(super) stranger: TestClient,
     /// The Tournament's uuid
     pub(super) tournament: String,
     /// The settings it was created with
-    settings: Value,
+    pub(super) settings: Value,
     /// The Participant uuids, in the order they were added
     pub(super) players: Vec<String>,
     /// The games that win a Match
-    games_to_win: i64,
+    pub(super) games_to_win: i64,
 }
 
 impl Event {
@@ -61,12 +61,12 @@ impl Event {
     }
 
     /// The url of `path` below the Tournament
-    fn url(&self, path: &str) -> Url {
+    pub(super) fn url(&self, path: &str) -> Url {
         api(&format!("tournaments/{}/{path}", self.tournament))
     }
 
     /// Add a Guest as the Owner, returning its Participant uuid
-    async fn add_guest(&mut self, name: &str) -> String {
+    pub(super) async fn add_guest(&mut self, name: &str) -> String {
         let url = self.url("participants/guests");
         let body = self
             .owner
@@ -92,7 +92,7 @@ impl Event {
     }
 
     /// Pair the next Round as the Owner, returning the body
-    async fn pair(&mut self) -> Value {
+    pub(super) async fn pair(&mut self) -> Value {
         let url = self.url("rounds");
         self.owner
             .json(Method::POST, &url, &json!({}))
@@ -101,7 +101,7 @@ impl Event {
     }
 
     /// Start Round `number` as the Owner, returning the body
-    async fn start(&mut self, number: i64) -> Value {
+    pub(super) async fn start(&mut self, number: i64) -> Value {
         let url = self.url(&format!("rounds/{number}/start"));
         self.owner
             .json(Method::POST, &url, &json!({}))
@@ -110,7 +110,7 @@ impl Event {
     }
 
     /// End Round `number` as the Owner, returning the body
-    async fn end(&mut self, number: i64) -> Value {
+    pub(super) async fn end(&mut self, number: i64) -> Value {
         let url = self.url(&format!("rounds/{number}/end"));
         self.owner
             .json(Method::POST, &url, &json!({}))
@@ -119,7 +119,12 @@ impl Event {
     }
 
     /// Set the Result of `played` as the Owner, returning the body
-    async fn result(&mut self, played: &str, games_won: [i64; 2], games_drawn: i64) -> Value {
+    pub(super) async fn result(
+        &mut self,
+        played: &str,
+        games_won: [i64; 2],
+        games_drawn: i64,
+    ) -> Value {
         let url = self.url(&format!("matches/{played}/result"));
         self.owner
             .json(
@@ -132,7 +137,7 @@ impl Event {
     }
 
     /// The Rounds as `client` reads them
-    async fn rounds_of(&self, client: &mut TestClient) -> Value {
+    pub(super) async fn rounds_of(&self, client: &mut TestClient) -> Value {
         client.get(&self.url("rounds")).await.ok_json()
     }
 
@@ -149,7 +154,7 @@ impl Event {
     }
 
     /// The Tournament's state as the Owner reads it
-    async fn state(&mut self) -> String {
+    pub(super) async fn state(&mut self) -> String {
         let url = api(&format!("tournaments/{}", self.tournament));
         let body = self.owner.get(&url).await.ok_json();
         body["state"].as_str().expect("a state").to_string()
@@ -170,7 +175,7 @@ impl Event {
 }
 
 /// Round `number` of a rounds response
-fn round(rounds: &Value, number: i64) -> &Value {
+pub(super) fn round(rounds: &Value, number: i64) -> &Value {
     rounds["rounds"]
         .as_array()
         .expect("a list of rounds")
@@ -180,7 +185,7 @@ fn round(rounds: &Value, number: i64) -> &Value {
 }
 
 /// The Matches of a Round, Byes left out
-fn matches(round: &Value) -> Vec<&Value> {
+pub(super) fn matches(round: &Value) -> Vec<&Value> {
     round["matches"]
         .as_array()
         .expect("a list of matches")
@@ -200,7 +205,7 @@ pub(super) fn seated(played: &Value) -> Vec<String> {
 }
 
 /// Every pair of Participants that met in a Round
-fn pairs(round: &Value) -> HashSet<Vec<String>> {
+pub(super) fn pairs(round: &Value) -> HashSet<Vec<String>> {
     matches(round)
         .into_iter()
         .map(|played| {

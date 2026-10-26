@@ -1,4 +1,4 @@
-import { PlusIcon, TrashIcon, UserPlusIcon } from "@heroicons/react/20/solid";
+import { PlusIcon, TrashIcon, UserMinusIcon, UserPlusIcon } from "@heroicons/react/20/solid";
 import {
     Badge,
     Button,
@@ -6,6 +6,7 @@ import {
     ComboboxDescription,
     ComboboxLabel,
     ComboboxOption,
+    ConfirmDialog,
     Description,
     ErrorMessage,
     Field,
@@ -48,11 +49,13 @@ export type TournamentParticipantsProps = {
 };
 
 /**
- * The Participants of a Tournament, with signing up and, for its Organizers,
- * adding Accounts and Guests and removing them.
+ * The Participants of a Tournament, with signing up and Dropping and, for its
+ * Organizers, adding Accounts and Guests, removing and Dropping them.
  *
- * Adding and removing work while the Tournament is in Registration; the
- * participant limit holds back self sign-up only, never an Organizer.
+ * Removing and signing up work while the Tournament is in Registration; the
+ * participant limit holds back self sign-up only, never an Organizer. Once the
+ * first Round started, Organizers add late Participants until the Swiss Rounds
+ * are over, and a Participant leaves by a Drop.
  *
  * @returns the participant list with its actions
  */
@@ -61,10 +64,14 @@ export function TournamentParticipants({ tournament, load, signUp }: TournamentP
     const { account } = useAccount();
     const [list, setList] = useState<ListParticipantsResponse | null>(null);
     const [busy, setBusy] = useState(false);
+    const [dropping, setDropping] = useState<ParticipantResponse | null>(null);
 
     const organizer = tournament.organizer_role != null;
     const registration = tournament.state === TournamentState.Registration;
+    const takesParticipants = registration || tournament.state === TournamentState.Swiss;
+    const dropsOpen = tournament.state === TournamentState.Swiss || tournament.state === TournamentState.TopCut;
     const participants = list?.participants ?? [];
+    const mine = participants.find((participant) => participant.uuid === list?.me) ?? null;
     const limit = tournament.participant_limit ?? null;
     const full = limit !== null && participants.length >= limit;
     const signUpOpen = tournament.self_sign_up && tournament.visibility !== Visibility.Private && registration;
@@ -120,6 +127,32 @@ export function TournamentParticipants({ tournament, load, signUp }: TournamentP
     }
 
     /**
+     * Drops the Participant asked about, the reader itself or one an Organizer picked
+     */
+    async function confirmDrop() {
+        const participant = dropping;
+        if (participant === null) return;
+        const self = participant.uuid === list?.me;
+        setBusy(true);
+        try {
+            const result = self
+                ? await Api.tournaments.participants.dropOut(tournament.uuid)
+                : await Api.tournaments.participants.drop(tournament.uuid, participant.uuid);
+            if (isFormError(result)) {
+                notify.error(result.error.not_started ? t("error.drop-not-started") : t("error.tournament-over"));
+            } else {
+                notify.success(
+                    self ? t("toast.dropped-self") : t("toast.participant-dropped", { name: participant.name }),
+                );
+            }
+            setDropping(null);
+            await reload();
+        } finally {
+            setBusy(false);
+        }
+    }
+
+    /**
      * Takes a Participant out, as an Organizer
      *
      * @param participant the Participant to remove
@@ -157,9 +190,17 @@ export function TournamentParticipants({ tournament, load, signUp }: TournamentP
                         </Button>
                     ))}
                 {signUpOpen && account === null && <Text>{t("description.sign-up-needs-account")}</Text>}
+                {dropsOpen && mine !== null && mine.dropped_after_round == null && (
+                    <Button outline disabled={busy} onClick={() => setDropping(mine)}>
+                        <UserMinusIcon />
+                        {t("button.drop")}
+                    </Button>
+                )}
             </div>
 
-            {organizer && registration && <ParticipantAdder tournament={tournament} onAdded={reload} />}
+            {organizer && takesParticipants && (
+                <ParticipantAdder tournament={tournament} late={!registration} onAdded={reload} />
+            )}
 
             {list !== null && participants.length === 0 ? (
                 <Text>{t("description.no-participants")}</Text>
@@ -172,6 +213,26 @@ export function TournamentParticipants({ tournament, load, signUp }: TournamentP
                             </span>
                             {participant.uuid === list?.me && <Badge color={"lime"}>{t("label.you")}</Badge>}
                             {participant.guest && <Badge color={"zinc"}>{t("label.guest")}</Badge>}
+                            {participant.late_from_round != null && (
+                                <Badge color={"sky"}>
+                                    {t("label.late-from-round", { number: participant.late_from_round })}
+                                </Badge>
+                            )}
+                            {participant.dropped_after_round != null && (
+                                <Badge color={"amber"}>
+                                    {t("label.dropped-after-round", { number: participant.dropped_after_round })}
+                                </Badge>
+                            )}
+                            {organizer && dropsOpen && participant.dropped_after_round == null && (
+                                <Button
+                                    plain
+                                    disabled={busy}
+                                    aria-label={t("accessibility.drop-participant", { name: participant.name })}
+                                    onClick={() => setDropping(participant)}
+                                >
+                                    <UserMinusIcon />
+                                </Button>
+                            )}
                             {organizer && registration && (
                                 <Button
                                     plain
@@ -186,6 +247,23 @@ export function TournamentParticipants({ tournament, load, signUp }: TournamentP
                     ))}
                 </ul>
             )}
+
+            <ConfirmDialog
+                open={dropping !== null}
+                onClose={() => setDropping(null)}
+                onConfirm={confirmDrop}
+                title={
+                    dropping !== null && dropping.uuid === list?.me
+                        ? t("heading.drop-self")
+                        : t("heading.drop-participant", { name: dropping?.name ?? "" })
+                }
+                description={
+                    dropping !== null && dropping.uuid === list?.me
+                        ? t("description.drop-self")
+                        : t("description.drop-participant", { name: dropping?.name ?? "" })
+                }
+                confirmLabel={t("button.drop")}
+            />
         </div>
     );
 }
@@ -196,6 +274,8 @@ export function TournamentParticipants({ tournament, load, signUp }: TournamentP
 type ParticipantAdderProps = {
     /** The Tournament to add Participants to */
     tournament: TournamentResponse;
+    /** Whether a Round started, so whoever is added plays from the next one */
+    late: boolean;
     /** Called after a Participant was added */
     onAdded: () => Promise<void>;
 };
@@ -206,7 +286,7 @@ type ParticipantAdderProps = {
  *
  * @returns the two fields with their buttons
  */
-function ParticipantAdder({ tournament, onAdded }: ParticipantAdderProps) {
+function ParticipantAdder({ tournament, late, onAdded }: ParticipantAdderProps) {
     const [t] = useTranslation("tournament");
     const [username, setUsername] = useState<string | null>(null);
     const [query, setQuery] = useState("");
@@ -255,7 +335,7 @@ function ParticipantAdder({ tournament, onAdded }: ParticipantAdderProps) {
             if (isFormError(result)) {
                 if (result.error.already_participant) setAccountError(t("error.participant-already"));
                 else if (result.error.too_many_unknown_usernames) setAccountError(t("error.too-many-unknown"));
-                else if (result.error.registration_over) setAccountError(t("error.registration-over"));
+                else if (result.error.roster_closed) setAccountError(t("error.roster-closed"));
                 else setAccountError(t("error.unknown-username"));
                 return;
             }
@@ -279,9 +359,7 @@ function ParticipantAdder({ tournament, onAdded }: ParticipantAdderProps) {
         try {
             const result = await Api.tournaments.participants.addGuest(tournament.uuid, name);
             if (isFormError(result)) {
-                setGuestError(
-                    result.error.registration_over ? t("error.registration-over") : t("error.guest-name-empty"),
-                );
+                setGuestError(result.error.roster_closed ? t("error.roster-closed") : t("error.guest-name-empty"));
                 return;
             }
             setGuestError(null);
@@ -296,6 +374,7 @@ function ParticipantAdder({ tournament, onAdded }: ParticipantAdderProps) {
     return (
         <section className={"flex flex-col gap-4"}>
             <Subheading>{t("heading.add-participants")}</Subheading>
+            {late && <Text>{t("description.late-participant")}</Text>}
             <div className={"grid gap-4 sm:grid-cols-2"}>
                 <Field>
                     <Label>{t("label.add-account")}</Label>

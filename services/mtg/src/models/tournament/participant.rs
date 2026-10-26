@@ -5,6 +5,11 @@
 //! themselves where the Owner allowed it, see [`Tournament::sign_up_refusal`].
 //! An Organizer can be a Participant of its own Tournament like anybody else.
 //!
+//! Once the first Round started, sign-up is closed and nobody is removed:
+//! Organizers add late Participants until the Swiss Rounds are over, see
+//! [`Tournament::takes_participants`], and a Participant leaves by a Drop,
+//! see [`Tournament::drop_participant`].
+//!
 //! Every write to the roster first takes [`Tournament::lock_roster`], so two
 //! sign-ups racing for the last place under the limit are served one by one.
 //! Every change to the roster discards a previewed Round, which no longer fits it.
@@ -33,7 +38,9 @@ use crate::models::tournament::Tournament;
 use crate::models::tournament::TournamentState;
 use crate::models::tournament::db::TournamentParticipantInsertPatch;
 use crate::models::tournament::db::TournamentParticipantModel;
+use crate::models::tournament::db::TournamentRoundModel;
 use crate::models::tournament::db::participant_key;
+use crate::models::tournament::round::RoundState;
 use crate::models::visibility::Visibility;
 use crate::tournament::record::EntrantId;
 
@@ -44,6 +51,17 @@ pub struct Participant {
     pub uuid: ParticipantUuid,
     /// Who plays
     pub player: Player,
+    /// The first Round it plays if it came late, `None` if it was there before Round 1
+    pub late_from_round: Option<i16>,
+    /// The last Round started before it Dropped, `None` while it plays on
+    pub dropped_after_round: Option<i16>,
+}
+
+impl Participant {
+    /// Whether the next Round pairs it, as far as the roster goes
+    pub fn plays_on(&self) -> bool {
+        self.dropped_after_round.is_none()
+    }
 }
 
 /// Who a Participant is
@@ -95,12 +113,48 @@ pub enum SignUpRefusal {
     Full,
 }
 
+/// Why a Participant may not Drop
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DropRefusal {
+    /// No Round started yet: before the first Round a Participant is removed instead
+    NotStarted,
+    /// The Tournament is Finished or Cancelled
+    TournamentOver,
+}
+
+/// The first Round a Participant added after `started_rounds` Rounds started plays
+///
+/// `None` while no Round started: Round 1 pairs everybody, nobody is late.
+pub fn late_from_round(started_rounds: i16) -> Option<i16> {
+    (started_rounds > 0).then(|| started_rounds.saturating_add(1))
+}
+
 impl Tournament {
     /// Whether Organizers may still add and remove Participants
     ///
     /// Only before the first Round starts, that is in Registration.
     pub fn roster_open(&self) -> bool {
         self.state == TournamentState::Registration
+    }
+
+    /// Whether Organizers may still add Participants
+    ///
+    /// In Registration and, as late Participants, until the Swiss Rounds are over.
+    pub fn takes_participants(&self) -> bool {
+        matches!(
+            self.state,
+            TournamentState::Registration | TournamentState::Swiss
+        )
+    }
+
+    /// Why a Participant may not Drop, `None` if it may
+    ///
+    /// `started_rounds` counts the Rounds that started, see [`Self::started_rounds`].
+    pub fn drop_refusal(&self, started_rounds: i16) -> Option<DropRefusal> {
+        if self.over() {
+            return Some(DropRefusal::TournamentOver);
+        }
+        (started_rounds == 0).then_some(DropRefusal::NotStarted)
     }
 
     /// Why an Account may not sign up, `None` if it may
@@ -185,6 +239,8 @@ impl Tournament {
                 Participant {
                     uuid: ParticipantUuid(row.uuid),
                     player,
+                    late_from_round: row.late_from_round,
+                    dropped_after_round: row.dropped_after_round,
                 }
             })
             .collect())
@@ -221,7 +277,8 @@ impl Tournament {
 
     /// Make `account` a Participant, `None` if it already is one
     ///
-    /// The caller holds [`Self::lock_roster`].
+    /// After the first Round started it is a late Participant, paired from
+    /// the next Round on. The caller holds [`Self::lock_roster`].
     #[instrument(name = "Tournament::add_account", skip(tx, self), fields(tournament = ?self.uuid))]
     pub async fn add_account(
         &self,
@@ -232,6 +289,7 @@ impl Tournament {
             return Ok(None);
         }
         let uuid = participant_key(self.uuid.into_inner(), account.into_inner());
+        let late_from_round = late_from_round(self.started_rounds(tx).await?);
         rorm::insert(&mut *tx, TournamentParticipantModel)
             .return_nothing()
             .single(&TournamentParticipantInsertPatch {
@@ -239,6 +297,7 @@ impl Tournament {
                 tournament: ForeignModelByField(self.uuid.into_inner()),
                 account: Some(ForeignModelByField(account.into_inner())),
                 guest_name: None,
+                late_from_round,
             })
             .await?;
         self.discard_preview(tx).await?;
@@ -247,7 +306,8 @@ impl Tournament {
 
     /// Add a Guest by `name`
     ///
-    /// Names need not be unique: two Guests may share one.
+    /// Names need not be unique: two Guests may share one. After the first
+    /// Round started it is a late Participant, as in [`Self::add_account`].
     #[instrument(name = "Tournament::add_guest", skip(tx, self), fields(tournament = ?self.uuid))]
     pub async fn add_guest(
         &self,
@@ -255,6 +315,7 @@ impl Tournament {
         name: MaxStr<64>,
     ) -> Result<ParticipantUuid, rorm::Error> {
         let uuid = Uuid::now_v7();
+        let late_from_round = late_from_round(self.started_rounds(tx).await?);
         rorm::insert(&mut *tx, TournamentParticipantModel)
             .return_nothing()
             .single(&TournamentParticipantInsertPatch {
@@ -262,6 +323,7 @@ impl Tournament {
                 tournament: ForeignModelByField(self.uuid.into_inner()),
                 account: None,
                 guest_name: Some(name),
+                late_from_round,
             })
             .await?;
         self.discard_preview(tx).await?;
@@ -288,6 +350,63 @@ impl Tournament {
         }
         Ok(removed > 0)
     }
+
+    /// How many Rounds started, the running one included and a previewed one not
+    #[instrument(name = "Tournament::started_rounds", skip(tx, self), fields(tournament = ?self.uuid))]
+    pub async fn started_rounds(&self, tx: &mut Transaction) -> Result<i16, rorm::Error> {
+        let count = rorm::query(&mut *tx, TournamentRoundModel.uuid.count())
+            .condition(rorm::and![
+                TournamentRoundModel
+                    .tournament
+                    .equals(self.uuid.into_inner()),
+                TournamentRoundModel.state.not_equals(RoundState::Previewed),
+            ])
+            .one()
+            .await?;
+        Ok(i16::try_from(count).unwrap_or(i16::MAX))
+    }
+
+    /// Drop `participant`: no later Round pairs it, its Results so far stay
+    ///
+    /// A Match it is seated in right now stays and still needs its Result; a
+    /// previewed Round is discarded, since it seats the Participant. Dropping
+    /// a Participant that Dropped already changes nothing. Answers `false` if
+    /// it is none of this Tournament's. The caller holds [`Self::lock_roster`].
+    #[instrument(name = "Tournament::drop_participant", skip(tx, self), fields(tournament = ?self.uuid))]
+    pub async fn drop_participant(
+        &self,
+        tx: &mut Transaction,
+        participant: ParticipantUuid,
+    ) -> Result<Result<bool, DropRefusal>, rorm::Error> {
+        let started = self.started_rounds(tx).await?;
+        if let Some(refusal) = self.drop_refusal(started) {
+            return Ok(Err(refusal));
+        }
+        let known = rorm::query(&mut *tx, TournamentParticipantModel.dropped_after_round)
+            .condition(rorm::and![
+                TournamentParticipantModel.uuid.equals(participant.0),
+                TournamentParticipantModel
+                    .tournament
+                    .equals(self.uuid.into_inner()),
+            ])
+            .optional()
+            .await?;
+        match known {
+            None => Ok(Ok(false)),
+            Some(Some(_)) => Ok(Ok(true)),
+            Some(None) => {
+                rorm::update(&mut *tx, TournamentParticipantModel)
+                    .set(
+                        TournamentParticipantModel.dropped_after_round,
+                        Some(started),
+                    )
+                    .condition(TournamentParticipantModel.uuid.equals(participant.0))
+                    .await?;
+                self.discard_preview(tx).await?;
+                Ok(Ok(true))
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -296,7 +415,9 @@ mod tests {
     use galvyn::rorm::fields::types::MaxStr;
     use uuid::Uuid;
 
+    use super::DropRefusal;
     use super::SignUpRefusal;
+    use super::late_from_round;
     use crate::models::account::AccountUuid;
     use crate::models::tournament::Tournament;
     use crate::models::tournament::TournamentState;
@@ -412,5 +533,64 @@ mod tests {
             tournament.sign_up_refusal(8, true),
             Some(SignUpRefusal::AlreadyParticipant)
         );
+    }
+
+    #[test]
+    fn a_participant_drops_once_the_first_round_started() {
+        for state in [TournamentState::Swiss, TournamentState::TopCut] {
+            let tournament = Tournament {
+                state,
+                ..open_tournament()
+            };
+            assert_eq!(tournament.drop_refusal(1), None, "{state:?}");
+            assert_eq!(tournament.drop_refusal(4), None, "{state:?}");
+        }
+    }
+
+    #[test]
+    fn before_the_first_round_a_participant_withdraws_instead_of_dropping() {
+        assert_eq!(
+            open_tournament().drop_refusal(0),
+            Some(DropRefusal::NotStarted)
+        );
+    }
+
+    #[test]
+    fn nobody_drops_from_a_tournament_that_is_over() {
+        for state in [TournamentState::Finished, TournamentState::Cancelled] {
+            let tournament = Tournament {
+                state,
+                ..open_tournament()
+            };
+            assert_eq!(
+                tournament.drop_refusal(3),
+                Some(DropRefusal::TournamentOver),
+                "{state:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn organizers_add_participants_until_the_swiss_rounds_are_over() {
+        for (state, takes) in [
+            (TournamentState::Registration, true),
+            (TournamentState::Swiss, true),
+            (TournamentState::TopCut, false),
+            (TournamentState::Finished, false),
+            (TournamentState::Cancelled, false),
+        ] {
+            let tournament = Tournament {
+                state,
+                ..open_tournament()
+            };
+            assert_eq!(tournament.takes_participants(), takes, "{state:?}");
+        }
+    }
+
+    #[test]
+    fn a_participant_added_after_round_n_started_plays_from_round_n_plus_one() {
+        assert_eq!(late_from_round(0), None, "Round 1 pairs everybody");
+        assert_eq!(late_from_round(1), Some(2));
+        assert_eq!(late_from_round(5), Some(6));
     }
 }

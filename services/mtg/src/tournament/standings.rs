@@ -725,6 +725,53 @@ mod tests {
     }
 
     #[test]
+    fn a_dropped_participant_keeps_its_line_and_its_match_points() {
+        let mut record = mtr(
+            4,
+            vec![
+                RoundRecord {
+                    matches: vec![duel(1, 2, 2, 0, 0), duel(3, 4, 2, 1, 0)],
+                    byes: vec![],
+                },
+                RoundRecord {
+                    matches: vec![duel(3, 2, 2, 0, 0)],
+                    byes: vec![p(4)],
+                },
+            ],
+        );
+        record.entrants[0].pairable = false;
+        let table = standings(&record);
+
+        assert_eq!(table.len(), 4);
+        let dropped = line(&table, 1);
+        assert_eq!((dropped.match_points, dropped.wins), (3, 1));
+        assert_eq!(line(&table, 2).losses, 2);
+    }
+
+    #[test]
+    fn a_late_participant_has_no_losses_for_the_rounds_it_missed() {
+        let table = standings(&mtr(
+            5,
+            vec![
+                RoundRecord {
+                    matches: vec![duel(1, 2, 2, 0, 0), duel(3, 4, 2, 0, 0)],
+                    byes: vec![],
+                },
+                RoundRecord {
+                    matches: vec![duel(5, 1, 2, 1, 0), duel(2, 3, 2, 0, 0)],
+                    byes: vec![p(4)],
+                },
+            ],
+        ));
+
+        let late = line(&table, 5);
+        assert_eq!(
+            (late.match_points, late.wins, late.losses, late.draws),
+            (3, 1, 0, 0)
+        );
+    }
+
+    #[test]
     fn the_most_match_points_lead_and_equals_share_a_place() {
         let table = standings(&mtr(
             4,

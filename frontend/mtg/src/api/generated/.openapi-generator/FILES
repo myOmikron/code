@@ -117,6 +117,7 @@ docs/DeleteAccountErrors.md
 docs/DeleteAccountRequest.md
 docs/DeletePasskeyErrors.md
 docs/DeletionMode.md
+docs/DropErrors.md
 docs/EndTournamentRound200Response.md
 docs/EntrySort.md
 docs/ErrorConstant.md
@@ -151,6 +152,7 @@ docs/FormErrorResponseForAdminUnlockAccountErrors.md
 docs/FormErrorResponseForChooseUsernameErrors.md
 docs/FormErrorResponseForDeleteAccountErrors.md
 docs/FormErrorResponseForDeletePasskeyErrors.md
+docs/FormErrorResponseForDropErrors.md
 docs/FormErrorResponseForFinishLoginErrors.md
 docs/FormErrorResponseForMeErrors.md
 docs/FormErrorResponseForOfferHandoverErrors.md

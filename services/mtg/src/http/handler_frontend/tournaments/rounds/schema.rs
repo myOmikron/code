@@ -184,4 +184,6 @@ pub struct StandingResponse {
     pub byes: u32,
     /// Its Tiebreakers between 0 and 1, in the order of [`StandingsResponse::tiebreakers`]
     pub tiebreakers: Vec<f64>,
+    /// The last Round started before it Dropped, `null` while it plays on
+    pub dropped_after_round: Option<i16>,
 }
