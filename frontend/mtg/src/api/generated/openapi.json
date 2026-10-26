@@ -961,7 +961,7 @@
             },
             "delete": {
                 "summary": "Delete an Account",
-                "description": "Delete an Account\n\nBy default its public decks go to the Tombstone, as on a self-deletion; a\nfull Deletion takes them too. The Admin types the Account's username to\nconfirm, and cannot delete itself. The Admin log entry is written first, so\nit keeps the username once the Account is gone.",
+                "description": "Delete an Account\n\nBy default its public decks go to the Tombstone, as on a self-deletion; a\nfull Deletion takes them too. The Admin types the Account's username to\nconfirm, and cannot delete itself. The Admin log entry is written first, so\nit keeps the username once the Account is gone. Its Participants in other\npeople's Tournaments always appear anonymously.",
                 "operationId": "admin_delete_account",
                 "parameters": [
                     {

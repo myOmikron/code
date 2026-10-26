@@ -2630,7 +2630,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Delete an Account  By default its public decks go to the Tombstone, as on a self-deletion; a full Deletion takes them too. The Admin types the Account\'s username to confirm, and cannot delete itself. The Admin log entry is written first, so it keeps the username once the Account is gone.
+     * Delete an Account  By default its public decks go to the Tombstone, as on a self-deletion; a full Deletion takes them too. The Admin types the Account\'s username to confirm, and cannot delete itself. The Admin log entry is written first, so it keeps the username once the Account is gone. Its Participants in other people\'s Tournaments always appear anonymously.
      * Delete an Account
      */
     async adminDeleteAccountRaw(requestParameters: AdminDeleteAccountOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FormErrorResponseForAdminDeleteAccountErrors>> {
@@ -2641,7 +2641,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Delete an Account  By default its public decks go to the Tombstone, as on a self-deletion; a full Deletion takes them too. The Admin types the Account\'s username to confirm, and cannot delete itself. The Admin log entry is written first, so it keeps the username once the Account is gone.
+     * Delete an Account  By default its public decks go to the Tombstone, as on a self-deletion; a full Deletion takes them too. The Admin types the Account\'s username to confirm, and cannot delete itself. The Admin log entry is written first, so it keeps the username once the Account is gone. Its Participants in other people\'s Tournaments always appear anonymously.
      * Delete an Account
      */
     async adminDeleteAccount(requestParameters: AdminDeleteAccountOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FormErrorResponseForAdminDeleteAccountErrors> {
