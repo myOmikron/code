@@ -13911,7 +13911,7 @@ No authorization required
 
 Replace a Tournament\&#39;s settings, as one of its Organizers
 
-Replace a Tournament\&#39;s settings, as one of its Organizers  Table size, Ruleset and best-of stay as they are once the first Round started.
+Replace a Tournament\&#39;s settings, as one of its Organizers  Table size, Ruleset and best-of stay as they are once the first Round started, the Top cut and its best-of once the Swiss Rounds are over.
 
 ### Example
 

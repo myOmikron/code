@@ -278,6 +278,7 @@ docs/RotateDeckShareTokenResponse.md
 docs/RotateShareTokenResponse.md
 docs/RoundErrors.md
 docs/RoundResponse.md
+docs/RoundStage.md
 docs/RoundState.md
 docs/RoundsResponse.md
 docs/Ruleset.md
@@ -344,6 +345,7 @@ docs/Tiebreaker.md
 docs/Timeframe.md
 docs/TimelinePointResponse.md
 docs/TopCardResponse.md
+docs/TopCut.md
 docs/TournamentResponse.md
 docs/TournamentSettingsErrors.md
 docs/TournamentSettingsRequest.md

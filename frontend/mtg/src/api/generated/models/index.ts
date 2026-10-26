@@ -1395,6 +1395,12 @@ export interface ArrangeRoundErrors {
      */
     seated_twice: boolean;
     /**
+     * The Round is one of the Top cut, which the standings seed
+     * @type {boolean}
+     * @memberof ArrangeRoundErrors
+     */
+    top_cut: boolean;
+    /**
      * The Tournament is Finished or Cancelled
      * @type {boolean}
      * @memberof ArrangeRoundErrors
@@ -7570,11 +7576,17 @@ export interface RoundResponse {
      */
     matches: Array<MatchResponse>;
     /**
-     * Its number, 1 for the first Round
+     * Its number, 1 for the first Round; the Top cut goes on counting after the Swiss Rounds
      * @type {number}
      * @memberof RoundResponse
      */
     number: number;
+    /**
+     * Whether it is a Swiss Round or one of the Top cut
+     * @type {RoundStage}
+     * @memberof RoundResponse
+     */
+    stage: RoundStage;
     /**
      * How far it got
      * @type {RoundState}
@@ -7583,6 +7595,23 @@ export interface RoundResponse {
     state: RoundState;
 }
 
+
+
+/**
+ * Which part of a Tournament a Round belongs to
+ * @export
+ */
+export const RoundStage = {
+    /**
+    * A Swiss Round: it counts for the standings
+    */
+    Swiss: 'Swiss',
+    /**
+    * A Round of the Top cut: single elimination, no standings
+    */
+    TopCut: 'TopCut'
+} as const;
+export type RoundStage = typeof RoundStage[keyof typeof RoundStage];
 
 
 /**
@@ -7629,6 +7658,14 @@ export interface RoundsResponse {
      * @memberof RoundsResponse
      */
     swiss_rounds?: number | null;
+    /**
+     * How many Participants the Top cut takes, `null` without one
+     * 
+     * Once it started the size it started with; before, the size the Participants who play on fill, so a Top 8 of seven reads 4.
+     * @type {number}
+     * @memberof RoundsResponse
+     */
+    top_cut_size?: number | null;
 }
 
 /**
@@ -9287,6 +9324,23 @@ export interface TopCardResponse {
      */
     value_cents: number;
 }
+
+/**
+ * How many Participants a one-on-one Top cut takes
+ * @export
+ */
+export const TopCut = {
+    /**
+    * The best four: two semifinals and a final
+    */
+    Top4: 'Top4',
+    /**
+    * The best eight: quarterfinals, semifinals and a final
+    */
+    Top8: 'Top8'
+} as const;
+export type TopCut = typeof TopCut[keyof typeof TopCut];
+
 /**
  * A Tournament as one reader sees it
  * @export
@@ -9378,6 +9432,18 @@ export interface TournamentResponse {
      */
     table_size: number;
     /**
+     * The Top cut after the Swiss Rounds, `null` for none
+     * @type {TopCut}
+     * @memberof TournamentResponse
+     */
+    top_cut?: TopCut | null;
+    /**
+     * How many Games a Top cut Match is played to, `null` without a Top cut
+     * @type {BestOf}
+     * @memberof TournamentResponse
+     */
+    top_cut_best_of?: BestOf | null;
+    /**
      * Primary key
      * @type {string}
      * @memberof TournamentResponse
@@ -9434,6 +9500,24 @@ export interface TournamentSettingsErrors {
      * @memberof TournamentSettingsErrors
      */
     table_size_out_of_range: boolean;
+    /**
+     * The Top cut's best-of is missing with a Top cut or given without one
+     * @type {boolean}
+     * @memberof TournamentSettingsErrors
+     */
+    top_cut_best_of_mismatch: boolean;
+    /**
+     * The Top cut or its best-of changed after the Swiss Rounds were over
+     * @type {boolean}
+     * @memberof TournamentSettingsErrors
+     */
+    top_cut_locked: boolean;
+    /**
+     * The Top cut is not played at the Table size
+     * @type {boolean}
+     * @memberof TournamentSettingsErrors
+     */
+    top_cut_mismatch: boolean;
     /**
      * The format is not one a deck can be built for
      * @type {boolean}
@@ -9507,6 +9591,18 @@ export interface TournamentSettingsRequest {
      * @memberof TournamentSettingsRequest
      */
     table_size: number;
+    /**
+     * The Top cut after the Swiss Rounds, at Table size 2 only; `null` for none
+     * @type {TopCut}
+     * @memberof TournamentSettingsRequest
+     */
+    top_cut?: TopCut | null;
+    /**
+     * How many Games a Top cut Match is played to: required with a Top cut, `null` without
+     * @type {BestOf}
+     * @memberof TournamentSettingsRequest
+     */
+    top_cut_best_of?: BestOf | null;
     /**
      * Who may see the Tournament
      * @type {Visibility}

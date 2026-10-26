@@ -20,6 +20,8 @@ Name | Type
 `starts_at` | string
 `state` | [TournamentState](TournamentState.md)
 `table_size` | number
+`top_cut` | [TopCut](TopCut.md)
+`top_cut_best_of` | [BestOf](BestOf.md)
 `uuid` | string
 `visibility` | [Visibility](Visibility.md)
 `error` | [TournamentSettingsErrors](TournamentSettingsErrors.md)

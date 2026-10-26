@@ -127,7 +127,8 @@ pub async fn create_tournament(
 
 /// Replace a Tournament's settings, as one of its Organizers
 ///
-/// Table size, Ruleset and best-of stay as they are once the first Round started.
+/// Table size, Ruleset and best-of stay as they are once the first Round started,
+/// the Top cut and its best-of once the Swiss Rounds are over.
 #[put("/{tournament}")]
 pub async fn update_tournament(
     account: Account,
@@ -149,6 +150,12 @@ pub async fn update_tournament(
         tx.rollback().await?;
         let mut errors = FormErrors::<TournamentSettingsErrors>::new();
         errors.rules_locked = true;
+        return errors.fail();
+    }
+    if !tournament.top_cut_open() && settings.changes_top_cut_of(&tournament) {
+        tx.rollback().await?;
+        let mut errors = FormErrors::<TournamentSettingsErrors>::new();
+        errors.top_cut_locked = true;
         return errors.fail();
     }
     let tournament = tournament.update_settings(&mut tx, settings).await?;

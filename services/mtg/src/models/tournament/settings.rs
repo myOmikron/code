@@ -9,6 +9,7 @@ use crate::models::visibility::Visibility;
 use crate::tournament::ruleset::BestOf;
 use crate::tournament::ruleset::Ruleset;
 use crate::tournament::ruleset::TableSize;
+use crate::tournament::top_cut::TopCut;
 
 /// A Tournament's settings as they arrive, not yet checked
 #[derive(Debug, Clone)]
@@ -35,6 +36,10 @@ pub struct RawTournamentSettings {
     pub self_sign_up: bool,
     /// How many Games a one-on-one Match is played to
     pub best_of: Option<BestOf>,
+    /// The Top cut after the Swiss Rounds, `None` for none
+    pub top_cut: Option<TopCut>,
+    /// How many Games a Top cut Match is played to
+    pub top_cut_best_of: Option<BestOf>,
 }
 
 /// A Tournament's settings that passed [`TournamentSettings::check`]
@@ -64,9 +69,20 @@ pub struct TournamentSettings {
     pub self_sign_up: bool,
     /// How many Games a one-on-one Match is played to; set exactly at Table size 2
     pub best_of: Option<BestOf>,
+    /// The Top cut after the Swiss Rounds, one fitting [`Self::table_size`]; `None` for none
+    pub top_cut: Option<TopCut>,
+    /// How many Games a Top cut Match is played to; set exactly with [`Self::top_cut`]
+    pub top_cut_best_of: Option<BestOf>,
 }
 
 impl TournamentSettings {
+    /// Whether these settings change the Top cut of `tournament`
+    ///
+    /// Its size and Match length stay open until the Swiss Rounds are over.
+    pub fn changes_top_cut_of(&self, tournament: &Tournament) -> bool {
+        self.top_cut != tournament.top_cut || self.top_cut_best_of != tournament.top_cut_best_of
+    }
+
     /// Whether these settings change how `tournament` is played
     ///
     /// Table size, Ruleset and best-of are fixed once the first Round started.
@@ -95,6 +111,10 @@ pub struct SettingsRefusal {
     pub self_sign_up_needs_visibility: bool,
     /// Best-of is missing one-on-one or given for a multiplayer Tournament
     pub best_of_mismatch: bool,
+    /// The Top cut is not played at the Table size
+    pub top_cut_mismatch: bool,
+    /// The Top cut's best-of is missing with a Top cut or given without one
+    pub top_cut_best_of_mismatch: bool,
 }
 
 impl TournamentSettings {
@@ -117,7 +137,9 @@ impl TournamentSettings {
             raw.self_sign_up && raw.visibility == Visibility::Private;
         if let Some(table_size) = table_size {
             refusal.best_of_mismatch = (table_size.get() == 2) != raw.best_of.is_some();
+            refusal.top_cut_mismatch = raw.top_cut.is_some_and(|top_cut| !top_cut.fits(table_size));
         }
+        refusal.top_cut_best_of_mismatch = raw.top_cut.is_some() != raw.top_cut_best_of.is_some();
 
         match table_size {
             Some(table_size) if refusal == SettingsRefusal::default() => Ok(Self {
@@ -132,6 +154,8 @@ impl TournamentSettings {
                 participant_limit: raw.participant_limit,
                 self_sign_up: raw.self_sign_up,
                 best_of: raw.best_of,
+                top_cut: raw.top_cut,
+                top_cut_best_of: raw.top_cut_best_of,
             }),
             _ => Err(refusal),
         }
@@ -148,6 +172,7 @@ mod tests {
     use crate::models::visibility::Visibility;
     use crate::tournament::ruleset::BestOf;
     use crate::tournament::ruleset::Ruleset;
+    use crate::tournament::top_cut::TopCut;
 
     fn raw(visibility: Visibility) -> RawTournamentSettings {
         RawTournamentSettings {
@@ -162,6 +187,8 @@ mod tests {
             participant_limit: None,
             self_sign_up: false,
             best_of: None,
+            top_cut: None,
+            top_cut_best_of: None,
         }
     }
 
@@ -234,6 +261,54 @@ mod tests {
                 Err(refusal) => {
                     assert!(!valid, "{visibility:?}");
                     assert!(refusal.self_sign_up_needs_visibility, "{visibility:?}");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn a_top_cut_is_played_one_on_one_with_its_own_best_of() {
+        for (table_size, ruleset, top_cut, top_cut_best_of, valid) in [
+            (2, Ruleset::Mtr, None, None, true),
+            (
+                2,
+                Ruleset::Mtr,
+                Some(TopCut::Top8),
+                Some(BestOf::Three),
+                true,
+            ),
+            (2, Ruleset::Mtr, Some(TopCut::Top4), Some(BestOf::One), true),
+            (2, Ruleset::Mtr, Some(TopCut::Top8), None, false),
+            (2, Ruleset::Mtr, None, Some(BestOf::Three), false),
+            (
+                4,
+                Ruleset::TopDeck,
+                Some(TopCut::Top4),
+                Some(BestOf::One),
+                false,
+            ),
+        ] {
+            let best_of = (table_size == 2).then_some(BestOf::One);
+            let settings = RawTournamentSettings {
+                table_size,
+                ruleset,
+                best_of,
+                top_cut,
+                top_cut_best_of,
+                ..raw(Visibility::Public)
+            };
+            match TournamentSettings::check(settings) {
+                Ok(settings) => {
+                    assert!(valid, "{table_size} {top_cut:?} {top_cut_best_of:?}");
+                    assert_eq!(settings.top_cut, top_cut);
+                    assert_eq!(settings.top_cut_best_of, top_cut_best_of);
+                }
+                Err(refusal) => {
+                    assert!(!valid, "{table_size} {top_cut:?} {top_cut_best_of:?}");
+                    assert!(
+                        refusal.top_cut_mismatch || refusal.top_cut_best_of_mismatch,
+                        "{table_size} {top_cut:?} {top_cut_best_of:?}"
+                    );
                 }
             }
         }

@@ -10714,7 +10714,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Replace a Tournament\'s settings, as one of its Organizers  Table size, Ruleset and best-of stay as they are once the first Round started.
+     * Replace a Tournament\'s settings, as one of its Organizers  Table size, Ruleset and best-of stay as they are once the first Round started, the Top cut and its best-of once the Swiss Rounds are over.
      * Replace a Tournament\'s settings, as one of its Organizers
      */
     async updateTournamentRaw(requestParameters: UpdateTournamentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CreateTournament200Response>> {
@@ -10725,7 +10725,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Replace a Tournament\'s settings, as one of its Organizers  Table size, Ruleset and best-of stay as they are once the first Round started.
+     * Replace a Tournament\'s settings, as one of its Organizers  Table size, Ruleset and best-of stay as they are once the first Round started, the Top cut and its best-of once the Swiss Rounds are over.
      * Replace a Tournament\'s settings, as one of its Organizers
      */
     async updateTournament(requestParameters: UpdateTournamentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CreateTournament200Response> {

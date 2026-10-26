@@ -7,7 +7,7 @@
  */
 
 import { useTranslation } from "react-i18next";
-import { BestOf, RoundState, Ruleset, Tiebreaker, TournamentState, Visibility } from "src/api/generated";
+import { BestOf, RoundState, Ruleset, Tiebreaker, TopCut, TournamentState, Visibility } from "src/api/generated";
 
 /**
  * The labels the tournament pages need
@@ -90,6 +90,37 @@ export function useTournamentLabels() {
                 case BestOf.Three:
                     return t("label.best-of-three");
             }
+        },
+
+        /**
+         * What a Top cut is called
+         *
+         * @param topCut the Top cut, `null` for none
+         *
+         * @returns its name
+         */
+        topCut: (topCut: TopCut | null): string => {
+            switch (topCut) {
+                case null:
+                    return t("label.top-cut-none");
+                case TopCut.Top4:
+                    return t("label.top-cut-top-4");
+                case TopCut.Top8:
+                    return t("label.top-cut-top-8");
+            }
+        },
+
+        /**
+         * What a Round of the Top cut is called, by how many it starts with
+         *
+         * @param size 8, 4 or 2 Participants
+         *
+         * @returns e.g. "Semifinal"
+         */
+        cutRound: (size: number): string => {
+            if (size >= 8) return t("label.cut-round-quarterfinal");
+            if (size >= 4) return t("label.cut-round-semifinal");
+            return t("label.cut-round-final");
         },
 
         /**

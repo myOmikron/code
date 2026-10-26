@@ -13,6 +13,7 @@ Name | Type
 `not_previewed` | boolean
 `not_seated` | boolean
 `seated_twice` | boolean
+`top_cut` | boolean
 `tournament_over` | boolean
 
 

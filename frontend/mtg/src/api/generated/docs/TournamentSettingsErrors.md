@@ -13,6 +13,9 @@ Name | Type
 `ruleset_mismatch` | boolean
 `self_sign_up_needs_visibility` | boolean
 `table_size_out_of_range` | boolean
+`top_cut_best_of_mismatch` | boolean
+`top_cut_locked` | boolean
+`top_cut_mismatch` | boolean
 `unknown_format` | boolean
 
 

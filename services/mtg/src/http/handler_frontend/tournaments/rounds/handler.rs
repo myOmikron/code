@@ -242,6 +242,7 @@ pub async fn arrange_tournament_round(
         match refusal {
             ArrangeRefusal::TournamentOver => errors.tournament_over = true,
             ArrangeRefusal::NotPreviewed => errors.not_previewed = true,
+            ArrangeRefusal::TopCut => errors.top_cut = true,
             ArrangeRefusal::Invalid(mistakes) => {
                 for mistake in mistakes {
                     match mistake {
@@ -403,11 +404,13 @@ pub async fn rounds_view(
     let names = names(tx, tournament).await?;
     let rounds = tournament.rounds(tx, organizer).await?;
     let suggested_swiss_rounds = tournament.suggested_swiss_rounds(tx).await?;
+    let top_cut_size = tournament.top_cut_size(tx).await?;
     Ok(RoundsResponse {
         rounds: rounds
             .into_iter()
             .map(|round| RoundResponse {
                 number: round.number,
+                stage: round.stage,
                 state: round.state,
                 matches: round
                     .matches
@@ -452,6 +455,7 @@ pub async fn rounds_view(
             .collect(),
         swiss_rounds: tournament.swiss_rounds,
         suggested_swiss_rounds,
+        top_cut_size,
     })
 }
 

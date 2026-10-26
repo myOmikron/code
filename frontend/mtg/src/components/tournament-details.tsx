@@ -59,6 +59,16 @@ export function TournamentDetails({ tournament }: TournamentDetailsProps) {
                     </>
                 )}
 
+                {tournament.table_size === 2 && (
+                    <>
+                        <DescriptionTerm>{t("label.top-cut")}</DescriptionTerm>
+                        <DescriptionDetails>
+                            {labels.topCut(tournament.top_cut ?? null)}
+                            {tournament.top_cut_best_of != null && ` · ${labels.bestOf(tournament.top_cut_best_of)}`}
+                        </DescriptionDetails>
+                    </>
+                )}
+
                 <DescriptionTerm>{t("label.format")}</DescriptionTerm>
                 <DescriptionDetails>
                     {tournament.format == null ? t("label.format-any") : deckLabels.format(tournament.format)}

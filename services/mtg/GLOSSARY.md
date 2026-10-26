@@ -201,7 +201,7 @@ A number the Ruleset defines to order Participants with equal Match points, such
 _Avoid_: secondary score, resistance
 
 **Top cut**:
-The playoff after the Swiss Rounds among the best Participants of the standings, seeded by them: Top 4 or Top 8 single elimination one-on-one, one final Match multiplayer.
+The playoff after the Swiss Rounds among the best Participants of the standings, seeded by them: Top 4 or Top 8 single elimination one-on-one, one final Match multiplayer. Its Rounds go on counting after the Swiss Rounds and do not count for the standings; with fewer Participants left than its size it shrinks to the next size that fits.
 _Avoid_: playoff, finals, bracket (that is how it is shown)
 
 **Registered deck**:

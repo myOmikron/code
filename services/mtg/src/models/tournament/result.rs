@@ -18,6 +18,7 @@ use crate::models::tournament::db::TournamentMatchModel;
 use crate::models::tournament::db::TournamentSeatModel;
 use crate::models::tournament::participant::ParticipantUuid;
 use crate::models::tournament::round::MatchUuid;
+use crate::models::tournament::round::RoundStage;
 use crate::models::tournament::round::RoundState;
 use crate::tournament::reporting::Dispute;
 use crate::tournament::reporting::DisputeRefusal;
@@ -82,6 +83,8 @@ pub enum DisputeResultRefusal {
 struct ReportedMatch {
     /// The number of its Round
     round: i16,
+    /// Whether its Round is a Swiss or a Top cut one
+    stage: RoundStage,
     /// Where its Round is
     round_state: RoundState,
     /// The Result it has, if any
@@ -123,7 +126,7 @@ impl Tournament {
         if self.over() || reported.round_state != RoundState::Running {
             return Ok(Err(ReportResultRefusal::NotRunning));
         }
-        if !self.admits(games_won, games_drawn) {
+        if !self.admits(reported.stage, games_won, games_drawn) {
             return Ok(Err(ReportResultRefusal::InvalidScore));
         }
         let same_score = reported.games_drawn == Some(games_drawn)
@@ -211,11 +214,12 @@ impl Tournament {
         tx: &mut Transaction,
         played: MatchUuid,
     ) -> Result<Option<ReportedMatch>, rorm::Error> {
-        let Some((round, round_state, table_number, games_drawn, result_state, reported_by)) =
+        let Some((round, stage, round_state, table_number, games_drawn, result_state, reported_by)) =
             rorm::query(
                 &mut *tx,
                 (
                     TournamentMatchModel.round.number,
+                    TournamentMatchModel.round.stage,
                     TournamentMatchModel.round.state,
                     TournamentMatchModel.table_number,
                     TournamentMatchModel.games_drawn,
@@ -255,6 +259,7 @@ impl Tournament {
         .await?;
         Ok(Some(ReportedMatch {
             round,
+            stage,
             round_state,
             stored: result_state.map(|state| StoredResult {
                 state,

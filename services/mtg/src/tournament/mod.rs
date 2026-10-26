@@ -27,3 +27,4 @@ pub mod rng;
 pub mod rounds;
 pub mod ruleset;
 pub mod standings;
+pub mod top_cut;

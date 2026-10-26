@@ -17,6 +17,8 @@ Name | Type
 `self_sign_up` | boolean
 `starts_at` | string
 `table_size` | number
+`top_cut` | [TopCut](TopCut.md)
+`top_cut_best_of` | [BestOf](BestOf.md)
 `visibility` | [Visibility](Visibility.md)
 
 
