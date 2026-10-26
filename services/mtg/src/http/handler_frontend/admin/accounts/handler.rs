@@ -242,7 +242,8 @@ pub async fn admin_rename_account(
 /// By default its public decks go to the Tombstone, as on a self-deletion; a
 /// full Deletion takes them too. The Admin types the Account's username to
 /// confirm, and cannot delete itself. The Admin log entry is written first, so
-/// it keeps the username once the Account is gone.
+/// it keeps the username once the Account is gone. Its Participants in other
+/// people's Tournaments always appear anonymously.
 #[delete("/{uuid}")]
 pub async fn admin_delete_account(
     admin: Account,
@@ -277,7 +278,7 @@ pub async fn admin_delete_account(
         },
     )
     .await?;
-    Account::delete(&mut tx, uuid, request.mode, GuestNaming::LastUsername).await?;
+    Account::delete(&mut tx, uuid, request.mode, GuestNaming::Anonymous).await?;
     tx.commit().await?;
 
     Ok(ApiJson(()))

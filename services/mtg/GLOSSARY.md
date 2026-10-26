@@ -37,7 +37,7 @@ The one Account nobody can name, log into or sign up as, that holds the public d
 _Avoid_: ghost account, deleted user
 
 **Deletion**:
-Removing an Account with everything it owns. By default its public decks go to the Tombstone; a **full Deletion** takes them too. An Account deletes itself, or an Admin deletes it after typing its username. An Account deleting itself **appears anonymously** in other people's Tournaments unless it unticks that: its Guests there are named "Gelöschter Spieler N", N counting up per Tournament from 1, a stored name in German like any Guest name, never translated. Otherwise, in its own Tournaments and after an Admin's Deletion, they keep its last username.
+Removing an Account with everything it owns. By default its public decks go to the Tombstone; a **full Deletion** takes them too. An Account deletes itself, or an Admin deletes it after typing its username. A deleted Account **appears anonymously** in other people's Tournaments: its Guests there are named "Gelöschter Spieler N", N counting up per Tournament from 1, a stored name in German like any Guest name, never translated. An Account deleting itself may untick that and keep its last username; an Admin's Deletion always appears anonymously. In its own Tournaments its Guests keep its last username.
 _Avoid_: removal, purge
 
 **Rename**:
