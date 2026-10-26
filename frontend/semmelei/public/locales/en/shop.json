@@ -41,6 +41,7 @@
     },
     "button": {
         "staff-login": "Staff login",
+        "roster-login": "Roster login",
         "add-to-cart": "Add to cart",
         "checkout": "Check out",
         "continue-shopping": "Continue shopping",

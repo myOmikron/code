@@ -41,6 +41,7 @@
     },
     "button": {
         "staff-login": "Mitarbeiter-Login",
+        "roster-login": "Dienstplan-Login",
         "add-to-cart": "In den Warenkorb",
         "checkout": "Zur Bestellung",
         "continue-shopping": "Weiter einkaufen",

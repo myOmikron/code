@@ -1,4 +1,10 @@
-import { ArrowRightEndOnRectangleIcon, MegaphoneIcon, MoonIcon, SunIcon } from "@heroicons/react/24/outline";
+import {
+    ArrowRightEndOnRectangleIcon,
+    CalendarDaysIcon,
+    MegaphoneIcon,
+    MoonIcon,
+    SunIcon,
+} from "@heroicons/react/24/outline";
 import { Outlet, createFileRoute } from "@tanstack/react-router";
 import React from "react";
 import { useTranslation } from "react-i18next";
@@ -17,7 +23,7 @@ const LANGUAGES: Array<{ code: string; label: string }> = [
 ];
 
 /**
- * Public shop layout: header with logo + cart, footer with staff login
+ * Public shop layout: header with logo + cart, footer with staff and roster login
  *
  * @returns the layout
  */
@@ -115,6 +121,15 @@ function ShopLayout() {
                             <ArrowRightEndOnRectangleIcon className={"size-5"} />
                             {t("button.staff-login")}
                         </Link>
+                        <a
+                            href={"https://dienstplan.semmelei.de"}
+                            className={
+                                "inline-flex items-center gap-2 text-sm font-medium text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white"
+                            }
+                        >
+                            <CalendarDaysIcon className={"size-5"} />
+                            {t("button.roster-login")}
+                        </a>
                     </div>
                     <div className={"flex items-center gap-2"}>
                         <div
