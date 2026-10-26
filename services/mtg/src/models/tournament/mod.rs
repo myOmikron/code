@@ -22,6 +22,7 @@ use crate::models::tournament::db::TournamentInsertPatch;
 use crate::models::tournament::db::TournamentModel;
 use crate::models::tournament::settings::TournamentSettings;
 use crate::models::visibility::Visibility;
+use crate::tournament::reporting::ResultState;
 use crate::tournament::ruleset::BestOf;
 use crate::tournament::ruleset::Ruleset;
 use crate::tournament::ruleset::TableSize;
@@ -33,6 +34,7 @@ pub mod handover;
 pub mod listing;
 pub mod organizer;
 pub mod participant;
+pub mod result;
 pub mod round;
 pub mod settings;
 
@@ -46,6 +48,12 @@ custom_db_enum! {
     enum: BestOf,
     variants: [One, Three],
     decoder: BestOfDecoder,
+}
+
+custom_db_enum! {
+    enum: ResultState,
+    variants: [Reported, Disputed, Confirmed],
+    decoder: ResultStateDecoder,
 }
 
 /// Where a Tournament stands

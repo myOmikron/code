@@ -32,6 +32,7 @@ import {
     MeResponse,
     NewCollectionEntry,
     PrintingLookupRequest,
+    ReportResultRequest,
     RequiredError,
     ResponseError,
     Role,
@@ -602,6 +603,15 @@ export const Api = {
                         SetSwissRoundsRequest: { swiss_rounds: swissRounds },
                     }),
                 ),
+        },
+        // A Participant reports its own Match's Result, which counts at once,
+        // or disputes one reported by another Participant of the Match while
+        // the Round runs. Organizers settle through `rounds.setResult`.
+        results: {
+            report: async (tournament: UUID, match: UUID, req: ReportResultRequest) =>
+                handleError(defaultApi.reportTournamentMatchResult({ tournament, match, ReportResultRequest: req })),
+            dispute: async (tournament: UUID, match: UUID) =>
+                handleError(defaultApi.disputeTournamentMatchResult({ tournament, match })),
         },
         // Keeps the Rounds played so far; only a previewed one goes.
         cancel: async (tournament: UUID) => handleError(defaultApi.cancelTournament({ tournament })),

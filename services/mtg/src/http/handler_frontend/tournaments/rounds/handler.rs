@@ -15,6 +15,7 @@ use galvyn::rorm::db::transaction::Transaction;
 
 use crate::http::handler_frontend::tournaments::handler::denied;
 use crate::http::handler_frontend::tournaments::participants::schema::ParticipantResponse;
+use crate::http::handler_frontend::tournaments::results::handler::announce;
 use crate::http::handler_frontend::tournaments::rounds::schema::MatchResponse;
 use crate::http::handler_frontend::tournaments::rounds::schema::PairedRoundResponse;
 use crate::http::handler_frontend::tournaments::rounds::schema::ResultResponse;
@@ -207,7 +208,8 @@ pub async fn end_tournament_round(
 /// Set or correct the Result of a Match, as an Organizer
 ///
 /// Any time once its Round started, also after the Tournament is over; the
-/// standings follow, the pairings stay as they are.
+/// standings follow, the pairings stay as they are. This is how an Organizer
+/// settles a disputed Result and reports for Guests and locked Accounts.
 #[put("/{tournament}/matches/{match}/result")]
 pub async fn set_tournament_match_result(
     account: Account,
@@ -225,19 +227,23 @@ pub async fn set_tournament_match_result(
     let outcome = tournament
         .set_result(&mut tx, played, &request.games_won, request.games_drawn)
         .await?;
-    if let Err(refusal) = outcome {
-        tx.rollback().await?;
-        let mut errors = FormErrors::<SetResultErrors>::new();
-        match refusal {
-            ResultRefusal::NoSuchMatch => return Err(ApiError::bad_request("No such match")),
-            ResultRefusal::NotStarted => errors.not_started = true,
-            ResultRefusal::InvalidScore => errors.invalid_score = true,
+    let change = match outcome {
+        Ok(change) => change,
+        Err(refusal) => {
+            tx.rollback().await?;
+            let mut errors = FormErrors::<SetResultErrors>::new();
+            match refusal {
+                ResultRefusal::NoSuchMatch => return Err(ApiError::bad_request("No such match")),
+                ResultRefusal::NotStarted => errors.not_started = true,
+                ResultRefusal::InvalidScore => errors.invalid_score = true,
+            }
+            return errors.fail();
         }
-        return errors.fail();
-    }
+    };
 
     tx.commit().await?;
 
+    announce(&tournament, &change);
     Ok(ApiJson(()))
 }
 
@@ -329,6 +335,9 @@ pub async fn rounds_view(
                             Some(ResultResponse {
                                 games_won,
                                 games_drawn,
+                                state: played.result_state?,
+                                reported_by: played.reported_by,
+                                disputed_by: played.disputed_by,
                             })
                         });
                         MatchResponse {

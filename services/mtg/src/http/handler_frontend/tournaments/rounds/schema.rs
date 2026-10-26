@@ -8,6 +8,7 @@ use crate::models::tournament::participant::ParticipantUuid;
 use crate::models::tournament::round::MatchUuid;
 use crate::models::tournament::round::RoundRefusal;
 use crate::models::tournament::round::RoundState;
+use crate::tournament::reporting::ResultState;
 use crate::tournament::standings::Tiebreaker;
 
 /// The Rounds of a Tournament the reader may see, and how many are planned
@@ -66,6 +67,12 @@ pub struct ResultResponse {
     pub games_won: Vec<i16>,
     /// Games nobody won
     pub games_drawn: i16,
+    /// Where it stands: reported by a Participant, disputed, or set by an Organizer
+    pub state: ResultState,
+    /// The Participant who reported it, `null` when an Organizer set it
+    pub reported_by: Option<ParticipantUuid>,
+    /// The Participant who disputed it, `null` unless it is disputed
+    pub disputed_by: Option<ParticipantUuid>,
 }
 
 /// The Round just paired
@@ -101,6 +108,8 @@ pub struct RoundErrors {
     pub not_running: bool,
     /// A Match of the Round has no Result yet
     pub results_missing: bool,
+    /// A Result of the Round is disputed; an Organizer settles it first
+    pub results_disputed: bool,
 }
 
 impl From<RoundRefusal> for RoundErrors {
@@ -115,6 +124,7 @@ impl From<RoundRefusal> for RoundErrors {
             RoundRefusal::NotPreviewed => errors.not_previewed = true,
             RoundRefusal::NotRunning => errors.not_running = true,
             RoundRefusal::ResultsMissing => errors.results_missing = true,
+            RoundRefusal::ResultsDisputed => errors.results_disputed = true,
         }
         errors
     }

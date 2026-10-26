@@ -15,7 +15,7 @@ import {
 } from "components";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { BestOf, MatchResponse, SetResultErrors, SetResultRequest } from "src/api/generated";
+import type { BestOf, MatchResponse, SetResultRequest } from "src/api/generated";
 import { PrimaryButton } from "src/components/primary-button";
 import { isFormError } from "src/utils/error";
 import { MAX_DRAWN_GAMES, gamesToWin } from "src/utils/tournament-rounds";
@@ -30,18 +30,34 @@ export type TournamentResultDialogProps = {
     bestOf: BestOf;
     /** Called when the dialog should close without having saved anything */
     onClose: () => void;
+    /** The dialog's title */
+    title: string;
+    /** What saving does, shown below the fields */
+    description: string;
     /** Sends the Result to the service */
     save: (result: SetResultRequest) => Promise<unknown>;
+    /** Says why the service refused the Result */
+    explain: (error: Record<string, boolean>) => string;
     /** Called after the Result was saved */
     onSaved: () => Promise<void>;
 };
 
 /**
- * Dialog for an Organizer to set or correct the game score of a one-on-one Match.
+ * Dialog for the game score of a one-on-one Match: an Organizer sets or
+ * corrects it, a Participant reports it.
  *
  * @returns the dialog
  */
-export function TournamentResultDialog({ played, bestOf, onClose, save, onSaved }: TournamentResultDialogProps) {
+export function TournamentResultDialog({
+    played,
+    bestOf,
+    title,
+    description,
+    onClose,
+    save,
+    explain,
+    onSaved,
+}: TournamentResultDialogProps) {
     const [t] = useTranslation("tournament");
     const [tg] = useTranslation();
     const [first, setFirst] = useState(0);
@@ -67,8 +83,8 @@ export function TournamentResultDialog({ played, bestOf, onClose, save, onSaved 
         setBusy(true);
         try {
             const result = await save({ games_won: [first, second], games_drawn: drawn });
-            if (isFormError<unknown, { result: "Err"; error: SetResultErrors }>(result)) {
-                setError(result.error.not_started ? t("error.round-not-started") : t("error.invalid-score"));
+            if (isFormError<unknown, { result: "Err"; error: Record<string, boolean> }>(result)) {
+                setError(explain(result.error));
                 return;
             }
             await onSaved();
@@ -81,7 +97,7 @@ export function TournamentResultDialog({ played, bestOf, onClose, save, onSaved 
 
     return (
         <Dialog open={played !== null} onClose={onClose}>
-            <DialogTitle>{t("heading.set-result", { table: played?.table_number ?? "" })}</DialogTitle>
+            <DialogTitle>{title}</DialogTitle>
             <form
                 onSubmit={(event) => {
                     event.preventDefault();
@@ -96,7 +112,7 @@ export function TournamentResultDialog({ played, bestOf, onClose, save, onSaved 
                         {error !== null ? (
                             <ErrorMessage>{error}</ErrorMessage>
                         ) : (
-                            <Description>{t("description.set-result")}</Description>
+                            <Description>{description}</Description>
                         )}
                     </FieldGroup>
                 </DialogBody>

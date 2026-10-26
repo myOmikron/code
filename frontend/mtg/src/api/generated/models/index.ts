@@ -3600,6 +3600,37 @@ export const DeletionMode = {
 export type DeletionMode = typeof DeletionMode[keyof typeof DeletionMode];
 
 /**
+ * Why a Participant's dispute was refused
+ * @export
+ * @interface DisputeResultErrors
+ */
+export interface DisputeResultErrors {
+    /**
+     * An Organizer set the Result
+     * @type {boolean}
+     * @memberof DisputeResultErrors
+     */
+    confirmed: boolean;
+    /**
+     * The Match has no Result to dispute
+     * @type {boolean}
+     * @memberof DisputeResultErrors
+     */
+    no_result: boolean;
+    /**
+     * The Match's Round is not running, or the Tournament is over
+     * @type {boolean}
+     * @memberof DisputeResultErrors
+     */
+    not_running: boolean;
+    /**
+     * The Participant reported it itself; report again to correct it
+     * @type {boolean}
+     * @memberof DisputeResultErrors
+     */
+    own_report: boolean;
+}
+/**
  * Why a Participant could not Drop
  * @export
  * @interface DropErrors
@@ -4432,6 +4463,27 @@ export interface FormErrorResponseForDeletePasskeyErrors {
 /**
  * The response that is sent in a case of an error the caller should present his user
  * @export
+ * @interface FormErrorResponseForDisputeResultErrors
+ */
+export interface FormErrorResponseForDisputeResultErrors {
+    /**
+     * The actual error struct
+     * @type {DisputeResultErrors}
+     * @memberof FormErrorResponseForDisputeResultErrors
+     */
+    error: DisputeResultErrors;
+    /**
+     * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
+     * @type {ErrorConstant}
+     * @memberof FormErrorResponseForDisputeResultErrors
+     */
+    result: ErrorConstant;
+}
+
+
+/**
+ * The response that is sent in a case of an error the caller should present his user
+ * @export
  * @interface FormErrorResponseForDropErrors
  */
 export interface FormErrorResponseForDropErrors {
@@ -4592,6 +4644,27 @@ export interface FormErrorResponseForRenamePasskeyErrors {
      * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
      * @type {ErrorConstant}
      * @memberof FormErrorResponseForRenamePasskeyErrors
+     */
+    result: ErrorConstant;
+}
+
+
+/**
+ * The response that is sent in a case of an error the caller should present his user
+ * @export
+ * @interface FormErrorResponseForReportResultErrors
+ */
+export interface FormErrorResponseForReportResultErrors {
+    /**
+     * The actual error struct
+     * @type {ReportResultErrors}
+     * @memberof FormErrorResponseForReportResultErrors
+     */
+    error: ReportResultErrors;
+    /**
+     * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
+     * @type {ErrorConstant}
+     * @memberof FormErrorResponseForReportResultErrors
      */
     result: ErrorConstant;
 }
@@ -6807,6 +6880,62 @@ export interface RenamePasskeyRequest {
     label: string;
 }
 /**
+ * Why a Participant's report was refused
+ * @export
+ * @interface ReportResultErrors
+ */
+export interface ReportResultErrors {
+    /**
+     * An Organizer set the Result
+     * @type {boolean}
+     * @memberof ReportResultErrors
+     */
+    confirmed: boolean;
+    /**
+     * The Result is disputed; an Organizer settles it
+     * @type {boolean}
+     * @memberof ReportResultErrors
+     */
+    disputed: boolean;
+    /**
+     * The game score does not fit a Match of this Tournament
+     * @type {boolean}
+     * @memberof ReportResultErrors
+     */
+    invalid_score: boolean;
+    /**
+     * The Match's Round is not running, or the Tournament is over
+     * @type {boolean}
+     * @memberof ReportResultErrors
+     */
+    not_running: boolean;
+    /**
+     * Another Participant reported a different Result; dispute it instead
+     * @type {boolean}
+     * @memberof ReportResultErrors
+     */
+    reported_by_other: boolean;
+}
+/**
+ * The Result a Participant reports for its Match
+ * @export
+ * @interface ReportResultRequest
+ */
+export interface ReportResultRequest {
+    /**
+     * Games nobody won
+     * @type {number}
+     * @memberof ReportResultRequest
+     */
+    games_drawn: number;
+    /**
+     * Games won per Seat, in Seat order
+     * @type {Array<number>}
+     * @memberof ReportResultRequest
+     */
+    games_won: Array<number>;
+}
+/**
  * A list of cards to place in the catalog
  * @export
  * @interface ResolvePrintingsRequest
@@ -6898,6 +7027,12 @@ export interface ResolvedPrintingResponse {
  */
 export interface ResultResponse {
     /**
+     * The Participant who disputed it, `null` unless it is disputed
+     * @type {string}
+     * @memberof ResultResponse
+     */
+    disputed_by?: string | null;
+    /**
      * Games nobody won
      * @type {number}
      * @memberof ResultResponse
@@ -6909,7 +7044,42 @@ export interface ResultResponse {
      * @memberof ResultResponse
      */
     games_won: Array<number>;
+    /**
+     * The Participant who reported it, `null` when an Organizer set it
+     * @type {string}
+     * @memberof ResultResponse
+     */
+    reported_by?: string | null;
+    /**
+     * Where it stands: reported by a Participant, disputed, or set by an Organizer
+     * @type {ResultState}
+     * @memberof ResultResponse
+     */
+    state: ResultState;
 }
+
+
+
+/**
+ * Where a Match's Result stands
+ * @export
+ */
+export const ResultState = {
+    /**
+    * Reported by a Participant of the Match; it counts, and another Participant may dispute it
+    */
+    Reported: 'Reported',
+    /**
+    * Disputed by another Participant of the Match; it holds the Round open until an Organizer settles it
+    */
+    Disputed: 'Disputed',
+    /**
+    * Set by an Organizer; Participants can no longer change or dispute it
+    */
+    Confirmed: 'Confirmed'
+} as const;
+export type ResultState = typeof ResultState[keyof typeof ResultState];
+
 /**
  * Request to sort everything in the deck back where it came from
  * @export
@@ -7072,6 +7242,12 @@ export interface RoundErrors {
      */
     not_running: boolean;
     /**
+     * A Result of the Round is disputed; an Organizer settles it first
+     * @type {boolean}
+     * @memberof RoundErrors
+     */
+    results_disputed: boolean;
+    /**
      * A Match of the Round has no Result yet
      * @type {boolean}
      * @memberof RoundErrors
@@ -7144,7 +7320,7 @@ export const RoundState = {
     */
     Running: 'Running',
     /**
-    * Over: every Match has its Result
+    * Over: every Match has its Result, none disputed
     */
     Ended: 'Ended'
 } as const;

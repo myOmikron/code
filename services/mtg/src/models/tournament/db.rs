@@ -11,6 +11,7 @@ use crate::models::account::db::AccountModel;
 use crate::models::tournament::TournamentState;
 use crate::models::tournament::round::RoundState;
 use crate::models::visibility::Visibility;
+use crate::tournament::reporting::ResultState;
 use crate::tournament::ruleset::BestOf;
 use crate::tournament::ruleset::Ruleset;
 
@@ -326,7 +327,7 @@ pub fn round_key(tournament: Uuid, number: i16) -> Uuid {
 /// A Match of a Round, or a Bye
 ///
 /// The Result lives in [`Self::games_drawn`] and the Seats' games won: it is
-/// in once [`Self::games_drawn`] is set. A Bye has no table and no Result.
+/// in once [`Self::games_drawn`] is set, with [`Self::result_state`] beside it. A Bye has no table and no Result.
 #[derive(Model, Debug)]
 #[rorm(rename = "tournament_match")]
 pub struct TournamentMatchModel {
@@ -343,6 +344,17 @@ pub struct TournamentMatchModel {
 
     /// Games nobody won, `None` while it has no Result
     pub games_drawn: Option<i16>,
+
+    /// Where its Result stands, `None` while it has none
+    pub result_state: Option<ResultState>,
+
+    /// The Participant who reported the Result, `None` when an Organizer set it or there is none
+    #[rorm(on_update = "Cascade", on_delete = "SetNull")]
+    pub reported_by: Option<ForeignModel<TournamentParticipantModel>>,
+
+    /// The Participant who disputed the Result, `None` unless it is disputed
+    #[rorm(on_update = "Cascade", on_delete = "SetNull")]
+    pub disputed_by: Option<ForeignModel<TournamentParticipantModel>>,
 }
 
 /// Insert patch for [`TournamentMatchModel`]
@@ -357,6 +369,12 @@ pub struct TournamentMatchInsertPatch {
     pub table_number: Option<i16>,
     /// Games nobody won
     pub games_drawn: Option<i16>,
+    /// Where its Result stands
+    pub result_state: Option<ResultState>,
+    /// Who reported the Result
+    pub reported_by: Option<ForeignModel<TournamentParticipantModel>>,
+    /// Who disputed the Result
+    pub disputed_by: Option<ForeignModel<TournamentParticipantModel>>,
 }
 
 /// A Participant's Seat in a Match

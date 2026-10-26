@@ -87,10 +87,12 @@ import type {
     FormErrorResponseForChooseUsernameErrors,
     FormErrorResponseForDeleteAccountErrors,
     FormErrorResponseForDeletePasskeyErrors,
+    FormErrorResponseForDisputeResultErrors,
     FormErrorResponseForDropErrors,
     FormErrorResponseForFinishLoginErrors,
     FormErrorResponseForRegistrationErrors,
     FormErrorResponseForRenamePasskeyErrors,
+    FormErrorResponseForReportResultErrors,
     FormErrorResponseForRoundErrors,
     FormErrorResponseForSetResultErrors,
     GetPendingOidcLoginResponse,
@@ -139,6 +141,7 @@ import type {
     RenameAccount200Response,
     RenameAccountRequest,
     RenamePasskeyRequest,
+    ReportResultRequest,
     ResolvePrintingsRequest,
     ResolvePrintingsResponse,
     ReturnAllDeckCardsRequest,
@@ -443,6 +446,11 @@ export interface DetachDeckCollectionRequest {
 export interface DiscardTournamentRoundRequest {
     tournament: string;
     number: number;
+}
+
+export interface DisputeTournamentMatchResultRequest {
+    tournament: string;
+    match: string;
 }
 
 export interface DropOutOfTournamentRequest {
@@ -754,6 +762,12 @@ export interface RenameAccountOperationRequest {
 export interface RenamePasskeyOperationRequest {
     uuid: string;
     RenamePasskeyRequest?: RenamePasskeyRequest;
+}
+
+export interface ReportTournamentMatchResultRequest {
+    tournament: string;
+    match: string;
+    ReportResultRequest?: ReportResultRequest;
 }
 
 export interface ResetDeckRequest {
@@ -3767,6 +3781,61 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async discardTournamentRound(requestParameters: DiscardTournamentRoundRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FormErrorResponseForRoundErrors> {
         const response = await this.discardTournamentRoundRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for disputeTournamentMatchResult without sending the request
+     */
+    async disputeTournamentMatchResultRequestOpts(requestParameters: DisputeTournamentMatchResultRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tournament'] == null) {
+            throw new runtime.RequiredError(
+                'tournament',
+                'Required parameter "tournament" was null or undefined when calling disputeTournamentMatchResult().'
+            );
+        }
+
+        if (requestParameters['match'] == null) {
+            throw new runtime.RequiredError(
+                'match',
+                'Required parameter "match" was null or undefined when calling disputeTournamentMatchResult().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/tournaments/{tournament}/matches/{match}/dispute`;
+        urlPath = urlPath.replace('{tournament}', encodeURIComponent(String(requestParameters['tournament'])));
+        urlPath = urlPath.replace('{match}', encodeURIComponent(String(requestParameters['match'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Dispute the Result another Participant reported for one\'s own Match  Possible while the Round runs. The Round cannot end until an Organizer settles the Result. A locked Account cannot dispute.
+     * Dispute the Result another Participant reported for one\'s own Match
+     */
+    async disputeTournamentMatchResultRaw(requestParameters: DisputeTournamentMatchResultRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FormErrorResponseForDisputeResultErrors>> {
+        const requestOptions = await this.disputeTournamentMatchResultRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Dispute the Result another Participant reported for one\'s own Match  Possible while the Round runs. The Round cannot end until an Organizer settles the Result. A locked Account cannot dispute.
+     * Dispute the Result another Participant reported for one\'s own Match
+     */
+    async disputeTournamentMatchResult(requestParameters: DisputeTournamentMatchResultRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FormErrorResponseForDisputeResultErrors> {
+        const response = await this.disputeTournamentMatchResultRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -7689,6 +7758,64 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for reportTournamentMatchResult without sending the request
+     */
+    async reportTournamentMatchResultRequestOpts(requestParameters: ReportTournamentMatchResultRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tournament'] == null) {
+            throw new runtime.RequiredError(
+                'tournament',
+                'Required parameter "tournament" was null or undefined when calling reportTournamentMatchResult().'
+            );
+        }
+
+        if (requestParameters['match'] == null) {
+            throw new runtime.RequiredError(
+                'match',
+                'Required parameter "match" was null or undefined when calling reportTournamentMatchResult().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/tournaments/{tournament}/matches/{match}/report`;
+        urlPath = urlPath.replace('{tournament}', encodeURIComponent(String(requestParameters['tournament'])));
+        urlPath = urlPath.replace('{match}', encodeURIComponent(String(requestParameters['match'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['ReportResultRequest'],
+        };
+    }
+
+    /**
+     * Report the Result of one\'s own Match, as its Participant  It counts at once. The reporter may correct it while the Round runs; another Participant who disagrees disputes it instead. A locked Account cannot report: an Organizer sets its Result.
+     * Report the Result of one\'s own Match, as its Participant
+     */
+    async reportTournamentMatchResultRaw(requestParameters: ReportTournamentMatchResultRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FormErrorResponseForReportResultErrors>> {
+        const requestOptions = await this.reportTournamentMatchResultRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Report the Result of one\'s own Match, as its Participant  It counts at once. The reporter may correct it while the Round runs; another Participant who disagrees disputes it instead. A locked Account cannot report: an Organizer sets its Result.
+     * Report the Result of one\'s own Match, as its Participant
+     */
+    async reportTournamentMatchResult(requestParameters: ReportTournamentMatchResultRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FormErrorResponseForReportResultErrors> {
+        const response = await this.reportTournamentMatchResultRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for resetDeck without sending the request
      */
     async resetDeckRequestOpts(requestParameters: ResetDeckRequest): Promise<runtime.RequestOpts> {
@@ -8643,7 +8770,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Set or correct the Result of a Match, as an Organizer  Any time once its Round started, also after the Tournament is over; the standings follow, the pairings stay as they are.
+     * Set or correct the Result of a Match, as an Organizer  Any time once its Round started, also after the Tournament is over; the standings follow, the pairings stay as they are. This is how an Organizer settles a disputed Result and reports for Guests and locked Accounts.
      * Set or correct the Result of a Match, as an Organizer
      */
     async setTournamentMatchResultRaw(requestParameters: SetTournamentMatchResultRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FormErrorResponseForSetResultErrors>> {
@@ -8654,7 +8781,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Set or correct the Result of a Match, as an Organizer  Any time once its Round started, also after the Tournament is over; the standings follow, the pairings stay as they are.
+     * Set or correct the Result of a Match, as an Organizer  Any time once its Round started, also after the Tournament is over; the standings follow, the pairings stay as they are. This is how an Organizer settles a disputed Result and reports for Guests and locked Accounts.
      * Set or correct the Result of a Match, as an Organizer
      */
     async setTournamentMatchResult(requestParameters: SetTournamentMatchResultRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FormErrorResponseForSetResultErrors> {

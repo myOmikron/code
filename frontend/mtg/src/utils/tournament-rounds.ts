@@ -8,7 +8,7 @@ import type { ResultResponse } from "src/api/generated";
  *
  * @returns the score in Seat order
  */
-export function formatResult(result: ResultResponse): string {
+export function formatResult(result: Pick<ResultResponse, "games_won" | "games_drawn">): string {
     const score = result.games_won.join("-");
     return result.games_drawn > 0 ? `${score}-${result.games_drawn}` : score;
 }
