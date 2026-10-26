@@ -20,5 +20,5 @@ function RouteComponent() {
     const { tournament } = frame.useLoaderData();
     const load = useCallback(() => Api.shared.tournaments.rounds(token), [token]);
     if (tournament === null) return null;
-    return <TournamentBracket load={load} />;
+    return <TournamentBracket load={load} topCut={tournament.top_cut ?? null} />;
 }

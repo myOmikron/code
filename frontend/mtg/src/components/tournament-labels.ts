@@ -107,6 +107,8 @@ export function useTournamentLabels() {
                     return t("label.top-cut-top-4");
                 case TopCut.Top8:
                     return t("label.top-cut-top-8");
+                case TopCut.Final:
+                    return t("label.top-cut-final");
             }
         },
 

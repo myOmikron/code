@@ -443,6 +443,7 @@ pub async fn rounds_view(
     let suggested_swiss_rounds = tournament.suggested_swiss_rounds(tx).await?;
     let now = OffsetDateTime::now_utc();
     let top_cut_size = tournament.top_cut_size(tx).await?;
+    let top_cut_winner = tournament.top_cut_winner(tx).await?;
     Ok(RoundsResponse {
         rounds: rounds
             .into_iter()
@@ -462,6 +463,7 @@ pub async fn rounds_view(
         suggested_swiss_rounds,
         server_time: SchemaDateTime(now),
         top_cut_size,
+        top_cut_winner,
     })
 }
 

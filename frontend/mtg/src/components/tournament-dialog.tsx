@@ -35,7 +35,14 @@ import { PrimaryButton } from "src/components/primary-button";
 import { useTournamentLabels } from "src/components/tournament-labels";
 import { handleFormError, isFormError } from "src/utils/error";
 import { CURRENCIES, fromMinorUnits, toMinorUnits } from "src/utils/entry-fee";
-import { TABLE_SIZES, fromLocalInput, rulesetFits, rulesetsFor, toLocalInput } from "src/utils/tournament-settings";
+import {
+    TABLE_SIZES,
+    fromLocalInput,
+    rulesetFits,
+    rulesetsFor,
+    toLocalInput,
+    topCutsFor,
+} from "src/utils/tournament-settings";
 
 /** The Table size a new Tournament starts out with: a Commander table */
 const DEFAULT_TABLE_SIZE = 4;
@@ -150,7 +157,7 @@ export function TournamentDialog({ open, tournament, formats, onClose, onSaved }
                     self_sign_up: value.selfSignUp,
                     best_of: value.tableSize === 2 ? value.bestOf : null,
                     round_minutes: value.roundMinutes === "" ? null : Number(value.roundMinutes),
-                    top_cut: value.tableSize === 2 && value.topCut !== NO_TOP_CUT ? value.topCut : null,
+                    top_cut: value.topCut !== NO_TOP_CUT ? value.topCut : null,
                     top_cut_best_of: value.tableSize === 2 && value.topCut !== NO_TOP_CUT ? value.topCutBestOf : null,
                     entered_afterwards: value.enteredAfterwards,
                     entry_fee: amount === null ? null : { amount, currency: value.currency },
@@ -290,6 +297,10 @@ export function TournamentDialog({ open, tournament, formats, onClose, onSaved }
                                     if (!rulesetFits(ruleset, value)) {
                                         form.setFieldValue("ruleset", rulesetsFor(value)[0] ?? Ruleset.Mtr);
                                     }
+                                    const topCut = form.getFieldValue("topCut");
+                                    if (topCut !== NO_TOP_CUT && !topCutsFor(value).includes(topCut)) {
+                                        form.setFieldValue("topCut", NO_TOP_CUT);
+                                    }
                                 },
                             }}
                         >
@@ -376,40 +387,40 @@ export function TournamentDialog({ open, tournament, formats, onClose, onSaved }
                         </form.Subscribe>
 
                         <form.Subscribe selector={(state) => state.values.tableSize}>
-                            {(tableSize) =>
-                                tableSize === 2 && (
-                                    <form.Field name={"topCut"}>
-                                        {(fieldApi) => (
-                                            <Field>
-                                                <Label>{t("label.top-cut")}</Label>
-                                                <Description>
-                                                    {topCutLocked
-                                                        ? t("description.top-cut-locked")
-                                                        : t("description.top-cut")}
-                                                </Description>
-                                                <Listbox<TopCut | typeof NO_TOP_CUT>
-                                                    disabled={topCutLocked}
-                                                    value={fieldApi.state.value}
-                                                    onChange={fieldApi.handleChange}
-                                                    invalid={fieldApi.state.meta.errors.length > 0}
-                                                >
-                                                    <ListboxOption value={NO_TOP_CUT}>
-                                                        <ListboxLabel>{labels.topCut(null)}</ListboxLabel>
+                            {(tableSize) => (
+                                <form.Field name={"topCut"}>
+                                    {(fieldApi) => (
+                                        <Field>
+                                            <Label>{t("label.top-cut")}</Label>
+                                            <Description>
+                                                {topCutLocked
+                                                    ? t("description.top-cut-locked")
+                                                    : tableSize === 2
+                                                      ? t("description.top-cut")
+                                                      : t("description.top-cut-final")}
+                                            </Description>
+                                            <Listbox<TopCut | typeof NO_TOP_CUT>
+                                                disabled={topCutLocked}
+                                                value={fieldApi.state.value}
+                                                onChange={fieldApi.handleChange}
+                                                invalid={fieldApi.state.meta.errors.length > 0}
+                                            >
+                                                <ListboxOption value={NO_TOP_CUT}>
+                                                    <ListboxLabel>{labels.topCut(null)}</ListboxLabel>
+                                                </ListboxOption>
+                                                {topCutsFor(tableSize).map((topCut) => (
+                                                    <ListboxOption key={topCut} value={topCut}>
+                                                        <ListboxLabel>{labels.topCut(topCut)}</ListboxLabel>
                                                     </ListboxOption>
-                                                    {[TopCut.Top4, TopCut.Top8].map((topCut) => (
-                                                        <ListboxOption key={topCut} value={topCut}>
-                                                            <ListboxLabel>{labels.topCut(topCut)}</ListboxLabel>
-                                                        </ListboxOption>
-                                                    ))}
-                                                </Listbox>
-                                                {fieldApi.state.meta.errors.map((error) => (
-                                                    <ErrorMessage key={String(error)}>{String(error)}</ErrorMessage>
                                                 ))}
-                                            </Field>
-                                        )}
-                                    </form.Field>
-                                )
-                            }
+                                            </Listbox>
+                                            {fieldApi.state.meta.errors.map((error) => (
+                                                <ErrorMessage key={String(error)}>{String(error)}</ErrorMessage>
+                                            ))}
+                                        </Field>
+                                    )}
+                                </form.Field>
+                            )}
                         </form.Subscribe>
 
                         <form.Subscribe

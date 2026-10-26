@@ -4,6 +4,11 @@
 //! winners of 1v8 and 4v5 meet next, so do those of 2v7 and 3v6; a Top 4 pairs
 //! 1v4 and 2v3. The higher seed takes Seat 1. Only the Swiss Rounds rank: the
 //! cut Rounds are a record of their own, see [`pair_top_cut`].
+//!
+//! Multiplayer, the Top cut is one final Match of the Table size best, Seats
+//! by seed with the top seed first (MTRA Appendix, Addendum 2.2B). A drawn
+//! final goes to the highest seed in it (MTRA 2.1, Addendum 2.4C), a
+//! Participant who Drops during it loses it, see [`top_cut_winner`].
 
 use std::collections::BTreeMap;
 use std::collections::HashMap;
@@ -23,27 +28,35 @@ use crate::tournament::ruleset::Ruleset;
 use crate::tournament::ruleset::TableSize;
 use crate::tournament::standings::standings;
 
-/// How many Participants a one-on-one Top cut takes
+/// How many Participants a Top cut takes: a bracket one-on-one, a final Match multiplayer
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema)]
 pub enum TopCut {
     /// The best four: two semifinals and a final
     Top4,
     /// The best eight: quarterfinals, semifinals and a final
     Top8,
+    /// Multiplayer: one final Match of as many of the best as the Table size seats
+    Final,
 }
 
 impl TopCut {
-    /// How many Participants it takes when enough are left
-    pub fn size(self) -> usize {
+    /// How many Participants it takes at `table_size` when enough are left
+    pub fn size(self, table_size: TableSize) -> usize {
         match self {
             Self::Top4 => 4,
             Self::Top8 => 8,
+            Self::Final => usize::try_from(table_size.get()).unwrap_or(0),
         }
     }
 
-    /// Whether a Tournament at this Table size may end with it: one-on-one only
+    /// Whether a Tournament at this Table size may end with it
+    ///
+    /// The brackets one-on-one, the final Match multiplayer.
     pub fn fits(self, table_size: TableSize) -> bool {
-        table_size.get() == 2
+        match self {
+            Self::Top4 | Self::Top8 => table_size.get() == 2,
+            Self::Final => table_size.get() > 2,
+        }
     }
 }
 
@@ -61,25 +74,34 @@ pub fn suggested_top_cut(ruleset: Ruleset, participants: usize) -> Option<TopCut
     }
 }
 
-/// How many Participants `top_cut` takes with `pairable` left, `None` below two
+/// How many Participants `top_cut` takes at `table_size` with `pairable` left, `None` below two
 ///
 /// When Drops leave fewer than its size, the cut shrinks to the next size that
-/// fits: a Top 8 of seven is a Top 4, a Top 4 of three is a final of two.
-pub fn cut_size(top_cut: TopCut, pairable: usize) -> Option<usize> {
-    [8, 4, 2]
-        .into_iter()
-        .find(|size| *size <= top_cut.size() && *size <= pairable)
+/// fits: a Top 8 of seven is a Top 4, a Top 4 of three is a final of two. A
+/// multiplayer final shrinks to the Participants left.
+pub fn cut_size(top_cut: TopCut, table_size: TableSize, pairable: usize) -> Option<usize> {
+    let size = top_cut.size(table_size);
+    match top_cut {
+        TopCut::Top4 | TopCut::Top8 => [8, 4, 2]
+            .into_iter()
+            .find(|fits| *fits <= size && *fits <= pairable),
+        TopCut::Final => Some(size.min(pairable)).filter(|size| *size >= 2),
+    }
 }
 
-/// How many Participants the cut that started with `first` takes, `None` before it started
+/// How many Participants the cut `cut` started with, `None` before it started
 pub fn bracket_size(cut: &[RoundRecord]) -> Option<usize> {
     let first = cut.first()?;
-    Some(2 * first.matches.len())
+    Some(first.matches.iter().map(|played| played.seats.len()).sum())
 }
 
 /// Whether every Round of the cut `cut` was paired
+///
+/// A bracket of n Matches in its first Round takes log2(2n) Rounds, so a
+/// final, one Match of two or more, is the only one.
 pub fn cut_over(cut: &[RoundRecord]) -> bool {
-    bracket_size(cut).is_some_and(|size| cut.len() >= rounds_of(size))
+    cut.first()
+        .is_some_and(|first| cut.len() >= rounds_of(2 * first.matches.len()))
 }
 
 /// Why no Top cut Round could be paired
@@ -116,7 +138,17 @@ pub fn pair_top_cut(
             .into_iter()
             .filter(|entrant| pairable.contains(entrant))
             .collect();
-        let size = cut_size(top_cut, seeds.len()).ok_or(TopCutError::TooFewEntrants)?;
+        let size =
+            cut_size(top_cut, record.table_size, seeds.len()).ok_or(TopCutError::TooFewEntrants)?;
+        if top_cut == TopCut::Final {
+            return Ok(Pairing {
+                matches: vec![PairedMatch {
+                    seats: seeds[..size].to_vec(),
+                    rematch: false,
+                }],
+                byes: Vec::new(),
+            });
+        }
         let matches = bracket(size)
             .iter()
             .map(|(high, low)| PairedMatch {
@@ -194,6 +226,37 @@ pub fn pair_top_cut(
     Ok(pairing)
 }
 
+/// Who won the Top cut `cut`, `None` while its final has no Result
+///
+/// The winner of the final, or the one who advanced with a Bye. A drawn final
+/// goes to the best Swiss seed in it, and a Participant who Dropped during the
+/// final loses it: then the best seed in it who did not Drop wins.
+pub fn top_cut_winner(record: &TournamentRecord, cut: &[RoundRecord]) -> Option<EntrantId> {
+    if !cut_over(cut) {
+        return None;
+    }
+    let last = cut.last()?;
+    let Some(played) = last.matches.first() else {
+        return last.byes.first().copied();
+    };
+    let result = played.result.as_ref()?;
+    let pairable: HashSet<EntrantId> = record
+        .entrants
+        .iter()
+        .filter(|entrant| entrant.pairable)
+        .map(|entrant| entrant.id)
+        .collect();
+    if let Some(winner) = result.winner().and_then(|seat| played.seats.get(seat))
+        && pairable.contains(winner)
+    {
+        return Some(*winner);
+    }
+    standings(record)
+        .iter()
+        .map(|line| line.entrant)
+        .find(|entrant| pairable.contains(entrant) && played.seats.contains(entrant))
+}
+
 /// How many Rounds a cut of `size` Participants takes
 fn rounds_of(size: usize) -> usize {
     size.max(2).ilog2() as usize
@@ -216,10 +279,12 @@ mod tests {
 
     use super::TopCut;
     use super::TopCutError;
+    use super::bracket_size;
     use super::cut_over;
     use super::cut_size;
     use super::pair_top_cut;
     use super::suggested_top_cut;
+    use super::top_cut_winner;
     use crate::tournament::pairing::Pairing;
     use crate::tournament::record::Entrant;
     use crate::tournament::record::EntrantId;
@@ -403,7 +468,7 @@ mod tests {
             (TopCut::Top8, 0, None),
         ] {
             assert_eq!(
-                cut_size(top_cut, pairable),
+                cut_size(top_cut, TableSize::new(2).expect("a Table size"), pairable),
                 size,
                 "{top_cut:?} of {pairable}"
             );
@@ -429,6 +494,180 @@ mod tests {
             pair_top_cut(&record, TopCut::Top4, &[]),
             Err(TopCutError::TooFewEntrants)
         );
+    }
+
+    /// `entrants` Participants who played one TopDeck Round at Table size `table_size`, Seat 1 winning every Match
+    fn multiplayer(entrants: u128, table_size: i16) -> TournamentRecord {
+        let size = u128::try_from(table_size).expect("a positive Table size");
+        let matches = (1..=entrants)
+            .step_by(usize::try_from(size).expect("a small Table size"))
+            .map(|first| {
+                let seats: Vec<EntrantId> =
+                    (first..(first + size).min(entrants + 1)).map(p).collect();
+                MatchRecord {
+                    result: Some(MatchResult {
+                        games_won: (0..seats.len()).map(|seat| u8::from(seat == 0)).collect(),
+                        games_drawn: 0,
+                    }),
+                    seats,
+                }
+            })
+            .collect();
+        TournamentRecord {
+            ruleset: Ruleset::TopDeck,
+            table_size: TableSize::new(table_size).expect("a Table size"),
+            entrants: (1..=entrants)
+                .map(|n| Entrant {
+                    id: p(n),
+                    pairable: true,
+                })
+                .collect(),
+            rounds: vec![RoundRecord {
+                matches,
+                byes: vec![],
+            }],
+            seed: 7,
+        }
+    }
+
+    /// The final as played: `games_won` per Seat and `games_drawn`
+    fn final_played(pairing: &Pairing, games_won: &[u8], games_drawn: u8) -> RoundRecord {
+        RoundRecord {
+            matches: vec![MatchRecord {
+                seats: pairing.matches[0].seats.clone(),
+                result: Some(MatchResult {
+                    games_won: games_won.to_vec(),
+                    games_drawn,
+                }),
+            }],
+            byes: vec![],
+        }
+    }
+
+    #[test]
+    fn a_final_is_multiplayer_only_and_a_bracket_one_on_one_only() {
+        for table_size in 2..=5 {
+            let table = TableSize::new(table_size).expect("a Table size");
+            assert_eq!(TopCut::Final.fits(table), table_size > 2, "{table_size}");
+            assert_eq!(TopCut::Top4.fits(table), table_size == 2, "{table_size}");
+            assert_eq!(TopCut::Top8.fits(table), table_size == 2, "{table_size}");
+        }
+    }
+
+    #[test]
+    fn the_final_seats_the_table_size_best_by_seed_top_seed_first() {
+        let record = multiplayer(12, 4);
+        assert_eq!(tables(&record, TopCut::Final, &[]), vec![vec![1, 2, 3, 4]]);
+        let record = multiplayer(10, 5);
+        assert_eq!(
+            tables(&record, TopCut::Final, &[]),
+            vec![vec![1, 2, 3, 4, 5]]
+        );
+    }
+
+    #[test]
+    fn a_participant_who_dropped_before_the_final_is_replaced_by_the_next_in_the_standings() {
+        let mut record = multiplayer(12, 4);
+        let second = seeded(&record, 2);
+        drop_out(&mut record, second);
+        let seeds = seeds(&record);
+        let pairing = pair_top_cut(&record, TopCut::Final, &[]).expect("the final");
+        let seated: Vec<usize> = pairing.matches[0]
+            .seats
+            .iter()
+            .map(|seat| seeds[seat])
+            .collect();
+        assert_eq!(seated, vec![1, 3, 4, 5]);
+        assert!(pairing.byes.is_empty());
+    }
+
+    #[test]
+    fn the_final_shrinks_to_the_participants_left() {
+        for (table_size, pairable, size) in [
+            (4, 12, Some(4)),
+            (4, 4, Some(4)),
+            (4, 3, Some(3)),
+            (5, 2, Some(2)),
+            (3, 1, None),
+            (3, 0, None),
+        ] {
+            let table = TableSize::new(table_size).expect("a Table size");
+            assert_eq!(
+                cut_size(TopCut::Final, table, pairable),
+                size,
+                "{table_size} {pairable}"
+            );
+        }
+        let mut record = multiplayer(4, 4);
+        let fourth = seeded(&record, 4);
+        drop_out(&mut record, fourth);
+        assert_eq!(tables(&record, TopCut::Final, &[]), vec![vec![1, 2, 3]]);
+    }
+
+    #[test]
+    fn the_final_is_the_only_round_of_a_multiplayer_cut() {
+        let record = multiplayer(8, 4);
+        let fin = pair_top_cut(&record, TopCut::Final, &[]).expect("the final");
+        assert_eq!(
+            bracket_size(&[final_played(&fin, &[0, 0, 0, 0], 0)]),
+            Some(4)
+        );
+        let cut = vec![final_played(&fin, &[0, 1, 0, 0], 0)];
+        assert!(cut_over(&cut));
+        assert_eq!(
+            pair_top_cut(&record, TopCut::Final, &cut),
+            Err(TopCutError::CutOver)
+        );
+    }
+
+    #[test]
+    fn the_top_cut_is_won_by_the_winner_of_its_final() {
+        let record = multiplayer(8, 4);
+        let fin = pair_top_cut(&record, TopCut::Final, &[]).expect("the final");
+        assert_eq!(top_cut_winner(&record, &[]), None);
+        let unplayed = RoundRecord {
+            matches: vec![MatchRecord {
+                seats: fin.matches[0].seats.clone(),
+                result: None,
+            }],
+            byes: vec![],
+        };
+        assert_eq!(top_cut_winner(&record, &[unplayed]), None);
+        let cut = vec![final_played(&fin, &[0, 0, 1, 0], 0)];
+        assert_eq!(top_cut_winner(&record, &cut), Some(seeded(&record, 3)));
+
+        let one_on_one = swiss(4);
+        let semifinals = pair_top_cut(&one_on_one, TopCut::Top4, &[]).expect("semifinals");
+        let mut cut = vec![played(&semifinals, &[0, 1])];
+        assert_eq!(top_cut_winner(&one_on_one, &cut), None);
+        let fin = pair_top_cut(&one_on_one, TopCut::Top4, &cut).expect("the final");
+        cut.push(played(&fin, &[1]));
+        assert_eq!(
+            top_cut_winner(&one_on_one, &cut),
+            Some(seeded(&one_on_one, 3))
+        );
+    }
+
+    #[test]
+    fn a_drawn_final_goes_to_the_highest_seed_who_did_not_drop() {
+        let mut record = multiplayer(8, 4);
+        let fin = pair_top_cut(&record, TopCut::Final, &[]).expect("the final");
+        let cut = vec![final_played(&fin, &[0, 0, 0, 0], 1)];
+        assert_eq!(top_cut_winner(&record, &cut), Some(seeded(&record, 1)));
+
+        let first = seeded(&record, 1);
+        drop_out(&mut record, first);
+        assert_eq!(top_cut_winner(&record, &cut), Some(seeded(&record, 2)));
+    }
+
+    #[test]
+    fn a_participant_who_dropped_during_the_final_loses_it() {
+        let mut record = multiplayer(8, 4);
+        let fin = pair_top_cut(&record, TopCut::Final, &[]).expect("the final");
+        let third = seeded(&record, 3);
+        drop_out(&mut record, third);
+        let cut = vec![final_played(&fin, &[0, 0, 1, 0], 0)];
+        assert_eq!(top_cut_winner(&record, &cut), Some(seeded(&record, 1)));
     }
 
     #[test]

@@ -59,6 +59,7 @@ use crate::tournament::top_cut::bracket_size;
 use crate::tournament::top_cut::cut_over;
 use crate::tournament::top_cut::cut_size;
 use crate::tournament::top_cut::pair_top_cut;
+use crate::tournament::top_cut::top_cut_winner;
 
 /// How far a Round got
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -360,9 +361,23 @@ impl Tournament {
         };
         let size = match bracket_size(&self.top_cut_record(tx).await?) {
             Some(size) => Some(size),
-            None => cut_size(top_cut, self.pairable(tx).await?),
+            None => cut_size(top_cut, self.table_size, self.pairable(tx).await?),
         };
         Ok(size.and_then(|size| i16::try_from(size).ok()))
+    }
+
+    /// Who won the Top cut, `None` without one or while its final has no Result
+    #[instrument(name = "Tournament::top_cut_winner", skip(tx, self), fields(tournament = ?self.uuid))]
+    pub async fn top_cut_winner(
+        &self,
+        tx: &mut Transaction,
+    ) -> Result<Option<ParticipantUuid>, rorm::Error> {
+        if self.top_cut.is_none() {
+            return Ok(None);
+        }
+        let cut = self.top_cut_record(tx).await?;
+        let record = self.record(tx).await?;
+        Ok(top_cut_winner(&record, &cut).map(ParticipantUuid::from_entrant))
     }
 
     /// Whether the Top cut's size and best-of can still change: until the Swiss Rounds are over
@@ -771,7 +786,9 @@ impl Tournament {
 
     /// Whether `games_won` per Seat and `games_drawn` is a Result a Match of `stage` can have
     ///
-    /// Multiplayer one Game, won by one Seat or drawn by all. One-on-one a
+    /// Multiplayer one Game, won by one Seat or drawn by all, also in the
+    /// final: a drawn final goes to its highest seed, see
+    /// [`crate::tournament::top_cut::top_cut_winner`]. One-on-one a
     /// game score its best-of allows; a Top cut Match is played to its own
     /// best-of and has a winner: play goes on until somebody wins (MTR 2.4).
     /// The caller checks there is one number per Seat.
@@ -806,10 +823,12 @@ impl Tournament {
 
     /// `participant` Dropped during the Top cut: it loses its Match of the running Round
     ///
-    /// The other Seat wins it by the Games the Match needs, as an Organizer's
-    /// Result. Nothing happens outside a running Top cut Round; a Participant
-    /// who Dropped between Rounds is not paired again, see
-    /// [`crate::tournament::top_cut::pair_top_cut`].
+    /// One-on-one, the other Seat wins it by the Games the Match needs, as an
+    /// Organizer's Result. A multiplayer final goes on without a Result: the
+    /// rest play on, and the dropped Participant cannot win it, see
+    /// [`crate::tournament::top_cut::top_cut_winner`]. Nothing happens outside
+    /// a running Top cut Round; a Participant who Dropped between Rounds is
+    /// not paired again, see [`crate::tournament::top_cut::pair_top_cut`].
     #[instrument(name = "Tournament::forfeit_top_cut_match", skip(tx, self), fields(tournament = ?self.uuid))]
     pub(in crate::models::tournament) async fn forfeit_top_cut_match(
         &self,
@@ -836,6 +855,9 @@ impl Tournament {
         let Some(played) = played else {
             return Ok(None);
         };
+        if played.seats.len() > 2 {
+            return Ok(None);
+        }
         let games_to_win = self
             .top_cut_best_of
             .map_or(1, |best_of| i16::from(best_of.games_to_win()));
@@ -877,7 +899,9 @@ impl Tournament {
             let planned = self.planned_swiss_rounds(tx).await?;
             if planned.is_some_and(|planned| ended >= planned) {
                 let pairable = self.pairable(tx).await?;
-                let cut = self.top_cut.and_then(|top_cut| cut_size(top_cut, pairable));
+                let cut = self
+                    .top_cut
+                    .and_then(|top_cut| cut_size(top_cut, self.table_size, pairable));
                 Some(match cut {
                     Some(_) => TournamentState::TopCut,
                     None => TournamentState::Finished,

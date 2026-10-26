@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { ResultState, RoundStage, RoundState } from "src/api/generated";
+import { ResultState, RoundStage, RoundState, TopCut } from "src/api/generated";
 import type { MatchResponse, RoundResponse, RoundsResponse } from "src/api/generated";
-import { bracketColumns, cutRoundSize, winnerSeat } from "src/utils/top-cut";
+import { bracketColumns, bracketWinnerSeat, cutRoundSize, winnerSeat } from "src/utils/top-cut";
 
 /**
  * A Match of `names`, or a Bye of one
@@ -63,6 +63,7 @@ function rounds(size: number | null, list: Array<RoundResponse>): RoundsResponse
         swiss_rounds: 1,
         suggested_swiss_rounds: 1,
         top_cut_size: size,
+        top_cut_winner: null,
         server_time: "2026-11-07T18:30:00Z",
     };
 }
@@ -93,7 +94,8 @@ describe("cutRoundSize", () => {
 
 describe("bracketColumns", () => {
     it("is empty without a Top cut", () => {
-        expect(bracketColumns(rounds(null, []))).toEqual([]);
+        expect(bracketColumns(rounds(null, []), TopCut.Top4)).toEqual([]);
+        expect(bracketColumns(rounds(null, []), TopCut.Final)).toEqual([]);
     });
 
     it("shows every Round of a Top 8 with open places for those not paired yet", () => {
@@ -103,6 +105,7 @@ describe("bracketColumns", () => {
                 round(1, RoundStage.Swiss, [match(["x", "y"], [1, 0])]),
                 round(2, RoundStage.TopCut, quarterfinals, RoundState.Running),
             ]),
+            TopCut.Top8,
         );
         expect(columns.map((column) => column.size)).toEqual([8, 4, 2]);
         expect(columns[0].matches).toEqual(quarterfinals);
@@ -113,7 +116,33 @@ describe("bracketColumns", () => {
     it("leaves a previewed Round out", () => {
         const columns = bracketColumns(
             rounds(4, [round(2, RoundStage.TopCut, [match(["1", "4"]), match(["2", "3"])], RoundState.Previewed)]),
+            TopCut.Top4,
         );
         expect(columns[0].matches).toEqual([null, null]);
+    });
+});
+
+describe("a multiplayer final", () => {
+    it("is one column of one Match, open until it is paired", () => {
+        const swiss = round(1, RoundStage.Swiss, [match(["a", "b", "c", "d"], [1, 0, 0, 0])]);
+        expect(bracketColumns(rounds(4, [swiss]), TopCut.Final)).toEqual([{ size: 4, matches: [null] }]);
+
+        const fin = match(["1", "2", "3", "4"]);
+        const columns = bracketColumns(
+            rounds(4, [swiss, round(2, RoundStage.TopCut, [fin], RoundState.Running)]),
+            TopCut.Final,
+        );
+        expect(columns).toEqual([{ size: 4, matches: [fin] }]);
+    });
+
+    it("is won by the Top cut's winner, also when drawn", () => {
+        const drawn = match(["1", "2", "3", "4"], [0, 0, 0, 0]);
+        expect(bracketWinnerSeat(drawn, true, "1")).toBe(0);
+        expect(bracketWinnerSeat(drawn, true, "2")).toBe(1);
+        expect(bracketWinnerSeat(drawn, true, null)).toBeNull();
+    });
+
+    it("leaves the other Rounds of a bracket to the games won", () => {
+        expect(bracketWinnerSeat(match(["a", "b"], [0, 2]), false, "a")).toBe(1);
     });
 });

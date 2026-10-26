@@ -1,4 +1,4 @@
-import { Ruleset } from "src/api/generated";
+import { Ruleset, TopCut } from "src/api/generated";
 
 /** The Table sizes a Tournament can be played at, smallest first */
 export const TABLE_SIZES: Array<number> = [2, 3, 4, 5];
@@ -26,6 +26,19 @@ export function rulesetsFor(tableSize: number): Array<Ruleset> {
  */
 export function rulesetFits(ruleset: Ruleset, tableSize: number): boolean {
     return rulesetsFor(tableSize).includes(ruleset);
+}
+
+/**
+ * The Top cuts a Tournament at this Table size may end with
+ *
+ * Mirrors the service's check: a bracket one-on-one, one final Match multiplayer.
+ *
+ * @param tableSize how many Participants a full Match seats
+ *
+ * @returns the Top cuts in the order they are offered
+ */
+export function topCutsFor(tableSize: number): Array<TopCut> {
+    return tableSize === 2 ? [TopCut.Top4, TopCut.Top8] : [TopCut.Final];
 }
 
 /**

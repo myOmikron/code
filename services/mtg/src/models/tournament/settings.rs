@@ -90,7 +90,9 @@ pub struct TournamentSettings {
     pub round_minutes: Option<u16>,
     /// The Top cut after the Swiss Rounds, one fitting [`Self::table_size`]; `None` for none
     pub top_cut: Option<TopCut>,
-    /// How many Games a Top cut Match is played to; set exactly with [`Self::top_cut`]
+    /// How many Games a Top cut Match is played to; set exactly with a one-on-one [`Self::top_cut`]
+    ///
+    /// A multiplayer final is one Game, like every multiplayer Match.
     pub top_cut_best_of: Option<BestOf>,
     /// Whether the Tournament is entered afterwards instead of run live
     ///
@@ -151,7 +153,7 @@ pub struct SettingsRefusal {
     pub round_minutes_out_of_range: bool,
     /// The Top cut is not played at the Table size
     pub top_cut_mismatch: bool,
-    /// The Top cut's best-of is missing with a Top cut or given without one
+    /// The Top cut's best-of is missing with a one-on-one Top cut or given without one
     pub top_cut_best_of_mismatch: bool,
     /// The entry fee is zero or less
     pub entry_fee_not_positive: bool,
@@ -187,7 +189,8 @@ impl TournamentSettings {
             refusal.best_of_mismatch = (table_size.get() == 2) != raw.best_of.is_some();
             refusal.top_cut_mismatch = raw.top_cut.is_some_and(|top_cut| !top_cut.fits(table_size));
         }
-        refusal.top_cut_best_of_mismatch = raw.top_cut.is_some() != raw.top_cut_best_of.is_some();
+        let bracket = raw.top_cut.is_some_and(|top_cut| top_cut != TopCut::Final);
+        refusal.top_cut_best_of_mismatch = bracket != raw.top_cut_best_of.is_some();
         if let Some(fee) = &raw.entry_fee {
             refusal.entry_fee_not_positive = fee.amount <= 0;
             refusal.unknown_currency = !(fee.currency.len() == 3
@@ -446,7 +449,7 @@ mod tests {
     }
 
     #[test]
-    fn a_top_cut_is_played_one_on_one_with_its_own_best_of() {
+    fn a_bracket_is_played_one_on_one_with_its_own_best_of_and_a_final_multiplayer() {
         for (table_size, ruleset, top_cut, top_cut_best_of, valid) in [
             (2, Ruleset::Mtr, None, None, true),
             (
@@ -464,6 +467,24 @@ mod tests {
                 Ruleset::TopDeck,
                 Some(TopCut::Top4),
                 Some(BestOf::One),
+                false,
+            ),
+            (4, Ruleset::TopDeck, Some(TopCut::Top4), None, false),
+            (4, Ruleset::TopDeck, Some(TopCut::Final), None, true),
+            (3, Ruleset::TopDeck, Some(TopCut::Final), None, true),
+            (
+                4,
+                Ruleset::TopDeck,
+                Some(TopCut::Final),
+                Some(BestOf::One),
+                false,
+            ),
+            (2, Ruleset::Mtr, Some(TopCut::Final), None, false),
+            (
+                2,
+                Ruleset::Mtr,
+                Some(TopCut::Final),
+                Some(BestOf::Three),
                 false,
             ),
         ] {

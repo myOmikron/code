@@ -20,5 +20,5 @@ function RouteComponent() {
     const uuid = tournament?.uuid ?? null;
     const load = useCallback(() => Api.tournaments.rounds.list(uuid ?? ""), [uuid]);
     if (tournament === null) return null;
-    return <TournamentBracket load={load} />;
+    return <TournamentBracket load={load} topCut={tournament.top_cut ?? null} />;
 }

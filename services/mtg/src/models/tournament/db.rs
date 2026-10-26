@@ -98,7 +98,7 @@ pub struct TournamentModel {
     /// The Top cut after the Swiss Rounds, `None` for none
     pub top_cut: Option<TopCut>,
 
-    /// How many Games a Top cut Match is played to; set exactly with [`Self::top_cut`]
+    /// How many Games a Top cut Match is played to; set exactly with a one-on-one [`Self::top_cut`]
     pub top_cut_best_of: Option<BestOf>,
 
     /// Whether the Tournament is entered afterwards instead of run live
