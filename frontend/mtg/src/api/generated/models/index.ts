@@ -6743,6 +6743,12 @@ export interface StandingResponse {
      */
     place: number;
     /**
+     * Its Tiebreakers between 0 and 1, in the order of [`StandingsResponse::tiebreakers`]
+     * @type {Array<number>}
+     * @memberof StandingResponse
+     */
+    tiebreakers: Array<number>;
+    /**
      * Matches won, Byes not included
      * @type {number}
      * @memberof StandingResponse
@@ -6761,6 +6767,12 @@ export interface StandingsResponse {
      * @memberof StandingsResponse
      */
     standings: Array<StandingResponse>;
+    /**
+     * The Ruleset's Tiebreakers after Match points, the most significant first
+     * @type {Array<Tiebreaker>}
+     * @memberof StandingsResponse
+     */
+    tiebreakers: Array<Tiebreaker>;
 }
 /**
  * Response to a started add-passkey ceremony
@@ -6986,6 +6998,27 @@ export interface ThemePrefs {
      */
     pinned?: Array<string>;
 }
+
+/**
+ * A Tiebreaker: a number a Ruleset orders Participants with equal Match points by
+ * @export
+ */
+export const Tiebreaker = {
+    /**
+    * OMW%: the average of the opponents&#39; Match-win percentages, each at least the floor
+    */
+    OpponentMatchWinPercentage: 'OpponentMatchWinPercentage',
+    /**
+    * GW%: game points over three per game played, at least the floor
+    */
+    GameWinPercentage: 'GameWinPercentage',
+    /**
+    * OGW%: the average of the opponents&#39; game-win percentages, each at least the floor
+    */
+    OpponentGameWinPercentage: 'OpponentGameWinPercentage'
+} as const;
+export type Tiebreaker = typeof Tiebreaker[keyof typeof Tiebreaker];
+
 
 /**
  * Whether a Tournament is still ahead or already over

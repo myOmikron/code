@@ -159,7 +159,7 @@ Order: Match points, OMW%, GW%, OGW%.
 
 - **MW%** = Match points / (3 × Rounds played), at least 0.33. A Bye counts as a Round played and a win (example: 3-2-0 including a Bye, 9 / 15 = 0.60).
 - **GW%** = game points / (3 × games played), at least 0.33. A Bye counts as two games won (6 game points).
-- **OMW%** = average of each opponent's MW% (each already floored at 0.33); Byes are skipped, not counted as opponents.
+- **OMW%** = average of each opponent's MW% (each already floored at 0.33); Byes are skipped, not counted as opponents. An opponent's own Byes stay in its MW% and GW% (Source, App. C "Byes": "A player's byes are ignored when computing their opponents' match-win and opponents' game-win percentages", that is the player's own Bye rounds, as the OMW% definition says: "ignoring those rounds for which the player received a bye").
 - **OGW%** = average of each opponent's GW%, floored the same way.
 - **Decision**: the floor is 0.33 as written, not 1/3.
 - A Participant with no Matches yet (only a Bye or nothing) has OMW% and OGW% of 0.

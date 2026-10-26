@@ -61,6 +61,9 @@ rand = { workspace = true }
 # Bracket-flag patterns over oracle text, applied once per catalog sync
 regex = { workspace = true }
 
+# Exact fractions for the Tiebreakers, whose averages outgrow any fixed-width integer
+num-bigint = { version = "~0.4" }
+
 # Error handling
 anyhow = { workspace = true }
 thiserror = { workspace = true }
