@@ -17,7 +17,7 @@ RUN uv sync --locked --no-dev --extra api --extra solver --extra edhrec
 
 # Not dhi.io/alpine-base like the Rust services: ortools only ships manylinux
 # (glibc) wheels, so the runtime has to stay Debian-based.
-FROM python:3.14.8-slim-trixie@sha256:fbecd461fc72d21b2143c6eaba25143738079154a6d0ea3da3aec724f50eed4a
+FROM python:3.15.1-slim-trixie@sha256:533b0b2f9b5d46fd097091cf826f27902f1d6c3bca714b6dc74551356aa97a51
 
 RUN <<EOF
 set -e
