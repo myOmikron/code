@@ -1,0 +1,71 @@
+{
+    "heading": {
+        "statistics": "Statistics",
+        "intake": "Order intake",
+        "pickup-days": "Per pickup day",
+        "deadline-distance": "Distance to the order deadline",
+        "items": "Items in the period"
+    },
+    "label": {
+        "from": "From",
+        "to": "To",
+        "measure": "Measure",
+        "category": "Category",
+        "all-categories": "All categories",
+        "items-shown": "Items in the charts",
+        "selection-top": "Top 5",
+        "selection-count_one": "{{count}} item",
+        "selection-count_other": "{{count}} items",
+        "deleted": "deleted",
+        "cancelled": "cancelled",
+        "called-off": "called off",
+        "orders-total": "All orders",
+        "day-open": "still open",
+        "day-called-off": "called off",
+        "segment-auto": "Automatic ({{size}})",
+        "segment-10min": "10 minutes",
+        "segment-30min": "30 minutes",
+        "segment-1h": "1 hour",
+        "segment-1d": "1 day",
+        "distance-lt1h": "< 1 h",
+        "distance-1to3h": "1–3 h",
+        "distance-3to12h": "3–12 h",
+        "distance-12to24h": "12–24 h",
+        "distance-1to2d": "1–2 days",
+        "distance-gt2d": "> 2 days",
+        "item": "Item",
+        "units": "Units",
+        "orders": "Orders",
+        "order-value": "Order value",
+        "cancelled-units": "Cancelled (units)",
+        "called-off-units": "Called off (units)",
+        "empty": "No orders in this period",
+        "items-empty": "Nothing was ordered in this period."
+    },
+    "button": {
+        "measure-units": "Units",
+        "measure-orders": "Orders",
+        "measure-order-value": "Order value",
+        "quick-7d": "Last 7 days",
+        "quick-30d": "Last 30 days",
+        "quick-3m": "Last 3 months",
+        "quick-12m": "Last 12 months",
+        "reset-zoom": "Reset zoom",
+        "selection-top": "Use top 5"
+    },
+    "description": {
+        "intake": "By the time the order was placed. Drag the handles below the chart to zoom into a range.",
+        "pickup-days": "By the effective pickup day. Faded bars: not dispatched yet, the numbers may still change.",
+        "deadline-distance": "How long before the order deadline orders were placed, without cancelled orders.",
+        "orders-not-stacked": "An order counts for every selected item it contains, so the bars add up to more than the line, which counts each order once.",
+        "items": "Every item by the time the order was placed, regardless of the chart selection. Cancelled orders only count in the cancelled and called off columns.",
+        "selection-limit_one": "At most {{count}} item.",
+        "selection-limit_other": "At most {{count}} items.",
+        "zoomed": "Zoomed in to {{from}} to {{to}}.",
+        "empty": "Pick a different period."
+    },
+    "accessibility": {
+        "segment-size": "Segment size",
+        "zoom": "Range to zoom into"
+    }
+}

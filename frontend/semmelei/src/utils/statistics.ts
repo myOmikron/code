@@ -48,8 +48,8 @@ export type StatisticsOptions = {
     segmentSize: SegmentSize | "auto";
     /** What the charts count */
     measure: Measure;
-    /** Keys ({@link ItemRow.key}) of the Items the charts show */
-    selectedItems: string[];
+    /** Keys ({@link ItemRow.key}) of the Items the charts show, or `"top"` for {@link Statistics.topItems} */
+    selectedItems: string[] | "top";
     /** Uuid of the category to restrict everything to, null for all */
     category: string | null;
 };
@@ -129,6 +129,8 @@ export type Statistics = {
     items: ItemRow[];
     /** Keys of the top 5 Items of the period in the current measure */
     topItems: string[];
+    /** Categories of all positions, to choose the category filter from, by name */
+    categories: { uuid: string; name: string }[];
 };
 
 const TIME_ZONE = "Europe/Berlin";
@@ -236,6 +238,55 @@ function segmentIndex(boundaries: number[], instant: number): number {
 }
 
 /**
+ * The calendar day of an instant in Europe/Berlin
+ *
+ * @param instant epoch ms
+ *
+ * @returns the day (`YYYY-MM-DD`)
+ */
+function berlinDate(instant: number): string {
+    return new Date(instant + berlinOffset(instant)).toISOString().slice(0, 10);
+}
+
+/**
+ * The period of the Berlin days a range of order intake segments covers, to zoom into
+ *
+ * @param start start of the first segment (epoch ms)
+ * @param end end of the last segment, exclusive (epoch ms)
+ *
+ * @returns the period
+ */
+export function zoomPeriod(start: number, end: number): Period {
+    return { from: berlinDate(start), to: berlinDate(end - 1) };
+}
+
+/** Quick picks of the period: last 7 or 30 days, last 3 or 12 months */
+export type QuickPeriod = "7d" | "30d" | "3m" | "12m";
+
+const QUICK_PERIODS: Record<QuickPeriod, { months: number; days: number }> = {
+    "7d": { months: 0, days: 7 },
+    "30d": { months: 0, days: 30 },
+    "3m": { months: 3, days: 0 },
+    "12m": { months: 12, days: 0 },
+};
+
+/**
+ * The period of a quick pick, ending today in Europe/Berlin
+ *
+ * @param pick the quick pick
+ * @param now the current instant (epoch ms)
+ *
+ * @returns the period
+ */
+export function quickPeriod(pick: QuickPeriod, now: number): Period {
+    const to = berlinDate(now);
+    const [year, month, day] = to.split("-").map(Number);
+    const { months, days } = QUICK_PERIODS[pick];
+    const from = new Date(Date.UTC(year, month - 1 - months, day - days + 1)).toISOString().slice(0, 10);
+    return { from, to };
+}
+
+/**
  * The finest segment size that splits a period into at most 200 segments
  *
  * @param period the period
@@ -257,6 +308,9 @@ function itemKey(position: StatisticsPosition): string {
     return position.item ?? `deleted:${position.name}`;
 }
 
+/** {@link StatisticsOptions} with the Item selection resolved to keys */
+type ChartOptions = Omit<StatisticsOptions, "selectedItems"> & { selectedItems: string[] };
+
 /**
  * Chart values of a set of positions
  *
@@ -265,7 +319,7 @@ function itemKey(position: StatisticsPosition): string {
  *
  * @returns the values
  */
-function chartValues(positions: StatisticsPosition[], options: StatisticsOptions): ChartValues {
+function chartValues(positions: StatisticsPosition[], options: ChartOptions): ChartValues {
     const selected = positions.filter((position) => options.selectedItems.includes(itemKey(position)));
     const main = selected.filter((position) => position.status !== "Cancelled");
     const items: Record<string, number> = {};
@@ -376,6 +430,26 @@ function byUnitsThenName(a: ItemRow, b: ItemRow): number {
     return b.units - a.units || a.name.localeCompare(b.name, "de");
 }
 
+/** Columns of the item table */
+export type ItemColumn = "name" | "units" | "orders" | "orderValueCents" | "cancelledUnits" | "calledOffUnits";
+
+/**
+ * Item table rows sorted by a column
+ *
+ * @param rows the rows
+ * @param column the column to sort by
+ * @param direction ascending or descending
+ *
+ * @returns the sorted rows, ties ordered by name
+ */
+export function sortItemRows(rows: ItemRow[], column: ItemColumn, direction: "asc" | "desc"): ItemRow[] {
+    const sign = direction === "asc" ? 1 : -1;
+    const byName = (a: ItemRow, b: ItemRow) => a.name.localeCompare(b.name, "de");
+    return [...rows].sort((a, b) =>
+        column === "name" ? sign * byName(a, b) : sign * (a[column] - b[column]) || byName(a, b),
+    );
+}
+
 /**
  * The Items with the most of a measure
  *
@@ -402,7 +476,7 @@ function topItems(rows: ItemRow[], what: Measure): string[] {
  *
  * @returns one point per pickup day that has positions
  */
-function pickupDays(positions: StatisticsPosition[], options: StatisticsOptions): PickupDayPoint[] {
+function pickupDays(positions: StatisticsPosition[], options: ChartOptions): PickupDayPoint[] {
     const { from, to } = options.period;
     const days = new Map<string, StatisticsPosition[]>();
     for (const position of positions) {
@@ -427,7 +501,7 @@ function pickupDays(positions: StatisticsPosition[], options: StatisticsOptions)
  *
  * @returns all buckets, shortest distance first, or none without positions
  */
-function deadlineDistance(positions: StatisticsPosition[], options: StatisticsOptions): DeadlineBucket[] {
+function deadlineDistance(positions: StatisticsPosition[], options: ChartOptions): DeadlineBucket[] {
     if (positions.length === 0) return [];
     return DEADLINE_BUCKETS.map(({ bucket, from, to }) => {
         const inBucket = positions.filter((position) => {
@@ -437,6 +511,21 @@ function deadlineDistance(positions: StatisticsPosition[], options: StatisticsOp
         const { items, total } = chartValues(inBucket, options);
         return { bucket, items, total };
     });
+}
+
+/**
+ * The distinct categories of positions
+ *
+ * @param positions the positions
+ *
+ * @returns each category once, by name
+ */
+function categories(positions: StatisticsPosition[]): { uuid: string; name: string }[] {
+    const byUuid = new Map<string, { uuid: string; name: string }>();
+    for (const { category } of positions) {
+        if (category) byUuid.set(category.uuid, { uuid: category.uuid, name: category.name });
+    }
+    return [...byUuid.values()].sort((a, b) => a.name.localeCompare(b.name, "de"));
 }
 
 /**
@@ -461,6 +550,10 @@ export function aggregateStatistics(positions: StatisticsPosition[], options: St
         return at >= periodStart && at < periodEnd;
     });
 
+    const items = itemRows(placed);
+    const top = topItems(items, options.measure);
+    const chartOptions = { ...options, selectedItems: options.selectedItems === "top" ? top : options.selectedItems };
+
     const intake: IntakeSegment[] = [];
     if (placed.length > 0) {
         const segments: StatisticsPosition[][] = boundaries.slice(1).map(() => []);
@@ -468,18 +561,39 @@ export function aggregateStatistics(positions: StatisticsPosition[], options: St
             segments[segmentIndex(boundaries, Date.parse(position.ordered_at))].push(position);
         }
         segments.forEach((inSegment, i) =>
-            intake.push({ start: boundaries[i], end: boundaries[i + 1], ...chartValues(inSegment, options) }),
+            intake.push({ start: boundaries[i], end: boundaries[i + 1], ...chartValues(inSegment, chartOptions) }),
         );
     }
-
-    const items = itemRows(placed);
 
     return {
         segmentSize,
         intake,
-        pickupDays: pickupDays(inCategory, options),
-        deadlineDistance: deadlineDistance(placed, options),
+        pickupDays: pickupDays(inCategory, chartOptions),
+        deadlineDistance: deadlineDistance(placed, chartOptions),
         items,
-        topItems: topItems(items, options.measure),
+        topItems: top,
+        categories: categories(positions),
     };
+}
+
+/**
+ * Colour slots of the selected Items, so that an Item keeps its colour while the selection changes
+ *
+ * @param previous the slots so far, by Item key
+ * @param keys the Items selected now
+ *
+ * @returns a slot per selected Item: its previous one, or the lowest free one
+ */
+export function assignColorSlots(previous: Record<string, number>, keys: string[]): Record<string, number> {
+    const slots: Record<string, number> = {};
+    for (const key of keys) if (key in previous) slots[key] = previous[key];
+    const taken = new Set(Object.values(slots));
+    let free = 0;
+    for (const key of keys) {
+        if (key in slots) continue;
+        while (taken.has(free)) free++;
+        slots[key] = free;
+        taken.add(free);
+    }
+    return slots;
 }

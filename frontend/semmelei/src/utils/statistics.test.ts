@@ -1,5 +1,14 @@
 import { describe, expect, test } from "vitest";
-import { aggregateStatistics, autoSegmentSize, StatisticsOptions, StatisticsPosition } from "src/utils/statistics";
+import {
+    aggregateStatistics,
+    autoSegmentSize,
+    sortItemRows,
+    StatisticsOptions,
+    StatisticsPosition,
+    assignColorSlots,
+    quickPeriod,
+    zoomPeriod,
+} from "src/utils/statistics";
 
 const BREAD = "00000000-0000-0000-0000-00000000000b";
 const ROLL = "00000000-0000-0000-0000-00000000000c";
@@ -230,6 +239,28 @@ describe("item table", () => {
 
         expect(items).toEqual([]);
     });
+    test("sorts by any column, ties by name", () => {
+        const { items } = aggregateStatistics(
+            [
+                position({ quantity: 2, price_cents: 350 }),
+                position({ item: ROLL, item_name: "Semmel", name: "Semmel", quantity: 10, price_cents: 60 }),
+                position({
+                    item: null,
+                    item_name: null,
+                    category: null,
+                    name: "Apfelkuchen",
+                    quantity: 2,
+                    price_cents: 100,
+                }),
+            ],
+            OPTIONS,
+        );
+
+        const names = (rows: typeof items) => rows.map((row) => row.name);
+        expect(names(sortItemRows(items, "orderValueCents", "desc"))).toEqual(["Bauernbrot", "Semmel", "Apfelkuchen"]);
+        expect(names(sortItemRows(items, "units", "asc"))).toEqual(["Apfelkuchen", "Bauernbrot", "Semmel"]);
+        expect(names(sortItemRows(items, "name", "desc"))).toEqual(["Semmel", "Bauernbrot", "Apfelkuchen"]);
+    });
 });
 
 describe("top Items", () => {
@@ -270,6 +301,19 @@ describe("top Items", () => {
 
         expect(aggregateStatistics(positions, OPTIONS).topItems).toEqual(["item-1"]);
     });
+
+    test("are what the charts show when the selection is the top preset", () => {
+        const positions = [ofItem(1, 1), ofItem(2, 6), ofItem(3, 3), ofItem(4, 5), ofItem(5, 2), ofItem(6, 4)];
+
+        const { intake } = aggregateStatistics(positions, {
+            ...OPTIONS,
+            segmentSize: "1d",
+            selectedItems: "top",
+        });
+
+        expect(Object.keys(intake[0].items).sort()).toEqual(["item-2", "item-3", "item-4", "item-5", "item-6"]);
+        expect(intake[0].total).toBe(20);
+    });
 });
 
 describe("category filter", () => {
@@ -298,6 +342,15 @@ describe("category filter", () => {
         const stats = aggregateStatistics(positions, { ...pastryOnly, category: null });
 
         expect(stats.items).toHaveLength(3);
+    });
+
+    test("offers every category of the period to choose from, whatever is filtered, by name", () => {
+        const stats = aggregateStatistics([...positions, position({ quantity: 5 })], pastryOnly);
+
+        expect(stats.categories).toEqual([
+            { uuid: "cat-bread", name: "Brot" },
+            { uuid: "cat-pastry", name: "Gebäck" },
+        ]);
     });
 });
 
@@ -429,5 +482,38 @@ describe("autoSegmentSize", () => {
         const period = { from: "2026-06-01", to: "2026-06-30" };
         expect(aggregateStatistics([], { ...OPTIONS, period }).segmentSize).toBe("1d");
         expect(aggregateStatistics([], { ...OPTIONS, period, segmentSize: "1h" }).segmentSize).toBe("1h");
+    });
+});
+
+describe("zoomPeriod", () => {
+    test("is the Berlin days a dragged range of segments covers", () => {
+        expect(zoomPeriod(Date.parse("2026-03-28T23:00:00Z"), Date.parse("2026-03-30T22:00:00Z"))).toEqual({
+            from: "2026-03-29",
+            to: "2026-03-30",
+        });
+        expect(zoomPeriod(Date.parse("2026-07-01T22:10:00Z"), Date.parse("2026-07-01T22:20:00Z"))).toEqual({
+            from: "2026-07-02",
+            to: "2026-07-02",
+        });
+    });
+});
+
+describe("quickPeriod", () => {
+    test("ends today in Berlin and reaches back the picked span", () => {
+        const justAfterBerlinMidnight = Date.parse("2026-03-29T22:30:00Z");
+
+        expect(quickPeriod("7d", justAfterBerlinMidnight)).toEqual({ from: "2026-03-24", to: "2026-03-30" });
+        expect(quickPeriod("30d", justAfterBerlinMidnight)).toEqual({ from: "2026-03-01", to: "2026-03-30" });
+        expect(quickPeriod("3m", justAfterBerlinMidnight)).toEqual({ from: "2025-12-31", to: "2026-03-30" });
+        expect(quickPeriod("12m", justAfterBerlinMidnight)).toEqual({ from: "2025-03-31", to: "2026-03-30" });
+    });
+});
+
+describe("assignColorSlots", () => {
+    test("keeps the slot of every Item that stays selected and gives new ones the lowest free slot", () => {
+        const first = assignColorSlots({}, ["a", "b", "c"]);
+        expect(first).toEqual({ a: 0, b: 1, c: 2 });
+
+        expect(assignColorSlots(first, ["c", "d", "a"])).toEqual({ a: 0, c: 2, d: 1 });
     });
 });

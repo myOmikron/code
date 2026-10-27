@@ -18,7 +18,8 @@
         "procurement": "Beschaffung",
         "closing": "Tagesabschluss",
         "legal": "Rechtliches",
-        "news-posts": "Beiträge"
+        "news-posts": "Beiträge",
+        "statistics": "Statistik"
     },
     "heading": {
         "order-insight": "Bestellungen",

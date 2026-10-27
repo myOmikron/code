@@ -141,6 +141,9 @@ export const Api = {
                 handleError(defaultApi.updatePickupDay({ rule_date: ruleDate, UpdatePickupDayRequest: request })),
             lockDay: (ruleDate: IsoDate) => handleError(defaultApi.lockPickupDay({ rule_date: ruleDate })),
         },
+        statistics: {
+            positions: (from: IsoDate, to: IsoDate) => handleError(defaultApi.getStatisticsPositions({ from, to })),
+        },
     },
 };
 

@@ -1,5 +1,6 @@
 import {
     ArrowRightStartOnRectangleIcon,
+    ChartBarIcon,
     CalendarDaysIcon,
     ClipboardDocumentListIcon,
     CubeIcon,
@@ -95,6 +96,10 @@ export function StaffLayout() {
                         <SidebarItem href={"/admin/posts"}>
                             <NewspaperIcon />
                             <SidebarLabel>{tg("button.news-posts")}</SidebarLabel>
+                        </SidebarItem>
+                        <SidebarItem href={"/admin/statistik"}>
+                            <ChartBarIcon />
+                            <SidebarLabel>{tg("button.statistics")}</SidebarLabel>
                         </SidebarItem>
                         <SidebarItem href={"/admin/staff"}>
                             <UsersIcon />

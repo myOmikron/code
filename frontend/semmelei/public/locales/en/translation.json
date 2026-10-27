@@ -18,7 +18,8 @@
         "procurement": "Procurement",
         "closing": "End of day",
         "legal": "Legal",
-        "news-posts": "Posts"
+        "news-posts": "Posts",
+        "statistics": "Statistics"
     },
     "heading": {
         "order-insight": "Orders",
