@@ -192,7 +192,9 @@ import type {
     SetPaidRequest,
     SetPushSettingsRequest,
     SetResultRequest,
+    SetRoundTimerRequest,
     SetSwissRoundsRequest,
+    SetTournamentRoundTimer200Response,
     SetTournamentSwissRounds200Response,
     SharedCollectionResponse,
     SharedDeckResponse,
@@ -1890,6 +1892,21 @@ export interface SetTournamentParticipantPaidRequest {
      * 
      */
     SetPaidRequest?: SetPaidRequest;
+}
+
+export interface SetTournamentRoundTimerRequest {
+    /**
+     * 
+     */
+    tournament: string;
+    /**
+     * 
+     */
+    number: number;
+    /**
+     * 
+     */
+    SetRoundTimerRequest?: SetRoundTimerRequest;
 }
 
 export interface SetTournamentSwissRoundsRequest {
@@ -11330,6 +11347,64 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async setTournamentParticipantPaid(requestParameters: SetTournamentParticipantPaidRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FormErrorResponseForSetPaidErrors> {
         const response = await this.setTournamentParticipantPaidRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for setTournamentRoundTimer without sending the request
+     */
+    async setTournamentRoundTimerRequestOpts(requestParameters: SetTournamentRoundTimerRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tournament'] == null) {
+            throw new runtime.RequiredError(
+                'tournament',
+                'Required parameter "tournament" was null or undefined when calling setTournamentRoundTimer().'
+            );
+        }
+
+        if (requestParameters['number'] == null) {
+            throw new runtime.RequiredError(
+                'number',
+                'Required parameter "number" was null or undefined when calling setTournamentRoundTimer().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/tournaments/{tournament}/rounds/{number}/timer`;
+        urlPath = urlPath.replace('{tournament}', encodeURIComponent(String(requestParameters['tournament'])));
+        urlPath = urlPath.replace('{number}', encodeURIComponent(String(requestParameters['number'])));
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['SetRoundTimerRequest'],
+        };
+    }
+
+    /**
+     * Pause, resume, adjust or reset the round timer of a running Round, as an Organizer  Answers the timer afterwards; everybody following the Tournament hears of it.
+     * Pause, resume, adjust or reset the round timer of a running Round, as an Organizer
+     */
+    async setTournamentRoundTimerRaw(requestParameters: SetTournamentRoundTimerRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SetTournamentRoundTimer200Response>> {
+        const requestOptions = await this.setTournamentRoundTimerRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Pause, resume, adjust or reset the round timer of a running Round, as an Organizer  Answers the timer afterwards; everybody following the Tournament hears of it.
+     * Pause, resume, adjust or reset the round timer of a running Round, as an Organizer
+     */
+    async setTournamentRoundTimer(requestParameters: SetTournamentRoundTimerRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SetTournamentRoundTimer200Response> {
+        const response = await this.setTournamentRoundTimerRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

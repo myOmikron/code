@@ -1,7 +1,7 @@
 
 # TournamentEventOneOf11
 
-A Participant disputed a Result
+A Participant reported a Result
 
 ## Properties
 

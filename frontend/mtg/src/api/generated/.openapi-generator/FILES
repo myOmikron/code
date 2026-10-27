@@ -342,8 +342,14 @@ docs/SetPaidRequest.md
 docs/SetPushSettingsRequest.md
 docs/SetResultErrors.md
 docs/SetResultRequest.md
+docs/SetRoundTimerRequest.md
+docs/SetRoundTimerRequestOneOf.md
+docs/SetRoundTimerRequestOneOf1.md
+docs/SetRoundTimerRequestOneOf2.md
+docs/SetRoundTimerRequestOneOf3.md
 docs/SetSwissRoundsErrors.md
 docs/SetSwissRoundsRequest.md
+docs/SetTournamentRoundTimer200Response.md
 docs/SetTournamentSwissRounds200Response.md
 docs/SharedCollectionResponse.md
 docs/SharedDeckResponse.md
@@ -396,6 +402,7 @@ docs/TournamentEventOneOf11.md
 docs/TournamentEventOneOf12.md
 docs/TournamentEventOneOf13.md
 docs/TournamentEventOneOf14.md
+docs/TournamentEventOneOf15.md
 docs/TournamentEventOneOf2.md
 docs/TournamentEventOneOf3.md
 docs/TournamentEventOneOf4.md

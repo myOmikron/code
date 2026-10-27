@@ -1,7 +1,7 @@
 
 # TournamentEventOneOf14
 
-The stream missed events; the reader fetches everything again
+The standings changed
 
 ## Properties
 

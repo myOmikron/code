@@ -1,6 +1,6 @@
 import { ClockIcon } from "@heroicons/react/20/solid";
 import clsx from "clsx";
-import { Text } from "components";
+import { Badge, Text } from "components";
 import { useTranslation } from "react-i18next";
 import { Ruleset } from "src/api/generated";
 import type { RoundTimerResponse } from "src/api/generated";
@@ -27,26 +27,30 @@ export type TournamentRoundClockProps = {
 
 /**
  * The round timer counting down, and at time up the Ruleset's extra turns as information.
+ * A paused timer holds its digits.
  *
  * @returns the timer
  */
 export function TournamentRoundClock({ timer, ruleset, skewMs }: TournamentRoundClockProps) {
     const [t] = useTranslation("tournament");
-    const reading = useRoundClock(timer.ends_at, skewMs);
+    const reading = useRoundClock(timer, skewMs);
 
-    const colour =
-        reading.timeUp || reading.seconds <= URGENT_SECONDS
-            ? "text-red-600 dark:text-red-400"
-            : reading.seconds <= WARN_SECONDS
-              ? "text-amber-600 dark:text-amber-400"
-              : "text-zinc-950 dark:text-white";
-    const milestone = reading.timeUp
-        ? t("label.time-up")
-        : reading.seconds <= URGENT_SECONDS
-          ? t("accessibility.timer-one-minute")
+    const colour = timer.paused
+        ? "text-zinc-500 dark:text-zinc-400"
+        : reading.timeUp || reading.seconds <= URGENT_SECONDS
+          ? "text-red-600 dark:text-red-400"
           : reading.seconds <= WARN_SECONDS
-            ? t("accessibility.timer-five-minutes")
-            : "";
+            ? "text-amber-600 dark:text-amber-400"
+            : "text-zinc-950 dark:text-white";
+    const milestone = timer.paused
+        ? t("label.timer-paused")
+        : reading.timeUp
+          ? t("label.time-up")
+          : reading.seconds <= URGENT_SECONDS
+            ? t("accessibility.timer-one-minute")
+            : reading.seconds <= WARN_SECONDS
+              ? t("accessibility.timer-five-minutes")
+              : "";
 
     const hint =
         ruleset === Ruleset.Mtr
@@ -70,6 +74,7 @@ export function TournamentRoundClock({ timer, ruleset, skewMs }: TournamentRound
                 >
                     {reading.timeUp ? t("label.time-up") : formatClock(reading.seconds)}
                 </span>
+                {timer.paused && <Badge color={"zinc"}>{t("label.timer-paused")}</Badge>}
                 <span aria-live={"polite"} className={"sr-only"}>
                     {milestone}
                 </span>

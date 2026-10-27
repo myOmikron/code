@@ -1,14 +1,13 @@
 
 # TournamentEventOneOf10
 
-A Participant reported a Result
+An Organizer paused, resumed, adjusted or reset a running Round\'s timer
 
 ## Properties
 
 Name | Type
 ------------ | -------------
 `kind` | string
-`match_uuid` | string
 `round` | number
 
 

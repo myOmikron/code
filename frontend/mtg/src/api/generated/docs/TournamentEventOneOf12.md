@@ -1,7 +1,7 @@
 
 # TournamentEventOneOf12
 
-An Organizer set or corrected a Result
+A Participant disputed a Result
 
 ## Properties
 

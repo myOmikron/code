@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clockSkew, formatClock, readClock } from "src/utils/round-clock";
+import { clockSkew, formatClock, readClock, readTimer } from "src/utils/round-clock";
 
 /** A fixed instant to measure everything against */
 const NOW = Date.parse("2026-11-07T18:30:00.000Z");
@@ -33,6 +33,24 @@ describe("readClock", () => {
     it("corrects for a device whose own clock is wrong", () => {
         // This phone believes it is five minutes later than it is.
         expect(readClock(endsIn(600), NOW + 300_000, 300_000)).toEqual({ seconds: 600, timeUp: false });
+    });
+});
+
+describe("readTimer", () => {
+    it("counts a running timer down from its end", () => {
+        const timer = { ends_at: endsIn(600), paused: false, remaining_seconds: 600, time_up: false };
+        expect(readTimer(timer, NOW + 60_000, 0)).toEqual({ seconds: 540, timeUp: false });
+    });
+
+    it("holds a paused timer at what the server answered", () => {
+        const timer = { ends_at: endsIn(600), paused: true, remaining_seconds: 420, time_up: false };
+        expect(readTimer(timer, NOW, 0)).toEqual({ seconds: 420, timeUp: false });
+        expect(readTimer(timer, NOW + 3_600_000, 0)).toEqual({ seconds: 420, timeUp: false });
+    });
+
+    it("keeps time up on a timer paused after it ran out", () => {
+        const timer = { ends_at: endsIn(-60), paused: true, remaining_seconds: 0, time_up: true };
+        expect(readTimer(timer, NOW, 0)).toEqual({ seconds: 0, timeUp: true });
     });
 });
 

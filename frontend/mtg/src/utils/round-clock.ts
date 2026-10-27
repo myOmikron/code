@@ -2,6 +2,8 @@
  * The round timer as a pure reading of its end, this device's clock and its skew to the server.
  */
 
+import type { RoundTimerResponse } from "src/api/generated";
+
 /** What a round timer reads right now */
 export type ClockReading = {
     /** Seconds left, a started second counting as a whole one; 0 once time is up */
@@ -23,6 +25,33 @@ export function readClock(endsAt: string, nowMs: number, skewMs: number): ClockR
     const leftMs = Date.parse(endsAt) - (nowMs - skewMs);
     if (leftMs <= 0) return { seconds: 0, timeUp: true };
     return { seconds: Math.ceil(leftMs / 1000), timeUp: false };
+}
+
+/** What {@link readTimer} needs of a round timer, as the API sends it */
+export type TimerFace = Pick<RoundTimerResponse, "ends_at" | "paused" | "remaining_seconds" | "time_up">;
+
+/**
+ * What a paused round timer reads; it holds what the server answered
+ *
+ * @param timer the round timer
+ *
+ * @returns the held reading, `null` while the timer runs
+ */
+export function heldClock(timer: TimerFace): ClockReading | null {
+    return timer.paused ? { seconds: timer.remaining_seconds, timeUp: timer.time_up } : null;
+}
+
+/**
+ * Reads a round timer, running or paused
+ *
+ * @param timer the round timer
+ * @param nowMs this device's clock, in milliseconds
+ * @param skewMs how far this device's clock is ahead of the server's, in milliseconds
+ *
+ * @returns what the timer reads
+ */
+export function readTimer(timer: TimerFace, nowMs: number, skewMs: number): ClockReading {
+    return heldClock(timer) ?? readClock(timer.ends_at, nowMs, skewMs);
 }
 
 /**

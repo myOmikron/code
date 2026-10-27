@@ -18,6 +18,7 @@ const TOPICS: Record<TournamentEvent["kind"], LiveTopic[]> = {
     RoundStarted: ["rounds", "tournament"],
     RoundEnded: ["rounds", "tournament"],
     RoundTakenBack: ["rounds", "tournament"],
+    TimerChanged: ["rounds"],
     ResultReported: ["rounds"],
     ResultDisputed: ["rounds"],
     ResultSet: ["rounds"],

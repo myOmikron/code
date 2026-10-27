@@ -10,6 +10,7 @@ Name | Type
 `ends_at` | string
 `extra_turns` | number
 `length_seconds` | number
+`paused` | boolean
 `remaining_seconds` | number
 `time_up` | boolean
 

@@ -13731,6 +13731,92 @@
                 }
             }
         },
+        "/api/frontend/v1/tournaments/{tournament}/rounds/{number}/timer": {
+            "put": {
+                "summary": "Pause, resume, adjust or reset the round timer of a running Round, as an Organizer",
+                "description": "Pause, resume, adjust or reset the round timer of a running Round, as an Organizer\n\nAnswers the timer afterwards; everybody following the Tournament hears of it.",
+                "operationId": "set_tournament_round_timer",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tournament",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/TournamentUuid"
+                        },
+                        "style": "simple"
+                    },
+                    {
+                        "in": "path",
+                        "name": "number",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int16"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SetRoundTimerRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "$ref": "#/components/schemas/RoundTimerResponse"
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/FormErrorResponse_for_RoundErrors"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/frontend/v1/tournaments/{tournament}/matches/{match}/result": {
             "put": {
                 "summary": "Set or correct the Result of a Match, as an Organizer",
@@ -24214,7 +24300,7 @@
                 ]
             },
             "RoundErrors": {
-                "description": "Why a Round could not be paired, started, ended or discarded",
+                "description": "Why a Round could not be paired, started, ended or discarded, or its round timer changed",
                 "type": "object",
                 "properties": {
                     "all_rounds_paired": {
@@ -24223,6 +24309,10 @@
                     },
                     "later_round_started": {
                         "description": "A later Round started, so this one cannot be taken back",
+                        "type": "boolean"
+                    },
+                    "no_timer": {
+                        "description": "The Round started without a round timer",
                         "type": "boolean"
                     },
                     "not_ended": {
@@ -24261,6 +24351,7 @@
                 "required": [
                     "all_rounds_paired",
                     "later_round_started",
+                    "no_timer",
                     "not_ended",
                     "not_previewed",
                     "not_running",
@@ -24370,7 +24461,7 @@
                 "type": "object",
                 "properties": {
                     "ends_at": {
-                        "description": "When time is up",
+                        "description": "When time is up; while paused, it moves on by as long as the pause lasts",
                         "allOf": [
                             {
                                 "$ref": "#/components/schemas/SchemaDateTime"
@@ -24389,8 +24480,12 @@
                         "minimum": 0.0,
                         "format": "uint32"
                     },
+                    "paused": {
+                        "description": "Whether an Organizer paused it",
+                        "type": "boolean"
+                    },
                     "remaining_seconds": {
-                        "description": "Seconds left when the server answered, 0 once time is up",
+                        "description": "Seconds left when the server answered, 0 once time is up; held while paused",
                         "type": "integer",
                         "minimum": 0.0,
                         "format": "uint32"
@@ -24404,6 +24499,7 @@
                     "ends_at",
                     "extra_turns",
                     "length_seconds",
+                    "paused",
                     "remaining_seconds",
                     "time_up"
                 ]
@@ -25258,6 +25354,77 @@
                 "required": [
                     "games_drawn",
                     "games_won"
+                ]
+            },
+            "SetRoundTimerRequest": {
+                "description": "What an Organizer does to the round timer of a running Round",
+                "oneOf": [
+                    {
+                        "description": "Stop it where it stands",
+                        "type": "object",
+                        "properties": {
+                            "action": {
+                                "type": "string",
+                                "enum": [
+                                    "Pause"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "action"
+                        ]
+                    },
+                    {
+                        "description": "Let it run again from where it was paused",
+                        "type": "object",
+                        "properties": {
+                            "action": {
+                                "type": "string",
+                                "enum": [
+                                    "Resume"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "action"
+                        ]
+                    },
+                    {
+                        "description": "Add to or take from the time left, never below none",
+                        "type": "object",
+                        "properties": {
+                            "action": {
+                                "type": "string",
+                                "enum": [
+                                    "Adjust"
+                                ]
+                            },
+                            "delta_seconds": {
+                                "description": "Seconds to add; negative takes away",
+                                "type": "integer",
+                                "format": "int32"
+                            }
+                        },
+                        "required": [
+                            "action",
+                            "delta_seconds"
+                        ]
+                    },
+                    {
+                        "description": "Run it again from its full length, starting now",
+                        "type": "object",
+                        "properties": {
+                            "action": {
+                                "type": "string",
+                                "enum": [
+                                    "Reset"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "action"
+                        ]
+                    }
                 ]
             },
             "SetSwissRoundsErrors": {
@@ -26719,6 +26886,27 @@
                                 "type": "string",
                                 "enum": [
                                     "RoundTakenBack"
+                                ]
+                            },
+                            "round": {
+                                "description": "The Round's number",
+                                "type": "integer",
+                                "format": "int16"
+                            }
+                        },
+                        "required": [
+                            "kind",
+                            "round"
+                        ]
+                    },
+                    {
+                        "description": "An Organizer paused, resumed, adjusted or reset a running Round's timer",
+                        "type": "object",
+                        "properties": {
+                            "kind": {
+                                "type": "string",
+                                "enum": [
+                                    "TimerChanged"
                                 ]
                             },
                             "round": {

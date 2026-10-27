@@ -6602,7 +6602,7 @@ export interface RotateShareTokenResponse {
     share_token: string;
 }
 /**
- * Why a Round could not be paired, started, ended or discarded
+ * Why a Round could not be paired, started, ended or discarded, or its round timer changed
  * @export
  * @interface RoundErrors
  */
@@ -6615,6 +6615,10 @@ export interface RoundErrors {
      * A later Round started, so this one cannot be taken back
      */
     later_round_started: boolean;
+    /**
+     * The Round started without a round timer
+     */
+    no_timer: boolean;
     /**
      * No Round of that number ended
      */
@@ -6722,7 +6726,7 @@ export type RoundState = typeof RoundState[keyof typeof RoundState];
  */
 export interface RoundTimerResponse {
     /**
-     * When time is up
+     * When time is up; while paused, it moves on by as long as the pause lasts
      */
     ends_at: string;
     /**
@@ -6736,7 +6740,11 @@ export interface RoundTimerResponse {
      */
     length_seconds: number;
     /**
-     * Seconds left when the server answered, 0 once time is up
+     * Whether an Organizer paused it
+     */
+    paused: boolean;
+    /**
+     * Seconds left when the server answered, 0 once time is up; held while paused
      */
     remaining_seconds: number;
     /**
@@ -7314,6 +7322,100 @@ export interface SetResultRequest {
     games_won: Array<number>;
 }
 /**
+ * @type SetRoundTimerRequest
+ * What an Organizer does to the round timer of a running Round
+ * @export
+ */
+export type SetRoundTimerRequest = SetRoundTimerRequestOneOf | SetRoundTimerRequestOneOf1 | SetRoundTimerRequestOneOf2 | SetRoundTimerRequestOneOf3;
+/**
+ * Stop it where it stands
+ * @export
+ * @interface SetRoundTimerRequestOneOf
+ */
+export interface SetRoundTimerRequestOneOf {
+    /**
+     * 
+     */
+    action: SetRoundTimerRequestOneOfActionEnum;
+}
+
+
+/**
+ * @export
+ */
+export const SetRoundTimerRequestOneOfActionEnum = {
+    Pause: 'Pause',
+} as const;
+export type SetRoundTimerRequestOneOfActionEnum = typeof SetRoundTimerRequestOneOfActionEnum[keyof typeof SetRoundTimerRequestOneOfActionEnum];
+
+/**
+ * Let it run again from where it was paused
+ * @export
+ * @interface SetRoundTimerRequestOneOf1
+ */
+export interface SetRoundTimerRequestOneOf1 {
+    /**
+     * 
+     */
+    action: SetRoundTimerRequestOneOf1ActionEnum;
+}
+
+
+/**
+ * @export
+ */
+export const SetRoundTimerRequestOneOf1ActionEnum = {
+    Resume: 'Resume',
+} as const;
+export type SetRoundTimerRequestOneOf1ActionEnum = typeof SetRoundTimerRequestOneOf1ActionEnum[keyof typeof SetRoundTimerRequestOneOf1ActionEnum];
+
+/**
+ * Add to or take from the time left, never below none
+ * @export
+ * @interface SetRoundTimerRequestOneOf2
+ */
+export interface SetRoundTimerRequestOneOf2 {
+    /**
+     * 
+     */
+    action: SetRoundTimerRequestOneOf2ActionEnum;
+    /**
+     * Seconds to add; negative takes away
+     */
+    delta_seconds: number;
+}
+
+
+/**
+ * @export
+ */
+export const SetRoundTimerRequestOneOf2ActionEnum = {
+    Adjust: 'Adjust',
+} as const;
+export type SetRoundTimerRequestOneOf2ActionEnum = typeof SetRoundTimerRequestOneOf2ActionEnum[keyof typeof SetRoundTimerRequestOneOf2ActionEnum];
+
+/**
+ * Run it again from its full length, starting now
+ * @export
+ * @interface SetRoundTimerRequestOneOf3
+ */
+export interface SetRoundTimerRequestOneOf3 {
+    /**
+     * 
+     */
+    action: SetRoundTimerRequestOneOf3ActionEnum;
+}
+
+
+/**
+ * @export
+ */
+export const SetRoundTimerRequestOneOf3ActionEnum = {
+    Reset: 'Reset',
+} as const;
+export type SetRoundTimerRequestOneOf3ActionEnum = typeof SetRoundTimerRequestOneOf3ActionEnum[keyof typeof SetRoundTimerRequestOneOf3ActionEnum];
+
+/**
  * Why the number of Swiss Rounds was refused
  * @export
  * @interface SetSwissRoundsErrors
@@ -7335,6 +7437,12 @@ export interface SetSwissRoundsRequest {
      */
     swiss_rounds: number;
 }
+/**
+ * @type SetTournamentRoundTimer200Response
+ * 
+ * @export
+ */
+export type SetTournamentRoundTimer200Response = FormErrorResponseForRoundErrors | RoundTimerResponse;
 /**
  * @type SetTournamentSwissRounds200Response
  * 
@@ -8240,7 +8348,7 @@ export type TopCut = typeof TopCut[keyof typeof TopCut];
  * Sent as the `data` of one Server-Sent Event, as json.
  * @export
  */
-export type TournamentEvent = TournamentEventOneOf | TournamentEventOneOf1 | TournamentEventOneOf10 | TournamentEventOneOf11 | TournamentEventOneOf12 | TournamentEventOneOf13 | TournamentEventOneOf14 | TournamentEventOneOf2 | TournamentEventOneOf3 | TournamentEventOneOf4 | TournamentEventOneOf5 | TournamentEventOneOf6 | TournamentEventOneOf7 | TournamentEventOneOf8 | TournamentEventOneOf9;
+export type TournamentEvent = TournamentEventOneOf | TournamentEventOneOf1 | TournamentEventOneOf10 | TournamentEventOneOf11 | TournamentEventOneOf12 | TournamentEventOneOf13 | TournamentEventOneOf14 | TournamentEventOneOf15 | TournamentEventOneOf2 | TournamentEventOneOf3 | TournamentEventOneOf4 | TournamentEventOneOf5 | TournamentEventOneOf6 | TournamentEventOneOf7 | TournamentEventOneOf8 | TournamentEventOneOf9;
 /**
  * Its settings or its state changed, or it was deleted
  * @export
@@ -8284,7 +8392,7 @@ export const TournamentEventOneOf1KindEnum = {
 export type TournamentEventOneOf1KindEnum = typeof TournamentEventOneOf1KindEnum[keyof typeof TournamentEventOneOf1KindEnum];
 
 /**
- * A Participant reported a Result
+ * An Organizer paused, resumed, adjusted or reset a running Round's timer
  * @export
  * @interface TournamentEventOneOf10
  */
@@ -8294,11 +8402,7 @@ export interface TournamentEventOneOf10 {
      */
     kind: TournamentEventOneOf10KindEnum;
     /**
-     * The Match
-     */
-    match_uuid: string;
-    /**
-     * The Round of the Match
+     * The Round's number
      */
     round: number;
 }
@@ -8308,12 +8412,12 @@ export interface TournamentEventOneOf10 {
  * @export
  */
 export const TournamentEventOneOf10KindEnum = {
-    ResultReported: 'ResultReported',
+    TimerChanged: 'TimerChanged',
 } as const;
 export type TournamentEventOneOf10KindEnum = typeof TournamentEventOneOf10KindEnum[keyof typeof TournamentEventOneOf10KindEnum];
 
 /**
- * A Participant disputed a Result
+ * A Participant reported a Result
  * @export
  * @interface TournamentEventOneOf11
  */
@@ -8337,12 +8441,12 @@ export interface TournamentEventOneOf11 {
  * @export
  */
 export const TournamentEventOneOf11KindEnum = {
-    ResultDisputed: 'ResultDisputed',
+    ResultReported: 'ResultReported',
 } as const;
 export type TournamentEventOneOf11KindEnum = typeof TournamentEventOneOf11KindEnum[keyof typeof TournamentEventOneOf11KindEnum];
 
 /**
- * An Organizer set or corrected a Result
+ * A Participant disputed a Result
  * @export
  * @interface TournamentEventOneOf12
  */
@@ -8366,12 +8470,12 @@ export interface TournamentEventOneOf12 {
  * @export
  */
 export const TournamentEventOneOf12KindEnum = {
-    ResultSet: 'ResultSet',
+    ResultDisputed: 'ResultDisputed',
 } as const;
 export type TournamentEventOneOf12KindEnum = typeof TournamentEventOneOf12KindEnum[keyof typeof TournamentEventOneOf12KindEnum];
 
 /**
- * The standings changed
+ * An Organizer set or corrected a Result
  * @export
  * @interface TournamentEventOneOf13
  */
@@ -8380,6 +8484,14 @@ export interface TournamentEventOneOf13 {
      * 
      */
     kind: TournamentEventOneOf13KindEnum;
+    /**
+     * The Match
+     */
+    match_uuid: string;
+    /**
+     * The Round of the Match
+     */
+    round: number;
 }
 
 
@@ -8387,12 +8499,12 @@ export interface TournamentEventOneOf13 {
  * @export
  */
 export const TournamentEventOneOf13KindEnum = {
-    StandingsChanged: 'StandingsChanged',
+    ResultSet: 'ResultSet',
 } as const;
 export type TournamentEventOneOf13KindEnum = typeof TournamentEventOneOf13KindEnum[keyof typeof TournamentEventOneOf13KindEnum];
 
 /**
- * The stream missed events; the reader fetches everything again
+ * The standings changed
  * @export
  * @interface TournamentEventOneOf14
  */
@@ -8408,9 +8520,30 @@ export interface TournamentEventOneOf14 {
  * @export
  */
 export const TournamentEventOneOf14KindEnum = {
-    Resync: 'Resync',
+    StandingsChanged: 'StandingsChanged',
 } as const;
 export type TournamentEventOneOf14KindEnum = typeof TournamentEventOneOf14KindEnum[keyof typeof TournamentEventOneOf14KindEnum];
+
+/**
+ * The stream missed events; the reader fetches everything again
+ * @export
+ * @interface TournamentEventOneOf15
+ */
+export interface TournamentEventOneOf15 {
+    /**
+     * 
+     */
+    kind: TournamentEventOneOf15KindEnum;
+}
+
+
+/**
+ * @export
+ */
+export const TournamentEventOneOf15KindEnum = {
+    Resync: 'Resync',
+} as const;
+export type TournamentEventOneOf15KindEnum = typeof TournamentEventOneOf15KindEnum[keyof typeof TournamentEventOneOf15KindEnum];
 
 /**
  * Co-organizers were named or removed, or a handover was offered, withdrawn, accepted or declined
