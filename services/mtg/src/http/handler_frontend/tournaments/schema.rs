@@ -67,7 +67,7 @@ pub struct TournamentSettingsRequest {
     /// Whether Participants check in before they are paired, `Off` when left out
     ///
     /// With `RequiredWithDeck` an Account checks in only with a Registered
-    /// deck. Changing it is refused after the first Round started.
+    /// deck; not in Draft or Sealed. Changing it is refused after the first Round started.
     #[serde(default)]
     pub check_in: CheckIn,
 }
@@ -153,6 +153,8 @@ pub struct TournamentSettingsErrors {
     pub top_cut_best_of_mismatch: bool,
     /// The Top cut or its best-of changed after the Swiss Rounds were over
     pub top_cut_locked: bool,
+    /// Check-in asks for a Registered deck in Draft or Sealed, which have no decks
+    pub check_in_deck_for_limited: bool,
 }
 
 impl From<SettingsRefusal> for TournamentSettingsErrors {
@@ -171,6 +173,7 @@ impl From<SettingsRefusal> for TournamentSettingsErrors {
             top_cut_mismatch: value.top_cut_mismatch,
             top_cut_best_of_mismatch: value.top_cut_best_of_mismatch,
             top_cut_locked: false,
+            check_in_deck_for_limited: value.check_in_deck_for_limited,
         }
     }
 }
