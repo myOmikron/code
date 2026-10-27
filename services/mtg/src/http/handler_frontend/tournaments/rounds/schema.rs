@@ -295,3 +295,14 @@ pub struct StandingResponse {
     /// The last Round started before it Dropped, `null` while it plays on
     pub dropped_after_round: Option<i16>,
 }
+
+/// Authorized counting context for one started Match, including its independent Round timer.
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct MatchPlayResponse {
+    /// The reader's Participant, if any.
+    pub participant: Option<ParticipantUuid>,
+    /// The Round with only the requested Match.
+    pub round: RoundResponse,
+    /// Server clock for the existing Round timer skew calculation.
+    pub server_time: SchemaDateTime,
+}

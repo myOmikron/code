@@ -100,6 +100,7 @@ export function LifeCounter({
     initialHistory,
     onHistoryChange,
     readOnly = false,
+    allowNextGame = true,
 }: {
     participants?: LifePlayer[];
     backHref?: string;
@@ -109,6 +110,7 @@ export function LifeCounter({
     initialHistory?: LifeHistory;
     onHistoryChange?: (history: LifeHistory) => void;
     readOnly?: boolean;
+    allowNextGame?: boolean;
 }) {
     const historyChange = useRef(onHistoryChange);
     historyChange.current = onHistoryChange;
@@ -420,6 +422,7 @@ export function LifeCounter({
      * Closes the setup and hands the table the whole screen
      */
     function start() {
+        if (readOnly || (game.outcome && !allowNextGame)) return;
         if (!readOnly && (game.outcome || (history.games.length === 1 && game.events.length === 1))) {
             const players =
                 participants ??
@@ -498,7 +501,7 @@ export function LifeCounter({
                     </Button>
                     <Button
                         outline={true}
-                        disabled={readOnly}
+                        disabled={readOnly || Boolean(game.outcome && !allowNextGame)}
                         onClick={() => (game.outcome ? setConfiguring(true) : setResetting(true))}
                         aria-label={t(game.outcome ? "button.next-game" : "button.end-game")}
                     >
@@ -605,7 +608,9 @@ export function LifeCounter({
                     </div>
                 </DialogBody>
                 <DialogActions>
-                    <PrimaryButton onClick={start}>{t("button.start")}</PrimaryButton>
+                    <PrimaryButton disabled={readOnly || Boolean(game.outcome && !allowNextGame)} onClick={start}>
+                        {t("button.start")}
+                    </PrimaryButton>
                 </DialogActions>
             </Dialog>
 

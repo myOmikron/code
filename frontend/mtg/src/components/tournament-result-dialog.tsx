@@ -26,6 +26,8 @@ import { MAX_DRAWN_GAMES, gamesToWin } from "src/utils/tournament-rounds";
 export type TournamentResultDialogProps = {
     /** The Match whose Result is set; the dialog is open while it is not `null` */
     played: MatchResponse | null;
+    /** Editable suggestion from explicitly recorded Game outcomes. */
+    initialResult?: SetResultRequest | null;
     /** How many Games the Match is played to */
     bestOf: BestOf;
     /** Called when the dialog should close without having saved anything */
@@ -50,6 +52,7 @@ export type TournamentResultDialogProps = {
  */
 export function TournamentResultDialog({
     played,
+    initialResult,
     bestOf,
     title,
     description,
@@ -67,11 +70,11 @@ export function TournamentResultDialog({
     const [busy, setBusy] = useState(false);
 
     useEffect(() => {
-        setFirst(played?.result?.games_won[0] ?? 0);
-        setSecond(played?.result?.games_won[1] ?? 0);
-        setDrawn(played?.result?.games_drawn ?? 0);
+        setFirst((played?.result ?? initialResult)?.games_won[0] ?? 0);
+        setSecond((played?.result ?? initialResult)?.games_won[1] ?? 0);
+        setDrawn((played?.result ?? initialResult)?.games_drawn ?? 0);
         setError(null);
-    }, [played]);
+    }, [played, initialResult]);
 
     const wins = Array.from({ length: gamesToWin(bestOf) + 1 }, (_, games) => games);
     const draws = Array.from({ length: MAX_DRAWN_GAMES + 1 }, (_, games) => games);

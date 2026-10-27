@@ -361,3 +361,66 @@ fn participation_and_recorded_results_remain_available_between_rounds() {
         assert!(round["timer"].is_null(), "{rounds}");
     });
 }
+
+#[test]
+fn match_play_context_is_limited_to_its_players_and_organizers() {
+    run(async {
+        let (mut event, mut player, me) = event_with_a_player().await;
+        event.set_round_minutes(json!(50)).await;
+        event.pair().await;
+        event.start(1).await;
+        let rounds = event.rounds().await;
+        let matches = running(&rounds)["matches"].as_array().expect("Matches");
+        let own = matches
+            .iter()
+            .find(|played| {
+                played["seats"]
+                    .as_array()
+                    .expect("Seats")
+                    .iter()
+                    .any(|seat| seat["participant"] == me)
+            })
+            .expect("own Match");
+        let guests = matches
+            .iter()
+            .find(|played| played["uuid"] != own["uuid"])
+            .expect("Guest Match");
+        let own_id = own["uuid"].as_str().expect("Match id");
+        let url = event.url(&format!("matches/{own_id}/play"));
+        let context = player.get(&url).await.ok_json();
+        assert_eq!(context["participant"], me, "{context}");
+        assert_eq!(
+            context["round"]["matches"][0]["seats"], own["seats"],
+            "{context}"
+        );
+        assert_eq!(
+            context["round"]["timer"]["ends_at"],
+            running(&rounds)["timer"]["ends_at"],
+            "{context}"
+        );
+        run_out(&event, 1).await;
+        let expired = player.get(&url).await.ok_json();
+        assert_eq!(expired["round"]["timer"]["time_up"], true, "{expired}");
+        assert_eq!(expired["round"]["state"], "Running", "{expired}");
+        assert!(
+            expired["round"]["matches"][0]["result"].is_null(),
+            "{expired}"
+        );
+        let guest_url = event.url(&format!(
+            "matches/{}/play",
+            guests["uuid"].as_str().expect("Match id")
+        ));
+        assert!(!player.get(&guest_url).await.status.is_success());
+        let guest_context = event.owner.get(&guest_url).await.ok_json();
+        assert_eq!(
+            guest_context["round"]["matches"][0]["seats"], guests["seats"],
+            "{guest_context}"
+        );
+        let mut stranger = TestClient::logged_in(&create_account(Role::Member).await).await;
+        assert!(!stranger.get(&url).await.status.is_success());
+        assert!(!TestClient::new().get(&url).await.status.is_success());
+        let mut other = Event::new("Three", 4).await;
+        let wrong_tournament = other.url(&format!("matches/{own_id}/play"));
+        assert!(!other.owner.get(&wrong_tournament).await.status.is_success());
+    });
+}

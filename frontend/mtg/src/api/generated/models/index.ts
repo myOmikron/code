@@ -4595,6 +4595,25 @@ export interface MarkedCard {
     oracle_id: string;
 }
 /**
+ * Authorized counting context for one started Match, including its independent Round timer.
+ * @export
+ * @interface MatchPlayResponse
+ */
+export interface MatchPlayResponse {
+    /**
+     * The reader's Participant, if any.
+     */
+    participant?: string | null;
+    /**
+     * The Round with only the requested Match.
+     */
+    round: RoundResponse;
+    /**
+     * Server clock for the existing Round timer skew calculation.
+     */
+    server_time: string;
+}
+/**
  * One Match, or a Bye
  * @export
  * @interface MatchResponse

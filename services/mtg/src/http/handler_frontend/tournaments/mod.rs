@@ -38,6 +38,11 @@ pub fn initialize_routes() -> GalvynRouter {
             GalvynRouter::new()
                 .merge(account_routes())
                 .merge(
+                    GalvynRouter::new()
+                        .handler(rounds::handler::get_tournament_match_play)
+                        .wrap(TournamentAccessLayer(TournamentAccess::MatchHistory)),
+                )
+                .merge(
                     signed_in_viewer_routes().wrap(TournamentAccessLayer(TournamentAccess::Viewer)),
                 )
                 .merge(

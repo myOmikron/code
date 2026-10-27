@@ -11043,6 +11043,75 @@
                 }
             }
         },
+        "/api/frontend/v1/tournaments/{tournament}/matches/{match}/play": {
+            "get": {
+                "summary": "Opens a Match for its Participants or Organizers without recording or submitting any Result.",
+                "description": "Opens a Match for its Participants or Organizers without recording or submitting any Result.",
+                "operationId": "get_tournament_match_play",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tournament",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/TournamentUuid"
+                        },
+                        "style": "simple"
+                    },
+                    {
+                        "in": "path",
+                        "name": "match",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/MatchUuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MatchPlayResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/frontend/v1/tournaments/{tournament}/sign-up": {
             "post": {
                 "summary": "Sign the logged-in Account up for a Tournament it sees by its id",
@@ -20692,6 +20761,41 @@
                 "required": [
                     "name",
                     "oracle_id"
+                ]
+            },
+            "MatchPlayResponse": {
+                "description": "Authorized counting context for one started Match, including its independent Round timer.",
+                "type": "object",
+                "properties": {
+                    "participant": {
+                        "nullable": true,
+                        "description": "The reader's Participant, if any.",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ParticipantUuid"
+                            }
+                        ]
+                    },
+                    "round": {
+                        "description": "The Round with only the requested Match.",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/RoundResponse"
+                            }
+                        ]
+                    },
+                    "server_time": {
+                        "description": "Server clock for the existing Round timer skew calculation.",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDateTime"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "round",
+                    "server_time"
                 ]
             },
             "MatchResponse": {

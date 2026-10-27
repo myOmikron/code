@@ -54,7 +54,9 @@
         "show-organizer-view": "Organize Tournament",
         "retry-participation": "Try again",
         "enable-tournament-pushes": "Enable tournament notifications",
-        "retry-tournament-push-status": "Check status again"
+        "retry-tournament-push-status": "Check status again",
+        "count-match-life": "Count life",
+        "set-match-result": "Set Result"
     },
     "description": {
         "add-account": "With an account, by its exact username: the results belong to that account.",
@@ -153,7 +155,8 @@
         "tournament-push-enabled": "Tournament notifications are enabled for this device and your account.",
         "tournament-push-unavailable": "Notifications are unavailable here. On iPhone and iPad, open the app added to your Home Screen. You can keep participating without notifications.",
         "tournament-push-denied": "Your browser has not allowed notifications. Allow them in browser settings and reload this page. Your tournament participation is unaffected.",
-        "tournament-push-global-disabled": "Tournament notifications are turned off for your account. Activation turns them back on for all tournaments on your subscribed devices."
+        "tournament-push-global-disabled": "Tournament notifications are turned off for your account. Activation turns them back on for all tournaments on your subscribed devices.",
+        "review-life-result": "Review the suggestion from explicitly ended Games. Only saving submits the Tournament Result."
     },
     "error": {
         "all-rounds-paired": "Every Swiss round has been paired.",

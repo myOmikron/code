@@ -54,7 +54,9 @@
         "show-organizer-view": "Turnier organisieren",
         "retry-participation": "Erneut versuchen",
         "enable-tournament-pushes": "Turnier-Benachrichtigungen aktivieren",
-        "retry-tournament-push-status": "Status erneut prüfen"
+        "retry-tournament-push-status": "Status erneut prüfen",
+        "count-match-life": "Leben zählen",
+        "set-match-result": "Ergebnis setzen"
     },
     "description": {
         "add-account": "Mit Konto, nach dem genauen Benutzernamen: Die Ergebnisse gehören zu diesem Konto.",
@@ -153,7 +155,8 @@
         "tournament-push-enabled": "Turnier-Benachrichtigungen sind für dieses Gerät und dein Konto aktiviert.",
         "tournament-push-unavailable": "Benachrichtigungen sind hier nicht verfügbar. Auf iPhone und iPad öffne die zum Home-Bildschirm hinzugefügte App. Du kannst das Turnier auch ohne Benachrichtigungen nutzen.",
         "tournament-push-denied": "Dein Browser erlaubt keine Benachrichtigungen. Du kannst sie in den Browser-Einstellungen erlauben und diese Seite neu laden. Deine Turnierteilnahme bleibt bestehen.",
-        "tournament-push-global-disabled": "Turnier-Benachrichtigungen sind für dein Konto ausgeschaltet. Die Aktivierung schaltet sie für alle Turniere auf deinen abonnierten Geräten wieder ein."
+        "tournament-push-global-disabled": "Turnier-Benachrichtigungen sind für dein Konto ausgeschaltet. Die Aktivierung schaltet sie für alle Turniere auf deinen abonnierten Geräten wieder ein.",
+        "review-life-result": "Prüfe den Vorschlag aus den ausdrücklich beendeten Spielen. Erst Speichern meldet das Turnierergebnis."
     },
     "error": {
         "all-rounds-paired": "Alle Schweizer Runden sind ausgelost.",

@@ -729,6 +729,16 @@ function RoundTable({
                             {actions && (
                                 <TableCell>
                                     <div className={"flex flex-wrap items-center gap-2"}>
+                                        {round.state === RoundState.Running &&
+                                            played.table_number != null &&
+                                            (editable || mine(played)) && (
+                                                <Button
+                                                    outline
+                                                    href={`/tournaments/${tournament.uuid}/matches/${played.uuid}/life${editable ? "?organizer=true" : ""}`}
+                                                >
+                                                    {t("button.count-match-life")}
+                                                </Button>
+                                            )}
                                         {editable && played.table_number != null && (
                                             <Button
                                                 plain

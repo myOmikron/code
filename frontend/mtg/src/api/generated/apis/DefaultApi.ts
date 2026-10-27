@@ -125,6 +125,7 @@ import type {
     ListWatchListCopiesResponse,
     ListWatchListEntriesResponse,
     ListWatchListsResponse,
+    MatchPlayResponse,
     Me200Response,
     MergeCollectionEntriesRequest,
     MpcFillCardbacksResponse,
@@ -1040,6 +1041,17 @@ export interface GetTournamentRequest {
      * 
      */
     tournament: string;
+}
+
+export interface GetTournamentMatchPlayRequest {
+    /**
+     *
+     */
+    tournament: string;
+    /**
+     *
+     */
+    match: string;
 }
 
 export interface GetTournamentStandingsRequest {
@@ -7217,6 +7229,61 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async getTournamentHandovers(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListTournamentsResponse> {
         const response = await this.getTournamentHandoversRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for getTournamentMatchPlay without sending the request
+     */
+    async getTournamentMatchPlayRequestOpts(requestParameters: GetTournamentMatchPlayRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tournament'] == null) {
+            throw new runtime.RequiredError(
+                'tournament',
+                'Required parameter "tournament" was null or undefined when calling getTournamentMatchPlay().'
+            );
+        }
+
+        if (requestParameters['match'] == null) {
+            throw new runtime.RequiredError(
+                'match',
+                'Required parameter "match" was null or undefined when calling getTournamentMatchPlay().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/tournaments/{tournament}/matches/{match}/play`;
+        urlPath = urlPath.replace('{tournament}', encodeURIComponent(String(requestParameters['tournament'])));
+        urlPath = urlPath.replace('{match}', encodeURIComponent(String(requestParameters['match'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Opens a Match for its Participants or Organizers without recording or submitting any Result.
+     * Opens a Match for its Participants or Organizers without recording or submitting any Result.
+     */
+    async getTournamentMatchPlayRaw(requestParameters: GetTournamentMatchPlayRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MatchPlayResponse>> {
+        const requestOptions = await this.getTournamentMatchPlayRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Opens a Match for its Participants or Organizers without recording or submitting any Result.
+     * Opens a Match for its Participants or Organizers without recording or submitting any Result.
+     */
+    async getTournamentMatchPlay(requestParameters: GetTournamentMatchPlayRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MatchPlayResponse> {
+        const response = await this.getTournamentMatchPlayRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
