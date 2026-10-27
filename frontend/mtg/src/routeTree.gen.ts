@@ -103,6 +103,7 @@ import { Route as MenuSharedTournamentsTokenSharedParticipantsRouteImport } from
 import { Route as MenuSharedTournamentsTokenSharedRoundsRouteImport } from './routes/_menu/shared/tournaments/$token/_shared/rounds'
 import { Route as MenuSharedTournamentsTokenSharedStandingsRouteImport } from './routes/_menu/shared/tournaments/$token/_shared/standings'
 import { Route as MenuSharedTournamentsTokenSharedTopCutRouteImport } from './routes/_menu/shared/tournaments/$token/_shared/top-cut'
+import { Route as MenuTournamentsTournamentUuidMatchesMatchUuidLifeRouteImport } from './routes/_menu/tournaments/$tournamentUuid/matches/$matchUuid/life'
 
 const CollectRoute = CollectRouteImport.update({
   id: '/_collect',
@@ -632,6 +633,12 @@ const MenuSharedTournamentsTokenSharedTopCutRoute =
     path: '/top-cut',
     getParentRoute: () => MenuSharedTournamentsTokenSharedRoute,
   } as any)
+const MenuTournamentsTournamentUuidMatchesMatchUuidLifeRoute =
+  MenuTournamentsTournamentUuidMatchesMatchUuidLifeRouteImport.update({
+    id: '/tournaments/$tournamentUuid/matches/$matchUuid/life',
+    path: '/tournaments/$tournamentUuid/matches/$matchUuid/life',
+    getParentRoute: () => MenuRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof MenuIndexRoute
@@ -719,6 +726,7 @@ export interface FileRoutesByFullPath {
   '/shared/tournaments/$token/rounds': typeof MenuSharedTournamentsTokenSharedRoundsRoute
   '/shared/tournaments/$token/standings': typeof MenuSharedTournamentsTokenSharedStandingsRoute
   '/shared/tournaments/$token/top-cut': typeof MenuSharedTournamentsTokenSharedTopCutRoute
+  '/tournaments/$tournamentUuid/matches/$matchUuid/life': typeof MenuTournamentsTournamentUuidMatchesMatchUuidLifeRoute
   '/decks/$deckUuid/history/': typeof MenuDecksDeckUuidDeckHistoryIndexRoute
   '/global/collections/$collectionUuid/': typeof MenuGlobalCollectionsCollectionUuidCollectionIndexRoute
   '/global/decks/$deckUuid/': typeof MenuGlobalDecksDeckUuidDeckIndexRoute
@@ -799,6 +807,7 @@ export interface FileRoutesByTo {
   '/shared/tournaments/$token/rounds': typeof MenuSharedTournamentsTokenSharedRoundsRoute
   '/shared/tournaments/$token/standings': typeof MenuSharedTournamentsTokenSharedStandingsRoute
   '/shared/tournaments/$token/top-cut': typeof MenuSharedTournamentsTokenSharedTopCutRoute
+  '/tournaments/$tournamentUuid/matches/$matchUuid/life': typeof MenuTournamentsTournamentUuidMatchesMatchUuidLifeRoute
   '/decks/$deckUuid/history': typeof MenuDecksDeckUuidDeckHistoryIndexRoute
   '/global/collections/$collectionUuid': typeof MenuGlobalCollectionsCollectionUuidCollectionIndexRoute
   '/global/decks/$deckUuid': typeof MenuGlobalDecksDeckUuidDeckIndexRoute
@@ -896,6 +905,7 @@ export interface FileRoutesById {
   '/_menu/shared/tournaments/$token/_shared/rounds': typeof MenuSharedTournamentsTokenSharedRoundsRoute
   '/_menu/shared/tournaments/$token/_shared/standings': typeof MenuSharedTournamentsTokenSharedStandingsRoute
   '/_menu/shared/tournaments/$token/_shared/top-cut': typeof MenuSharedTournamentsTokenSharedTopCutRoute
+  '/_menu/tournaments/$tournamentUuid/matches/$matchUuid/life': typeof MenuTournamentsTournamentUuidMatchesMatchUuidLifeRoute
   '/_menu/decks/$deckUuid/_deck/history/': typeof MenuDecksDeckUuidDeckHistoryIndexRoute
   '/_menu/global/collections/$collectionUuid/_collection/': typeof MenuGlobalCollectionsCollectionUuidCollectionIndexRoute
   '/_menu/global/decks/$deckUuid/_deck/': typeof MenuGlobalDecksDeckUuidDeckIndexRoute
@@ -991,6 +1001,7 @@ export interface FileRouteTypes {
     | '/shared/tournaments/$token/rounds'
     | '/shared/tournaments/$token/standings'
     | '/shared/tournaments/$token/top-cut'
+    | '/tournaments/$tournamentUuid/matches/$matchUuid/life'
     | '/decks/$deckUuid/history/'
     | '/global/collections/$collectionUuid/'
     | '/global/decks/$deckUuid/'
@@ -1071,6 +1082,7 @@ export interface FileRouteTypes {
     | '/shared/tournaments/$token/rounds'
     | '/shared/tournaments/$token/standings'
     | '/shared/tournaments/$token/top-cut'
+    | '/tournaments/$tournamentUuid/matches/$matchUuid/life'
     | '/decks/$deckUuid/history'
     | '/global/collections/$collectionUuid'
     | '/global/decks/$deckUuid'
@@ -1167,6 +1179,7 @@ export interface FileRouteTypes {
     | '/_menu/shared/tournaments/$token/_shared/rounds'
     | '/_menu/shared/tournaments/$token/_shared/standings'
     | '/_menu/shared/tournaments/$token/_shared/top-cut'
+    | '/_menu/tournaments/$tournamentUuid/matches/$matchUuid/life'
     | '/_menu/decks/$deckUuid/_deck/history/'
     | '/_menu/global/collections/$collectionUuid/_collection/'
     | '/_menu/global/decks/$deckUuid/_deck/'
@@ -1840,6 +1853,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MenuSharedTournamentsTokenSharedTopCutRouteImport
       parentRoute: typeof MenuSharedTournamentsTokenSharedRoute
     }
+    '/_menu/tournaments/$tournamentUuid/matches/$matchUuid/life': {
+      id: '/_menu/tournaments/$tournamentUuid/matches/$matchUuid/life'
+      path: '/tournaments/$tournamentUuid/matches/$matchUuid/life'
+      fullPath: '/tournaments/$tournamentUuid/matches/$matchUuid/life'
+      preLoaderRoute: typeof MenuTournamentsTournamentUuidMatchesMatchUuidLifeRouteImport
+      parentRoute: typeof MenuRoute
+    }
   }
 }
 
@@ -2205,6 +2225,7 @@ interface MenuRouteChildren {
   MenuSharedCollectionsTokenSharedRoute: typeof MenuSharedCollectionsTokenSharedRouteWithChildren
   MenuSharedDecksTokenSharedRoute: typeof MenuSharedDecksTokenSharedRouteWithChildren
   MenuSharedTournamentsTokenSharedRoute: typeof MenuSharedTournamentsTokenSharedRouteWithChildren
+  MenuTournamentsTournamentUuidMatchesMatchUuidLifeRoute: typeof MenuTournamentsTournamentUuidMatchesMatchUuidLifeRoute
 }
 
 const MenuRouteChildren: MenuRouteChildren = {
@@ -2246,6 +2267,8 @@ const MenuRouteChildren: MenuRouteChildren = {
   MenuSharedDecksTokenSharedRoute: MenuSharedDecksTokenSharedRouteWithChildren,
   MenuSharedTournamentsTokenSharedRoute:
     MenuSharedTournamentsTokenSharedRouteWithChildren,
+  MenuTournamentsTournamentUuidMatchesMatchUuidLifeRoute:
+    MenuTournamentsTournamentUuidMatchesMatchUuidLifeRoute,
 }
 
 const MenuRouteWithChildren = MenuRoute._addFileChildren(MenuRouteChildren)

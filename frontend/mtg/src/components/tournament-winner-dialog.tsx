@@ -29,6 +29,8 @@ const DRAW = -1;
 export type TournamentWinnerDialogProps = {
     /** The Match whose Result is set; the dialog is open while it is not `null` */
     played: MatchResponse | null;
+    /** Editable suggestion from explicitly recorded Game outcomes. */
+    initialResult?: SetResultRequest | null;
     /** Called when the dialog should close without having saved anything */
     onClose: () => void;
     /** The dialog's title */
@@ -51,6 +53,7 @@ export type TournamentWinnerDialogProps = {
  */
 export function TournamentWinnerDialog({
     played,
+    initialResult,
     onClose,
     title,
     description,
@@ -65,9 +68,10 @@ export function TournamentWinnerDialog({
     const [busy, setBusy] = useState(false);
 
     useEffect(() => {
-        setWinner(played?.result == null ? 0 : (winnerSeat(played.result) ?? DRAW));
+        const suggested = played?.result ?? initialResult;
+        setWinner(suggested == null ? 0 : (winnerSeat(suggested) ?? DRAW));
         setError(null);
-    }, [played]);
+    }, [played, initialResult]);
 
     const seats = played?.seats ?? [];
 

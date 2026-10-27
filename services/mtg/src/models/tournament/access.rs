@@ -39,6 +39,8 @@ pub enum TournamentAccess {
     Organizer,
     /// Play in it: an Account Participant
     Participant,
+    /// Play in it or organize it, with Match membership checked by the model.
+    MatchHistory,
     /// See it, see [`Tournament::get_visible`]
     Viewer,
 }
@@ -61,6 +63,7 @@ impl TournamentAccess {
             Self::Owner => standing.role == Some(OrganizerRole::Owner),
             Self::Organizer => standing.role.is_some(),
             Self::Participant => standing.participant,
+            Self::MatchHistory => standing.participant || standing.role.is_some(),
             Self::Viewer => standing.sees,
         }
     }

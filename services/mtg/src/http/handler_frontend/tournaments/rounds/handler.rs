@@ -618,3 +618,27 @@ fn name_of(
         .cloned()
         .unwrap_or_else(|| (String::new(), true))
 }
+
+/// Opens a Match for its Participants or Organizers without recording or submitting any Result.
+#[get("/{tournament}/matches/{match}/play")]
+pub async fn get_tournament_match_play(
+    grant: TournamentGrant,
+    Path((_, played)): Path<(TournamentUuid, MatchUuid)>,
+) -> ApiResult<ApiJson<super::schema::MatchPlayResponse>> {
+    let mut tx = Database::global().start_transaction().await?;
+    let context = grant.match_play(&mut tx, played).await?;
+    tx.commit().await?;
+    let context = context.ok_or_else(denied)?;
+    let now = OffsetDateTime::now_utc();
+    Ok(ApiJson(super::schema::MatchPlayResponse {
+        participant: grant.participant,
+        round: RoundResponse {
+            number: context.round.number,
+            stage: context.round.stage,
+            state: context.round.state,
+            timer: running_timer(&grant.tournament, &context.round, now),
+            matches: vec![match_response(&context.names, context.played)],
+        },
+        server_time: SchemaDateTime(now),
+    }))
+}

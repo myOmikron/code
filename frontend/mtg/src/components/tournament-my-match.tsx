@@ -239,6 +239,11 @@ export function TournamentMyMatch({ tournament }: TournamentMyMatchProps) {
                 )}
             </Text>
             {canReport && played !== null && (
+                <Button outline href={`/tournaments/${tournament.uuid}/matches/${played.uuid}/life`}>
+                    {t("button.count-match-life")}
+                </Button>
+            )}
+            {canReport && played !== null && (
                 <MatchActions
                     played={played}
                     me={me ?? ""}

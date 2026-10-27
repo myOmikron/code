@@ -110,6 +110,7 @@ All URIs are relative to *http://localhost*
 | [**getSharedTournamentStandings**](DefaultApi.md#getsharedtournamentstandings) | **GET** /api/frontend/v1/shared/tournaments/{token}/standings | The standings of the Tournament a share link points at |
 | [**getTournament**](DefaultApi.md#gettournament) | **GET** /api/frontend/v1/tournaments/{tournament} | Fetch a Tournament by its id |
 | [**getTournamentHandovers**](DefaultApi.md#gettournamenthandovers) | **GET** /api/frontend/v1/tournaments/handovers | The Tournaments offered to the logged-in Account to take over, latest start first |
+| [**getTournamentMatchPlay**](DefaultApi.md#gettournamentmatchplay) | **GET** /api/frontend/v1/tournaments/{tournament}/matches/{match}/play | Opens a Match for its Participants or Organizers without recording or submitting any Result. |
 | [**getTournamentStandings**](DefaultApi.md#gettournamentstandings) | **GET** /api/frontend/v1/tournaments/{tournament}/standings | The standings of a Tournament: Match points from every Result so far |
 | [**getWatchList**](DefaultApi.md#getwatchlist) | **GET** /api/frontend/v1/watch-lists/{list} | One watch list, without what is on it |
 | [**getWatchListAlarms**](DefaultApi.md#getwatchlistalarms) | **GET** /api/frontend/v1/watch-lists/alarms | Every alarm standing across the account\&#39;s watch lists |
@@ -7625,6 +7626,79 @@ This endpoint does not need any parameter.
 ### Return type
 
 [**ListTournamentsResponse**](ListTournamentsResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## getTournamentMatchPlay
+
+> MatchPlayResponse getTournamentMatchPlay(tournament, match)
+
+Opens a Match for its Participants or Organizers without recording or submitting any Result.
+
+Opens a Match for its Participants or Organizers without recording or submitting any Result.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { GetTournamentMatchPlayRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    tournament: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string
+    match: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies GetTournamentMatchPlayRequest;
+
+  try {
+    const data = await api.getTournamentMatchPlay(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **tournament** | `string` |  | [Defaults to `undefined`] |
+| **match** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**MatchPlayResponse**](MatchPlayResponse.md)
 
 ### Authorization
 
