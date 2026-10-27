@@ -34,6 +34,7 @@ use crate::http::handler_frontend::tournaments::rounds::schema::RoundsResponse;
 use crate::http::handler_frontend::tournaments::rounds::schema::SeatResponse;
 use crate::http::handler_frontend::tournaments::rounds::schema::SetResultErrors;
 use crate::http::handler_frontend::tournaments::rounds::schema::SetResultRequest;
+use crate::http::handler_frontend::tournaments::rounds::schema::SetRoundTimerRequest;
 use crate::http::handler_frontend::tournaments::rounds::schema::SetSwissRoundsErrors;
 use crate::http::handler_frontend::tournaments::rounds::schema::SetSwissRoundsRequest;
 use crate::http::handler_frontend::tournaments::rounds::schema::StandingResponse;
@@ -55,6 +56,7 @@ use crate::tournament::layout::Layout;
 use crate::tournament::layout::LayoutError;
 use crate::tournament::standings::Share;
 use crate::tournament::standings::standings;
+use crate::tournament::timer::RoundTimer;
 
 /// The Rounds of a Tournament the reader may see
 ///
@@ -221,6 +223,42 @@ pub async fn end_tournament_round(
         TournamentEvent::RoundEnded { round: number },
     );
     Ok(ApiJson(TournamentStateResponse { state }))
+}
+
+/// Pause, resume, adjust or reset the round timer of a running Round, as an Organizer
+///
+/// Answers the timer afterwards; everybody following the Tournament hears of it.
+#[put("/{tournament}/rounds/{number}/timer")]
+pub async fn set_tournament_round_timer(
+    grant: TournamentGrant,
+    Path((_, number)): Path<(TournamentUuid, i16)>,
+    ApiJson(request): ApiJson<SetRoundTimerRequest>,
+) -> ApiResult<ApiJson<RoundTimerResponse>, RoundErrors> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    let Some(tournament) = grant.tournament.lock_for_update(&mut tx).await? else {
+        tx.rollback().await?;
+        return Err(denied());
+    };
+    let now = OffsetDateTime::now_utc();
+    let timer = match tournament
+        .set_round_timer(&mut tx, number, request.into(), now)
+        .await?
+    {
+        Ok(timer) => timer,
+        Err(refusal) => {
+            tx.rollback().await?;
+            return Err(ApiError::FormError(refusal.into()));
+        }
+    };
+
+    tx.commit().await?;
+
+    emit(
+        tournament.uuid,
+        TournamentEvent::TimerChanged { round: number },
+    );
+    Ok(ApiJson(timer_response(&tournament, timer, now)))
 }
 
 /// Lay out a previewed Round by hand, as an Organizer
@@ -505,13 +543,25 @@ fn running_timer(
     if round.state != RoundState::Running {
         return None;
     }
-    round.timer.map(|timer| RoundTimerResponse {
+    round
+        .timer
+        .map(|timer| timer_response(tournament, timer, now))
+}
+
+/// `timer` of a Round of `tournament`, read at `now`
+fn timer_response(
+    tournament: &Tournament,
+    timer: RoundTimer,
+    now: OffsetDateTime,
+) -> RoundTimerResponse {
+    RoundTimerResponse {
         length_seconds: timer.length_seconds,
         ends_at: SchemaDateTime(timer.ends_at),
         remaining_seconds: timer.remaining_seconds(now),
         time_up: timer.time_up(now),
+        paused: timer.paused(),
         extra_turns: tournament.ruleset.extra_turns(),
-    })
+    }
 }
 
 /// A Match or Bye with its Participants' names

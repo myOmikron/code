@@ -18,7 +18,7 @@ use crate::models::tournament::round::MatchUuid;
 use crate::models::tournament::round::Round;
 use crate::models::tournament::round::RoundState;
 use crate::models::tournament::round::Seat;
-use crate::tournament::timer::RoundTimer;
+use crate::models::tournament::round::round_timer;
 
 /// An authorized table and its original Round timer.
 pub struct MatchPlay {
@@ -121,12 +121,7 @@ impl TournamentGrant {
                 stage: round.stage,
                 state: round.state,
                 matches: Vec::new(),
-                timer: round.timer_seconds.zip(round.timer_ends_at).map(
-                    |(length_seconds, ends_at)| RoundTimer {
-                        length_seconds: u32::try_from(length_seconds).unwrap_or(0),
-                        ends_at,
-                    },
-                ),
+                timer: round_timer(&round),
             },
             played: Match {
                 uuid: played,

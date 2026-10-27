@@ -12,6 +12,7 @@ use crate::models::tournament::round::RoundStage;
 use crate::models::tournament::round::RoundState;
 use crate::tournament::reporting::ResultState;
 use crate::tournament::standings::Tiebreaker;
+use crate::tournament::timer::TimerAction;
 
 /// The Rounds of a Tournament the reader may see, and how many are planned
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
@@ -57,12 +58,14 @@ pub struct RoundResponse {
 pub struct RoundTimerResponse {
     /// How long the Round runs, in seconds
     pub length_seconds: u32,
-    /// When time is up
+    /// When time is up; while paused, it moves on by as long as the pause lasts
     pub ends_at: SchemaDateTime,
-    /// Seconds left when the server answered, 0 once time is up
+    /// Seconds left when the server answered, 0 once time is up; held while paused
     pub remaining_seconds: u32,
     /// Whether time was up when the server answered
     pub time_up: bool,
+    /// Whether an Organizer paused it
+    pub paused: bool,
     /// How many turns follow the active player's turn once time is up, under the Tournament's Ruleset
     ///
     /// Information only: 5 under MTR, 0 under the multiplayer Rulesets.
@@ -148,7 +151,7 @@ pub struct TournamentStateResponse {
     pub state: TournamentState,
 }
 
-/// Why a Round could not be paired, started, ended or discarded
+/// Why a Round could not be paired, started, ended or discarded, or its round timer changed
 #[derive(Debug, Clone, Default, Serialize, JsonSchema)]
 pub struct RoundErrors {
     /// The Tournament is Finished or Cancelled
@@ -171,6 +174,8 @@ pub struct RoundErrors {
     pub not_ended: bool,
     /// A later Round started, so this one cannot be taken back
     pub later_round_started: bool,
+    /// The Round started without a round timer
+    pub no_timer: bool,
 }
 
 impl From<RoundRefusal> for RoundErrors {
@@ -187,8 +192,37 @@ impl From<RoundRefusal> for RoundErrors {
             RoundRefusal::ResultsDisputed => errors.results_disputed = true,
             RoundRefusal::NotEnded => errors.not_ended = true,
             RoundRefusal::LaterRoundStarted => errors.later_round_started = true,
+            RoundRefusal::NoTimer => errors.no_timer = true,
         }
         errors
+    }
+}
+
+/// What an Organizer does to the round timer of a running Round
+#[derive(Debug, Clone, Copy, Deserialize, JsonSchema)]
+#[serde(tag = "action")]
+pub enum SetRoundTimerRequest {
+    /// Stop it where it stands
+    Pause,
+    /// Let it run again from where it was paused
+    Resume,
+    /// Add to or take from the time left, never below none
+    Adjust {
+        /// Seconds to add; negative takes away
+        delta_seconds: i32,
+    },
+    /// Run it again from its full length, starting now
+    Reset,
+}
+
+impl From<SetRoundTimerRequest> for TimerAction {
+    fn from(value: SetRoundTimerRequest) -> Self {
+        match value {
+            SetRoundTimerRequest::Pause => Self::Pause,
+            SetRoundTimerRequest::Resume => Self::Resume,
+            SetRoundTimerRequest::Adjust { delta_seconds } => Self::Adjust { delta_seconds },
+            SetRoundTimerRequest::Reset => Self::Reset,
+        }
     }
 }
 

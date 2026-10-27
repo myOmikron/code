@@ -173,7 +173,7 @@ One turn of the Tournament in which every paired Participant plays one Match at 
 _Avoid_: turn (that is a turn within a game), pairing
 
 **Round timer**:
-The countdown of a running Round, set by the Tournament's optional round timer length; it starts when the Round starts, and a Round started without a length has none. At **time up** the Ruleset's **extra turns** apply, shown as information only: MTR plays five turns after the active player's turn, TopDeck and the Multiplayer Addendum none. Time up ends nothing by itself: the Round still ends when an Organizer ends it.
+The countdown of a running Round, set by the Tournament's optional round timer length; it starts when the Round starts, and a Round started without a length has none. At **time up** the Ruleset's **extra turns** apply, shown as information only: MTR plays five turns after the active player's turn, TopDeck and the Multiplayer Addendum none. Time up ends nothing by itself: the Round still ends when an Organizer ends it. While the Round runs, an Organizer can **pause** it, which holds the time left until it is resumed, add or take away time, never below none, and **reset** it to its full length.
 _Avoid_: clock, round length, overtime
 
 **Match**:

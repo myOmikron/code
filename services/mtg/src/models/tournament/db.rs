@@ -360,6 +360,9 @@ pub struct TournamentRoundModel {
 
     /// When time is up, set exactly with [`Self::timer_seconds`]
     pub timer_ends_at: Option<OffsetDateTime>,
+
+    /// When an Organizer paused its round timer, `None` while it runs or there is none
+    pub timer_paused_at: Option<OffsetDateTime>,
 }
 
 /// Insert patch for [`TournamentRoundModel`]

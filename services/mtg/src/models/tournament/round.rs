@@ -55,6 +55,7 @@ use crate::tournament::reporting::ResultState;
 use crate::tournament::rounds::suggested_swiss_rounds;
 use crate::tournament::ruleset::single_game_admits;
 use crate::tournament::timer::RoundTimer;
+use crate::tournament::timer::TimerAction;
 use crate::tournament::top_cut::TopCutError;
 use crate::tournament::top_cut::bracket_size;
 use crate::tournament::top_cut::cut_over;
@@ -193,6 +194,8 @@ pub enum RoundRefusal {
     NotEnded,
     /// A later Round started, so this one cannot be taken back
     LaterRoundStarted,
+    /// The Round started without a round timer
+    NoTimer,
 }
 
 /// Why a Result could not be set
@@ -288,12 +291,7 @@ impl Tournament {
             .map(|round| {
                 let mut matches = matches_of.remove(&round.uuid).unwrap_or_default();
                 matches.sort_by_key(|played| (played.table_number.is_none(), played.table_number));
-                let timer = round.timer_seconds.zip(round.timer_ends_at).map(
-                    |(length_seconds, ends_at)| RoundTimer {
-                        length_seconds: u32::try_from(length_seconds).unwrap_or(0),
-                        ends_at,
-                    },
-                );
+                let timer = round_timer(&round);
                 for played in matches.iter_mut().filter(|played| !played.is_bye()) {
                     let seats: Vec<Uuid> = played
                         .seats
@@ -594,6 +592,44 @@ impl Tournament {
             self.pin_registered_decks(tx).await?;
         }
         Ok(Ok(()))
+    }
+
+    /// Pause, resume, adjust or reset the round timer of the running Round `number`
+    ///
+    /// Answers the timer afterwards. A Round started without a round timer has
+    /// none to change.
+    #[instrument(name = "Tournament::set_round_timer", skip(tx, self), fields(tournament = ?self.uuid))]
+    pub async fn set_round_timer(
+        &self,
+        tx: &mut Transaction,
+        number: i16,
+        action: TimerAction,
+        now: OffsetDateTime,
+    ) -> Result<Result<RoundTimer, RoundRefusal>, rorm::Error> {
+        if self.over() {
+            return Ok(Err(RoundRefusal::TournamentOver));
+        }
+        let key = round_key(self.uuid.into_inner(), number);
+        let Some(round) = rorm::query(&mut *tx, TournamentRoundModel)
+            .condition(rorm::and![
+                TournamentRoundModel.uuid.equals(key),
+                TournamentRoundModel.state.equals(RoundState::Running),
+            ])
+            .optional()
+            .await?
+        else {
+            return Ok(Err(RoundRefusal::NotRunning));
+        };
+        let Some(timer) = round_timer(&round) else {
+            return Ok(Err(RoundRefusal::NoTimer));
+        };
+        let timer = timer.apply(action, now);
+        rorm::update(&mut *tx, TournamentRoundModel)
+            .set(TournamentRoundModel.timer_ends_at, Some(timer.ends_at))
+            .set(TournamentRoundModel.timer_paused_at, timer.paused_at)
+            .condition(TournamentRoundModel.uuid.equals(key))
+            .await?;
+        Ok(Ok(timer))
     }
 
     /// End the running Round `number` once every Match has its Result and none is disputed
@@ -996,6 +1032,20 @@ pub(in crate::models::tournament) async fn insert_matches(
             .await?;
     }
     Ok(())
+}
+
+/// The round timer `round` stores, `None` for a Round without one or not started
+pub(in crate::models::tournament) fn round_timer(
+    round: &TournamentRoundModel,
+) -> Option<RoundTimer> {
+    round
+        .timer_seconds
+        .zip(round.timer_ends_at)
+        .map(|(length_seconds, ends_at)| RoundTimer {
+            length_seconds: u32::try_from(length_seconds).unwrap_or(0),
+            ends_at,
+            paused_at: round.timer_paused_at,
+        })
 }
 
 /// A Round as the engine reads it

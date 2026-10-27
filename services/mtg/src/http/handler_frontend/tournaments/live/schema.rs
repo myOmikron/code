@@ -68,6 +68,11 @@ pub enum TournamentEvent {
         /// The Round's number
         round: i16,
     },
+    /// An Organizer paused, resumed, adjusted or reset a running Round's timer
+    TimerChanged {
+        /// The Round's number
+        round: i16,
+    },
     /// A Participant reported a Result
     ResultReported {
         /// The Round of the Match
