@@ -1,0 +1,135 @@
+[Migration]
+Hash = "3249379695231731545"
+Initial = false
+Dependency = 69
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateModel"
+Name = "tournament_match_life_conflict"
+
+[[Migration.Operations.Fields]]
+Name = "uuid"
+Type = "uuid"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "primary_key"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 695
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "history"
+Type = "binary"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 700
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "device"
+Type = "uuid"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 702
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "generation"
+Type = "int64"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 704
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "base_revision"
+Type = "int64"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 706
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "captured_at"
+Type = "datetime"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 711
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "tournament_match_life_conflict"
+
+[Migration.Operations.Field]
+Name = "tournament_match"
+Type = "uuid"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "foreign_key"
+
+[Migration.Operations.Field.Annotations.Value]
+TableName = "tournament_match"
+ColumnName = "uuid"
+OnDelete = "Cascade"
+OnUpdate = "Cascade"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 698
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "tournament_match_life_conflict"
+
+[Migration.Operations.Field]
+Name = "account"
+Type = "uuid"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "foreign_key"
+
+[Migration.Operations.Field.Annotations.Value]
+TableName = "account"
+ColumnName = "uuid"
+OnDelete = "SetNull"
+OnUpdate = "Cascade"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 709
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateIndex"
+Model = "tournament_match_life_conflict"
+
+[Migration.Operations.Index]
+Columns = ["tournament_match"]

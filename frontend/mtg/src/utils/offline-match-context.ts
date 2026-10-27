@@ -44,7 +44,16 @@ export async function loadRecoverableMatch(
         if (!scope) throw error;
         const recording = new MatchLifeRecording({ account: scope.account, tournament, match });
         const stored = recording.snapshot();
-        if (!recording.writer() || !stored.context || !stored.local) throw error;
+        if (
+            (!recording.writer() &&
+                !(
+                    stored.claimAccepted &&
+                    (stored.transfer || stored.blocked === "conflict" || stored.blocked === "invalid")
+                )) ||
+            !stored.context ||
+            !stored.local
+        )
+            throw error;
         return { ...stored.context, offline: true };
     }
 }

@@ -62,6 +62,9 @@ docs/BracketRulesResponse.md
 docs/BugReportAccount.md
 docs/BugReportImageInfo.md
 docs/BugReportState.md
+docs/CaptureMatchLifeConflict200Response.md
+docs/CaptureMatchLifeConflictRequest.md
+docs/CapturedMatchLifeConflict.md
 docs/CardCondition.md
 docs/CardFinish.md
 docs/CardRarity.md
@@ -213,6 +216,9 @@ docs/ListedCardResponse.md
 docs/ListedEntryResponse.md
 docs/MailLanguage.md
 docs/MarkedCard.md
+docs/MatchLifeConflict.md
+docs/MatchLifeConflictSummary.md
+docs/MatchLifeConflicts.md
 docs/MatchLifeErrors.md
 docs/MatchLifeEvent.md
 docs/MatchLifeEventKind.md
@@ -222,6 +228,9 @@ docs/MatchLifeHistoryResponse.md
 docs/MatchLifeOutcome.md
 docs/MatchLifeOutcomeOneOf.md
 docs/MatchLifeOutcomeOneOf1.md
+docs/MatchLifeOwnershipProof.md
+docs/MatchLifeOwnershipProofOneOf.md
+docs/MatchLifeOwnershipProofOneOf1.md
 docs/MatchLifePlayer.md
 docs/MatchPlayResponse.md
 docs/MatchResponse.md

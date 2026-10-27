@@ -11349,6 +11349,407 @@
                 }
             }
         },
+        "/api/frontend/v1/tournaments/{tournament}/matches/{match}/life-history/release": {
+            "post": {
+                "summary": "Release a synchronized recording slot without deleting its history.",
+                "description": "Release a synchronized recording slot without deleting its history.",
+                "operationId": "release_match_life_history",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tournament",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/TournamentUuid"
+                        },
+                        "style": "simple"
+                    },
+                    {
+                        "in": "path",
+                        "name": "match",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/MatchUuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ClaimMatchLifeRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "$ref": "#/components/schemas/MatchLifeHistoryResponse"
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/FormErrorResponse_for_MatchLifeErrors"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/tournaments/{tournament}/matches/{match}/life-history/takeover": {
+            "post": {
+                "summary": "Explicitly take over the confirmed latest saved state while online.",
+                "description": "Explicitly take over the confirmed latest saved state while online.",
+                "operationId": "takeover_match_life_history",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tournament",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/TournamentUuid"
+                        },
+                        "style": "simple"
+                    },
+                    {
+                        "in": "path",
+                        "name": "match",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/MatchUuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ClaimMatchLifeRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "$ref": "#/components/schemas/MatchLifeHistoryResponse"
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/FormErrorResponse_for_MatchLifeErrors"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/tournaments/{tournament}/matches/{match}/life-history/conflicts": {
+            "get": {
+                "summary": "Lists recovered branches only for this Match's authorized audience.",
+                "description": "Lists recovered branches only for this Match's authorized audience.",
+                "operationId": "list_match_life_conflicts",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tournament",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/TournamentUuid"
+                        },
+                        "style": "simple"
+                    },
+                    {
+                        "in": "path",
+                        "name": "match",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/MatchUuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MatchLifeConflicts"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "summary": "Preserves all recovered old-device changes as an independent authorized artifact.",
+                "description": "Preserves all recovered old-device changes as an independent authorized artifact.",
+                "operationId": "capture_match_life_conflict",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tournament",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/TournamentUuid"
+                        },
+                        "style": "simple"
+                    },
+                    {
+                        "in": "path",
+                        "name": "match",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/MatchUuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CaptureMatchLifeConflictRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "$ref": "#/components/schemas/CapturedMatchLifeConflict"
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/FormErrorResponse_for_MatchLifeErrors"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/tournaments/{tournament}/matches/{match}/life-history/conflicts/{conflict}": {
+            "get": {
+                "summary": "Reads one recovered branch without applying it to the Match.",
+                "description": "Reads one recovered branch without applying it to the Match.",
+                "operationId": "get_match_life_conflict",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tournament",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/TournamentUuid"
+                        },
+                        "style": "simple"
+                    },
+                    {
+                        "in": "path",
+                        "name": "match",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/MatchUuid"
+                        },
+                        "style": "simple"
+                    },
+                    {
+                        "in": "path",
+                        "name": "conflict",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MatchLifeConflict"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/frontend/v1/tournaments/{tournament}/sign-up": {
             "post": {
                 "summary": "Sign the logged-in Account up for a Tournament it sees by its id",
@@ -16226,6 +16627,67 @@
                     }
                 ]
             },
+            "CaptureMatchLifeConflictRequest": {
+                "description": "Immutable request preserving all unsent old-device history.",
+                "type": "object",
+                "properties": {
+                    "base_revision": {
+                        "description": "Last server revision known before the branch diverged.",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "history": {
+                        "description": "Full frozen local branch, including changes newer than an in-flight upload.",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MatchLifeHistory"
+                            }
+                        ]
+                    },
+                    "ownership": {
+                        "description": "Account-bound proof of former recording ownership, never returned publicly.",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MatchLifeOwnershipProof"
+                            }
+                        ]
+                    },
+                    "request_id": {
+                        "description": "Stable exact capture identity.",
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                },
+                "required": [
+                    "base_revision",
+                    "history",
+                    "ownership",
+                    "request_id"
+                ]
+            },
+            "CapturedMatchLifeConflict": {
+                "description": "Stable acknowledgement of a captured branch.",
+                "type": "object",
+                "properties": {
+                    "accepted_request": {
+                        "description": "Exact accepted capture request.",
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "conflict": {
+                        "description": "Durable artifact identity and origin.",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MatchLifeConflictSummary"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "accepted_request",
+                    "conflict"
+                ]
+            },
             "CardCondition": {
                 "description": "Condition of a physical card, using Cardmarket's grades\n\nThe order of the variants is the grading scale, best first. Keep it that way — comparisons and sorting read better than a separate rank function.",
                 "oneOf": [
@@ -21064,6 +21526,89 @@
                     "oracle_id"
                 ]
             },
+            "MatchLifeConflict": {
+                "description": "Complete recovered history, separate from the current timeline and Result.",
+                "type": "object",
+                "properties": {
+                    "history": {
+                        "description": "Complete original branch.",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MatchLifeHistory"
+                            }
+                        ]
+                    },
+                    "summary": {
+                        "description": "Origin and capture metadata.",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MatchLifeConflictSummary"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "history",
+                    "summary"
+                ]
+            },
+            "MatchLifeConflictSummary": {
+                "description": "Recoverable branch metadata, without credentials or the potentially large snapshot.",
+                "type": "object",
+                "properties": {
+                    "base_revision": {
+                        "description": "Last known server revision.",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "captured_at": {
+                        "description": "Server capture time.",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDateTime"
+                            }
+                        ]
+                    },
+                    "device": {
+                        "description": "Recording device.",
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "generation": {
+                        "description": "Former recording epoch.",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "id": {
+                        "description": "Authorized artifact identity.",
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                },
+                "required": [
+                    "base_revision",
+                    "captured_at",
+                    "device",
+                    "generation",
+                    "id"
+                ]
+            },
+            "MatchLifeConflicts": {
+                "description": "Authorized recovered branches of a Match.",
+                "type": "object",
+                "properties": {
+                    "conflicts": {
+                        "description": "Metadata, newest capture first.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/MatchLifeConflictSummary"
+                        }
+                    }
+                },
+                "required": [
+                    "conflicts"
+                ]
+            },
             "MatchLifeErrors": {
                 "description": "Why a claim or upload could not be accepted.",
                 "type": "object",
@@ -21392,6 +21937,49 @@
                         },
                         "required": [
                             "kind"
+                        ]
+                    }
+                ]
+            },
+            "MatchLifeOwnershipProof": {
+                "description": "Exact retained ownership intent, including its private capability.",
+                "oneOf": [
+                    {
+                        "description": "Original acknowledged claim.",
+                        "type": "object",
+                        "properties": {
+                            "kind": {
+                                "type": "string",
+                                "enum": [
+                                    "claim"
+                                ]
+                            },
+                            "request": {
+                                "$ref": "#/components/schemas/ClaimMatchLifeRequest"
+                            }
+                        },
+                        "required": [
+                            "kind",
+                            "request"
+                        ]
+                    },
+                    {
+                        "description": "Original acknowledged takeover.",
+                        "type": "object",
+                        "properties": {
+                            "kind": {
+                                "type": "string",
+                                "enum": [
+                                    "takeover"
+                                ]
+                            },
+                            "request": {
+                                "$ref": "#/components/schemas/ClaimMatchLifeRequest"
+                            }
+                        },
+                        "required": [
+                            "kind",
+                            "request"
                         ]
                     }
                 ]

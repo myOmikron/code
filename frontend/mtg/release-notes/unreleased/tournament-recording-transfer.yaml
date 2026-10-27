@@ -1,0 +1,3 @@
+kind: new
+de: Übertrage die Aufzeichnung eines Turnierspiels nach dem Speichern auf ein anderes Gerät oder bestätige bei Geräteausfall den zuletzt gespeicherten Stand. Später zurückkehrende Änderungen bleiben als separater Verlauf erhalten und überschreiben eure laufende Aufzeichnung nicht.
+en: Transfer Tournament recording to another device after saving, or confirm the last saved state if the old device fails. Later-returning changes stay in a separate history and never overwrite active recording.

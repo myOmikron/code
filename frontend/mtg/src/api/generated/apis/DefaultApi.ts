@@ -42,6 +42,8 @@ import type {
     ArrangeRoundRequest,
     BracketFlagsRequest,
     BracketFlagsResponse,
+    CaptureMatchLifeConflict200Response,
+    CaptureMatchLifeConflictRequest,
     CardCondition,
     CardFinish,
     CardRarity,
@@ -126,6 +128,8 @@ import type {
     ListWatchListCopiesResponse,
     ListWatchListEntriesResponse,
     ListWatchListsResponse,
+    MatchLifeConflict,
+    MatchLifeConflicts,
     MatchLifeHistoryResponse,
     MatchPlayResponse,
     Me200Response,
@@ -536,6 +540,21 @@ export interface CancelTournamentRequest {
      * 
      */
     tournament: string;
+}
+
+export interface CaptureMatchLifeConflictOperationRequest {
+    /**
+     *
+     */
+    tournament: string;
+    /**
+     *
+     */
+    match: string;
+    /**
+     *
+     */
+    CaptureMatchLifeConflictRequest?: CaptureMatchLifeConflictRequest;
 }
 
 export interface CheckPushDeviceRequest {
@@ -957,6 +976,21 @@ export interface GetDeckSourcingRequest {
     deck: string;
 }
 
+export interface GetMatchLifeConflictRequest {
+    /**
+     *
+     */
+    tournament: string;
+    /**
+     *
+     */
+    match: string;
+    /**
+     *
+     */
+    conflict: string;
+}
+
 export interface GetMatchLifeHistoryRequest {
     /**
      * 
@@ -1189,6 +1223,17 @@ export interface ListDeckCollaboratorsRequest {
      * 
      */
     deck: string;
+}
+
+export interface ListMatchLifeConflictsRequest {
+    /**
+     *
+     */
+    tournament: string;
+    /**
+     *
+     */
+    match: string;
 }
 
 export interface ListPublicCollectionCardsRequest {
@@ -1484,6 +1529,21 @@ export interface RegisterTournamentParticipantDeckRequest {
      * 
      */
     RegisterDeckRequest?: RegisterDeckRequest;
+}
+
+export interface ReleaseMatchLifeHistoryRequest {
+    /**
+     *
+     */
+    tournament: string;
+    /**
+     *
+     */
+    match: string;
+    /**
+     *
+     */
+    ClaimMatchLifeRequest?: ClaimMatchLifeRequest;
 }
 
 export interface RemoveDeckCheckpointRequest {
@@ -1975,6 +2035,21 @@ export interface TakeDeckCardsOperationRequest {
      * 
      */
     TakeDeckCardsRequest?: TakeDeckCardsRequest;
+}
+
+export interface TakeoverMatchLifeHistoryRequest {
+    /**
+     *
+     */
+    tournament: string;
+    /**
+     *
+     */
+    match: string;
+    /**
+     *
+     */
+    ClaimMatchLifeRequest?: ClaimMatchLifeRequest;
 }
 
 export interface UnassignCollectionEntryTagRequest {
@@ -3736,6 +3811,64 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async cancelTournament(requestParameters: CancelTournamentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
         const response = await this.cancelTournamentRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for captureMatchLifeConflict without sending the request
+     */
+    async captureMatchLifeConflictRequestOpts(requestParameters: CaptureMatchLifeConflictOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tournament'] == null) {
+            throw new runtime.RequiredError(
+                'tournament',
+                'Required parameter "tournament" was null or undefined when calling captureMatchLifeConflict().'
+            );
+        }
+
+        if (requestParameters['match'] == null) {
+            throw new runtime.RequiredError(
+                'match',
+                'Required parameter "match" was null or undefined when calling captureMatchLifeConflict().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/tournaments/{tournament}/matches/{match}/life-history/conflicts`;
+        urlPath = urlPath.replace('{tournament}', encodeURIComponent(String(requestParameters['tournament'])));
+        urlPath = urlPath.replace('{match}', encodeURIComponent(String(requestParameters['match'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['CaptureMatchLifeConflictRequest'],
+        };
+    }
+
+    /**
+     * Preserves all recovered old-device changes as an independent authorized artifact.
+     * Preserves all recovered old-device changes as an independent authorized artifact.
+     */
+    async captureMatchLifeConflictRaw(requestParameters: CaptureMatchLifeConflictOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CaptureMatchLifeConflict200Response>> {
+        const requestOptions = await this.captureMatchLifeConflictRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Preserves all recovered old-device changes as an independent authorized artifact.
+     * Preserves all recovered old-device changes as an independent authorized artifact.
+     */
+    async captureMatchLifeConflict(requestParameters: CaptureMatchLifeConflictOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CaptureMatchLifeConflict200Response> {
+        const response = await this.captureMatchLifeConflictRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -6436,6 +6569,69 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for getMatchLifeConflict without sending the request
+     */
+    async getMatchLifeConflictRequestOpts(requestParameters: GetMatchLifeConflictRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tournament'] == null) {
+            throw new runtime.RequiredError(
+                'tournament',
+                'Required parameter "tournament" was null or undefined when calling getMatchLifeConflict().'
+            );
+        }
+
+        if (requestParameters['match'] == null) {
+            throw new runtime.RequiredError(
+                'match',
+                'Required parameter "match" was null or undefined when calling getMatchLifeConflict().'
+            );
+        }
+
+        if (requestParameters['conflict'] == null) {
+            throw new runtime.RequiredError(
+                'conflict',
+                'Required parameter "conflict" was null or undefined when calling getMatchLifeConflict().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/tournaments/{tournament}/matches/{match}/life-history/conflicts/{conflict}`;
+        urlPath = urlPath.replace('{tournament}', encodeURIComponent(String(requestParameters['tournament'])));
+        urlPath = urlPath.replace('{match}', encodeURIComponent(String(requestParameters['match'])));
+        urlPath = urlPath.replace('{conflict}', encodeURIComponent(String(requestParameters['conflict'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Reads one recovered branch without applying it to the Match.
+     * Reads one recovered branch without applying it to the Match.
+     */
+    async getMatchLifeConflictRaw(requestParameters: GetMatchLifeConflictRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MatchLifeConflict>> {
+        const requestOptions = await this.getMatchLifeConflictRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Reads one recovered branch without applying it to the Match.
+     * Reads one recovered branch without applying it to the Match.
+     */
+    async getMatchLifeConflict(requestParameters: GetMatchLifeConflictRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MatchLifeConflict> {
+        const response = await this.getMatchLifeConflictRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for getMatchLifeHistory without sending the request
      */
     async getMatchLifeHistoryRequestOpts(requestParameters: GetMatchLifeHistoryRequest): Promise<runtime.RequestOpts> {
@@ -7955,6 +8151,61 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for listMatchLifeConflicts without sending the request
+     */
+    async listMatchLifeConflictsRequestOpts(requestParameters: ListMatchLifeConflictsRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tournament'] == null) {
+            throw new runtime.RequiredError(
+                'tournament',
+                'Required parameter "tournament" was null or undefined when calling listMatchLifeConflicts().'
+            );
+        }
+
+        if (requestParameters['match'] == null) {
+            throw new runtime.RequiredError(
+                'match',
+                'Required parameter "match" was null or undefined when calling listMatchLifeConflicts().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/tournaments/{tournament}/matches/{match}/life-history/conflicts`;
+        urlPath = urlPath.replace('{tournament}', encodeURIComponent(String(requestParameters['tournament'])));
+        urlPath = urlPath.replace('{match}', encodeURIComponent(String(requestParameters['match'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Lists recovered branches only for this Match\'s authorized audience.
+     * Lists recovered branches only for this Match\'s authorized audience.
+     */
+    async listMatchLifeConflictsRaw(requestParameters: ListMatchLifeConflictsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MatchLifeConflicts>> {
+        const requestOptions = await this.listMatchLifeConflictsRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Lists recovered branches only for this Match\'s authorized audience.
+     * Lists recovered branches only for this Match\'s authorized audience.
+     */
+    async listMatchLifeConflicts(requestParameters: ListMatchLifeConflictsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MatchLifeConflicts> {
+        const response = await this.listMatchLifeConflictsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for listOpenidProviders without sending the request
      */
     async listOpenidProvidersRequestOpts(): Promise<runtime.RequestOpts> {
@@ -9398,6 +9649,64 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async registerTournamentParticipantDeck(requestParameters: RegisterTournamentParticipantDeckRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FormErrorResponseForRegisterDeckErrors> {
         const response = await this.registerTournamentParticipantDeckRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for releaseMatchLifeHistory without sending the request
+     */
+    async releaseMatchLifeHistoryRequestOpts(requestParameters: ReleaseMatchLifeHistoryRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tournament'] == null) {
+            throw new runtime.RequiredError(
+                'tournament',
+                'Required parameter "tournament" was null or undefined when calling releaseMatchLifeHistory().'
+            );
+        }
+
+        if (requestParameters['match'] == null) {
+            throw new runtime.RequiredError(
+                'match',
+                'Required parameter "match" was null or undefined when calling releaseMatchLifeHistory().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/tournaments/{tournament}/matches/{match}/life-history/release`;
+        urlPath = urlPath.replace('{tournament}', encodeURIComponent(String(requestParameters['tournament'])));
+        urlPath = urlPath.replace('{match}', encodeURIComponent(String(requestParameters['match'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['ClaimMatchLifeRequest'],
+        };
+    }
+
+    /**
+     * Release a synchronized recording slot without deleting its history.
+     * Release a synchronized recording slot without deleting its history.
+     */
+    async releaseMatchLifeHistoryRaw(requestParameters: ReleaseMatchLifeHistoryRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SaveMatchLifeHistory200Response>> {
+        const requestOptions = await this.releaseMatchLifeHistoryRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Release a synchronized recording slot without deleting its history.
+     * Release a synchronized recording slot without deleting its history.
+     */
+    async releaseMatchLifeHistory(requestParameters: ReleaseMatchLifeHistoryRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SaveMatchLifeHistory200Response> {
+        const response = await this.releaseMatchLifeHistoryRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -11802,6 +12111,64 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async takeDeckCards(requestParameters: TakeDeckCardsOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
         const response = await this.takeDeckCardsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for takeoverMatchLifeHistory without sending the request
+     */
+    async takeoverMatchLifeHistoryRequestOpts(requestParameters: TakeoverMatchLifeHistoryRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tournament'] == null) {
+            throw new runtime.RequiredError(
+                'tournament',
+                'Required parameter "tournament" was null or undefined when calling takeoverMatchLifeHistory().'
+            );
+        }
+
+        if (requestParameters['match'] == null) {
+            throw new runtime.RequiredError(
+                'match',
+                'Required parameter "match" was null or undefined when calling takeoverMatchLifeHistory().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/tournaments/{tournament}/matches/{match}/life-history/takeover`;
+        urlPath = urlPath.replace('{tournament}', encodeURIComponent(String(requestParameters['tournament'])));
+        urlPath = urlPath.replace('{match}', encodeURIComponent(String(requestParameters['match'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['ClaimMatchLifeRequest'],
+        };
+    }
+
+    /**
+     * Explicitly take over the confirmed latest saved state while online.
+     * Explicitly take over the confirmed latest saved state while online.
+     */
+    async takeoverMatchLifeHistoryRaw(requestParameters: TakeoverMatchLifeHistoryRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SaveMatchLifeHistory200Response>> {
+        const requestOptions = await this.takeoverMatchLifeHistoryRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Explicitly take over the confirmed latest saved state while online.
+     * Explicitly take over the confirmed latest saved state while online.
+     */
+    async takeoverMatchLifeHistory(requestParameters: TakeoverMatchLifeHistoryRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SaveMatchLifeHistory200Response> {
+        const response = await this.takeoverMatchLifeHistoryRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

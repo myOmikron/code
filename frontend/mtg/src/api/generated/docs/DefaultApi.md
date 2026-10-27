@@ -34,6 +34,7 @@ All URIs are relative to *http://localhost*
 | [**assignDeckCardTag**](DefaultApi.md#assigndeckcardtag) | **POST** /api/frontend/v1/decks/{deck}/cards/{card}/tags/{tag} | Put a tag on a card |
 | [**attachDeckCollection**](DefaultApi.md#attachdeckcollection) | **POST** /api/frontend/v1/decks/{deck}/collection | Start keeping the cards that are physically in this deck |
 | [**cancelTournament**](DefaultApi.md#canceltournament) | **POST** /api/frontend/v1/tournaments/{tournament}/cancel | Cancel a Tournament, as an Organizer |
+| [**captureMatchLifeConflict**](DefaultApi.md#capturematchlifeconflictoperation) | **POST** /api/frontend/v1/tournaments/{tournament}/matches/{match}/life-history/conflicts | Preserves all recovered old-device changes as an independent authorized artifact. |
 | [**checkPushDevice**](DefaultApi.md#checkpushdevice) | **POST** /api/frontend/v1/accounts/me/push/devices/check | Whether a device gets the logged-in account\&#39;s pushes |
 | [**chooseUsername**](DefaultApi.md#chooseusernameoperation) | **POST** /api/frontend/v1/auth/oidc/username | Finish the username step: create the External Account and log it in |
 | [**claimMatchLifeHistory**](DefaultApi.md#claimmatchlifehistory) | **POST** /api/frontend/v1/tournaments/{tournament}/matches/{match}/life-history/claim | Deliberately claim a recording slot with a private, device-local capability. |
@@ -91,6 +92,7 @@ All URIs are relative to *http://localhost*
 | [**getDeckPoint**](DefaultApi.md#getdeckpoint) | **GET** /api/frontend/v1/decks/{deck}/history/{change} | The deck as it was right after one of its Deck changes, read-only |
 | [**getDeckSourcing**](DefaultApi.md#getdecksourcing) | **GET** /api/frontend/v1/decks/{deck}/sourcing | What the deck asks for, what is in it, and where the rest could come from |
 | [**getDecksSharedWithMe**](DefaultApi.md#getdeckssharedwithme) | **GET** /api/frontend/v1/decks/shared-with-me | The decks other Accounts named the caller on, alphabetically by name |
+| [**getMatchLifeConflict**](DefaultApi.md#getmatchlifeconflict) | **GET** /api/frontend/v1/tournaments/{tournament}/matches/{match}/life-history/conflicts/{conflict} | Reads one recovered branch without applying it to the Match. |
 | [**getMatchLifeHistory**](DefaultApi.md#getmatchlifehistory) | **GET** /api/frontend/v1/tournaments/{tournament}/matches/{match}/life-history | Observe uploaded history without claiming the recording device. |
 | [**getMpcfillCardbacks**](DefaultApi.md#getmpcfillcardbacks) | **GET** /api/frontend/v1/mpcfill/cardbacks | The card backs MPCFill offers |
 | [**getMyTournamentDeck**](DefaultApi.md#getmytournamentdeck) | **GET** /api/frontend/v1/tournaments/{tournament}/deck | The logged-in Account\&#39;s own Registered deck in a Tournament it plays in |
@@ -123,6 +125,7 @@ All URIs are relative to *http://localhost*
 | [**listCollectionOnLoan**](DefaultApi.md#listcollectiononloan) | **GET** /api/frontend/v1/collections/{collection}/on-loan | Count a collection\&#39;s statistics |
 | [**listDeckCards**](DefaultApi.md#listdeckcards) | **GET** /api/frontend/v1/decks/{deck}/cards | Every card of a deck, with the catalog data and the tags on it |
 | [**listDeckCollaborators**](DefaultApi.md#listdeckcollaborators) | **GET** /api/frontend/v1/decks/{deck}/collaborators | The owner and the Collaborators of a deck, the latter alphabetically by username |
+| [**listMatchLifeConflicts**](DefaultApi.md#listmatchlifeconflicts) | **GET** /api/frontend/v1/tournaments/{tournament}/matches/{match}/life-history/conflicts | Lists recovered branches only for this Match\&#39;s authorized audience. |
 | [**listOpenidProviders**](DefaultApi.md#listopenidproviders) | **GET** /api/frontend/v1/auth/oidc/providers | List the OpenID providers people may log in through |
 | [**listPasskeys**](DefaultApi.md#listpasskeys) | **GET** /api/frontend/v1/accounts/passkeys | List the passkeys of the logged-in account |
 | [**listPublicCollectionCards**](DefaultApi.md#listpubliccollectioncards) | **GET** /api/frontend/v1/explore/collections/{collection}/cards | List a page of a public collection\&#39;s cards, sorted and filtered |
@@ -152,6 +155,7 @@ All URIs are relative to *http://localhost*
 | [**redoDeckChange**](DefaultApi.md#redodeckchange) | **POST** /api/frontend/v1/decks/{deck}/history/redo | Apply the latest undone Deck change again |
 | [**registerMyTournamentDeck**](DefaultApi.md#registermytournamentdeck) | **PUT** /api/frontend/v1/tournaments/{tournament}/deck | Register one of the logged-in Account\&#39;s decks for a Tournament it plays in, |
 | [**registerTournamentParticipantDeck**](DefaultApi.md#registertournamentparticipantdeck) | **PUT** /api/frontend/v1/tournaments/{tournament}/participants/{participant}/deck | Register or swap a Participant\&#39;s Registered deck, as an Organizer |
+| [**releaseMatchLifeHistory**](DefaultApi.md#releasematchlifehistory) | **POST** /api/frontend/v1/tournaments/{tournament}/matches/{match}/life-history/release | Release a synchronized recording slot without deleting its history. |
 | [**removeDeckCheckpoint**](DefaultApi.md#removedeckcheckpoint) | **DELETE** /api/frontend/v1/decks/{deck}/history/{change}/checkpoint | Remove the Deck checkpoint of one of the deck\&#39;s Deck changes |
 | [**removeDeckCollaborator**](DefaultApi.md#removedeckcollaborator) | **DELETE** /api/frontend/v1/decks/{deck}/collaborators/{account} | Take an Account off a deck |
 | [**removeMyTournamentDeck**](DefaultApi.md#removemytournamentdeck) | **DELETE** /api/frontend/v1/tournaments/{tournament}/deck | Remove the logged-in Account\&#39;s own Registered deck, to play without one |
@@ -198,6 +202,7 @@ All URIs are relative to *http://localhost*
 | [**swapDeckCard**](DefaultApi.md#swapdeckcardoperation) | **POST** /api/frontend/v1/decks/{deck}/cards/{card}/swap | Give up copies of a Deck entry for another card in the same zone |
 | [**takeBackTournamentRound**](DefaultApi.md#takebacktournamentround) | **POST** /api/frontend/v1/tournaments/{tournament}/rounds/{number}/take-back | Take back the latest ended Round, as an Organizer: it runs again |
 | [**takeDeckCards**](DefaultApi.md#takedeckcardsoperation) | **POST** /api/frontend/v1/decks/{deck}/sourcing/take | Move copies out of a collection and into the deck |
+| [**takeoverMatchLifeHistory**](DefaultApi.md#takeovermatchlifehistory) | **POST** /api/frontend/v1/tournaments/{tournament}/matches/{match}/life-history/takeover | Explicitly take over the confirmed latest saved state while online. |
 | [**unassignCollectionEntryTag**](DefaultApi.md#unassigncollectionentrytag) | **DELETE** /api/frontend/v1/collections/{collection}/entries/{entry}/tags/{tag} | Take a card-wide tag off a stack, see [&#x60;assign_collection_entry_tag&#x60;] |
 | [**unassignDeckCardTag**](DefaultApi.md#unassigndeckcardtag) | **DELETE** /api/frontend/v1/decks/{deck}/cards/{card}/tags/{tag} | Take a tag off a card |
 | [**undoDeckChange**](DefaultApi.md#undodeckchange) | **POST** /api/frontend/v1/decks/{deck}/history/undo | Take back the latest Deck change that is not undone yet |
@@ -2376,6 +2381,82 @@ No authorization required
 ### HTTP request headers
 
 - **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## captureMatchLifeConflict
+
+> CaptureMatchLifeConflict200Response captureMatchLifeConflict(tournament, match, CaptureMatchLifeConflictRequest)
+
+Preserves all recovered old-device changes as an independent authorized artifact.
+
+Preserves all recovered old-device changes as an independent authorized artifact.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { CaptureMatchLifeConflictOperationRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    tournament: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string
+    match: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // CaptureMatchLifeConflictRequest (optional)
+    CaptureMatchLifeConflictRequest: ...,
+  } satisfies CaptureMatchLifeConflictOperationRequest;
+
+  try {
+    const data = await api.captureMatchLifeConflict(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **tournament** | `string` |  | [Defaults to `undefined`] |
+| **match** | `string` |  | [Defaults to `undefined`] |
+| **CaptureMatchLifeConflictRequest** | [CaptureMatchLifeConflictRequest](CaptureMatchLifeConflictRequest.md) |  | [Optional] |
+
+### Return type
+
+[**CaptureMatchLifeConflict200Response**](CaptureMatchLifeConflict200Response.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
 - **Accept**: `application/json`
 
 
@@ -6367,6 +6448,82 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## getMatchLifeConflict
+
+> MatchLifeConflict getMatchLifeConflict(tournament, match, conflict)
+
+Reads one recovered branch without applying it to the Match.
+
+Reads one recovered branch without applying it to the Match.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { GetMatchLifeConflictRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    tournament: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string
+    match: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string
+    conflict: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies GetMatchLifeConflictRequest;
+
+  try {
+    const data = await api.getMatchLifeConflict(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **tournament** | `string` |  | [Defaults to `undefined`] |
+| **match** | `string` |  | [Defaults to `undefined`] |
+| **conflict** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**MatchLifeConflict**](MatchLifeConflict.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## getMatchLifeHistory
 
 > MatchLifeHistoryResponse getMatchLifeHistory(tournament, match)
@@ -8598,6 +8755,79 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## listMatchLifeConflicts
+
+> MatchLifeConflicts listMatchLifeConflicts(tournament, match)
+
+Lists recovered branches only for this Match\&#39;s authorized audience.
+
+Lists recovered branches only for this Match\&#39;s authorized audience.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { ListMatchLifeConflictsRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    tournament: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string
+    match: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies ListMatchLifeConflictsRequest;
+
+  try {
+    const data = await api.listMatchLifeConflicts(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **tournament** | `string` |  | [Defaults to `undefined`] |
+| **match** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**MatchLifeConflicts**](MatchLifeConflicts.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## listOpenidProviders
 
 > ListOpenIdProvidersResponse listOpenidProviders()
@@ -10661,6 +10891,82 @@ example().catch(console.error);
 ### Return type
 
 [**FormErrorResponseForRegisterDeckErrors**](FormErrorResponseForRegisterDeckErrors.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## releaseMatchLifeHistory
+
+> SaveMatchLifeHistory200Response releaseMatchLifeHistory(tournament, match, ClaimMatchLifeRequest)
+
+Release a synchronized recording slot without deleting its history.
+
+Release a synchronized recording slot without deleting its history.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { ReleaseMatchLifeHistoryRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    tournament: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string
+    match: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // ClaimMatchLifeRequest (optional)
+    ClaimMatchLifeRequest: ...,
+  } satisfies ReleaseMatchLifeHistoryRequest;
+
+  try {
+    const data = await api.releaseMatchLifeHistory(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **tournament** | `string` |  | [Defaults to `undefined`] |
+| **match** | `string` |  | [Defaults to `undefined`] |
+| **ClaimMatchLifeRequest** | [ClaimMatchLifeRequest](ClaimMatchLifeRequest.md) |  | [Optional] |
+
+### Return type
+
+[**SaveMatchLifeHistory200Response**](SaveMatchLifeHistory200Response.md)
 
 ### Authorization
 
@@ -14005,6 +14311,82 @@ example().catch(console.error);
 ### Return type
 
 **any**
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## takeoverMatchLifeHistory
+
+> SaveMatchLifeHistory200Response takeoverMatchLifeHistory(tournament, match, ClaimMatchLifeRequest)
+
+Explicitly take over the confirmed latest saved state while online.
+
+Explicitly take over the confirmed latest saved state while online.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { TakeoverMatchLifeHistoryRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    tournament: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string
+    match: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // ClaimMatchLifeRequest (optional)
+    ClaimMatchLifeRequest: ...,
+  } satisfies TakeoverMatchLifeHistoryRequest;
+
+  try {
+    const data = await api.takeoverMatchLifeHistory(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **tournament** | `string` |  | [Defaults to `undefined`] |
+| **match** | `string` |  | [Defaults to `undefined`] |
+| **ClaimMatchLifeRequest** | [ClaimMatchLifeRequest](ClaimMatchLifeRequest.md) |  | [Optional] |
+
+### Return type
+
+[**SaveMatchLifeHistory200Response**](SaveMatchLifeHistory200Response.md)
 
 ### Authorization
 
