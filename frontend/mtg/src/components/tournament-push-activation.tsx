@@ -1,4 +1,4 @@
-import { Button, Description, Subheading, Text } from "components";
+import { Button, Subheading, Text } from "components";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
@@ -78,7 +78,7 @@ export function TournamentPushActivation() {
             className={"flex flex-col items-start gap-3 rounded-lg border border-zinc-950/10 p-4 dark:border-white/10"}
         >
             <Subheading>{t("heading.tournament-push-activation")}</Subheading>
-            <Description>{t("description.tournament-push-activation")}</Description>
+            <Text>{t("description.tournament-push-activation")}</Text>
             <div role={"status"} aria-live={"polite"}>
                 {state === "loading" && <Text>{t("label.tournament-push-loading")}</Text>}
                 {state === "enabled" && <Text>{t("description.tournament-push-enabled")}</Text>}
@@ -89,7 +89,7 @@ export function TournamentPushActivation() {
             {(state === "offer" || (state === "failed" && settings !== null)) && (
                 <>
                     {settings?.tournament_pushes === false && (
-                        <Description>{t("description.tournament-push-global-disabled")}</Description>
+                        <Text>{t("description.tournament-push-global-disabled")}</Text>
                     )}
                     <Button outline disabled={busy} onClick={() => void activate()}>
                         {t("button.enable-tournament-pushes")}
