@@ -30,6 +30,7 @@ export function createTournamentWizardStore(): WizardRunStore {
                 values: {
                     startsAt: { value: toLocalInput(nextEvening()), secret: false },
                     visibility: { value: "Public", secret: false },
+                    checkIn: { value: "Off", secret: false },
                 },
                 completedSteps: [],
                 currentStep: "general",

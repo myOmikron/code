@@ -29,7 +29,7 @@ import { useForm } from "@tanstack/react-form";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
-import { BestOf, Ruleset, TopCut, TournamentState, Visibility } from "src/api/generated";
+import { BestOf, CheckIn, Ruleset, TopCut, TournamentState, Visibility } from "src/api/generated";
 import type { FormatRulesResponse, TournamentResponse } from "src/api/generated";
 import { useDeckLabels } from "src/components/deck-labels";
 import { PrimaryButton } from "src/components/primary-button";
@@ -41,6 +41,7 @@ import {
     TABLE_SIZES,
     withFormatDefaults,
     fromLocalInput,
+    isLimited,
     rulesetFits,
     rulesetsFor,
     toLocalInput,
@@ -94,6 +95,7 @@ function initialValues(tournament: TournamentResponse) {
                 ? ""
                 : fromMinorUnits(tournament.entry_fee.amount, tournament.entry_fee.currency),
         currency: tournament.entry_fee?.currency ?? CURRENCIES[0],
+        checkIn: tournament.check_in,
     };
 }
 
@@ -141,6 +143,7 @@ export function TournamentForm({ tournament, formats, onClose, onSaved }: Tourna
                     top_cut_best_of: value.tableSize === 2 && value.topCut !== NO_TOP_CUT ? value.topCutBestOf : null,
                     entered_afterwards: value.enteredAfterwards,
                     entry_fee: amount === null ? null : { amount, currency: value.currency },
+                    check_in: value.checkIn,
                 };
                 const response = await Api.tournaments.update(tournament.uuid, request);
                 if (isFormError(response)) {
@@ -183,6 +186,9 @@ export function TournamentForm({ tournament, formats, onClose, onSaved }: Tourna
                         },
                         top_cut_locked: (errors) => {
                             errors.fields.topCut = t("error.top-cut-locked");
+                        },
+                        check_in_deck_for_limited: (errors) => {
+                            errors.fields.checkIn = t("error.check-in-deck-for-limited");
                         },
                     });
                 }
@@ -279,6 +285,12 @@ export function TournamentForm({ tournament, formats, onClose, onSaved }: Tourna
                                                 const slug = entry?.kind === "format" ? entry.slug : null;
                                                 fieldApi.handleChange(slug);
                                                 if (rulesLocked) return;
+                                                if (
+                                                    isLimited(slug) &&
+                                                    form.getFieldValue("checkIn") === CheckIn.RequiredWithDeck
+                                                ) {
+                                                    form.setFieldValue("checkIn", CheckIn.Required);
+                                                }
                                                 const next = withFormatDefaults(
                                                     {
                                                         tableSize: form.getFieldValue("tableSize"),
@@ -678,6 +690,40 @@ export function TournamentForm({ tournament, formats, onClose, onSaved }: Tourna
                                     }
                                 </form.Subscribe>
                             </Field>
+
+                            <form.Subscribe selector={(state) => isLimited(state.values.format)}>
+                                {(limited) => (
+                                    <form.Field name={"checkIn"}>
+                                        {(fieldApi) => (
+                                            <Field>
+                                                <Label>{t("label.check-in")}</Label>
+                                                <Description>
+                                                    {rulesLocked
+                                                        ? t("description.rules-locked")
+                                                        : t("description.check-in")}
+                                                </Description>
+                                                <Listbox<CheckIn>
+                                                    disabled={rulesLocked}
+                                                    value={fieldApi.state.value}
+                                                    onChange={fieldApi.handleChange}
+                                                    invalid={fieldApi.state.meta.errors.length > 0}
+                                                >
+                                                    {[CheckIn.Off, CheckIn.Required, CheckIn.RequiredWithDeck]
+                                                        .filter((rule) => !limited || rule !== CheckIn.RequiredWithDeck)
+                                                        .map((rule) => (
+                                                            <ListboxOption key={rule} value={rule}>
+                                                                <ListboxLabel>{labels.checkIn(rule)}</ListboxLabel>
+                                                            </ListboxOption>
+                                                        ))}
+                                                </Listbox>
+                                                {fieldApi.state.meta.errors.map((error) => (
+                                                    <ErrorMessage key={String(error)}>{String(error)}</ErrorMessage>
+                                                ))}
+                                            </Field>
+                                        )}
+                                    </form.Field>
+                                )}
+                            </form.Subscribe>
                         </FieldGroup>
                     </Fieldset>
                 </div>

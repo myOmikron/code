@@ -7,7 +7,16 @@
  */
 
 import { useTranslation } from "react-i18next";
-import { BestOf, RoundState, Ruleset, Tiebreaker, TopCut, TournamentState, Visibility } from "src/api/generated";
+import {
+    BestOf,
+    CheckIn,
+    RoundState,
+    Ruleset,
+    Tiebreaker,
+    TopCut,
+    TournamentState,
+    Visibility,
+} from "src/api/generated";
 
 /**
  * The labels the tournament pages need
@@ -89,6 +98,24 @@ export function useTournamentLabels() {
                     return t("label.best-of-one");
                 case BestOf.Three:
                     return t("label.best-of-three");
+            }
+        },
+
+        /**
+         * What a check-in rule is called
+         *
+         * @param checkIn the rule
+         *
+         * @returns its name
+         */
+        checkIn: (checkIn: CheckIn): string => {
+            switch (checkIn) {
+                case CheckIn.Off:
+                    return t("label.check-in-off");
+                case CheckIn.Required:
+                    return t("label.check-in-required");
+                case CheckIn.RequiredWithDeck:
+                    return t("label.check-in-required-with-deck");
             }
         },
 

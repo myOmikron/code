@@ -1,5 +1,6 @@
 import {
     BanknotesIcon,
+    CheckCircleIcon,
     PlusIcon,
     RectangleStackIcon,
     TrashIcon,
@@ -22,9 +23,10 @@ import {
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
-import { TournamentState, Visibility } from "src/api/generated";
+import { CheckIn, TournamentState, Visibility } from "src/api/generated";
 import type {
     FormErrorResponseForSignUpErrors,
+    SetCheckedInErrors,
     ListParticipantsResponse,
     ParticipantResponse,
     RegisteredDeckResponse,
@@ -87,6 +89,36 @@ export function TournamentParticipants({ tournament, load, signUp }: TournamentP
         tournament.state !== TournamentState.Cancelled;
     const version = useLiveVersion("participants");
     const unpaidCount = participants.filter((participant) => participant.unpaid === true).length;
+    const deckRequired = tournament.check_in === CheckIn.RequiredWithDeck;
+    const desk =
+        organizer &&
+        tournament.check_in !== CheckIn.Off &&
+        tournament.state !== TournamentState.Finished &&
+        tournament.state !== TournamentState.Cancelled;
+    const waiting = participants.filter(
+        (participant) => participant.checked_in === false && participant.dropped_after_round == null,
+    );
+
+    /**
+     * Whether the desk may not check an Account in for want of a Registered deck
+     *
+     * @param participant the Participant
+     * @returns whether its check-in is blocked
+     */
+    const lacksDeck = (participant: ParticipantResponse) =>
+        deckRequired && !participant.guest && !participant.checked_in && !decks.has(participant.uuid);
+
+    /**
+     * Whether the desk may flip a Participant's check-in: only in, once the first Round started
+     *
+     * @param participant the Participant
+     * @returns whether the toggle shows
+     */
+    const togglable = (participant: ParticipantResponse) =>
+        desk &&
+        participant.dropped_after_round == null &&
+        participant.checked_in != null &&
+        (registration || !participant.checked_in);
     const signUpOpen = tournament.self_sign_up && tournament.visibility !== Visibility.Private && registration;
 
     const reload = useCallback(async () => {
@@ -209,6 +241,64 @@ export function TournamentParticipants({ tournament, load, signUp }: TournamentP
     }
 
     /**
+     * Checks a Participant in or, taking it back, out, as an Organizer
+     *
+     * @param participant the Participant
+     * @param checkedIn whether it is checked in
+     */
+    async function checkIn(participant: ParticipantResponse, checkedIn: boolean) {
+        setBusy(true);
+        try {
+            const result = await Api.tournaments.participants.setCheckedIn(
+                tournament.uuid,
+                participant.uuid,
+                checkedIn,
+            );
+            if (isFormError(result)) notify.error(checkInRefusal(result.error));
+            await reload();
+        } finally {
+            setBusy(false);
+        }
+    }
+
+    /**
+     * Says why a check-in was refused
+     *
+     * @param errors what the service refused
+     * @returns the message
+     */
+    function checkInRefusal(errors: SetCheckedInErrors) {
+        if (errors.no_registered_deck) return t("error.check-in-needs-deck");
+        if (errors.round_started) return t("error.check-out-started");
+        if (errors.no_check_in) return t("error.no-check-in");
+        return t("error.tournament-over");
+    }
+
+    /**
+     * Checks in everybody who plays on, naming those left out for want of a deck
+     */
+    async function checkInEveryone() {
+        setBusy(true);
+        try {
+            const result = await Api.tournaments.participants.checkInEveryone(tournament.uuid);
+            if (isFormError(result)) {
+                notify.error(result.error.no_check_in ? t("error.no-check-in") : t("error.tournament-over"));
+            } else if (result.no_registered_deck.length > 0) {
+                const names = participants
+                    .filter((participant) => result.no_registered_deck.includes(participant.uuid))
+                    .map((participant) => participant.name)
+                    .join(", ");
+                notify.error(t("toast.check-in-skipped", { names }));
+            } else {
+                notify.success(t("toast.checked-in-everyone"));
+            }
+            await reload();
+        } finally {
+            setBusy(false);
+        }
+    }
+
+    /**
      * Takes a Participant out, as an Organizer
      *
      * @param participant the Participant to remove
@@ -255,7 +345,9 @@ export function TournamentParticipants({ tournament, load, signUp }: TournamentP
             </div>
 
             {account !== null && (signedUp || list?.me != null) && <TournamentPushActivation />}
-            {account !== null && list?.me != null && <MyTournamentDeck tournament={tournament} />}
+            {account !== null && list?.me != null && (
+                <MyTournamentDeck tournament={tournament} checkedIn={mine?.checked_in ?? null} />
+            )}
 
             {collectsFees && (
                 <Text>
@@ -263,6 +355,22 @@ export function TournamentParticipants({ tournament, load, signUp }: TournamentP
                         ? t("description.everybody-paid")
                         : t("description.unpaid-count", { count: unpaidCount })}
                 </Text>
+            )}
+
+            {desk && (
+                <div className={"flex flex-wrap items-center justify-between gap-4"}>
+                    <Text>
+                        {waiting.length === 0
+                            ? t("description.everybody-checked-in")
+                            : t("description.not-checked-in-count", { count: waiting.length })}
+                    </Text>
+                    {waiting.length > 0 && (
+                        <Button outline disabled={busy} onClick={() => void checkInEveryone()}>
+                            <CheckCircleIcon />
+                            {t("button.check-in-everyone")}
+                        </Button>
+                    )}
+                </div>
             )}
 
             {organizer && takesParticipants && (
@@ -293,6 +401,16 @@ export function TournamentParticipants({ tournament, load, signUp }: TournamentP
                             {participant.unpaid === true && tournament.entry_fee != null && (
                                 <Badge color={"red"}>{t("label.unpaid")}</Badge>
                             )}
+                            {participant.checked_in === false &&
+                                tournament.check_in !== CheckIn.Off &&
+                                participant.dropped_after_round == null && (
+                                    <Badge color={"orange"}>{t("label.not-checked-in")}</Badge>
+                                )}
+                            {organizer && deckRequired && participant.guest && participant.checked_in === true && (
+                                <span className={"text-sm/6 text-zinc-500 dark:text-zinc-400"}>
+                                    {t("label.no-deck")}
+                                </span>
+                            )}
                             {collectsFees && participant.unpaid != null && (
                                 <Button
                                     plain
@@ -306,6 +424,29 @@ export function TournamentParticipants({ tournament, load, signUp }: TournamentP
                                     onClick={() => void markPaid(participant, participant.unpaid === true)}
                                 >
                                     <BanknotesIcon />
+                                </Button>
+                            )}
+                            {togglable(participant) && (
+                                <Button
+                                    plain
+                                    disabled={busy || lacksDeck(participant)}
+                                    aria-label={
+                                        lacksDeck(participant)
+                                            ? t("accessibility.check-in-needs-deck", { name: participant.name })
+                                            : participant.checked_in
+                                              ? t("accessibility.check-out", { name: participant.name })
+                                              : t("accessibility.check-in", { name: participant.name })
+                                    }
+                                    title={
+                                        lacksDeck(participant)
+                                            ? t("label.check-in-needs-deck")
+                                            : participant.checked_in
+                                              ? t("button.check-out")
+                                              : t("button.check-in")
+                                    }
+                                    onClick={() => void checkIn(participant, participant.checked_in !== true)}
+                                >
+                                    <CheckCircleIcon />
                                 </Button>
                             )}
                             {organizer && dropsOpen && participant.dropped_after_round == null && (

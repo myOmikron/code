@@ -29,7 +29,7 @@ import type {
     RegisteredDeckResponse,
     TournamentResponse,
 } from "src/api/generated";
-import { TournamentState, Visibility } from "src/api/generated";
+import { CheckIn, TournamentState, Visibility } from "src/api/generated";
 import { useDeckLabels } from "src/components/deck-labels";
 import { PrimaryButton } from "src/components/primary-button";
 import { isFormError } from "src/utils/error";
@@ -51,6 +51,8 @@ type DeckChoice = {
 export type MyTournamentDeckProps = {
     /** The Tournament the reader plays in */
     tournament: TournamentResponse;
+    /** Whether the reader is checked in, `null` if unknown */
+    checkedIn: boolean | null;
 };
 
 /**
@@ -59,7 +61,7 @@ export type MyTournamentDeckProps = {
  *
  * @returns the section
  */
-export function MyTournamentDeck({ tournament }: MyTournamentDeckProps) {
+export function MyTournamentDeck({ tournament, checkedIn }: MyTournamentDeckProps) {
     const [t] = useTranslation("tournament");
     const [mine, setMine] = useState<MyRegisteredDeckResponse | null>(null);
     const [decks, setDecks] = useState<Array<DeckChoice>>([]);
@@ -189,6 +191,16 @@ export function MyTournamentDeck({ tournament }: MyTournamentDeckProps) {
     return (
         <section className={"flex flex-col gap-3"}>
             <Subheading>{t("heading.my-deck")}</Subheading>
+            {tournament.check_in !== CheckIn.Off && checkedIn !== null && (
+                <div className={"flex flex-wrap items-center gap-2"}>
+                    <Badge color={checkedIn ? "lime" : "orange"}>
+                        {checkedIn ? t("label.checked-in") : t("label.not-checked-in")}
+                    </Badge>
+                    {!checkedIn && tournament.check_in === CheckIn.RequiredWithDeck && registered === null && (
+                        <Text>{t("description.check-in-needs-deck")}</Text>
+                    )}
+                </div>
+            )}
             <div className={"flex items-center gap-2"}>
                 <Text>{registered?.name ?? t("label.no-deck")}</Text>
                 {registered?.pinned && <Badge color={"zinc"}>{t("label.deck-pinned")}</Badge>}

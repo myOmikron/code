@@ -1,5 +1,5 @@
 import { defineWizard } from "components";
-import { Visibility } from "src/api/generated";
+import { CheckIn, Visibility } from "src/api/generated";
 
 /** Setting up a new Tournament: what it is, how it is played, who takes part */
 export const tournamentWizard = defineWizard({
@@ -116,6 +116,20 @@ export const tournamentWizard = defineWizard({
                             type: "entry-fee",
                             label: "label.entry-fee",
                             description: "description.entry-fee",
+                        },
+                        {
+                            id: "checkIn",
+                            type: "radio",
+                            label: "label.check-in",
+                            description: "description.check-in",
+                            required: true,
+                            config: {
+                                options: [
+                                    { value: CheckIn.Off, label: "label.check-in-off" },
+                                    { value: CheckIn.Required, label: "label.check-in-required" },
+                                    { value: CheckIn.RequiredWithDeck, label: "label.check-in-required-with-deck" },
+                                ],
+                            },
                         },
                     ],
                 },

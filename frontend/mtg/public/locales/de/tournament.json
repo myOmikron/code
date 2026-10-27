@@ -13,7 +13,10 @@
         "table-up": "Tisch {{table}} nach oben",
         "timer": "Noch {{time}}",
         "timer-five-minutes": "Noch fünf Minuten",
-        "timer-one-minute": "Noch eine Minute"
+        "timer-one-minute": "Noch eine Minute",
+        "check-in": "{{name}} einchecken",
+        "check-out": "Check-in von {{name}} zurücknehmen",
+        "check-in-needs-deck": "{{name}} braucht ein Deck zum Einchecken"
     },
     "button": {
         "accept-handover": "Übernehmen",
@@ -73,7 +76,10 @@
         "life-view-local-branch": "Änderungen dieses Geräts ansehen",
         "life-view-recovered": "Wiederhergestellte Verläufe",
         "life-confirm-takeover": "Gespeicherten Stand übernehmen",
-        "life-close-devices": "Zurück zum Zähler"
+        "life-close-devices": "Zurück zum Zähler",
+        "check-in": "Einchecken",
+        "check-out": "Check-in zurücknehmen",
+        "check-in-everyone": "Alle einchecken"
     },
     "description": {
         "add-account": "Mit Konto, nach dem genauen Benutzernamen: Die Ergebnisse gehören zu diesem Konto.",
@@ -186,7 +192,12 @@
         "life-branch-independent": "Dieser Verlauf bleibt getrennt von der laufenden Aufzeichnung. Er verändert weder Leben auf dem aktiven Gerät noch das Turnierergebnis.",
         "life-takeover-changed": "Der gespeicherte Stand hat sich geändert. Prüfe ihn erneut, bevor du die Übernahme bestätigst.",
         "life-history-tab-lock-unavailable": "Dieser Browser kann Aufzeichnungstabs nicht sicher koordinieren. Du kannst den gespeicherten Verlauf ansehen und Ergebnisse weiterhin melden.",
-        "create-tournament": "In drei Schritten zum Turnier. Bis zum Start der ersten Runde lässt sich alles noch ändern."
+        "create-tournament": "In drei Schritten zum Turnier. Bis zum Start der ersten Runde lässt sich alles noch ändern.",
+        "check-in": "Ausgelost wird nur, wer eingecheckt ist.",
+        "everybody-checked-in": "Alle Teilnehmer sind eingecheckt.",
+        "not-checked-in-count_one": "{{count}} Teilnehmer ist noch nicht eingecheckt.",
+        "not-checked-in-count_other": "{{count}} Teilnehmer sind noch nicht eingecheckt.",
+        "check-in-needs-deck": "Zum Einchecken brauchst du ein angemeldetes Deck."
     },
     "error": {
         "all-rounds-paired": "Alle Schweizer Runden sind ausgelost.",
@@ -245,7 +256,11 @@
         "life-history-invalid": "Dieser Verlauf kann nicht gespeichert werden. Er ist möglicherweise zu groß oder enthält eine nicht unterstützte Änderung. Die lokal aufgezeichneten Spiele bleiben auf diesem Gerät.",
         "life-history-storage": "Der Browserspeicher ist nicht verfügbar. Neue Änderungen sind nur im geöffneten Fenster vorhanden. Speicherplatz freigeben und erneut versuchen.",
         "life-history-auth": "Melde dich erneut mit dem Konto an, das dieses Match aufgezeichnet hat. Lokale Änderungen bleiben erhalten.",
-        "life-handover-network": "Der gespeicherte Stand konnte nicht bestätigt werden. Prüfe die Verbindung und versuche es erneut."
+        "life-handover-network": "Der gespeicherte Stand konnte nicht bestätigt werden. Prüfe die Verbindung und versuche es erneut.",
+        "no-check-in": "Das Turnier hat keinen Check-in.",
+        "check-in-needs-deck": "Ohne angemeldetes Deck kein Check-in.",
+        "check-out-started": "Seit der ersten Runde lässt sich der Check-in nicht zurücknehmen.",
+        "check-in-deck-for-limited": "Bei Draft und Sealed gibt es keinen Check-in mit Deck."
     },
     "heading": {
         "add-participants": "Spieler hinzufügen",
@@ -441,7 +456,14 @@
         "life-history-pending": "Auf diesem Gerät gespeichert, Upload ausstehend",
         "life-last-upload": "Zuletzt gespeichert: {{time}}",
         "life-no-upload": "Noch kein Verlauf hochgeladen",
-        "life-history-other-tab": "Dieses Match wird in einem anderen Tab aufgezeichnet. Nach dem Schließen dieses Tabs kannst du hier fortsetzen."
+        "life-history-other-tab": "Dieses Match wird in einem anderen Tab aufgezeichnet. Nach dem Schließen dieses Tabs kannst du hier fortsetzen.",
+        "check-in": "Check-in",
+        "check-in-off": "Kein Check-in",
+        "check-in-required": "Check-in vor Ort",
+        "check-in-required-with-deck": "Check-in mit Deck",
+        "checked-in": "Eingecheckt",
+        "not-checked-in": "Nicht eingecheckt",
+        "check-in-needs-deck": "Deck fehlt"
     },
     "toast": {
         "co-organizer-added": "{{username}} ist jetzt Mitorganisator",
@@ -470,6 +492,8 @@
         "tournament-cancelled": "Turnier abgesagt",
         "tournament-created": "Turnier angelegt",
         "tournament-deleted": "Turnier gelöscht",
-        "tournament-saved": "Turnier gespeichert"
+        "tournament-saved": "Turnier gespeichert",
+        "checked-in-everyone": "Alle eingecheckt",
+        "check-in-skipped": "Ohne Deck nicht eingecheckt: {{names}}"
     }
 }

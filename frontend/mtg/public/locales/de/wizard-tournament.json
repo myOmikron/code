@@ -1,5 +1,9 @@
 {
     "label": {
+        "check-in": "Check-in",
+        "check-in-off": "Kein Check-in",
+        "check-in-required": "Check-in vor Ort",
+        "check-in-required-with-deck": "Check-in mit Deck",
         "description": "Beschreibung",
         "entered-afterwards": "Nachträglich eintragen",
         "entry-fee": "Startgebühr",
@@ -19,6 +23,7 @@
         "visibility-unlisted": "Per Link"
     },
     "description": {
+        "check-in": "Ausgelost wird nur, wer eingecheckt ist.",
         "description": "Was Spieler vorher wissen sollten, z. B. Preise oder Hausregeln.",
         "entered-afterwards": "Für ein Turnier, das schon auf Papier gespielt wurde: Datum auch in der Vergangenheit, Organisatoren tragen jede Paarung und jedes Ergebnis selbst ein, Spieler melden nichts.",
         "entry-fee": "Leer lassen, wenn die Teilnahme nichts kostet. Mit Startgebühr wird nur ausgelost, wen ein Organisator als bezahlt markiert hat.",
@@ -33,6 +38,7 @@
     },
     "error": {
         "best-of-mismatch": "Best of gibt es nur bei 2 Spielern am Tisch, und dort muss es gewählt sein.",
+        "check-in-deck-for-limited": "Bei Draft und Sealed gibt es keinen Check-in mit Deck.",
         "entry-fee-invalid": "Gib einen Betrag über null ein, z. B. 5 oder 5,50.",
         "participant-limit-too-small": "Ein Turnier braucht mindestens 2 Spieler.",
         "round-minutes-out-of-range": "Die Rundenzeit liegt zwischen 1 und 240 Minuten.",

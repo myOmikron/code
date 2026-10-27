@@ -32,6 +32,7 @@ const SUBMIT_ERRORS: Record<keyof TournamentSettingsErrors, WizardSubmitError<ty
     },
     entry_fee_not_positive: { field: "entryFee", key: "error.entry-fee-invalid", namespace: "wizard" },
     unknown_currency: { field: "entryFee", key: "error.entry-fee-invalid", namespace: "wizard" },
+    check_in_deck_for_limited: { field: "checkIn", key: "error.check-in-deck-for-limited", namespace: "wizard" },
 };
 
 /**
@@ -62,6 +63,7 @@ export function tournamentRequest(values: TournamentWizardValues): TournamentSet
         top_cut_best_of: duel && rules.topCut !== null ? rules.topCutBestOf : null,
         entered_afterwards: values.enteredAfterwards,
         entry_fee: fee === null ? null : { amount: fee, currency: values.entryFee.currency },
+        check_in: values.checkIn,
     };
 }
 
