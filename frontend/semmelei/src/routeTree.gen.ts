@@ -24,6 +24,7 @@ import { Route as AuthAdminCategoriesRouteImport } from './routes/_auth/admin/ca
 import { Route as AuthAdminItemsRouteImport } from './routes/_auth/admin/items'
 import { Route as AuthAdminRechtlichesRouteImport } from './routes/_auth/admin/rechtliches'
 import { Route as AuthAdminStaffRouteImport } from './routes/_auth/admin/staff'
+import { Route as AuthAdminStatistikRouteImport } from './routes/_auth/admin/statistik'
 import { Route as AuthAdminTermineRouteImport } from './routes/_auth/admin/termine'
 import { Route as AuthVerkaufIndexRouteImport } from './routes/_auth/verkauf/index'
 import { Route as AuthVerkaufPasskeysRouteImport } from './routes/_auth/verkauf/passkeys'
@@ -108,6 +109,11 @@ const AuthAdminStaffRoute = AuthAdminStaffRouteImport.update({
   path: '/staff',
   getParentRoute: () => AuthAdminRoute,
 } as any)
+const AuthAdminStatistikRoute = AuthAdminStatistikRouteImport.update({
+  id: '/statistik',
+  path: '/statistik',
+  getParentRoute: () => AuthAdminRoute,
+} as any)
 const AuthAdminTermineRoute = AuthAdminTermineRouteImport.update({
   id: '/termine',
   path: '/termine',
@@ -174,6 +180,7 @@ export interface FileRoutesByFullPath {
   '/admin/items': typeof AuthAdminItemsRoute
   '/admin/rechtliches': typeof AuthAdminRechtlichesRoute
   '/admin/staff': typeof AuthAdminStaffRoute
+  '/admin/statistik': typeof AuthAdminStatistikRoute
   '/admin/termine': typeof AuthAdminTermineRoute
   '/verkauf/passkeys': typeof AuthVerkaufPasskeysRoute
   '/verkauf/scan': typeof AuthVerkaufScanRoute
@@ -197,6 +204,7 @@ export interface FileRoutesByTo {
   '/admin/items': typeof AuthAdminItemsRoute
   '/admin/rechtliches': typeof AuthAdminRechtlichesRoute
   '/admin/staff': typeof AuthAdminStaffRoute
+  '/admin/statistik': typeof AuthAdminStatistikRoute
   '/admin/termine': typeof AuthAdminTermineRoute
   '/verkauf/passkeys': typeof AuthVerkaufPasskeysRoute
   '/verkauf/scan': typeof AuthVerkaufScanRoute
@@ -225,6 +233,7 @@ export interface FileRoutesById {
   '/_auth/admin/items': typeof AuthAdminItemsRoute
   '/_auth/admin/rechtliches': typeof AuthAdminRechtlichesRoute
   '/_auth/admin/staff': typeof AuthAdminStaffRoute
+  '/_auth/admin/statistik': typeof AuthAdminStatistikRoute
   '/_auth/admin/termine': typeof AuthAdminTermineRoute
   '/_auth/verkauf/passkeys': typeof AuthVerkaufPasskeysRoute
   '/_auth/verkauf/scan': typeof AuthVerkaufScanRoute
@@ -252,6 +261,7 @@ export interface FileRouteTypes {
     | '/admin/items'
     | '/admin/rechtliches'
     | '/admin/staff'
+    | '/admin/statistik'
     | '/admin/termine'
     | '/verkauf/passkeys'
     | '/verkauf/scan'
@@ -275,6 +285,7 @@ export interface FileRouteTypes {
     | '/admin/items'
     | '/admin/rechtliches'
     | '/admin/staff'
+    | '/admin/statistik'
     | '/admin/termine'
     | '/verkauf/passkeys'
     | '/verkauf/scan'
@@ -302,6 +313,7 @@ export interface FileRouteTypes {
     | '/_auth/admin/items'
     | '/_auth/admin/rechtliches'
     | '/_auth/admin/staff'
+    | '/_auth/admin/statistik'
     | '/_auth/admin/termine'
     | '/_auth/verkauf/passkeys'
     | '/_auth/verkauf/scan'
@@ -429,6 +441,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthAdminStaffRouteImport
       parentRoute: typeof AuthAdminRoute
     }
+    '/_auth/admin/statistik': {
+      id: '/_auth/admin/statistik'
+      path: '/statistik'
+      fullPath: '/admin/statistik'
+      preLoaderRoute: typeof AuthAdminStatistikRouteImport
+      parentRoute: typeof AuthAdminRoute
+    }
     '/_auth/admin/termine': {
       id: '/_auth/admin/termine'
       path: '/termine'
@@ -507,6 +526,7 @@ interface AuthAdminRouteChildren {
   AuthAdminItemsRoute: typeof AuthAdminItemsRoute
   AuthAdminRechtlichesRoute: typeof AuthAdminRechtlichesRoute
   AuthAdminStaffRoute: typeof AuthAdminStaffRoute
+  AuthAdminStatistikRoute: typeof AuthAdminStatistikRoute
   AuthAdminTermineRoute: typeof AuthAdminTermineRoute
   AuthAdminIndexRoute: typeof AuthAdminIndexRoute
   AuthAdminPostsUuidRoute: typeof AuthAdminPostsUuidRoute
@@ -518,6 +538,7 @@ const AuthAdminRouteChildren: AuthAdminRouteChildren = {
   AuthAdminItemsRoute: AuthAdminItemsRoute,
   AuthAdminRechtlichesRoute: AuthAdminRechtlichesRoute,
   AuthAdminStaffRoute: AuthAdminStaffRoute,
+  AuthAdminStatistikRoute: AuthAdminStatistikRoute,
   AuthAdminTermineRoute: AuthAdminTermineRoute,
   AuthAdminIndexRoute: AuthAdminIndexRoute,
   AuthAdminPostsUuidRoute: AuthAdminPostsUuidRoute,

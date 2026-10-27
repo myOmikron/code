@@ -32,7 +32,8 @@
         "react-dom": "catalog:dependencies",
         "react-i18next": "catalog:dependencies",
         "react-markdown": "catalog:dependencies",
-        "react-toastify": "catalog:dependencies"
+        "react-toastify": "catalog:dependencies",
+        "recharts": "catalog:dependencies"
     },
     "devDependencies": {
         "@eslint/js": "catalog:devDependencies",
