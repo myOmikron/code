@@ -81,6 +81,22 @@ def test_health_under_the_deployed_root_path_is_not_traced(spans):
     assert spans.get_finished_spans() == ()
 
 
+def test_what_health_does_is_not_traced_either(spans, monkeypatch):
+    """Its Neo4j queries must not become traces of their own, four every 5 seconds."""
+    from deck_lab import graph
+    from deck_lab.tracing import tracer
+
+    def counting() -> dict[str, int]:
+        with tracer.start_as_current_span("neo4j"):
+            return {"cards": 1}
+
+    monkeypatch.setattr(graph, "bootstrap_state", counting)
+    response = client.get("/health", headers={"traceparent": TRACEPARENT})
+
+    assert response.status_code == 200
+    assert spans.get_finished_spans() == ()
+
+
 COMMANDER = "cmd-krenko"
 DECK = ["card-goblin-1", "card-goblin-2", "card-mountain"]
 

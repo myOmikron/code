@@ -112,8 +112,9 @@ first request, not a dead worker.
 `OTEL_EXPORTER_OTLP_ENDPOINT` exports traces over OTLP/gRPC as the Rust
 services do (service name `OTEL_SERVICE_NAME`, default `mtg-graph`); empty
 exports nothing. A request carrying a `traceparent` continues that trace,
-`/health` is never traced, and log lines inside a span carry its `trace_id`
-and `span_id`. `src/deck_lab/tracing.py` holds the setup.
+`/health` is never traced (its Neo4j queries included), and log lines inside a
+span carry its `trace_id` and `span_id`. `src/deck_lab/tracing.py` holds the
+setup.
 
 ## Things that will bite you
 

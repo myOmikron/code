@@ -48,7 +48,13 @@ from .solver import DEFAULT_TIME_LIMIT, FillResult, SolverBusy
 from .solver import fill_deck as run_fill
 from .spellbook import deck_combos as run_combos
 from .suggestions import SuggestionReport, suggest
-from .tracing import TELEMETRY, background_job, install_trace_id_processor, start_tracing
+from .tracing import (
+    TELEMETRY,
+    UntracedRequests,
+    background_job,
+    install_trace_id_processor,
+    start_tracing,
+)
 from .type_targets import PRIMARY_TYPES
 from .vocabulary import Bucket
 
@@ -339,6 +345,7 @@ app = FastAPI(
     # (`postDiagnostics`, not `postDiagnosticsDiagnosticsPost`).
     generate_unique_id_function=lambda route: route.name,
 )
+app.add_middleware(UntracedRequests)
 
 # Every endpoint that can cost a graph traversal or an external fetch. GET
 # /facets is cached, /search is a single ~20ms query, and /health must stay
