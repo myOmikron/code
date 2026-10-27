@@ -60,7 +60,15 @@
         "record-match-life": "Record on this device",
         "retry-life-history-save": "Try again",
         "view-match-life-history": "View life history",
-        "back-to-tournament": "Back to tournament"
+        "back-to-tournament": "Back to tournament",
+        "life-recording-devices": "Recording devices",
+        "life-transfer-recording": "Transfer recording",
+        "life-cancel-transfer": "Continue on this device",
+        "life-unavailable-phone": "Previous device unavailable",
+        "life-view-local-branch": "View this device’s changes",
+        "life-view-recovered": "Recovered histories",
+        "life-confirm-takeover": "Take over saved state",
+        "life-close-devices": "Back to counter"
     },
     "description": {
         "add-account": "With an account, by its exact username: the results belong to that account.",
@@ -162,7 +170,15 @@
         "tournament-push-global-disabled": "Tournament notifications are turned off for your account. Activation turns them back on for all tournaments on your subscribed devices.",
         "review-life-result": "Review the suggestion from explicitly ended Games. Only saving submits the Tournament Result.",
         "life-history-observer": "This device observes the saved history. Only the explicitly selected recording device can change it.",
-        "life-history-empty": "No history has been uploaded for this match yet. You can play and report results without recording."
+        "life-history-empty": "No history has been uploaded for this match yet. You can play and report results without recording.",
+        "life-transferring": "Counting is paused while all changes are saved. The new device can then start recording. Retry if the connection fails.",
+        "life-transfer-instructions": "If the previous device is available, choose Transfer recording there. Wait until every change is saved, then start recording here.",
+        "life-confirm-unavailable": "Confirm that the previous device is unavailable and you want to continue from this saved state. Changes that have not uploaded remain only on the previous device. Its later-returning changes are preserved separately.",
+        "life-conflict-captured": "All recovered changes from this device are saved as a separate server history. The active timeline is unchanged.",
+        "life-conflict-local": "Unsent changes remain on this device. Retry to save them as a separate history.",
+        "life-no-conflicts": "No recovered histories yet.",
+        "life-branch-independent": "This history is separate from active recording. It changes neither the active device’s totals nor the Tournament Result.",
+        "life-takeover-changed": "The saved state changed. Review it again before confirming takeover."
     },
     "error": {
         "all-rounds-paired": "Every Swiss round has been paired.",
@@ -219,7 +235,8 @@
         "life-history-conflict": "Recording ownership or saved history has changed. Your local changes are retained and do not replace the server history.",
         "life-history-invalid": "This history cannot be saved. It may be too large or contain an unsupported change. Locally recorded games remain on this device.",
         "life-history-storage": "Browser storage is unavailable. New changes exist only in this open window. Free some space and try again.",
-        "life-history-auth": "Sign in again with the Account that recorded this Match. Local changes remain retained."
+        "life-history-auth": "Sign in again with the Account that recorded this Match. Local changes remain retained.",
+        "life-handover-network": "The saved state could not be confirmed. Check the connection and retry."
     },
     "heading": {
         "add-participants": "Add players",
@@ -258,7 +275,11 @@
         "take-back-round": "Take back round {{number}}?",
         "top-cut": "Top cut",
         "tournaments": "Tournaments",
-        "tournament-push-activation": "Tournament notifications"
+        "tournament-push-activation": "Tournament notifications",
+        "life-takeover": "Take over recording",
+        "life-recovered-branch": "Separate recovered history",
+        "life-recovered-list": "Recovered histories",
+        "life-recording-devices": "Change recording device"
     },
     "label": {
         "add-account": "Account",
@@ -401,7 +422,9 @@
         "life-history-saved": "History saved on the server",
         "life-history-local": "History saved on this device",
         "life-history-not-recording": "Recording has not started",
-        "life-history-pending": "Saved on this device, upload pending"
+        "life-history-pending": "Saved on this device, upload pending",
+        "life-last-upload": "Last saved: {{time}}",
+        "life-no-upload": "No history uploaded yet"
     },
     "toast": {
         "co-organizer-added": "{{username}} is now a co-organizer",

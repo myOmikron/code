@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import type { MatchPlayResponse, SetResultRequest, TournamentResponse } from "src/api/generated";
 import { BestOf, RoundStage, RoundState, TournamentState } from "src/api/generated";
+import { MatchLifeHandover } from "src/components/match-life-handover";
 import { LifeCounter } from "src/components/life-counter";
 import { MatchActions } from "src/components/tournament-rounds";
 import { TournamentRoundClock } from "src/components/tournament-round-clock";
@@ -38,6 +39,7 @@ export function TournamentMatchLife({
     const [skewMs, setSkewMs] = useState(() => initialSkewMs ?? clockSkew(initialPlay.server_time, Date.now()));
     const [reporting, setReporting] = useState(false);
     const [busy, setBusy] = useState(false);
+    const [showHandover, setShowHandover] = useState(false);
     const played = play.round.matches[0];
     const storageKey = matchLifeStorageKey(tournament.uuid, played.uuid);
     const context = useMemo(() => ({ tournament, play, skewMs }), [tournament, play, skewMs]);
@@ -219,9 +221,17 @@ export function TournamentMatchLife({
                         {t("button.record-match-life")}
                     </Button>
                 )}
-            {(durable.state === "failed" || durable.state === "storage" || durable.state === "pending") && (
+            {(durable.state === "failed" ||
+                durable.state === "storage" ||
+                durable.state === "pending" ||
+                durable.state === "conflict") && (
                 <Button outline onClick={durable.retry}>
                     {t("button.retry-life-history-save")}
+                </Button>
+            )}
+            {durable.identity !== null && durable.state !== "auth" && (
+                <Button plain onClick={() => setShowHandover(true)}>
+                    {t("button.life-recording-devices")}
                 </Button>
             )}
             {durable.remote !== null && !durable.writer && !durable.remote.history && (
@@ -231,6 +241,17 @@ export function TournamentMatchLife({
     );
     return (
         <>
+            {durable.identity !== null && durable.state !== "auth" && (
+                <MatchLifeHandover
+                    key={durable.identity}
+                    open={showHandover}
+                    onClose={() => setShowHandover(false)}
+                    tournament={tournament.uuid}
+                    played={played.uuid}
+                    durable={durable}
+                    playable={!over && play.round.state === RoundState.Running}
+                />
+            )}
             {!showCounter && (
                 <>
                     {saveControls}
@@ -239,7 +260,9 @@ export function TournamentMatchLife({
             )}
             {showCounter && (
                 <LifeCounter
-                    key={durable.writer ? "writer" : `observer-${durable.remote?.revision}`}
+                    key={
+                        durable.writer ? "writer" : `observer-${durable.remote?.generation}-${durable.remote?.revision}`
+                    }
                     initialHistory={history ?? undefined}
                     participants={players}
                     allowNextGame={

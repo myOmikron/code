@@ -234,3 +234,218 @@ fn guest_history_retains_games_and_corrections_and_survives_finish_without_resco
         );
     });
 }
+
+/// Two authorized Participants at the same table and a complete counted snapshot.
+async fn handover_event() -> (Event, TestClient, TestClient, Value, Value) {
+    let mut event = Event::new("Three", 0).await;
+    let first = create_account(Role::Member).await;
+    let second = create_account(Role::Member).await;
+    event.add_account(&first.username).await;
+    event.add_account(&second.username).await;
+    let first = TestClient::logged_in(&first).await;
+    let second = TestClient::logged_in(&second).await;
+    event.pair().await;
+    event.start(1).await;
+    let rounds = event.rounds().await;
+    let played = rounds["rounds"][0]["matches"][0].clone();
+    let players: Vec<_> = played["seats"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|s| json!({"id":s["participant"],"name":s["name"]}))
+        .collect();
+    let history = json!({"version":1,"games":[{"players":players,"startingLife":[20,20],"life":[18,20],"damage":[[0,0],[0,0]],"events":[{"id":Uuid::new_v4(),"kind":"start","at":"2026-10-27T12:00:00Z"},{"id":Uuid::new_v4(),"kind":"life","at":"2026-10-27T12:00:01Z","player":players[0]["id"],"amount":-2}]}]});
+    (event, first, second, played, history)
+}
+
+#[test]
+fn released_recording_resumes_saved_history_and_late_receipts_never_restore_ownership() {
+    run(async {
+        let (mut event, mut first, mut second, played, history) = handover_event().await;
+        let path = format!("matches/{}/life-history", played["uuid"].as_str().unwrap());
+        let url = event.url(&path);
+        let claim = json!({"device":Uuid::new_v4(),"writer_token":Uuid::new_v4(),"request_id":Uuid::new_v4(),"generation":0,"expected_revision":0});
+        first
+            .json(Method::POST, &event.url(&format!("{path}/claim")), &claim)
+            .await
+            .ok_json();
+        let upload = json!({"device":claim["device"],"writer_token":claim["writer_token"],"request_id":Uuid::new_v4(),"generation":1,"expected_revision":0,"history":history});
+        first.json(Method::PUT, &url, &upload).await.ok_json();
+        let release = json!({"device":claim["device"],"writer_token":claim["writer_token"],"request_id":Uuid::new_v4(),"generation":1,"expected_revision":1});
+        let released = first
+            .json(
+                Method::POST,
+                &event.url(&format!("{path}/release")),
+                &release,
+            )
+            .await
+            .ok_json();
+        assert_eq!(released["writer"], Value::Null, "{released}");
+        assert_eq!(released["generation"], 2, "{released}");
+        let next = json!({"device":Uuid::new_v4(),"writer_token":Uuid::new_v4(),"request_id":Uuid::new_v4(),"generation":2,"expected_revision":1});
+        let resumed = second
+            .json(Method::POST, &event.url(&format!("{path}/claim")), &next)
+            .await
+            .ok_json();
+        assert_eq!(resumed["history"], history, "{resumed}");
+        assert_eq!(resumed["generation"], 3, "{resumed}");
+        assert_eq!(resumed["revision"], 1, "{resumed}");
+        for (method, target, request) in [
+            (Method::PUT, url.clone(), upload.clone()),
+            (
+                Method::POST,
+                event.url(&format!("{path}/claim")),
+                claim.clone(),
+            ),
+            (Method::POST, event.url(&format!("{path}/release")), release),
+        ] {
+            let receipt = first.json(method, &target, &request).await.ok_json();
+            assert_eq!(receipt["writer"], next["device"], "{receipt}");
+            assert_eq!(receipt["generation"], 3, "{receipt}");
+        }
+        let mut stale = upload.clone();
+        stale["request_id"] = json!(Uuid::new_v4());
+        stale["expected_revision"] = json!(1);
+        let rejected = first.json(Method::PUT, &url, &stale).await.ok_json();
+        assert_eq!(rejected["error"]["writer_conflict"], true, "{rejected}");
+        assert_eq!(second.get(&url).await.ok_json()["history"], history);
+        assert!(event.rounds().await["rounds"][0]["matches"][0]["result"].is_null());
+    });
+}
+
+#[test]
+fn concurrent_takeover_preserves_the_saved_timeline_and_recovers_the_full_old_device_branch() {
+    run(async {
+        let (mut event, mut first, mut second, played, history) = handover_event().await;
+        let path = format!("matches/{}/life-history", played["uuid"].as_str().unwrap());
+        let url = event.url(&path);
+        let claim = json!({"device":Uuid::new_v4(),"writer_token":Uuid::new_v4(),"request_id":Uuid::new_v4(),"generation":0,"expected_revision":0});
+        first
+            .json(Method::POST, &event.url(&format!("{path}/claim")), &claim)
+            .await
+            .ok_json();
+        let upload = json!({"device":claim["device"],"writer_token":claim["writer_token"],"request_id":Uuid::new_v4(),"generation":1,"expected_revision":0,"history":history});
+        first.json(Method::PUT, &url, &upload).await.ok_json();
+        let takeover_url = event.url(&format!("{path}/takeover"));
+        let mut intervening = upload.clone();
+        intervening["request_id"] = json!(Uuid::new_v4());
+        intervening["expected_revision"] = json!(1);
+        first.json(Method::PUT, &url, &intervening).await.ok_json();
+        let stale_confirmation = json!({"device":Uuid::new_v4(),"writer_token":Uuid::new_v4(),"request_id":Uuid::new_v4(),"generation":1,"expected_revision":1});
+        assert_eq!(
+            second
+                .json(Method::POST, &takeover_url, &stale_confirmation)
+                .await
+                .ok_json()["error"]["revision_conflict"],
+            true
+        );
+        let take_a = json!({"device":Uuid::new_v4(),"writer_token":Uuid::new_v4(),"request_id":Uuid::new_v4(),"generation":1,"expected_revision":2});
+        let take_b = json!({"device":Uuid::new_v4(),"writer_token":Uuid::new_v4(),"request_id":Uuid::new_v4(),"generation":1,"expected_revision":2});
+        let (a, b) = tokio::join!(
+            first.json(Method::POST, &takeover_url, &take_a),
+            second.json(Method::POST, &takeover_url, &take_b)
+        );
+        let a = a.ok_json();
+        let b = b.ok_json();
+        assert_ne!(
+            a.get("error").is_some(),
+            b.get("error").is_some(),
+            "{a} {b}"
+        );
+        let active = second.get(&url).await.ok_json();
+        assert_eq!(active["generation"], 2, "{active}");
+        assert_eq!(active["history"], history, "{active}");
+        let later_takeover = json!({"device":Uuid::new_v4(),"writer_token":Uuid::new_v4(),"request_id":Uuid::new_v4(),"generation":2,"expected_revision":2});
+        let later = event
+            .owner
+            .json(Method::POST, &takeover_url, &later_takeover)
+            .await
+            .ok_json();
+        let late = if a.get("error").is_none() {
+            first
+                .json(Method::POST, &takeover_url, &take_a)
+                .await
+                .ok_json()
+        } else {
+            second
+                .json(Method::POST, &takeover_url, &take_b)
+                .await
+                .ok_json()
+        };
+        assert_eq!(late["writer"], later["writer"], "{late}");
+        assert_eq!(late["generation"], 3, "{late}");
+        let winner = later["writer"].clone();
+        let mut stale = upload.clone();
+        stale["request_id"] = json!(Uuid::new_v4());
+        stale["expected_revision"] = json!(1);
+        assert_eq!(
+            first.json(Method::PUT, &url, &stale).await.ok_json()["error"]["writer_conflict"],
+            true
+        );
+        let mut latest = history.clone();
+        latest["games"][0]["life"][0] = json!(14);
+        latest["games"][0]["events"].as_array_mut().unwrap().push(json!({"id":Uuid::new_v4(),"kind":"life","at":"2026-10-27T12:00:03Z","player":history["games"][0]["players"][0]["id"],"amount":-4}));
+        let capture_url = event.url(&format!("{path}/conflicts"));
+        let capture = json!({"request_id":Uuid::new_v4(),"ownership":{"kind":"claim","request":claim},"base_revision":1,"history":latest});
+        let saved = first
+            .json(Method::POST, &capture_url, &capture)
+            .await
+            .ok_json();
+        assert_eq!(saved["accepted_request"], capture["request_id"], "{saved}");
+        assert_eq!(
+            first
+                .json(Method::POST, &capture_url, &capture)
+                .await
+                .ok_json(),
+            saved
+        );
+        let listed = second.get(&capture_url).await.ok_json();
+        assert_eq!(listed["conflicts"].as_array().unwrap().len(), 1, "{listed}");
+        let conflict_url = event.url(&format!(
+            "{path}/conflicts/{}",
+            listed["conflicts"][0]["id"].as_str().unwrap()
+        ));
+        assert_eq!(second.get(&conflict_url).await.ok_json()["history"], latest);
+        assert!(!event.stranger.get(&capture_url).await.status.is_success());
+        assert!(
+            !TestClient::new()
+                .get(&conflict_url)
+                .await
+                .status
+                .is_success()
+        );
+        let mut forged = capture.clone();
+        forged["request_id"] = json!(Uuid::new_v4());
+        forged["ownership"]["request"]["writer_token"] = json!(Uuid::new_v4());
+        assert!(
+            first
+                .json(Method::POST, &capture_url, &forged)
+                .await
+                .ok_json()
+                .get("error")
+                .is_some()
+        );
+        assert!(
+            second
+                .json(Method::POST, &capture_url, &capture)
+                .await
+                .ok_json()
+                .get("error")
+                .is_some()
+        );
+        let unchanged = second.get(&url).await.ok_json();
+        assert_eq!(unchanged["writer"], winner);
+        assert_eq!(unchanged["history"], history);
+        assert_eq!(unchanged["revision"], 2);
+        assert!(event.rounds().await["rounds"][0]["matches"][0]["result"].is_null());
+        event
+            .result(played["uuid"].as_str().unwrap(), [2, 0], 0)
+            .await;
+        assert_eq!(event.end(1).await["state"], "Finished");
+        assert_eq!(second.get(&conflict_url).await.ok_json()["history"], latest);
+        assert_eq!(
+            event.rounds().await["rounds"][0]["matches"][0]["result"]["games_won"],
+            json!([2, 0])
+        );
+    });
+}

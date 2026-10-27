@@ -1,4 +1,9 @@
-import type { ClaimMatchLifeRequest, MatchLifeHistoryResponse, SaveMatchLifeRequest } from "src/api/generated";
+import type {
+    CaptureMatchLifeConflictRequest,
+    ClaimMatchLifeRequest,
+    MatchLifeHistoryResponse,
+    SaveMatchLifeRequest,
+} from "src/api/generated";
 import { fromMatchLifeHistory, toMatchLifeHistory } from "src/utils/durable-match-life";
 import { loadLifeHistory } from "src/utils/life-history";
 import type { LifeHistory, LifeStorage } from "src/utils/life-history";
@@ -16,11 +21,17 @@ export type RecordingEnvelope = RecordingScope & {
     version: 1;
     claim?: ClaimMatchLifeRequest;
     claimAccepted: boolean;
+    ownershipKind?: "claim" | "takeover";
+    conflictUpload?: CaptureMatchLifeConflictRequest;
+    capturedConflict?: string;
+    conflictBaseRevision?: number;
     remote: MatchLifeHistoryResponse | null;
     local: LifeHistory | null;
     configured: boolean;
     dirty: boolean;
     inFlight?: SaveMatchLifeRequest;
+    transfer?: boolean;
+    release?: ClaimMatchLifeRequest;
     blocked?: "conflict" | "invalid" | "auth";
     context?: OfflineMatchContext;
 };
@@ -105,7 +116,71 @@ export class MatchLifeRecording {
      * @returns whether local counting may continue
      */
     writer(): boolean {
+        return this.canUpload() && !this.value.transfer;
+    }
+
+    /** @returns whether the acknowledged writer may flush retained uploads, including during transfer. */
+    canUpload(): boolean {
         return this.value.claimAccepted && !this.value.blocked;
+    }
+
+    /** Freezes further counting before the transfer flush begins. */
+    freezeTransfer(): void {
+        if (!this.canUpload()) return;
+        this.value = { ...this.value, transfer: true };
+        this.persist();
+    }
+
+    /** Resumes counting only while no release request could have reached the server. */
+    cancelTransfer(): void {
+        if (this.value.release || !this.canUpload()) return;
+        this.value = { ...this.value, transfer: false };
+        this.persist();
+    }
+
+    /** @returns a durable release intent only after every counted change has been acknowledged. */
+    prepareRelease(): ClaimMatchLifeRequest | null {
+        if (this.value.release) return this.persist() ? this.value.release : null;
+        const { claim, remote, transfer, dirty, inFlight } = this.value;
+        if (!transfer || !this.canUpload() || dirty || inFlight || !claim || !remote) return null;
+        this.value = {
+            ...this.value,
+            release: {
+                device: claim.device,
+                writer_token: claim.writer_token,
+                generation: remote.generation,
+                expected_revision: remote.revision,
+                request_id: crypto.randomUUID(),
+            },
+        };
+        return this.persist() ? this.value.release! : null;
+    }
+
+    /**
+     * Accepts a release receipt without restoring ownership on a late retry.
+     *
+     * @param remote current state and receipt
+     */
+    acceptRelease(remote: MatchLifeHistoryResponse): void {
+        const release = this.value.release;
+        if (
+            !release ||
+            remote.accepted_request !== release.request_id ||
+            remote.accepted_revision !== release.expected_revision
+        ) {
+            this.reject("conflict");
+            return;
+        }
+        this.value = {
+            ...this.value,
+            remote,
+            claim: undefined,
+            claimAccepted: false,
+            release: undefined,
+            transfer: false,
+            local: remote.history ? fromMatchLifeHistory(remote.history) : null,
+        };
+        this.persist();
     }
 
     /**
@@ -172,8 +247,16 @@ export class MatchLifeRecording {
             ...this.value,
             remote,
             blocked,
+            conflictBaseRevision:
+                blocked === "conflict"
+                    ? (this.value.conflictBaseRevision ?? this.value.remote?.revision ?? 0)
+                    : this.value.conflictBaseRevision,
             local:
-                this.value.dirty || this.value.inFlight || this.value.claimAccepted
+                this.value.dirty ||
+                this.value.inFlight ||
+                this.value.claimAccepted ||
+                this.value.conflictUpload ||
+                this.value.capturedConflict
                     ? this.value.local
                     : remote.history
                       ? fromMatchLifeHistory(remote.history)
@@ -188,9 +271,11 @@ export class MatchLifeRecording {
      * @returns the exact request to claim or retry
      */
     prepareClaim(): ClaimMatchLifeRequest {
-        if (!this.value.claim) {
+        if (!this.value.claim || (!this.value.dirty && !this.value.inFlight && this.value.blocked === "conflict")) {
             this.value = {
                 ...this.value,
+                blocked: undefined,
+                ownershipKind: "claim",
                 claim: {
                     device: crypto.randomUUID(),
                     writer_token: crypto.randomUUID(),
@@ -202,6 +287,75 @@ export class MatchLifeRecording {
         }
         this.persist();
         return this.value.claim!;
+    }
+
+    /**
+     * Prepares only an explicitly confirmed server snapshot for online takeover.
+     *
+     * @param confirmed the exact saved state shown in the confirmation dialog
+     * @returns a persisted ownership intent or null while an unsent branch remains
+     */
+    prepareTakeover(confirmed: MatchLifeHistoryResponse): ClaimMatchLifeRequest | null {
+        if (this.value.dirty || this.value.inFlight || this.writer()) return null;
+        this.value = {
+            ...this.value,
+            remote: confirmed,
+            local: confirmed.history ? fromMatchLifeHistory(confirmed.history) : null,
+            configured: confirmed.history != null,
+            claimAccepted: false,
+            blocked: undefined,
+            transfer: false,
+            ownershipKind: "takeover",
+            claim: {
+                device: crypto.randomUUID(),
+                writer_token: crypto.randomUUID(),
+                request_id: crypto.randomUUID(),
+                generation: confirmed.generation,
+                expected_revision: confirmed.revision,
+            },
+        };
+        return this.persist() ? this.value.claim! : null;
+    }
+
+    /** @returns the complete frozen unsent branch, retaining its exact ownership proof across retries. */
+    prepareConflict(): CaptureMatchLifeConflictRequest | null {
+        if (this.value.conflictUpload) return this.persist() ? this.value.conflictUpload : null;
+        if (
+            this.value.blocked !== "conflict" ||
+            (!this.value.dirty && !this.value.inFlight) ||
+            !this.value.local ||
+            !this.value.claim
+        )
+            return null;
+        this.value = {
+            ...this.value,
+            conflictUpload: {
+                request_id: crypto.randomUUID(),
+                ownership: { kind: this.value.ownershipKind ?? "claim", request: this.value.claim },
+                base_revision: this.value.conflictBaseRevision ?? this.value.inFlight?.expected_revision ?? 0,
+                history: toMatchLifeHistory(this.value.local),
+            },
+        };
+        return this.persist() ? this.value.conflictUpload! : null;
+    }
+
+    /**
+     * Retains the local branch until its immutable server artifact is acknowledged.
+     *
+     * @param request acknowledged capture request
+     * @param artifact authorized server artifact identity
+     */
+    acceptConflict(request: string, artifact: string): void {
+        if (this.value.conflictUpload?.request_id !== request) return;
+        this.value = {
+            ...this.value,
+            capturedConflict: artifact,
+            conflictUpload: undefined,
+            dirty: false,
+            inFlight: undefined,
+            claimAccepted: false,
+        };
+        this.persist();
     }
 
     /**
@@ -221,7 +375,13 @@ export class MatchLifeRecording {
             remote,
             claimAccepted: accepted,
             blocked: accepted ? undefined : "conflict",
-            local: this.value.local ?? (remote.history ? fromMatchLifeHistory(remote.history) : null),
+            configured: remote.history != null || this.value.configured,
+            local:
+                this.value.dirty || this.value.inFlight
+                    ? this.value.local
+                    : remote.history
+                      ? fromMatchLifeHistory(remote.history)
+                      : this.value.local,
         };
         this.persist();
     }
@@ -232,9 +392,9 @@ export class MatchLifeRecording {
      * @returns the original uncertain request or the next coalesced snapshot
      */
     prepareUpload(): SaveMatchLifeRequest | null {
-        if (this.writer() && this.value.inFlight) return this.persist() ? this.value.inFlight : null;
+        if (this.canUpload() && this.value.inFlight) return this.persist() ? this.value.inFlight : null;
         if (
-            !this.writer() ||
+            !this.canUpload() ||
             !this.value.local ||
             !this.value.configured ||
             !this.value.dirty ||
@@ -279,7 +439,14 @@ export class MatchLifeRecording {
             remote.writer === request.device &&
             remote.generation === request.generation &&
             remote.revision === remote.accepted_revision;
-        this.value = { ...this.value, remote, dirty, inFlight: undefined, blocked: current ? undefined : "conflict" };
+        this.value = {
+            ...this.value,
+            remote,
+            dirty,
+            inFlight: undefined,
+            blocked: current ? undefined : "conflict",
+            conflictBaseRevision: current ? this.value.conflictBaseRevision : remote.accepted_revision,
+        };
         this.persist();
     }
 

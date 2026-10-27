@@ -50,6 +50,7 @@ import {
     SwapDeckCardRequest,
     TournamentSettingsRequest,
     ClaimMatchLifeRequest,
+    CaptureMatchLifeConflictRequest,
     SaveMatchLifeRequest,
     UpdateDeckCardRequest,
     UpdateDeckRequest,
@@ -642,6 +643,15 @@ export const Api = {
             play: (tournament: UUID, match: UUID) => defaultApi.getTournamentMatchPlay({ tournament, match }),
         },
         lifeHistory: {
+            release: (tournament: UUID, match: UUID, request: ClaimMatchLifeRequest) =>
+                defaultApi.releaseMatchLifeHistory({ tournament, match, ClaimMatchLifeRequest: request }),
+            takeover: (tournament: UUID, match: UUID, request: ClaimMatchLifeRequest) =>
+                defaultApi.takeoverMatchLifeHistory({ tournament, match, ClaimMatchLifeRequest: request }),
+            conflicts: (tournament: UUID, match: UUID) => defaultApi.listMatchLifeConflicts({ tournament, match }),
+            conflict: (tournament: UUID, match: UUID, conflict: UUID) =>
+                defaultApi.getMatchLifeConflict({ tournament, match, conflict }),
+            captureConflict: (tournament: UUID, match: UUID, request: CaptureMatchLifeConflictRequest) =>
+                defaultApi.captureMatchLifeConflict({ tournament, match, CaptureMatchLifeConflictRequest: request }),
             get: (tournament: UUID, match: UUID) => defaultApi.getMatchLifeHistory({ tournament, match }),
             claim: (tournament: UUID, match: UUID, request: ClaimMatchLifeRequest) =>
                 defaultApi.claimMatchLifeHistory({ tournament, match, ClaimMatchLifeRequest: request }),
@@ -846,8 +856,9 @@ export async function handleError<T>(promise: Promise<T>): Promise<T> {
  * @returns its normal response, without reporting transport failures globally
  */
 async function quietSessionRead<T>(request: Promise<T>): Promise<T> {
-    try { return await request; }
-    catch (error) {
+    try {
+        return await request;
+    } catch (error) {
         if (error instanceof ResponseError && error.response.status === 401) SESSION_STORE.expired();
         throw error;
     }

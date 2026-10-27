@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Api } from "src/api/api";
+import type { MatchLifeHistoryResponse } from "src/api/generated";
+import { fromMatchLifeHistory } from "src/utils/durable-match-life";
 import { ResponseError } from "src/api/generated";
 import { SESSION_STORE } from "src/api/session";
 import { useAccount } from "src/context/account";
@@ -97,12 +99,16 @@ export function useDurableMatchLife(
                 let record = controller.snapshot();
                 if (record.claim && !record.claimAccepted && !record.blocked) {
                     display("saving");
-                    const response = await Api.tournaments.lifeHistory.claim(tournament, played, record.claim);
+                    const response = await (
+                        record.ownershipKind === "takeover"
+                            ? Api.tournaments.lifeHistory.takeover
+                            : Api.tournaments.lifeHistory.claim
+                    )(tournament, played, record.claim);
                     if (!allowed()) return;
                     if (isFormError(response)) controller.reject("conflict");
                     else controller.acceptClaim(response);
                 }
-                while (allowed() && controller.writer()) {
+                while (allowed() && controller.canUpload()) {
                     const request = controller.prepareUpload();
                     if (!request) break;
                     display("saving");
@@ -112,6 +118,32 @@ export function useDurableMatchLife(
                     else controller.acceptUpload(response);
                     if (!allowed()) return;
                     if (controller.snapshot().blocked) break;
+                }
+                if (allowed() && controller.snapshot().transfer && !controller.snapshot().blocked) {
+                    const release = controller.prepareRelease();
+                    if (release) {
+                        display("saving");
+                        const response = await Api.tournaments.lifeHistory.release(tournament, played, release);
+                        if (!allowed()) return;
+                        if (isFormError(response)) controller.reject("conflict");
+                        else controller.acceptRelease(response);
+                    }
+                }
+                if (allowed() && controller.snapshot().blocked === "conflict") {
+                    const fresh = await Api.tournaments.lifeHistory.get(tournament, played);
+                    if (!allowed()) return;
+                    controller.observe(fresh);
+                    const conflict = controller.prepareConflict();
+                    if (conflict) {
+                        const response = await Api.tournaments.lifeHistory.captureConflict(
+                            tournament,
+                            played,
+                            conflict,
+                        );
+                        if (!allowed()) return;
+                        if (!isFormError(response))
+                            controller.acceptConflict(response.accepted_request, response.conflict.id);
+                    }
                 }
                 record = controller.snapshot();
                 display(record.blocked ?? (record.dirty ? "pending" : record.remote?.history ? "saved" : "local"));
@@ -161,7 +193,7 @@ export function useDurableMatchLife(
     );
     const record = controller?.snapshot();
     useEffect(() => {
-        if (!record?.dirty || record.blocked || !controller?.writer()) return;
+        if (!record?.dirty || record.blocked || !controller?.canUpload()) return;
         const timer = window.setTimeout(() => void flush.current(false), 500);
         return () => window.clearTimeout(timer);
     }, [controller, record]);
@@ -178,7 +210,21 @@ export function useDurableMatchLife(
 
     return {
         remote: record?.remote ?? null,
-        history: record?.blocked === "auth" ? null : (record?.local ?? null),
+        canRequest: account !== null,
+        history:
+            record?.blocked === "auth"
+                ? null
+                : record?.blocked === "conflict"
+                  ? record.remote?.history
+                      ? fromMatchLifeHistory(record.remote.history)
+                      : null
+                  : (record?.local ?? null),
+        conflictLocal:
+            record?.blocked === "conflict" && (record.dirty || record.inFlight || record.capturedConflict)
+                ? record.local
+                : null,
+        capturedConflict: record?.capturedConflict,
+        transferring: record?.transfer ?? false,
         writer: controller?.writer() ?? false,
         configured: record?.configured ?? false,
         identity,
@@ -192,6 +238,38 @@ export function useDurableMatchLife(
                       : ("auth" as const)
                 : state,
         claim,
+        transfer: async () => {
+            if (!controller?.writer() || !account) return;
+            controller.freezeTransfer();
+            render((value) => value + 1);
+            if (controller.storageFailed) {
+                setState("storage");
+                return;
+            }
+            await flush.current(false);
+        },
+        cancelTransfer: () => {
+            controller?.cancelTransfer();
+            render((value) => value + 1);
+        },
+        savedState: async () => {
+            if (!controller || !account) return null;
+            try {
+                const response = await Api.tournaments.lifeHistory.get(tournament, played);
+                if (active.current !== controller) return null;
+                controller.observe(response);
+                render((value) => value + 1);
+                return response;
+            } catch {
+                setState("failed");
+                return null;
+            }
+        },
+        takeover: async (confirmed: MatchLifeHistoryResponse) => {
+            if (!controller || !account || !controller.prepareTakeover(confirmed)) return;
+            render((value) => value + 1);
+            await flush.current(false);
+        },
         changed,
         retry: () => void flush.current(),
         storageKey: `${storageKey}.${identity ?? "unavailable"}`,

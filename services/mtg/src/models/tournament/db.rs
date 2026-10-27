@@ -685,3 +685,50 @@ pub struct MatchLifeReceiptInsertPatch {
     /// Revision originally accepted.
     pub accepted_revision: i64,
 }
+
+/// A recovered private branch, independent of the current Match timeline.
+#[derive(Model, Debug)]
+#[rorm(rename = "tournament_match_life_conflict")]
+pub struct MatchLifeConflictModel {
+    /// Deterministic Match and capture-request identity.
+    #[rorm(primary_key)]
+    pub uuid: Uuid,
+    /// Match lifetime and authorized audience.
+    #[rorm(index, on_update = "Cascade", on_delete = "Cascade")]
+    pub tournament_match: ForeignModel<TournamentMatchModel>,
+    /// Complete recovered branch, never applied to the active history.
+    pub history: Json<MatchLifeHistory>,
+    /// Device that recorded the branch.
+    pub device: Uuid,
+    /// Former recording epoch.
+    pub generation: i64,
+    /// Last server revision known to that recording device.
+    pub base_revision: i64,
+    /// Submitting Account, with artifacts retained after deletion.
+    #[rorm(on_update = "Cascade", on_delete = "SetNull")]
+    pub account: Option<ForeignModel<AccountModel>>,
+    /// Server capture time.
+    pub captured_at: OffsetDateTime,
+}
+
+/// Insert patch for a recovered branch.
+#[derive(Patch)]
+#[rorm(model = "MatchLifeConflictModel")]
+pub struct MatchLifeConflictInsertPatch {
+    /// Deterministic identity.
+    pub uuid: Uuid,
+    /// Match lifetime.
+    pub tournament_match: ForeignModel<TournamentMatchModel>,
+    /// Recovered branch.
+    pub history: Json<MatchLifeHistory>,
+    /// Recording device.
+    pub device: Uuid,
+    /// Source epoch.
+    pub generation: i64,
+    /// Source revision.
+    pub base_revision: i64,
+    /// Submitting Account.
+    pub account: Option<ForeignModel<AccountModel>>,
+    /// Capture time.
+    pub captured_at: OffsetDateTime,
+}

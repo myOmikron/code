@@ -307,23 +307,48 @@ pub async fn claim(
             ..Default::default()
         }));
     }
-    rorm::insert(&mut *tx, MatchLifeHistoryModel)
-        .return_nothing()
-        .single(&MatchLifeHistoryInsertPatch {
-            tournament_match: ForeignModelByField(played),
-            history: None,
-            generation: 1,
-            revision: 0,
-            writer: Some(request.device),
-            writer_account: Some(ForeignModelByField(account.into_inner())),
-            writer_token_hash: Some(digest(request.writer_token.as_bytes())),
-            updated_at: OffsetDateTime::now_utc(),
-        })
-        .await?;
-    remember(tx, played, request.request_id, hash, account, 0).await?;
+    if state.generation == 0 {
+        rorm::insert(&mut *tx, MatchLifeHistoryModel)
+            .return_nothing()
+            .single(&MatchLifeHistoryInsertPatch {
+                tournament_match: ForeignModelByField(played),
+                history: None,
+                generation: 1,
+                revision: 0,
+                writer: Some(request.device),
+                writer_account: Some(ForeignModelByField(account.into_inner())),
+                writer_token_hash: Some(digest(request.writer_token.as_bytes())),
+                updated_at: OffsetDateTime::now_utc(),
+            })
+            .await?;
+    } else {
+        rorm::update(&mut *tx, MatchLifeHistoryModel)
+            .set(MatchLifeHistoryModel.generation, state.generation + 1)
+            .set(MatchLifeHistoryModel.writer, Some(request.device))
+            .set(
+                MatchLifeHistoryModel.writer_account,
+                Some(ForeignModelByField(account.into_inner())),
+            )
+            .set(
+                MatchLifeHistoryModel.writer_token_hash,
+                Some(digest(request.writer_token.as_bytes())),
+            )
+            .set(MatchLifeHistoryModel.updated_at, OffsetDateTime::now_utc())
+            .condition(MatchLifeHistoryModel.tournament_match.equals(played))
+            .await?;
+    }
+    remember(
+        tx,
+        played,
+        request.request_id,
+        hash,
+        account,
+        state.revision,
+    )
+    .await?;
     let mut state = read(tx, played).await?;
     state.accepted_request = Some(request.request_id);
-    state.accepted_revision = Some(0);
+    state.accepted_revision = Some(state.revision);
     Ok(Ok(state))
 }
 
@@ -589,4 +614,298 @@ fn valid_history(
         }
     }
     true
+}
+
+/// Releases or explicitly takes over the saved recording state under the Tournament lock.
+pub async fn transfer(
+    tx: &mut Transaction,
+    played: Uuid,
+    account: AccountUuid,
+    request: ClaimMatchLifeRequest,
+    release: bool,
+) -> Result<Result<MatchLifeHistoryResponse, MatchLifeErrors>, rorm::Error> {
+    let operation = if release { "release" } else { "takeover" };
+    let hash =
+        digest(&serde_json::to_vec(&(operation, &request)).expect("typed transfer serializes"));
+    if let Some(retried) = receipt(tx, played, request.request_id, &hash, account).await? {
+        return match retried {
+            Ok(revision) => {
+                let mut state = read(tx, played).await?;
+                state.accepted_request = Some(request.request_id);
+                state.accepted_revision = Some(revision);
+                Ok(Ok(state))
+            }
+            Err(e) => Ok(Err(e)),
+        };
+    }
+    let row = rorm::query(&mut *tx, MatchLifeHistoryModel)
+        .condition(MatchLifeHistoryModel.tournament_match.equals(played))
+        .optional()
+        .await?;
+    let Some(row) = row else {
+        return Ok(Err(MatchLifeErrors {
+            writer_conflict: true,
+            ..Default::default()
+        }));
+    };
+    if row.writer.is_none()
+        || (release
+            && (row.writer != Some(request.device)
+                || row.writer_account.as_ref().map(|a| a.0) != Some(account.into_inner())
+                || row.writer_token_hash.as_ref()
+                    != Some(&digest(request.writer_token.as_bytes()))))
+    {
+        return Ok(Err(MatchLifeErrors {
+            writer_conflict: true,
+            ..Default::default()
+        }));
+    }
+    if row.generation != request.generation || row.revision != request.expected_revision {
+        return Ok(Err(MatchLifeErrors {
+            revision_conflict: true,
+            ..Default::default()
+        }));
+    }
+    rorm::update(&mut *tx, MatchLifeHistoryModel)
+        .set(MatchLifeHistoryModel.generation, row.generation + 1)
+        .set(
+            MatchLifeHistoryModel.writer,
+            if release { None } else { Some(request.device) },
+        )
+        .set(
+            MatchLifeHistoryModel.writer_account,
+            if release {
+                None
+            } else {
+                Some(ForeignModelByField(account.into_inner()))
+            },
+        )
+        .set(
+            MatchLifeHistoryModel.writer_token_hash,
+            if release {
+                None
+            } else {
+                Some(digest(request.writer_token.as_bytes()))
+            },
+        )
+        .set(MatchLifeHistoryModel.updated_at, OffsetDateTime::now_utc())
+        .condition(MatchLifeHistoryModel.tournament_match.equals(played))
+        .await?;
+    remember(tx, played, request.request_id, hash, account, row.revision).await?;
+    let mut state = read(tx, played).await?;
+    state.accepted_request = Some(request.request_id);
+    state.accepted_revision = Some(row.revision);
+    Ok(Ok(state))
+}
+
+/// Exact retained ownership intent, including its private capability.
+#[derive(Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "kind", content = "request", rename_all = "lowercase")]
+pub enum MatchLifeOwnershipProof {
+    /// Original acknowledged claim.
+    Claim(ClaimMatchLifeRequest),
+    /// Original acknowledged takeover.
+    Takeover(ClaimMatchLifeRequest),
+}
+
+/// Immutable request preserving all unsent old-device history.
+#[derive(Clone, Serialize, Deserialize, JsonSchema)]
+pub struct CaptureMatchLifeConflictRequest {
+    /// Stable exact capture identity.
+    pub request_id: Uuid,
+    /// Account-bound proof of former recording ownership, never returned publicly.
+    pub ownership: MatchLifeOwnershipProof,
+    /// Last server revision known before the branch diverged.
+    pub base_revision: i64,
+    /// Full frozen local branch, including changes newer than an in-flight upload.
+    pub history: MatchLifeHistory,
+}
+
+/// Recoverable branch metadata, without credentials or the potentially large snapshot.
+#[derive(Clone, Serialize, Deserialize, JsonSchema)]
+pub struct MatchLifeConflictSummary {
+    /// Authorized artifact identity.
+    pub id: Uuid,
+    /// Recording device.
+    pub device: Uuid,
+    /// Former recording epoch.
+    pub generation: i64,
+    /// Last known server revision.
+    pub base_revision: i64,
+    /// Server capture time.
+    pub captured_at: SchemaDateTime,
+}
+
+/// Complete recovered history, separate from the current timeline and Result.
+#[derive(Clone, Serialize, Deserialize, JsonSchema)]
+pub struct MatchLifeConflict {
+    /// Origin and capture metadata.
+    pub summary: MatchLifeConflictSummary,
+    /// Complete original branch.
+    pub history: MatchLifeHistory,
+}
+
+/// Authorized recovered branches of a Match.
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct MatchLifeConflicts {
+    /// Metadata, newest capture first.
+    pub conflicts: Vec<MatchLifeConflictSummary>,
+}
+
+/// Stable acknowledgement of a captured branch.
+#[derive(Serialize, Deserialize, JsonSchema)]
+pub struct CapturedMatchLifeConflict {
+    /// Exact accepted capture request.
+    pub accepted_request: Uuid,
+    /// Durable artifact identity and origin.
+    pub conflict: MatchLifeConflictSummary,
+}
+
+fn conflict_summary(row: &super::db::MatchLifeConflictModel) -> MatchLifeConflictSummary {
+    MatchLifeConflictSummary {
+        id: row.uuid,
+        device: row.device,
+        generation: row.generation,
+        base_revision: row.base_revision,
+        captured_at: SchemaDateTime(row.captured_at),
+    }
+}
+
+/// Reads branch metadata for an already authorized Match.
+pub async fn conflicts(
+    tx: &mut Transaction,
+    played: Uuid,
+) -> Result<MatchLifeConflicts, rorm::Error> {
+    use super::db::MatchLifeConflictModel as M;
+    let rows = rorm::query(
+        &mut *tx,
+        (
+            M.uuid,
+            M.device,
+            M.generation,
+            M.base_revision,
+            M.captured_at,
+        ),
+    )
+    .condition(M.tournament_match.equals(played))
+    .order_desc(M.captured_at)
+    .all()
+    .await?;
+    Ok(MatchLifeConflicts {
+        conflicts: rows
+            .into_iter()
+            .map(
+                |(id, device, generation, base_revision, captured_at)| MatchLifeConflictSummary {
+                    id,
+                    device,
+                    generation,
+                    base_revision,
+                    captured_at: SchemaDateTime(captured_at),
+                },
+            )
+            .collect(),
+    })
+}
+
+/// Reads one recovered branch without touching the current history.
+pub async fn conflict(
+    tx: &mut Transaction,
+    played: Uuid,
+    id: Uuid,
+) -> Result<Option<MatchLifeConflict>, rorm::Error> {
+    use super::db::MatchLifeConflictModel as M;
+    let row = rorm::query(&mut *tx, M)
+        .condition(rorm::and![
+            M.uuid.equals(id),
+            M.tournament_match.equals(played)
+        ])
+        .optional()
+        .await?;
+    Ok(row.map(|row| MatchLifeConflict {
+        summary: conflict_summary(&row),
+        history: row.history.0,
+    }))
+}
+
+/// Captures a validated old-device branch without modifying writer, active history or Result.
+pub async fn capture_conflict(
+    tx: &mut Transaction,
+    context: &MatchPlay,
+    account: AccountUuid,
+    request: CaptureMatchLifeConflictRequest,
+) -> Result<Result<CapturedMatchLifeConflict, MatchLifeErrors>, rorm::Error> {
+    let played = context.played.uuid.into_inner();
+    let hash =
+        digest(&serde_json::to_vec(&("conflict", &request)).expect("typed conflict serializes"));
+    let id = Uuid::new_v3(&played, request.request_id.as_bytes());
+    if let Some(retried) = receipt(tx, played, request.request_id, &hash, account).await? {
+        return match retried {
+            Ok(_) => {
+                let stored = conflict(tx, played, id)
+                    .await?
+                    .expect("committed conflict receipt has its artifact");
+                Ok(Ok(CapturedMatchLifeConflict {
+                    accepted_request: request.request_id,
+                    conflict: stored.summary,
+                }))
+            }
+            Err(e) => Ok(Err(e)),
+        };
+    }
+    let (operation, proof) = match &request.ownership {
+        MatchLifeOwnershipProof::Claim(proof) => ("claim", proof),
+        MatchLifeOwnershipProof::Takeover(proof) => ("takeover", proof),
+    };
+    let proof_hash =
+        digest(&serde_json::to_vec(&(operation, proof)).expect("typed proof serializes"));
+    let proven = matches!(
+        receipt(tx, played, proof.request_id, &proof_hash, account).await?,
+        Some(Ok(_))
+    );
+    let state = read(tx, played).await?;
+    if !proven
+        || proof.generation + 1 > state.generation
+        || request.base_revision < proof.expected_revision
+        || request.base_revision > state.revision
+    {
+        return Ok(Err(MatchLifeErrors {
+            writer_conflict: true,
+            ..Default::default()
+        }));
+    }
+    if !valid_history(&request.history, None, context) {
+        return Ok(Err(MatchLifeErrors {
+            invalid_history: true,
+            ..Default::default()
+        }));
+    }
+    rorm::insert(&mut *tx, super::db::MatchLifeConflictModel)
+        .return_nothing()
+        .single(&super::db::MatchLifeConflictInsertPatch {
+            uuid: id,
+            tournament_match: ForeignModelByField(played),
+            history: Json(request.history),
+            device: proof.device,
+            generation: proof.generation + 1,
+            base_revision: request.base_revision,
+            account: Some(ForeignModelByField(account.into_inner())),
+            captured_at: OffsetDateTime::now_utc(),
+        })
+        .await?;
+    remember(
+        tx,
+        played,
+        request.request_id,
+        hash,
+        account,
+        state.revision,
+    )
+    .await?;
+    let stored = conflict(tx, played, id)
+        .await?
+        .expect("inserted conflict exists");
+    Ok(Ok(CapturedMatchLifeConflict {
+        accepted_request: request.request_id,
+        conflict: stored.summary,
+    }))
 }

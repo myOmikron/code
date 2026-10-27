@@ -1250,6 +1250,50 @@ export const BugReportState = {
 } as const;
 export type BugReportState = typeof BugReportState[keyof typeof BugReportState];
 
+/**
+ * @type CaptureMatchLifeConflict200Response
+ *
+ * @export
+ */
+export type CaptureMatchLifeConflict200Response = CapturedMatchLifeConflict | FormErrorResponseForMatchLifeErrors;
+/**
+ * Immutable request preserving all unsent old-device history.
+ * @export
+ * @interface CaptureMatchLifeConflictRequest
+ */
+export interface CaptureMatchLifeConflictRequest {
+    /**
+     * Last server revision known before the branch diverged.
+     */
+    base_revision: number;
+    /**
+     * Full frozen local branch, including changes newer than an in-flight upload.
+     */
+    history: MatchLifeHistory;
+    /**
+     * Account-bound proof of former recording ownership, never returned publicly.
+     */
+    ownership: MatchLifeOwnershipProof;
+    /**
+     * Stable exact capture identity.
+     */
+    request_id: string;
+}
+/**
+ * Stable acknowledgement of a captured branch.
+ * @export
+ * @interface CapturedMatchLifeConflict
+ */
+export interface CapturedMatchLifeConflict {
+    /**
+     * Exact accepted capture request.
+     */
+    accepted_request: string;
+    /**
+     * Durable artifact identity and origin.
+     */
+    conflict: MatchLifeConflictSummary;
+}
 
 /**
  * Condition of a physical card, using Cardmarket's grades
@@ -4639,6 +4683,59 @@ export interface MarkedCard {
     oracle_id: string;
 }
 /**
+ * Complete recovered history, separate from the current timeline and Result.
+ * @export
+ * @interface MatchLifeConflict
+ */
+export interface MatchLifeConflict {
+    /**
+     * Complete original branch.
+     */
+    history: MatchLifeHistory;
+    /**
+     * Origin and capture metadata.
+     */
+    summary: MatchLifeConflictSummary;
+}
+/**
+ * Recoverable branch metadata, without credentials or the potentially large snapshot.
+ * @export
+ * @interface MatchLifeConflictSummary
+ */
+export interface MatchLifeConflictSummary {
+    /**
+     * Last known server revision.
+     */
+    base_revision: number;
+    /**
+     * Server capture time.
+     */
+    captured_at: string;
+    /**
+     * Recording device.
+     */
+    device: string;
+    /**
+     * Former recording epoch.
+     */
+    generation: number;
+    /**
+     * Authorized artifact identity.
+     */
+    id: string;
+}
+/**
+ * Authorized recovered branches of a Match.
+ * @export
+ * @interface MatchLifeConflicts
+ */
+export interface MatchLifeConflicts {
+    /**
+     * Metadata, newest capture first.
+     */
+    conflicts: Array<MatchLifeConflictSummary>;
+}
+/**
  * Why a claim or upload could not be accepted.
  * @export
  * @interface MatchLifeErrors
@@ -4871,6 +4968,62 @@ export const MatchLifeOutcomeOneOf1KindEnum = {
     draw: 'draw',
 } as const;
 export type MatchLifeOutcomeOneOf1KindEnum = typeof MatchLifeOutcomeOneOf1KindEnum[keyof typeof MatchLifeOutcomeOneOf1KindEnum];
+
+/**
+ * @type MatchLifeOwnershipProof
+ * Exact retained ownership intent, including its private capability.
+ * @export
+ */
+export type MatchLifeOwnershipProof = MatchLifeOwnershipProofOneOf | MatchLifeOwnershipProofOneOf1;
+/**
+ * Original acknowledged claim.
+ * @export
+ * @interface MatchLifeOwnershipProofOneOf
+ */
+export interface MatchLifeOwnershipProofOneOf {
+    /**
+     *
+     */
+    kind: MatchLifeOwnershipProofOneOfKindEnum;
+    /**
+     *
+     */
+    request: ClaimMatchLifeRequest;
+}
+
+
+/**
+ * @export
+ */
+export const MatchLifeOwnershipProofOneOfKindEnum = {
+    claim: 'claim',
+} as const;
+export type MatchLifeOwnershipProofOneOfKindEnum = typeof MatchLifeOwnershipProofOneOfKindEnum[keyof typeof MatchLifeOwnershipProofOneOfKindEnum];
+
+/**
+ * Original acknowledged takeover.
+ * @export
+ * @interface MatchLifeOwnershipProofOneOf1
+ */
+export interface MatchLifeOwnershipProofOneOf1 {
+    /**
+     *
+     */
+    kind: MatchLifeOwnershipProofOneOf1KindEnum;
+    /**
+     *
+     */
+    request: ClaimMatchLifeRequest;
+}
+
+
+/**
+ * @export
+ */
+export const MatchLifeOwnershipProofOneOf1KindEnum = {
+    takeover: 'takeover',
+} as const;
+export type MatchLifeOwnershipProofOneOf1KindEnum = typeof MatchLifeOwnershipProofOneOf1KindEnum[keyof typeof MatchLifeOwnershipProofOneOf1KindEnum];
 
 /**
  * One Participant in original Seat order.

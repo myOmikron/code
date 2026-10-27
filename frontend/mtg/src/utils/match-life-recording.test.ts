@@ -153,3 +153,113 @@ it("keeps hundreds of offline taps within one small browser record", () => {
     expect(restored.snapshot().local?.games[0].life).toEqual([200]);
     expect(restored.snapshot().local?.games[0].events).toHaveLength(201);
 });
+it("freezes taps, flushes the latest snapshot and restores an uncertain release", () => {
+    const { recording, store, claim } = start();
+    const first = createLifeHistory([{ id: "alice", name: "Alice" }], [40], 1000);
+    recording.change(first, true);
+    const a = recording.prepareUpload()!;
+    const latest = changeLifeHistory(first, 0, -3, 2000);
+    recording.change(latest, true);
+    recording.freezeTransfer();
+    recording.change(changeLifeHistory(latest, 0, -9, 3000), true);
+    expect(recording.writer()).toBe(false);
+    expect(recording.prepareRelease()).toBeNull();
+    recording.acceptUpload({
+        ...empty,
+        writer: claim.device,
+        generation: 1,
+        revision: 1,
+        history: a.history,
+        accepted_request: a.request_id,
+        accepted_revision: 1,
+    });
+    const b = recording.prepareUpload()!;
+    expect(b.history).toEqual(toMatchLifeHistory(latest));
+    recording.acceptUpload({
+        ...empty,
+        writer: claim.device,
+        generation: 1,
+        revision: 2,
+        history: b.history,
+        accepted_request: b.request_id,
+        accepted_revision: 2,
+    });
+    const release = recording.prepareRelease()!;
+    const restored = new MatchLifeRecording(scope, store);
+    expect(restored.prepareRelease()).toEqual(release);
+    restored.acceptRelease({
+        ...empty,
+        writer: null,
+        generation: 2,
+        revision: 2,
+        history: b.history,
+        accepted_request: release.request_id,
+        accepted_revision: 2,
+    });
+    expect(restored.writer()).toBe(false);
+    expect(restored.snapshot().local).toEqual(latest);
+});
+
+it("preserves latest B after late accepted A loses ownership and persists the conflict upload", () => {
+    const { recording, store, claim } = start();
+    const first = createLifeHistory([{ id: "alice", name: "Alice" }], [40], 1000);
+    recording.change(first, true);
+    const a = recording.prepareUpload()!;
+    const b = changeLifeHistory(first, 0, -4, 2000);
+    recording.change(b, true);
+    recording.acceptUpload({
+        ...empty,
+        writer: "new-phone",
+        generation: 2,
+        revision: 1,
+        history: a.history,
+        accepted_request: a.request_id,
+        accepted_revision: 1,
+    });
+    const conflict = recording.prepareConflict()!;
+    expect(conflict.history).toEqual(toMatchLifeHistory(b));
+    expect(conflict.ownership).toEqual({ kind: "claim", request: claim });
+    const restored = new MatchLifeRecording(scope, store);
+    expect(restored.prepareConflict()).toEqual(conflict);
+    expect(restored.writer()).toBe(false);
+    expect(restored.snapshot().local?.games[0].life).toEqual([36]);
+});
+
+it("retains the captured branch for local review when a later active snapshot arrives", () => {
+    const { recording, store } = start();
+    const local = createLifeHistory([{ id: "alice", name: "Alice" }], [40], 1000);
+    recording.change(local, true);
+    recording.prepareUpload();
+    recording.observe({ ...empty, generation: 2, revision: 0, writer: "new-phone" });
+    const request = recording.prepareConflict()!;
+    recording.acceptConflict(request.request_id, "artifact");
+    recording.observe({
+        ...empty,
+        generation: 2,
+        revision: 1,
+        writer: "new-phone",
+        history: toMatchLifeHistory(createLifeHistory([{ id: "alice", name: "Alice" }], [20], 2000)),
+    });
+    expect(new MatchLifeRecording(scope, store).snapshot().local).toEqual(local);
+    expect(recording.snapshot().capturedConflict).toBe("artifact");
+    expect(recording.writer()).toBe(false);
+});
+
+it("resumes an existing saved Game after a released slot is claimed without reopening setup", () => {
+    const recording = new MatchLifeRecording(scope, storage());
+    const history = createLifeHistory([{ id: "alice", name: "Alice" }], [30], 1000);
+    recording.observe({ ...empty, generation: 2, revision: 1, history: toMatchLifeHistory(history) });
+    const claim = recording.prepareClaim();
+    recording.acceptClaim({
+        ...empty,
+        generation: 3,
+        revision: 1,
+        writer: claim.device,
+        history: toMatchLifeHistory(history),
+        accepted_request: claim.request_id,
+        accepted_revision: 1,
+    });
+    expect(recording.snapshot().configured).toBe(true);
+    expect(recording.snapshot().local).toEqual(history);
+    expect(recording.writer()).toBe(true);
+});
