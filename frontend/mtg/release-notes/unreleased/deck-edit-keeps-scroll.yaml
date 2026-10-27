@@ -1,0 +1,3 @@
+kind: fixed
+de: Das Deck springt nach einer Änderung an einer Karte, etwa dem Markieren als Proxy, nicht mehr nach ganz oben.
+en: The deck no longer jumps to the top after a change to a card, such as marking it as a proxy.

@@ -81,6 +81,14 @@ const router = createRouter({
     defaultPendingMs: 250,
     defaultPendingMinMs: 300,
     defaultPendingComponent: RoutePending,
+    // Scroll positions are remembered per location, and not only for the back
+    // button: since 1.170.45 the router reports a render after every load, a
+    // `router.invalidate()` after a deck edit included, and its scroll handler
+    // treats a render with no remembered position as a fresh navigation and
+    // goes to the top. With restoration on, the position is noted before the
+    // load and put back after it, so marking a card as a proxy leaves the
+    // deck where it was.
+    scrollRestoration: true,
 });
 
 /**

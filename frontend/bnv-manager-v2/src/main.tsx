@@ -11,7 +11,15 @@ import "src/i18n";
 import { routeTree } from "./routeTree.gen";
 
 // Create a new router instance
-const router = createRouter({ routeTree });
+const router = createRouter({
+    routeTree,
+    // Since 1.170.45 the router reports a render after every load, a
+    // `router.invalidate()` after an edit included, and without a remembered
+    // scroll position its handler takes that for a fresh navigation and goes
+    // to the top. Restoration notes the position before the load and puts it
+    // back after it.
+    scrollRestoration: true,
+});
 
 // Register the router instance for type safety
 declare module "@tanstack/react-router" {
