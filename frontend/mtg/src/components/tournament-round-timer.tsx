@@ -4,8 +4,8 @@ import { Badge, Text } from "components";
 import { useTranslation } from "react-i18next";
 import { Ruleset } from "src/api/generated";
 import type { RoundTimerResponse } from "src/api/generated";
-import { formatClock } from "src/utils/round-clock";
-import { useRoundClock } from "src/utils/use-round-clock";
+import { formatTimer } from "src/utils/round-timer";
+import { useRoundTimer } from "src/utils/use-round-timer";
 
 /** Below this many seconds the digits turn amber */
 const WARN_SECONDS = 5 * 60;
@@ -14,9 +14,9 @@ const WARN_SECONDS = 5 * 60;
 const URGENT_SECONDS = 60;
 
 /**
- * The properties for {@link TournamentRoundClock}
+ * The properties for {@link TournamentRoundTimer}
  */
-export type TournamentRoundClockProps = {
+export type TournamentRoundTimerProps = {
     /** The running Round's timer */
     timer: RoundTimerResponse;
     /** The Ruleset the Tournament follows, which sets what happens at time up */
@@ -31,9 +31,9 @@ export type TournamentRoundClockProps = {
  *
  * @returns the timer
  */
-export function TournamentRoundClock({ timer, ruleset, skewMs }: TournamentRoundClockProps) {
+export function TournamentRoundTimer({ timer, ruleset, skewMs }: TournamentRoundTimerProps) {
     const [t] = useTranslation("tournament");
-    const reading = useRoundClock(timer, skewMs);
+    const reading = useRoundTimer(timer, skewMs);
 
     const colour = timer.paused
         ? "text-zinc-500 dark:text-zinc-400"
@@ -68,11 +68,11 @@ export function TournamentRoundClock({ timer, ruleset, skewMs }: TournamentRound
                     aria-label={
                         reading.timeUp
                             ? t("label.time-up")
-                            : t("accessibility.timer", { time: formatClock(reading.seconds) })
+                            : t("accessibility.timer", { time: formatTimer(reading.seconds) })
                     }
                     className={clsx("font-mono text-3xl/none font-semibold tabular-nums", colour)}
                 >
-                    {reading.timeUp ? t("label.time-up") : formatClock(reading.seconds)}
+                    {reading.timeUp ? t("label.time-up") : formatTimer(reading.seconds)}
                 </span>
                 {timer.paused && <Badge color={"zinc"}>{t("label.timer-paused")}</Badge>}
                 <span aria-live={"polite"} className={"sr-only"}>

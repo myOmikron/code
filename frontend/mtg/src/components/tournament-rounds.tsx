@@ -41,13 +41,13 @@ import { PrimaryButton } from "src/components/primary-button";
 import { useTournamentLabels } from "src/components/tournament-labels";
 import { TournamentPairingsEditor } from "src/components/tournament-pairings-editor";
 import { TournamentResultDialog } from "src/components/tournament-result-dialog";
-import { TournamentRoundClock } from "src/components/tournament-round-clock";
+import { TournamentRoundTimer } from "src/components/tournament-round-timer";
 import { TournamentRoundTimerControls } from "src/components/tournament-round-timer-controls";
 import { TournamentWinnerDialog } from "src/components/tournament-winner-dialog";
 import { isFormError } from "src/utils/error";
-import { clockSkew } from "src/utils/round-clock";
+import { clockSkew } from "src/utils/round-timer";
 import { cutRoundSize } from "src/utils/top-cut";
-import { formatResult, winnerSeat, resultErrorKey } from "src/utils/tournament-rounds";
+import { formatResult, winnerSeat, resultErrorKey, roundErrorKey } from "src/utils/tournament-rounds";
 
 /**
  * The properties for {@link TournamentRounds}
@@ -162,13 +162,7 @@ export function TournamentRounds({ tournament, load, onTournamentChanged, me = n
      * @param error what the service refused
      */
     function refused(error: RoundErrors) {
-        if (error.results_disputed) notify.error(t("error.results-disputed"));
-        else if (error.results_missing) notify.error(t("error.results-missing"));
-        else if (error.later_round_started) notify.error(t("error.later-round-started"));
-        else if (error.too_few_participants) notify.error(t("error.too-few-participants"));
-        else if (error.all_rounds_paired) notify.error(t("error.all-rounds-paired"));
-        else if (error.tournament_over) notify.error(t("error.tournament-over"));
-        else notify.error(t("error.round-changed"));
+        notify.error(t(roundErrorKey(error)));
     }
 
     /**
@@ -670,7 +664,7 @@ function RoundTable({
             </div>
             {round.state === RoundState.Previewed && <Text>{t("description.round-preview")}</Text>}
             {round.timer != null && (
-                <TournamentRoundClock timer={round.timer} ruleset={tournament.ruleset} skewMs={skewMs} />
+                <TournamentRoundTimer timer={round.timer} ruleset={tournament.ruleset} skewMs={skewMs} />
             )}
             {round.timer != null && round.state === RoundState.Running && onTimerChanged !== undefined && (
                 <TournamentRoundTimerControls

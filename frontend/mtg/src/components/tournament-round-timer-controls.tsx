@@ -5,7 +5,8 @@ import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import type { RoundErrors, RoundTimerResponse, SetRoundTimerRequest } from "src/api/generated";
 import { isFormError } from "src/utils/error";
-import { formatClock } from "src/utils/round-clock";
+import { formatTimer } from "src/utils/round-timer";
+import { roundErrorKey } from "src/utils/tournament-rounds";
 
 /**
  * The properties for {@link TournamentRoundTimerControls}
@@ -38,20 +39,16 @@ export function TournamentRoundTimerControls({
     const [resetting, setResetting] = useState(false);
 
     /**
-     * Sends `request` to the round timer, then reads the Round again
+     * Changes the round timer by `request`, then reads the Round again
      *
      * @param request what to do to the timer
      */
-    async function send(request: SetRoundTimerRequest) {
+    async function changeTimer(request: SetRoundTimerRequest) {
         setBusy(true);
         try {
             const result = await Api.tournaments.rounds.setTimer(tournamentUuid, round, request);
             if (isFormError<unknown, { result: "Err"; error: RoundErrors }>(result)) {
-                notify.error(
-                    result.error.not_running || result.error.tournament_over
-                        ? t("error.round-not-running")
-                        : t("error.round-changed"),
-                );
+                notify.error(t(roundErrorKey(result.error)));
             }
             await onChanged();
         } finally {
@@ -65,18 +62,18 @@ export function TournamentRoundTimerControls({
      * @param minutes how many minutes
      */
     function adjust(minutes: number) {
-        void send({ action: "Adjust", delta_seconds: minutes * 60 });
+        void changeTimer({ action: "Adjust", delta_seconds: minutes * 60 });
     }
 
     return (
         <div className={"flex flex-wrap items-center gap-2"}>
             {timer.paused ? (
-                <Button outline disabled={busy} onClick={() => void send({ action: "Resume" })}>
+                <Button outline disabled={busy} onClick={() => void changeTimer({ action: "Resume" })}>
                     <PlayIcon />
                     {t("button.resume-timer")}
                 </Button>
             ) : (
-                <Button outline disabled={busy} onClick={() => void send({ action: "Pause" })}>
+                <Button outline disabled={busy} onClick={() => void changeTimer({ action: "Pause" })}>
                     <PauseIcon />
                     {t("button.pause-timer")}
                 </Button>
@@ -99,10 +96,10 @@ export function TournamentRoundTimerControls({
                 onClose={() => setResetting(false)}
                 onConfirm={async () => {
                     setResetting(false);
-                    await send({ action: "Reset" });
+                    await changeTimer({ action: "Reset" });
                 }}
                 title={t("heading.reset-timer")}
-                description={t("description.reset-timer", { time: formatClock(timer.length_seconds) })}
+                description={t("description.reset-timer", { time: formatTimer(timer.length_seconds) })}
                 confirmLabel={t("button.reset-timer")}
             />
         </div>

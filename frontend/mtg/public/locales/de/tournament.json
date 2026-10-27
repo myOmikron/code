@@ -203,6 +203,7 @@
         "invalid-layout": "Jeder Spieler muss genau einmal sitzen, an einem Tisch der passenden Größe.",
         "invalid-score": "Dieses Ergebnis passt nicht zum Spielmodus.",
         "later-round-started": "Eine spätere Runde hat schon begonnen.",
+        "no-round-timer": "Diese Runde läuft ohne Rundenzeit.",
         "no-entry-fee": "Das Turnier hat keine Startgebühr.",
         "not-their-deck": "Dieses Deck gehört nicht zum Konto des Spielers.",
         "participant-already": "Dieses Konto spielt schon mit.",

@@ -7,14 +7,14 @@ import { BestOf, RoundStage, RoundState, TournamentState } from "src/api/generat
 import { MatchLifeHandover } from "src/components/match-life-handover";
 import { LifeCounter } from "src/components/life-counter";
 import { MatchActions } from "src/components/tournament-rounds";
-import { TournamentRoundClock } from "src/components/tournament-round-clock";
+import { TournamentRoundTimer } from "src/components/tournament-round-timer";
 import { TournamentResultDialog } from "src/components/tournament-result-dialog";
 import { TournamentWinnerDialog } from "src/components/tournament-winner-dialog";
 import { useLiveVersion } from "src/context/tournament-live-context";
 import { isFormError } from "src/utils/error";
 import { lifeResultDraft, matchLifeStorageKey, matchStartingLife } from "src/utils/match-life";
 import { isMatchTransportFailure } from "src/utils/offline-match-scope";
-import { clockSkew } from "src/utils/round-clock";
+import { clockSkew } from "src/utils/round-timer";
 import { useDurableMatchLife } from "src/utils/use-durable-match-life";
 import { formatResult, resultErrorKey } from "src/utils/tournament-rounds";
 
@@ -135,7 +135,7 @@ export function TournamentMatchLife({
                 </Text>
             )}
             {play.round.timer && (
-                <TournamentRoundClock timer={play.round.timer} ruleset={tournament.ruleset} skewMs={skewMs} />
+                <TournamentRoundTimer timer={play.round.timer} ruleset={tournament.ruleset} skewMs={skewMs} />
             )}
             {organizer && !offlineContext ? (
                 <Button outline onClick={() => setReporting(true)}>

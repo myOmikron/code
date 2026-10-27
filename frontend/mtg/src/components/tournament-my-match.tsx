@@ -10,9 +10,9 @@ import { TournamentResultDialog } from "src/components/tournament-result-dialog"
 import { TournamentWinnerDialog } from "src/components/tournament-winner-dialog";
 import { isFormError } from "src/utils/error";
 import { formatResult, winnerSeat, resultErrorKey } from "src/utils/tournament-rounds";
-import { TournamentRoundClock } from "src/components/tournament-round-clock";
+import { TournamentRoundTimer } from "src/components/tournament-round-timer";
 import { useLiveVersion } from "src/context/tournament-live-context";
-import { clockSkew } from "src/utils/round-clock";
+import { clockSkew } from "src/utils/round-timer";
 
 /**
  * The properties for {@link TournamentMyMatch}
@@ -262,7 +262,7 @@ export function TournamentMyMatch({ tournament }: TournamentMyMatchProps) {
                     bestOf != null && <TournamentResultDialog {...dialog} bestOf={bestOf} />
                 ))}
             {round.timer != null && (
-                <TournamentRoundClock timer={round.timer} ruleset={tournament.ruleset} skewMs={loaded.skewMs} />
+                <TournamentRoundTimer timer={round.timer} ruleset={tournament.ruleset} skewMs={loaded.skewMs} />
             )}
         </section>
     );
