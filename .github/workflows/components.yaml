@@ -42,3 +42,7 @@ jobs:
       - name: Type check
         run: pnpm run check
         working-directory: components
+
+      - name: Test
+        run: pnpm run test
+        working-directory: components

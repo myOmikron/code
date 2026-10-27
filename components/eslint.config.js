@@ -14,6 +14,7 @@ const config = defineConfig(
             "eslint.config.js",
             "vite.config.ts",
             "tailwind.config.js",
+            "vitest.unit.setup.ts",
             "test",
         ],
     },
@@ -92,6 +93,14 @@ const config = defineConfig(
                 "error",
                 { varsIgnorePattern: "^_", argsIgnorePattern: "^_|props" }, // mimic rust behaviour and ignore the props argument of functional components
             ],
+        },
+    },
+    {
+        files: ["**/*.test.ts", "**/*.test.tsx"],
+        rules: {
+            "jsdoc/require-jsdoc": "off",
+            "jsdoc/require-param": "off",
+            "jsdoc/require-returns": "off",
         },
     },
 );
