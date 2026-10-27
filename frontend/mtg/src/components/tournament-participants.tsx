@@ -30,6 +30,7 @@ import type {
     RegisteredDeckResponse,
     TournamentResponse,
 } from "src/api/generated";
+import { TournamentPushActivation } from "src/components/tournament-push-activation";
 import { PrimaryButton } from "src/components/primary-button";
 import { RegisteredListWarnings, MyTournamentDeck, RegisteredDeckDialog } from "src/components/tournament-decks";
 import { useAccount } from "src/context/account";
@@ -65,6 +66,7 @@ export function TournamentParticipants({ tournament, load, signUp }: TournamentP
     const { account } = useAccount();
     const [list, setList] = useState<ListParticipantsResponse | null>(null);
     const [busy, setBusy] = useState(false);
+    const [signedUp, setSignedUp] = useState(false);
     const [dropping, setDropping] = useState<ParticipantResponse | null>(null);
     const [decks, setDecks] = useState<Map<string, RegisteredDeckResponse>>(new Map());
     const [deckOf, setDeckOf] = useState<ParticipantResponse | null>(null);
@@ -138,6 +140,7 @@ export function TournamentParticipants({ tournament, load, signUp }: TournamentP
                 else notify.error(t("error.sign-up-closed"));
             } else {
                 notify.success(t("toast.signed-up"));
+                setSignedUp(true);
             }
             await reload();
         } finally {
@@ -153,6 +156,7 @@ export function TournamentParticipants({ tournament, load, signUp }: TournamentP
         try {
             await Api.tournaments.participants.withdraw(tournament.uuid);
             notify.success(t("toast.sign-up-withdrawn"));
+            setSignedUp(false);
             await reload();
         } finally {
             setBusy(false);
@@ -250,6 +254,7 @@ export function TournamentParticipants({ tournament, load, signUp }: TournamentP
                 )}
             </div>
 
+            {account !== null && (signedUp || list?.me != null) && <TournamentPushActivation />}
             {account !== null && list?.me != null && <MyTournamentDeck tournament={tournament} />}
 
             {collectsFees && (

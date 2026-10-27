@@ -52,7 +52,9 @@
         "withdraw-sign-up": "Abmelden",
         "show-participant-view": "Meine Teilnahme anzeigen",
         "show-organizer-view": "Turnier organisieren",
-        "retry-participation": "Erneut versuchen"
+        "retry-participation": "Erneut versuchen",
+        "enable-tournament-pushes": "Turnier-Benachrichtigungen aktivieren",
+        "retry-tournament-push-status": "Status erneut prüfen"
     },
     "description": {
         "add-account": "Mit Konto, nach dem genauen Benutzernamen: Die Ergebnisse gehören zu diesem Konto.",
@@ -146,7 +148,12 @@
         "waiting-for-match": "Du bist in dieser Runde keinem Match zugeteilt. Prüfe die Teilnehmerliste oder frage die Organisation.",
         "waiting-for-round": "Warte, bis die Organisation die nächste Runde startet. Ergebnisse und Rangliste sind weiterhin erreichbar.",
         "play-and-report": "Spielt euer Match und meldet danach das Ergebnis.",
-        "format-defaults": "Das Format schlägt Tischgröße und Regelwerk vor. Eigene gültige Einstellungen bleiben erhalten. Bei einer neuen Tischgröße werden unpassende Regelwerke und Top-Cuts angepasst."
+        "format-defaults": "Das Format schlägt Tischgröße und Regelwerk vor. Eigene gültige Einstellungen bleiben erhalten. Bei einer neuen Tischgröße werden unpassende Regelwerke und Top-Cuts angepasst.",
+        "tournament-push-activation": "Lass dich über Paarungen und weitere Turnier-Updates informieren, damit du nichts verpasst. Die Aktivierung ist freiwillig.",
+        "tournament-push-enabled": "Turnier-Benachrichtigungen sind für dieses Gerät und dein Konto aktiviert.",
+        "tournament-push-unavailable": "Benachrichtigungen sind hier nicht verfügbar. Auf iPhone und iPad öffne die zum Home-Bildschirm hinzugefügte App. Du kannst das Turnier auch ohne Benachrichtigungen nutzen.",
+        "tournament-push-denied": "Dein Browser erlaubt keine Benachrichtigungen. Du kannst sie in den Browser-Einstellungen erlauben und diese Seite neu laden. Deine Turnierteilnahme bleibt bestehen.",
+        "tournament-push-global-disabled": "Turnier-Benachrichtigungen sind für dein Konto ausgeschaltet. Die Aktivierung schaltet sie für alle Turniere auf deinen abonnierten Geräten wieder ein."
     },
     "error": {
         "all-rounds-paired": "Alle Schweizer Runden sind ausgelost.",
@@ -197,7 +204,8 @@
         "tournament-over": "Das Turnier ist vorbei.",
         "unknown-format": "Dieses Format gibt es nicht.",
         "unknown-username": "Diesen Benutzernamen gibt es nicht.",
-        "load-participation": "Deine Teilnahme konnte nicht geladen werden."
+        "load-participation": "Deine Teilnahme konnte nicht geladen werden.",
+        "tournament-push-activation": "Benachrichtigungen konnten nicht aktiviert oder geprüft werden. Versuche es noch einmal. Deine Turnierteilnahme bleibt bestehen."
     },
     "heading": {
         "add-participants": "Spieler hinzufügen",
@@ -235,7 +243,8 @@
         "standings": "Tabelle",
         "take-back-round": "Runde {{number}} zurücknehmen?",
         "top-cut": "Top Cut",
-        "tournaments": "Turniere"
+        "tournaments": "Turniere",
+        "tournament-push-activation": "Turnier-Benachrichtigungen"
     },
     "label": {
         "add-account": "Konto",
@@ -371,7 +380,8 @@
         "winner": "Sieger",
         "won-by": "{{name}} gewinnt",
         "you": "Du",
-        "you-participate": "Du nimmst teil"
+        "you-participate": "Du nimmst teil",
+        "tournament-push-loading": "Benachrichtigungsstatus wird geprüft …"
     },
     "toast": {
         "co-organizer-added": "{{username}} ist jetzt Mitorganisator",

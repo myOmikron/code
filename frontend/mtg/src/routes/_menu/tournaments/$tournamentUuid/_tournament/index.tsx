@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { MyTournamentDeck } from "src/components/tournament-decks";
 import { TournamentDetails } from "src/components/tournament-details";
+import { TournamentPushActivation } from "src/components/tournament-push-activation";
 import { TournamentMyMatch } from "src/components/tournament-my-match";
 
 /** The frame this tab sits in, which already loaded the Tournament */
@@ -33,6 +34,7 @@ function RouteComponent() {
             )}
             {me !== null && !organizing && <TournamentMyMatch key={tournament.uuid} tournament={tournament} />}
             {me !== null && !organizing && <MyTournamentDeck tournament={tournament} />}
+            {me !== null && !organizing && <TournamentPushActivation />}
             {organizing && (
                 <div className={"flex flex-col gap-3"}>
                     <Text>{t("description.organizer-view")}</Text>
