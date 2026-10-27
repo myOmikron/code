@@ -112,6 +112,7 @@ export function LifeCounter({
     context,
     storageKey = "cardlens.life-history.v1",
     initialHistory,
+    initialConfigured,
     onHistoryChange,
     readOnly = false,
     allowNextGame = true,
@@ -122,6 +123,7 @@ export function LifeCounter({
     context?: ReactNode;
     storageKey?: string;
     initialHistory?: LifeHistory;
+    initialConfigured?: boolean;
     onHistoryChange?: (history: LifeHistory, configured: boolean) => void;
     readOnly?: boolean;
     allowNextGame?: boolean;
@@ -162,6 +164,7 @@ export function LifeCounter({
     const [editedTotals, setEditedTotals] = useState(false);
     const [typedLife, setTypedLife] = useState(() => String(settings.startingLife));
     const [configured, setConfigured] = useState(() => {
+        if (initialConfigured !== undefined) return initialConfigured;
         try {
             return (
                 Boolean(initialHistory ?? loadLifeHistory(storageKey)) &&

@@ -32,7 +32,7 @@ export function TournamentParticipationProvider({ children }: { children: ReactN
         const load = () => {
             const request = ++sequence.current;
             void Api.tournaments
-                .mine()
+                .mineForNavigation()
                 .then((next) => {
                     if (!gone && request === sequence.current) setStored({ identity, data: next });
                 })

@@ -3,6 +3,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
+import { isMatchTransportFailure, setOfflineMatchAccount } from "src/utils/offline-match-scope";
 import { SESSION_STORE } from "src/api/session";
 import type { MeResponse } from "src/api/generated";
 
@@ -17,6 +18,8 @@ export type AccountContextValue = {
     account: MeResponse | null;
     /** True while the initial session check is still running */
     loading: boolean;
+    /** The session could not be checked because transport is unavailable. */
+    unavailable: boolean;
     /**
      * Re-read the session from the server — call after a successful login
      *
@@ -57,17 +60,22 @@ export function AccountProvider({ children }: AccountProviderProps) {
     const [tg] = useTranslation();
     const [account, setAccount] = useState<MeResponse | null>(null);
     const [loading, setLoading] = useState(true);
+    const [unavailable, setUnavailable] = useState(false);
 
     const refresh = useCallback(async () => {
         let current: MeResponse | null;
         try {
             current = await Api.accounts.me(AbortSignal.timeout(SESSION_DEADLINE_MS));
+            setUnavailable(false);
+            setOfflineMatchAccount(current?.uuid ?? null);
         } catch (error) {
             // A 401 is the normal answer for a visitor, not an error worth reporting.
             // Anything else means the backend did not answer, which is worth a line
             // in the console — the page itself looks the same as for a visitor.
             if (error instanceof DOMException) console.error("session check gave up", error);
             current = null;
+            setUnavailable(isMatchTransportFailure(error));
+            if (!isMatchTransportFailure(error)) setOfflineMatchAccount(null);
         }
         setAccount(current);
         setLoading(false);
@@ -76,6 +84,9 @@ export function AccountProvider({ children }: AccountProviderProps) {
 
     // Toasts here rather than at the button, so every caller gets the confirmation.
     const logout = useCallback(async () => {
+        setOfflineMatchAccount(null);
+        setAccount(null);
+        setUnavailable(false);
         await Api.auth.logout();
         setAccount(null);
         notify.success(tg("toast.logged-out"));
@@ -91,6 +102,8 @@ export function AccountProvider({ children }: AccountProviderProps) {
     useEffect(() => {
         SESSION_STORE.subscribe((end) => {
             const wasLoggedIn = accountRef.current !== null;
+            setOfflineMatchAccount(null);
+            setUnavailable(false);
             setAccount(null);
             setLoading(false);
             if (end === "locked") {
@@ -101,7 +114,10 @@ export function AccountProvider({ children }: AccountProviderProps) {
         });
     }, [tg]);
 
-    const value = useMemo(() => ({ account, loading, refresh, logout }), [account, loading, refresh, logout]);
+    const value = useMemo(
+        () => ({ account, loading, unavailable, refresh, logout }),
+        [account, loading, unavailable, refresh, logout],
+    );
     return <ACCOUNT_CONTEXT value={value}>{children}</ACCOUNT_CONTEXT>;
 }
 

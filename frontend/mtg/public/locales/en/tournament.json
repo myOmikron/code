@@ -217,7 +217,9 @@
         "tournament-push-activation": "Notifications could not be enabled or checked. Try again. Your tournament participation is unaffected.",
         "life-history-save": "History could not be loaded or saved on the server. Your local changes remain on this device.",
         "life-history-conflict": "Recording ownership or saved history has changed. Your local changes are retained and do not replace the server history.",
-        "life-history-invalid": "This history cannot be saved. It may be too large or contain an unsupported change. Locally recorded games remain on this device."
+        "life-history-invalid": "This history cannot be saved. It may be too large or contain an unsupported change. Locally recorded games remain on this device.",
+        "life-history-storage": "Browser storage is unavailable. New changes exist only in this open window. Free some space and try again.",
+        "life-history-auth": "Sign in again with the Account that recorded this Match. Local changes remain retained."
     },
     "heading": {
         "add-participants": "Add players",
@@ -398,7 +400,8 @@
         "life-history-saving": "Saving history to the server …",
         "life-history-saved": "History saved on the server",
         "life-history-local": "History saved on this device",
-        "life-history-not-recording": "Recording has not started"
+        "life-history-not-recording": "Recording has not started",
+        "life-history-pending": "Saved on this device, upload pending"
     },
     "toast": {
         "co-organizer-added": "{{username}} is now a co-organizer",

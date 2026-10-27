@@ -12,46 +12,77 @@ import { TournamentWinnerDialog } from "src/components/tournament-winner-dialog"
 import { useLiveVersion } from "src/context/tournament-live-context";
 import { isFormError } from "src/utils/error";
 import { lifeResultDraft, matchLifeStorageKey, matchStartingLife } from "src/utils/match-life";
+import { isMatchTransportFailure } from "src/utils/offline-match-scope";
 import { clockSkew } from "src/utils/round-clock";
 import { useDurableMatchLife } from "src/utils/use-durable-match-life";
 import { formatResult } from "src/utils/tournament-rounds";
 
 /** Counts an authorized Match locally while keeping its Round timer and explicit Result actions available. */
 export function TournamentMatchLife({
-    tournament,
+    tournament: initialTournament,
     initialPlay,
     organizerView,
+    initialSkewMs,
+    offline = false,
 }: {
     tournament: TournamentResponse;
     initialPlay: MatchPlayResponse;
     organizerView: boolean;
+    initialSkewMs?: number;
+    offline?: boolean;
 }) {
     const [t] = useTranslation("tournament");
     const [play, setPlay] = useState(initialPlay);
-    const [skewMs, setSkewMs] = useState(() => clockSkew(initialPlay.server_time, Date.now()));
+    const [tournament, setTournament] = useState(initialTournament);
+    const [offlineContext, setOfflineContext] = useState(offline);
+    const [skewMs, setSkewMs] = useState(() => initialSkewMs ?? clockSkew(initialPlay.server_time, Date.now()));
     const [reporting, setReporting] = useState(false);
     const [busy, setBusy] = useState(false);
     const played = play.round.matches[0];
     const storageKey = matchLifeStorageKey(tournament.uuid, played.uuid);
-    const durable = useDurableMatchLife(tournament.uuid, played.uuid, storageKey);
+    const context = useMemo(() => ({ tournament, play, skewMs }), [tournament, play, skewMs]);
+    const durable = useDurableMatchLife(tournament.uuid, played.uuid, storageKey, context);
     const history = durable.history;
     const version = useLiveVersion("rounds");
     const refresh = useCallback(async () => {
-        const next = await Api.tournaments.rounds.play(tournament.uuid, played.uuid);
-        setSkewMs(clockSkew(next.server_time, Date.now()));
-        setPlay(next);
+        try {
+            const [nextTournament, next] = await Promise.all([
+                Api.tournaments.matchRecovery.tournament(tournament.uuid),
+                Api.tournaments.matchRecovery.play(tournament.uuid, played.uuid),
+            ]);
+            setSkewMs(clockSkew(next.server_time, Date.now()));
+            setPlay(next);
+            setTournament(nextTournament);
+            setOfflineContext(false);
+        } catch (error) {
+            if (isMatchTransportFailure(error)) setOfflineContext(true);
+            throw error;
+        }
     }, [tournament.uuid, played.uuid]);
     useEffect(() => {
-        void refresh().catch(() => undefined);
+        const reconnect = () => {
+            void refresh().catch(() => undefined);
+        };
+        reconnect();
+        const disconnected = () => setOfflineContext(true);
+        window.addEventListener("online", reconnect);
+        window.addEventListener("offline", disconnected);
+        return () => {
+            window.removeEventListener("online", reconnect);
+            window.removeEventListener("offline", disconnected);
+        };
     }, [refresh, version]);
     useEffect(() => {
         setPlay(initialPlay);
-        setSkewMs(clockSkew(initialPlay.server_time, Date.now()));
-    }, [initialPlay]);
+        setTournament(initialTournament);
+        setOfflineContext(offline);
+        setSkewMs(initialSkewMs ?? clockSkew(initialPlay.server_time, Date.now()));
+    }, [initialPlay, initialSkewMs, initialTournament, offline]);
     const mine = played.seats.some((seat) => seat.participant === play.participant);
     const organizer = tournament.organizer_role != null && (organizerView || !mine);
     const over = tournament.state === TournamentState.Finished || tournament.state === TournamentState.Cancelled;
-    const canReport = mine && !over && !tournament.entered_afterwards && play.round.state === RoundState.Running;
+    const canReport =
+        !offlineContext && mine && !over && !tournament.entered_afterwards && play.round.state === RoundState.Running;
     const bestOf =
         play.round.stage === RoundStage.TopCut
             ? (tournament.top_cut_best_of ?? tournament.best_of)
@@ -119,7 +150,7 @@ export function TournamentMatchLife({
             {play.round.timer && (
                 <TournamentRoundClock timer={play.round.timer} ruleset={tournament.ruleset} skewMs={skewMs} />
             )}
-            {organizer ? (
+            {organizer && !offlineContext ? (
                 <Button outline onClick={() => setReporting(true)}>
                     {t("button.set-match-result")}
                 </Button>
@@ -145,7 +176,8 @@ export function TournamentMatchLife({
             )}
         </div>
     );
-    const showCounter = durable.remote !== null && (durable.writer || durable.remote.history != null);
+    const showCounter =
+        durable.identity !== null && durable.state !== "auth" && (durable.writer || durable.history !== null);
     const saveControls = (
         <div className={"flex flex-wrap items-center gap-3 p-3"}>
             {!showCounter && (
@@ -155,21 +187,27 @@ export function TournamentMatchLife({
             )}
             <Text role={"status"}>
                 {t(
-                    durable.state === "loading"
-                        ? "label.life-history-loading"
-                        : durable.state === "saving"
-                          ? "label.life-history-saving"
-                          : durable.state === "saved"
-                            ? "label.life-history-saved"
-                            : durable.state === "failed"
-                              ? "error.life-history-save"
-                              : durable.state === "invalid"
-                                ? "error.life-history-invalid"
-                                : durable.state === "conflict"
-                                  ? "error.life-history-conflict"
-                                  : history === null
-                                    ? "label.life-history-not-recording"
-                                    : "label.life-history-local",
+                    durable.state === "storage"
+                        ? "error.life-history-storage"
+                        : durable.state === "auth"
+                          ? "error.life-history-auth"
+                          : durable.state === "pending"
+                            ? "label.life-history-pending"
+                            : durable.state === "loading"
+                              ? "label.life-history-loading"
+                              : durable.state === "saving"
+                                ? "label.life-history-saving"
+                                : durable.state === "saved"
+                                  ? "label.life-history-saved"
+                                  : durable.state === "failed"
+                                    ? "error.life-history-save"
+                                    : durable.state === "invalid"
+                                      ? "error.life-history-invalid"
+                                      : durable.state === "conflict"
+                                        ? "error.life-history-conflict"
+                                        : history === null
+                                          ? "label.life-history-not-recording"
+                                          : "label.life-history-local",
                 )}
             </Text>
             {durable.remote !== null && !durable.writer && <Text>{t("description.life-history-observer")}</Text>}
@@ -181,7 +219,7 @@ export function TournamentMatchLife({
                         {t("button.record-match-life")}
                     </Button>
                 )}
-            {durable.state === "failed" && (
+            {(durable.state === "failed" || durable.state === "storage" || durable.state === "pending") && (
                 <Button outline onClick={durable.retry}>
                     {t("button.retry-life-history-save")}
                 </Button>
@@ -210,7 +248,8 @@ export function TournamentMatchLife({
                         !draft?.games_won.some((wins) => wins >= 2)
                     }
                     initialTotals={players.map(() => matchStartingLife(tournament.format, players.length))}
-                    storageKey={durable.writer ? storageKey : `${storageKey}.observer`}
+                    storageKey={durable.writer ? durable.storageKey : `${durable.storageKey}.observer`}
+                    initialConfigured={durable.configured}
                     onHistoryChange={durable.changed}
                     backHref={`/tournaments/${tournament.uuid}`}
                     readOnly={!durable.writer || play.round.state !== RoundState.Running || over}
@@ -222,7 +261,7 @@ export function TournamentMatchLife({
                     }
                 />
             )}
-            {(organizer || canReport) &&
+            {((!offlineContext && organizer) || canReport) &&
                 (tournament.table_size > 2 ? (
                     <TournamentWinnerDialog {...dialog} />
                 ) : (

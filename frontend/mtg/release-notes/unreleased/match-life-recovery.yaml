@@ -1,0 +1,3 @@
+kind: improved
+de: Du kannst ein bereits aufgezeichnetes Match auch bei Verbindungsabbrüchen weiterzählen und nach dem Neuladen fortsetzen. Ausstehende Änderungen bleiben auf deinem Gerät und werden nach der Verbindung sicher hochgeladen.
+en: Keep counting a recorded Match through connection loss and resume after reloading. Pending changes stay on your device and upload safely when the connection returns.

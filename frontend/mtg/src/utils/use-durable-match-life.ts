@@ -1,201 +1,199 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Api } from "src/api/api";
-import type { ClaimMatchLifeRequest, MatchLifeHistoryResponse, SaveMatchLifeRequest } from "src/api/generated";
+import { ResponseError } from "src/api/generated";
+import { SESSION_STORE } from "src/api/session";
 import { useAccount } from "src/context/account";
-import { fromMatchLifeHistory, toMatchLifeHistory } from "src/utils/durable-match-life";
 import { isFormError } from "src/utils/error";
-import { loadLifeHistory } from "src/utils/life-history";
 import type { LifeHistory } from "src/utils/life-history";
+import { MatchLifeRecording } from "src/utils/match-life-recording";
+import type { OfflineMatchContext } from "src/utils/match-life-recording";
+import {
+    OFFLINE_MATCH_SCOPE_CHANGED,
+    OFFLINE_MATCH_SCOPE_KEY,
+    readOfflineMatchScope,
+    setOfflineMatchAccount,
+} from "src/utils/offline-match-scope";
 
-/** Device-local recording credential, never read from public server state. */
-type RecordingCredential = {
-    device: string;
-    writer_token: string;
-    request_id: string;
-    generation: number;
-    expected_revision: number;
-};
-/** Distinguishes local counting from a completed server save. */
-export type MatchLifeSaveState = "loading" | "local" | "saving" | "saved" | "failed" | "conflict" | "invalid";
-
-/**
- * Load an explicit local recording capability without letting storage failure break viewing.
- *
- * @param key Account- and Match-scoped private storage key
- * @returns the previously prepared recording claim
- */
-function loadCredential(key: string): RecordingCredential | null {
-    try {
-        const value = JSON.parse(localStorage.getItem(key) ?? "null") as RecordingCredential | null;
-        return value !== null &&
-            typeof value.device === "string" &&
-            typeof value.writer_token === "string" &&
-            typeof value.request_id === "string" &&
-            Number.isSafeInteger(value.generation) &&
-            Number.isSafeInteger(value.expected_revision)
-            ? value
-            : null;
-    } catch {
-        return null;
-    }
-}
+/** Distinguishes local persistence, pending uploads and server acknowledgement. */
+export type MatchLifeSaveState =
+    "loading" | "local" | "pending" | "saving" | "saved" | "failed" | "conflict" | "invalid" | "storage" | "auth";
 
 /**
- * Observe durable history and save online counting only after a deliberate recording claim.
+ * Restores and synchronizes the existing Match history through one durable upload controller.
  *
  * @param tournament Tournament identity
  * @param played Match identity
- * @param storageKey local history key
- * @returns uploaded state, explicit claim and configured-history callbacks
+ * @param storageKey previous local history key
+ * @param context last authorized Match and timer offset
+ * @returns restored counter state and explicit recording actions
  */
-export function useDurableMatchLife(tournament: string, played: string, storageKey: string) {
-    const { account } = useAccount();
-    const credentialKey = `${storageKey}.writer.${account?.uuid ?? "anonymous"}`;
-    const [credential, setCredential] = useState(() => loadCredential(credentialKey));
-    const [loadedKey, setLoadedKey] = useState(credentialKey);
-    const [remote, setRemote] = useState<MatchLifeHistoryResponse | null>(null);
+export function useDurableMatchLife(
+    tournament: string,
+    played: string,
+    storageKey: string,
+    context?: OfflineMatchContext,
+) {
+    const { account, loading, unavailable } = useAccount();
+    const [scope, setScope] = useState(readOfflineMatchScope);
+    const [, render] = useState(0);
     const [state, setState] = useState<MatchLifeSaveState>("loading");
-    const [history, setHistory] = useState<LifeHistory | null>(() => loadLifeHistory(storageKey));
-    const [configured, setConfigured] = useState(false);
-    const [retry, setRetry] = useState(0);
-    const saving = useRef(false);
-    const latestHistory = useRef(history);
-    latestHistory.current = history;
-    const pending = useRef<SaveMatchLifeRequest | null>(null);
-    const acknowledged = useRef<string | null>(null);
-    const writer =
-        account !== null &&
-        loadedKey === credentialKey &&
-        remote !== null &&
-        credential !== null &&
-        remote.writer === credential.device &&
-        remote.generation === credential.generation + 1;
+    const identity =
+        scope && !loading && (account?.uuid === scope.account || (account === null && unavailable))
+            ? scope.account
+            : null;
+    const controller = useMemo(
+        () => (identity ? new MatchLifeRecording({ account: identity, tournament, match: played }) : null),
+        [identity, tournament, played],
+    );
+    const active = useRef(controller);
+    active.current = controller;
+    const flush = useRef<(observe?: boolean) => Promise<void>>(async () => undefined);
 
     useEffect(() => {
-        let current = true;
-        const storedCredential = loadCredential(credentialKey);
-        setLoadedKey(credentialKey);
-        setCredential(storedCredential);
-        setRemote(null);
-        setState("loading");
-        pending.current = null;
-        acknowledged.current = null;
-        if (account === null) return;
-        Api.tournaments.lifeHistory
-            .get(tournament, played)
-            .then((loaded) => {
-                if (!current) return;
-                setRemote(loaded);
-                const owns =
-                    storedCredential !== null &&
-                    loaded.writer === storedCredential.device &&
-                    loaded.generation === storedCredential.generation + 1;
-                if (loaded.history && (!owns || loadLifeHistory(storageKey) === null))
-                    setHistory(fromMatchLifeHistory(loaded.history));
-                acknowledged.current = loaded.history
-                    ? JSON.stringify(toMatchLifeHistory(fromMatchLifeHistory(loaded.history)))
-                    : null;
-                setState(loaded.history ? "saved" : "local");
-            })
-            .catch(() => {
-                if (current) setState("failed");
-            });
-        return () => {
-            current = false;
+        const changed = () => setScope(readOfflineMatchScope());
+        const stored = (event: StorageEvent) => {
+            if (event.key === OFFLINE_MATCH_SCOPE_KEY) changed();
         };
-    }, [tournament, played, credentialKey, account?.uuid]);
+        window.addEventListener(OFFLINE_MATCH_SCOPE_CHANGED, changed);
+        window.addEventListener("storage", stored);
+        changed();
+        return () => {
+            window.removeEventListener(OFFLINE_MATCH_SCOPE_CHANGED, changed);
+            window.removeEventListener("storage", stored);
+        };
+    }, []);
 
-    const claim = useCallback(async () => {
-        if (remote === null || account === null) return;
-        const prepared: ClaimMatchLifeRequest = credential ??
-            loadCredential(credentialKey) ?? {
-                device: crypto.randomUUID(),
-                writer_token: crypto.randomUUID(),
-                request_id: crypto.randomUUID(),
-                generation: remote.generation,
-                expected_revision: remote.revision,
-            };
-        try {
-            localStorage.setItem(credentialKey, JSON.stringify(prepared));
-            setCredential(prepared);
-            setState("saving");
-            const result = await Api.tournaments.lifeHistory.claim(tournament, played, prepared);
-            if (isFormError(result)) {
-                setState("conflict");
-                return;
+    useEffect(() => {
+        if (controller && context) controller.rememberContext(context);
+    }, [controller, context]);
+
+    useEffect(() => {
+        if (!controller) return;
+        let disposed = false;
+        let runningHere = false;
+        const allowed = () =>
+            !disposed && active.current === controller && readOfflineMatchScope()?.account === identity;
+        const display = (next?: MatchLifeSaveState) => {
+            if (!allowed()) return;
+            const record = controller.snapshot();
+            setState(
+                controller.storageFailed
+                    ? "storage"
+                    : (record.blocked ??
+                          next ??
+                          (record.dirty ? "pending" : record.remote?.history ? "saved" : "local")),
+            );
+            render((version) => version + 1);
+        };
+        const synchronize = async (observe = true) => {
+            if (runningHere || !allowed()) return;
+            runningHere = true;
+            try {
+                if (observe) {
+                    const remote = await Api.tournaments.lifeHistory.get(tournament, played);
+                    if (!allowed()) return;
+                    controller.observe(remote);
+                }
+                let record = controller.snapshot();
+                if (record.claim && !record.claimAccepted && !record.blocked) {
+                    display("saving");
+                    const response = await Api.tournaments.lifeHistory.claim(tournament, played, record.claim);
+                    if (!allowed()) return;
+                    if (isFormError(response)) controller.reject("conflict");
+                    else controller.acceptClaim(response);
+                }
+                while (allowed() && controller.writer()) {
+                    const request = controller.prepareUpload();
+                    if (!request) break;
+                    display("saving");
+                    const response = await Api.tournaments.lifeHistory.save(tournament, played, request);
+                    if (isFormError(response))
+                        controller.reject(response.error.invalid_history ? "invalid" : "conflict");
+                    else controller.acceptUpload(response);
+                    if (!allowed()) return;
+                    if (controller.snapshot().blocked) break;
+                }
+                record = controller.snapshot();
+                display(record.blocked ?? (record.dirty ? "pending" : record.remote?.history ? "saved" : "local"));
+            } catch (error) {
+                if (error instanceof ResponseError && [401, 403, 404].includes(error.response.status)) {
+                    controller.reject("auth");
+                    if (error.response.status === 401) {
+                        setOfflineMatchAccount(null);
+                        SESSION_STORE.expired();
+                    }
+                    display("auth");
+                } else display("failed");
+            } finally {
+                runningHere = false;
             }
-            setRemote(result);
-            setState(result.history ? "saved" : "local");
-        } catch {
-            setState("failed");
-        }
-    }, [remote, account, credential, credentialKey, tournament, played]);
+        };
+        flush.current = synchronize;
+        void synchronize();
+        const retry = () => {
+            if (document.visibilityState === "visible") void synchronize();
+        };
+        window.addEventListener("online", retry);
+        window.addEventListener("focus", retry);
+        document.addEventListener("visibilitychange", retry);
+        const interval = window.setInterval(retry, 30_000);
+        return () => {
+            disposed = true;
+            flush.current = async () => undefined;
+            window.clearInterval(interval);
+            window.removeEventListener("online", retry);
+            window.removeEventListener("focus", retry);
+            document.removeEventListener("visibilitychange", retry);
+        };
+    }, [controller, identity, tournament, played]);
 
     const changed = useCallback(
-        (next: LifeHistory, started: boolean) => {
-            latestHistory.current = next;
-            setHistory(next);
-            setConfigured(started);
-            if (writer && started && JSON.stringify(toMatchLifeHistory(next)) !== acknowledged.current) {
-                setState((current) => (current === "conflict" ? current : "local"));
+        (next: LifeHistory, configured: boolean) => {
+            if (!controller?.writer()) return;
+            const before = controller.snapshot();
+            controller.change(next, configured);
+            if (before !== controller.snapshot()) {
+                render((version) => version + 1);
+                setState(controller.storageFailed ? "storage" : configured ? "pending" : "local");
             }
         },
-        [writer],
+        [controller],
     );
-
+    const record = controller?.snapshot();
     useEffect(() => {
-        if (!writer || !configured || !history || !remote || !credential || state === "conflict" || saving.current)
-            return;
-        const serialized = JSON.stringify(toMatchLifeHistory(history));
-        if (serialized === acknowledged.current) return;
-        const timer = window.setTimeout(() => {
-            saving.current = true;
-            const request = pending.current ?? {
-                device: credential.device,
-                writer_token: credential.writer_token,
-                generation: remote.generation,
-                expected_revision: remote.revision,
-                request_id: crypto.randomUUID(),
-                history: toMatchLifeHistory(history),
-            };
-            pending.current = request;
-            setState("saving");
-            Api.tournaments.lifeHistory
-                .save(tournament, played, request)
-                .then((result) => {
-                    if (isFormError(result)) {
-                        setState(result.error.invalid_history ? "invalid" : "conflict");
-                        return;
-                    }
-                    acknowledged.current = JSON.stringify(toMatchLifeHistory(fromMatchLifeHistory(request.history)));
-                    pending.current = null;
-                    setRemote(result);
-                    setState(
-                        latestHistory.current &&
-                            JSON.stringify(toMatchLifeHistory(latestHistory.current)) !== acknowledged.current
-                            ? "local"
-                            : "saved",
-                    );
-                })
-                .catch(() => setState("failed"))
-                .finally(() => {
-                    saving.current = false;
-                });
-        }, 500);
+        if (!record?.dirty || record.blocked || !controller?.writer()) return;
+        const timer = window.setTimeout(() => void flush.current(false), 500);
         return () => window.clearTimeout(timer);
-    }, [writer, configured, history, remote, credential, tournament, played, retry]);
+    }, [controller, record]);
+
+    const claim = useCallback(async () => {
+        if (!controller || !account || !controller.snapshot().remote) return;
+        controller.prepareClaim();
+        if (controller.storageFailed) {
+            setState("storage");
+            return;
+        }
+        await flush.current(false);
+    }, [controller, account]);
 
     return {
-        remote,
-        history,
-        writer,
-        state,
+        remote: record?.remote ?? null,
+        history: record?.blocked === "auth" ? null : (record?.local ?? null),
+        writer: controller?.writer() ?? false,
+        configured: record?.configured ?? false,
+        identity,
+        recording: controller,
+        state:
+            identity === null
+                ? loading
+                    ? ("loading" as const)
+                    : account !== null
+                      ? ("storage" as const)
+                      : ("auth" as const)
+                : state,
         claim,
         changed,
-        retry: () => {
-            if (remote === null) window.location.reload();
-            else if (!writer && remote.writer == null) void claim();
-            else setRetry((value) => value + 1);
-        },
+        retry: () => void flush.current(),
+        storageKey: `${storageKey}.${identity ?? "unavailable"}`,
     };
 }
