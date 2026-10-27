@@ -10,7 +10,7 @@ import { CardDetailDialog } from "src/components/card-detail-dialog";
 import { DeckAdvisorAddRow } from "src/components/deck-advisor-add-row";
 import { DeckAdvisorNotes } from "src/components/deck-advisor-notes";
 import { InlineError } from "src/components/inline-error";
-import { AdvisorDeck } from "src/utils/deck-advisor";
+import { AdvisorDeck, advisorAccepts } from "src/utils/deck-advisor";
 import { BracketCounts } from "src/utils/deck-rules";
 import { Printing } from "src/utils/scryfall";
 import { useAdvisorSettings } from "src/utils/use-advisor-settings";
@@ -99,6 +99,11 @@ export function DeckReplaceDialog({
         // settings: firing against the defaults while the real answer is
         // still in flight would ask the graph twice, the first time wrong.
         if (card === null || target === null || !ready) return;
+        // A deck over the service's cap would only come back as a 422.
+        if (!advisorAccepts(deck)) {
+            setAsked({ state: "failed" });
+            return;
+        }
         setAsked({ state: "asking" });
         setHidden([]);
         let cancelled = false;

@@ -248,6 +248,8 @@ function RouteComponent() {
     // The one bracket rule the catalog cannot answer, asked of the graph. The
     // ignore list stays out: it filters recommendations, and `complete` is a
     // statement of fact about the deck.
+    // The hook skips a pile over the service's size cap; the menu then has no
+    // combo answer, the same as when the graph is down.
     const combos = useDeckCombos(advisor, played, [], deck.format === "commander");
     // A stale answer describes the deck before the last edit — or another deck
     // entirely, right after a switch. Reading it as "unanswered" keeps the

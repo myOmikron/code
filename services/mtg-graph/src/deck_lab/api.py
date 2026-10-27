@@ -68,8 +68,10 @@ OracleId = Annotated[str, Field(max_length=64)]
 # are short. 256 leaves room without inviting a payload.
 Term = Annotated[str, Field(max_length=256)]
 
-# A deck is 100 cards, but the builder posts pool and maybeboard payloads too.
-MAX_CARDS = 512
+# Clears a Commander "pile" (every card owned for a commander, ~1200 copies
+# over ~830 oracle ids) so the advisor does not 422 the deck that most needs
+# a trim. Mirrored by the frontend's `ADVISOR_MAX_CARDS` (`deck-advisor.ts`).
+MAX_CARDS = 2048
 # A Scryfall-style pool restriction — see `poolquery`. Bounded there too; the
 # Field cap turns an oversized payload into a 422 before the parser runs.
 PoolQuery = Annotated[str, Field(max_length=MAX_QUERY_LENGTH)]

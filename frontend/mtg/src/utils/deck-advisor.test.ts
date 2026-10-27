@@ -2,6 +2,8 @@ import { describe, expect, test } from "vitest";
 import { DeckCardResponse } from "src/api/generated";
 import { CutCandidate, Suggestion, SuggestionGroup, SuggestionReport, Swap } from "src/api/graph-generated";
 import {
+    ADVISOR_MAX_CARDS,
+    advisorAccepts,
     advisorDeck,
     advisorSignature,
     bracketSpeed,
@@ -155,6 +157,33 @@ describe("advisorSignature", () => {
         const one = advisorDeck([slot("Main", "aaa", 1, "p1", "Sol Ring")]);
         const other = advisorDeck([slot("Main", "aaa", 1, "p1", "Some Other Name")]);
         expect(advisorSignature(one, 0.5)).toBe(advisorSignature(other, 0.5));
+    });
+});
+
+describe("advisorAccepts", () => {
+    /**
+     * A mainboard of `n` distinct cards, one copy each.
+     *
+     * @param n how many distinct cards
+     *
+     * @returns the slots
+     */
+    const pile = (n: number) => Array.from({ length: n }, (_, i) => slot("Main", `card-${i}`));
+
+    test("reads a deck at the cap and refuses one entry over it", () => {
+        expect(advisorAccepts(advisorDeck(pile(ADVISOR_MAX_CARDS)))).toBe(true);
+        expect(advisorAccepts(advisorDeck(pile(ADVISOR_MAX_CARDS + 1)))).toBe(false);
+    });
+
+    test("counts oracle identities, not copies", () => {
+        const deck = advisorDeck([slot("Main", "aaa", 99), slot("Main", "aaa", 99, "p2")]);
+        expect(advisorAccepts(deck)).toBe(true);
+    });
+
+    test("refuses when the played names overflow even though the entries fit", () => {
+        const deck = advisorDeck(pile(1));
+        expect(advisorAccepts(deck, Array(ADVISOR_MAX_CARDS).fill("Sol Ring"))).toBe(true);
+        expect(advisorAccepts(deck, Array(ADVISOR_MAX_CARDS + 1).fill("Sol Ring"))).toBe(false);
     });
 });
 

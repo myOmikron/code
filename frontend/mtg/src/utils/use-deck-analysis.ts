@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { GraphApi } from "src/api/graph";
 import { Diagnostics } from "src/api/graph-generated";
-import { AdvisorDeck, advisorSignature } from "src/utils/deck-advisor";
+import { AdvisorDeck, advisorAccepts, advisorSignature } from "src/utils/deck-advisor";
 import {
     DEFAULT_TARGETS,
     DeckTargets,
@@ -41,7 +41,7 @@ export function useDeckAnalysis(
     enabled: boolean,
     targets: DeckTargets = DEFAULT_TARGETS,
 ): GraphQuery<Diagnostics> {
-    const active = enabled && deck.entries.length > 0;
+    const active = enabled && deck.entries.length > 0 && advisorAccepts(deck);
 
     const commanders = deck.commanders;
     const warmKey = commanders.join(",");

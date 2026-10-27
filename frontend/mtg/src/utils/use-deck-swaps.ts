@@ -1,6 +1,6 @@
 import { GraphApi } from "src/api/graph";
 import { SwapsResponse } from "src/api/graph-generated";
-import { AdvisorDeck, advisorSignature } from "src/utils/deck-advisor";
+import { AdvisorDeck, advisorAccepts, advisorSignature } from "src/utils/deck-advisor";
 import { DeckTargets, bucketRanges, curvePoints, targetsKey, typeRanges } from "src/utils/deck-targets";
 import { ThemePrefs, themePrefsKey } from "src/utils/deck-theme-prefs";
 import { GraphQuery, useGraphQuery } from "src/utils/use-graph-query";
@@ -50,7 +50,7 @@ export function useDeckSwaps(
     targets: DeckTargets,
     enabled: boolean,
 ): GraphQuery<SwapsResponse> {
-    const active = enabled && deck.entries.length > 0;
+    const active = enabled && deck.entries.length > 0 && advisorAccepts(deck);
 
     return useGraphQuery(
         active

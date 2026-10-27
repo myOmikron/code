@@ -47,6 +47,39 @@ export function playedNames(cards: Array<DeckCardResponse>): Array<string> {
         .flatMap((slot) => (slot.card?.name == null ? [] : [slot.card.name]));
 }
 
+/**
+ * How many oracle identities the advisor accepts in one deck.
+ *
+ * Mirrors `MAX_CARDS` in the graph service (`services/mtg-graph/src/deck_lab/api.py`),
+ * which refuses a longer `cards` list with a 422 before computing anything.
+ * The generated client does not carry that bound, so it is repeated here: a
+ * deck beyond it is told so where the panels would be, rather than firing a
+ * request the service is known to refuse and rendering the refusal as
+ * "advisor unavailable" — which reads as an outage, not as a deck too large.
+ *
+ * Counted in entries of {@link AdvisorDeck.entries}, so copies of one card
+ * cost one, exactly as the service counts.
+ */
+export const ADVISOR_MAX_CARDS = 2048;
+
+/**
+ * Whether the advisor will read this deck at all, or refuse it as too large.
+ *
+ * Two lists are bounded by {@link ADVISOR_MAX_CARDS} on the service: the
+ * oracle entries every call sends, and the played names the combo lookup
+ * sends beside them — one per slot, so a deck can stay under the cap in
+ * entries and still overflow it in names. A caller that sends no names
+ * passes none.
+ *
+ * @param deck the advisor's projection of the deck
+ * @param names the played names the call will send, if it sends any
+ *
+ * @returns whether a request built from these would be accepted
+ */
+export function advisorAccepts(deck: AdvisorDeck, names: Array<string> = []): boolean {
+    return deck.entries.length <= ADVISOR_MAX_CARDS && names.length <= ADVISOR_MAX_CARDS;
+}
+
 /** What the deck says about itself beyond its slots */
 export type AdvisorOptions = {
     /**
