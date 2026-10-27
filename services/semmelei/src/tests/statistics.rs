@@ -378,15 +378,15 @@ fn a_renamed_item_reports_its_current_name_next_to_the_snapshot() {
         let renamed = unique_name("Kaisersemmel");
         let item = create_item(&name, 45, None).await;
         let pickup_code = order(&[(&item, 1)]).await;
-        admin()
+        let response = admin()
             .await
             .json(
                 Method::PUT,
                 &api(&format!("admin/items/{item}")),
                 &item_request(&renamed, 60, None),
             )
-            .await
-            .ok_json();
+            .await;
+        assert_eq!(response.status, StatusCode::OK, "{response:?}");
 
         let positions = positions_of(&day, &pickup_code).await;
 
