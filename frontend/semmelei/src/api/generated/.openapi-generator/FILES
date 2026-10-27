@@ -53,6 +53,8 @@ docs/StartLoginRequest.md
 docs/StartLoginResponse.md
 docs/StartRegistrationRequest.md
 docs/StartRegistrationResponse.md
+docs/StatisticsPosition.md
+docs/StatisticsPositionsResponse.md
 docs/UpdateAccountRequest.md
 docs/UpdateOrderItemPackedRequest.md
 docs/UpdateOrderStatusRequest.md

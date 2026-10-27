@@ -31,6 +31,7 @@ All URIs are relative to *http://localhost*
 | [**getPickupWindow**](DefaultApi.md#getpickupwindow) | **GET** /api/frontend/v1/shop/pickup | The pickup day customers can currently order for |
 | [**getProcurementSummary**](DefaultApi.md#getprocurementsummary) | **GET** /api/frontend/v1/verkauf/pickup-days/{date}/summary | What has to be procured for one pickup day |
 | [**getSchedule**](DefaultApi.md#getschedule) | **GET** /api/frontend/v1/admin/schedule | Get the recurring rule pickup days are generated from |
+| [**getStatisticsPositions**](DefaultApi.md#getstatisticspositions) | **GET** /api/frontend/v1/admin/statistics/positions | The positions of every order placed or picked up in a period |
 | [**listAccounts**](DefaultApi.md#listaccounts) | **GET** /api/frontend/v1/admin/accounts | List all staff accounts |
 | [**listCategories**](DefaultApi.md#listcategories) | **GET** /api/frontend/v1/admin/categories | List all categories |
 | [**listItems**](DefaultApi.md#listitems) | **GET** /api/frontend/v1/admin/items | List all items, including inactive ones |
@@ -1874,6 +1875,79 @@ This endpoint does not need any parameter.
 ### Return type
 
 [**ScheduleSchema**](ScheduleSchema.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## getStatisticsPositions
+
+> StatisticsPositionsResponse getStatisticsPositions(from, to)
+
+The positions of every order placed or picked up in a period
+
+The positions of every order placed or picked up in a period  A position is returned when its order was placed on one of the period\&#39;s days (Europe/Berlin) or its pickup day\&#39;s effective date lies in it.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { GetStatisticsPositionsRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string (optional)
+    from: ...,
+    // string (optional)
+    to: ...,
+  } satisfies GetStatisticsPositionsRequest;
+
+  try {
+    const data = await api.getStatisticsPositions(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **from** | `string` |  | [Optional] [Defaults to `undefined`] |
+| **to** | `string` |  | [Optional] [Defaults to `undefined`] |
+
+### Return type
+
+[**StatisticsPositionsResponse**](StatisticsPositionsResponse.md)
 
 ### Authorization
 
