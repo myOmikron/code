@@ -12,6 +12,7 @@ import { DeckAdvisorNotes } from "src/components/deck-advisor-notes";
 import { InlineError } from "src/components/inline-error";
 import { AdvisorDeck, advisorAccepts } from "src/utils/deck-advisor";
 import { BracketCounts } from "src/utils/deck-rules";
+import { themeTargets } from "src/utils/deck-theme-prefs";
 import { Printing } from "src/utils/scryfall";
 import { useAdvisorSettings } from "src/utils/use-advisor-settings";
 import { useBracketMarks } from "src/utils/use-bracket-marks";
@@ -119,8 +120,7 @@ export function DeckReplaceDialog({
                 deck_size: deck.deckSize ?? undefined,
                 speed,
                 excluded,
-                pinned_themes: settings.themes.pinned,
-                excluded_themes: settings.themes.excluded,
+                theme_targets: themeTargets(settings.themes),
                 // An alternative from outside the pool the user declared is
                 // one they cannot take.
                 pool_query: settings.pool_query ?? undefined,

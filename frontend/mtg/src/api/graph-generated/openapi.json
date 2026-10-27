@@ -1430,23 +1430,18 @@
                         ],
                         "title": "Focus"
                     },
-                    "pinned_themes": {
-                        "items": {
-                            "type": "string",
+                    "theme_targets": {
+                        "additionalProperties": {
+                            "type": "number",
+                            "maximum": 1.0,
+                            "minimum": 0.0
+                        },
+                        "propertyNames": {
                             "maxLength": 256
                         },
-                        "type": "array",
-                        "maxItems": 64,
-                        "title": "Pinned Themes"
-                    },
-                    "excluded_themes": {
-                        "items": {
-                            "type": "string",
-                            "maxLength": 256
-                        },
-                        "type": "array",
-                        "maxItems": 64,
-                        "title": "Excluded Themes"
+                        "type": "object",
+                        "maxProperties": 64,
+                        "title": "Theme Targets"
                     },
                     "deck_size": {
                         "type": "integer",
@@ -2471,23 +2466,18 @@
                         "maxItems": 16,
                         "title": "Type Overrides"
                     },
-                    "pinned_themes": {
-                        "items": {
-                            "type": "string",
+                    "theme_targets": {
+                        "additionalProperties": {
+                            "type": "number",
+                            "maximum": 1.0,
+                            "minimum": 0.0
+                        },
+                        "propertyNames": {
                             "maxLength": 256
                         },
-                        "type": "array",
-                        "maxItems": 64,
-                        "title": "Pinned Themes"
-                    },
-                    "excluded_themes": {
-                        "items": {
-                            "type": "string",
-                            "maxLength": 256
-                        },
-                        "type": "array",
-                        "maxItems": 64,
-                        "title": "Excluded Themes"
+                        "type": "object",
+                        "maxProperties": 64,
+                        "title": "Theme Targets"
                     },
                     "limit": {
                         "type": "integer",
@@ -3462,23 +3452,18 @@
                         ],
                         "title": "Focus"
                     },
-                    "pinned_themes": {
-                        "items": {
-                            "type": "string",
+                    "theme_targets": {
+                        "additionalProperties": {
+                            "type": "number",
+                            "maximum": 1.0,
+                            "minimum": 0.0
+                        },
+                        "propertyNames": {
                             "maxLength": 256
                         },
-                        "type": "array",
-                        "maxItems": 64,
-                        "title": "Pinned Themes"
-                    },
-                    "excluded_themes": {
-                        "items": {
-                            "type": "string",
-                            "maxLength": 256
-                        },
-                        "type": "array",
-                        "maxItems": 64,
-                        "title": "Excluded Themes"
+                        "type": "object",
+                        "maxProperties": 64,
+                        "title": "Theme Targets"
                     },
                     "excluded": {
                         "items": {
@@ -3652,23 +3637,18 @@
                         ],
                         "title": "Focus"
                     },
-                    "pinned_themes": {
-                        "items": {
-                            "type": "string",
+                    "theme_targets": {
+                        "additionalProperties": {
+                            "type": "number",
+                            "maximum": 1.0,
+                            "minimum": 0.0
+                        },
+                        "propertyNames": {
                             "maxLength": 256
                         },
-                        "type": "array",
-                        "maxItems": 64,
-                        "title": "Pinned Themes"
-                    },
-                    "excluded_themes": {
-                        "items": {
-                            "type": "string",
-                            "maxLength": 256
-                        },
-                        "type": "array",
-                        "maxItems": 64,
-                        "title": "Excluded Themes"
+                        "type": "object",
+                        "maxProperties": 64,
+                        "title": "Theme Targets"
                     },
                     "limit": {
                         "type": "integer",

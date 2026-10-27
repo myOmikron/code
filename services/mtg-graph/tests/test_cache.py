@@ -304,8 +304,8 @@ def test_suggestions_key_covers_its_own_parameters():
     assert _suggestions_key(request(pool_query="eur<5")) != _suggestions_key(
         request(pool_query="eur<10")
     )
-    assert _suggestions_key(request(pinned_themes=["landfall"])) != base
-    assert _suggestions_key(request(excluded_themes=["landfall"])) != base
+    assert _suggestions_key(request(theme_targets={"landfall": 0.25})) != base
+    assert _suggestions_key(request(theme_targets={"landfall": 0.0})) != base
 
 
 def test_card_name_order_and_duplicates_do_not_change_the_key():
@@ -317,10 +317,12 @@ def test_card_name_order_and_duplicates_do_not_change_the_key():
     )
 
 
-def test_pin_order_is_significant():
-    """Pins may steer ranking, so their order is part of the answer."""
+def test_theme_target_order_does_not_change_the_key():
+    """A mapping has no order a reader could mean anything by."""
 
-    def request(pins: list[str]) -> SuggestionsRequest:
-        return SuggestionsRequest(cards=[DeckEntry(oracle_id="a")], pinned_themes=pins)
+    def request(targets: dict[str, float]) -> SuggestionsRequest:
+        return SuggestionsRequest(cards=[DeckEntry(oracle_id="a")], theme_targets=targets)
 
-    assert _suggestions_key(request(["a", "b"])) != _suggestions_key(request(["b", "a"]))
+    assert _suggestions_key(request({"a": 0.1, "b": 0.4})) == _suggestions_key(
+        request({"b": 0.4, "a": 0.1})
+    )

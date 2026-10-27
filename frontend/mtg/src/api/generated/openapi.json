@@ -26831,24 +26831,49 @@
                     "quantity"
                 ]
             },
+            "ThemeLevel": {
+                "description": "How much of a theme the reader wants in the deck\n\nFour steps rather than a number. The frontend turns each into a target share of the deck's non-land cards (`THEME_LEVEL_SHARE`) for the graph service, which argues by how far the deck is from it.",
+                "oneOf": [
+                    {
+                        "description": "Steer away from the theme entirely",
+                        "type": "string",
+                        "enum": [
+                            "avoid"
+                        ]
+                    },
+                    {
+                        "description": "A touch of it",
+                        "type": "string",
+                        "enum": [
+                            "light"
+                        ]
+                    },
+                    {
+                        "description": "A strand the deck is built around",
+                        "type": "string",
+                        "enum": [
+                            "core"
+                        ]
+                    },
+                    {
+                        "description": "The plan",
+                        "type": "string",
+                        "enum": [
+                            "allin"
+                        ]
+                    }
+                ]
+            },
             "ThemePrefs": {
-                "description": "Which themes the advisor argues for, and which it steers away from",
+                "description": "How much of each theme the advisor argues for\n\nA document stored before `levels` existed holds only the two legacy lists; [`ThemePrefs::normalised`] reads them back as `core` and `avoid` when the document is loaded, and they are never written again.",
                 "type": "object",
                 "properties": {
-                    "excluded": {
-                        "description": "Themes to steer away from",
-                        "default": [],
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        }
-                    },
-                    "pinned": {
-                        "description": "Themes to steer toward",
-                        "default": [],
-                        "type": "array",
-                        "items": {
-                            "type": "string"
+                    "levels": {
+                        "description": "How much of each theme the reader wants, by theme id",
+                        "default": {},
+                        "type": "object",
+                        "additionalProperties": {
+                            "$ref": "#/components/schemas/ThemeLevel"
                         }
                     }
                 }

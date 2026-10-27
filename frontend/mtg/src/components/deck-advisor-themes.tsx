@@ -1,46 +1,15 @@
-import { MinusCircleIcon, PlusCircleIcon, QuestionMarkCircleIcon } from "@heroicons/react/20/solid";
+import { PlusIcon, QuestionMarkCircleIcon } from "@heroicons/react/20/solid";
 import { Button, Text } from "components";
 import clsx from "clsx";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ResponsiveContainer } from "recharts";
 import { Diagnostics } from "src/api/graph-generated";
-import { ChartPanel } from "src/components/charts/chart-card";
-import { ProfileRadar } from "src/components/charts/profile-radar";
-import { DeckThemeDialog } from "src/components/deck-theme-dialog";
+import { DeckThemeAddDialog } from "src/components/deck-theme-add-dialog";
 import { QuietButton } from "src/components/quiet-button";
-import { ThemeAxis, themeRead } from "src/utils/deck-theme-read";
-import { ThemePrefs, themeState } from "src/utils/deck-theme-prefs";
-
-/** Below this a theme is a card or two brushing past, not something to offer a chip for */
-const CHIP_FLOOR = 2;
-
-/** How many chips are offered before the list stops being a list */
-const CHIP_LIMIT = 10;
-
-/**
- * How much of a theme name the radar's own labels can hold.
- *
- * The panel is a third of the cockpit and the labels hang outside the shape,
- * so there are about sixty pixels either side of it. Theme names run to
- * "Treasure & ritual mana", which is not a label that fits anywhere in this
- * column — and a name sliced off by the edge of the chart reads as a bug,
- * where one that ends in an ellipsis reads as a name that is too long. The
- * caption under the chart says it in full on hover, and so does the chip.
- */
-const AXIS_CHARS = 13;
-
-/**
- * Shortens a theme name to what the radar can draw
- *
- * @param label the theme's full name
- *
- * @returns the name, cut to {@link AXIS_CHARS} with an ellipsis where it had
- *   to be
- */
-function axisLabel(label: string): string {
-    return label.length > AXIS_CHARS ? `${label.slice(0, AXIS_CHARS - 1).trimEnd()}…` : label;
-}
+import { DeckAdvisorPanel, PANEL_GRID } from "src/components/deck-advisor-panel";
+import { RowResetLine } from "src/components/row-reset-line";
+import { THEME_LEVELS, ThemeLevel, ThemePrefs, themeTargetCards } from "src/utils/deck-theme-prefs";
+import { ThemeRow, themeListing } from "src/utils/deck-theme-read";
 
 /**
  * The properties for {@link DeckAdvisorThemes}
@@ -50,325 +19,312 @@ export type DeckAdvisorThemesProps = {
     report: Diagnostics;
     /** What the advisor is currently told to favour and avoid */
     prefs: ThemePrefs;
-    /** Walks one theme to its next state */
-    onCycle: (themeId: string) => void;
-    /** Records the themes the deck is played for, replacing the pinned set */
-    onDefine: (themes: Array<string>) => void;
+    /** Sets how much of one theme the deck should hold, or clears the opinion */
+    onSetLevel: (themeId: string, level: ThemeLevel | null) => void;
     /**
      * Display names for themes the deck does not read as, by id.
      *
-     * An orphaned chip has no report row to take a label from, and the id is
-     * a poor stand-in — "vehicles" where every other chip says "Vehicles", and
-     * "untap_combo" where one says "Untap combo". Whatever the caller knows is
-     * used; the id remains the fallback.
+     * A row for a theme the report has forgotten has no label to take, and
+     * the id is a poor stand-in — "vehicles" where every other row says
+     * "Vehicles". Whatever the caller knows is used; the id remains the
+     * fallback.
      */
     labels?: Record<string, string>;
 };
 
 /**
- * What the deck reads as — and how much of the deck is behind that reading.
+ * What the deck reads as — and how much of each theme the reader wants.
  *
- * The service's theme profile is a distribution: seven cards can carry a 34%
- * share and be the deck's strongest theme, which drawn as a radar reads as
- * "this deck is Vehicles" in a shape nobody can argue with. So the numbers
- * here are card counts, the ordering is by card counts, and a deck whose
- * strongest theme rests on a handful of cards is told that no obvious theme
- * was found rather than handed a confident polygon. Overconfidence is the one
- * failure a diagnosis cannot recover from: it is wrong and it looks certain.
- *
- * The way out of that state is the same control as the way to disagree with a
- * confident one — the user says what the deck plays, and the advisor argues
- * for it from there.
- *
- * A panel of its own rather than a body handed to one: it sits in the refine
- * cockpit beside the curve and the corridors, and the chips are steering, not
- * diagnosis, so they belong to this panel's header and rail rather than to
- * whatever renders it.
+ * A row per theme: the cards the deck holds as a bar, and a four-step level.
+ * Above the deck the level argues for the theme, below it trims, at zero it
+ * steers away. Only themes the deck is behind get a row, plus any the reader
+ * set a level for; the faint rest go to a footnote.
  *
  * @returns the panel
  */
-export function DeckAdvisorThemes({ report, prefs, onCycle, onDefine, labels }: DeckAdvisorThemesProps) {
+export function DeckAdvisorThemes({ report, prefs, onSetLevel, labels }: DeckAdvisorThemesProps) {
     const [t] = useTranslation("advisor");
-    const [defining, setDefining] = useState(false);
+    const [adding, setAdding] = useState(false);
+    const [showFaint, setShowFaint] = useState(false);
 
-    const read = themeRead(report);
+    const { levels } = prefs;
+    const listing = themeListing(report, prefs, labels);
+    const rows = showFaint ? [...listing.listed, ...listing.faint] : listing.listed;
     const detected: Record<string, number> = Object.fromEntries(
         (report.themes ?? []).map((theme) => [theme.theme, theme.cards ?? 0]),
     );
 
-    const offered = (report.themes ?? [])
-        .map((theme) => ({ theme: theme.theme, label: theme.label, cards: theme.cards ?? 0 }))
-        .filter((theme) => theme.cards >= CHIP_FLOOR)
-        .slice(0, CHIP_LIMIT);
-    const known = new Set(offered.map((theme) => theme.theme));
-    // Opinions the profile no longer supports, kept reachable: an excluded
-    // theme that vanished from the report would otherwise be impossible to
-    // un-exclude, because the chip is the only control for it.
-    const orphaned = [...prefs.pinned, ...prefs.excluded]
-        .filter((id) => !known.has(id))
-        .map((id) => ({ theme: id, label: labels?.[id] ?? id.replace(/_/g, " "), cards: 0 }));
-    const chips = [...offered, ...orphaned];
-
-    // The chips stand in a rail beside the shape, which is what makes a third
-    // of the cockpit enough for both. Only beside a *shape*: the rows and the
-    // no-read placeholder are as wide as the panel on their own, and squeezed
-    // next to a rail they read as a broken chart rather than a narrow one.
-    // And only from `sm` up: on a phone the panel itself is a rail stop, and
-    // seven rem of chips beside the radar leaves it too narrow for its own
-    // labels — there the chips wrap below the shape instead.
-    const rail = read.shape && chips.length > 0;
+    // One scale for every row, so the bars compare across themes: the
+    // largest count or target in view, or a good share of the spells so a
+    // deck with one small theme does not draw it wall to wall.
+    const targets = rows.map((row) => {
+        const level = levels[row.id];
+        return level === undefined ? 0 : themeTargetCards(level, listing.spells);
+    });
+    const scale = Math.max(10, Math.ceil(Math.max(...rows.map((row) => row.cards), ...targets, listing.spells * 0.45)));
 
     return (
         <>
-            <ChartPanel
-                title={t("heading.themes")}
-                hint={
-                    read.spells > 0
-                        ? t("description.theme-evidence", { themed: read.themed, spells: read.spells })
-                        : t("description.themes")
-                }
-                minHeight={240}
+            <DeckAdvisorPanel
+                hint={t("description.themes")}
                 action={
-                    read.level !== "none" && (
-                        <QuietButton onClick={() => setDefining(true)} className={"shrink-0"}>
-                            {t("button.define-themes")}
-                        </QuietButton>
-                    )
+                    <QuietButton onClick={() => setAdding(true)} className={"shrink-0"}>
+                        <PlusIcon className={"size-3.5"} />
+                        {t("button.add-theme")}
+                    </QuietButton>
                 }
             >
-                <div className={clsx("grid gap-3", rail && "sm:grid-cols-[minmax(0,1fr)_7rem] sm:items-center")}>
-                    {read.level === "none" ? (
-                        <NoRead axes={read.axes} onDefine={() => setDefining(true)} />
-                    ) : read.shape ? (
-                        <Shape axes={read.axes} spells={read.spells} />
-                    ) : (
-                        <Rows axes={read.axes} />
-                    )}
+                {rows.length === 0 ? (
+                    <NoRead onAdd={() => setAdding(true)} />
+                ) : (
+                    <div className={PANEL_GRID}>
+                        {rows.map((row) => (
+                            <Row
+                                key={row.id}
+                                row={row}
+                                level={levels[row.id] ?? null}
+                                spells={listing.spells}
+                                scale={scale}
+                                onSetLevel={(level) => onSetLevel(row.id, level)}
+                            />
+                        ))}
+                    </div>
+                )}
 
-                    {chips.length > 0 && (
-                        <div
-                            className={clsx("flex gap-1", rail ? "flex-wrap sm:flex-col sm:flex-nowrap" : "flex-wrap")}
-                        >
-                            {chips.map((theme) => {
-                                const state = themeState(prefs, theme.theme);
-                                return (
-                                    <button
-                                        key={theme.theme}
-                                        type={"button"}
-                                        onClick={() => onCycle(theme.theme)}
-                                        aria-pressed={state !== "neutral"}
-                                        title={t(`accessibility.theme-${state}`, { name: theme.label })}
-                                        className={clsx(
-                                            "flex items-center justify-between gap-1 rounded-(--radius-pill) px-2.5 py-1 text-xs font-medium ring-1 transition",
-                                            state === "pinned" &&
-                                                "bg-(--color-brand-600)/10 text-(--color-brand-700) ring-(--color-brand-600)/20 dark:text-(--color-brand-300) dark:ring-(--color-brand-400)/25",
-                                            state === "excluded" &&
-                                                "text-zinc-500 line-through ring-zinc-950/10 dark:text-zinc-400 dark:ring-white/15",
-                                            state === "neutral" &&
-                                                "text-zinc-600 ring-zinc-950/10 hover:bg-lime-400/15 dark:text-zinc-300 dark:ring-white/15 dark:hover:bg-lime-400/15",
-                                        )}
-                                    >
-                                        <span className={"flex min-w-0 items-center gap-1"}>
-                                            {state === "pinned" && <PlusCircleIcon className={"size-3.5 shrink-0"} />}
-                                            {state === "excluded" && (
-                                                <MinusCircleIcon className={"size-3.5 shrink-0"} />
-                                            )}
-                                            {/* Truncating rather than wrapping: in the
-                                                rail a long theme name would otherwise
-                                                make one chip twice the height of the
-                                                rest. The title says it in full. */}
-                                            <span className={"truncate"}>{theme.label}</span>
-                                        </span>
-                                        <span className={"tabular-nums opacity-60"}>
-                                            {theme.cards > 0 ? theme.cards : t("label.theme-undetected")}
-                                        </span>
-                                    </button>
-                                );
-                            })}
-                        </div>
+                <div className={"mt-4 flex flex-col gap-1 text-xs/5 text-zinc-500 dark:text-zinc-400"}>
+                    {listing.spells > 0 && (
+                        <span>
+                            {t("description.theme-evidence", { themed: listing.themed, spells: listing.spells })}
+                        </span>
+                    )}
+                    {/* The themes a few cards brush past, named but not
+                        listed: hiding them entirely would trade one wrong
+                        impression for another, and a reader who wants one
+                        can still bring it up. */}
+                    {listing.faint.length > 0 && (
+                        <span className={"flex flex-wrap items-baseline gap-x-2 text-zinc-400 dark:text-zinc-500"}>
+                            <span>
+                                {t("label.theme-faint", {
+                                    themes: listing.faint.map((row) => `${row.label} ${row.cards}`).join(" · "),
+                                })}
+                            </span>
+                            <QuietButton onClick={() => setShowFaint((shown) => !shown)} className={"-my-0.5"}>
+                                {showFaint ? t("button.hide-faint") : t("button.show-faint")}
+                            </QuietButton>
+                        </span>
                     )}
                 </div>
+            </DeckAdvisorPanel>
 
-                {read.level === "weak" && (
-                    <p className={"mt-3 text-xs/5 text-zinc-500 dark:text-zinc-400"}>
-                        {t("description.theme-thin", { count: read.axes[0].cards })}
-                    </p>
-                )}
-            </ChartPanel>
-
-            {/* Outside the panel: its body waits until it is near the
-                viewport before drawing, and a dialog that only exists once
-                the chart under it has been drawn is a trap for whoever moves
-                this next. */}
-            <DeckThemeDialog
-                open={defining}
-                onClose={() => setDefining(false)}
-                pinned={prefs.pinned}
+            <DeckThemeAddDialog
+                open={adding}
+                onClose={() => setAdding(false)}
                 detected={detected}
-                onSave={onDefine}
+                listed={listing.listed.map((row) => row.id)}
+                onAdd={(theme) => onSetLevel(theme, "core")}
             />
         </>
     );
 }
 
-/** The properties for {@link Shape} */
-type ShapeProps = {
-    /** The themes to draw, strongest first */
-    axes: Array<ThemeAxis>;
-    /** The deck's non-land count, which the tooltip counts against */
+/** The properties for {@link Row} */
+type RowProps = {
+    /** The theme */
+    row: ThemeRow;
+    /** Its level, or nothing said yet */
+    level: ThemeLevel | null;
+    /** The deck's non-land count, which the level is a share of */
     spells: number;
+    /** The top of every bar on the panel, in cards */
+    scale: number;
+    /** Sets the level, or clears it */
+    onSetLevel: (level: ThemeLevel | null) => void;
 };
 
 /**
- * The theme profile as a shape, drawn from the cards behind each theme.
+ * One theme: what the deck holds, and how much the reader wants.
  *
- * The radius is read against the strongest theme's *card count*, so the
- * outermost point is "the theme most of this deck is", not "100% of a
- * distribution" — and the tooltip says how many cards out of how many spells,
- * which is the number a reader can go and check.
+ * The bar is the fact — grey while nothing has been said about the theme.
+ * Once a level is set the bar is read against it: amber and short of a
+ * target the advisor argues for, green up to a target the deck meets with
+ * the surplus hatched behind it for the cut side to take, and hatched
+ * entirely for a theme steered away from. The line under the control says
+ * the same in words, and only appears once there is something to say.
  *
- * @returns the chart
+ * @returns the row
  */
-function Shape({ axes, spells }: ShapeProps) {
+function Row({ row, level, spells, scale, onSetLevel }: RowProps) {
     const [t] = useTranslation("advisor");
-    const peak = Math.max(...axes.map((axis) => axis.cards));
-    // The chart is handed shortened labels, so what comes back from a hover
-    // is one too. Mapped back here rather than compared loosely below: the
-    // caption is keyed on the name the service gave.
-    const named = new Map(axes.map((axis) => [axisLabel(axis.label), axis.label]));
+    const target = level === null ? null : themeTargetCards(level, spells);
+    const percent = (value: number) => `${Math.min(100, Math.max(0, (value / scale) * 100))}%`;
+    const away = level === "avoid";
 
-    // The label itself, not an id — theme labels come from the service
-    // untranslated, so the label already is the stable key here.
-    const [explained, setExplained] = useState<string | null>(null);
+    let verdict: string | null = null;
+    if (target !== null) {
+        if (away) verdict = t("description.theme-avoid");
+        else if (target > row.cards) verdict = t("description.theme-argue-more", { count: target - row.cards });
+        else if (target < row.cards) verdict = t("description.theme-trim", { count: row.cards - target });
+        else verdict = t("description.theme-hold", { count: row.cards });
+    } else if (!row.confident) {
+        verdict = t("description.theme-faint-row");
+    }
 
     return (
-        <div className={"min-w-0"}>
-            <div className={"h-40 max-h-[45dvh] text-zinc-400 sm:h-44 dark:text-zinc-500"}>
-                <ResponsiveContainer width={"100%"} height={"100%"}>
-                    <ProfileRadar
-                        data={axes.map((axis) => ({ label: axisLabel(axis.label), value: axis.cards }))}
-                        domain={[0, peak]}
-                        // The labels hang outside the polygon and the names are
-                        // long, so the shape gets under half the box and they
-                        // get the rest. At 75% every side label was sliced off
-                        // by the edge of the chart.
-                        radius={"45%"}
-                        tickSize={10}
-                        format={(value) => t("label.theme-of-spells", { cards: Math.round(value), spells })}
-                        onAxisHover={(label) => {
-                            const full = label === null ? null : (named.get(label) ?? label);
-                            // A second tap on the axis already explained closes it again —
-                            // the only path that needs the toggle, since leaving the mouse
-                            // always reports `null`.
-                            setExplained((current) => (full !== null && current === full ? null : full));
-                        }}
-                    />
-                </ResponsiveContainer>
+        <div className={"group flex flex-col gap-2"}>
+            <div className={"flex items-baseline justify-between gap-x-3"}>
+                <span
+                    className={clsx(
+                        "truncate text-sm/6 font-medium",
+                        away
+                            ? "text-zinc-500 line-through decoration-zinc-950/25 dark:text-zinc-400 dark:decoration-white/25"
+                            : row.confident || level !== null
+                              ? "text-zinc-950 dark:text-white"
+                              : "font-normal text-zinc-500 dark:text-zinc-400",
+                    )}
+                >
+                    {row.label}
+                </span>
+                {/* The deck's number in the page's voice, the target quietly
+                    behind it: one is a fact, the other an intention. */}
+                <span className={"flex shrink-0 items-baseline gap-1.5 text-xs/5 tabular-nums"}>
+                    <span className={"text-sm/6 font-medium text-zinc-950 dark:text-white"}>{row.cards}</span>
+                    {target === null ? (
+                        <span className={"text-zinc-400 dark:text-zinc-500"}>
+                            {t("label.theme-of-total", { spells })}
+                        </span>
+                    ) : (
+                        <span
+                            className={"font-medium text-(--color-brand-700) dark:text-(--color-brand-300)"}
+                            aria-label={t("accessibility.theme-target", { count: target })}
+                        >
+                            → {target}
+                        </span>
+                    )}
+                </span>
             </div>
-            {/* Held open at the height of its tallest line, the same way the
-                card dialog's axis notes are: a caption that appears on hover
-                and vanishes on leave moves whatever sits under it. */}
-            <div className={"mt-1 grid text-xs/5 text-zinc-500 dark:text-zinc-400"}>
-                {axes.map((axis) => (
-                    <p
-                        key={axis.label}
-                        aria-hidden={axis.label !== explained}
-                        className={clsx("col-start-1 row-start-1", axis.label === explained ? "visible" : "invisible")}
-                    >
-                        {t("description.theme-axis", { name: axis.label, cards: axis.cards, spells })}
-                    </p>
+
+            {/* The bar, and the three level marks along it. */}
+            <div className={"relative h-3"} aria-hidden={"true"}>
+                <div
+                    className={
+                        "absolute inset-x-0 top-1/2 h-2.5 -translate-y-1/2 overflow-hidden rounded-full bg-zinc-950/5 dark:bg-white/10"
+                    }
+                >
+                    {target === null ? (
+                        <div
+                            className={"absolute inset-y-0 left-0 rounded-full bg-zinc-400/70 dark:bg-zinc-500/70"}
+                            style={{ width: percent(row.cards) }}
+                        />
+                    ) : target > row.cards ? (
+                        <div
+                            className={"absolute inset-y-0 left-0 rounded-full bg-(--color-warning)"}
+                            style={{ width: percent(row.cards) }}
+                        />
+                    ) : (
+                        <>
+                            <div
+                                className={"absolute inset-y-0 left-0 rounded-full bg-(--color-success)"}
+                                style={{ width: percent(target) }}
+                            />
+                            {row.cards > target && (
+                                <div
+                                    className={
+                                        "absolute inset-y-0 bg-[repeating-linear-gradient(135deg,rgb(9_9_11/0.18)_0_2px,transparent_2px_6px)] dark:bg-[repeating-linear-gradient(135deg,rgb(255_255_255/0.22)_0_2px,transparent_2px_6px)]"
+                                    }
+                                    style={{
+                                        left: percent(target),
+                                        width: `calc(${percent(row.cards)} - ${percent(target)})`,
+                                    }}
+                                />
+                            )}
+                        </>
+                    )}
+                </div>
+                {THEME_LEVELS.filter((step) => step !== "avoid").map((step) => (
+                    <div
+                        key={step}
+                        className={"absolute top-1/2 h-3.5 w-px -translate-y-1/2 bg-zinc-950/25 dark:bg-white/25"}
+                        style={{ left: percent(themeTargetCards(step, spells)) }}
+                    />
                 ))}
             </div>
-        </div>
-    );
-}
 
-/** The properties for {@link Rows} */
-type RowsProps = {
-    /** The themes to list, strongest first */
-    axes: Array<ThemeAxis>;
-};
+            <div
+                role={"group"}
+                aria-label={t("accessibility.theme-level", { name: row.label })}
+                className={"grid grid-cols-4 gap-0.5 rounded-(--radius-pill) bg-zinc-950/5 p-0.5 dark:bg-white/10"}
+            >
+                {THEME_LEVELS.map((step) => {
+                    const pressed = level === step;
+                    return (
+                        <button
+                            key={step}
+                            type={"button"}
+                            aria-pressed={pressed}
+                            title={t("label.theme-level-cards", {
+                                level: t(`label.theme-level-${step}`),
+                                count: themeTargetCards(step, spells),
+                            })}
+                            // A second tap on the level already set clears
+                            // the opinion — the only path back to neutral.
+                            onClick={() => onSetLevel(pressed ? null : step)}
+                            className={clsx(
+                                "min-w-0 truncate rounded-(--radius-pill) px-1 py-0.5 text-xs/5 font-medium transition focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-(--color-accent)",
+                                pressed
+                                    ? clsx(
+                                          "bg-(--surface-card) shadow-(--shadow-card-sm)",
+                                          step === "avoid"
+                                              ? "text-zinc-700 dark:text-zinc-200"
+                                              : "text-(--color-brand-700) dark:text-(--color-brand-300)",
+                                      )
+                                    : "text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white",
+                            )}
+                        >
+                            {t(`label.theme-level-${step}`)}
+                        </button>
+                    );
+                })}
+            </div>
 
-/**
- * The same reading as bars, for a deck with too few themes to make a shape
- *
- * @returns the rows
- */
-function Rows({ axes }: RowsProps) {
-    const [t] = useTranslation("advisor");
-    const peak = Math.max(...axes.map((axis) => axis.cards));
-
-    return (
-        <div className={"flex flex-col gap-2 py-2"}>
-            {axes.map((axis) => (
-                <div key={axis.id} className={"flex items-center gap-3"}>
-                    <span className={"w-32 shrink-0 truncate text-sm/6 text-zinc-950 dark:text-white"}>
-                        {axis.label}
-                    </span>
-                    <span className={"h-2 flex-1 overflow-hidden rounded-full bg-zinc-950/5 dark:bg-white/10"}>
-                        <span
-                            className={"block h-full rounded-full bg-(--color-accent)"}
-                            style={{ width: `${(axis.cards / peak) * 100}%` }}
-                        />
-                    </span>
-                    <span
-                        className={"w-20 shrink-0 text-right text-xs/5 text-zinc-500 tabular-nums dark:text-zinc-400"}
-                    >
-                        {t("label.theme-cards", { count: axis.cards })}
-                    </span>
-                </div>
-            ))}
+            {/* One line under the control carries both the verdict and the
+                way back — and is left out entirely where it would carry
+                neither. */}
+            {(verdict !== null || level !== null) && (
+                <RowResetLine
+                    verdict={verdict ?? ""}
+                    onReset={level !== null ? () => onSetLevel(null) : undefined}
+                    resetLabel={t("accessibility.theme-reset", { name: row.label })}
+                />
+            )}
         </div>
     );
 }
 
 /** The properties for {@link NoRead} */
 type NoReadProps = {
-    /** Whatever was detected, drawn greyed out behind the message */
-    axes: Array<ThemeAxis>;
     /** Opens the picker, so the user can say what the deck plays */
-    onDefine: () => void;
+    onAdd: () => void;
 };
 
 /**
  * What the panel says when the deck does not read as anything in particular.
  *
- * The shape stays on screen, greyed and inert, rather than disappearing: what
- * little was detected is still the truth about the list, and hiding it would
- * trade one wrong impression for another. The overlay says what is missing and
- * offers the way out — which is the user telling the advisor what they are
- * building, because on a half-built deck they are the only one who knows.
+ * The way out is the user telling the advisor what they are building, because
+ * on a half-built deck they are the only one who knows.
  *
  * @returns the placeholder
  */
-function NoRead({ axes, onDefine }: NoReadProps) {
+function NoRead({ onAdd }: NoReadProps) {
     const [t] = useTranslation("advisor");
-    const peak = Math.max(1, ...axes.map((axis) => axis.cards));
 
     return (
-        <div className={"relative flex h-40 max-h-[45dvh] items-center justify-center sm:h-44"}>
-            {axes.length >= 3 && (
-                <div
-                    className={"absolute inset-0 text-zinc-300 opacity-40 grayscale dark:text-zinc-700"}
-                    aria-hidden={"true"}
-                >
-                    <ResponsiveContainer width={"100%"} height={"100%"}>
-                        <ProfileRadar
-                            data={axes.map((axis) => ({ label: axisLabel(axis.label), value: axis.cards }))}
-                            domain={[0, peak]}
-                            radius={"45%"}
-                            tickSize={10}
-                            stroke={"currentColor"}
-                        />
-                    </ResponsiveContainer>
-                </div>
-            )}
-            <div className={"relative flex max-w-xs flex-col items-center gap-2 text-center"}>
+        <div className={"flex h-40 items-center justify-center sm:h-44"}>
+            <div className={"flex max-w-xs flex-col items-center gap-2 text-center"}>
                 <QuestionMarkCircleIcon className={"size-6 text-zinc-400 dark:text-zinc-500"} aria-hidden={"true"} />
                 <p className={"text-sm/6 font-medium text-zinc-950 dark:text-white"}>{t("heading.no-theme-read")}</p>
                 <Text className={"text-xs/5!"}>{t("description.no-theme-read")}</Text>
-                <Button outline onClick={onDefine} className={"mt-1"}>
-                    {t("button.define-themes")}
+                <Button outline onClick={onAdd} className={"mt-1"}>
+                    {t("button.add-theme")}
                 </Button>
             </div>
         </div>

@@ -24,7 +24,7 @@ Two traps, both of which produce plausible-looking nonsense:
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from enum import StrEnum
 
 import structlog
@@ -45,7 +45,7 @@ from .composition import (
 )
 from .interaction import discount_board_wipe, is_cedh_template
 from .poolquery import PoolFilter
-from .suggestions import Phrase, _theme_gate_sides, _theme_vocabulary
+from .suggestions import Phrase, _theme_share_spec
 from .themes import FIT_THRESHOLD
 from .tracing import deck_span
 from .vocabulary import (
@@ -1102,26 +1102,64 @@ def pair_swaps(
     return [swap for *_, swap in ordered]
 
 
-def _theme_shares(
-    theme_ids: list[str] | None, deck_oracle_ids: list[str]
+def _trim_shares(
+    excluded_share: dict[str, tuple[float, str]],
+    trims: Mapping[str, float],
+    rows: dict[str, dict[str, float]],
 ) -> dict[str, tuple[float, str]]:
-    """Per-card (max share, winning theme's label) across `theme_ids`'s vocabulary.
+    """Fold trimmed themes into the excluded-share term, scaled by their surplus.
 
-    Feeds `score_cuts`' `pinned_share`/`excluded_share` — the same mechanism
-    `_apply_theme_exclusions` uses in `suggestions.py`: one `theme_share_among`
-    query per theme (gate-side semantics via `_theme_gate_sides`, vocabulary
-    via `_theme_vocabulary`, membership via `theme.requires_any`), merged by
-    `max` across themes so a card belonging to two of them is not double-
-    counted. The label rides along with the max, not just the number — with
-    two or more excluded themes, `score_cuts`' chip needs to name the one
-    that actually won, or a user with several exclusions cannot tell which
-    fired (`theme.label`, e.g. "Typal" — service labels are the frontend's
-    display strings by design, see `deck-advisor-themes.tsx`). `THEMES.get`'s
-    raw-ids posture — an id the graph does not know contributes nothing
-    rather than erroring. Themes resolve over the deck's own oracle ids, not
-    the candidate pool `theme_share_among` is otherwise queried against.
+    A theme the reader wants *less* of is not one they want gone: only the
+    fraction over the target is surplus, so a card's share in the theme is
+    scaled by that fraction before it competes with the real exclusions. A
+    theme trimmed by a tenth barely moves a card; one trimmed to a quarter of
+    its cards reads almost like an exclusion. Merged by max, the same way
+    `_theme_shares` merges across themes, so no card is counted twice.
+    """
+    merged = dict(excluded_share)
+    for theme_id, fraction in trims.items():
+        for oracle_id, (share, label) in _theme_shares([theme_id], rows).items():
+            scaled = share * fraction
+            if scaled > merged.get(oracle_id, (0.0, ""))[0]:
+                merged[oracle_id] = (scaled, label)
+    return merged
+
+
+def _theme_share_rows(
+    theme_ids: Iterable[str], deck_oracle_ids: list[str]
+) -> dict[str, dict[str, float]]:
+    """Per theme, each deck card's share in it — one `theme_share_among`
+    query for every theme the cut side reads.
+
+    Gate-side semantics via `_theme_gate_sides`, vocabulary via
+    `_theme_vocabulary`, membership via `theme.requires_any` (bundled by
+    `_theme_share_spec`). Themes resolve over the deck's own oracle ids, not
+    the candidate pool `theme_share_among` is otherwise queried against. An
+    id the graph does not know contributes nothing rather than erroring.
     """
     from .graph import theme_share_among
+    from .themes import THEMES
+
+    themes = [THEMES[t] for t in dict.fromkeys(theme_ids) if t in THEMES]
+    rows: dict[str, dict[str, float]] = {theme.id: {} for theme in themes}
+    for row in theme_share_among(deck_oracle_ids, [_theme_share_spec(t) for t in themes]):
+        rows[row["theme_id"]][row["oracle_id"]] = row.get("share") or 0.0
+    return rows
+
+
+def _theme_shares(
+    theme_ids: list[str] | None, rows: dict[str, dict[str, float]]
+) -> dict[str, tuple[float, str]]:
+    """Per-card (max share, winning theme's label) across `theme_ids`.
+
+    Feeds `score_cuts`' `pinned_share`/`excluded_share` — the same mechanism
+    `_apply_theme_exclusions` uses in `suggestions.py`, merged by `max`
+    across themes so a card belonging to two of them is not double-counted.
+    The label rides along with the max, not just the number — with two or
+    more excluded themes, `score_cuts`' chip needs to name the one that
+    actually won (`theme.label`, e.g. "Typal" — service labels are the
+    frontend's display strings by design, see `deck-advisor-themes.tsx`).
+    """
     from .themes import THEMES
 
     shares: dict[str, tuple[float, str]] = {}
@@ -1129,14 +1167,7 @@ def _theme_shares(
         theme = THEMES.get(theme_id)
         if theme is None:
             continue
-        for row in theme_share_among(
-            deck_oracle_ids,
-            sorted(_theme_vocabulary(theme)),
-            _theme_gate_sides(theme),
-            sorted(str(r) for r in theme.requires_any),
-        ):
-            oracle_id = row["oracle_id"]
-            share = row.get("share") or 0.0
+        for oracle_id, share in rows.get(theme_id, {}).items():
             if share > shares.get(oracle_id, (0.0, ""))[0]:
                 shares[oracle_id] = (share, theme.label)
     return shares
@@ -1157,6 +1188,7 @@ def suggest_swaps(
     focus: str | None = None,
     pinned_themes: list[str] | None = None,
     excluded_themes: list[str] | None = None,
+    theme_targets: Mapping[str, float] | None = None,
     excluded: list[str] | None = None,
     identity: list[str] | None = None,
     deck_size: int = 99,
@@ -1180,7 +1212,7 @@ def suggest_swaps(
     from .diagnostics import DeckEntry, diagnose
     from .eminence import apply_discount, discount_for
     from .graph import deck_card_resources, deck_card_roles, fetch_deck, scene_play_rates
-    from .suggestions import effective_commanders, suggest
+    from .suggestions import apply_theme_targets, effective_commanders, suggest
 
     deck = quantities or dict.fromkeys(deck_oracle_ids, 1)
     cards = fetch_deck(deck)
@@ -1218,6 +1250,15 @@ def suggest_swaps(
         allow_network=True,
     )
     wanted = {row.resource: row.gap for row in report.balance if row.gap > 0}
+
+    # Theme targets resolve once, against this report, and `suggest()` below
+    # gets the same read — so the cut side and the add side agree on which
+    # themes are pinned, excluded or trimmed. The trims are the cut side's own
+    # term: a theme over its target has surplus, and its weakest cards are
+    # offered first, in proportion.
+    pinned_themes, excluded_themes, targets_read = apply_theme_targets(
+        pinned_themes, excluded_themes, theme_targets, report
+    )
 
     # The commander is never a cut candidate, and neither is anything this
     # tool just talked the user into playing. Accepting a suggestion changes
@@ -1309,7 +1350,10 @@ def suggest_swaps(
 
     # Cut scoring gets the same theme prefs the adds side already receives
     # (`pinned_themes`/`excluded_themes`, above) — resolved to per-card shares
-    # over the deck's own oracle ids, once per list.
+    # over the deck's own oracle ids, every theme in one query.
+    share_rows = _theme_share_rows(
+        [*(pinned_themes or []), *(excluded_themes or []), *targets_read.trims], list(deck)
+    )
     cuts = score_cuts(
         cards,
         card_roles,
@@ -1317,8 +1361,10 @@ def suggest_swaps(
         wanted,
         template,
         protected=defended,
-        pinned_share=_theme_shares(pinned_themes, list(deck)),
-        excluded_share=_theme_shares(excluded_themes, list(deck)),
+        pinned_share=_theme_shares(pinned_themes, share_rows),
+        excluded_share=_trim_shares(
+            _theme_shares(excluded_themes, share_rows), targets_read.trims, share_rows
+        ),
         # The stranded prosecution reads production off the same balance the
         # report shows — a resource absent from it has no producers either.
         produced_counts={row.resource: row.produced for row in report.balance},
@@ -1354,6 +1400,7 @@ def suggest_swaps(
         focus=focus,
         pinned_themes=pinned_themes,
         excluded_themes=excluded_themes,
+        theme_read=targets_read,
         excluded=excluded,
         identity=identity,
         deck_size=deck_size,
@@ -1584,6 +1631,7 @@ def find_replacements(
     pool_filter: PoolFilter | None = None,
     pinned_themes: list[str] | None = None,
     excluded_themes: list[str] | None = None,
+    theme_targets: Mapping[str, float] | None = None,
     excluded: list[str] | None = None,
     identity: list[str] | None = None,
     deck_size: int = 99,
@@ -1691,6 +1739,7 @@ def find_replacements(
         type_overrides=type_overrides,
         pinned_themes=list(dict.fromkeys([*(pinned_themes or []), *derived_pins])),
         excluded_themes=excluded_themes,
+        theme_targets=theme_targets,
         excluded=excluded,
         identity=identity,
         deck_size=deck_size,

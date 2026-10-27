@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { CurveBucket } from "src/api/graph-generated";
 import { QuietButton } from "src/components/quiet-button";
+import { curveShort } from "src/utils/deck-targets";
 
 /**
  * The properties for {@link DeckAdvisorCurve}
@@ -119,7 +120,7 @@ export function DeckAdvisorCurve({ curve, targets, spells, onSet, onReset }: Dec
                 {curve.map((bucket, index) => {
                     const value = shown(index);
                     const preset = bucket.default_target ?? bucket.target;
-                    const short = bucket.count + 0.5 < value;
+                    const short = curveShort(bucket.count, value);
                     return (
                         <div key={bucket.mv} className={"relative h-full flex-1"}>
                             <div

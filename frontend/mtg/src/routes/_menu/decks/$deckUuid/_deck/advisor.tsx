@@ -28,7 +28,7 @@ import { DeckAdvisorUpdating } from "src/components/deck-advisor-updating";
 import { BracketBreakMark } from "src/components/bracket-break-mark";
 import { DeckFillDialog } from "src/components/deck-fill-dialog";
 import { effectiveManaValue } from "src/utils/commander";
-import { IgnoredCard, KeptCard, cycleTheme, pruneThemePrefs } from "src/utils/advisor-settings";
+import { IgnoredCard, KeptCard, ThemeLevel, withThemeLevel } from "src/utils/advisor-settings";
 import {
     ADVISOR_MAX_CARDS,
     advisorAccepts,
@@ -193,6 +193,7 @@ function RouteComponent() {
     // A pile the service would refuse outright: the graph hooks do not ask,
     // and the page says "too large" instead of showing an outage.
     const tooLarge = !advisorAccepts(advisor);
+    const readable = commander && ready;
     // The deck's bracket, and nothing else: it is the deck's own statement
     // about how hard it plays, it sits on the chip beside the deck's name, and
     // a second dial for the same thing here only ever disagreed with it.
@@ -231,14 +232,14 @@ function RouteComponent() {
     // parameters, so firing before the settings answer has arrived asks the
     // graph twice — once against the defaults, once against the truth — and
     // shows a moment of advice that was never right.
-    const analysis = useDeckAnalysis(advisor, speed, commander && ready, settings.targets);
+    const analysis = useDeckAnalysis(advisor, speed, readable, settings.targets);
     // cEDH (bracket 5) is a format, not a louder bracket 4: it gets its own
     // lines-first cockpit instead of today's shape-first one, and its
     // suggestions gallery leads with the same two groups the cockpit does
     // (`TASK-G-CEDH-COCKPIT.md`). One gate, shared by the panel branch below,
     // this hook's own fetch guard, and the suggestions reorder.
     const cedh = cedhCockpitApplies(speed);
-    const lines = useDeckLines(advisor, speed, excludedIds, commander && ready);
+    const lines = useDeckLines(advisor, speed, excludedIds, readable);
     const swaps = useDeckSwaps(
         advisor,
         speed,
@@ -247,7 +248,7 @@ function RouteComponent() {
         protectedIds,
         settings.pool_query,
         settings.targets,
-        commander && ready,
+        readable,
     );
     // The answer on screen may be provisional: a cold commander's EDHREC data
     // is fetched in the background rather than inside the request, and the
@@ -486,38 +487,13 @@ function RouteComponent() {
     );
 
     /**
-     * Walks one theme to its next state, and retires opinions about themes
-     * the service has stopped reporting.
+     * Sets how much of one theme the deck should hold, or clears the opinion.
      *
-     * Pruned against a report the service actually answered — never a guess,
-     * or one failed request would wipe real preferences.
-     *
-     * @param themeId the theme that was clicked
+     * @param themeId the theme that was set
+     * @param level its new level, or `null` to hold no opinion
      */
-    function cycleThemePref(themeId: string) {
-        const live = analysis.data?.themes?.map((theme) => theme.theme);
-        const cycled = cycleTheme(settings.themes, themeId);
-        const next = live === undefined ? cycled : pruneThemePrefs(cycled, [...live, themeId]);
-        save({ ...settings, themes: next });
-    }
-
-    /**
-     * Records what the deck is *played* for, as the builder says it.
-     *
-     * Replaces the pinned set outright rather than merging: the dialog opens
-     * on the current pins and hands back the whole answer, so a theme the
-     * user unticked is meant to be gone. Exclusions are left alone — they are
-     * the other half of the same conversation and the dialog never asked
-     * about them.
-     *
-     * @param themes the themes the deck plays
-     */
-    function defineThemes(themes: Array<string>) {
-        const next = {
-            pinned: [...new Set(themes)],
-            excluded: settings.themes.excluded.filter((id) => !themes.includes(id)),
-        };
-        save({ ...settings, themes: next });
+    function setThemeLevel(themeId: string, level: ThemeLevel | null) {
+        save({ ...settings, themes: withThemeLevel(settings.themes, themeId, level) });
     }
 
     /*
@@ -536,28 +512,6 @@ function RouteComponent() {
             ),
         [swaps.data],
     );
-
-    /**
-     * Excludes one theme outright, rather than cycling to it.
-     *
-     * The off-theme banner names a theme the deck does *not* play, so its
-     * chip — if one exists at all — sits at neutral, and a cycle from there
-     * lands on pinned. Offering "exclude" and pinning instead would be the
-     * opposite of the request.
-     *
-     * Not pruned against the live themes: the whole case for excluding this
-     * one is that the deck does not read as it, so pruning would drop the
-     * opinion the moment it was recorded.
-     *
-     * @param themeId the theme to steer away from
-     */
-    function excludeThemePref(themeId: string) {
-        const next = {
-            pinned: settings.themes.pinned.filter((id) => id !== themeId),
-            excluded: [...new Set([...settings.themes.excluded, themeId])],
-        };
-        save({ ...settings, themes: next });
-    }
 
     /**
      * Records what this deck is measured against, and remembers it.
@@ -812,8 +766,7 @@ function RouteComponent() {
         onResetTargets: () => applyTargets(DEFAULT_TARGETS),
         eminence,
         themePrefs: settings.themes,
-        onCycleTheme: cycleThemePref,
-        onDefineThemes: defineThemes,
+        onSetThemeLevel: setThemeLevel,
         themeLabels,
         art,
     };
@@ -851,7 +804,10 @@ function RouteComponent() {
                 {/* Above the phases, not inside one: the lean is a property of
                 the whole answer, and it is as true of the swaps as of the adds. */}
                 {swaps.data !== null && (
-                    <DeckAdvisorOffTheme leans={swaps.data.suggestions.off_theme ?? []} onExclude={excludeThemePref} />
+                    <DeckAdvisorOffTheme
+                        leans={swaps.data.suggestions.off_theme ?? []}
+                        onExclude={(themeId) => setThemeLevel(themeId, "avoid")}
+                    />
                 )}
 
                 {swaps.data === null && <DeckAdvisorState state={swaps.state} />}

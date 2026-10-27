@@ -1550,16 +1550,20 @@ RETURN c.oracle_id AS oracle_id, tid AS theme_id, f.fit AS fit
 #   closes it: a card whose identity contains none of `$gate` gets share
 #   0.0 — the zero row is returned, not omitted, so absent-from-result and
 #   "checked and found none" stay visibly different shapes.
+#
+# Every theme rides in `$themes` with its own sides, gate and vocabulary, so
+# one round trip answers all of them without blurring one into another.
 THEME_SHARE_AMONG = """
+UNWIND $themes AS theme
 UNWIND $oracle_ids AS oid
 MATCH (c:Card {oracle_id: oid})
 OPTIONAL MATCH (c)-[rel]->(:Resource)-[:BROADER*0..]->(r:Resource)
-WHERE type(rel) IN $sides
-WITH c, collect(DISTINCT r.name) AS identity
+WHERE type(rel) IN theme.sides
+WITH theme, c, collect(DISTINCT r.name) AS identity
 WHERE size(identity) > 0
-RETURN c.oracle_id AS oracle_id,
-       CASE WHEN any(x IN identity WHERE x IN $gate)
-            THEN toFloat(size([x IN identity WHERE x IN $resources])) / size(identity)
+RETURN theme.id AS theme_id, c.oracle_id AS oracle_id,
+       CASE WHEN any(x IN identity WHERE x IN theme.gate)
+            THEN toFloat(size([x IN identity WHERE x IN theme.resources])) / size(identity)
             ELSE 0.0 END AS share
 """
 
@@ -2232,12 +2236,14 @@ def fits_theme_among(oracle_ids: list[str], theme_ids: list[str]) -> list[dict]:
         ]
 
 
-def theme_share_among(
-    oracle_ids: list[str], resources: list[str], sides: list[str], gate: list[str]
-) -> list[dict]:
-    """For each card, the fraction of its own gate-side resource identity
-    that falls inside `resources` — the card-normalised counterpart to
-    `fits_theme_among`'s theme-normalised `fit`. See `THEME_SHARE_AMONG`.
+def theme_share_among(oracle_ids: list[str], themes: list[dict]) -> list[dict]:
+    """For each theme and card, the fraction of the card's own gate-side
+    resource identity that falls inside the theme's `resources` — the
+    card-normalised counterpart to `fits_theme_among`'s theme-normalised
+    `fit`. See `THEME_SHARE_AMONG`.
+
+    Each of `themes` is `{id, resources, sides, gate}`, see
+    `suggestions._theme_share_spec`; rows come back with their `theme_id`.
 
     `gate` is the theme's `requires_any`, mirroring `theme_fit`'s membership
     rule: a share without membership is rider noise, not identity. Defy
@@ -2253,21 +2259,24 @@ def theme_share_among(
     `resources`, `sides`, and `gate` are sorted before the query runs, in
     addition to whatever the caller already sorted them to — the neo4j
     driver rejects Python sets outright, so this stays correct even if a
-    caller hands one over. Empty input asks nothing.
+    caller hands one over. A theme missing any of the three asks nothing.
     """
-    if not oracle_ids or not resources or not sides or not gate:
+    asked = [
+        {
+            "id": theme["id"],
+            "resources": sorted(set(theme["resources"])),
+            "sides": sorted(set(theme["sides"])),
+            "gate": sorted(set(theme["gate"])),
+        }
+        for theme in themes
+        if theme["resources"] and theme["sides"] and theme["gate"]
+    ]
+    if not oracle_ids or not asked:
         return []
 
     with driver() as instance, instance.session(database=settings.neo4j_database) as session:
         return [
-            dict(r)
-            for r in session.run(
-                THEME_SHARE_AMONG,
-                oracle_ids=oracle_ids,
-                resources=sorted(set(resources)),
-                sides=sorted(set(sides)),
-                gate=sorted(set(gate)),
-            )
+            dict(r) for r in session.run(THEME_SHARE_AMONG, oracle_ids=oracle_ids, themes=asked)
         ]
 
 

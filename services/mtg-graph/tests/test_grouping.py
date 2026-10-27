@@ -185,6 +185,10 @@ class _EmptyDiagnostics:
     every list it touches, empty, so every channel that gates on one stays
     quiet and the run reaches focus narrowing with nothing in the pool."""
 
+    deck_size: int = 99
+
+    lands: int = 36
+
     balance: list = []
     buckets: list = []
     types: list = []

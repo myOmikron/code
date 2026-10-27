@@ -22,6 +22,18 @@ from deck_lab.cuts import (
 from deck_lab.vocabulary import Bucket
 
 
+class _DiagnoseStub:
+    """Just enough of `Diagnostics` for `suggest_swaps` to read, every list empty."""
+
+    themes: list = []
+    deck_size: int = 99
+    lands: int = 36
+    balance: list = []
+    types: list = []
+    buckets: list = []
+    cedh_class: str | None = None
+
+
 def _card(oid, name, cmc=2.0, land=False, play=0.5):
     return {
         "oracle_id": oid,
@@ -100,11 +112,7 @@ def test_every_named_commander_is_defended_even_with_empty_keep(monkeypatch):
     monkeypatch.setattr(graph, "cards_role_weights", lambda ids: {})
     monkeypatch.setattr(graph, "deck_tutor_count", lambda deck: 0)
 
-    class _Report:
-        balance: list = []
-        types: list = []
-        buckets: list = []
-        cedh_class: str | None = None
+    _Report = _DiagnoseStub
 
     monkeypatch.setattr(diagnostics, "diagnose", lambda *a, **kw: _Report())
 
@@ -999,21 +1007,10 @@ def test_theme_shares_returns_the_label_of_the_argmax_theme(monkeypatch):
     card is not double-counted — the label has to travel with the max, not
     just the number, or `score_cuts`' chip cannot say *which* theme a card
     read as once more than one is excluded."""
-    from deck_lab import graph
     from deck_lab.cuts import _theme_shares
 
-    calls: list[list[str]] = []
+    shares = _theme_shares(["vehicles", "tribal"], {"vehicles": {"x": 0.2}, "tribal": {"x": 0.5}})
 
-    def _theme_share_among(oracle_ids, resources, sides, gate):
-        calls.append(gate)
-        share = 0.2 if len(calls) == 1 else 0.5
-        return [{"oracle_id": "x", "share": share}]
-
-    monkeypatch.setattr(graph, "theme_share_among", _theme_share_among)
-
-    shares = _theme_shares(["vehicles", "tribal"], ["x"])
-
-    assert len(calls) == 2
     assert shares["x"] == (0.5, "Typal")
 
 
@@ -1022,9 +1019,8 @@ def test_suggest_swaps_threads_excluded_themes_into_cut_scoring(monkeypatch):
     `suggest_swaps` resolves `excluded_themes` to a per-card share via
     `theme_share_among` (Task 1's query, gate-side semantics, now with the
     membership `gate`) over the deck's own oracle ids, and threads the
-    result into `score_cuts` as `excluded_share`. `pinned_themes` is left at
-    its default here, so only one `theme_share_among` call is expected — an
-    empty list short-circuits before ever reaching the graph."""
+    result into `score_cuts` as `excluded_share`. Every theme the cut side
+    reads goes out in one call."""
     from deck_lab import diagnostics, graph, suggestions
     from deck_lab.cuts import suggest_swaps
 
@@ -1037,19 +1033,15 @@ def test_suggest_swaps_threads_excluded_themes_into_cut_scoring(monkeypatch):
     monkeypatch.setattr(graph, "cards_role_weights", lambda ids: {})
     monkeypatch.setattr(graph, "deck_tutor_count", lambda deck: 0)
 
-    calls: list[tuple[list[str], list[str], list[str]]] = []
+    calls: list[tuple[list[str], list[tuple[str, list[str], list[str]]]]] = []
 
-    def _theme_share_among(oracle_ids, resources, sides, gate):
-        calls.append((sorted(oracle_ids), sides, gate))
-        return [{"oracle_id": "x", "share": 0.8}]
+    def _theme_share_among(oracle_ids, themes):
+        calls.append((sorted(oracle_ids), [(t["id"], t["sides"], t["gate"]) for t in themes]))
+        return [{"theme_id": t["id"], "oracle_id": "x", "share": 0.8} for t in themes]
 
     monkeypatch.setattr(graph, "theme_share_among", _theme_share_among)
 
-    class _Report:
-        balance: list = []
-        types: list = []
-        buckets: list = []
-        cedh_class: str | None = None
+    _Report = _DiagnoseStub
 
     monkeypatch.setattr(diagnostics, "diagnose", lambda *a, **kw: _Report())
 
@@ -1069,7 +1061,10 @@ def test_suggest_swaps_threads_excluded_themes_into_cut_scoring(monkeypatch):
     # and its `requires_any` gate is `artifact_matters`/`artifact_token`/
     # `treasure`.
     assert calls == [
-        (["cmd", "x"], ["CARES_ABOUT"], ["artifact_matters", "artifact_token", "treasure"])
+        (
+            ["cmd", "x"],
+            [("artifacts", ["CARES_ABOUT"], ["artifact_matters", "artifact_token", "treasure"])],
+        )
     ]
     cut = next(c for c in result["cuts"] if c.oracle_id == "x")
     assert any(r.code == CutCode.EXCLUDED_THEME for r in cut.reasons)
@@ -1103,10 +1098,7 @@ def test_suggest_swaps_conditions_cut_scoring_on_the_reports_cedh_class(monkeypa
     monkeypatch.setattr(graph, "cards_role_weights", lambda ids: {})
     monkeypatch.setattr(graph, "deck_tutor_count", lambda deck: 0)
 
-    class _Report:
-        balance: list = []
-        types: list = []
-        buckets: list = []
+    class _Report(_DiagnoseStub):
         cedh_class = "turbo"
 
     monkeypatch.setattr(diagnostics, "diagnose", lambda *a, **kw: _Report())
@@ -1855,11 +1847,7 @@ def test_cedh_staple_is_not_a_rarely_played_cut_at_bracket_five(monkeypatch):
     monkeypatch.setattr(graph, "deck_tutor_count", lambda deck: 0)
     monkeypatch.setattr(graph, "scene_play_rates", rates)
 
-    class _Report:
-        balance: list = []
-        types: list = []
-        buckets: list = []
-        cedh_class: str | None = None
+    _Report = _DiagnoseStub
 
     monkeypatch.setattr(diagnostics, "diagnose", lambda *a, **kw: _Report())
 
@@ -1903,11 +1891,7 @@ def test_casual_brackets_never_ask_the_scene(monkeypatch):
 
     monkeypatch.setattr(graph, "scene_play_rates", never)
 
-    class _Report:
-        balance: list = []
-        types: list = []
-        buckets: list = []
-        cedh_class: str | None = None
+    _Report = _DiagnoseStub
 
     monkeypatch.setattr(diagnostics, "diagnose", lambda *a, **kw: _Report())
 

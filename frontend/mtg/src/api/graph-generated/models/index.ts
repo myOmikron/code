@@ -661,11 +661,7 @@ export interface FillRequest {
     /**
      * 
      */
-    pinned_themes?: Array<string>;
-    /**
-     * 
-     */
-    excluded_themes?: Array<string>;
+    theme_targets?: { [key: string]: number | undefined; };
     /**
      * 
      */
@@ -1357,11 +1353,7 @@ export interface ReplaceRequest {
     /**
      * 
      */
-    pinned_themes?: Array<string>;
-    /**
-     * 
-     */
-    excluded_themes?: Array<string>;
+    theme_targets?: { [key: string]: number | undefined; };
     /**
      * 
      */
@@ -1933,11 +1925,7 @@ export interface SuggestionsRequest {
     /**
      * 
      */
-    pinned_themes?: Array<string>;
-    /**
-     * 
-     */
-    excluded_themes?: Array<string>;
+    theme_targets?: { [key: string]: number | undefined; };
     /**
      * 
      */
@@ -2031,11 +2019,7 @@ export interface SwapsRequest {
     /**
      * 
      */
-    pinned_themes?: Array<string>;
-    /**
-     * 
-     */
-    excluded_themes?: Array<string>;
+    theme_targets?: { [key: string]: number | undefined; };
     /**
      * 
      */

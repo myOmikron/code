@@ -20,7 +20,7 @@ export type DeckThemePickerProps = {
 
 /**
  * The search box and grid over the graph's own theme list — the body of
- * {@link DeckThemeDialog}, extracted so the setup wizard's first step can
+ * {@link DeckThemeAddDialog}, extracted so the setup wizard's first step can
  * render the exact same picker rather than a copy of it.
  *
  * Owns its own fetch of {@link graphFacets}, its own search text and its own

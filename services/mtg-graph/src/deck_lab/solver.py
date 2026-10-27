@@ -20,7 +20,7 @@ when a colour identity or a budget makes some bucket unreachable.
 from __future__ import annotations
 
 import threading
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 
 import structlog
@@ -419,6 +419,7 @@ def fill_deck(
     focus: str | None = None,
     pinned_themes: list[str] | None = None,
     excluded_themes: list[str] | None = None,
+    theme_targets: Mapping[str, float] | None = None,
     deck_size: int = 99,
     budget: float | None = None,
     rejected: list[str] | None = None,
@@ -466,6 +467,7 @@ def fill_deck(
             focus=focus,
             pinned_themes=pinned_themes,
             excluded_themes=excluded_themes,
+            theme_targets=theme_targets,
             deck_size=deck_size,
             budget=budget,
             rejected=rejected,
@@ -492,6 +494,7 @@ def _fill_deck(
     focus: str | None = None,
     pinned_themes: list[str] | None = None,
     excluded_themes: list[str] | None = None,
+    theme_targets: Mapping[str, float] | None = None,
     deck_size: int = 99,
     budget: float | None = None,
     rejected: list[str] | None = None,
@@ -574,6 +577,7 @@ def _fill_deck(
         focus=focus,
         pinned_themes=pinned_themes,
         excluded_themes=excluded_themes,
+        theme_targets=theme_targets,
         # The same layer /suggestions drops its ignore list at: filtered after
         # the pool ranking, a rejected card still occupied one of the
         # `pool_size` slots and the fill shopped a shallower pool than the

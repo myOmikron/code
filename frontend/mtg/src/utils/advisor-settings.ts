@@ -9,7 +9,7 @@
  * and the conversions to and from the wire.
  *
  * The generated client's `ThemePrefs`/`DeckTargets` carry optional fields —
- * `pinned?`, `buckets?`, and so on — because the server accepts a document
+ * `pinned?`, `levels?`, `buckets?`, and so on — because the server accepts a document
  * with any of them left out. The app's own copies of these types (in
  * `deck-theme-prefs.ts` and `deck-targets.ts`) keep them required, which is
  * what every reader of a `DeckTargets` or `ThemePrefs` in this codebase
@@ -20,12 +20,13 @@ import { AdvisorSettingsResponse, MarkedCard, SetAdvisorSettingsRequest } from "
 import { Corridor, DEFAULT_TARGETS, DeckTargets, heldTargets } from "src/utils/deck-targets";
 import {
     DEFAULT_THEME_PREFS,
+    ThemeLevel,
     ThemePrefs,
-    ThemeState,
-    cycleTheme,
-    pruneThemePrefs,
+    normaliseThemePrefs,
+    playedThemes,
     themePrefsKey,
-    themeState,
+    withThemeLevel,
+    withThemesPicked,
 } from "src/utils/deck-theme-prefs";
 
 /** A card the advisor must never offer again — the ignore list's own entry */
@@ -65,8 +66,8 @@ export const DEFAULT_ADVISOR_SETTINGS: AdvisorSettings = {
  *
  * The two mismatches are absorbed here rather than at every call site: the
  * generated maps come back as `{ [k: string]: Corridor | undefined }` where
- * the app's `DeckTargets` wants `Record<string, Corridor>`, and `pinned` /
- * `excluded` are optional where the app treats them as always-present arrays.
+ * the app's `DeckTargets` wants `Record<string, Corridor>`, and the theme levels
+ * likewise come back with optional values.
  *
  * The corridors are also held to what the graph service will take, so a deck
  * that stored a wider one before that ceiling existed comes back readable
@@ -78,10 +79,8 @@ export const DEFAULT_ADVISOR_SETTINGS: AdvisorSettings = {
  */
 export function fromResponse(response: AdvisorSettingsResponse): AdvisorSettings {
     return {
-        themes: {
-            pinned: response.themes.pinned ?? [],
-            excluded: response.themes.excluded ?? [],
-        },
+        // The server already reads a pre-levels document back as levels.
+        themes: normaliseThemePrefs(response.themes.levels),
         targets: heldTargets({
             buckets: (response.targets.buckets ?? {}) as Record<string, Corridor>,
             types: (response.targets.types ?? {}) as Record<string, Corridor>,
@@ -115,5 +114,5 @@ export function toRequest(settings: AdvisorSettings): SetAdvisorSettingsRequest 
 // Re-exported so a caller that already imports the settings document from
 // here does not also need a second import from `deck-theme-prefs` for the
 // pure helpers that work on its `themes` slice.
-export { DEFAULT_THEME_PREFS, cycleTheme, pruneThemePrefs, themePrefsKey, themeState };
-export type { ThemePrefs, ThemeState };
+export { DEFAULT_THEME_PREFS, playedThemes, themePrefsKey, withThemeLevel, withThemesPicked };
+export type { ThemeLevel, ThemePrefs };

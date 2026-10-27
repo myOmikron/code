@@ -396,6 +396,7 @@ docs/SubscribePushDeviceRequest.md
 docs/SwapDeckCardRequest.md
 docs/SyncRunOutcome.md
 docs/TakeDeckCardsRequest.md
+docs/ThemeLevel.md
 docs/ThemePrefs.md
 docs/Tiebreaker.md
 docs/Timeframe.md
