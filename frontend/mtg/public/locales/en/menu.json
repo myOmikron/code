@@ -1,6 +1,7 @@
 {
     "accessibility": {
-        "unread-release-notes": "There is something new"
+        "unread-release-notes": "There is something new",
+        "ongoing-tournaments": "Your ongoing Tournaments"
     },
     "button": {
         "add-cards": "Add cards",
@@ -19,7 +20,9 @@
         "open-collection": "Open",
         "share-collection": "Share",
         "share-deck": "Share",
-        "use-foil": "Use foil"
+        "use-foil": "Use foil",
+        "return-to-tournament": "Return to Tournament: {{name}}",
+        "choose-ongoing-tournament": "Ongoing Tournaments ({{count}})"
     },
     "description": {
         "quick-tag": "Tag the card under the pointer",

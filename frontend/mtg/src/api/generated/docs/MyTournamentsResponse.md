@@ -7,6 +7,7 @@ The Tournaments an Account runs and the ones it plays in
 
 Name | Type
 ------------ | -------------
+`ongoing_participations` | Array&lt;string&gt;
 `organizing` | [Array&lt;TournamentSummaryResponse&gt;](TournamentSummaryResponse.md)
 `participating` | [Array&lt;TournamentSummaryResponse&gt;](TournamentSummaryResponse.md)
 

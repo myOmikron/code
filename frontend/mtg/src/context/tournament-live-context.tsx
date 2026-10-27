@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
+import { PARTICIPATION_CHANGED } from "src/context/tournament-participation-context";
 import { ALL_TOPICS, parseTournamentEvent, topicsOf } from "src/utils/tournament-live";
 import type { LiveTopic } from "src/utils/tournament-live";
 
@@ -62,6 +63,8 @@ export function TournamentLiveProvider({
                 return next;
             });
             if (topics.includes("tournament")) tournamentChanged.current();
+            if (topics.includes("tournament") || topics.includes("participants"))
+                window.dispatchEvent(new Event(PARTICIPATION_CHANGED));
         }
 
         source.onopen = () => {

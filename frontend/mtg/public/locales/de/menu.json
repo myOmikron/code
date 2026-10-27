@@ -1,6 +1,7 @@
 {
     "accessibility": {
-        "unread-release-notes": "Es gibt Neuigkeiten"
+        "unread-release-notes": "Es gibt Neuigkeiten",
+        "ongoing-tournaments": "Deine laufenden Turniere"
     },
     "button": {
         "add-cards": "Karten hinzufügen",
@@ -19,7 +20,9 @@
         "open-collection": "Öffnen",
         "share-collection": "Teilen",
         "share-deck": "Teilen",
-        "use-foil": "Foil verwenden"
+        "use-foil": "Foil verwenden",
+        "return-to-tournament": "Zurück zum Turnier: {{name}}",
+        "choose-ongoing-tournament": "Laufende Turniere ({{count}})"
     },
     "description": {
         "quick-tag": "Tag auf der Karte unter dem Zeiger",

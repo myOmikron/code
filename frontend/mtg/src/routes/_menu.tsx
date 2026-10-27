@@ -46,6 +46,7 @@ import {
 import { Role } from "src/api/generated";
 import { Suspense, useMemo, useState } from "react";
 import { useInstall } from "src/context/install-context";
+import { TournamentParticipationEntry } from "src/components/tournament-participation-entry";
 import { AppFooter } from "src/components/app-footer";
 import { BugReportDialog } from "src/components/bug-report-dialog";
 import { ShortcutHelpDialog } from "src/components/shortcut-help-dialog";
@@ -384,6 +385,7 @@ function RouteComponent() {
                         </Sidebar>
                     }
                 >
+                    {!fullscreen && !pageBare && <TournamentParticipationEntry />}
                     <Suspense>
                         <Outlet />
                     </Suspense>

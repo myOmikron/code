@@ -334,4 +334,6 @@ pub struct MyTournamentsResponse {
     pub organizing: Vec<TournamentSummaryResponse>,
     /// The Tournaments it takes part in as a Participant, latest start first
     pub participating: Vec<TournamentSummaryResponse>,
+    /// Ongoing Tournaments the Account participates in without having Dropped
+    pub ongoing_participations: Vec<TournamentUuid>,
 }
