@@ -149,6 +149,8 @@ async fn proxy(upstream_path: &str, req: Request) -> Response {
         http.request.method = %parts.method,
         url.path = upstream_path,
         http.response.status_code = tracing::field::Empty,
+        otel.status_code = tracing::field::Empty,
+        otel.status_message = tracing::field::Empty,
     );
 
     let mut upstream = graph.client.request(parts.method, url).body(body);
@@ -170,6 +172,8 @@ async fn proxy(upstream_path: &str, req: Request) -> Response {
     let upstream_response = match sent {
         Ok(response) => response,
         Err(error) => {
+            span.record("otel.status_code", "error");
+            span.record("otel.status_message", error.to_string());
             warn!(
                 path = upstream_path,
                 error = &error as &dyn std::error::Error,
