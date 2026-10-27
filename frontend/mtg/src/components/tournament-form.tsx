@@ -48,9 +48,6 @@ import {
     tournamentFormats,
 } from "src/utils/tournament-settings";
 
-/** The Table size a new Tournament starts out with: a Commander table */
-const DEFAULT_TABLE_SIZE = 4;
-
 /** The form's value for "no Top cut" */
 const NO_TOP_CUT = "None";
 
@@ -58,8 +55,8 @@ const NO_TOP_CUT = "None";
  * The properties for {@link TournamentForm}
  */
 export type TournamentFormProps = {
-    /** The Tournament to edit, or `null` to create a new one */
-    tournament: TournamentResponse | null;
+    /** The Tournament to edit */
+    tournament: TournamentResponse;
     /** The deck formats on offer; the Limited formats join them in the form */
     formats: Array<FormatRulesResponse>;
     /** Called when the Organizer cancels without saving */
@@ -69,66 +66,52 @@ export type TournamentFormProps = {
 };
 
 /**
- * The form's values for a Tournament, or for a new one
+ * The form's values for a Tournament
  *
- * @param tournament the Tournament to edit, `null` for a new one
+ * @param tournament the Tournament to edit
  *
  * @returns the values the form starts with
  */
-function initialValues(tournament: TournamentResponse | null) {
+function initialValues(tournament: TournamentResponse) {
     return {
-        name: tournament?.name ?? "",
-        description: tournament?.description ?? "",
-        location: tournament?.location ?? "",
-        startsAt: toLocalInput(tournament === null ? nextEvening() : new Date(tournament.starts_at)),
-        tableSize: tournament?.table_size ?? DEFAULT_TABLE_SIZE,
-        ruleset: tournament?.ruleset ?? Ruleset.TopDeck,
-        format: tournament?.format ?? null,
-        visibility: tournament?.visibility ?? Visibility.Public,
-        participantLimit: tournament?.participant_limit == null ? "" : String(tournament.participant_limit),
-        selfSignUp: tournament?.self_sign_up ?? false,
-        bestOf: tournament?.best_of ?? BestOf.Three,
-        roundMinutes: tournament?.round_minutes == null ? "" : String(tournament.round_minutes),
-        topCut: (tournament?.top_cut ?? NO_TOP_CUT) as TopCut | typeof NO_TOP_CUT,
-        topCutBestOf: tournament?.top_cut_best_of ?? BestOf.Three,
-        enteredAfterwards: tournament?.entered_afterwards ?? false,
+        name: tournament.name,
+        description: tournament.description ?? "",
+        location: tournament.location ?? "",
+        startsAt: toLocalInput(new Date(tournament.starts_at)),
+        tableSize: tournament.table_size,
+        ruleset: tournament.ruleset,
+        format: tournament.format ?? null,
+        visibility: tournament.visibility,
+        participantLimit: tournament.participant_limit == null ? "" : String(tournament.participant_limit),
+        selfSignUp: tournament.self_sign_up,
+        bestOf: tournament.best_of ?? BestOf.Three,
+        roundMinutes: tournament.round_minutes == null ? "" : String(tournament.round_minutes),
+        topCut: (tournament.top_cut ?? NO_TOP_CUT) as TopCut | typeof NO_TOP_CUT,
+        topCutBestOf: tournament.top_cut_best_of ?? BestOf.Three,
+        enteredAfterwards: tournament.entered_afterwards,
         entryFee:
-            tournament?.entry_fee == null
+            tournament.entry_fee == null
                 ? ""
                 : fromMinorUnits(tournament.entry_fee.amount, tournament.entry_fee.currency),
-        currency: tournament?.entry_fee?.currency ?? CURRENCIES[0],
+        currency: tournament.entry_fee?.currency ?? CURRENCIES[0],
     };
 }
 
-/**
- * Seven in the evening, a week from today: a start a new Tournament can begin with
- *
- * @returns the instant
- */
-function nextEvening(): Date {
-    const start = new Date();
-    start.setDate(start.getDate() + 7);
-    start.setHours(19, 0, 0, 0);
-    return start;
-}
-
-/** Shared page form for creating and editing a Tournament. */
+/** The settings page form of a Tournament. */
 export function TournamentForm({ tournament, formats, onClose, onSaved }: TournamentFormProps) {
-    const manual = useRef({ tableSize: tournament !== null, ruleset: tournament !== null });
+    const manual = useRef({ tableSize: true, ruleset: true });
     const [t] = useTranslation("tournament");
     const [tg] = useTranslation();
     const labels = useTournamentLabels();
     const deckLabels = useDeckLabels();
-    const rulesLocked = tournament !== null && tournament.state !== TournamentState.Registration;
+    const rulesLocked = tournament.state !== TournamentState.Registration;
     const [formatQuery, setFormatQuery] = useState("");
     const formatChoices = formatEntries(tournamentFormats(formats), deckLabels.format, formatQuery);
     const formatChoice = (slug: string | null): FormatEntry | null =>
         formatChoices.find((entry) => entry.kind === "format" && entry.slug === slug) ?? null;
     const topCutLocked =
-        tournament !== null &&
-        tournament.state !== TournamentState.Registration &&
-        tournament.state !== TournamentState.Swiss;
-    const feeLocked = rulesLocked && tournament?.entry_fee == null;
+        tournament.state !== TournamentState.Registration && tournament.state !== TournamentState.Swiss;
+    const feeLocked = rulesLocked && tournament.entry_fee == null;
 
     const form = useForm({
         defaultValues: initialValues(tournament),
@@ -138,7 +121,7 @@ export function TournamentForm({ tournament, formats, onClose, onSaved }: Tourna
                 if (value.entryFee.trim() !== "" && (amount === null || amount <= 0)) {
                     return { fields: { entryFee: t("error.entry-fee-invalid") } };
                 }
-                if (rulesLocked && amount === null && tournament?.entry_fee != null) {
+                if (rulesLocked && amount === null && tournament.entry_fee != null) {
                     return { fields: { entryFee: t("error.entry-fee-locked") } };
                 }
                 const request = {
@@ -159,10 +142,7 @@ export function TournamentForm({ tournament, formats, onClose, onSaved }: Tourna
                     entered_afterwards: value.enteredAfterwards,
                     entry_fee: amount === null ? null : { amount, currency: value.currency },
                 };
-                const response =
-                    tournament === null
-                        ? await Api.tournaments.create(request)
-                        : await Api.tournaments.update(tournament.uuid, request);
+                const response = await Api.tournaments.update(tournament.uuid, request);
                 if (isFormError(response)) {
                     return handleFormError(response.error, {
                         table_size_out_of_range: (errors) => {
@@ -213,7 +193,7 @@ export function TournamentForm({ tournament, formats, onClose, onSaved }: Tourna
 
     return (
         <div className={"mx-auto flex w-full max-w-3xl flex-col gap-8 py-4"}>
-            <Heading>{tournament === null ? t("heading.create-tournament") : t("heading.edit-tournament")}</Heading>
+            <Heading>{t("heading.edit-tournament")}</Heading>
             <Form onSubmit={form.handleSubmit}>
                 <div className={"flex flex-col gap-10"}>
                     <Fieldset>
@@ -708,7 +688,7 @@ export function TournamentForm({ tournament, formats, onClose, onSaved }: Tourna
                     <form.Subscribe selector={(state) => state.isSubmitting}>
                         {(submitting) => (
                             <PrimaryButton type={"submit"} disabled={submitting}>
-                                {tournament === null ? t("button.create-tournament") : t("button.save-tournament")}
+                                {t("button.save-tournament")}
                             </PrimaryButton>
                         )}
                     </form.Subscribe>

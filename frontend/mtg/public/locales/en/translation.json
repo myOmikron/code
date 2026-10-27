@@ -1,7 +1,10 @@
 {
     "accessibility": {
         "card-image": "{{name}}, {{setName}}",
-        "remove-bug-report-image": "Remove image"
+        "remove-bug-report-image": "Remove image",
+        "country-code": "Country calling code",
+        "progress": "Progress",
+        "step-error": "Needs fixing"
     },
     "button": {
         "add-bug-report-image": "Add image",
@@ -38,7 +41,12 @@
         "to-scanner": "Go to scanner",
         "toggle-watch-finish": "Foil / non-foil",
         "try-again": "Try again",
-        "undo": "Undo"
+        "undo": "Undo",
+        "back": "Back",
+        "edit": "Edit",
+        "next": "Next",
+        "replace": "Replace",
+        "submit": "Submit"
     },
     "description": {
         "access-ends-link": "The current link stops working for good.",
@@ -55,7 +63,8 @@
         "install-ios-add": "Choose “Add to Home Screen”.",
         "install-ios-share": "Tap “Share” in the bar below.",
         "report-bug": "Describe what didn't work. What the app noticed goes along, so we can find the bug.",
-        "username": "Shown publicly. 3 to 32 characters; letters, digits, underscore, hyphen and dot are allowed, and the first character has to be a letter or a digit."
+        "username": "Shown publicly. 3 to 32 characters; letters, digits, underscore, hyphen and dot are allowed, and the first character has to be a letter or a digit.",
+        "wizard-invalid": "The assistant \"{{wizard}}\" is broken and can't be shown. Please report it to us."
     },
     "error": {
         "bug-report-failed": "Sending didn't work. Your text stays here, try again in a moment.",
@@ -70,7 +79,18 @@
         "username-charset": "Only letters, digits, underscore, hyphen and dot are allowed.",
         "username-length": "The username has to be 3 to 32 characters long.",
         "username-start": "The first character has to be a letter or a digit.",
-        "username-taken": "That username is already taken. Pick a different one."
+        "username-taken": "That username is already taken. Pick a different one.",
+        "invalid-number": "Enter a number.",
+        "invalid-integer": "Enter a whole number.",
+        "invalid-option": "Choose one of the options.",
+        "invalid-phone": "Enter a valid phone number.",
+        "max": "Must be at most {{max}}.",
+        "max-length": "Must be at most {{max}} characters.",
+        "min": "Must be at least {{min}}.",
+        "min-length": "Must be at least {{min}} characters.",
+        "required": "This field is required.",
+        "invalid-datetime": "Enter a date and time.",
+        "invalid-entry-fee": "Enter an amount above zero, e.g. 5 or 5.50."
     },
     "heading": {
         "bug-report-thanks": "Thank you!",
@@ -81,7 +101,9 @@
         "people": "People",
         "report-bug": "Report a bug",
         "share": "Share",
-        "something-went-wrong": "Something went wrong"
+        "something-went-wrong": "Something went wrong",
+        "review": "Review your entries",
+        "wizard-invalid": "Broken assistant"
     },
     "label": {
         "access-private": "Private",
@@ -132,7 +154,15 @@
         "staged-cards": "Scanned cards",
         "username": "Username",
         "version": "Version {{version}}",
-        "version-warning": "Early version {{version}} – bugs and data loss are still possible."
+        "version-warning": "Early version {{version}} – bugs and data loss are still possible.",
+        "no": "No",
+        "off": "Off",
+        "on": "On",
+        "review": "Review",
+        "secret-not-set": "Not set",
+        "secret-set": "Set",
+        "step-x-of-y": "Step {{current}} of {{total}}",
+        "yes": "Yes"
     },
     "toast": {
         "account-locked": "Your account is locked.",

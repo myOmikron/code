@@ -179,7 +179,8 @@
         "life-no-conflicts": "Noch keine wiederhergestellten Verläufe vorhanden.",
         "life-branch-independent": "Dieser Verlauf bleibt getrennt von der laufenden Aufzeichnung. Er verändert weder Leben auf dem aktiven Gerät noch das Turnierergebnis.",
         "life-takeover-changed": "Der gespeicherte Stand hat sich geändert. Prüfe ihn erneut, bevor du die Übernahme bestätigst.",
-        "life-history-tab-lock-unavailable": "Dieser Browser kann Aufzeichnungstabs nicht sicher koordinieren. Du kannst den gespeicherten Verlauf ansehen und Ergebnisse weiterhin melden."
+        "life-history-tab-lock-unavailable": "Dieser Browser kann Aufzeichnungstabs nicht sicher koordinieren. Du kannst den gespeicherten Verlauf ansehen und Ergebnisse weiterhin melden.",
+        "create-tournament": "In drei Schritten zum Turnier. Bis zum Start der ersten Runde lässt sich alles noch ändern."
     },
     "error": {
         "all-rounds-paired": "Alle Schweizer Runden sind ausgelost.",
