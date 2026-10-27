@@ -4,9 +4,10 @@ import { StrictMode } from "react";
 import { ToastContainer } from "react-toastify";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
-import { Skeleton } from "components";
+import { Skeleton, WizardFieldTypesProvider } from "components";
 import "react-toastify/dist/ReactToastify.css";
 import { registerSW } from "virtual:pwa-register";
+import { wizardFieldTypes, wizardIcons } from "src/wizards/field-types";
 
 // How often an app that stays open looks for a new release
 const UPDATE_INTERVAL = 30 * 60 * 1000;
@@ -130,7 +131,9 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     <StrictMode>
         <ToastContainer position={"bottom-right"} toastClassName={"toast-message"} closeOnClick={true} />
         <QueryClientProvider client={queryClient}>
-            <RouterProvider router={router} />
+            <WizardFieldTypesProvider types={wizardFieldTypes} icons={wizardIcons} accent={"lime"}>
+                <RouterProvider router={router} />
+            </WizardFieldTypesProvider>
         </QueryClientProvider>
     </StrictMode>,
 );

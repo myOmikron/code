@@ -1,0 +1,50 @@
+{
+    "label": {
+        "description": "Description",
+        "entered-afterwards": "Enter afterwards",
+        "entry-fee": "Entry fee",
+        "format": "Format",
+        "location": "Location",
+        "name": "Name",
+        "participant-limit": "Participant limit",
+        "round-minutes": "Round timer",
+        "self-sign-up": "Self sign-up",
+        "starts-at": "Starts",
+        "step-game": "Gameplay",
+        "step-general": "General",
+        "step-registration": "Registration",
+        "visibility": "Visibility",
+        "visibility-private": "Private",
+        "visibility-public": "Public",
+        "visibility-unlisted": "By link"
+    },
+    "description": {
+        "description": "What players should know beforehand, e.g. prizes or house rules.",
+        "entered-afterwards": "For a tournament already played on paper: the date may lie in the past, organizers enter every pairing and result themselves, players report nothing.",
+        "entry-fee": "Leave empty if taking part is free. With an entry fee, only Participants an Organizer marked paid are paired.",
+        "format": "Leave empty when any format is allowed.",
+        "participant-limit": "Leave empty for no limit. Holds back self sign-up only; organizers can still add players beyond it.",
+        "round-minutes": "Minutes per round. The timer runs from the start of every round; leave empty for no timer.",
+        "self-sign-up": "Players with an account sign up themselves until the first round starts.",
+        "step-game": "Format, table, ruleset and top cut.",
+        "step-general": "The tournament's name, start and place.",
+        "step-registration": "Who sees the tournament and how players join.",
+        "visibility": "Public: Anyone finds the tournament in the overview. By link: Anyone with the link sees the tournament. Private: Only you, your co-organizers and the players see the tournament."
+    },
+    "error": {
+        "best-of-mismatch": "Best of applies to two players at a table only, and there it must be chosen.",
+        "entry-fee-invalid": "Enter an amount above zero, e.g. 5 or 5.50.",
+        "participant-limit-too-small": "A tournament needs at least 2 players.",
+        "round-minutes-out-of-range": "The round timer runs from 1 to 240 minutes.",
+        "ruleset-mismatch": "This ruleset does not fit the table size.",
+        "self-sign-up-needs-visibility": "Nobody else sees a private tournament, so nobody can sign up for it.",
+        "table-size-out-of-range": "A table seats 2 to 5 players.",
+        "top-cut-best-of-mismatch": "Choose the match length of the top cut.",
+        "top-cut-mismatch": "Top 4 and top 8 need 2 players at a table, a final needs more.",
+        "unknown-format": "This format does not exist."
+    },
+    "heading": {
+        "limits": "Participation",
+        "schedule": "Schedule"
+    }
+}

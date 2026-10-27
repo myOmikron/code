@@ -1,7 +1,10 @@
 {
     "accessibility": {
         "card-image": "{{name}}, {{setName}}",
-        "remove-bug-report-image": "Bild entfernen"
+        "remove-bug-report-image": "Bild entfernen",
+        "country-code": "Ländervorwahl",
+        "progress": "Fortschritt",
+        "step-error": "Muss korrigiert werden"
     },
     "button": {
         "add-bug-report-image": "Bild hinzufügen",
@@ -38,7 +41,12 @@
         "to-scanner": "Zum Scanner",
         "toggle-watch-finish": "Foil / Non-Foil",
         "try-again": "Nochmal versuchen",
-        "undo": "Rückgängig"
+        "undo": "Rückgängig",
+        "back": "Zurück",
+        "edit": "Bearbeiten",
+        "next": "Weiter",
+        "replace": "Ersetzen",
+        "submit": "Absenden"
     },
     "description": {
         "access-ends-link": "Der aktuelle Link funktioniert dann endgültig nicht mehr.",
@@ -55,7 +63,8 @@
         "install-ios-add": "Wähle „Zum Home-Bildschirm“.",
         "install-ios-share": "Tippe unten in der Leiste auf „Teilen“.",
         "report-bug": "Beschreib, was nicht funktioniert hat. Was die App dabei mitbekommen hat, geht mit, damit wir den Fehler finden.",
-        "username": "Wird öffentlich angezeigt. 3 bis 32 Zeichen; erlaubt sind Buchstaben, Ziffern, Unterstrich, Bindestrich und Punkt, das erste Zeichen muss ein Buchstabe oder eine Ziffer sein."
+        "username": "Wird öffentlich angezeigt. 3 bis 32 Zeichen; erlaubt sind Buchstaben, Ziffern, Unterstrich, Bindestrich und Punkt, das erste Zeichen muss ein Buchstabe oder eine Ziffer sein.",
+        "wizard-invalid": "Der Assistent „{{wizard}}“ ist fehlerhaft und kann nicht angezeigt werden. Bitte melde ihn uns."
     },
     "error": {
         "bug-report-failed": "Das Senden hat nicht geklappt. Dein Text bleibt hier, versuch es gleich nochmal.",
@@ -70,7 +79,18 @@
         "username-charset": "Erlaubt sind nur Buchstaben, Ziffern, Unterstrich, Bindestrich und Punkt.",
         "username-length": "Der Benutzername muss 3 bis 32 Zeichen lang sein.",
         "username-start": "Das erste Zeichen muss ein Buchstabe oder eine Ziffer sein.",
-        "username-taken": "Dieser Benutzername ist schon vergeben. Wähle einen anderen."
+        "username-taken": "Dieser Benutzername ist schon vergeben. Wähle einen anderen.",
+        "invalid-number": "Gib eine Zahl ein.",
+        "invalid-integer": "Gib eine ganze Zahl ein.",
+        "invalid-option": "Wähle eine der Optionen.",
+        "invalid-phone": "Gib eine gültige Telefonnummer ein.",
+        "max": "Darf höchstens {{max}} sein.",
+        "max-length": "Darf höchstens {{max}} Zeichen lang sein.",
+        "min": "Muss mindestens {{min}} sein.",
+        "min-length": "Muss mindestens {{min}} Zeichen lang sein.",
+        "required": "Dieses Feld ist erforderlich.",
+        "invalid-datetime": "Gib ein Datum mit Uhrzeit ein.",
+        "invalid-entry-fee": "Gib einen Betrag über null ein, z. B. 5 oder 5,50."
     },
     "heading": {
         "bug-report-thanks": "Danke!",
@@ -81,7 +101,9 @@
         "people": "Personen",
         "report-bug": "Fehler melden",
         "share": "Teilen",
-        "something-went-wrong": "Da ging etwas schief"
+        "something-went-wrong": "Da ging etwas schief",
+        "review": "Eingaben überprüfen",
+        "wizard-invalid": "Fehlerhafter Assistent"
     },
     "label": {
         "access-private": "Privat",
@@ -132,7 +154,15 @@
         "staged-cards": "Gescannte Karten",
         "username": "Benutzername",
         "version": "Version {{version}}",
-        "version-warning": "Frühe Version {{version}} – Fehler und Datenverlust sind noch möglich."
+        "version-warning": "Frühe Version {{version}} – Fehler und Datenverlust sind noch möglich.",
+        "no": "Nein",
+        "off": "Aus",
+        "on": "An",
+        "review": "Überprüfen",
+        "secret-not-set": "Nicht gesetzt",
+        "secret-set": "Gesetzt",
+        "step-x-of-y": "Schritt {{current}} von {{total}}",
+        "yes": "Ja"
     },
     "toast": {
         "account-locked": "Dein Konto ist gesperrt.",
