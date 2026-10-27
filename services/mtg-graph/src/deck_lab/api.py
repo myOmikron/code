@@ -15,6 +15,7 @@ from typing import Annotated
 import structlog
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
+from opentelemetry import trace
 from pydantic import AfterValidator, BaseModel, Field
 
 from .cache import diagnostics_cache, facets_cache, suggestions_cache
@@ -46,7 +47,7 @@ from .solver import DEFAULT_TIME_LIMIT, FillResult, SolverBusy
 from .solver import fill_deck as run_fill
 from .spellbook import deck_combos as run_combos
 from .suggestions import SuggestionReport, suggest
-from .tracing import TELEMETRY, log_trace_ids, start_tracing
+from .tracing import TELEMETRY, background_job, log_trace_ids, start_tracing
 from .type_targets import PRIMARY_TYPES
 from .vocabulary import Bucket
 
@@ -250,6 +251,7 @@ log_trace_ids()
 log = structlog.get_logger(__name__)
 
 
+@background_job("startup.warmup")
 def _startup_warmup() -> None:
     """Pay the corpus scans at boot rather than inside the first request.
 
@@ -485,7 +487,9 @@ def _schedule_warm(oracle_id: str) -> str:
 
     if oracle_id not in _warming:
         _warming.add(oracle_id)
+        scheduled_by = trace.get_current_span().get_span_context()
 
+        @background_job("warm", scheduled_by, {"commander_oracle_id": oracle_id})
         def work() -> None:
             try:
                 from .edhrec import ingest_commander

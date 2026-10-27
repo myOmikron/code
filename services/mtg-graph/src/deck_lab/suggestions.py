@@ -30,6 +30,7 @@ would make the measurement harder to read, not better.
 
 from __future__ import annotations
 
+import contextvars
 from collections.abc import Iterable, Mapping
 from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass, field
@@ -48,6 +49,7 @@ from .composition import (
 )
 from .poolquery import PoolFilter
 from .power import weight_within_group
+from .tracing import deck_span
 from .type_targets import CEDH_MIN_DECKS
 from .vocabulary import Resource, Role
 
@@ -2752,6 +2754,7 @@ def effective_commanders(primary: str | None, extras: list[str] | None) -> list[
     return out
 
 
+@deck_span("suggest")
 def suggest(
     deck_oracle_ids: list[str],
     deck_card_names: list[str],
@@ -3008,7 +3011,9 @@ def suggest(
     if include_combos and "combo_completion" in enabled and combo_scale > 0.0:
         from .spellbook import deck_combos
 
-        combo_future = _SPELLBOOK_POOL.submit(deck_combos, deck_oracle_ids, deck_card_names or None)
+        combo_future = _SPELLBOOK_POOL.submit(
+            contextvars.copy_context().run, deck_combos, deck_oracle_ids, deck_card_names or None
+        )
 
     # --- Channel 1: EDHREC ------------------------------------------------
     # Fetched on demand. The plan always called for lazy per-commander loading;

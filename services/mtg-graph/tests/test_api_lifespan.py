@@ -66,3 +66,14 @@ def test_warmup_can_be_switched_off(monkeypatch):
         pass
 
     assert called == []
+
+
+def test_warmup_is_a_trace_of_its_own(monkeypatch, spans):
+    monkeypatch.setattr(settings, "warmup_on_start", True)
+
+    with TestClient(app):
+        pass
+
+    [warmup] = [s for s in spans.get_finished_spans() if s.name == "startup.warmup"]
+    assert warmup.parent is None
+    assert not warmup.links

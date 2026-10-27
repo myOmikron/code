@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Iterator
+from collections.abc import Callable, Iterable, Iterator
 from contextlib import contextmanager
 from threading import Lock
 from typing import Any
 
 import structlog
-from neo4j import Driver, GraphDatabase
+from neo4j import Driver, GraphDatabase, ManagedTransaction, Result, Session
+from opentelemetry import trace
+from opentelemetry.trace import SpanKind
 
 from .config import settings
 from .models import Card
@@ -46,9 +48,87 @@ SET c += row
 _driver: Driver | None = None
 _driver_lock = Lock()
 
+_tracer = trace.get_tracer(__name__)
+
 
 @contextmanager
-def driver() -> Iterator[Driver]:
+def _query_span(query: Any, database: str | None) -> Iterator[None]:
+    """A client span around one query: its Cypher text, never its parameters.
+
+    The parameters carry request data, decklists among it. The span ends when
+    the server has answered the query, before its records are consumed.
+    """
+    attributes = {"db.system.name": "neo4j", "db.query.text": str(getattr(query, "text", query))}
+    if database:
+        attributes["db.namespace"] = database
+    with _tracer.start_as_current_span("neo4j", kind=SpanKind.CLIENT, attributes=attributes):
+        yield
+
+
+class _TracedTransaction:
+    """A managed transaction whose queries are traced."""
+
+    def __init__(self, tx: ManagedTransaction, database: str | None) -> None:
+        self._tx = tx
+        self._database = database
+
+    def run(self, query: Any, parameters: dict[str, Any] | None = None, **kwargs: Any) -> Result:
+        with _query_span(query, self._database):
+            return self._tx.run(query, parameters, **kwargs)
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._tx, name)
+
+
+class _TracedSession:
+    """A session whose queries are traced, directly or in a managed transaction."""
+
+    def __init__(self, session: Session, database: str | None) -> None:
+        self._session = session
+        self._database = database
+
+    def __enter__(self) -> _TracedSession:
+        self._session.__enter__()
+        return self
+
+    def __exit__(self, *exc_info: Any) -> None:
+        self._session.__exit__(*exc_info)
+
+    def run(self, query: Any, parameters: dict[str, Any] | None = None, **kwargs: Any) -> Result:
+        with _query_span(query, self._database):
+            return self._session.run(query, parameters, **kwargs)
+
+    def execute_read(self, work: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
+        return self._session.execute_read(self._traced(work), *args, **kwargs)
+
+    def execute_write(self, work: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
+        return self._session.execute_write(self._traced(work), *args, **kwargs)
+
+    def _traced(self, work: Callable[..., Any]) -> Callable[..., Any]:
+        def traced(tx: ManagedTransaction, *args: Any, **kwargs: Any) -> Any:
+            return work(_TracedTransaction(tx, self._database), *args, **kwargs)
+
+        return traced
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._session, name)
+
+
+class TracedDriver:
+    """The shared driver, handing out sessions whose queries are traced."""
+
+    def __init__(self, driver: Driver) -> None:
+        self._driver = driver
+
+    def session(self, **config: Any) -> _TracedSession:
+        return _TracedSession(self._driver.session(**config), config.get("database"))
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._driver, name)
+
+
+@contextmanager
+def driver() -> Iterator[TracedDriver]:
     """Yield the process-wide driver.
 
     One driver per process: a Driver owns a connection pool, and the previous
@@ -56,6 +136,8 @@ def driver() -> Iterator[Driver]:
     every query — /suggestions makes ~16 of them. Still a context manager so
     the existing `with driver()` call sites keep their shape; the pool
     deliberately outlives the block.
+
+    Every query run through it is a client span (see `_query_span`).
     """
     global _driver
     if _driver is None:
@@ -65,7 +147,7 @@ def driver() -> Iterator[Driver]:
                     settings.neo4j_uri,
                     auth=(settings.neo4j_user, settings.neo4j_password),
                 )
-    yield _driver
+    yield TracedDriver(_driver)
 
 
 def close_driver() -> None:

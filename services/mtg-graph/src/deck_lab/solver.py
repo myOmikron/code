@@ -37,6 +37,7 @@ from .suggestions import (
     Phrase,
     phrase,
 )
+from .tracing import deck_span, tracer
 from .vocabulary import BUCKET_ROLES, Bucket, Role
 
 log = structlog.get_logger(__name__)
@@ -334,7 +335,16 @@ def solve_fill(
     solver = cp_model.CpSolver()
     solver.parameters.max_time_in_seconds = time_limit
     solver.parameters.num_workers = settings.solver_num_workers
-    status = solver.Solve(model)
+    with tracer.start_as_current_span(
+        "solver.solve", attributes={"solver.candidates": len(candidates), "solver.slots": slots}
+    ) as span:
+        status = solver.Solve(model)
+        span.set_attributes(
+            {
+                "solver.status": solver.StatusName(status),
+                "solver.wall_time_ms": round(solver.WallTime() * 1000, 1),
+            }
+        )
 
     if status not in (cp_model.OPTIMAL, cp_model.FEASIBLE):
         return FillResult(
@@ -394,6 +404,7 @@ def solve_fill(
     )
 
 
+@deck_span("fill")
 def fill_deck(
     deck_oracle_ids: list[str],
     deck_card_names: list[str],
