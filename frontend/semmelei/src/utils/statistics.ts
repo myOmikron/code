@@ -1,35 +1,4 @@
-/** Status of an order, as in the generated `OrderStatus` */
-export type StatisticsOrderStatus = "Open" | "Ready" | "PickedUp" | "Cancelled";
-
-/** One order position as the Admin statistics endpoint returns it (#352) */
-export type StatisticsPosition = {
-    /** The order, to count orders */
-    order: string;
-    /** Point in time the order was placed (ISO datetime) */
-    ordered_at: string;
-    /** The order's status */
-    status: StatisticsOrderStatus;
-    /** Effective pickup date of the pickup day (`YYYY-MM-DD`) */
-    pickup_date: string;
-    /** The pickup day's Deadline (ISO datetime) */
-    deadline: string;
-    /** Whether the pickup day has been Dispatched */
-    dispatched: boolean;
-    /** Whether the pickup day is Called Off */
-    called_off: boolean;
-    /** Item reference, null when the Item was deleted */
-    item?: string | null;
-    /** The Item's current name, null when deleted */
-    item_name?: string | null;
-    /** The Item's current category */
-    category?: { uuid: string; name: string } | null;
-    /** Name snapshot at order time */
-    name: string;
-    /** Units ordered */
-    quantity: number;
-    /** Price snapshot in euro cents */
-    price_cents: number;
-};
+import { PublicCategory, StatisticsPosition } from "src/api/generated";
 
 /** What the charts count */
 export type Measure = "units" | "orders" | "orderValue";
@@ -102,7 +71,7 @@ export type ItemRow = {
     /** The Item was deleted ("gelöscht") */
     deleted: boolean;
     /** The Item's current category */
-    category: { uuid: string; name: string } | null;
+    category: PublicCategory | null;
     /** Units of orders that were not cancelled */
     units: number;
     /** Orders that were not cancelled and contain the Item */
@@ -130,7 +99,7 @@ export type Statistics = {
     /** Keys of the top 5 Items of the period in the current measure */
     topItems: string[];
     /** Categories of all positions, to choose the category filter from, by name */
-    categories: { uuid: string; name: string }[];
+    categories: PublicCategory[];
 };
 
 const TIME_ZONE = "Europe/Berlin";
@@ -520,8 +489,8 @@ function deadlineDistance(positions: StatisticsPosition[], options: ChartOptions
  *
  * @returns each category once, by name
  */
-function categories(positions: StatisticsPosition[]): { uuid: string; name: string }[] {
-    const byUuid = new Map<string, { uuid: string; name: string }>();
+function categories(positions: StatisticsPosition[]): PublicCategory[] {
+    const byUuid = new Map<string, PublicCategory>();
     for (const { category } of positions) {
         if (category) byUuid.set(category.uuid, { uuid: category.uuid, name: category.name });
     }
