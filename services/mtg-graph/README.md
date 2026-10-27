@@ -109,6 +109,12 @@ Startup warms the three IDF caches and the facet list (`WARMUP_ON_START`,
 default on). Each step is fail-soft: an unreachable graph at boot costs a slow
 first request, not a dead worker.
 
+`OTEL_EXPORTER_OTLP_ENDPOINT` exports traces over OTLP/gRPC as the Rust
+services do (service name `OTEL_SERVICE_NAME`, default `mtg-graph`); empty
+exports nothing. A request carrying a `traceparent` continues that trace,
+`/health` is never traced, and log lines inside a span carry its `trace_id`
+and `span_id`. `src/deck_lab/tracing.py` holds the setup.
+
 ## Things that will bite you
 
 **Scryfall bulk data is gzipped JSONL, not a JSON array.** The entry key is
