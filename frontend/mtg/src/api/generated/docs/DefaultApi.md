@@ -186,6 +186,7 @@ All URIs are relative to *http://localhost*
 | [**setPushSettings**](DefaultApi.md#setpushsettingsoperation) | **PUT** /api/frontend/v1/accounts/me/push | Turn tournament pushes on or off for every device of the logged-in account |
 | [**setTournamentMatchResult**](DefaultApi.md#settournamentmatchresult) | **PUT** /api/frontend/v1/tournaments/{tournament}/matches/{match}/result | Set or correct the Result of a Match, as an Organizer |
 | [**setTournamentParticipantPaid**](DefaultApi.md#settournamentparticipantpaid) | **PUT** /api/frontend/v1/tournaments/{tournament}/participants/{participant}/paid | Mark a Participant paid or unpaid, as an Organizer |
+| [**setTournamentRoundTimer**](DefaultApi.md#settournamentroundtimer) | **PUT** /api/frontend/v1/tournaments/{tournament}/rounds/{number}/timer | Pause, resume, adjust or reset the round timer of a running Round, as an Organizer |
 | [**setTournamentSwissRounds**](DefaultApi.md#settournamentswissrounds) | **PUT** /api/frontend/v1/tournaments/{tournament}/swiss-rounds | Set how many Swiss Rounds are played, as an Organizer |
 | [**setVisibilityCollection**](DefaultApi.md#setvisibilitycollection) | **POST** /api/frontend/v1/collections/{collection} | Change who may see a collection |
 | [**setVisibilityDeck**](DefaultApi.md#setvisibilitydeck) | **POST** /api/frontend/v1/decks/{deck} | Change who may see a deck |
@@ -13169,6 +13170,82 @@ example().catch(console.error);
 ### Return type
 
 [**FormErrorResponseForSetPaidErrors**](FormErrorResponseForSetPaidErrors.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## setTournamentRoundTimer
+
+> SetTournamentRoundTimer200Response setTournamentRoundTimer(tournament, number, SetRoundTimerRequest)
+
+Pause, resume, adjust or reset the round timer of a running Round, as an Organizer
+
+Pause, resume, adjust or reset the round timer of a running Round, as an Organizer  Answers the timer afterwards; everybody following the Tournament hears of it.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { SetTournamentRoundTimerRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    tournament: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // number
+    number: 56,
+    // SetRoundTimerRequest (optional)
+    SetRoundTimerRequest: ...,
+  } satisfies SetTournamentRoundTimerRequest;
+
+  try {
+    const data = await api.setTournamentRoundTimer(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **tournament** | `string` |  | [Defaults to `undefined`] |
+| **number** | `number` |  | [Defaults to `undefined`] |
+| **SetRoundTimerRequest** | [SetRoundTimerRequest](SetRoundTimerRequest.md) |  | [Optional] |
+
+### Return type
+
+[**SetTournamentRoundTimer200Response**](SetTournamentRoundTimer200Response.md)
 
 ### Authorization
 

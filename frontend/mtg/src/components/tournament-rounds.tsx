@@ -42,6 +42,7 @@ import { useTournamentLabels } from "src/components/tournament-labels";
 import { TournamentPairingsEditor } from "src/components/tournament-pairings-editor";
 import { TournamentResultDialog } from "src/components/tournament-result-dialog";
 import { TournamentRoundClock } from "src/components/tournament-round-clock";
+import { TournamentRoundTimerControls } from "src/components/tournament-round-timer-controls";
 import { TournamentWinnerDialog } from "src/components/tournament-winner-dialog";
 import { isFormError } from "src/utils/error";
 import { clockSkew } from "src/utils/round-clock";
@@ -369,6 +370,7 @@ export function TournamentRounds({ tournament, load, onTournamentChanged, me = n
                         onReport={setReporting}
                         onDispute={(played) => void dispute(played)}
                         onTakeBack={takeBack?.number === round.number ? () => setTakingBack(true) : undefined}
+                        onTimerChanged={organizer && !over ? reload : undefined}
                     />
                 ),
             )}
@@ -599,6 +601,8 @@ type RoundTableProps = {
     onDispute: (played: MatchResponse) => void;
     /** Called when the reader wants the Round taken back; only for a Round that can be */
     onTakeBack?: () => void;
+    /** Called after an Organizer changed the round timer; only for a reader who may */
+    onTimerChanged?: () => Promise<void>;
 };
 
 /**
@@ -619,6 +623,7 @@ function RoundTable({
     onReport,
     onDispute,
     onTakeBack,
+    onTimerChanged,
 }: RoundTableProps) {
     const [t] = useTranslation("tournament");
     const labels = useTournamentLabels();
@@ -666,6 +671,14 @@ function RoundTable({
             {round.state === RoundState.Previewed && <Text>{t("description.round-preview")}</Text>}
             {round.timer != null && (
                 <TournamentRoundClock timer={round.timer} ruleset={tournament.ruleset} skewMs={skewMs} />
+            )}
+            {round.timer != null && round.state === RoundState.Running && onTimerChanged !== undefined && (
+                <TournamentRoundTimerControls
+                    tournamentUuid={tournament.uuid}
+                    round={round.number}
+                    timer={round.timer}
+                    onChanged={onTimerChanged}
+                />
             )}
             <Table striped={true}>
                 <TableHead>

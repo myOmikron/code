@@ -14,6 +14,10 @@ describe("topicsOf", () => {
         expect(topicsOf({ kind: "RoundStarted", round: 1 })).toEqual(["rounds", "tournament"]);
     });
 
+    it("refetches the Rounds when an Organizer changed the round timer", () => {
+        expect(topicsOf({ kind: "TimerChanged", round: 1 })).toEqual(["rounds"]);
+    });
+
     it("refetches the Participants and the Rounds when the roster changed, since a preview goes with it", () => {
         expect(topicsOf({ kind: "ParticipantsChanged" })).toEqual(["participants", "rounds"]);
     });

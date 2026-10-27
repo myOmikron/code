@@ -42,6 +42,7 @@ import {
     SetAdvisorSettingsRequest,
     SetDeckRuleZeroRequest,
     SetResultRequest,
+    SetRoundTimerRequest,
     SignupRequest,
     SplitCollectionEntryRequest,
     SubscribePushDeviceRequest,
@@ -679,6 +680,8 @@ export const Api = {
             // The latest ended Round runs again, with its Results.
             takeBack: async (tournament: UUID, number: number) =>
                 handleError(defaultApi.takeBackTournamentRound({ tournament, number })),
+            setTimer: async (tournament: UUID, number: number, req: SetRoundTimerRequest) =>
+                handleError(defaultApi.setTournamentRoundTimer({ tournament, number, SetRoundTimerRequest: req })),
             // Also corrects a Result, at any time once the Round started.
             setResult: async (tournament: UUID, match: UUID, req: SetResultRequest) =>
                 handleError(defaultApi.setTournamentMatchResult({ tournament, match, SetResultRequest: req })),

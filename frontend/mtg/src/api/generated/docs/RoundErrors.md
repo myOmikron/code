@@ -1,7 +1,7 @@
 
 # RoundErrors
 
-Why a Round could not be paired, started, ended or discarded
+Why a Round could not be paired, started, ended or discarded, or its round timer changed
 
 ## Properties
 
@@ -9,6 +9,7 @@ Name | Type
 ------------ | -------------
 `all_rounds_paired` | boolean
 `later_round_started` | boolean
+`no_timer` | boolean
 `not_ended` | boolean
 `not_previewed` | boolean
 `not_running` | boolean
