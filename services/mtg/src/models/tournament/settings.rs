@@ -198,6 +198,8 @@ pub struct SettingsRefusal {
     pub entry_fee_not_positive: bool,
     /// The entry fee's currency is not three capital letters
     pub unknown_currency: bool,
+    /// Check-in asks for a Registered deck in a Limited format, which has no decks
+    pub check_in_deck_for_limited: bool,
 }
 
 impl TournamentSettings {
@@ -228,6 +230,8 @@ impl TournamentSettings {
             refusal.best_of_mismatch = (table_size.get() == 2) != raw.best_of.is_some();
             refusal.top_cut_mismatch = raw.top_cut.is_some_and(|top_cut| !top_cut.fits(table_size));
         }
+        refusal.check_in_deck_for_limited = raw.check_in == CheckIn::RequiredWithDeck
+            && raw.format.as_deref().is_some_and(is_limited);
         let bracket = raw.top_cut.is_some_and(|top_cut| top_cut != TopCut::Final);
         refusal.top_cut_best_of_mismatch = bracket != raw.top_cut_best_of.is_some();
         if let Some(fee) = &raw.entry_fee {
@@ -383,6 +387,28 @@ mod tests {
                 changes,
                 "{check_in:?}"
             );
+        }
+    }
+
+    #[test]
+    fn a_limited_tournament_checks_in_without_decks() {
+        for (format, check_in, valid) in [
+            ("draft", CheckIn::Required, true),
+            ("sealed", CheckIn::RequiredWithDeck, false),
+            ("modern", CheckIn::RequiredWithDeck, true),
+        ] {
+            let settings = RawTournamentSettings {
+                format: Some(MaxStr::new(format.to_string()).expect("short")),
+                check_in,
+                ..raw(Visibility::Public)
+            };
+            match TournamentSettings::check(settings) {
+                Ok(_) => assert!(valid, "{format} {check_in:?}"),
+                Err(refusal) => {
+                    assert!(!valid, "{format} {check_in:?}");
+                    assert!(refusal.check_in_deck_for_limited, "{format} {check_in:?}");
+                }
+            }
         }
     }
 

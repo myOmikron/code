@@ -8843,6 +8843,10 @@ export interface TournamentSettingsErrors {
      */
     best_of_mismatch: boolean;
     /**
+     * Check-in asks for a Registered deck in Draft or Sealed, which have no decks
+     */
+    check_in_deck_for_limited: boolean;
+    /**
      * The entry fee is zero or less
      */
     entry_fee_not_positive: boolean;
@@ -8904,7 +8908,7 @@ export interface TournamentSettingsRequest {
     /**
      * Whether Participants check in before they are paired, `Off` when left out
      * 
-     * With `RequiredWithDeck` an Account checks in only with a Registered deck. Changing it is refused after the first Round started.
+     * With `RequiredWithDeck` an Account checks in only with a Registered deck; not in Draft or Sealed. Changing it is refused after the first Round started.
      */
     check_in?: CheckIn;
     /**

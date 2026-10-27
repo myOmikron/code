@@ -421,3 +421,18 @@ fn the_check_in_rule_is_fixed_once_the_first_round_started() {
         assert_eq!(refused["error"]["rules_locked"], true, "{refused}");
     });
 }
+
+#[test]
+fn a_limited_tournament_does_not_ask_for_decks_at_check_in() {
+    run(async {
+        let mut event = Event::new("One", 0).await;
+        event.settings["format"] = json!("draft");
+        let refused = require(&mut event, "RequiredWithDeck").await;
+        assert_eq!(
+            refused["error"]["check_in_deck_for_limited"], true,
+            "{refused}"
+        );
+        let body = require(&mut event, "Required").await;
+        assert_eq!(body["check_in"], "Required", "{body}");
+    });
+}

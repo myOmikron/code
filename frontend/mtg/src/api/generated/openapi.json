@@ -27360,6 +27360,10 @@
                         "description": "Best-of is missing at Table size 2 or given above it",
                         "type": "boolean"
                     },
+                    "check_in_deck_for_limited": {
+                        "description": "Check-in asks for a Registered deck in Draft or Sealed, which have no decks",
+                        "type": "boolean"
+                    },
                     "entry_fee_not_positive": {
                         "description": "The entry fee is zero or less",
                         "type": "boolean"
@@ -27411,6 +27415,7 @@
                 },
                 "required": [
                     "best_of_mismatch",
+                    "check_in_deck_for_limited",
                     "entry_fee_not_positive",
                     "participant_limit_too_small",
                     "round_minutes_out_of_range",
@@ -27439,7 +27444,7 @@
                         ]
                     },
                     "check_in": {
-                        "description": "Whether Participants check in before they are paired, `Off` when left out\n\nWith `RequiredWithDeck` an Account checks in only with a Registered deck. Changing it is refused after the first Round started.",
+                        "description": "Whether Participants check in before they are paired, `Off` when left out\n\nWith `RequiredWithDeck` an Account checks in only with a Registered deck; not in Draft or Sealed. Changing it is refused after the first Round started.",
                         "default": "Off",
                         "allOf": [
                             {
