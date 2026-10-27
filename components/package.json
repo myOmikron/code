@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     ".": "./lib/main.ts",
+    "./testing": "./lib/testing.ts",
     "./styles": "./styles.css"
   },
   "scripts": {
@@ -12,23 +13,26 @@
     "check": "tsc -b ./tsconfig.lib.json",
     "lint": "eslint .",
     "format": "prettier --config .prettierrc.json --write lib/ test/",
-    "format-check": "prettier --config .prettierrc.json --check lib/ test/"
+    "format-check": "prettier --config .prettierrc.json --check lib/ test/",
+    "test": "vitest run"
   },
   "peerDependencies": {
     "@headlessui/react": "catalog:dependencies",
     "@heroicons/react": "catalog:dependencies",
     "@tanstack/react-form": "catalog:dependencies",
     "@tanstack/react-router": "catalog:dependencies",
+    "@zxcvbn-ts/core": "catalog:dependencies",
+    "@zxcvbn-ts/language-common": "catalog:dependencies",
+    "@zxcvbn-ts/language-de": "catalog:dependencies",
+    "@zxcvbn-ts/language-en": "catalog:dependencies",
     "clsx": "catalog:dependencies",
+    "country-flag-icons": "catalog:dependencies",
+    "libphonenumber-js": "catalog:dependencies",
     "motion": "catalog:dependencies",
     "react": "catalog:dependencies",
     "react-dom": "catalog:dependencies",
     "react-i18next": "catalog:dependencies",
     "react-toastify": "catalog:dependencies",
-    "@zxcvbn-ts/core": "catalog:dependencies",
-    "@zxcvbn-ts/language-common": "catalog:dependencies",
-    "@zxcvbn-ts/language-de": "catalog:dependencies",
-    "@zxcvbn-ts/language-en": "catalog:dependencies",
     "tailwindcss": "catalog:devDependencies"
   },
   "devDependencies": {
@@ -38,14 +42,25 @@
     "@tailwindcss/vite": "catalog:devDependencies",
     "@tanstack/react-form": "catalog:dependencies",
     "@tanstack/react-router": "catalog:dependencies",
+    "@testing-library/dom": "catalog:devDependencies",
+    "@testing-library/react": "catalog:devDependencies",
+    "@testing-library/user-event": "catalog:devDependencies",
     "@types/node": "catalog:devDependencies",
     "@types/react": "catalog:devDependencies",
     "@types/react-dom": "catalog:devDependencies",
     "@vitejs/plugin-react": "6.1.2",
+    "@zxcvbn-ts/core": "catalog:dependencies",
+    "@zxcvbn-ts/language-common": "catalog:dependencies",
+    "@zxcvbn-ts/language-de": "catalog:dependencies",
+    "@zxcvbn-ts/language-en": "catalog:dependencies",
     "clsx": "catalog:dependencies",
+    "country-flag-icons": "catalog:dependencies",
     "eslint": "catalog:devDependencies",
     "eslint-plugin-jsdoc": "catalog:devDependencies",
     "globals": "17.13.0",
+    "i18next": "catalog:dependencies",
+    "jsdom": "catalog:devDependencies",
+    "libphonenumber-js": "catalog:dependencies",
     "motion": "catalog:dependencies",
     "prettier": "catalog:devDependencies",
     "prettier-plugin-tailwindcss": "catalog:devDependencies",
@@ -53,14 +68,10 @@
     "react-dom": "catalog:dependencies",
     "react-i18next": "catalog:dependencies",
     "react-toastify": "catalog:dependencies",
-    "@zxcvbn-ts/core": "catalog:dependencies",
-    "@zxcvbn-ts/language-common": "catalog:dependencies",
-    "@zxcvbn-ts/language-de": "catalog:dependencies",
-    "@zxcvbn-ts/language-en": "catalog:dependencies",
     "tailwindcss": "catalog:devDependencies",
     "typescript": "catalog:devDependencies",
     "typescript-eslint": "catalog:devDependencies",
     "vite": "catalog:devDependencies",
-    "i18next": "catalog:dependencies"
+    "vitest": "catalog:devDependencies"
   }
 }

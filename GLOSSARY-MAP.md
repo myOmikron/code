@@ -2,6 +2,7 @@
 
 ## Contexts
 
+- [Components](./components/GLOSSARY.md): the shared frontend component library and its Wizard engine, guided multi-step forms the apps define as data
 - [Identity](./libs/galvyn-identity/GLOSSARY.md): how people prove who they are, shared by the services that sign people in
 - [mtg](./services/mtg/GLOSSARY.md): Accounts, their collections and decks, the Tournaments they run and play (as Owner, Co-organizer or Participant, with Registered decks copied from their decks), and the admin dashboard managing them
 - [semmelei](./services/semmelei/GLOSSARY.md): the Nachbarschaftshilfe's pre-order shop, its staff, and the News Posts Admins write for customers

@@ -98,6 +98,24 @@ Add the following `theme.js` script to your app entry point:
 })();
 ```
 
+## Wizards
+
+`Wizard` renders a guided, multi-step form from a definition that is pure data (see `GLOSSARY.md`,
+`docs/adr/0003-wizards-are-pure-data.md` and `docs/adr/0004-wizard-secrets-are-write-only.md`). To use it in an app:
+
+1. Wrap the app in `<WizardFieldTypesProvider types={...} icons={...}>`. Without own Field Types, pass
+   `standardWizardFieldTypes`; an app's own ones are added as `{ ...standardWizardFieldTypes, "my-type": myType }`.
+2. Define each Wizard with `defineWizard` in `src/wizards/<id>.wizard.ts`, its texts in the namespace
+   `wizard-<id>` (`public/locales/<language>/wizard-<id>.json`).
+3. Add the general keys of `lib/wizard/general-translation-keys.json` to the app's `translation.json`.
+4. Render it from a route whose search is `wizardSearchSchema`, passing `step`/`onStepChange`, `onSubmit`, `onDone` and
+   optionally a `WizardRunStore` to resume Wizard Runs.
+5. Validate every definition in CI with a test calling `testWizardDefinitions` from `components/testing`
+   (vitest only, it imports `vitest`).
+
+The default layout, `WizardStageLayout`, puts the steps on a `BrandSurface`, which takes its colors from the app's
+`--color-brand-*` ramp.
+
 ---
 
 ## Migrating from copied components
