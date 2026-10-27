@@ -15,7 +15,7 @@ import {
     Text,
 } from "components";
 import { Api } from "src/api/api";
-import { StatisticsPosition as ApiStatisticsPosition } from "src/api/generated";
+import { StatisticsPosition } from "src/api/generated";
 import { DeadlineChart } from "src/components/statistics/deadline-chart";
 import { IntakeChart, ZoomResetButton } from "src/components/statistics/intake-chart";
 import { ItemSelection } from "src/components/statistics/item-selection";
@@ -51,7 +51,7 @@ function Statistik() {
 
     const [period, setPeriod] = React.useState<Period>(() => quickPeriod("30d", Date.now()));
     const [zoom, setZoom] = React.useState<Period>();
-    const [positions, setPositions] = React.useState<ApiStatisticsPosition[]>();
+    const [positions, setPositions] = React.useState<StatisticsPosition[]>();
     const [measure, setMeasure] = React.useState<Measure>("units");
     const [segmentChoice, setSegmentChoice] = React.useState<SegmentSize | "auto">("auto");
     const [selection, setSelection] = React.useState<string[] | "top">("top");
@@ -113,17 +113,17 @@ function Statistik() {
                 <div className={"flex flex-col gap-2"}>
                     <Text className={"text-sm/6! font-medium"}>{t("label.measure")}</Text>
                     <div className={"flex flex-wrap gap-2"} role={"group"} aria-label={t("label.measure")}>
-                        {MEASURES.map((option) =>
-                            option === measure ? (
-                                <Button key={option} color={"blue"} aria-pressed={true}>
-                                    {t(MEASURE_LABELS[option])}
-                                </Button>
-                            ) : (
-                                <Button key={option} outline aria-pressed={false} onClick={() => setMeasure(option)}>
-                                    {t(MEASURE_LABELS[option])}
-                                </Button>
-                            ),
-                        )}
+                        {MEASURES.map((option) => (
+                            <Button
+                                key={option}
+                                color={"blue"}
+                                outline={option !== measure}
+                                aria-pressed={option === measure}
+                                onClick={() => setMeasure(option)}
+                            >
+                                {t(MEASURE_LABELS[option])}
+                            </Button>
+                        ))}
                     </div>
                 </div>
                 <Field className={"w-full sm:w-56"}>

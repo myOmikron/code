@@ -1,15 +1,8 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { CartesianGrid, ComposedChart, Tooltip, XAxis, YAxis } from "recharts";
+import { XAxis } from "recharts";
 import { ChartCard } from "src/components/statistics/chart-card";
-import {
-    formatAxis,
-    ItemSeries,
-    measureLegend,
-    renderMeasureSeries,
-    StatisticsTooltip,
-} from "src/components/statistics/series";
-import { SeriesLegend } from "src/components/statistics/series-legend";
+import { ItemSeries } from "src/components/statistics/series";
 import { Measure, PickupDayPoint } from "src/utils/statistics";
 
 const DATE = new Intl.DateTimeFormat("de-DE", { timeZone: "UTC", weekday: "short", day: "2-digit", month: "2-digit" });
@@ -94,27 +87,25 @@ export function PickupDayChart(props: PickupDayChartProps) {
     const { days, series, measure } = props;
     const [t] = useTranslation("statistics");
 
-    const options = {
-        series,
-        measure,
-        totalLabel: t("label.orders-total"),
-        cancelled: { cancelled: t("label.cancelled"), calledOff: t("label.called-off") },
-        opacity: days.map((day) => (day.open ? OPEN_OPACITY : 1)),
+    const formatLabel = (label: string | number) => {
+        const day = days.find((candidate) => candidate.date === label);
+        const date = formatPickupDate(String(label));
+        if (day?.isCalledOff) return `${date} (${t("label.day-called-off")})`;
+        if (day?.open) return `${date} (${t("label.day-open")})`;
+        return date;
     };
 
     return (
         <ChartCard
             title={t("heading.pickup-days")}
             hint={t("description.pickup-days")}
-            footer={
-                <SeriesLegend
-                    entries={measureLegend(options)}
-                    note={measure === "orders" ? t("description.orders-not-stacked") : undefined}
-                />
-            }
-        >
-            <ComposedChart data={days} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-                <CartesianGrid vertical={false} stroke={"currentColor"} strokeOpacity={0.15} />
+            data={days}
+            series={series}
+            measure={measure}
+            withCancelled
+            opacity={days.map((day) => (day.open ? OPEN_OPACITY : 1))}
+            formatLabel={formatLabel}
+            xAxis={
                 <XAxis
                     dataKey={"date"}
                     height={40}
@@ -130,31 +121,7 @@ export function PickupDayChart(props: PickupDayChartProps) {
                         />
                     }
                 />
-                <YAxis
-                    width={56}
-                    tickLine={false}
-                    axisLine={false}
-                    allowDecimals={false}
-                    tickFormatter={(value: number) => formatAxis(value, measure)}
-                    tick={{ fill: "currentColor", fontSize: 12 }}
-                />
-                <Tooltip
-                    cursor={{ fill: "currentColor", fillOpacity: 0.08 }}
-                    content={
-                        <StatisticsTooltip
-                            measure={measure}
-                            formatLabel={(label) => {
-                                const day = days.find((candidate) => candidate.date === label);
-                                const date = formatPickupDate(String(label));
-                                if (day?.isCalledOff) return `${date} (${t("label.day-called-off")})`;
-                                if (day?.open) return `${date} (${t("label.day-open")})`;
-                                return date;
-                            }}
-                        />
-                    }
-                />
-                {renderMeasureSeries(options)}
-            </ComposedChart>
-        </ChartCard>
+            }
+        />
     );
 }

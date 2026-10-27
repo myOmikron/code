@@ -1,10 +1,10 @@
 import { describe, expect, test } from "vitest";
+import { StatisticsPosition } from "src/api/generated";
 import {
     aggregateStatistics,
     autoSegmentSize,
     sortItemRows,
     StatisticsOptions,
-    StatisticsPosition,
     assignColorSlots,
     quickPeriod,
     zoomPeriod,

@@ -1,16 +1,9 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { Brush, CartesianGrid, ComposedChart, Tooltip, XAxis, YAxis } from "recharts";
+import { Brush, XAxis } from "recharts";
 import { Button, Listbox, ListboxLabel, ListboxOption } from "components";
 import { ChartCard } from "src/components/statistics/chart-card";
-import {
-    formatAxis,
-    ItemSeries,
-    measureLegend,
-    renderMeasureSeries,
-    StatisticsTooltip,
-} from "src/components/statistics/series";
-import { SeriesLegend } from "src/components/statistics/series-legend";
+import { ItemSeries } from "src/components/statistics/series";
 import { IntakeSegment, Measure, SegmentSize } from "src/utils/statistics";
 
 const TIME_ZONE = "Europe/Berlin";
@@ -58,17 +51,16 @@ export function IntakeChart(props: IntakeChartProps) {
         if (segment === undefined || segmentSize === "1d") return DAY.format(start);
         return `${DAY_TIME.format(segment.start)}–${TIME.format(segment.end)}`;
     };
-    const options = {
-        series,
-        measure,
-        totalLabel: t("label.orders-total"),
-        cancelled: { cancelled: t("label.cancelled"), calledOff: t("label.called-off") },
-    };
 
     return (
         <ChartCard
             title={t("heading.intake")}
             hint={t("description.intake")}
+            data={intake}
+            series={series}
+            measure={measure}
+            withCancelled
+            formatLabel={(label) => formatRange(Number(label))}
             action={
                 <div className={"w-44"}>
                     <Listbox
@@ -90,15 +82,7 @@ export function IntakeChart(props: IntakeChartProps) {
                 </div>
             }
             height={320}
-            footer={
-                <SeriesLegend
-                    entries={measureLegend(options)}
-                    note={measure === "orders" ? t("description.orders-not-stacked") : undefined}
-                />
-            }
-        >
-            <ComposedChart data={intake} margin={{ top: 4, right: 8, left: 0, bottom: 0 }} barCategoryGap={"10%"}>
-                <CartesianGrid vertical={false} stroke={"currentColor"} strokeOpacity={0.15} />
+            xAxis={
                 <XAxis
                     dataKey={"start"}
                     tickFormatter={formatTick}
@@ -107,37 +91,23 @@ export function IntakeChart(props: IntakeChartProps) {
                     minTickGap={24}
                     tick={{ fill: "currentColor", fontSize: 12 }}
                 />
-                <YAxis
-                    width={56}
-                    tickLine={false}
-                    axisLine={false}
-                    allowDecimals={false}
-                    tickFormatter={(value: number) => formatAxis(value, measure)}
-                    tick={{ fill: "currentColor", fontSize: 12 }}
+            }
+        >
+            {intake.length > 1 && (
+                <Brush
+                    key={`${intake[0].start}-${intake.length}`}
+                    dataKey={"start"}
+                    height={24}
+                    stroke={"currentColor"}
+                    fill={"transparent"}
+                    tickFormatter={(value: number) => formatTick(value)}
+                    ariaLabel={t("accessibility.zoom")}
+                    onDragEnd={({ startIndex, endIndex }) => {
+                        if (startIndex === 0 && endIndex === intake.length - 1) return;
+                        onZoom(intake[startIndex].start, intake[endIndex].end);
+                    }}
                 />
-                <Tooltip
-                    cursor={{ fill: "currentColor", fillOpacity: 0.08 }}
-                    content={
-                        <StatisticsTooltip measure={measure} formatLabel={(label) => formatRange(Number(label))} />
-                    }
-                />
-                {renderMeasureSeries(options)}
-                {intake.length > 1 && (
-                    <Brush
-                        key={`${intake[0].start}-${intake.length}`}
-                        dataKey={"start"}
-                        height={24}
-                        stroke={"currentColor"}
-                        fill={"transparent"}
-                        tickFormatter={(value: number) => formatTick(value)}
-                        ariaLabel={t("accessibility.zoom")}
-                        onDragEnd={({ startIndex, endIndex }) => {
-                            if (startIndex === 0 && endIndex === intake.length - 1) return;
-                            onZoom(intake[startIndex].start, intake[endIndex].end);
-                        }}
-                    />
-                )}
-            </ComposedChart>
+            )}
         </ChartCard>
     );
 }
