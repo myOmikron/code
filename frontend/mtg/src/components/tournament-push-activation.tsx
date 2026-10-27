@@ -33,7 +33,7 @@ export function TournamentPushActivation() {
             return;
         }
         setState("loading");
-        Api.accounts.push
+        Api.accounts.push.contextual
             .settings()
             .then(async (loaded) => {
                 if (!current) return;
@@ -48,7 +48,7 @@ export function TournamentPushActivation() {
                     setState("unavailable");
                     return;
                 }
-                const device = await deviceSubscribed();
+                const device = await deviceSubscribed(true);
                 if (!current) return;
                 setSubscribed(device);
                 setState(device && loaded.tournament_pushes ? "enabled" : "offer");
