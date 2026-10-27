@@ -9,10 +9,13 @@ export type SegmentSize = "10min" | "30min" | "1h" | "1d";
 /** Calendar days in Europe/Berlin, both inclusive (`YYYY-MM-DD`) */
 export type Period = { from: string; to: string };
 
+/** A range of instants (epoch ms), the end exclusive */
+export type TimeRange = { start: number; end: number };
+
 /** Inputs of {@link aggregateStatistics} */
 export type StatisticsOptions = {
-    /** The period of the whole page */
-    period: Period;
+    /** The period of the whole page, or the range zoomed into */
+    period: Period | TimeRange;
     /** Segment size of the order intake, or chosen from the period length */
     segmentSize: SegmentSize | "auto";
     /** What the charts count */
@@ -162,28 +165,35 @@ function berlinMidnight(date: string, addDays = 0): number {
 }
 
 /**
- * Starts of the order intake segments of a period, followed by the period's end
+ * The instants a period or a zoomed range spans
  *
- * @param period the period
+ * @param span calendar days in Europe/Berlin, or a range of instants
+ *
+ * @returns the range, from Berlin midnight to Berlin midnight for a period
+ */
+function toRange(span: Period | TimeRange): TimeRange {
+    return "from" in span ? { start: berlinMidnight(span.from), end: berlinMidnight(span.to, 1) } : span;
+}
+
+/**
+ * Starts of the order intake segments of a range, followed by the range's end
+ *
+ * Daily segments start at Berlin midnight, shorter ones at the range's start; the last segment
+ * ends with the range.
+ *
+ * @param range the range
  * @param size the segment size
  *
  * @returns the segment boundaries (epoch ms)
  */
-function segmentBoundaries(period: Period, size: SegmentSize): number[] {
-    const end = berlinMidnight(period.to, 1);
-    const boundaries = [];
-    if (size === "1d") {
-        for (
-            let day = 0, start = berlinMidnight(period.from);
-            start < end;
-            start = berlinMidnight(period.from, ++day)
-        ) {
-            boundaries.push(start);
-        }
-    } else {
-        for (let start = berlinMidnight(period.from); start < end; start += SEGMENT_MS[size]) boundaries.push(start);
-    }
-    boundaries.push(end);
+function segmentBoundaries(range: TimeRange, size: SegmentSize): number[] {
+    const boundaries = [range.start];
+    const next =
+        size === "1d"
+            ? (start: number) => berlinMidnight(berlinDate(start), 1)
+            : (start: number) => start + SEGMENT_MS[size];
+    for (let start = next(range.start); start < range.end; start = next(start)) boundaries.push(start);
+    boundaries.push(range.end);
     return boundaries;
 }
 
@@ -218,15 +228,15 @@ function berlinDate(instant: number): string {
 }
 
 /**
- * The period of the Berlin days a range of order intake segments covers, to zoom into
+ * The range a brush drag over order intake segments selects, to zoom into
  *
  * @param start start of the first segment (epoch ms)
  * @param end end of the last segment, exclusive (epoch ms)
  *
- * @returns the period
+ * @returns exactly that range
  */
-export function zoomPeriod(start: number, end: number): Period {
-    return { from: berlinDate(start), to: berlinDate(end - 1) };
+export function zoomPeriod(start: number, end: number): TimeRange {
+    return { start, end };
 }
 
 /** Quick picks of the period: last 7 or 30 days, last 3 or 12 months */
@@ -256,14 +266,15 @@ export function quickPeriod(pick: QuickPeriod, now: number): Period {
 }
 
 /**
- * The finest segment size that splits a period into at most 200 segments
+ * The finest segment size that splits a period or zoomed range into at most 200 segments
  *
- * @param period the period
+ * @param span the period or range
  *
  * @returns the segment size
  */
-export function autoSegmentSize(period: Period): SegmentSize {
-    return SEGMENT_SIZES.find((size) => segmentBoundaries(period, size).length - 1 <= MAX_SEGMENTS) ?? "1d";
+export function autoSegmentSize(span: Period | TimeRange): SegmentSize {
+    const range = toRange(span);
+    return SEGMENT_SIZES.find((size) => segmentBoundaries(range, size).length - 1 <= MAX_SEGMENTS) ?? "1d";
 }
 
 /**
@@ -443,10 +454,12 @@ function topItems(rows: ItemRow[], what: Measure): string[] {
  * @param positions the positions in the category filter
  * @param options the period, selection and measure
  *
- * @returns one point per pickup day that has positions
+ * @returns one point per pickup day on the Berlin days the period touches that has positions
  */
 function pickupDays(positions: StatisticsPosition[], options: ChartOptions): PickupDayPoint[] {
-    const { from, to } = options.period;
+    const range = toRange(options.period);
+    const from = berlinDate(range.start);
+    const to = berlinDate(range.end - 1);
     const days = new Map<string, StatisticsPosition[]>();
     for (const position of positions) {
         if (position.pickup_date < from || position.pickup_date > to) continue;
@@ -506,8 +519,9 @@ function categories(positions: StatisticsPosition[]): PublicCategory[] {
  * @returns the aggregated statistics
  */
 export function aggregateStatistics(positions: StatisticsPosition[], options: StatisticsOptions): Statistics {
-    const segmentSize = options.segmentSize === "auto" ? autoSegmentSize(options.period) : options.segmentSize;
-    const boundaries = segmentBoundaries(options.period, segmentSize);
+    const range = toRange(options.period);
+    const segmentSize = options.segmentSize === "auto" ? autoSegmentSize(range) : options.segmentSize;
+    const boundaries = segmentBoundaries(range, segmentSize);
     const periodStart = boundaries[0];
     const periodEnd = boundaries[boundaries.length - 1];
     const inCategory =
