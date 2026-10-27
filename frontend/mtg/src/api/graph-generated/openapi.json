@@ -783,7 +783,7 @@
                             "$ref": "#/components/schemas/DeckEntry"
                         },
                         "type": "array",
-                        "maxItems": 512,
+                        "maxItems": 2048,
                         "minItems": 1,
                         "title": "Cards"
                     },
@@ -793,7 +793,7 @@
                             "maxLength": 256
                         },
                         "type": "array",
-                        "maxItems": 512,
+                        "maxItems": 2048,
                         "title": "Card Names"
                     },
                     "limit": {
@@ -809,7 +809,7 @@
                             "maxLength": 64
                         },
                         "type": "array",
-                        "maxItems": 512,
+                        "maxItems": 2048,
                         "title": "Excluded"
                     },
                     "commander_oracle_ids": {
@@ -1267,7 +1267,7 @@
                             "$ref": "#/components/schemas/DeckEntry"
                         },
                         "type": "array",
-                        "maxItems": 512,
+                        "maxItems": 2048,
                         "minItems": 1,
                         "title": "Cards"
                     },
@@ -1353,7 +1353,7 @@
                             "$ref": "#/components/schemas/DeckEntry"
                         },
                         "type": "array",
-                        "maxItems": 512,
+                        "maxItems": 2048,
                         "minItems": 1,
                         "title": "Cards"
                     },
@@ -1363,7 +1363,7 @@
                             "maxLength": 256
                         },
                         "type": "array",
-                        "maxItems": 512,
+                        "maxItems": 2048,
                         "title": "Card Names"
                     },
                     "commander_oracle_id": {
@@ -1485,7 +1485,7 @@
                             "maxLength": 64
                         },
                         "type": "array",
-                        "maxItems": 512,
+                        "maxItems": 2048,
                         "title": "Rejected"
                     },
                     "identity": {
@@ -2040,7 +2040,7 @@
                             "$ref": "#/components/schemas/DeckEntry"
                         },
                         "type": "array",
-                        "maxItems": 512,
+                        "maxItems": 2048,
                         "minItems": 1,
                         "title": "Cards"
                     },
@@ -2050,7 +2050,7 @@
                             "maxLength": 256
                         },
                         "type": "array",
-                        "maxItems": 512,
+                        "maxItems": 2048,
                         "title": "Card Names"
                     },
                     "limit": {
@@ -2066,7 +2066,7 @@
                             "maxLength": 64
                         },
                         "type": "array",
-                        "maxItems": 512,
+                        "maxItems": 2048,
                         "title": "Excluded"
                     },
                     "commander_oracle_ids": {
@@ -2401,7 +2401,7 @@
                             "$ref": "#/components/schemas/DeckEntry"
                         },
                         "type": "array",
-                        "maxItems": 512,
+                        "maxItems": 2048,
                         "minItems": 1,
                         "title": "Cards"
                     },
@@ -2411,7 +2411,7 @@
                             "maxLength": 256
                         },
                         "type": "array",
-                        "maxItems": 512,
+                        "maxItems": 2048,
                         "title": "Card Names"
                     },
                     "target_oracle_id": {
@@ -2526,7 +2526,7 @@
                             "maxLength": 64
                         },
                         "type": "array",
-                        "maxItems": 512,
+                        "maxItems": 2048,
                         "title": "Excluded"
                     },
                     "identity": {
@@ -2932,7 +2932,7 @@
                             "maxLength": 64
                         },
                         "type": "array",
-                        "maxItems": 512,
+                        "maxItems": 2048,
                         "title": "Exclude"
                     },
                     "sort": {
@@ -3354,7 +3354,7 @@
                             "$ref": "#/components/schemas/DeckEntry"
                         },
                         "type": "array",
-                        "maxItems": 512,
+                        "maxItems": 2048,
                         "minItems": 1,
                         "title": "Cards"
                     },
@@ -3364,7 +3364,7 @@
                             "maxLength": 256
                         },
                         "type": "array",
-                        "maxItems": 512,
+                        "maxItems": 2048,
                         "title": "Card Names"
                     },
                     "commander_oracle_id": {
@@ -3486,7 +3486,7 @@
                             "maxLength": 64
                         },
                         "type": "array",
-                        "maxItems": 512,
+                        "maxItems": 2048,
                         "title": "Excluded"
                     },
                     "identity": {
@@ -3575,7 +3575,7 @@
                             "$ref": "#/components/schemas/DeckEntry"
                         },
                         "type": "array",
-                        "maxItems": 512,
+                        "maxItems": 2048,
                         "minItems": 1,
                         "title": "Cards"
                     },
@@ -3585,7 +3585,7 @@
                             "maxLength": 256
                         },
                         "type": "array",
-                        "maxItems": 512,
+                        "maxItems": 2048,
                         "title": "Card Names"
                     },
                     "commander_oracle_id": {
@@ -3714,7 +3714,7 @@
                             "maxLength": 64
                         },
                         "type": "array",
-                        "maxItems": 512,
+                        "maxItems": 2048,
                         "title": "Excluded"
                     },
                     "identity": {
@@ -3746,7 +3746,7 @@
                             "maxLength": 64
                         },
                         "type": "array",
-                        "maxItems": 512,
+                        "maxItems": 2048,
                         "title": "Keep"
                     }
                 },

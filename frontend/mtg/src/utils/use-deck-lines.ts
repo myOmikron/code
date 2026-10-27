@@ -1,6 +1,6 @@
 import { GraphApi } from "src/api/graph";
 import { LineReportResponse } from "src/api/graph-generated";
-import { AdvisorDeck } from "src/utils/deck-advisor";
+import { AdvisorDeck, advisorAccepts } from "src/utils/deck-advisor";
 import { GraphQuery, useGraphQuery } from "src/utils/use-graph-query";
 
 /**
@@ -65,7 +65,7 @@ export function useDeckLines(
     excluded: Array<string>,
     enabled: boolean,
 ): GraphQuery<LineReportResponse> {
-    const active = enabled && cedhCockpitApplies(speed) && deck.entries.length > 0;
+    const active = enabled && cedhCockpitApplies(speed) && deck.entries.length > 0 && advisorAccepts(deck);
     const signature = active
         ? [
               deck.entries.map((entry) => entry.oracle_id).join(","),

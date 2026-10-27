@@ -14,7 +14,7 @@ import { FillFlight, FillFlightCard } from "src/components/fill-flight";
 import { InlineError } from "src/components/inline-error";
 import { ManaCost } from "src/components/mana-cost";
 import { say } from "src/utils/advisor-phrase";
-import { AdvisorDeck } from "src/utils/deck-advisor";
+import { AdvisorDeck, advisorAccepts } from "src/utils/deck-advisor";
 import { BracketCounts } from "src/utils/deck-rules";
 import { DeckTargets, bucketRanges, curvePoints, typeRanges } from "src/utils/deck-targets";
 import { ThemePrefs } from "src/utils/deck-theme-prefs";
@@ -119,6 +119,11 @@ export function DeckFillDialog({
         // "never this card" belongs.
         if (!open) {
             setRejected([]);
+            return;
+        }
+        // A deck over the service's cap would only come back as a 422.
+        if (!advisorAccepts(deck)) {
+            setFill({ state: "failed" });
             return;
         }
         setFill({ state: "solving" });

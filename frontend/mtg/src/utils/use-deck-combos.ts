@@ -1,6 +1,6 @@
 import { GraphApi } from "src/api/graph";
 import { CombosResponse } from "src/api/graph-generated";
-import { AdvisorDeck } from "src/utils/deck-advisor";
+import { AdvisorDeck, advisorAccepts } from "src/utils/deck-advisor";
 import { GraphQuery, useGraphQuery } from "src/utils/use-graph-query";
 
 /**
@@ -32,7 +32,7 @@ export function useDeckCombos(
     excluded: Array<string>,
     enabled: boolean,
 ): GraphQuery<CombosResponse> {
-    const active = enabled && deck.entries.length > 0;
+    const active = enabled && deck.entries.length > 0 && advisorAccepts(deck, names);
     // The separator is a character no card name and no uuid can hold, so two
     // different lists cannot fold into one key.
     const signature = active

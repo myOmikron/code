@@ -30,6 +30,8 @@ import { DeckFillDialog } from "src/components/deck-fill-dialog";
 import { effectiveManaValue } from "src/utils/commander";
 import { IgnoredCard, KeptCard, cycleTheme, pruneThemePrefs } from "src/utils/advisor-settings";
 import {
+    ADVISOR_MAX_CARDS,
+    advisorAccepts,
     advisorDeck,
     bracketSpeed,
     filterReport,
@@ -188,6 +190,9 @@ function RouteComponent() {
     // Said above the advice, because every panel below is graded against it.
     const houseRules = useMemo(() => houseRulesSummary(deck, cards, rules), [deck, cards, rules]);
     const commander = deck.format === "commander";
+    // A pile the service would refuse outright: the graph hooks do not ask,
+    // and the page says "too large" instead of showing an outage.
+    const tooLarge = !advisorAccepts(advisor);
     // The deck's bracket, and nothing else: it is the deck's own statement
     // about how hard it plays, it sits on the chip beside the deck's name, and
     // a second dial for the same thing here only ever disagreed with it.
@@ -775,6 +780,19 @@ function RouteComponent() {
     }
     if (advisor.entries.length === 0) {
         return <EmptyState title={t("heading.empty-deck")} description={t("description.empty-deck")} />;
+    }
+    // Before any panel: with the queries gated off above, the cockpit would
+    // otherwise sit on "Analyzing …" forever for a deck nothing is analyzing.
+    if (tooLarge) {
+        return (
+            <EmptyState
+                title={t("heading.deck-too-large")}
+                description={t("description.deck-too-large", {
+                    count: advisor.entries.length,
+                    max: ADVISOR_MAX_CARDS,
+                })}
+            />
+        );
     }
 
     // The refine phase's shape cockpit, either shown directly (today's
