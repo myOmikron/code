@@ -184,6 +184,14 @@ _Avoid_: position, turn order, play/draw
 How a Match ended: the game score of a one-on-one Match (e.g. 2-1 or 1-1-1), or the winner or a draw of a multiplayer one. Counts as soon as one of its Participants or an Organizer reports it; another Participant of the Match can dispute it until the Round ends, and only an Organizer settles a disputed Result.
 _Avoid_: score, outcome, report
 
+**Life counter**:
+The table's record of every Participant's life total during a Game, kept together on one device. In a Tournament Match it also shows the Round timer and offers reporting the Result.
+_Avoid_: scoreboard, Match score
+
+**Life history**:
+The record of Games counted with a Life counter: their starting totals, life and commander-damage changes, corrections, and Game starts and ends, with when they happened and the Participants affected. In a Tournament it belongs to the Match, remains available to that Match's Participants and the Organizers after the Tournament finishes, and never determines the separately reported Result.
+_Avoid_: history (alone), Result, Match score
+
 **Match points**:
 The points a Participant earns per Match as its Ruleset sets them for a win, a draw, a loss and a Bye. The first ordering of the standings.
 _Avoid_: score, points (alone)
