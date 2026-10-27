@@ -4,9 +4,11 @@ use galvyn::core::re_exports::time::OffsetDateTime;
 use galvyn::rorm::Model;
 use galvyn::rorm::Patch;
 use galvyn::rorm::fields::types::ForeignModel;
+use galvyn::rorm::fields::types::Json;
 use galvyn::rorm::fields::types::MaxStr;
 use uuid::Uuid;
 
+use super::life_history::MatchLifeHistory;
 use crate::models::account::db::AccountModel;
 use crate::models::deck::DeckZone;
 use crate::models::deck::db::DeckModel;
@@ -601,4 +603,85 @@ pub struct TournamentRegisteredCardInsertPatch {
     pub foil: bool,
     /// Whether the copies were stand-ins
     pub proxy: bool,
+}
+
+/// One Match's durable Life history and private recording ownership.
+#[derive(Model, Debug)]
+#[rorm(rename = "tournament_match_life_history")]
+pub struct MatchLifeHistoryModel {
+    /// Match identity and lifetime.
+    #[rorm(primary_key, on_update = "Cascade", on_delete = "Cascade")]
+    pub tournament_match: ForeignModel<TournamentMatchModel>,
+    /// Complete append-preserving history.
+    pub history: Option<Json<MatchLifeHistory>>,
+    /// Recording ownership epoch.
+    pub generation: i64,
+    /// Accepted upload sequence number.
+    pub revision: i64,
+    /// Public device identity.
+    pub writer: Option<Uuid>,
+    /// Account holding the private recording capability.
+    #[rorm(on_update = "Cascade", on_delete = "SetNull")]
+    pub writer_account: Option<ForeignModel<AccountModel>>,
+    /// Digest of the private random capability.
+    pub writer_token_hash: Option<MaxStr<64>>,
+    /// Latest server receipt time.
+    pub updated_at: OffsetDateTime,
+}
+
+/// Insert patch for a deliberately claimed Match.
+#[derive(Patch)]
+#[rorm(model = "MatchLifeHistoryModel")]
+pub struct MatchLifeHistoryInsertPatch {
+    /// Match identity.
+    pub tournament_match: ForeignModel<TournamentMatchModel>,
+    /// Initially absent uploaded history.
+    pub history: Option<Json<MatchLifeHistory>>,
+    /// Initial ownership epoch.
+    pub generation: i64,
+    /// Initial saved revision.
+    pub revision: i64,
+    /// Public device identity.
+    pub writer: Option<Uuid>,
+    /// Claiming Account.
+    pub writer_account: Option<ForeignModel<AccountModel>>,
+    /// Private capability digest.
+    pub writer_token_hash: Option<MaxStr<64>>,
+    /// Claim receipt time.
+    pub updated_at: OffsetDateTime,
+}
+
+/// Stable acknowledgement of a history request, retained for safe late retries.
+#[derive(Model, Debug)]
+#[rorm(rename = "tournament_match_life_receipt")]
+pub struct MatchLifeReceiptModel {
+    /// Deterministic Match/request identity.
+    #[rorm(primary_key)]
+    pub uuid: Uuid,
+    /// The Match whose history was affected.
+    #[rorm(index, on_update = "Cascade", on_delete = "Cascade")]
+    pub tournament_match: ForeignModel<TournamentMatchModel>,
+    /// Digest of operation and exact typed request.
+    pub request_hash: MaxStr<64>,
+    /// Account that made the accepted request.
+    #[rorm(on_update = "Cascade", on_delete = "Cascade")]
+    pub account: ForeignModel<AccountModel>,
+    /// Revision accepted at that time, independent of later uploads.
+    pub accepted_revision: i64,
+}
+
+/// Insert patch for a committed history request.
+#[derive(Patch)]
+#[rorm(model = "MatchLifeReceiptModel")]
+pub struct MatchLifeReceiptInsertPatch {
+    /// Deterministic Match/request identity.
+    pub uuid: Uuid,
+    /// Match lifetime.
+    pub tournament_match: ForeignModel<TournamentMatchModel>,
+    /// Typed request digest.
+    pub request_hash: MaxStr<64>,
+    /// Requesting Account.
+    pub account: ForeignModel<AccountModel>,
+    /// Revision originally accepted.
+    pub accepted_revision: i64,
 }

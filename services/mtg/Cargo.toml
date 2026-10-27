@@ -6,6 +6,7 @@ license = "MPL-2.0"
 authors = ["Niklas Pfister <git@omikron.dev>"]
 
 [dependencies]
+sha2 = { workspace = true }
 service-bootstrap = { workspace = true }
 galvyn = { workspace = true, default-features = true, features = ["rorm-postgres-only"] }
 

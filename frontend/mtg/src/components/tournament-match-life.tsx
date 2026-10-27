@@ -11,10 +11,9 @@ import { TournamentResultDialog } from "src/components/tournament-result-dialog"
 import { TournamentWinnerDialog } from "src/components/tournament-winner-dialog";
 import { useLiveVersion } from "src/context/tournament-live-context";
 import { isFormError } from "src/utils/error";
-import { loadLifeHistory } from "src/utils/life-history";
-import type { LifeHistory } from "src/utils/life-history";
 import { lifeResultDraft, matchLifeStorageKey, matchStartingLife } from "src/utils/match-life";
 import { clockSkew } from "src/utils/round-clock";
+import { useDurableMatchLife } from "src/utils/use-durable-match-life";
 import { formatResult } from "src/utils/tournament-rounds";
 
 /** Counts an authorized Match locally while keeping its Round timer and explicit Result actions available. */
@@ -34,7 +33,8 @@ export function TournamentMatchLife({
     const [busy, setBusy] = useState(false);
     const played = play.round.matches[0];
     const storageKey = matchLifeStorageKey(tournament.uuid, played.uuid);
-    const [history, setHistory] = useState<LifeHistory | null>(() => loadLifeHistory(storageKey));
+    const durable = useDurableMatchLife(tournament.uuid, played.uuid, storageKey);
+    const history = durable.history;
     const version = useLiveVersion("rounds");
     const refresh = useCallback(async () => {
         const next = await Api.tournaments.rounds.play(tournament.uuid, played.uuid);
@@ -102,71 +102,126 @@ export function TournamentMatchLife({
             await refresh();
         },
     };
+    const controls = (
+        <div className="flex shrink-0 flex-wrap items-center justify-between gap-2">
+            <Text>
+                <Strong>{tournament.name}</Strong>
+                {" · "}
+                {t("heading.my-match", { number: play.round.number })}
+                {" · "}
+                {t("label.table")} {played.table_number}
+            </Text>
+            {played.result && (
+                <Text>
+                    {t("label.result")}: {formatResult(played.result)}
+                </Text>
+            )}
+            {play.round.timer && (
+                <TournamentRoundClock timer={play.round.timer} ruleset={tournament.ruleset} skewMs={skewMs} />
+            )}
+            {organizer ? (
+                <Button outline onClick={() => setReporting(true)}>
+                    {t("button.set-match-result")}
+                </Button>
+            ) : (
+                canReport && (
+                    <MatchActions
+                        played={played}
+                        me={play.participant ?? ""}
+                        busy={busy}
+                        onReport={() => setReporting(true)}
+                        onDispute={async () => {
+                            setBusy(true);
+                            try {
+                                const result = await Api.tournaments.results.dispute(tournament.uuid, played.uuid);
+                                if (isFormError(result)) notify.error(t("error.round-changed"));
+                                await refresh();
+                            } finally {
+                                setBusy(false);
+                            }
+                        }}
+                    />
+                )
+            )}
+        </div>
+    );
+    const showCounter = durable.remote !== null && (durable.writer || durable.remote.history != null);
+    const saveControls = (
+        <div className={"flex flex-wrap items-center gap-3 p-3"}>
+            {!showCounter && (
+                <Button plain href={`/tournaments/${tournament.uuid}`}>
+                    {t("button.back-to-tournament")}
+                </Button>
+            )}
+            <Text role={"status"}>
+                {t(
+                    durable.state === "loading"
+                        ? "label.life-history-loading"
+                        : durable.state === "saving"
+                          ? "label.life-history-saving"
+                          : durable.state === "saved"
+                            ? "label.life-history-saved"
+                            : durable.state === "failed"
+                              ? "error.life-history-save"
+                              : durable.state === "invalid"
+                                ? "error.life-history-invalid"
+                                : durable.state === "conflict"
+                                  ? "error.life-history-conflict"
+                                  : history === null
+                                    ? "label.life-history-not-recording"
+                                    : "label.life-history-local",
+                )}
+            </Text>
+            {durable.remote !== null && !durable.writer && <Text>{t("description.life-history-observer")}</Text>}
+            {durable.remote?.writer == null &&
+                durable.remote !== null &&
+                !over &&
+                play.round.state === RoundState.Running && (
+                    <Button outline disabled={durable.state === "saving"} onClick={() => void durable.claim()}>
+                        {t("button.record-match-life")}
+                    </Button>
+                )}
+            {durable.state === "failed" && (
+                <Button outline onClick={durable.retry}>
+                    {t("button.retry-life-history-save")}
+                </Button>
+            )}
+            {durable.remote !== null && !durable.writer && !durable.remote.history && (
+                <Text>{t("description.life-history-empty")}</Text>
+            )}
+        </div>
+    );
     return (
         <>
-            <LifeCounter
-                participants={players}
-                allowNextGame={
-                    tournament.table_size === 2 &&
-                    bestOf === BestOf.Three &&
-                    !draft?.games_won.some((wins) => wins >= 2)
-                }
-                initialTotals={players.map(() => matchStartingLife(tournament.format, players.length))}
-                storageKey={storageKey}
-                onHistoryChange={setHistory}
-                backHref={`/tournaments/${tournament.uuid}`}
-                readOnly={play.round.state !== RoundState.Running || over}
-                context={
-                    <div className="flex shrink-0 flex-wrap items-center justify-between gap-2">
-                        <Text>
-                            <Strong>{tournament.name}</Strong>
-                            {" · "}
-                            {t("heading.my-match", { number: play.round.number })}
-                            {" · "}
-                            {t("label.table")} {played.table_number}
-                        </Text>
-                        {played.result && (
-                            <Text>
-                                {t("label.result")}: {formatResult(played.result)}
-                            </Text>
-                        )}
-                        {play.round.timer && (
-                            <TournamentRoundClock
-                                timer={play.round.timer}
-                                ruleset={tournament.ruleset}
-                                skewMs={skewMs}
-                            />
-                        )}
-                        {organizer ? (
-                            <Button outline onClick={() => setReporting(true)}>
-                                {t("button.set-match-result")}
-                            </Button>
-                        ) : (
-                            canReport && (
-                                <MatchActions
-                                    played={played}
-                                    me={play.participant ?? ""}
-                                    busy={busy}
-                                    onReport={() => setReporting(true)}
-                                    onDispute={async () => {
-                                        setBusy(true);
-                                        try {
-                                            const result = await Api.tournaments.results.dispute(
-                                                tournament.uuid,
-                                                played.uuid,
-                                            );
-                                            if (isFormError(result)) notify.error(t("error.round-changed"));
-                                            await refresh();
-                                        } finally {
-                                            setBusy(false);
-                                        }
-                                    }}
-                                />
-                            )
-                        )}
-                    </div>
-                }
-            />
+            {!showCounter && (
+                <>
+                    {saveControls}
+                    {controls}
+                </>
+            )}
+            {showCounter && (
+                <LifeCounter
+                    key={durable.writer ? "writer" : `observer-${durable.remote?.revision}`}
+                    initialHistory={history ?? undefined}
+                    participants={players}
+                    allowNextGame={
+                        tournament.table_size === 2 &&
+                        bestOf === BestOf.Three &&
+                        !draft?.games_won.some((wins) => wins >= 2)
+                    }
+                    initialTotals={players.map(() => matchStartingLife(tournament.format, players.length))}
+                    storageKey={durable.writer ? storageKey : `${storageKey}.observer`}
+                    onHistoryChange={durable.changed}
+                    backHref={`/tournaments/${tournament.uuid}`}
+                    readOnly={!durable.writer || play.round.state !== RoundState.Running || over}
+                    context={
+                        <div className={"flex shrink-0 flex-col gap-2"}>
+                            {saveControls}
+                            {controls}
+                        </div>
+                    }
+                />
+            )}
             {(organizer || canReport) &&
                 (tournament.table_size > 2 ? (
                     <TournamentWinnerDialog {...dialog} />

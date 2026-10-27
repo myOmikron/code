@@ -49,6 +49,8 @@ import {
     UpdateCollectionRequest,
     SwapDeckCardRequest,
     TournamentSettingsRequest,
+    ClaimMatchLifeRequest,
+    SaveMatchLifeRequest,
     UpdateDeckCardRequest,
     UpdateDeckRequest,
     UpdateDeckTagRequest,
@@ -625,6 +627,13 @@ export const Api = {
         },
         // Running it: Organizers pair a Round as a preview only they see, start
         // it, set the Results and end it. The reads are open like `get`.
+        lifeHistory: {
+            get: (tournament: UUID, match: UUID) => defaultApi.getMatchLifeHistory({ tournament, match }),
+            claim: (tournament: UUID, match: UUID, request: ClaimMatchLifeRequest) =>
+                defaultApi.claimMatchLifeHistory({ tournament, match, ClaimMatchLifeRequest: request }),
+            save: (tournament: UUID, match: UUID, request: SaveMatchLifeRequest) =>
+                defaultApi.saveMatchLifeHistory({ tournament, match, SaveMatchLifeRequest: request }),
+        },
         rounds: {
             list: (tournament: UUID) => defaultApi.listTournamentRounds({ tournament }),
             standings: (tournament: UUID) => defaultApi.getTournamentStandings({ tournament }),

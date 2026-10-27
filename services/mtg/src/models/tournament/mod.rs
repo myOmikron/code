@@ -33,6 +33,7 @@ pub mod access;
 pub(in crate::models) mod db;
 pub mod deletion;
 pub mod handover;
+pub mod life_history;
 pub mod listing;
 pub mod organizer;
 pub mod participant;

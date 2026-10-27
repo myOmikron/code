@@ -11112,6 +11112,243 @@
                 }
             }
         },
+        "/api/frontend/v1/tournaments/{tournament}/matches/{match}/life-history": {
+            "get": {
+                "summary": "Observe uploaded history without claiming the recording device.",
+                "description": "Observe uploaded history without claiming the recording device.",
+                "operationId": "get_match_life_history",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tournament",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/TournamentUuid"
+                        },
+                        "style": "simple"
+                    },
+                    {
+                        "in": "path",
+                        "name": "match",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/MatchUuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MatchLifeHistoryResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "summary": "Upload history using only the active recording Account, device and private capability.",
+                "description": "Upload history using only the active recording Account, device and private capability.",
+                "operationId": "save_match_life_history",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tournament",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/TournamentUuid"
+                        },
+                        "style": "simple"
+                    },
+                    {
+                        "in": "path",
+                        "name": "match",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/MatchUuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SaveMatchLifeRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "$ref": "#/components/schemas/MatchLifeHistoryResponse"
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/FormErrorResponse_for_MatchLifeErrors"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/tournaments/{tournament}/matches/{match}/life-history/claim": {
+            "post": {
+                "summary": "Deliberately claim a recording slot with a private, device-local capability.",
+                "description": "Deliberately claim a recording slot with a private, device-local capability.",
+                "operationId": "claim_match_life_history",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tournament",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/TournamentUuid"
+                        },
+                        "style": "simple"
+                    },
+                    {
+                        "in": "path",
+                        "name": "match",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/MatchUuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ClaimMatchLifeRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "$ref": "#/components/schemas/MatchLifeHistoryResponse"
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/FormErrorResponse_for_MatchLifeErrors"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/frontend/v1/tournaments/{tournament}/sign-up": {
             "post": {
                 "summary": "Sign the logged-in Account up for a Tournament it sees by its id",
@@ -16156,6 +16393,44 @@
                     "username"
                 ]
             },
+            "ClaimMatchLifeRequest": {
+                "description": "An explicit claim using a private credential saved locally before the request.",
+                "type": "object",
+                "properties": {
+                    "device": {
+                        "description": "Public device identity.",
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "expected_revision": {
+                        "description": "Saved revision observed before claiming.",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "generation": {
+                        "description": "Ownership epoch observed before claiming.",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "request_id": {
+                        "description": "Stable identity of this exact request.",
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "writer_token": {
+                        "description": "Private random capability, never returned to observers or logged.",
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                },
+                "required": [
+                    "device",
+                    "expected_revision",
+                    "generation",
+                    "request_id",
+                    "writer_token"
+                ]
+            },
             "CollaboratorCandidateResponse": {
                 "description": "An Account whose username starts with what the owner typed",
                 "type": "object",
@@ -19412,6 +19687,32 @@
                     "result"
                 ]
             },
+            "FormErrorResponse_for_MatchLifeErrors": {
+                "description": "The response that is sent in a case of an error the caller should present his user",
+                "type": "object",
+                "properties": {
+                    "error": {
+                        "description": "The actual error struct",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MatchLifeErrors"
+                            }
+                        ]
+                    },
+                    "result": {
+                        "description": "A constant `\"Err\"` used to differentiate this schema from any other \"Ok\" schema",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ErrorConstant"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "error",
+                    "result"
+                ]
+            },
             "FormErrorResponse_for_MeErrors": {
                 "description": "The response that is sent in a case of an error the caller should present his user",
                 "type": "object",
@@ -20761,6 +21062,361 @@
                 "required": [
                     "name",
                     "oracle_id"
+                ]
+            },
+            "MatchLifeErrors": {
+                "description": "Why a claim or upload could not be accepted.",
+                "type": "object",
+                "properties": {
+                    "invalid_history": {
+                        "description": "History has invalid Participants, totals, references or retained prefix.",
+                        "type": "boolean"
+                    },
+                    "request_conflict": {
+                        "description": "A request identity was reused for different content.",
+                        "type": "boolean"
+                    },
+                    "revision_conflict": {
+                        "description": "The saved state changed since this request was prepared.",
+                        "type": "boolean"
+                    },
+                    "writer_conflict": {
+                        "description": "Another device owns recording, or the capability no longer matches.",
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "invalid_history",
+                    "request_conflict",
+                    "revision_conflict",
+                    "writer_conflict"
+                ]
+            },
+            "MatchLifeEvent": {
+                "description": "One immutable operation in a Game's Life history.",
+                "type": "object",
+                "properties": {
+                    "amount": {
+                        "nullable": true,
+                        "description": "Signed life adjustment.",
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "at": {
+                        "description": "Device-recorded operation time, independent of server receipt time.",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDateTime"
+                            }
+                        ]
+                    },
+                    "commander": {
+                        "nullable": true,
+                        "description": "Commander damage source.",
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "corrects": {
+                        "nullable": true,
+                        "description": "Earlier operation being corrected.",
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "damageAmount": {
+                        "nullable": true,
+                        "description": "Signed commander damage adjustment.",
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "id": {
+                        "description": "Stable operation identity across retries.",
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "kind": {
+                        "description": "Operation category.",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MatchLifeEventKind"
+                            }
+                        ]
+                    },
+                    "player": {
+                        "nullable": true,
+                        "description": "Affected Participant.",
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "reclassifies": {
+                        "nullable": true,
+                        "description": "Earlier life operations being classified without deducting life again.",
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                },
+                "required": [
+                    "at",
+                    "id",
+                    "kind"
+                ],
+                "additionalProperties": false
+            },
+            "MatchLifeEventKind": {
+                "description": "The kind of a retained Life operation.",
+                "oneOf": [
+                    {
+                        "description": "Initial Game setup.",
+                        "type": "string",
+                        "enum": [
+                            "start"
+                        ]
+                    },
+                    {
+                        "description": "Life adjustment.",
+                        "type": "string",
+                        "enum": [
+                            "life"
+                        ]
+                    },
+                    {
+                        "description": "Commander damage and corresponding life adjustment.",
+                        "type": "string",
+                        "enum": [
+                            "commander"
+                        ]
+                    },
+                    {
+                        "description": "Classification of already deducted life as commander damage.",
+                        "type": "string",
+                        "enum": [
+                            "reclassify"
+                        ]
+                    },
+                    {
+                        "description": "Compensation retaining the original operation.",
+                        "type": "string",
+                        "enum": [
+                            "correction"
+                        ]
+                    },
+                    {
+                        "description": "Explicit Game completion.",
+                        "type": "string",
+                        "enum": [
+                            "end"
+                        ]
+                    }
+                ]
+            },
+            "MatchLifeGame": {
+                "description": "A Game's original setup, current totals and retained operations.",
+                "type": "object",
+                "properties": {
+                    "damage": {
+                        "description": "Commander damage matrix, affected Participant first.",
+                        "type": "array",
+                        "items": {
+                            "type": "array",
+                            "items": {
+                                "type": "integer",
+                                "format": "int32"
+                            }
+                        }
+                    },
+                    "events": {
+                        "description": "Original, ungrouped operations.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/MatchLifeEvent"
+                        }
+                    },
+                    "life": {
+                        "description": "Current life totals.",
+                        "type": "array",
+                        "items": {
+                            "type": "integer",
+                            "format": "int32"
+                        }
+                    },
+                    "outcome": {
+                        "nullable": true,
+                        "description": "Explicit winner or draw, if completed.",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MatchLifeOutcome"
+                            }
+                        ]
+                    },
+                    "players": {
+                        "description": "Match Participants in Seat order.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/MatchLifePlayer"
+                        }
+                    },
+                    "startingLife": {
+                        "description": "Original life totals.",
+                        "type": "array",
+                        "items": {
+                            "type": "integer",
+                            "format": "int32"
+                        }
+                    }
+                },
+                "required": [
+                    "damage",
+                    "events",
+                    "life",
+                    "players",
+                    "startingLife"
+                ],
+                "additionalProperties": false
+            },
+            "MatchLifeHistory": {
+                "description": "The complete, append-preserved history of a Match.",
+                "type": "object",
+                "properties": {
+                    "games": {
+                        "description": "All Games in play order.",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/MatchLifeGame"
+                        }
+                    },
+                    "version": {
+                        "description": "Serialization version, currently one.",
+                        "type": "integer",
+                        "minimum": 0.0,
+                        "format": "uint8"
+                    }
+                },
+                "required": [
+                    "games",
+                    "version"
+                ],
+                "additionalProperties": false
+            },
+            "MatchLifeHistoryResponse": {
+                "description": "Public durable state; intentionally contains no recording credential.",
+                "type": "object",
+                "properties": {
+                    "accepted_request": {
+                        "nullable": true,
+                        "description": "Stable request acknowledged by a write, absent on reads.",
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "accepted_revision": {
+                        "nullable": true,
+                        "description": "Revision originally accepted for that request, even on a late retry.",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "generation": {
+                        "description": "Ownership epoch, incremented by every ownership change.",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "history": {
+                        "nullable": true,
+                        "description": "Uploaded history, absent until its first save.",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MatchLifeHistory"
+                            }
+                        ]
+                    },
+                    "revision": {
+                        "description": "Accepted upload sequence number.",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "updated_at": {
+                        "nullable": true,
+                        "description": "Server receipt time of the latest accepted operation.",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDateTime"
+                            }
+                        ]
+                    },
+                    "writer": {
+                        "nullable": true,
+                        "description": "Public recording-device identity, never an authorization credential.",
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                },
+                "required": [
+                    "generation",
+                    "revision"
+                ]
+            },
+            "MatchLifeOutcome": {
+                "description": "An explicit Game outcome; never a submitted Tournament Result.",
+                "oneOf": [
+                    {
+                        "description": "A Participant recorded as winner.",
+                        "type": "object",
+                        "properties": {
+                            "kind": {
+                                "type": "string",
+                                "enum": [
+                                    "winner"
+                                ]
+                            },
+                            "winner": {
+                                "description": "The winning Participant.",
+                                "type": "string",
+                                "format": "uuid"
+                            }
+                        },
+                        "required": [
+                            "kind",
+                            "winner"
+                        ]
+                    },
+                    {
+                        "description": "A recorded draw.",
+                        "type": "object",
+                        "properties": {
+                            "kind": {
+                                "type": "string",
+                                "enum": [
+                                    "draw"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "kind"
+                        ]
+                    }
+                ]
+            },
+            "MatchLifePlayer": {
+                "description": "One Participant in original Seat order.",
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "description": "The Participant identity.",
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "name": {
+                        "description": "Display name retained with the Game.",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_128"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "id",
+                    "name"
                 ]
             },
             "MatchPlayResponse": {
@@ -23240,6 +23896,53 @@
                             "MultiplayerAddendum"
                         ]
                     }
+                ]
+            },
+            "SaveMatchLifeRequest": {
+                "description": "An immutable upload intent, retried with the same identity and content.",
+                "type": "object",
+                "properties": {
+                    "device": {
+                        "description": "Public recording-device identity.",
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "expected_revision": {
+                        "description": "Previously acknowledged revision.",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "generation": {
+                        "description": "Recording ownership epoch.",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "history": {
+                        "description": "Complete append-preserving history.",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MatchLifeHistory"
+                            }
+                        ]
+                    },
+                    "request_id": {
+                        "description": "Stable identity of this exact upload.",
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "writer_token": {
+                        "description": "Private capability bound to the recording Account and device.",
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                },
+                "required": [
+                    "device",
+                    "expected_revision",
+                    "generation",
+                    "history",
+                    "request_id",
+                    "writer_token"
                 ]
             },
             "ScannerSessionDetailResponse": {

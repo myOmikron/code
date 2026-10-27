@@ -374,6 +374,7 @@ export function TournamentRounds({ tournament, load, onTournamentChanged, me = n
                         multiplayer={multiplayer}
                         editable={organizer && round.state !== RoundState.Previewed}
                         me={over || tournament.entered_afterwards || round.state !== RoundState.Running ? null : me}
+                        historyParticipant={me}
                         busy={busy}
                         onEdit={setEditing}
                         onReport={setReporting}
@@ -597,6 +598,8 @@ type RoundTableProps = {
     editable: boolean;
     /** The reader's Participant while it may report and dispute in this Round, else `null` */
     me: string | null;
+    /** The reader's Participant for history access, including after play. */
+    historyParticipant: string | null;
     /** Whether an action is under way */
     busy: boolean;
     /** Called with the Match whose Result the reader wants to set */
@@ -621,6 +624,7 @@ function RoundTable({
     multiplayer,
     editable,
     me,
+    historyParticipant,
     busy,
     onEdit,
     onReport,
@@ -631,7 +635,10 @@ function RoundTable({
     const labels = useTournamentLabels();
     const mine = (played: MatchResponse) =>
         me !== null && played.table_number != null && played.seats.some((seat) => seat.participant === me);
-    const actions = editable || round.matches.some(mine);
+    const actions =
+        editable ||
+        round.matches.some(mine) ||
+        round.matches.some((match) => match.seats.some((seat) => seat.participant === historyParticipant));
 
     /**
      * The Result of a multiplayer Match in words: who won, or a draw
@@ -729,14 +736,21 @@ function RoundTable({
                             {actions && (
                                 <TableCell>
                                     <div className={"flex flex-wrap items-center gap-2"}>
-                                        {round.state === RoundState.Running &&
+                                        {round.state !== RoundState.Previewed &&
                                             played.table_number != null &&
-                                            (editable || mine(played)) && (
+                                            (editable ||
+                                                played.seats.some(
+                                                    (seat) => seat.participant === historyParticipant,
+                                                )) && (
                                                 <Button
                                                     outline
                                                     href={`/tournaments/${tournament.uuid}/matches/${played.uuid}/life${editable ? "?organizer=true" : ""}`}
                                                 >
-                                                    {t("button.count-match-life")}
+                                                    {t(
+                                                        round.state === RoundState.Running
+                                                            ? "button.count-match-life"
+                                                            : "button.view-match-life-history",
+                                                    )}
                                                 </Button>
                                             )}
                                         {editable && played.table_number != null && (

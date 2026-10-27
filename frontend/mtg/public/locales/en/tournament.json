@@ -56,7 +56,11 @@
         "enable-tournament-pushes": "Enable tournament notifications",
         "retry-tournament-push-status": "Check status again",
         "count-match-life": "Count life",
-        "set-match-result": "Set Result"
+        "set-match-result": "Set Result",
+        "record-match-life": "Record on this device",
+        "retry-life-history-save": "Try again",
+        "view-match-life-history": "View life history",
+        "back-to-tournament": "Back to tournament"
     },
     "description": {
         "add-account": "With an account, by its exact username: the results belong to that account.",
@@ -156,7 +160,9 @@
         "tournament-push-unavailable": "Notifications are unavailable here. On iPhone and iPad, open the app added to your Home Screen. You can keep participating without notifications.",
         "tournament-push-denied": "Your browser has not allowed notifications. Allow them in browser settings and reload this page. Your tournament participation is unaffected.",
         "tournament-push-global-disabled": "Tournament notifications are turned off for your account. Activation turns them back on for all tournaments on your subscribed devices.",
-        "review-life-result": "Review the suggestion from explicitly ended Games. Only saving submits the Tournament Result."
+        "review-life-result": "Review the suggestion from explicitly ended Games. Only saving submits the Tournament Result.",
+        "life-history-observer": "This device observes the saved history. Only the explicitly selected recording device can change it.",
+        "life-history-empty": "No history has been uploaded for this match yet. You can play and report results without recording."
     },
     "error": {
         "all-rounds-paired": "Every Swiss round has been paired.",
@@ -208,7 +214,10 @@
         "unknown-format": "This format does not exist.",
         "unknown-username": "No account goes by this username.",
         "load-participation": "Your participation could not be loaded.",
-        "tournament-push-activation": "Notifications could not be enabled or checked. Try again. Your tournament participation is unaffected."
+        "tournament-push-activation": "Notifications could not be enabled or checked. Try again. Your tournament participation is unaffected.",
+        "life-history-save": "History could not be loaded or saved on the server. Your local changes remain on this device.",
+        "life-history-conflict": "Recording ownership or saved history has changed. Your local changes are retained and do not replace the server history.",
+        "life-history-invalid": "This history cannot be saved. It may be too large or contain an unsupported change. Locally recorded games remain on this device."
     },
     "heading": {
         "add-participants": "Add players",
@@ -384,7 +393,12 @@
         "won-by": "{{name}} won",
         "you": "You",
         "you-participate": "You are participating",
-        "tournament-push-loading": "Checking notification status …"
+        "tournament-push-loading": "Checking notification status …",
+        "life-history-loading": "Loading saved history …",
+        "life-history-saving": "Saving history to the server …",
+        "life-history-saved": "History saved on the server",
+        "life-history-local": "History saved on this device",
+        "life-history-not-recording": "Recording has not started"
     },
     "toast": {
         "co-organizer-added": "{{username}} is now a co-organizer",

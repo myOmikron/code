@@ -67,6 +67,7 @@ docs/CardFinish.md
 docs/CardRarity.md
 docs/ChooseUsernameErrors.md
 docs/ChooseUsernameRequest.md
+docs/ClaimMatchLifeRequest.md
 docs/CollaboratorCandidateResponse.md
 docs/CollaboratorCandidatesResponse.md
 docs/CollaboratorLevel.md
@@ -161,6 +162,7 @@ docs/FormErrorResponseForDeletePasskeyErrors.md
 docs/FormErrorResponseForDisputeResultErrors.md
 docs/FormErrorResponseForDropErrors.md
 docs/FormErrorResponseForFinishLoginErrors.md
+docs/FormErrorResponseForMatchLifeErrors.md
 docs/FormErrorResponseForMeErrors.md
 docs/FormErrorResponseForOfferHandoverErrors.md
 docs/FormErrorResponseForPutDeckCollaboratorErrors.md
@@ -211,6 +213,16 @@ docs/ListedCardResponse.md
 docs/ListedEntryResponse.md
 docs/MailLanguage.md
 docs/MarkedCard.md
+docs/MatchLifeErrors.md
+docs/MatchLifeEvent.md
+docs/MatchLifeEventKind.md
+docs/MatchLifeGame.md
+docs/MatchLifeHistory.md
+docs/MatchLifeHistoryResponse.md
+docs/MatchLifeOutcome.md
+docs/MatchLifeOutcomeOneOf.md
+docs/MatchLifeOutcomeOneOf1.md
+docs/MatchLifePlayer.md
 docs/MatchPlayResponse.md
 docs/MatchResponse.md
 docs/Me200Response.md
@@ -294,6 +306,8 @@ docs/RoundState.md
 docs/RoundTimerResponse.md
 docs/RoundsResponse.md
 docs/Ruleset.md
+docs/SaveMatchLifeHistory200Response.md
+docs/SaveMatchLifeRequest.md
 docs/ScannerSessionDetailResponse.md
 docs/ScannerSessionEntryResponse.md
 docs/ScannerSessionResponse.md

@@ -46,6 +46,7 @@ import type {
     CardFinish,
     CardRarity,
     ChooseUsernameRequest,
+    ClaimMatchLifeRequest,
     CollaboratorCandidatesResponse,
     CollectionEntryResponse,
     CollectionOverviewResponse,
@@ -125,6 +126,7 @@ import type {
     ListWatchListCopiesResponse,
     ListWatchListEntriesResponse,
     ListWatchListsResponse,
+    MatchLifeHistoryResponse,
     MatchPlayResponse,
     Me200Response,
     MergeCollectionEntriesRequest,
@@ -166,6 +168,8 @@ import type {
     RotateDeckShareTokenResponse,
     RotateShareTokenResponse,
     RoundsResponse,
+    SaveMatchLifeHistory200Response,
+    SaveMatchLifeRequest,
     ScannerSessionDetailResponse,
     ScannerSessionEntryResponse,
     ScannerSessionResponse,
@@ -546,6 +550,21 @@ export interface ChooseUsernameOperationRequest {
      * 
      */
     ChooseUsernameRequest?: ChooseUsernameRequest;
+}
+
+export interface ClaimMatchLifeHistoryRequest {
+    /**
+     * 
+     */
+    tournament: string;
+    /**
+     * 
+     */
+    match: string;
+    /**
+     * 
+     */
+    ClaimMatchLifeRequest?: ClaimMatchLifeRequest;
 }
 
 export interface CreateCollectionOperationRequest {
@@ -938,6 +957,17 @@ export interface GetDeckSourcingRequest {
     deck: string;
 }
 
+export interface GetMatchLifeHistoryRequest {
+    /**
+     * 
+     */
+    tournament: string;
+    /**
+     * 
+     */
+    match: string;
+}
+
 export interface GetMyTournamentDeckRequest {
     /**
      * 
@@ -1045,11 +1075,11 @@ export interface GetTournamentRequest {
 
 export interface GetTournamentMatchPlayRequest {
     /**
-     *
+     * 
      */
     tournament: string;
     /**
-     *
+     * 
      */
     match: string;
 }
@@ -1603,6 +1633,21 @@ export interface RotateShareTokenRequest {
      * 
      */
     collection: string;
+}
+
+export interface SaveMatchLifeHistoryRequest {
+    /**
+     * 
+     */
+    tournament: string;
+    /**
+     * 
+     */
+    match: string;
+    /**
+     * 
+     */
+    SaveMatchLifeRequest?: SaveMatchLifeRequest;
 }
 
 export interface SearchCollaboratorCandidatesRequest {
@@ -3775,6 +3820,64 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async chooseUsername(requestParameters: ChooseUsernameOperationRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FormErrorResponseForChooseUsernameErrors> {
         const response = await this.chooseUsernameRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for claimMatchLifeHistory without sending the request
+     */
+    async claimMatchLifeHistoryRequestOpts(requestParameters: ClaimMatchLifeHistoryRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tournament'] == null) {
+            throw new runtime.RequiredError(
+                'tournament',
+                'Required parameter "tournament" was null or undefined when calling claimMatchLifeHistory().'
+            );
+        }
+
+        if (requestParameters['match'] == null) {
+            throw new runtime.RequiredError(
+                'match',
+                'Required parameter "match" was null or undefined when calling claimMatchLifeHistory().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/tournaments/{tournament}/matches/{match}/life-history/claim`;
+        urlPath = urlPath.replace('{tournament}', encodeURIComponent(String(requestParameters['tournament'])));
+        urlPath = urlPath.replace('{match}', encodeURIComponent(String(requestParameters['match'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['ClaimMatchLifeRequest'],
+        };
+    }
+
+    /**
+     * Deliberately claim a recording slot with a private, device-local capability.
+     * Deliberately claim a recording slot with a private, device-local capability.
+     */
+    async claimMatchLifeHistoryRaw(requestParameters: ClaimMatchLifeHistoryRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SaveMatchLifeHistory200Response>> {
+        const requestOptions = await this.claimMatchLifeHistoryRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Deliberately claim a recording slot with a private, device-local capability.
+     * Deliberately claim a recording slot with a private, device-local capability.
+     */
+    async claimMatchLifeHistory(requestParameters: ClaimMatchLifeHistoryRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SaveMatchLifeHistory200Response> {
+        const response = await this.claimMatchLifeHistoryRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -6329,6 +6432,61 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async getDecksSharedWithMe(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListSharedWithMeResponse> {
         const response = await this.getDecksSharedWithMeRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for getMatchLifeHistory without sending the request
+     */
+    async getMatchLifeHistoryRequestOpts(requestParameters: GetMatchLifeHistoryRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tournament'] == null) {
+            throw new runtime.RequiredError(
+                'tournament',
+                'Required parameter "tournament" was null or undefined when calling getMatchLifeHistory().'
+            );
+        }
+
+        if (requestParameters['match'] == null) {
+            throw new runtime.RequiredError(
+                'match',
+                'Required parameter "match" was null or undefined when calling getMatchLifeHistory().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/tournaments/{tournament}/matches/{match}/life-history`;
+        urlPath = urlPath.replace('{tournament}', encodeURIComponent(String(requestParameters['tournament'])));
+        urlPath = urlPath.replace('{match}', encodeURIComponent(String(requestParameters['match'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Observe uploaded history without claiming the recording device.
+     * Observe uploaded history without claiming the recording device.
+     */
+    async getMatchLifeHistoryRaw(requestParameters: GetMatchLifeHistoryRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MatchLifeHistoryResponse>> {
+        const requestOptions = await this.getMatchLifeHistoryRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Observe uploaded history without claiming the recording device.
+     * Observe uploaded history without claiming the recording device.
+     */
+    async getMatchLifeHistory(requestParameters: GetMatchLifeHistoryRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MatchLifeHistoryResponse> {
+        const response = await this.getMatchLifeHistoryRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -10023,6 +10181,64 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async rotateShareToken(requestParameters: RotateShareTokenRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<RotateShareTokenResponse> {
         const response = await this.rotateShareTokenRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for saveMatchLifeHistory without sending the request
+     */
+    async saveMatchLifeHistoryRequestOpts(requestParameters: SaveMatchLifeHistoryRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tournament'] == null) {
+            throw new runtime.RequiredError(
+                'tournament',
+                'Required parameter "tournament" was null or undefined when calling saveMatchLifeHistory().'
+            );
+        }
+
+        if (requestParameters['match'] == null) {
+            throw new runtime.RequiredError(
+                'match',
+                'Required parameter "match" was null or undefined when calling saveMatchLifeHistory().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/tournaments/{tournament}/matches/{match}/life-history`;
+        urlPath = urlPath.replace('{tournament}', encodeURIComponent(String(requestParameters['tournament'])));
+        urlPath = urlPath.replace('{match}', encodeURIComponent(String(requestParameters['match'])));
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['SaveMatchLifeRequest'],
+        };
+    }
+
+    /**
+     * Upload history using only the active recording Account, device and private capability.
+     * Upload history using only the active recording Account, device and private capability.
+     */
+    async saveMatchLifeHistoryRaw(requestParameters: SaveMatchLifeHistoryRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SaveMatchLifeHistory200Response>> {
+        const requestOptions = await this.saveMatchLifeHistoryRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Upload history using only the active recording Account, device and private capability.
+     * Upload history using only the active recording Account, device and private capability.
+     */
+    async saveMatchLifeHistory(requestParameters: SaveMatchLifeHistoryRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SaveMatchLifeHistory200Response> {
+        const response = await this.saveMatchLifeHistoryRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

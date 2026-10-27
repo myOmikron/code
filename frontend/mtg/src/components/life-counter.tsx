@@ -69,6 +69,20 @@ import {
     withHit,
 } from "src/utils/life-tracker";
 
+/**
+ * Retain whether the editable setup has been confirmed before any remote upload.
+ *
+ * @param key the counter's local history key
+ * @param configured whether Start has been explicitly chosen
+ */
+function saveConfiguration(key: string, configured: boolean): void {
+    try {
+        localStorage.setItem(`${key}.configured`, JSON.stringify(configured));
+    } catch {
+        return;
+    }
+}
+
 /** How long a run of taps stays readable after the last one */
 const DELTA_LINGER = 3000;
 
@@ -108,7 +122,7 @@ export function LifeCounter({
     context?: ReactNode;
     storageKey?: string;
     initialHistory?: LifeHistory;
-    onHistoryChange?: (history: LifeHistory) => void;
+    onHistoryChange?: (history: LifeHistory, configured: boolean) => void;
     readOnly?: boolean;
     allowNextGame?: boolean;
 }) {
@@ -147,7 +161,17 @@ export function LifeCounter({
     const [outcome, setOutcome] = useState<string>("draw");
     const [editedTotals, setEditedTotals] = useState(false);
     const [typedLife, setTypedLife] = useState(() => String(settings.startingLife));
-    const [configuring, setConfiguring] = useState(!initialHistory && !loadLifeHistory(storageKey));
+    const [configured, setConfigured] = useState(() => {
+        try {
+            return (
+                Boolean(initialHistory ?? loadLifeHistory(storageKey)) &&
+                localStorage.getItem(`${storageKey}.configured`) !== "false"
+            );
+        } catch {
+            return Boolean(initialHistory ?? loadLifeHistory(storageKey));
+        }
+    });
+    const [configuring, setConfiguring] = useState(!readOnly && !configured);
     const [resetting, setResetting] = useState(false);
 
     const [booking, setBooking] = useState<Booking | undefined>(undefined);
@@ -165,8 +189,9 @@ export function LifeCounter({
 
     useEffect(() => {
         saveLifeHistory(storageKey, history);
-        historyChange.current?.(history);
-    }, [history, storageKey]);
+        saveConfiguration(storageKey, configured);
+        historyChange.current?.(history, configured);
+    }, [history, storageKey, configured]);
 
     const immersive = useImmersive(true);
 
@@ -423,7 +448,7 @@ export function LifeCounter({
      */
     function start() {
         if (readOnly || (game.outcome && !allowNextGame)) return;
-        if (!readOnly && (game.outcome || (history.games.length === 1 && game.events.length === 1))) {
+        if (!readOnly && (game.outcome || (!configured && history.games.length === 1 && game.events.length === 1))) {
             const players =
                 participants ??
                 Array.from({ length: settings.playerCount }, (_, index) => ({
@@ -440,6 +465,7 @@ export function LifeCounter({
             );
             setFeedback({ deltas: {}, hits: {} });
         }
+        setConfigured(true);
         setConfiguring(false);
         immersive.enter();
     }
@@ -549,11 +575,11 @@ export function LifeCounter({
                 <DialogTitle>{t("heading.settings")}</DialogTitle>
                 <DialogBody>
                     <div className={"flex flex-col gap-5"}>
-                        {!game.outcome && game.events.length > 1 && <Text>{t("description.next-game-settings")}</Text>}
+                        {!game.outcome && configured && <Text>{t("description.next-game-settings")}</Text>}
                         <Field>
                             <Label>{t("label.players")}</Label>
                             <Listbox
-                                disabled={Boolean(participants) || (!game.outcome && game.events.length > 1)}
+                                disabled={Boolean(participants) || (!game.outcome && configured)}
                                 value={settings.playerCount}
                                 onChange={changePlayerCount}
                             >
