@@ -119,6 +119,38 @@ describe("order intake", () => {
     });
 });
 
+describe("zoomed range", () => {
+    const zoom = { start: Date.parse("2026-07-01T08:00:00Z"), end: Date.parse("2026-07-01T11:00:00Z") };
+    const options = { ...OPTIONS, period: zoom, selectedItems: [BREAD] };
+
+    test("the order intake covers exactly the range, in automatic 10 minute segments", () => {
+        const stats = aggregateStatistics(
+            [
+                position({ ordered_at: "2026-07-01T07:59:59Z" }),
+                position({ order: "order-2", ordered_at: "2026-07-01T08:05:00Z", quantity: 2 }),
+                position({ order: "order-3", ordered_at: "2026-07-01T10:59:59Z", quantity: 3 }),
+                position({ order: "order-4", ordered_at: "2026-07-01T11:00:00Z" }),
+            ],
+            options,
+        );
+
+        expect(stats.segmentSize).toBe("10min");
+        expect(stats.intake).toHaveLength(18);
+        expect(stats.intake[0]).toMatchObject({ start: zoom.start, end: zoom.start + 10 * 60 * 1000, total: 2 });
+        expect(stats.intake[17]).toMatchObject({ end: zoom.end, total: 3 });
+        expect(stats.items.map((row) => row.units)).toEqual([5]);
+    });
+
+    test("per pickup day keeps the pickup days of the Berlin days the range touches", () => {
+        const { pickupDays } = aggregateStatistics(
+            [position({ pickup_date: "2026-07-01" }), position({ order: "order-2", pickup_date: "2026-07-02" })],
+            options,
+        );
+
+        expect(pickupDays.map((day) => day.date)).toEqual(["2026-07-01"]);
+    });
+});
+
 describe("counting rules", () => {
     const daily = { ...OPTIONS, segmentSize: "1d" as const, selectedItems: [BREAD, ROLL] };
     const roll = { item: ROLL, item_name: "Semmel", name: "Semmel", price_cents: 60 };
@@ -478,6 +510,13 @@ describe("autoSegmentSize", () => {
         expect(autoSegmentSize({ from: "2026-06-01", to: "2026-06-30" })).toBe("1d");
     });
 
+    test("applies the same limit to a zoomed range of instants", () => {
+        const at = (iso: string) => Date.parse(iso);
+        expect(autoSegmentSize({ start: at("2026-07-01T08:00:00Z"), end: at("2026-07-01T11:00:00Z") })).toBe("10min");
+        expect(autoSegmentSize({ start: at("2026-07-01T08:00:00Z"), end: at("2026-07-03T08:00:00Z") })).toBe("30min");
+        expect(autoSegmentSize({ start: at("2026-07-01T08:00:00Z"), end: at("2026-07-06T08:00:00Z") })).toBe("1h");
+    });
+
     test("is used for auto, a manual size is honoured", () => {
         const period = { from: "2026-06-01", to: "2026-06-30" };
         expect(aggregateStatistics([], { ...OPTIONS, period }).segmentSize).toBe("1d");
@@ -486,14 +525,10 @@ describe("autoSegmentSize", () => {
 });
 
 describe("zoomPeriod", () => {
-    test("is the Berlin days a dragged range of segments covers", () => {
-        expect(zoomPeriod(Date.parse("2026-03-28T23:00:00Z"), Date.parse("2026-03-30T22:00:00Z"))).toEqual({
-            from: "2026-03-29",
-            to: "2026-03-30",
-        });
-        expect(zoomPeriod(Date.parse("2026-07-01T22:10:00Z"), Date.parse("2026-07-01T22:20:00Z"))).toEqual({
-            from: "2026-07-02",
-            to: "2026-07-02",
+    test("is exactly the dragged range, not widened to Berlin days", () => {
+        expect(zoomPeriod(Date.parse("2026-07-01T08:00:00Z"), Date.parse("2026-07-01T11:00:00Z"))).toEqual({
+            start: Date.parse("2026-07-01T08:00:00Z"),
+            end: Date.parse("2026-07-01T11:00:00Z"),
         });
     });
 });

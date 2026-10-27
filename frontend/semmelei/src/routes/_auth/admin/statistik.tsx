@@ -30,10 +30,15 @@ import {
     Period,
     quickPeriod,
     SegmentSize,
+    TimeRange,
     zoomPeriod,
 } from "src/utils/statistics";
-import { formatDate } from "src/utils/dates";
 
+const ZOOM_BOUND = new Intl.DateTimeFormat("de-DE", {
+    timeZone: "Europe/Berlin",
+    dateStyle: "medium",
+    timeStyle: "short",
+});
 const MEASURES: Measure[] = ["units", "orders", "orderValue"];
 const MEASURE_LABELS: Record<Measure, string> = {
     units: "button.measure-units",
@@ -50,7 +55,7 @@ function Statistik() {
     const [t] = useTranslation("statistics");
 
     const [period, setPeriod] = React.useState<Period>(() => quickPeriod("30d", Date.now()));
-    const [zoom, setZoom] = React.useState<Period>();
+    const [zoom, setZoom] = React.useState<TimeRange>();
     const [positions, setPositions] = React.useState<StatisticsPosition[]>();
     const [measure, setMeasure] = React.useState<Measure>("units");
     const [segmentChoice, setSegmentChoice] = React.useState<SegmentSize | "auto">("auto");
@@ -152,7 +157,9 @@ function Statistik() {
             </div>
 
             {zoom !== undefined && (
-                <Text>{t("description.zoomed", { from: formatDate(zoom.from), to: formatDate(zoom.to) })}</Text>
+                <Text>
+                    {t("description.zoomed", { from: ZOOM_BOUND.format(zoom.start), to: ZOOM_BOUND.format(zoom.end) })}
+                </Text>
             )}
 
             {positions === undefined ? (
