@@ -34,6 +34,7 @@ use galvyn::core::Module;
 use galvyn::core::PreInitError;
 use serde::Deserialize;
 use serde::Serialize;
+use service_bootstrap::http::client::PropagateTrace;
 use tokio::sync::Mutex;
 use tracing::debug;
 use url::Url;
@@ -414,6 +415,7 @@ impl MpcFill {
         Ok(self
             .client
             .get(url)
+            .propagate_trace()
             .send()
             .await?
             .error_for_status()?
@@ -432,6 +434,7 @@ impl MpcFill {
             .client
             .post(url)
             .json(body)
+            .propagate_trace()
             .send()
             .await?
             .error_for_status()?
