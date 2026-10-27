@@ -116,8 +116,10 @@ export function SidebarLayout(props: SidebarLayoutProps) {
 
             {/* Content */}
             <main className="flex flex-1 flex-col pb-2 lg:min-w-0 lg:pt-2 lg:pr-2 lg:pl-64">
-                <div className="grow p-6 lg:rounded-lg lg:bg-white lg:p-10 lg:shadow-xs lg:ring-1 lg:ring-zinc-950/5 dark:lg:bg-zinc-900 dark:lg:ring-white/10">
-                    <div className="mx-auto max-w-6xl">{children}</div>
+                <div className="grow p-6 has-data-full-bleed:flex has-data-full-bleed:flex-col has-data-full-bleed:overflow-hidden has-data-full-bleed:p-0 lg:rounded-lg lg:bg-white lg:p-10 lg:shadow-xs lg:ring-1 lg:ring-zinc-950/5 lg:has-data-full-bleed:p-0 dark:lg:bg-zinc-900 dark:lg:ring-white/10">
+                    <div className="mx-auto max-w-6xl has-data-full-bleed:flex has-data-full-bleed:w-full has-data-full-bleed:max-w-none has-data-full-bleed:flex-1 has-data-full-bleed:flex-col">
+                        {children}
+                    </div>
                 </div>
             </main>
         </div>

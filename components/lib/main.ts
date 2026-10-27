@@ -197,11 +197,13 @@ export {
     type WizardFieldTypeRegistry,
     type WizardIcon,
     type WizardIconRegistry,
+    type WizardAccent,
     type WizardFieldTypesProviderProps,
     standardWizardFieldTypes,
     WizardFieldTypesProvider,
     useWizardFieldTypes,
     useWizardIcons,
+    useWizardAccent,
 } from "./wizard/field-types.tsx";
 export { type TextFieldConfig, textFieldType } from "./wizard/standard-field-types/text.tsx";
 export { type TextareaFieldConfig, textareaFieldType } from "./wizard/standard-field-types/textarea.tsx";

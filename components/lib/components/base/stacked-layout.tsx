@@ -190,13 +190,20 @@ export function StackedLayout(props: StackedLayoutProps) {
             <main className={clsx("flex flex-1 flex-col", !bare && "pb-2 lg:px-2")}>
                 <div
                     className={clsx(
-                        "grow",
+                        "grow has-data-full-bleed:flex has-data-full-bleed:flex-col",
                         bare
                             ? "bg-white dark:bg-zinc-900"
-                            : "p-6 lg:rounded-lg lg:bg-white lg:p-10 lg:shadow-xs lg:ring-1 lg:ring-zinc-950/5 dark:lg:bg-zinc-900 dark:lg:ring-white/10",
+                            : "p-6 has-data-full-bleed:overflow-hidden has-data-full-bleed:p-0 lg:rounded-lg lg:bg-white lg:p-10 lg:shadow-xs lg:ring-1 lg:ring-zinc-950/5 lg:has-data-full-bleed:p-0 dark:lg:bg-zinc-900 dark:lg:ring-white/10",
                     )}
                 >
-                    <div className={clsx("mx-auto", CONTENT_WIDTH[contentWidth])}>{children}</div>
+                    <div
+                        className={clsx(
+                            "mx-auto has-data-full-bleed:flex has-data-full-bleed:w-full has-data-full-bleed:max-w-none has-data-full-bleed:flex-1 has-data-full-bleed:flex-col",
+                            CONTENT_WIDTH[contentWidth],
+                        )}
+                    >
+                        {children}
+                    </div>
                 </div>
             </main>
 

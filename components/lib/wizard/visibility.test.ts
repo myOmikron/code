@@ -104,4 +104,36 @@ describe("visibleSteps", () => {
         expect(fields({ a: { x: [1] } })).toEqual(["a", "b"]);
         expect(fields({ a: { x: [2] } })).toEqual(["a"]);
     });
+
+    it("holds an `in` condition for any of its values", () => {
+        const oneOf = defineWizard({
+            ...wizard,
+            steps: [
+                {
+                    id: "only",
+                    label: "label.only",
+                    sections: [
+                        {
+                            id: "only-section",
+                            fields: [
+                                { id: "a", type: "text", label: "label.a" },
+                                {
+                                    id: "b",
+                                    type: "text",
+                                    label: "label.b",
+                                    visibleWhen: { field: "a", in: ["x", "y"] },
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ],
+        } as const);
+
+        const fields = (values: Record<string, unknown>) =>
+            visibleSteps(oneOf, values).flatMap((s) => s.sections.flatMap((x) => x.fields.map((f) => f.id)));
+        expect(fields({ a: "x" })).toEqual(["a", "b"]);
+        expect(fields({ a: "y" })).toEqual(["a", "b"]);
+        expect(fields({ a: "z" })).toEqual(["a"]);
+    });
 });

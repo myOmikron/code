@@ -131,15 +131,37 @@ export const standardWizardFieldTypes = {
     "radio-tiles": radioTilesFieldType,
 } satisfies WizardFieldTypeRegistry;
 
+/** The color of a Wizard's primary buttons and its checked controls (switches, checkboxes, radios) */
+export type WizardAccent =
+    | "red"
+    | "orange"
+    | "amber"
+    | "yellow"
+    | "lime"
+    | "green"
+    | "emerald"
+    | "teal"
+    | "cyan"
+    | "sky"
+    | "blue"
+    | "indigo"
+    | "violet"
+    | "purple"
+    | "fuchsia"
+    | "pink"
+    | "rose";
+
 /** What {@link WizardFieldTypesProvider} provides */
 type WizardRegistries = {
     /** The Field Types */
     types: WizardFieldTypeRegistry;
     /** The icons */
     icons: WizardIconRegistry;
+    /** The accent color */
+    accent: WizardAccent;
 };
 
-const WizardRegistriesContext = createContext<WizardRegistries>({ types: {}, icons: {} });
+const WizardRegistriesContext = createContext<WizardRegistries>({ types: {}, icons: {}, accent: "blue" });
 
 /**
  * The properties for {@link WizardFieldTypesProvider}
@@ -149,6 +171,8 @@ export type WizardFieldTypesProviderProps = {
     types: WizardFieldTypeRegistry;
     /** The icons definitions can name, e.g. `{ windows: WindowsIcon }`; none by default */
     icons?: WizardIconRegistry;
+    /** The app's accent color, matching its brand; `blue` by default */
+    accent?: WizardAccent;
     /** The app */
     children: React.ReactNode;
 };
@@ -157,8 +181,8 @@ export type WizardFieldTypesProviderProps = {
  * Provide the Field Type and icon registries to every Wizard below
  */
 export function WizardFieldTypesProvider(props: WizardFieldTypesProviderProps) {
-    const { types, icons = NO_ICONS } = props;
-    const value = useMemo(() => ({ types, icons }), [types, icons]);
+    const { types, icons = NO_ICONS, accent = "blue" } = props;
+    const value = useMemo(() => ({ types, icons, accent }), [types, icons, accent]);
     return <WizardRegistriesContext.Provider value={value}>{props.children}</WizardRegistriesContext.Provider>;
 }
 
@@ -181,4 +205,13 @@ export function useWizardFieldTypes(): WizardFieldTypeRegistry {
  */
 export function useWizardIcons(): WizardIconRegistry {
     return useContext(WizardRegistriesContext).icons;
+}
+
+/**
+ * The accent color provided by {@link WizardFieldTypesProvider}
+ *
+ * @returns The accent color
+ */
+export function useWizardAccent(): WizardAccent {
+    return useContext(WizardRegistriesContext).accent;
 }

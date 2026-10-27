@@ -103,7 +103,8 @@ Add the following `theme.js` script to your app entry point:
 `Wizard` renders a guided, multi-step form from a definition that is pure data (see `GLOSSARY.md`,
 `docs/adr/0003-wizards-are-pure-data.md` and `docs/adr/0004-wizard-secrets-are-write-only.md`). To use it in an app:
 
-1. Wrap the app in `<WizardFieldTypesProvider types={...} icons={...}>`. Without own Field Types, pass
+1. Wrap the app in `<WizardFieldTypesProvider types={...} icons={...} accent={...}>`; `accent` colors the
+   Wizard's buttons and checked controls to match the app (`blue` by default). Without own Field Types, pass
    `standardWizardFieldTypes`; an app's own ones are added as `{ ...standardWizardFieldTypes, "my-type": myType }`.
 2. Define each Wizard with `defineWizard` in `src/wizards/<id>.wizard.ts`, its texts in the namespace
    `wizard-<id>` (`public/locales/<language>/wizard-<id>.json`).

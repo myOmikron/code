@@ -3,7 +3,7 @@ import { ArrowRightIcon, CheckIcon } from "@heroicons/react/20/solid";
 import { type ReactNode, use, useEffect, useRef, useState } from "react";
 import { useLatest } from "./use-latest";
 import { useTranslation } from "react-i18next";
-import { Button, PrimaryButton } from "../components/base/button";
+import { Button } from "../components/base/button";
 import { FieldGroup, Fieldset, Legend } from "../components/base/fieldset";
 import { motion, useReducedMotion } from "motion/react";
 import { type Step } from "../components/base/step-bar";
@@ -24,6 +24,7 @@ import {
     type AnyWizardFieldType,
     type WizardFieldTypeRegistry,
     useWizardFieldTypes,
+    useWizardAccent,
     useWizardIcons,
 } from "./field-types";
 import { type WizardMessage, validateWizardField } from "./rules";
@@ -265,6 +266,7 @@ function WizardRun<D extends WizardDefinition>(props: WizardRunProps<D>) {
     const fieldI18n = { t, tg, language: i18n.language };
     const registry = useWizardFieldTypes();
     const icons = useWizardIcons();
+    const accent = useWizardAccent();
 
     const [busy, setBusy] = useState(false);
     const [submitErrors, setSubmitErrors] = useState<SubmitErrors>(noSubmitErrors);
@@ -655,9 +657,9 @@ function WizardRun<D extends WizardDefinition>(props: WizardRunProps<D>) {
                 ) : (
                     <span />
                 )}
-                <PrimaryButton type={"submit"} disabled={busy}>
+                <Button color={accent} type={"submit"} disabled={busy}>
                     {isLast ? tg("button.submit") : tg("button.next")}
-                </PrimaryButton>
+                </Button>
             </div>
         </form>
     );
@@ -680,10 +682,10 @@ function WizardRun<D extends WizardDefinition>(props: WizardRunProps<D>) {
     const screenBody = (content: WizardScreen, onLeave: () => void) => (
         <motion.div className={"flex flex-col items-start gap-8"} {...screenMotion}>
             <Text className={"max-w-prose text-base/7!"}>{content.description}</Text>
-            <PrimaryButton onClick={onLeave}>
+            <Button color={accent} onClick={onLeave}>
                 {content.button}
-                <ArrowRightIcon data-slot={"icon"} className={"text-white!"} />
-            </PrimaryButton>
+                <ArrowRightIcon data-slot={"icon"} />
+            </Button>
         </motion.div>
     );
 

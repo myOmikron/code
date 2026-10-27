@@ -1,18 +1,19 @@
 import { Checkbox, CheckboxField, CheckboxGroup } from "../../components/base/checkbox";
 import { Label } from "../../components/base/fieldset";
-import type { WizardFieldComponentProps, WizardFieldType } from "../field-types";
+import { type WizardFieldComponentProps, type WizardFieldType, useWizardAccent } from "../field-types";
 import { type OptionsFieldConfig, nonEmptyOptions, optionLabel } from "./options";
 
 /**
  * The control of the `checkbox-group` Field Type
  */
 function CheckboxGroupField(props: WizardFieldComponentProps<Array<string>, OptionsFieldConfig>) {
+    const accent = useWizardAccent();
     return (
         <CheckboxGroup className={"grid space-y-0! gap-x-6 gap-y-3 sm:grid-cols-2"}>
             {nonEmptyOptions(props.config).map((option) => (
                 <CheckboxField key={option.value} disabled={props.disabled}>
                     <Checkbox
-                        color={"blue"}
+                        color={accent}
                         checked={props.value.includes(option.value)}
                         onChange={(checked) =>
                             props.onChange(

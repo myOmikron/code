@@ -133,16 +133,23 @@ export type WizardFieldValue<T extends WizardFieldTypeName> = WizardFieldTypeMap
 export type WizardFieldConfig<T extends WizardFieldTypeName> = WizardFieldTypeMap[T]["config"];
 
 /**
- * Shows a Wizard Field, Section or Step only while an earlier field holds a value (ADR-0003).
+ * Shows a Wizard Field, Section or Step only while an earlier field holds a value, or one of several (ADR-0003).
  *
  * The condition is false while the referenced field is itself hidden.
  */
-export type WizardCondition = {
-    /** ID of an earlier Wizard Field */
-    readonly field: string;
-    /** The value the field must hold, compared structurally */
-    readonly equals: JsonValue;
-};
+export type WizardCondition =
+    | {
+          /** ID of an earlier Wizard Field */
+          readonly field: string;
+          /** The value the field must hold, compared structurally */
+          readonly equals: JsonValue;
+      }
+    | {
+          /** ID of an earlier Wizard Field */
+          readonly field: string;
+          /** The values one of which the field must hold, compared structurally */
+          readonly in: ReadonlyArray<JsonValue>;
+      };
 
 /**
  * The value of a Secret in a Wizard Run (ADR-0004): either newly entered, carrying the value, or already

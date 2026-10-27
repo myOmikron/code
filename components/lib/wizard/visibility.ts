@@ -22,8 +22,7 @@ export function visibleSteps(
 ): Array<WizardStepDefinition> {
     const visible = new Set<string>();
     const holds = (condition: WizardCondition | undefined) =>
-        condition === undefined ||
-        (visible.has(condition.field) && jsonEqual(values[condition.field], condition.equals));
+        condition === undefined || (visible.has(condition.field) && matches(values[condition.field], condition));
 
     const steps: Array<WizardStepDefinition> = [];
     for (const step of definition.steps) {
@@ -42,6 +41,19 @@ export function visibleSteps(
         steps.push({ ...step, sections });
     }
     return steps;
+}
+
+/**
+ * Whether a value satisfies a condition
+ *
+ * @param value The referenced field's value
+ * @param condition The condition
+ * @returns Whether the value equals the condition's value, or one of its values
+ */
+function matches(value: unknown, condition: WizardCondition): boolean {
+    return "equals" in condition
+        ? jsonEqual(value, condition.equals)
+        : condition.in.some((candidate) => jsonEqual(value, candidate));
 }
 
 /**

@@ -155,6 +155,24 @@ describe("standard Wizard Field Types", () => {
         },
     );
 
+    it("number: rejects a fraction where only whole numbers are valid", async () => {
+        const { user, onSubmit, submit } = await renderSingleStep([
+            { id: "count", type: "number", label: "label.count", config: { integer: true } },
+        ]);
+
+        await user.type(await screen.findByLabelText("label.count"), "1,5");
+        await submit();
+
+        expect(await screen.findByText("error.invalid-integer")).toBeTruthy();
+        expect(onSubmit).not.toHaveBeenCalled();
+
+        await user.clear(screen.getByLabelText("label.count"));
+        await user.type(screen.getByLabelText("label.count"), "2");
+        await submit();
+
+        await waitFor(() => expect(onSubmit).toHaveBeenCalledWith({ count: 2 }));
+    });
+
     it.each(["de", "fr"])("number: accepts both separators in %s", async (language) => {
         await i18n.changeLanguage(language);
         try {
