@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import math
 import time
+from collections.abc import Callable, Hashable
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
 from typing import Annotated
@@ -18,7 +19,7 @@ from fastapi.responses import JSONResponse
 from opentelemetry import trace
 from pydantic import AfterValidator, BaseModel, Field
 
-from .cache import diagnostics_cache, facets_cache, suggestions_cache
+from .cache import LruTtlCache, diagnostics_cache, facets_cache, suggestions_cache
 from .composition import TargetOverride
 from .config import settings
 from .cuts import CutCandidate, Replacement, Swap
@@ -47,7 +48,7 @@ from .solver import DEFAULT_TIME_LIMIT, FillResult, SolverBusy
 from .solver import fill_deck as run_fill
 from .spellbook import deck_combos as run_combos
 from .suggestions import SuggestionReport, suggest
-from .tracing import TELEMETRY, background_job, log_trace_ids, start_tracing
+from .tracing import TELEMETRY, background_job, install_trace_id_processor, start_tracing
 from .type_targets import PRIMARY_TYPES
 from .vocabulary import Bucket
 
@@ -247,8 +248,27 @@ def _suggestions_key(request: SuggestionsRequest) -> tuple:
     )
 
 
-log_trace_ids()
+install_trace_id_processor()
 log = structlog.get_logger(__name__)
+
+
+def _answer_cached[T](cache: LruTtlCache, key: Hashable, compute: Callable[[], T]) -> T:
+    """The endpoint's answer through `cache`, its span told whether the cache answered.
+
+    Call it from the handler itself: the current span is then the endpoint's,
+    and it gets `cache.hit`.
+    """
+    span = trace.get_current_span()
+    computed = False
+
+    def tracked() -> T:
+        nonlocal computed
+        computed = True
+        return compute()
+
+    answer = cache.get_or_compute(key, tracked)
+    span.set_attribute("cache.hit", not computed)
+    return answer
 
 
 @background_job("startup.warmup")
@@ -584,7 +604,7 @@ def post_diagnostics(request: DiagnosticsRequest) -> Diagnostics:
     # get_or_compute stores only on success — an exception propagates instead
     # of becoming the answer for the next five minutes — and folds in the
     # /warm generation guard (see its doc comment).
-    return diagnostics_cache.get_or_compute(key, compute)
+    return _answer_cached(diagnostics_cache, key, compute)
 
 
 class SuggestionsRequest(BaseModel):
@@ -694,7 +714,7 @@ def post_suggestions(request: SuggestionsRequest) -> SuggestionReport:
 
     # See the doc comment on get_or_compute: it folds in the /warm generation
     # guard that used to be hand-rolled here.
-    return suggestions_cache.get_or_compute(key, compute)
+    return _answer_cached(suggestions_cache, key, compute)
 
 
 class PoolQueryRequest(BaseModel):
@@ -789,7 +809,7 @@ def _facets_cached() -> dict[str, list[dict]]:
 @app.get("/facets")
 def get_facets() -> dict[str, list[dict]]:
     """Filter values that actually have cards behind them."""
-    return _facets_cached()
+    return _answer_cached(facets_cache, "facets", run_facets)
 
 
 @app.post("/search", response_model=SearchResponse)

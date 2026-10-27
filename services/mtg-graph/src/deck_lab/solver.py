@@ -404,7 +404,7 @@ def solve_fill(
     )
 
 
-@deck_span("fill")
+@deck_span("fill", deck="deck_oracle_ids")
 def fill_deck(
     deck_oracle_ids: list[str],
     deck_card_names: list[str],

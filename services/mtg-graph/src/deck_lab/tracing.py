@@ -76,28 +76,35 @@ def start_tracing(settings: Settings) -> TracerProvider | None:
 tracer = trace.get_tracer("deck_lab")
 
 
-def deck_span[**P, R](name: str) -> Callable[[Callable[P, R]], Callable[P, R]]:
+DECK_SPAN_FIELDS = ("commander_oracle_id", "deck_size")
+"""The parameters, besides the deck, every `deck_span` function takes and records."""
+
+
+def deck_span[**P, R](name: str, *, deck: str) -> Callable[[Callable[P, R]], Callable[P, R]]:
     """Run the decorated advisor function inside a span called `name`.
 
-    The function takes the deck first, plus `commander_oracle_id` and `deck_size`.
-    The span records only the deck's card count, the deck size and the commander:
-    a decklist never goes to the trace backend.
+    The span records the card count of the parameter `deck` plus `DECK_SPAN_FIELDS`
+    (the commander only when set): a decklist never goes to the trace backend.
+    A function lacking any of these parameters is a `TypeError` when decorated.
     """
 
     def decorate(function: Callable[P, R]) -> Callable[P, R]:
         signature = inspect.signature(function)
+        missing = [p for p in (deck, *DECK_SPAN_FIELDS) if p not in signature.parameters]
+        if missing:
+            raise TypeError(f"deck_span({name!r}): {function.__qualname__} lacks {missing}")
 
         @functools.wraps(function)
         def traced(*args: P.args, **kwargs: P.kwargs) -> R:
             call = signature.bind(*args, **kwargs)
             call.apply_defaults()
-            deck, *_ = call.arguments.values()
+            commander_oracle_id, deck_size = (call.arguments[p] for p in DECK_SPAN_FIELDS)
             attributes: dict[str, Any] = {
-                "deck.card_count": len(deck),
-                "deck_size": call.arguments["deck_size"],
+                "deck.card_count": len(call.arguments[deck]),
+                "deck_size": deck_size,
             }
-            if commander := call.arguments["commander_oracle_id"]:
-                attributes["commander_oracle_id"] = commander
+            if commander_oracle_id:
+                attributes["commander_oracle_id"] = commander_oracle_id
             with tracer.start_as_current_span(name, attributes=attributes):
                 return function(*args, **kwargs)
 
@@ -140,7 +147,7 @@ def add_trace_ids(
     return event_dict
 
 
-def log_trace_ids() -> None:
+def install_trace_id_processor() -> None:
     """Put `add_trace_ids` in front of the configured structlog processors, once."""
     processors = structlog.get_config()["processors"]
     if add_trace_ids not in processors:

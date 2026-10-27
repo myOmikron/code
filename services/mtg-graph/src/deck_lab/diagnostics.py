@@ -832,7 +832,7 @@ def build_diagnostics(
     )
 
 
-@deck_span("diagnose")
+@deck_span("diagnose", deck="entries")
 def diagnose(
     entries: list[DeckEntry],
     *,
