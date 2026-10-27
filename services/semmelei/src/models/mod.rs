@@ -31,7 +31,7 @@ pub use order::OrderLanguage;
 pub use order::OrderPositionInsert;
 pub use order::OrderStatus;
 pub use order::OrderUuid;
-pub use order::StatisticsPosition;
+pub use order::StatisticsRow;
 pub use pickup_day::PickupDay;
 pub use pickup_day::PickupDayOverride;
 pub use pickup_day::PickupDayUuid;

@@ -391,7 +391,7 @@ impl Order {
 
 /// An order position with what the statistics need of its order and pickup day
 #[derive(Debug)]
-pub struct StatisticsPosition {
+pub struct StatisticsRow {
     /// The order the position belongs to
     pub order: OrderUuid,
     /// The point in time the order was placed
@@ -426,7 +426,7 @@ impl OrderItem {
         placed_until: OffsetDateTime,
         picked_up_from: Date,
         picked_up_to: Date,
-    ) -> Result<Vec<StatisticsPosition>, rorm::Error> {
+    ) -> Result<Vec<StatisticsRow>, rorm::Error> {
         let rows = rorm::query(
             exe,
             (
@@ -478,7 +478,7 @@ impl OrderItem {
                     name,
                     price_cents,
                     quantity,
-                )| StatisticsPosition {
+                )| StatisticsRow {
                     order: OrderUuid::new_from_field(order),
                     ordered_at,
                     status,
