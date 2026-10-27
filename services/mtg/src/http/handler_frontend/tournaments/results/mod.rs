@@ -10,7 +10,7 @@ use galvyn::core::GalvynRouter;
 pub mod handler;
 pub mod schema;
 
-/// What the Accounts playing in the Tournament may do
+/// What whoever plays in the Tournament may do, as an Account or through a Guest seat
 pub fn participant_routes() -> GalvynRouter {
     GalvynRouter::new()
         .handler(handler::report_tournament_match_result)

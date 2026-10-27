@@ -36,17 +36,17 @@ use crate::models::deck::access::DeckOperation;
 use crate::models::deck::access::DeckRole;
 use crate::models::deck::collaborator::DeckCollaborator;
 use crate::models::deck::listing::DeckSummary;
-use crate::utils::account_budget::AccountBudget;
+use crate::utils::budget::Budget;
 
 /// Unknown usernames a caller may try to name per hour
 ///
 /// Only failed names count: role changes and Undo name known Accounts.
-static UNKNOWN_USERNAMES: LazyLock<AccountBudget> =
-    LazyLock::new(|| AccountBudget::new(20, Duration::from_secs(60 * 60)));
+static UNKNOWN_USERNAMES: LazyLock<Budget<AccountUuid>> =
+    LazyLock::new(|| Budget::new(20, Duration::from_secs(60 * 60)));
 
 /// Username searches a caller may run per hour, about one per typed letter
-static CANDIDATE_SEARCHES: LazyLock<AccountBudget> =
-    LazyLock::new(|| AccountBudget::new(120, Duration::from_secs(60 * 60)));
+static CANDIDATE_SEARCHES: LazyLock<Budget<AccountUuid>> =
+    LazyLock::new(|| Budget::new(120, Duration::from_secs(60 * 60)));
 
 /// How many Accounts a username search answers with at most
 const CANDIDATE_LIMIT: u64 = 10;

@@ -96,6 +96,7 @@ import type {
     FormErrorResponseForDisputeResultErrors,
     FormErrorResponseForDropErrors,
     FormErrorResponseForFinishLoginErrors,
+    FormErrorResponseForRecoverGuestSeatErrors,
     FormErrorResponseForRegisterDeckErrors,
     FormErrorResponseForRegistrationErrors,
     FormErrorResponseForRenamePasskeyErrors,
@@ -107,6 +108,7 @@ import type {
     FormErrorResponseForSetResultErrors,
     FormErrorResponseForSubscribePushDeviceErrors,
     GetPendingOidcLoginResponse,
+    GuestSignUpRequest,
     ImportDeckCardsRequest,
     ImportDeckCardsResponse,
     ListCardsResponse,
@@ -159,6 +161,7 @@ import type {
     ReadDeckUrlRequest,
     ReadDeckUrlResponse,
     RecoverAccountRequest,
+    RecoverGuestSeatRequest,
     RegisterDeckRequest,
     RegisteredListsResponse,
     RenameAccount200Response,
@@ -201,6 +204,7 @@ import type {
     SetTournamentSwissRounds200Response,
     SharedCollectionResponse,
     SharedDeckResponse,
+    SignUpAsSharedTournamentGuest200Response,
     SignUpForSharedTournament200Response,
     Signup200Response,
     SignupRequest,
@@ -1510,6 +1514,28 @@ export interface RecoverAccountOperationRequest {
     RecoverAccountRequest?: RecoverAccountRequest;
 }
 
+export interface RecoverSharedTournamentGuestSeatRequest {
+    /**
+     * 
+     */
+    token: string;
+    /**
+     * 
+     */
+    RecoverGuestSeatRequest?: RecoverGuestSeatRequest;
+}
+
+export interface RecoverTournamentGuestSeatRequest {
+    /**
+     * 
+     */
+    tournament: string;
+    /**
+     * 
+     */
+    RecoverGuestSeatRequest?: RecoverGuestSeatRequest;
+}
+
 export interface RedoDeckChangeRequest {
     /**
      * 
@@ -1965,6 +1991,28 @@ export interface SetVisibilityDeckRequest {
      * 
      */
     SetDeckVisibilityRequest?: SetDeckVisibilityRequest;
+}
+
+export interface SignUpAsSharedTournamentGuestRequest {
+    /**
+     * 
+     */
+    token: string;
+    /**
+     * 
+     */
+    GuestSignUpRequest?: GuestSignUpRequest;
+}
+
+export interface SignUpAsTournamentGuestRequest {
+    /**
+     * 
+     */
+    tournament: string;
+    /**
+     * 
+     */
+    GuestSignUpRequest?: GuestSignUpRequest;
 }
 
 export interface SignUpForSharedTournamentRequest {
@@ -2700,7 +2748,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Add a Guest by name, as an Organizer  In Registration, and as a late Participant until the Swiss Rounds are over. The name is trimmed; two Guests may share one.
+     * Add a Guest by name, as an Organizer  In Registration, and as a late Participant until the Swiss Rounds are over. The name is trimmed and its blanks collapse; two Guests may share one.
      * Add a Guest by name, as an Organizer
      */
     async addTournamentGuestRaw(requestParameters: AddTournamentGuestRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<AddTournamentGuest200Response>> {
@@ -2711,7 +2759,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Add a Guest by name, as an Organizer  In Registration, and as a late Participant until the Swiss Rounds are over. The name is trimmed; two Guests may share one.
+     * Add a Guest by name, as an Organizer  In Registration, and as a late Participant until the Swiss Rounds are over. The name is trimmed and its blanks collapse; two Guests may share one.
      * Add a Guest by name, as an Organizer
      */
     async addTournamentGuest(requestParameters: AddTournamentGuestRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AddTournamentGuest200Response> {
@@ -5420,8 +5468,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Drop the logged-in Account out of a Tournament it plays in  Once the first Round started, until the Tournament is over; before the first Round an Account withdraws its sign-up instead. No later Round pairs it; it stays in the standings with its Results so far.
-     * Drop the logged-in Account out of a Tournament it plays in
+     * Drop out of a Tournament one plays in, as an Account or a Guest with its Guest seat  Once the first Round started, until the Tournament is over; before the first Round a Participant withdraws its sign-up instead. No later Round pairs it; it stays in the standings with its Results so far.
+     * Drop out of a Tournament one plays in, as an Account or a Guest with its Guest seat
      */
     async dropOutOfTournamentRaw(requestParameters: DropOutOfTournamentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FormErrorResponseForDropErrors>> {
         const requestOptions = await this.dropOutOfTournamentRequestOpts(requestParameters);
@@ -5431,8 +5479,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Drop the logged-in Account out of a Tournament it plays in  Once the first Round started, until the Tournament is over; before the first Round an Account withdraws its sign-up instead. No later Round pairs it; it stays in the standings with its Results so far.
-     * Drop the logged-in Account out of a Tournament it plays in
+     * Drop out of a Tournament one plays in, as an Account or a Guest with its Guest seat  Once the first Round started, until the Tournament is over; before the first Round a Participant withdraws its sign-up instead. No later Round pairs it; it stays in the standings with its Results so far.
+     * Drop out of a Tournament one plays in, as an Account or a Guest with its Guest seat
      */
     async dropOutOfTournament(requestParameters: DropOutOfTournamentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FormErrorResponseForDropErrors> {
         const response = await this.dropOutOfTournamentRaw(requestParameters, initOverrides);
@@ -6889,7 +6937,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * The reader\'s Match in the running Round of a Tournament, with the round timer  For a Participant with an Account: its table, its opponents and its Seat, or its Bye. An Account playing in none gets the Round and timer only.
+     * The reader\'s Match in the running Round of a Tournament, with the round timer  For a Participant, an Account or a Guest through its Guest seat: its table, its opponents and its Seat, or its Bye. A reader playing in none gets the Round and timer only.
      * The reader\'s Match in the running Round of a Tournament, with the round timer
      */
     async getMyTournamentMatchRaw(requestParameters: GetMyTournamentMatchRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MyMatchResponse>> {
@@ -6900,7 +6948,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * The reader\'s Match in the running Round of a Tournament, with the round timer  For a Participant with an Account: its table, its opponents and its Seat, or its Bye. An Account playing in none gets the Round and timer only.
+     * The reader\'s Match in the running Round of a Tournament, with the round timer  For a Participant, an Account or a Guest through its Guest seat: its table, its opponents and its Seat, or its Bye. A reader playing in none gets the Round and timer only.
      * The reader\'s Match in the running Round of a Tournament, with the round timer
      */
     async getMyTournamentMatch(requestParameters: GetMyTournamentMatchRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MyMatchResponse> {
@@ -8719,7 +8767,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * The Participants of the Tournament a share link points at  Says which of them is the reader, if any.
+     * The Participants of the Tournament a share link points at  Says which of them is the reader, if any: its Account\'s, or the Guest its session holds a Guest seat of.
      * The Participants of the Tournament a share link points at
      */
     async listSharedTournamentParticipantsRaw(requestParameters: ListSharedTournamentParticipantsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListParticipantsResponse>> {
@@ -8730,7 +8778,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * The Participants of the Tournament a share link points at  Says which of them is the reader, if any.
+     * The Participants of the Tournament a share link points at  Says which of them is the reader, if any: its Account\'s, or the Guest its session holds a Guest seat of.
      * The Participants of the Tournament a share link points at
      */
     async listSharedTournamentParticipants(requestParameters: ListSharedTournamentParticipantsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListParticipantsResponse> {
@@ -8962,7 +9010,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * The Participants of a Tournament the reader may see  Says which of them is the reader, if any.
+     * The Participants of a Tournament the reader may see  Says which of them is the reader, if any: its Account\'s, or the Guest its session holds a Guest seat of.
      * The Participants of a Tournament the reader may see
      */
     async listTournamentParticipantsRaw(requestParameters: ListTournamentParticipantsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListParticipantsResponse>> {
@@ -8973,7 +9021,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * The Participants of a Tournament the reader may see  Says which of them is the reader, if any.
+     * The Participants of a Tournament the reader may see  Says which of them is the reader, if any: its Account\'s, or the Guest its session holds a Guest seat of.
      * The Participants of a Tournament the reader may see
      */
     async listTournamentParticipants(requestParameters: ListTournamentParticipantsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListParticipantsResponse> {
@@ -9583,6 +9631,106 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async recoverAccount(requestParameters: RecoverAccountOperationRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
         const response = await this.recoverAccountRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for recoverSharedTournamentGuestSeat without sending the request
+     */
+    async recoverSharedTournamentGuestSeatRequestOpts(requestParameters: RecoverSharedTournamentGuestSeatRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['token'] == null) {
+            throw new runtime.RequiredError(
+                'token',
+                'Required parameter "token" was null or undefined when calling recoverSharedTournamentGuestSeat().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/shared/tournaments/{token}/guest-seat/recover`;
+        urlPath = urlPath.replace('{token}', encodeURIComponent(String(requestParameters['token'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['RecoverGuestSeatRequest'],
+        };
+    }
+
+    /**
+     * Restore a Guest seat of the Tournament a share link points at into this session  Refused like `recover_tournament_guest_seat`.
+     * Restore a Guest seat of the Tournament a share link points at into this session
+     */
+    async recoverSharedTournamentGuestSeatRaw(requestParameters: RecoverSharedTournamentGuestSeatRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FormErrorResponseForRecoverGuestSeatErrors>> {
+        const requestOptions = await this.recoverSharedTournamentGuestSeatRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Restore a Guest seat of the Tournament a share link points at into this session  Refused like `recover_tournament_guest_seat`.
+     * Restore a Guest seat of the Tournament a share link points at into this session
+     */
+    async recoverSharedTournamentGuestSeat(requestParameters: RecoverSharedTournamentGuestSeatRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FormErrorResponseForRecoverGuestSeatErrors> {
+        const response = await this.recoverSharedTournamentGuestSeatRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for recoverTournamentGuestSeat without sending the request
+     */
+    async recoverTournamentGuestSeatRequestOpts(requestParameters: RecoverTournamentGuestSeatRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tournament'] == null) {
+            throw new runtime.RequiredError(
+                'tournament',
+                'Required parameter "tournament" was null or undefined when calling recoverTournamentGuestSeat().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/tournaments/{tournament}/guest-seat/recover`;
+        urlPath = urlPath.replace('{tournament}', encodeURIComponent(String(requestParameters['tournament'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['RecoverGuestSeatRequest'],
+        };
+    }
+
+    /**
+     * Restore a Guest seat into this session with the Recovery code its device kept  Until the Tournament is over, when its Recovery codes are gone. An unlisted Tournament restores through its share link, see `recover_shared_tournament_guest_seat`.
+     * Restore a Guest seat into this session with the Recovery code its device kept
+     */
+    async recoverTournamentGuestSeatRaw(requestParameters: RecoverTournamentGuestSeatRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FormErrorResponseForRecoverGuestSeatErrors>> {
+        const requestOptions = await this.recoverTournamentGuestSeatRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Restore a Guest seat into this session with the Recovery code its device kept  Until the Tournament is over, when its Recovery codes are gone. An unlisted Tournament restores through its share link, see `recover_shared_tournament_guest_seat`.
+     * Restore a Guest seat into this session with the Recovery code its device kept
+     */
+    async recoverTournamentGuestSeat(requestParameters: RecoverTournamentGuestSeatRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FormErrorResponseForRecoverGuestSeatErrors> {
+        const response = await this.recoverTournamentGuestSeatRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -11697,6 +11845,106 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for signUpAsSharedTournamentGuest without sending the request
+     */
+    async signUpAsSharedTournamentGuestRequestOpts(requestParameters: SignUpAsSharedTournamentGuestRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['token'] == null) {
+            throw new runtime.RequiredError(
+                'token',
+                'Required parameter "token" was null or undefined when calling signUpAsSharedTournamentGuest().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/shared/tournaments/{token}/guest-sign-up`;
+        urlPath = urlPath.replace('{token}', encodeURIComponent(String(requestParameters['token'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['GuestSignUpRequest'],
+        };
+    }
+
+    /**
+     * Sign up as a Guest for the Tournament a share link points at, without an Account  The way into an unlisted Tournament; refused and answered like `sign_up_as_tournament_guest`.
+     * Sign up as a Guest for the Tournament a share link points at, without an Account
+     */
+    async signUpAsSharedTournamentGuestRaw(requestParameters: SignUpAsSharedTournamentGuestRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SignUpAsSharedTournamentGuest200Response>> {
+        const requestOptions = await this.signUpAsSharedTournamentGuestRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Sign up as a Guest for the Tournament a share link points at, without an Account  The way into an unlisted Tournament; refused and answered like `sign_up_as_tournament_guest`.
+     * Sign up as a Guest for the Tournament a share link points at, without an Account
+     */
+    async signUpAsSharedTournamentGuest(requestParameters: SignUpAsSharedTournamentGuestRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SignUpAsSharedTournamentGuest200Response> {
+        const response = await this.signUpAsSharedTournamentGuestRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for signUpAsTournamentGuest without sending the request
+     */
+    async signUpAsTournamentGuestRequestOpts(requestParameters: SignUpAsTournamentGuestRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tournament'] == null) {
+            throw new runtime.RequiredError(
+                'tournament',
+                'Required parameter "tournament" was null or undefined when calling signUpAsTournamentGuest().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/tournaments/{tournament}/guest-sign-up`;
+        urlPath = urlPath.replace('{tournament}', encodeURIComponent(String(requestParameters['tournament'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['GuestSignUpRequest'],
+        };
+    }
+
+    /**
+     * Sign up as a Guest for a public Tournament, without an Account  Takes effect at once; the Guest is paired once the desk checked it in. The session then holds a Guest seat, and the answer carries the Recovery code that restores the seat into a fresh session. Refused unless the Owner allowed Guest sign-up and the Tournament is in Registration, and once the participant limit is reached. A session that holds a seat for the Tournament gets that Guest back with a new code instead of a second Guest. An unlisted Tournament is signed up for through its share link, see `sign_up_as_shared_tournament_guest`.
+     * Sign up as a Guest for a public Tournament, without an Account
+     */
+    async signUpAsTournamentGuestRaw(requestParameters: SignUpAsTournamentGuestRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SignUpAsSharedTournamentGuest200Response>> {
+        const requestOptions = await this.signUpAsTournamentGuestRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Sign up as a Guest for a public Tournament, without an Account  Takes effect at once; the Guest is paired once the desk checked it in. The session then holds a Guest seat, and the answer carries the Recovery code that restores the seat into a fresh session. Refused unless the Owner allowed Guest sign-up and the Tournament is in Registration, and once the participant limit is reached. A session that holds a seat for the Tournament gets that Guest back with a new code instead of a second Guest. An unlisted Tournament is signed up for through its share link, see `sign_up_as_shared_tournament_guest`.
+     * Sign up as a Guest for a public Tournament, without an Account
+     */
+    async signUpAsTournamentGuest(requestParameters: SignUpAsTournamentGuestRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SignUpAsSharedTournamentGuest200Response> {
+        const response = await this.signUpAsTournamentGuestRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for signUpForSharedTournament without sending the request
      */
     async signUpForSharedTournamentRequestOpts(requestParameters: SignUpForSharedTournamentRequest): Promise<runtime.RequestOpts> {
@@ -13355,8 +13603,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Withdraw the logged-in Account\'s own sign-up  Only before the first Round starts; afterwards a Participant leaves by a Drop.
-     * Withdraw the logged-in Account\'s own sign-up
+     * Withdraw one\'s own sign-up, as an Account or a Guest with its Guest seat  Only before the first Round starts; afterwards a Participant leaves by a Drop. A Guest\'s seat goes with it.
+     * Withdraw one\'s own sign-up, as an Account or a Guest with its Guest seat
      */
     async withdrawTournamentSignUpRaw(requestParameters: WithdrawTournamentSignUpRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
         const requestOptions = await this.withdrawTournamentSignUpRequestOpts(requestParameters);
@@ -13370,8 +13618,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Withdraw the logged-in Account\'s own sign-up  Only before the first Round starts; afterwards a Participant leaves by a Drop.
-     * Withdraw the logged-in Account\'s own sign-up
+     * Withdraw one\'s own sign-up, as an Account or a Guest with its Guest seat  Only before the first Round starts; afterwards a Participant leaves by a Drop. A Guest\'s seat goes with it.
+     * Withdraw one\'s own sign-up, as an Account or a Guest with its Guest seat
      */
     async withdrawTournamentSignUp(requestParameters: WithdrawTournamentSignUpRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
         const response = await this.withdrawTournamentSignUpRaw(requestParameters, initOverrides);

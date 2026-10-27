@@ -2,7 +2,9 @@
 //!
 //! Organizers add Accounts by username and Guests by name, and remove
 //! Participants, while the Tournament is in Registration. Accounts sign up
-//! themselves where the Owner allowed it, see [`Tournament::sign_up_refusal`].
+//! themselves where the Owner allowed it, see [`Tournament::sign_up_refusal`],
+//! and so do Guests where the Owner also allowed that, see
+//! [`super::guest_seat`].
 //! An Organizer can be a Participant of its own Tournament like anybody else.
 //!
 //! Once the first Round started, sign-up is closed and nobody is removed:
@@ -172,6 +174,22 @@ pub enum CheckInRefusal {
     NoRegisteredDeck,
     /// The Participant dropped: no later Round pairs it, checked in or not
     Dropped,
+}
+
+/// A Guest's name as it is kept: blanks and control characters collapse to
+/// single spaces, none at either end; `None` when nothing is left
+///
+/// Never longer than `name`, so it fits where `name` came from.
+pub fn guest_name(name: &str) -> Option<MaxStr<64>> {
+    let collapsed = name
+        .split(|c: char| c.is_whitespace() || c.is_control())
+        .filter(|word| !word.is_empty())
+        .collect::<Vec<_>>()
+        .join(" ");
+    if collapsed.is_empty() {
+        return None;
+    }
+    MaxStr::new(collapsed).ok()
 }
 
 /// The first Round a Participant added after `started_rounds` Rounds started plays
@@ -403,6 +421,7 @@ impl Tournament {
                 tournament: ForeignModelByField(self.uuid.into_inner()),
                 account: Some(ForeignModelByField(account.into_inner())),
                 guest_name: None,
+                recovery_code_hash: None,
                 late_from_round,
                 paid: false,
                 checked_in: false,
@@ -431,6 +450,7 @@ impl Tournament {
                 tournament: ForeignModelByField(self.uuid.into_inner()),
                 account: None,
                 guest_name: Some(name),
+                recovery_code_hash: None,
                 late_from_round,
                 paid: false,
                 checked_in: false,
@@ -679,6 +699,7 @@ mod tests {
     use super::ParticipantUuid;
     use super::Player;
     use super::SignUpRefusal;
+    use super::guest_name;
     use super::late_from_round;
     use crate::models::account::AccountUuid;
     use crate::models::tournament::Tournament;
@@ -706,6 +727,7 @@ mod tests {
             share_token: None,
             participant_limit: Some(8),
             self_sign_up: true,
+            guest_sign_up: false,
             best_of: None,
             entry_fee: None,
             check_in: CheckIn::Off,
@@ -1027,6 +1049,20 @@ mod tests {
             };
             assert_eq!(tournament.takes_participants(), takes, "{state:?}");
         }
+    }
+
+    #[test]
+    fn a_guest_name_is_trimmed_and_its_blanks_collapse() {
+        assert_eq!(
+            guest_name("  Jace \t the\n\u{0}Mind   Sculptor ").as_deref(),
+            Some("Jace the Mind Sculptor")
+        );
+    }
+
+    #[test]
+    fn a_guest_name_of_blanks_only_is_no_name() {
+        assert_eq!(guest_name(" \t\n "), None);
+        assert_eq!(guest_name(""), None);
     }
 
     #[test]

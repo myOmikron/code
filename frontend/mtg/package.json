@@ -65,6 +65,7 @@
         "i18next-http-backend": "catalog:dependencies",
         "motion": "catalog:dependencies",
         "onnxruntime-web": "catalog:dependencies",
+        "qrcode.react": "catalog:dependencies",
         "react": "catalog:dependencies",
         "react-dom": "catalog:dependencies",
         "react-i18next": "catalog:dependencies",

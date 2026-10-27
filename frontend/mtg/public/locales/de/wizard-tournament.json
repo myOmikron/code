@@ -20,7 +20,8 @@
         "visibility": "Sichtbarkeit",
         "visibility-private": "Privat",
         "visibility-public": "Öffentlich",
-        "visibility-unlisted": "Per Link"
+        "visibility-unlisted": "Per Link",
+        "guest-sign-up": "Gäste ohne Konto"
     },
     "description": {
         "check-in": "Ausgelost wird nur, wer eingecheckt ist.",
@@ -34,7 +35,8 @@
         "step-game": "Format, Tisch, Regelwerk und Top Cut.",
         "step-general": "Name, Beginn und Ort des Turniers.",
         "step-registration": "Wer das Turnier sieht und wie Spieler dazukommen.",
-        "visibility": "Öffentlich: Jeder findet das Turnier in der Übersicht. Per Link: Jeder mit dem Link sieht das Turnier. Privat: Nur du, deine Mitorganisatoren und die Spieler sehen das Turnier."
+        "visibility": "Öffentlich: Jeder findet das Turnier in der Übersicht. Per Link: Jeder mit dem Link sieht das Turnier. Privat: Nur du, deine Mitorganisatoren und die Spieler sehen das Turnier.",
+        "guest-sign-up": "Ohne Konto, nur mit Namen."
     },
     "error": {
         "best-of-mismatch": "Best of gibt es nur bei 2 Spielern am Tisch, und dort muss es gewählt sein.",
@@ -47,7 +49,9 @@
         "table-size-out-of-range": "An einem Tisch sitzen 2 bis 5 Spieler.",
         "top-cut-best-of-mismatch": "Wähle den Spielmodus für den Top Cut.",
         "top-cut-mismatch": "Top 4 und Top 8 gibt es nur bei 2 Spielern am Tisch, ein Finale nur bei mehr.",
-        "unknown-format": "Dieses Format gibt es nicht."
+        "unknown-format": "Dieses Format gibt es nicht.",
+        "guest-sign-up-needs-self-sign-up": "Gäste brauchen die Selbstanmeldung.",
+        "guest-sign-up-needs-check-in": "Gäste brauchen einen Check-in."
     },
     "heading": {
         "limits": "Teilnahme",

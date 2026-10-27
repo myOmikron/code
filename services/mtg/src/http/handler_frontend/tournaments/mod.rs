@@ -2,10 +2,12 @@
 //!
 //! Grouped by who may call a route. A route on one Tournament sits in the
 //! group of the part its caller has to play there, a [`TournamentAccess`]:
-//! Owner, Organizer, Participant or Viewer. Each group is wrapped in a
-//! [`TournamentAccessLayer`] that fetches the Tournament, refuses the caller
-//! or hands the handler the [`TournamentGrant`]; handlers check no roles
-//! themselves. Every group but the public Viewer one also sits behind
+//! Owner, Organizer, Participant, Account Participant or Viewer. Each group is
+//! wrapped in a [`TournamentAccessLayer`] that fetches the Tournament, refuses
+//! the caller or hands the handler the [`TournamentGrant`]; handlers check no
+//! roles themselves. The public Viewer group is open to everybody, and the
+//! Participant group to a Guest through its Guest seat too (ADR 0007), behind
+//! [`NoLockedAccountLayer`]; every other group sits behind
 //! [`AccountRequiredLayer`], which runs first. Routes on no Tournament in
 //! particular (the overview, creating, "mine", answering a handover offer)
 //! need a logged-in Account only. Reading by share link lives in
@@ -17,10 +19,12 @@
 use galvyn::core::GalvynRouter;
 
 use crate::http::middleware::account_required::AccountRequiredLayer;
+use crate::http::middleware::account_required::NoLockedAccountLayer;
 use crate::http::middleware::tournament_access::TournamentAccessLayer;
 use crate::models::tournament::access::TournamentAccess;
 
 pub mod decks;
+pub mod guests;
 pub mod handler;
 pub mod life_history;
 pub mod live;
@@ -36,6 +40,21 @@ pub fn initialize_routes() -> GalvynRouter {
         .handler(handler::list_public_tournaments)
         .merge(viewer_routes().wrap(TournamentAccessLayer(TournamentAccess::Viewer)))
         .merge(
+            guests::sign_up_routes()
+                .wrap(TournamentAccessLayer(TournamentAccess::Viewer))
+                .wrap(guests::sign_up_limit()),
+        )
+        .merge(
+            guests::recovery_routes()
+                .wrap(TournamentAccessLayer(TournamentAccess::Viewer))
+                .wrap(guests::recovery_limit()),
+        )
+        .merge(
+            participant_routes()
+                .wrap(TournamentAccessLayer(TournamentAccess::Participant))
+                .wrap(NoLockedAccountLayer),
+        )
+        .merge(
             GalvynRouter::new()
                 .merge(account_routes())
                 .merge(
@@ -48,7 +67,8 @@ pub fn initialize_routes() -> GalvynRouter {
                     signed_in_viewer_routes().wrap(TournamentAccessLayer(TournamentAccess::Viewer)),
                 )
                 .merge(
-                    participant_routes().wrap(TournamentAccessLayer(TournamentAccess::Participant)),
+                    account_participant_routes()
+                        .wrap(TournamentAccessLayer(TournamentAccess::AccountParticipant)),
                 )
                 .merge(organizer_routes().wrap(TournamentAccessLayer(TournamentAccess::Organizer)))
                 .merge(owner_routes().wrap(TournamentAccessLayer(TournamentAccess::Owner)))
@@ -76,17 +96,19 @@ fn account_routes() -> GalvynRouter {
 
 /// What a logged-in Account that sees the Tournament may do
 fn signed_in_viewer_routes() -> GalvynRouter {
-    GalvynRouter::new()
-        .merge(participants::signed_in_viewer_routes())
-        .merge(rounds::signed_in_viewer_routes())
+    GalvynRouter::new().merge(participants::signed_in_viewer_routes())
 }
 
-/// What the Accounts playing in the Tournament may do
+/// What whoever plays in the Tournament may do, as an Account or through a Guest seat
 fn participant_routes() -> GalvynRouter {
     GalvynRouter::new()
-        .merge(decks::participant_routes())
         .merge(participants::participant_routes())
         .merge(results::participant_routes())
+}
+
+/// What only an Account playing in the Tournament may do
+fn account_participant_routes() -> GalvynRouter {
+    GalvynRouter::new().merge(decks::participant_routes())
 }
 
 /// What the Organizers of the Tournament may do

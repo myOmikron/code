@@ -131,6 +131,13 @@ export const tournamentWizard = defineWizard({
                                 ],
                             },
                         },
+                        {
+                            id: "guestSignUp",
+                            type: "switch",
+                            label: "label.guest-sign-up",
+                            description: "description.guest-sign-up",
+                            visibleWhen: { field: "checkIn", in: [CheckIn.Required, CheckIn.RequiredWithDeck] },
+                        },
                     ],
                 },
             ],

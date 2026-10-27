@@ -9,7 +9,7 @@ import { MatchActions } from "src/components/tournament-rounds";
 import { TournamentResultDialog } from "src/components/tournament-result-dialog";
 import { TournamentWinnerDialog } from "src/components/tournament-winner-dialog";
 import { isFormError } from "src/utils/error";
-import { formatResult, winnerSeat, resultErrorKey } from "src/utils/tournament-rounds";
+import { disputeErrorKey, formatResult, winnerSeat, resultErrorKey } from "src/utils/tournament-rounds";
 import { TournamentRoundTimer } from "src/components/tournament-round-timer";
 import { useLiveVersion } from "src/context/tournament-live-context";
 import { clockSkew } from "src/utils/round-timer";
@@ -20,6 +20,8 @@ import { clockSkew } from "src/utils/round-timer";
 export type TournamentMyMatchProps = {
     /** The Tournament as the reader sees it */
     tournament: TournamentResponse;
+    /** Whether the reader plays as a Guest, which keeps no Life history */
+    guest?: boolean;
 };
 
 /** What the service answered and how far this device's clock is ahead of the server's */
@@ -39,7 +41,7 @@ type Loaded = {
  *
  * @returns participation state and the personal Match card
  */
-export function TournamentMyMatch({ tournament }: TournamentMyMatchProps) {
+export function TournamentMyMatch({ tournament, guest = false }: TournamentMyMatchProps) {
     const [t] = useTranslation("tournament");
     const [loaded, setLoaded] = useState<Loaded | null>(null);
     const [busy, setBusy] = useState(false);
@@ -232,7 +234,7 @@ export function TournamentMyMatch({ tournament }: TournamentMyMatchProps) {
                               : "description.play-and-report",
                 )}
             </Text>
-            {played !== null && played.table_number != null && round.state !== RoundState.Previewed && (
+            {!guest && played !== null && played.table_number != null && round.state !== RoundState.Previewed && (
                 <Button outline href={`/tournaments/${tournament.uuid}/matches/${played.uuid}/life`}>
                     {t(canReport ? "button.count-match-life" : "button.view-match-life-history")}
                 </Button>
@@ -247,7 +249,7 @@ export function TournamentMyMatch({ tournament }: TournamentMyMatchProps) {
                         setBusy(true);
                         try {
                             const result = await Api.tournaments.results.dispute(tournament.uuid, played.uuid);
-                            if (isFormError(result)) notify.error(t("error.round-changed"));
+                            if (isFormError(result)) notify.error(t(disputeErrorKey(result.error)));
                             await refresh();
                         } finally {
                             setBusy(false);

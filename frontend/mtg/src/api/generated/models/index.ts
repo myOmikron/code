@@ -3838,6 +3838,23 @@ export interface FormErrorResponseForFinishLoginErrors {
 /**
  * The response that is sent in a case of an error the caller should present his user
  * @export
+ * @interface FormErrorResponseForGuestSignUpErrors
+ */
+export interface FormErrorResponseForGuestSignUpErrors {
+    /**
+     * The actual error struct
+     */
+    error: GuestSignUpErrors;
+    /**
+     * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
+     */
+    result: ErrorConstant;
+}
+
+
+/**
+ * The response that is sent in a case of an error the caller should present his user
+ * @export
  * @interface FormErrorResponseForMatchLifeErrors
  */
 export interface FormErrorResponseForMatchLifeErrors {
@@ -3896,6 +3913,23 @@ export interface FormErrorResponseForPutDeckCollaboratorErrors {
      * The actual error struct
      */
     error: PutDeckCollaboratorErrors;
+    /**
+     * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
+     */
+    result: ErrorConstant;
+}
+
+
+/**
+ * The response that is sent in a case of an error the caller should present his user
+ * @export
+ * @interface FormErrorResponseForRecoverGuestSeatErrors
+ */
+export interface FormErrorResponseForRecoverGuestSeatErrors {
+    /**
+     * The actual error struct
+     */
+    error: RecoverGuestSeatErrors;
     /**
      * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
      */
@@ -4258,6 +4292,65 @@ export interface GetPendingOidcLoginResponse {
      * The pending login, `None` if there is none or it ran out
      */
     pending?: PendingOidcLogin | null;
+}
+/**
+ * Why a visitor could not sign up as a Guest
+ * @export
+ * @interface GuestSignUpErrors
+ */
+export interface GuestSignUpErrors {
+    /**
+     * The logged-in Account already plays in the Tournament
+     */
+    already_participant: boolean;
+    /**
+     * Too many Guests signed up for the Tournament lately; try again in a few minutes
+     */
+    busy: boolean;
+    /**
+     * Guest sign-up is off or the first Round started
+     */
+    closed: boolean;
+    /**
+     * The name is empty or only blanks
+     */
+    empty_name: boolean;
+    /**
+     * The participant limit is reached
+     */
+    full: boolean;
+}
+/**
+ * A visitor without an Account signing itself up as a Guest
+ * @export
+ * @interface GuestSignUpRequest
+ */
+export interface GuestSignUpRequest {
+    /**
+     * The name it goes by in this Tournament; blanks are trimmed and collapse
+     */
+    name: string;
+    /**
+     * The Guest this device signed up as before, restored instead of signing up again
+     */
+    recovery?: RecoverGuestSeatRequest | null;
+}
+/**
+ * The Guest a visitor signed up as, and the Recovery code its device keeps
+ * @export
+ * @interface GuestSignUpResponse
+ */
+export interface GuestSignUpResponse {
+    /**
+     * The Guest, as it sees itself
+     */
+    participant: ParticipantResponse;
+    /**
+     * Restores the Guest seat into a fresh session until the Tournament is over
+     * 
+     * Answered this once; a new one replaces it whenever the sign-up is repeated.
+     */
+    recovery_code: string;
 }
 /**
  * A decklist to write into a deck
@@ -6170,6 +6263,36 @@ export interface RecoverAccountRequest {
 
 
 /**
+ * Why a Guest seat could not be restored
+ * @export
+ * @interface RecoverGuestSeatErrors
+ */
+export interface RecoverGuestSeatErrors {
+    /**
+     * The Tournament is Finished or Cancelled, so its Recovery codes are gone
+     */
+    tournament_over: boolean;
+    /**
+     * No Guest of the Tournament has this Recovery code
+     */
+    unknown_code: boolean;
+}
+/**
+ * The Guest seat a device restores into a fresh session
+ * @export
+ * @interface RecoverGuestSeatRequest
+ */
+export interface RecoverGuestSeatRequest {
+    /**
+     * The Recovery code the device kept from the sign-up
+     */
+    code: string;
+    /**
+     * The Guest's Participant
+     */
+    participant: string;
+}
+/**
  * Why a Registered deck could not be registered, swapped or removed
  * @export
  * @interface RegisterDeckErrors
@@ -7660,6 +7783,12 @@ export interface SharedWithMeDeckResponse {
 
 
 /**
+ * @type SignUpAsSharedTournamentGuest200Response
+ * 
+ * @export
+ */
+export type SignUpAsSharedTournamentGuest200Response = FormErrorResponseForGuestSignUpErrors | GuestSignUpResponse;
+/**
  * Why an Account could not sign up
  * @export
  * @interface SignUpErrors
@@ -8928,6 +9057,10 @@ export interface TournamentResponse {
      */
     format?: string | null;
     /**
+     * Whether visitors without an Account may sign up themselves as Guests
+     */
+    guest_sign_up: boolean;
+    /**
      * Where it takes place, as free text
      */
     location?: string | null;
@@ -9013,6 +9146,14 @@ export interface TournamentSettingsErrors {
      */
     entry_fee_not_positive: boolean;
     /**
+     * Guest sign-up is on without Check-in
+     */
+    guest_sign_up_needs_check_in: boolean;
+    /**
+     * Guest sign-up is on without Self sign-up
+     */
+    guest_sign_up_needs_self_sign_up: boolean;
+    /**
      * The participant limit is below two
      */
     participant_limit_too_small: boolean;
@@ -9091,6 +9232,12 @@ export interface TournamentSettingsRequest {
      * The format played, a slug from the deck formats or `draft` / `sealed`; `null` for any
      */
     format?: string | null;
+    /**
+     * Whether visitors without an Account may sign up themselves as Guests, `false` when left out
+     * 
+     * Only with `self_sign_up` and a `check_in` other than `Off`: the desk confirms every Guest before it is paired.
+     */
+    guest_sign_up?: boolean;
     /**
      * Where it takes place, as free text
      */

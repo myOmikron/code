@@ -153,15 +153,23 @@ An Organizer confirming at the desk that a Participant is there, in a Tournament
 _Avoid_: attendance, confirmation, registration (that is the Tournament state)
 
 **Guest**:
-A Participant without an Account, known only by the name an Organizer gave it. A deleted Account's Participants become Guests, named by its last username or anonymously (see Deletion).
+A Participant without an Account, known only by its name, given by an Organizer or by itself at Self sign-up. A deleted Account's Participants become Guests, named by its last username or anonymously (see Deletion).
 _Avoid_: anonymous player, unregistered user
 
+**Guest seat**:
+A device's hold on a Guest that signed itself up: the session it signed up in acts as that Guest in its Tournament, reading its Match, reporting and disputing Results, Dropping and withdrawing, but never what needs an Account. Ends with the session; a **Recovery code** restores it into a fresh one.
+_Avoid_: guest token, claim token, guest login
+
+**Recovery code**:
+The secret a Guest seat is restored with in a fresh session, given to the device once at Guest sign-up and replaced when it signs up again. Only its hash is kept, and it stops working once the Tournament is Finished or Cancelled.
+_Avoid_: claim token, password, PIN
+
 **Self sign-up**:
-An Account making itself a Participant of a public or unlisted Tournament in Registration, where the Owner allowed it; it takes effect at once. Organizers add Accounts and Guests whether it is allowed or not.
+An Account making itself a Participant of a public or unlisted Tournament in Registration, where the Owner allowed it; it takes effect at once. Where the Owner also allows **Guest sign-up**, which needs Check-in, a visitor without an Account signs itself up as a Guest the same way, and the desk confirms it before it is paired. Organizers add Accounts and Guests whether it is allowed or not.
 _Avoid_: registration (that is the Tournament state), join, enrol
 
 **Participant limit**:
-The most Participants a Tournament takes by Self sign-up; once reached, Self sign-up is refused. Organizers can still add Participants past it.
+The most Participants a Tournament takes by Self sign-up, Guests included; once reached, Self sign-up is refused. Organizers can still add Participants past it.
 _Avoid_: cap, max players
 
 **Table size**:
@@ -256,7 +264,8 @@ _Avoid_: status, phase, closed, completed
 - A **Round** has **Matches**; a **Match** has one **Seat** per Participant and at most one **Result**; a Participant plays at most one Match per Round, or has a **Bye**
 - A **Participant** has at most one **Registered deck**, made from one of its Account's decks; when it becomes a copy, a **Deck checkpoint** named after the Tournament marks that **Deck change** in the deck's **Deck history**. Renaming or removing that Deck checkpoint, or deleting the deck, leaves the Registered deck as it is
 - **Deletion** of an Account turns its Participants into **Guests** (anonymous ones in other people's Tournaments unless it chose otherwise), passes the Tournaments it owns to a Co-organizer, else hands a public or unlisted one to the **Tombstone** and deletes a private one (a full Deletion deletes those too); its Registered decks stay. The Guests keep the Participants' places, so Matches and standings stay intact; the Co-organizer taking over is the one named first
-- A locked Account (**Lock**) reports and disputes no **Result**; Organizers do it for it, as for a **Guest**
+- A locked Account (**Lock**) reports and disputes no **Result**; Organizers do it for it, as for a **Guest** without a **Guest seat**
+- A **Guest seat** holds one **Guest** of one **Tournament**; a session holds at most one per Tournament. An Account that plays in a Tournament never acts through a Guest seat there
 - A **Statistics snapshot** counts Tournaments, all and **Finished** ones
 
 ## Flagged ambiguities

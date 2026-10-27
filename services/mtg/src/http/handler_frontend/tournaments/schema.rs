@@ -45,6 +45,12 @@ pub struct TournamentSettingsRequest {
     pub participant_limit: Option<i32>,
     /// Whether Accounts may sign up themselves; only for a public or unlisted Tournament
     pub self_sign_up: bool,
+    /// Whether visitors without an Account may sign up themselves as Guests, `false` when left out
+    ///
+    /// Only with `self_sign_up` and a `check_in` other than `Off`: the desk
+    /// confirms every Guest before it is paired.
+    #[serde(default)]
+    pub guest_sign_up: bool,
     /// How many Games a one-on-one Match is played to: required at Table size 2, `null` above
     pub best_of: Option<BestOf>,
     /// How many minutes the round timer gives a Round, 1 to 240; `null` for no timer
@@ -112,6 +118,7 @@ impl From<TournamentSettingsRequest> for RawTournamentSettings {
             visibility: value.visibility,
             participant_limit: value.participant_limit,
             self_sign_up: value.self_sign_up,
+            guest_sign_up: value.guest_sign_up,
             best_of: value.best_of,
             round_minutes: value.round_minutes,
             top_cut: value.top_cut,
@@ -136,6 +143,10 @@ pub struct TournamentSettingsErrors {
     pub participant_limit_too_small: bool,
     /// Self sign-up is on for a private Tournament
     pub self_sign_up_needs_visibility: bool,
+    /// Guest sign-up is on without Self sign-up
+    pub guest_sign_up_needs_self_sign_up: bool,
+    /// Guest sign-up is on without Check-in
+    pub guest_sign_up_needs_check_in: bool,
     /// Best-of is missing at Table size 2 or given above it
     pub best_of_mismatch: bool,
     /// The entry fee is zero or less
@@ -165,6 +176,8 @@ impl From<SettingsRefusal> for TournamentSettingsErrors {
             unknown_format: value.unknown_format,
             participant_limit_too_small: value.participant_limit_too_small,
             self_sign_up_needs_visibility: value.self_sign_up_needs_visibility,
+            guest_sign_up_needs_self_sign_up: value.guest_sign_up_needs_self_sign_up,
+            guest_sign_up_needs_check_in: value.guest_sign_up_needs_check_in,
             best_of_mismatch: value.best_of_mismatch,
             entry_fee_not_positive: value.entry_fee_not_positive,
             unknown_currency: value.unknown_currency,
@@ -205,6 +218,8 @@ pub struct TournamentResponse {
     pub participant_limit: Option<i32>,
     /// Whether Accounts may sign up themselves
     pub self_sign_up: bool,
+    /// Whether visitors without an Account may sign up themselves as Guests
+    pub guest_sign_up: bool,
     /// How many Games a one-on-one Match is played to, `null` for a multiplayer one
     pub best_of: Option<BestOf>,
     /// How many minutes the round timer gives a Round, `null` for no timer
@@ -250,6 +265,7 @@ impl TournamentResponse {
             state: tournament.state,
             participant_limit: tournament.participant_limit,
             self_sign_up: tournament.self_sign_up,
+            guest_sign_up: tournament.guest_sign_up,
             best_of: tournament.best_of,
             round_minutes: tournament.round_minutes,
             top_cut: tournament.top_cut,

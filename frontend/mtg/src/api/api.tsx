@@ -24,6 +24,7 @@ import {
     UpdateScannerSessionEntryRequest,
     UpdateScannerSessionRequest,
     DefaultApi,
+    GuestSignUpRequest,
     ImportDeckCardsRequest,
     ListCollectionCardsRequest,
     ListPublicCollectionCardsRequest,
@@ -33,6 +34,7 @@ import {
     MeResponse,
     NewCollectionEntry,
     PrintingLookupRequest,
+    RecoverGuestSeatRequest,
     ReportResultRequest,
     RequiredError,
     ResponseError,
@@ -453,6 +455,10 @@ export const Api = {
             participants: (token: string) => defaultApi.listSharedTournamentParticipants({ token }),
             // The way into an unlisted Tournament: its id alone does not let an Account in.
             signUp: async (token: string) => handleError(defaultApi.signUpForSharedTournament({ token })),
+            guestSignUp: async (token: string, request: GuestSignUpRequest) =>
+                orGone(defaultApi.signUpAsSharedTournamentGuest({ token, GuestSignUpRequest: request })),
+            recoverGuestSeat: async (token: string, request: RecoverGuestSeatRequest) =>
+                quietly(defaultApi.recoverSharedTournamentGuestSeat({ token, RecoverGuestSeatRequest: request })),
             // Never a previewed Round: the link shows what anybody sees.
             rounds: (token: string) => defaultApi.listSharedTournamentRounds({ token }),
             standings: (token: string) => defaultApi.getSharedTournamentStandings({ token }),
@@ -622,6 +628,12 @@ export const Api = {
                 ),
             checkInEveryone: async (tournament: UUID) =>
                 handleError(defaultApi.checkInTournamentParticipants({ tournament })),
+        },
+        guests: {
+            signUp: async (tournament: UUID, request: GuestSignUpRequest) =>
+                orGone(defaultApi.signUpAsTournamentGuest({ tournament, GuestSignUpRequest: request })),
+            recover: async (tournament: UUID, request: RecoverGuestSeatRequest) =>
+                quietly(defaultApi.recoverTournamentGuestSeat({ tournament, RecoverGuestSeatRequest: request })),
         },
         decks: {
             mine: async (tournament: UUID) => handleError(defaultApi.getMyTournamentDeck({ tournament })),

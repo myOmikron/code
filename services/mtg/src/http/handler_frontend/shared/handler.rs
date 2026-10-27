@@ -1,6 +1,7 @@
 use galvyn::core::Module;
 use galvyn::core::re_exports::axum::extract::Path;
 use galvyn::core::re_exports::axum::extract::Query;
+use galvyn::core::session::Session;
 use galvyn::core::stuff::api_error::ApiError;
 use galvyn::core::stuff::api_error::ApiResult;
 use galvyn::core::stuff::api_json::ApiJson;
@@ -25,6 +26,12 @@ use crate::http::handler_frontend::shared::schema::redact_slot;
 use crate::http::handler_frontend::shared::schema::redact_statistics;
 use crate::http::handler_frontend::tournaments::decks;
 use crate::http::handler_frontend::tournaments::decks::schema::RegisteredListsResponse;
+use crate::http::handler_frontend::tournaments::guests;
+use crate::http::handler_frontend::tournaments::guests::schema::GuestSignUpErrors;
+use crate::http::handler_frontend::tournaments::guests::schema::GuestSignUpRequest;
+use crate::http::handler_frontend::tournaments::guests::schema::GuestSignUpResponse;
+use crate::http::handler_frontend::tournaments::guests::schema::RecoverGuestSeatErrors;
+use crate::http::handler_frontend::tournaments::guests::schema::RecoverGuestSeatRequest;
 use crate::http::handler_frontend::tournaments::live;
 use crate::http::handler_frontend::tournaments::live::schema::EventStream;
 use crate::http::handler_frontend::tournaments::participants;
@@ -47,6 +54,7 @@ use crate::models::deck::Deck;
 use crate::models::deck::listing::ListedSlot;
 use crate::models::deck::tag::DeckTag;
 use crate::models::tournament::Tournament;
+use crate::models::tournament::guest_seat::GuestSeats;
 use crate::models::tournament::registered_deck::ListReader;
 
 /// Fetch the collection a share link points at
@@ -220,9 +228,11 @@ pub async fn get_shared_tournament(
 
 /// The Participants of the Tournament a share link points at
 ///
-/// Says which of them is the reader, if any.
+/// Says which of them is the reader, if any: its Account's, or the Guest its
+/// session holds a Guest seat of.
 #[get("/{token}/participants")]
 pub async fn list_shared_tournament_participants(
+    session: Session,
     viewer: Viewer,
     Path(token): Path<String>,
 ) -> ApiResult<ApiJson<ListParticipantsResponse>> {
@@ -233,7 +243,11 @@ pub async fn list_shared_tournament_participants(
         tx.rollback().await?;
         return Err(unknown_link());
     };
-    let response = participants::handler::list(&mut tx, &tournament, viewer).await?;
+    let seat = GuestSeats::of(&session).await?.seat_in(tournament.uuid);
+    let (me, _) = tournament
+        .participation(&mut tx, viewer.account(), seat)
+        .await?;
+    let response = participants::handler::list(&mut tx, &tournament, viewer.account(), me).await?;
 
     tx.commit().await?;
 
@@ -258,6 +272,46 @@ pub async fn sign_up_for_shared_tournament(
     let change = RosterChange::begin(&mut tx, &tournament).await?;
     let response = participants::handler::sign_up(&mut tx, &tournament, &account).await;
     change.finish(tx, &tournament, response).await
+}
+
+/// Sign up as a Guest for the Tournament a share link points at, without an Account
+///
+/// The way into an unlisted Tournament; refused and answered like
+/// `sign_up_as_tournament_guest`.
+#[post("/{token}/guest-sign-up")]
+pub async fn sign_up_as_shared_tournament_guest(
+    session: Session,
+    viewer: Viewer,
+    Path(token): Path<String>,
+    ApiJson(request): ApiJson<GuestSignUpRequest>,
+) -> ApiResult<ApiJson<GuestSignUpResponse>, GuestSignUpErrors> {
+    let tournament = shared_tournament(&token).await?;
+    guests::handler::sign_up_guest(&session, viewer.account(), &tournament, request).await
+}
+
+/// Restore a Guest seat of the Tournament a share link points at into this session
+///
+/// Refused like `recover_tournament_guest_seat`.
+#[post("/{token}/guest-seat/recover")]
+pub async fn recover_shared_tournament_guest_seat(
+    session: Session,
+    Path(token): Path<String>,
+    ApiJson(request): ApiJson<RecoverGuestSeatRequest>,
+) -> ApiResult<ApiJson<()>, RecoverGuestSeatErrors> {
+    let tournament = shared_tournament(&token).await?;
+    guests::handler::recover_seat(&session, &tournament, request).await
+}
+
+/// The Tournament a share link points at, read in a transaction of its own
+async fn shared_tournament<E>(token: &str) -> ApiResult<Tournament, E> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    let token = MaxStr::new(token.to_owned()).map_err(|_| unknown_link())?;
+    let tournament = Tournament::get_by_share_token(&mut tx, &token).await?;
+
+    tx.commit().await?;
+
+    tournament.ok_or_else(unknown_link)
 }
 
 /// The Rounds of the Tournament a share link points at

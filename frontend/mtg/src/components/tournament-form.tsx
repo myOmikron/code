@@ -96,6 +96,7 @@ function initialValues(tournament: TournamentResponse) {
                 : fromMinorUnits(tournament.entry_fee.amount, tournament.entry_fee.currency),
         currency: tournament.entry_fee?.currency ?? CURRENCIES[0],
         checkIn: tournament.check_in,
+        guestSignUp: tournament.guest_sign_up,
     };
 }
 
@@ -144,6 +145,7 @@ export function TournamentForm({ tournament, formats, onClose, onSaved }: Tourna
                     entered_afterwards: value.enteredAfterwards,
                     entry_fee: amount === null ? null : { amount, currency: value.currency },
                     check_in: value.checkIn,
+                    guest_sign_up: value.guestSignUp,
                 };
                 const response = await Api.tournaments.update(tournament.uuid, request);
                 if (isFormError(response)) {
@@ -189,6 +191,12 @@ export function TournamentForm({ tournament, formats, onClose, onSaved }: Tourna
                         },
                         check_in_deck_for_limited: (errors) => {
                             errors.fields.checkIn = t("error.check-in-deck-for-limited");
+                        },
+                        guest_sign_up_needs_self_sign_up: (errors) => {
+                            errors.fields.guestSignUp = t("error.guest-sign-up-needs-self-sign-up");
+                        },
+                        guest_sign_up_needs_check_in: (errors) => {
+                            errors.fields.guestSignUp = t("error.guest-sign-up-needs-check-in");
                         },
                     });
                 }
@@ -560,7 +568,10 @@ export function TournamentForm({ tournament, formats, onClose, onSaved }: Tourna
                                 name={"visibility"}
                                 listeners={{
                                     onChange: ({ value }) => {
-                                        if (value === Visibility.Private) form.setFieldValue("selfSignUp", false);
+                                        if (value === Visibility.Private) {
+                                            form.setFieldValue("selfSignUp", false);
+                                            form.setFieldValue("guestSignUp", false);
+                                        }
                                     },
                                 }}
                             >
@@ -599,7 +610,14 @@ export function TournamentForm({ tournament, formats, onClose, onSaved }: Tourna
 
                             <form.Subscribe selector={(state) => state.values.visibility}>
                                 {(visibility) => (
-                                    <form.Field name={"selfSignUp"}>
+                                    <form.Field
+                                        name={"selfSignUp"}
+                                        listeners={{
+                                            onChange: ({ value }) => {
+                                                if (!value) form.setFieldValue("guestSignUp", false);
+                                            },
+                                        }}
+                                    >
                                         {(fieldApi) => (
                                             <SwitchField disabled={visibility === Visibility.Private}>
                                                 <Label>{t("label.self-sign-up")}</Label>
@@ -693,7 +711,14 @@ export function TournamentForm({ tournament, formats, onClose, onSaved }: Tourna
 
                             <form.Subscribe selector={(state) => isLimited(state.values.format)}>
                                 {(limited) => (
-                                    <form.Field name={"checkIn"}>
+                                    <form.Field
+                                        name={"checkIn"}
+                                        listeners={{
+                                            onChange: ({ value }) => {
+                                                if (value === CheckIn.Off) form.setFieldValue("guestSignUp", false);
+                                            },
+                                        }}
+                                    >
                                         {(fieldApi) => (
                                             <Field>
                                                 <Label>{t("label.check-in")}</Label>
@@ -720,6 +745,37 @@ export function TournamentForm({ tournament, formats, onClose, onSaved }: Tourna
                                                     <ErrorMessage key={String(error)}>{String(error)}</ErrorMessage>
                                                 ))}
                                             </Field>
+                                        )}
+                                    </form.Field>
+                                )}
+                            </form.Subscribe>
+
+                            <form.Subscribe
+                                selector={(state) =>
+                                    state.values.selfSignUp &&
+                                    state.values.visibility !== Visibility.Private &&
+                                    state.values.checkIn !== CheckIn.Off
+                                }
+                            >
+                                {(available) => (
+                                    <form.Field name={"guestSignUp"}>
+                                        {(fieldApi) => (
+                                            <SwitchField disabled={!available}>
+                                                <Label>{t("label.guest-sign-up")}</Label>
+                                                <Description>
+                                                    {available
+                                                        ? t("description.guest-sign-up")
+                                                        : t("description.guest-sign-up-unavailable")}
+                                                </Description>
+                                                <Switch
+                                                    color={"lime"}
+                                                    checked={fieldApi.state.value}
+                                                    onChange={fieldApi.handleChange}
+                                                />
+                                                {fieldApi.state.meta.errors.map((error) => (
+                                                    <ErrorMessage key={String(error)}>{String(error)}</ErrorMessage>
+                                                ))}
+                                            </SwitchField>
                                         )}
                                     </form.Field>
                                 )}

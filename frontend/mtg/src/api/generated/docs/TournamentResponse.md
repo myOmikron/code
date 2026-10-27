@@ -13,6 +13,7 @@ Name | Type
 `entered_afterwards` | boolean
 `entry_fee` | [EntryFeeSchema](EntryFeeSchema.md)
 `format` | string
+`guest_sign_up` | boolean
 `location` | string
 `name` | string
 `organizer_role` | [OrganizerRole](OrganizerRole.md)

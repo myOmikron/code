@@ -170,10 +170,12 @@ docs/FormErrorResponseForDeletePasskeyErrors.md
 docs/FormErrorResponseForDisputeResultErrors.md
 docs/FormErrorResponseForDropErrors.md
 docs/FormErrorResponseForFinishLoginErrors.md
+docs/FormErrorResponseForGuestSignUpErrors.md
 docs/FormErrorResponseForMatchLifeErrors.md
 docs/FormErrorResponseForMeErrors.md
 docs/FormErrorResponseForOfferHandoverErrors.md
 docs/FormErrorResponseForPutDeckCollaboratorErrors.md
+docs/FormErrorResponseForRecoverGuestSeatErrors.md
 docs/FormErrorResponseForRegisterDeckErrors.md
 docs/FormErrorResponseForRegistrationErrors.md
 docs/FormErrorResponseForRenameAccountErrors.md
@@ -194,6 +196,9 @@ docs/FormErrorResponseForSubscribePushDeviceErrors.md
 docs/FormErrorResponseForTournamentSettingsErrors.md
 docs/FormatRulesResponse.md
 docs/GetPendingOidcLoginResponse.md
+docs/GuestSignUpErrors.md
+docs/GuestSignUpRequest.md
+docs/GuestSignUpResponse.md
 docs/ImportDeckCardsRequest.md
 docs/ImportDeckCardsResponse.md
 docs/ImportMode.md
@@ -288,6 +293,8 @@ docs/ReadDeckCardResponse.md
 docs/ReadDeckUrlRequest.md
 docs/ReadDeckUrlResponse.md
 docs/RecoverAccountRequest.md
+docs/RecoverGuestSeatErrors.md
+docs/RecoverGuestSeatRequest.md
 docs/RegisterDeckErrors.md
 docs/RegisterDeckRequest.md
 docs/RegisteredDeckResponse.md
@@ -362,6 +369,7 @@ docs/SetTournamentSwissRounds200Response.md
 docs/SharedCollectionResponse.md
 docs/SharedDeckResponse.md
 docs/SharedWithMeDeckResponse.md
+docs/SignUpAsSharedTournamentGuest200Response.md
 docs/SignUpErrors.md
 docs/SignUpForSharedTournament200Response.md
 docs/Signup200Response.md

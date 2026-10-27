@@ -6,6 +6,8 @@
 
 use galvyn::core::GalvynRouter;
 
+use crate::http::handler_frontend::tournaments::guests;
+
 pub mod handler;
 pub mod schema;
 
@@ -36,6 +38,16 @@ pub fn initialize_routes() -> GalvynRouter {
                 .handler(handler::list_shared_tournament_rounds)
                 .handler(handler::get_shared_tournament_standings)
                 .handler(handler::list_shared_tournament_registered_lists)
-                .handler(handler::follow_shared_tournament),
+                .handler(handler::follow_shared_tournament)
+                .merge(
+                    GalvynRouter::new()
+                        .handler(handler::sign_up_as_shared_tournament_guest)
+                        .wrap(guests::sign_up_limit()),
+                )
+                .merge(
+                    GalvynRouter::new()
+                        .handler(handler::recover_shared_tournament_guest_seat)
+                        .wrap(guests::recovery_limit()),
+                ),
         )
 }

@@ -7,6 +7,10 @@
 //! [`Tournament::get_by_share_token`]. `None` covers "no such Tournament" and
 //! "not yours" alike, so a refusal says nothing about whether a private
 //! Tournament exists.
+//!
+//! A caller plays in a Tournament as an Account, or as a Guest through the
+//! Guest seat its session holds (ADR 0007). Only [`TournamentAccess::Participant`]
+//! and [`TournamentAccess::Viewer`] count a Guest seat.
 
 use galvyn::core::re_exports::schemars;
 use galvyn::core::re_exports::schemars::JsonSchema;
@@ -37,12 +41,23 @@ pub enum TournamentAccess {
     Owner,
     /// Be one of its Organizers: the Owner or a Co-organizer
     Organizer,
-    /// Play in it: an Account Participant
+    /// Play in it, as an Account or through a Guest seat
     Participant,
-    /// Play in it or organize it, with Match membership checked by the model.
+    /// Play in it as an Account: what only an Account can have
+    AccountParticipant,
+    /// Play in it as an Account or organize it, with Match membership checked by the model.
     MatchHistory,
     /// See it, see [`Tournament::get_visible`]
     Viewer,
+}
+
+/// How a caller plays in a Tournament
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum Participation {
+    /// As its Account
+    Account,
+    /// As a Guest, through the Guest seat its session holds
+    Guest,
 }
 
 /// What a caller is to one Tournament
@@ -50,8 +65,8 @@ pub enum TournamentAccess {
 pub struct Standing {
     /// The part it plays in running the Tournament, `None` for none
     pub role: Option<OrganizerRole>,
-    /// Whether it plays in the Tournament
-    pub participant: bool,
+    /// How it plays in the Tournament, `None` if it does not
+    pub participation: Option<Participation>,
     /// Whether it sees the Tournament by its id
     pub sees: bool,
 }
@@ -59,12 +74,22 @@ pub struct Standing {
 impl TournamentAccess {
     /// Whether a caller of `standing` passes
     pub fn grants(self, standing: Standing) -> bool {
+        let account = standing.participation == Some(Participation::Account);
         match self {
             Self::Owner => standing.role == Some(OrganizerRole::Owner),
             Self::Organizer => standing.role.is_some(),
-            Self::Participant => standing.participant,
-            Self::MatchHistory => standing.participant || standing.role.is_some(),
+            Self::Participant => standing.participation.is_some(),
+            Self::AccountParticipant => account,
+            Self::MatchHistory => account || standing.role.is_some(),
             Self::Viewer => standing.sees,
+        }
+    }
+
+    /// Whether a Guest seat counts as playing in the Tournament for this part
+    pub fn counts_guest_seats(self) -> bool {
+        match self {
+            Self::Participant | Self::Viewer => true,
+            Self::Owner | Self::Organizer | Self::AccountParticipant | Self::MatchHistory => false,
         }
     }
 }
@@ -79,7 +104,10 @@ pub struct TournamentGrant {
     pub tournament: Tournament,
     /// The part the caller plays in running it, `None` for none
     pub role: Option<OrganizerRole>,
-    /// The caller's Participant, `None` if it plays in it not, or nobody is logged in
+    /// The caller's Participant, `None` if it plays in it not
+    ///
+    /// Its Guest through a Guest seat only where the part counts one, see
+    /// [`TournamentAccess::counts_guest_seats`].
     pub participant: Option<ParticipantUuid>,
 }
 
@@ -176,24 +204,26 @@ impl Tournament {
     /// Fetch a Tournament for `caller` through a route group that needs `access`, `None` if refused
     ///
     /// `caller` is `None` for nobody logged in, who only sees a public
-    /// Tournament.
+    /// Tournament. `seat` is the Guest the caller's session holds a Guest
+    /// seat of in this Tournament, unchecked; it counts only where `access`
+    /// counts Guest seats and the caller plays in it as no Account.
     #[instrument(name = "Tournament::get_granted", skip(tx))]
     pub async fn get_granted(
         tx: &mut Transaction,
         uuid: TournamentUuid,
         caller: Option<AccountUuid>,
+        seat: Option<ParticipantUuid>,
         access: TournamentAccess,
     ) -> Result<Option<TournamentGrant>, rorm::Error> {
         let Some(tournament) = Self::get(tx, uuid).await? else {
             return Ok(None);
         };
-        let (role, participant) = match caller {
-            Some(account) => (
-                tournament.organizer_role(tx, account).await?,
-                tournament.participant_of(tx, account).await?,
-            ),
-            None => (None, None),
+        let role = match caller {
+            Some(account) => tournament.organizer_role(tx, account).await?,
+            None => None,
         };
+        let seat = seat.filter(|_| access.counts_guest_seats());
+        let (participant, participation) = tournament.participation(tx, caller, seat).await?;
         let mut sees =
             tournament.visibility == Visibility::Public || role.is_some() || participant.is_some();
         if !sees
@@ -204,7 +234,7 @@ impl Tournament {
         }
         let standing = Standing {
             role,
-            participant: participant.is_some(),
+            participation,
             sees,
         };
         Ok(access.grants(standing).then_some(TournamentGrant {
@@ -212,6 +242,30 @@ impl Tournament {
             role,
             participant,
         }))
+    }
+
+    /// The Participant `caller` plays as, through its Account or else the Guest seat of `seat`
+    ///
+    /// An Account that plays in the Tournament never plays through a Guest
+    /// seat there. `seat` is checked: a Guest that withdrew or was removed
+    /// counts for nothing.
+    #[instrument(name = "Tournament::participation", skip(tx, self), fields(tournament = ?self.uuid))]
+    pub async fn participation(
+        &self,
+        tx: &mut Transaction,
+        caller: Option<AccountUuid>,
+        seat: Option<ParticipantUuid>,
+    ) -> Result<(Option<ParticipantUuid>, Option<Participation>), rorm::Error> {
+        if let Some(account) = caller
+            && let Some(participant) = self.participant_of(tx, account).await?
+        {
+            return Ok((Some(participant), Some(Participation::Account)));
+        }
+        let Some(seat) = seat else {
+            return Ok((None, None));
+        };
+        let guest = self.guest_of_seat(tx, seat).await?;
+        Ok((guest, guest.map(|_| Participation::Guest)))
     }
 
     /// Lock this Tournament's row until the transaction ends and read it afresh, `None` once it is gone
@@ -270,6 +324,7 @@ mod tests {
     use uuid::Uuid;
 
     use super::OrganizerRole;
+    use super::Participation;
     use super::Standing;
     use super::TournamentAccess;
     use crate::models::account::AccountUuid;
@@ -281,7 +336,15 @@ mod tests {
     fn standing(role: Option<OrganizerRole>, participant: bool, sees: bool) -> Standing {
         Standing {
             role,
-            participant,
+            participation: participant.then_some(Participation::Account),
+            sees,
+        }
+    }
+
+    fn guest(sees: bool) -> Standing {
+        Standing {
+            role: None,
+            participation: Some(Participation::Guest),
             sees,
         }
     }
@@ -303,12 +366,38 @@ mod tests {
     }
 
     #[test]
-    fn only_an_account_that_plays_is_granted_the_participant_routes() {
+    fn an_account_that_plays_is_granted_the_participant_routes() {
         let access = TournamentAccess::Participant;
         assert!(access.grants(standing(None, true, true)));
         assert!(access.grants(standing(Some(OrganizerRole::Owner), true, true)));
         assert!(!access.grants(standing(Some(OrganizerRole::Owner), false, true)));
         assert!(!access.grants(standing(None, false, true)));
+    }
+
+    #[test]
+    fn a_guest_seat_is_granted_the_participant_routes() {
+        assert!(TournamentAccess::Participant.grants(guest(true)));
+        assert!(TournamentAccess::Participant.grants(guest(false)));
+    }
+
+    #[test]
+    fn a_guest_seat_is_granted_no_route_that_needs_an_account() {
+        for access in [
+            TournamentAccess::AccountParticipant,
+            TournamentAccess::MatchHistory,
+            TournamentAccess::Organizer,
+            TournamentAccess::Owner,
+        ] {
+            assert!(!access.grants(guest(true)), "{access:?}");
+            assert!(!access.counts_guest_seats(), "{access:?}");
+        }
+    }
+
+    #[test]
+    fn only_an_account_that_plays_is_granted_the_account_participant_routes() {
+        let access = TournamentAccess::AccountParticipant;
+        assert!(access.grants(standing(None, true, true)));
+        assert!(!access.grants(standing(Some(OrganizerRole::Owner), false, true)));
     }
 
     #[test]

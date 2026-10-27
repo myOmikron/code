@@ -1,6 +1,7 @@
 import { createFileRoute, getRouteApi } from "@tanstack/react-router";
 import { useCallback } from "react";
 import { Api } from "src/api/api";
+import type { GuestSignUpRequest } from "src/api/generated";
 import { TournamentParticipants } from "src/components/tournament-participants";
 import { useLiveVersion } from "src/context/tournament-live-context";
 
@@ -12,7 +13,8 @@ export const Route = createFileRoute("/_menu/shared/tournaments/$token/_shared/p
 });
 
 /**
- * Who plays in a shared Tournament, and signing up for it through the link.
+ * Who plays in a shared Tournament, and signing up for it through the link,
+ * with an Account or as a Guest.
  *
  * @returns the participant list
  */
@@ -22,6 +24,10 @@ function RouteComponent() {
     const version = useLiveVersion("participants");
     const load = useCallback(() => Api.shared.tournaments.participants(token), [token, version]);
     const signUp = useCallback(() => Api.shared.tournaments.signUp(token), [token]);
+    const guestSignUp = useCallback(
+        (request: GuestSignUpRequest) => Api.shared.tournaments.guestSignUp(token, request),
+        [token],
+    );
     if (tournament === null) return null;
-    return <TournamentParticipants tournament={tournament} load={load} signUp={signUp} />;
+    return <TournamentParticipants tournament={tournament} load={load} signUp={signUp} guestSignUp={guestSignUp} />;
 }

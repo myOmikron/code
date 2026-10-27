@@ -8,18 +8,27 @@ import { useTournamentLabels } from "src/components/tournament-labels";
 import { TournamentLiveProvider } from "src/context/tournament-live-context";
 import i18n from "src/i18n";
 import { isDeadShareLink } from "src/utils/share-link";
+import { ownSeat, restoreGuestSeat } from "src/utils/tournament-guest";
 import { sharedTournamentEventsUrl } from "src/utils/tournament-live";
 
 export const Route = createFileRoute("/_menu/shared/tournaments/$token/_shared")({
     loader: async ({ params }) => {
         const strings = i18n.loadNamespaces(["tournament", "deck"]);
         try {
-            const [tournament] = await Promise.all([Api.shared.tournaments.get(params.token), strings]);
-            return { tournament };
+            const [tournament, listed] = await Promise.all([
+                Api.shared.tournaments.get(params.token),
+                Api.shared.tournaments.participants(params.token),
+                strings,
+            ]);
+            const restored = await restoreGuestSeat(tournament, listed.me ?? null, (request) =>
+                Api.shared.tournaments.recoverGuestSeat(params.token, request),
+            );
+            const participants = restored ? await Api.shared.tournaments.participants(params.token) : listed;
+            return { tournament, ...ownSeat(participants) };
         } catch (error) {
             if (isDeadShareLink(error)) {
                 await strings;
-                return { tournament: null };
+                return { tournament: null, ...ownSeat(null) };
             }
             throw error;
         }
@@ -35,7 +44,7 @@ export const Route = createFileRoute("/_menu/shared/tournaments/$token/_shared")
 function RouteComponent() {
     const [t] = useTranslation("tournament");
     const { token } = Route.useParams();
-    const { tournament } = Route.useLoaderData();
+    const { tournament, me } = Route.useLoaderData();
     const labels = useTournamentLabels();
     const router = useRouter();
     const refresh = useCallback(() => void router.invalidate(), [router]);
@@ -56,6 +65,7 @@ function RouteComponent() {
             headingDescription={
                 <span className={"flex flex-wrap items-center gap-2"}>
                     <Badge color={"sky"}>{labels.state(tournament.state)}</Badge>
+                    {me !== null && <Badge color={"lime"}>{t("label.you-participate")}</Badge>}
                     <span>{labels.organizedBy(tournament.owner)}</span>
                 </span>
             }

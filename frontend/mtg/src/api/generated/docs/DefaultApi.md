@@ -65,7 +65,7 @@ All URIs are relative to *http://localhost*
 | [**detachDeckCollection**](DefaultApi.md#detachdeckcollection) | **DELETE** /api/frontend/v1/decks/{deck}/collection | Stop keeping them |
 | [**discardTournamentRound**](DefaultApi.md#discardtournamentround) | **DELETE** /api/frontend/v1/tournaments/{tournament}/rounds/{number} | Throw a previewed Round away, as an Organizer, to pair it again |
 | [**disputeTournamentMatchResult**](DefaultApi.md#disputetournamentmatchresult) | **POST** /api/frontend/v1/tournaments/{tournament}/matches/{match}/dispute | Dispute the Result another Participant reported for one\&#39;s own Match |
-| [**dropOutOfTournament**](DefaultApi.md#dropoutoftournament) | **POST** /api/frontend/v1/tournaments/{tournament}/drop | Drop the logged-in Account out of a Tournament it plays in |
+| [**dropOutOfTournament**](DefaultApi.md#dropoutoftournament) | **POST** /api/frontend/v1/tournaments/{tournament}/drop | Drop out of a Tournament one plays in, as an Account or a Guest with its Guest seat |
 | [**dropTournamentParticipant**](DefaultApi.md#droptournamentparticipant) | **POST** /api/frontend/v1/tournaments/{tournament}/participants/{participant}/drop | Drop a Participant, as an Organizer |
 | [**endTournamentRound**](DefaultApi.md#endtournamentround) | **POST** /api/frontend/v1/tournaments/{tournament}/rounds/{number}/end | End a running Round once every Match has its Result, as an Organizer |
 | [**fileScannerSession**](DefaultApi.md#filescannersessionoperation) | **POST** /api/frontend/v1/scanner-sessions/{session}/file | Atomically file every staged stack and empty the session |
@@ -153,6 +153,8 @@ All URIs are relative to *http://localhost*
 | [**putDeckCollaborator**](DefaultApi.md#putdeckcollaboratoroperation) | **PUT** /api/frontend/v1/decks/{deck}/collaborators | Name an Account on a deck by its username, or change the level it is named at |
 | [**readDeckUrl**](DefaultApi.md#readdeckurloperation) | **POST** /api/frontend/v1/decks/import/url | Read a decklist off a link to another builder, or off one of our own links |
 | [**recoverAccount**](DefaultApi.md#recoveraccountoperation) | **POST** /api/frontend/v1/auth/recover | Send a fresh registration link to an account\&#39;s stored address |
+| [**recoverSharedTournamentGuestSeat**](DefaultApi.md#recoversharedtournamentguestseat) | **POST** /api/frontend/v1/shared/tournaments/{token}/guest-seat/recover | Restore a Guest seat of the Tournament a share link points at into this session |
+| [**recoverTournamentGuestSeat**](DefaultApi.md#recovertournamentguestseat) | **POST** /api/frontend/v1/tournaments/{tournament}/guest-seat/recover | Restore a Guest seat into this session with the Recovery code its device kept |
 | [**redoDeckChange**](DefaultApi.md#redodeckchange) | **POST** /api/frontend/v1/decks/{deck}/history/redo | Apply the latest undone Deck change again |
 | [**registerMyTournamentDeck**](DefaultApi.md#registermytournamentdeck) | **PUT** /api/frontend/v1/tournaments/{tournament}/deck | Register one of the logged-in Account\&#39;s decks for a Tournament it plays in, |
 | [**registerTournamentParticipantDeck**](DefaultApi.md#registertournamentparticipantdeck) | **PUT** /api/frontend/v1/tournaments/{tournament}/participants/{participant}/deck | Register or swap a Participant\&#39;s Registered deck, as an Organizer |
@@ -192,6 +194,8 @@ All URIs are relative to *http://localhost*
 | [**setTournamentSwissRounds**](DefaultApi.md#settournamentswissrounds) | **PUT** /api/frontend/v1/tournaments/{tournament}/swiss-rounds | Set how many Swiss Rounds are played, as an Organizer |
 | [**setVisibilityCollection**](DefaultApi.md#setvisibilitycollection) | **POST** /api/frontend/v1/collections/{collection} | Change who may see a collection |
 | [**setVisibilityDeck**](DefaultApi.md#setvisibilitydeck) | **POST** /api/frontend/v1/decks/{deck} | Change who may see a deck |
+| [**signUpAsSharedTournamentGuest**](DefaultApi.md#signupassharedtournamentguest) | **POST** /api/frontend/v1/shared/tournaments/{token}/guest-sign-up | Sign up as a Guest for the Tournament a share link points at, without an Account |
+| [**signUpAsTournamentGuest**](DefaultApi.md#signupastournamentguest) | **POST** /api/frontend/v1/tournaments/{tournament}/guest-sign-up | Sign up as a Guest for a public Tournament, without an Account |
 | [**signUpForSharedTournament**](DefaultApi.md#signupforsharedtournament) | **POST** /api/frontend/v1/shared/tournaments/{token}/sign-up | Sign the logged-in Account up for the Tournament a share link points at |
 | [**signUpForTournament**](DefaultApi.md#signupfortournament) | **POST** /api/frontend/v1/tournaments/{tournament}/sign-up | Sign the logged-in Account up for a Tournament it sees by its id |
 | [**signup**](DefaultApi.md#signupoperation) | **POST** /api/frontend/v1/auth/signup | Sign up for a new account |
@@ -223,7 +227,7 @@ All URIs are relative to *http://localhost*
 | [**updateWatchList**](DefaultApi.md#updatewatchlistoperation) | **PUT** /api/frontend/v1/watch-lists/{list} | Rename a watch list or change its marker |
 | [**updateWatchListEntry**](DefaultApi.md#updatewatchlistentryoperation) | **PUT** /api/frontend/v1/watch-lists/{list}/entries/{entry} | Change some of an entry\&#39;s fields, leaving the rest alone |
 | [**withdrawTournamentHandover**](DefaultApi.md#withdrawtournamenthandover) | **DELETE** /api/frontend/v1/tournaments/{tournament}/handover | Withdraw the pending offer of a Tournament, as its Owner |
-| [**withdrawTournamentSignUp**](DefaultApi.md#withdrawtournamentsignup) | **DELETE** /api/frontend/v1/tournaments/{tournament}/sign-up | Withdraw the logged-in Account\&#39;s own sign-up |
+| [**withdrawTournamentSignUp**](DefaultApi.md#withdrawtournamentsignup) | **DELETE** /api/frontend/v1/tournaments/{tournament}/sign-up | Withdraw one\&#39;s own sign-up, as an Account or a Guest with its Guest seat |
 
 
 
@@ -741,7 +745,7 @@ No authorization required
 
 Add a Guest by name, as an Organizer
 
-Add a Guest by name, as an Organizer  In Registration, and as a late Participant until the Swiss Rounds are over. The name is trimmed; two Guests may share one.
+Add a Guest by name, as an Organizer  In Registration, and as a late Participant until the Swiss Rounds are over. The name is trimmed and its blanks collapse; two Guests may share one.
 
 ### Example
 
@@ -4604,9 +4608,9 @@ No authorization required
 
 > FormErrorResponseForDropErrors dropOutOfTournament(tournament)
 
-Drop the logged-in Account out of a Tournament it plays in
+Drop out of a Tournament one plays in, as an Account or a Guest with its Guest seat
 
-Drop the logged-in Account out of a Tournament it plays in  Once the first Round started, until the Tournament is over; before the first Round an Account withdraws its sign-up instead. No later Round pairs it; it stays in the standings with its Results so far.
+Drop out of a Tournament one plays in, as an Account or a Guest with its Guest seat  Once the first Round started, until the Tournament is over; before the first Round a Participant withdraws its sign-up instead. No later Round pairs it; it stays in the standings with its Results so far.
 
 ### Example
 
@@ -6808,7 +6812,7 @@ No authorization required
 
 The reader\&#39;s Match in the running Round of a Tournament, with the round timer
 
-The reader\&#39;s Match in the running Round of a Tournament, with the round timer  For a Participant with an Account: its table, its opponents and its Seat, or its Bye. An Account playing in none gets the Round and timer only.
+The reader\&#39;s Match in the running Round of a Tournament, with the round timer  For a Participant, an Account or a Guest through its Guest seat: its table, its opponents and its Seat, or its Bye. A reader playing in none gets the Round and timer only.
 
 ### Example
 
@@ -9444,7 +9448,7 @@ No authorization required
 
 The Participants of the Tournament a share link points at
 
-The Participants of the Tournament a share link points at  Says which of them is the reader, if any.
+The Participants of the Tournament a share link points at  Says which of them is the reader, if any: its Account\&#39;s, or the Guest its session holds a Guest seat of.
 
 ### Example
 
@@ -9797,7 +9801,7 @@ No authorization required
 
 The Participants of a Tournament the reader may see
 
-The Participants of a Tournament the reader may see  Says which of them is the reader, if any.
+The Participants of a Tournament the reader may see  Says which of them is the reader, if any: its Account\&#39;s, or the Guest its session holds a Guest seat of.
 
 ### Example
 
@@ -10745,6 +10749,152 @@ example().catch(console.error);
 ### Return type
 
 **any**
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## recoverSharedTournamentGuestSeat
+
+> FormErrorResponseForRecoverGuestSeatErrors recoverSharedTournamentGuestSeat(token, RecoverGuestSeatRequest)
+
+Restore a Guest seat of the Tournament a share link points at into this session
+
+Restore a Guest seat of the Tournament a share link points at into this session  Refused like &#x60;recover_tournament_guest_seat&#x60;.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { RecoverSharedTournamentGuestSeatRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    token: token_example,
+    // RecoverGuestSeatRequest (optional)
+    RecoverGuestSeatRequest: ...,
+  } satisfies RecoverSharedTournamentGuestSeatRequest;
+
+  try {
+    const data = await api.recoverSharedTournamentGuestSeat(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **token** | `string` |  | [Defaults to `undefined`] |
+| **RecoverGuestSeatRequest** | [RecoverGuestSeatRequest](RecoverGuestSeatRequest.md) |  | [Optional] |
+
+### Return type
+
+[**FormErrorResponseForRecoverGuestSeatErrors**](FormErrorResponseForRecoverGuestSeatErrors.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## recoverTournamentGuestSeat
+
+> FormErrorResponseForRecoverGuestSeatErrors recoverTournamentGuestSeat(tournament, RecoverGuestSeatRequest)
+
+Restore a Guest seat into this session with the Recovery code its device kept
+
+Restore a Guest seat into this session with the Recovery code its device kept  Until the Tournament is over, when its Recovery codes are gone. An unlisted Tournament restores through its share link, see &#x60;recover_shared_tournament_guest_seat&#x60;.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { RecoverTournamentGuestSeatRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    tournament: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // RecoverGuestSeatRequest (optional)
+    RecoverGuestSeatRequest: ...,
+  } satisfies RecoverTournamentGuestSeatRequest;
+
+  try {
+    const data = await api.recoverTournamentGuestSeat(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **tournament** | `string` |  | [Defaults to `undefined`] |
+| **RecoverGuestSeatRequest** | [RecoverGuestSeatRequest](RecoverGuestSeatRequest.md) |  | [Optional] |
+
+### Return type
+
+[**FormErrorResponseForRecoverGuestSeatErrors**](FormErrorResponseForRecoverGuestSeatErrors.md)
 
 ### Authorization
 
@@ -13635,6 +13785,152 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## signUpAsSharedTournamentGuest
+
+> SignUpAsSharedTournamentGuest200Response signUpAsSharedTournamentGuest(token, GuestSignUpRequest)
+
+Sign up as a Guest for the Tournament a share link points at, without an Account
+
+Sign up as a Guest for the Tournament a share link points at, without an Account  The way into an unlisted Tournament; refused and answered like &#x60;sign_up_as_tournament_guest&#x60;.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { SignUpAsSharedTournamentGuestRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    token: token_example,
+    // GuestSignUpRequest (optional)
+    GuestSignUpRequest: ...,
+  } satisfies SignUpAsSharedTournamentGuestRequest;
+
+  try {
+    const data = await api.signUpAsSharedTournamentGuest(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **token** | `string` |  | [Defaults to `undefined`] |
+| **GuestSignUpRequest** | [GuestSignUpRequest](GuestSignUpRequest.md) |  | [Optional] |
+
+### Return type
+
+[**SignUpAsSharedTournamentGuest200Response**](SignUpAsSharedTournamentGuest200Response.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## signUpAsTournamentGuest
+
+> SignUpAsSharedTournamentGuest200Response signUpAsTournamentGuest(tournament, GuestSignUpRequest)
+
+Sign up as a Guest for a public Tournament, without an Account
+
+Sign up as a Guest for a public Tournament, without an Account  Takes effect at once; the Guest is paired once the desk checked it in. The session then holds a Guest seat, and the answer carries the Recovery code that restores the seat into a fresh session. Refused unless the Owner allowed Guest sign-up and the Tournament is in Registration, and once the participant limit is reached. A session that holds a seat for the Tournament gets that Guest back with a new code instead of a second Guest. An unlisted Tournament is signed up for through its share link, see &#x60;sign_up_as_shared_tournament_guest&#x60;.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { SignUpAsTournamentGuestRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    tournament: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // GuestSignUpRequest (optional)
+    GuestSignUpRequest: ...,
+  } satisfies SignUpAsTournamentGuestRequest;
+
+  try {
+    const data = await api.signUpAsTournamentGuest(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **tournament** | `string` |  | [Defaults to `undefined`] |
+| **GuestSignUpRequest** | [GuestSignUpRequest](GuestSignUpRequest.md) |  | [Optional] |
+
+### Return type
+
+[**SignUpAsSharedTournamentGuest200Response**](SignUpAsSharedTournamentGuest200Response.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## signUpForSharedTournament
 
 > SignUpForSharedTournament200Response signUpForSharedTournament(token)
@@ -15889,9 +16185,9 @@ No authorization required
 
 > any withdrawTournamentSignUp(tournament)
 
-Withdraw the logged-in Account\&#39;s own sign-up
+Withdraw one\&#39;s own sign-up, as an Account or a Guest with its Guest seat
 
-Withdraw the logged-in Account\&#39;s own sign-up  Only before the first Round starts; afterwards a Participant leaves by a Drop.
+Withdraw one\&#39;s own sign-up, as an Account or a Guest with its Guest seat  Only before the first Round starts; afterwards a Participant leaves by a Drop. A Guest\&#39;s seat goes with it.
 
 ### Example
 

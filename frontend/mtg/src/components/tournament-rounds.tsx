@@ -47,7 +47,7 @@ import { TournamentWinnerDialog } from "src/components/tournament-winner-dialog"
 import { isFormError } from "src/utils/error";
 import { clockSkew } from "src/utils/round-timer";
 import { cutRoundSize } from "src/utils/top-cut";
-import { formatResult, winnerSeat, resultErrorKey, roundErrorKey } from "src/utils/tournament-rounds";
+import { disputeErrorKey, formatResult, winnerSeat, resultErrorKey, roundErrorKey } from "src/utils/tournament-rounds";
 
 /**
  * The properties for {@link TournamentRounds}
@@ -194,11 +194,7 @@ export function TournamentRounds({ tournament, load, onTournamentChanged, me = n
         try {
             const result = await Api.tournaments.results.dispute(tournament.uuid, played.uuid);
             if (isFormError<unknown, { result: "Err"; error: DisputeResultErrors }>(result)) {
-                const error = result.error;
-                if (error.not_running) notify.error(t("error.round-not-running"));
-                else if (error.confirmed) notify.error(t("error.result-confirmed"));
-                else if (error.own_report) notify.error(t("error.result-own-report"));
-                else notify.error(t("error.result-missing"));
+                notify.error(t(disputeErrorKey(result.error)));
             } else {
                 notify.success(t("toast.result-disputed"));
             }

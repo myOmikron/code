@@ -16,7 +16,9 @@
         "timer-one-minute": "One minute left",
         "check-in": "Check {{name}} in",
         "check-out": "Undo {{name}}'s check-in",
-        "check-in-needs-deck": "{{name}} needs a deck to check in"
+        "check-in-needs-deck": "{{name}} needs a deck to check in",
+        "sign-up-qr": "QR code for signing up",
+        "copy-sign-up-link": "Copy sign-up link"
     },
     "button": {
         "accept-handover": "Take over",
@@ -79,7 +81,10 @@
         "life-close-devices": "Back to counter",
         "check-in": "Check in",
         "check-out": "Undo check-in",
-        "check-in-everyone": "Check everyone in"
+        "check-in-everyone": "Check everyone in",
+        "sign-up-as-guest": "Join",
+        "sign-up-with-account": "Sign up with an account",
+        "show-sign-up-qr": "Full screen"
     },
     "description": {
         "add-account": "With an account, by its exact username: the results belong to that account.",
@@ -197,7 +202,9 @@
         "everybody-checked-in": "Every participant is checked in.",
         "not-checked-in-count_one": "{{count}} participant is not checked in yet.",
         "not-checked-in-count_other": "{{count}} participants are not checked in yet.",
-        "check-in-needs-deck": "You need a registered deck to check in."
+        "check-in-needs-deck": "You need a registered deck to check in.",
+        "guest-sign-up": "No account, just a name.",
+        "guest-sign-up-unavailable": "Needs self sign-up and check-in."
     },
     "error": {
         "all-rounds-paired": "Every Swiss round has been paired.",
@@ -261,7 +268,12 @@
         "check-in-needs-deck": "No check-in without a registered deck.",
         "check-out-started": "Check-in can no longer be undone once the first round started.",
         "check-in-dropped": "A participant who dropped can no longer be checked in or out.",
-        "check-in-deck-for-limited": "Draft and Sealed have no check-in with deck."
+        "check-in-deck-for-limited": "Draft and Sealed have no check-in with deck.",
+        "guest-sign-up-needs-self-sign-up": "Guests need self sign-up.",
+        "guest-sign-up-needs-check-in": "Guests need a check-in.",
+        "guest-sign-up-busy": "Too many sign-ups, try again in a moment.",
+        "guest-sign-up-failed": "Signing up isn't possible right now.",
+        "entered-afterwards": "Organizers enter the results here."
     },
     "heading": {
         "add-participants": "Add players",
@@ -308,7 +320,9 @@
         "life-takeover": "Take over recording",
         "life-recovered-branch": "Separate recovered history",
         "life-recovered-list": "Recovered histories",
-        "life-recording-devices": "Change recording device"
+        "life-recording-devices": "Change recording device",
+        "guest-sign-up": "Play as a guest",
+        "sign-up-qr": "Sign-up QR code"
     },
     "label": {
         "add-account": "Account",
@@ -464,7 +478,11 @@
         "check-in-required-with-deck": "Check-in with deck",
         "checked-in": "Checked in",
         "not-checked-in": "Not checked in",
-        "check-in-needs-deck": "Deck missing"
+        "check-in-needs-deck": "Deck missing",
+        "your-name": "Your name",
+        "guest-sign-up": "Guests without an account",
+        "self-sign-up-with-guests": "Open, guests too",
+        "check-in-at-desk": "Check in at the desk"
     },
     "toast": {
         "co-organizer-added": "{{username}} is now a co-organizer",

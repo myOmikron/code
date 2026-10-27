@@ -487,8 +487,9 @@ pub async fn rounds_view(
 
 /// The reader's Match in the running Round of a Tournament, with the round timer
 ///
-/// For a Participant with an Account: its table, its opponents and its Seat,
-/// or its Bye. An Account playing in none gets the Round and timer only.
+/// For a Participant, an Account or a Guest through its Guest seat: its
+/// table, its opponents and its Seat, or its Bye. A reader playing in none
+/// gets the Round and timer only.
 #[get("/{tournament}/my-match")]
 pub async fn get_my_tournament_match(
     grant: TournamentGrant,

@@ -33,6 +33,16 @@ const SUBMIT_ERRORS: Record<keyof TournamentSettingsErrors, WizardSubmitError<ty
     entry_fee_not_positive: { field: "entryFee", key: "error.entry-fee-invalid", namespace: "wizard" },
     unknown_currency: { field: "entryFee", key: "error.entry-fee-invalid", namespace: "wizard" },
     check_in_deck_for_limited: { field: "checkIn", key: "error.check-in-deck-for-limited", namespace: "wizard" },
+    guest_sign_up_needs_self_sign_up: {
+        field: "guestSignUp",
+        key: "error.guest-sign-up-needs-self-sign-up",
+        namespace: "wizard",
+    },
+    guest_sign_up_needs_check_in: {
+        field: "guestSignUp",
+        key: "error.guest-sign-up-needs-check-in",
+        namespace: "wizard",
+    },
 };
 
 /**
@@ -57,6 +67,7 @@ export function tournamentRequest(values: TournamentWizardValues): TournamentSet
         visibility: values.visibility,
         participant_limit: values.participantLimit,
         self_sign_up: values.selfSignUp ?? false,
+        guest_sign_up: values.guestSignUp ?? false,
         best_of: duel ? rules.bestOf : null,
         round_minutes: values.roundMinutes,
         top_cut: rules.topCut,

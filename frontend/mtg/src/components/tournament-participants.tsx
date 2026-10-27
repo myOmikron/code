@@ -20,24 +20,30 @@ import {
     Text,
     notify,
 } from "components";
+import { useRouter } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import { CheckIn, TournamentState, Visibility } from "src/api/generated";
 import type {
     FormErrorResponseForSignUpErrors,
+    GuestSignUpRequest,
+    SignUpAsSharedTournamentGuest200Response,
     SetCheckedInErrors,
     ListParticipantsResponse,
     ParticipantResponse,
     RegisteredDeckResponse,
     TournamentResponse,
 } from "src/api/generated";
+import { TournamentGuestSignUp } from "src/components/tournament-guest-sign-up";
 import { TournamentPushActivation } from "src/components/tournament-push-activation";
 import { PrimaryButton } from "src/components/primary-button";
 import { RegisteredListWarnings, MyTournamentDeck, RegisteredDeckDialog } from "src/components/tournament-decks";
 import { useAccount } from "src/context/account";
 import { useLiveVersion } from "src/context/tournament-live-context";
 import { isFormError } from "src/utils/error";
+import { forgetGuestSeat, guestSignUpOpen } from "src/utils/tournament-guest";
+import { dropErrorKey, signUpErrorKey } from "src/utils/tournament-participants";
 import { type RegisteredListWarning, registeredListWarnings } from "src/utils/tournament-registered-lists";
 
 /**
@@ -50,6 +56,8 @@ export type TournamentParticipantsProps = {
     load: () => Promise<ListParticipantsResponse>;
     /** Signs the logged-in Account up, by id or by share link */
     signUp: () => Promise<ParticipantResponse | FormErrorResponseForSignUpErrors>;
+    /** Signs a visitor without an Account up as a Guest, by id or by share link */
+    guestSignUp: (request: GuestSignUpRequest) => Promise<SignUpAsSharedTournamentGuest200Response | null>;
 };
 
 /**
@@ -63,9 +71,10 @@ export type TournamentParticipantsProps = {
  *
  * @returns the participant list with its actions
  */
-export function TournamentParticipants({ tournament, load, signUp }: TournamentParticipantsProps) {
+export function TournamentParticipants({ tournament, load, signUp, guestSignUp }: TournamentParticipantsProps) {
     const [t] = useTranslation("tournament");
     const { account } = useAccount();
+    const router = useRouter();
     const [list, setList] = useState<ListParticipantsResponse | null>(null);
     const [busy, setBusy] = useState(false);
     const [signedUp, setSignedUp] = useState(false);
@@ -167,9 +176,7 @@ export function TournamentParticipants({ tournament, load, signUp }: TournamentP
         try {
             const result = await signUp();
             if (isFormError(result)) {
-                if (result.error.full) notify.error(t("error.sign-up-full"));
-                else if (result.error.already_participant) notify.error(t("error.sign-up-already"));
-                else notify.error(t("error.sign-up-closed"));
+                notify.error(t(signUpErrorKey(result.error)));
             } else {
                 notify.success(t("toast.signed-up"));
                 setSignedUp(true);
@@ -181,15 +188,17 @@ export function TournamentParticipants({ tournament, load, signUp }: TournamentP
     }
 
     /**
-     * Withdraws the reader's own sign-up
+     * Withdraws the reader's own sign-up; a Guest's seat and Recovery code go with it
      */
     async function leave() {
         setBusy(true);
         try {
             await Api.tournaments.participants.withdraw(tournament.uuid);
+            if (mine?.guest) forgetGuestSeat(tournament.uuid);
             notify.success(t("toast.sign-up-withdrawn"));
             setSignedUp(false);
             await reload();
+            if (mine?.guest) await router.invalidate();
         } finally {
             setBusy(false);
         }
@@ -208,7 +217,7 @@ export function TournamentParticipants({ tournament, load, signUp }: TournamentP
                 ? await Api.tournaments.participants.dropOut(tournament.uuid)
                 : await Api.tournaments.participants.drop(tournament.uuid, participant.uuid);
             if (isFormError(result)) {
-                notify.error(result.error.not_started ? t("error.drop-not-started") : t("error.tournament-over"));
+                notify.error(t(dropErrorKey(result.error)));
             } else {
                 notify.success(
                     self ? t("toast.dropped-self") : t("toast.participant-dropped", { name: participant.name }),
@@ -323,20 +332,20 @@ export function TournamentParticipants({ tournament, load, signUp }: TournamentP
                         ? t("label.participant-count", { count: participants.length })
                         : t("label.participant-count-of-limit", { count: participants.length, limit })}
                 </Text>
-                {signUpOpen &&
-                    account !== null &&
-                    list !== null &&
-                    (list.me == null ? (
-                        <PrimaryButton disabled={busy || full} onClick={() => void join()}>
-                            <UserPlusIcon />
-                            {full ? t("button.sign-up-full") : t("button.sign-up")}
-                        </PrimaryButton>
-                    ) : (
-                        <Button outline disabled={busy} onClick={() => void leave()}>
-                            {t("button.withdraw-sign-up")}
-                        </Button>
-                    ))}
-                {signUpOpen && account === null && <Text>{t("description.sign-up-needs-account")}</Text>}
+                {signUpOpen && account !== null && list !== null && list.me == null && (
+                    <PrimaryButton disabled={busy || full} onClick={() => void join()}>
+                        <UserPlusIcon />
+                        {full ? t("button.sign-up-full") : t("button.sign-up")}
+                    </PrimaryButton>
+                )}
+                {registration && list !== null && list.me != null && (signUpOpen || mine?.guest === true) && (
+                    <Button outline disabled={busy} onClick={() => void leave()}>
+                        {t("button.withdraw-sign-up")}
+                    </Button>
+                )}
+                {signUpOpen && account === null && list !== null && list.me == null && !guestSignUpOpen(tournament) && (
+                    <Text>{t("description.sign-up-needs-account")}</Text>
+                )}
                 {dropsOpen && mine !== null && mine.dropped_after_round == null && (
                     <Button outline disabled={busy} onClick={() => setDropping(mine)}>
                         <UserMinusIcon />
@@ -345,8 +354,18 @@ export function TournamentParticipants({ tournament, load, signUp }: TournamentP
                 )}
             </div>
 
-            {account !== null && (signedUp || list?.me != null) && <TournamentPushActivation />}
-            {account !== null && list?.me != null && (
+            {account === null && list !== null && list.me == null && guestSignUpOpen(tournament) && (
+                <TournamentGuestSignUp
+                    tournament={tournament}
+                    signUp={guestSignUp}
+                    onSignedUp={() => {
+                        void reload();
+                        void router.invalidate();
+                    }}
+                />
+            )}
+            {account !== null && mine?.guest !== true && (signedUp || list?.me != null) && <TournamentPushActivation />}
+            {account !== null && list?.me != null && mine?.guest !== true && (
                 <MyTournamentDeck tournament={tournament} checkedIn={mine?.checked_in ?? null} />
             )}
 

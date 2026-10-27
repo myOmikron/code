@@ -10,23 +10,27 @@ import { TournamentLiveProvider } from "src/context/tournament-live-context";
 import { useTournamentLabels } from "src/components/tournament-labels";
 import i18n from "src/i18n";
 import { isNotPublic } from "src/utils/public-page";
+import { ownSeat, restoreGuestSeat } from "src/utils/tournament-guest";
 import { tournamentEventsUrl } from "src/utils/tournament-live";
 
 export const Route = createFileRoute("/_menu/tournaments/$tournamentUuid/_tournament")({
     loader: async ({ params }) => {
         const strings = i18n.loadNamespaces(["tournament", "deck"]);
         try {
-            const [tournament, participants] = await Promise.all([
+            const [tournament, listed] = await Promise.all([
                 Api.tournaments.get(params.tournamentUuid),
                 Api.tournaments.participants.list(params.tournamentUuid),
                 strings,
             ]);
-            const mine = participants.participants.find((participant) => participant.uuid === participants.me);
-            return { tournament, me: participants.me ?? null, checkedIn: mine?.checked_in ?? null };
+            const restored = await restoreGuestSeat(tournament, listed.me ?? null, (request) =>
+                Api.tournaments.guests.recover(tournament.uuid, request),
+            );
+            const participants = restored ? await Api.tournaments.participants.list(tournament.uuid) : listed;
+            return { tournament, ...ownSeat(participants) };
         } catch (error) {
             if (isNotPublic(error)) {
                 await strings;
-                return { tournament: null, me: null, checkedIn: null };
+                return { tournament: null, ...ownSeat(null) };
             }
             throw error;
         }

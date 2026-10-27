@@ -12,15 +12,16 @@ export const Route = createFileRoute("/_menu/shared/tournaments/$token/_shared/r
 });
 
 /**
- * The Rounds of a shared Tournament, as anybody with the link sees them.
+ * The Rounds of a shared Tournament, as anybody with the link sees them; its
+ * Participants report their Results here too.
  *
  * @returns the Rounds
  */
 function RouteComponent() {
     const { token } = Route.useParams();
-    const { tournament } = frame.useLoaderData();
+    const { tournament, me } = frame.useLoaderData();
     const version = useLiveVersion("rounds");
     const load = useCallback(() => Api.shared.tournaments.rounds(token), [token, version]);
     if (tournament === null) return null;
-    return <TournamentRounds tournament={tournament} load={load} />;
+    return <TournamentRounds tournament={tournament} load={load} me={me} />;
 }

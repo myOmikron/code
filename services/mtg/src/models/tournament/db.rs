@@ -79,6 +79,12 @@ pub struct TournamentModel {
     #[rorm(default = false)]
     pub self_sign_up: bool,
 
+    /// Whether visitors without an Account may sign up themselves as Guests
+    ///
+    /// Only together with [`Self::self_sign_up`] and [`Self::check_in`].
+    #[rorm(default = false)]
+    pub guest_sign_up: bool,
+
     /// How many Games a one-on-one Match is played to; `None` for a multiplayer Tournament
     pub best_of: Option<BestOf>,
 
@@ -153,6 +159,8 @@ pub struct TournamentInsertPatch {
     pub participant_limit: Option<i32>,
     /// Whether Accounts may sign up themselves
     pub self_sign_up: bool,
+    /// Whether visitors without an Account may sign up themselves as Guests
+    pub guest_sign_up: bool,
     /// How many Games a one-on-one Match is played to
     pub best_of: Option<BestOf>,
     /// How many minutes the round timer gives a Round
@@ -195,8 +203,14 @@ pub struct TournamentParticipantModel {
     #[rorm(index, on_update = "Cascade", on_delete = "Cascade")]
     pub account: Option<ForeignModel<AccountModel>>,
 
-    /// The name an Organizer gave a Guest, `None` for an Account
+    /// The name an Organizer gave a Guest or the Guest gave itself, `None` for an Account
     pub guest_name: Option<MaxStr<64>>,
+
+    /// The SHA-256 of the Recovery code of a Guest that signed itself up, as hex
+    ///
+    /// `None` for every other Participant, and for every Participant once the
+    /// Tournament is Finished or Cancelled.
+    pub recovery_code_hash: Option<MaxStr<64>>,
 
     /// The first Round a late Participant plays, `None` for one there before Round 1 started
     pub late_from_round: Option<i16>,
@@ -235,6 +249,8 @@ pub struct TournamentParticipantInsertPatch {
     pub account: Option<ForeignModel<AccountModel>>,
     /// The name of a Guest
     pub guest_name: Option<MaxStr<64>>,
+    /// The hash of the Recovery code of a Guest that signed itself up
+    pub recovery_code_hash: Option<MaxStr<64>>,
     /// The first Round a late Participant plays
     pub late_from_round: Option<i16>,
     /// Whether the entry fee is paid

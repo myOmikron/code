@@ -10,6 +10,8 @@ Name | Type
 `best_of_mismatch` | boolean
 `check_in_deck_for_limited` | boolean
 `entry_fee_not_positive` | boolean
+`guest_sign_up_needs_check_in` | boolean
+`guest_sign_up_needs_self_sign_up` | boolean
 `participant_limit_too_small` | boolean
 `round_minutes_out_of_range` | boolean
 `rules_locked` | boolean

@@ -296,8 +296,9 @@ pub fn request(
 
 /// Sends requests into the router, keeping cookies like a browser
 ///
-/// Each client comes from its own IP (`X-Real-IP`, as the reverse proxy sets it),
-/// so rate limits of one test do not leak into another.
+/// Each client comes from its own IP (`X-Forwarded-For`, as the reverse proxy
+/// sets it and the rate limiter reads it), so rate limits of one test do not
+/// leak into another.
 pub struct TestClient {
     cookies: HashMap<String, String>,
     real_ip: IpAddr,
@@ -313,6 +314,14 @@ impl TestClient {
             real_ip: IpAddr::V4(Ipv4Addr::from(
                 u32::from(Ipv4Addr::new(10, 0, 0, 0)) + offset,
             )),
+        }
+    }
+
+    /// A second client in the same session and from the same IP, like a second tab
+    pub fn same_session(&self) -> Self {
+        Self {
+            cookies: self.cookies.clone(),
+            real_ip: self.real_ip,
         }
     }
 
@@ -394,7 +403,7 @@ impl TestClient {
     async fn send_unread(&mut self, mut request: Request<Body>) -> (Parts, Body) {
         let headers = request.headers_mut();
         headers.insert(
-            "x-real-ip",
+            "x-forwarded-for",
             self.real_ip.to_string().parse().expect("valid header"),
         );
         if !self.cookies.is_empty() {

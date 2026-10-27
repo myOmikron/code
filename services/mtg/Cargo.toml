@@ -63,6 +63,9 @@ futures-util = { workspace = true }
 # Registration token generation
 rand = { workspace = true }
 
+# Comparing Recovery codes without leaking how much of one matched
+subtle = { workspace = true }
+
 # Bracket-flag patterns over oracle text, applied once per catalog sync
 regex = { workspace = true }
 

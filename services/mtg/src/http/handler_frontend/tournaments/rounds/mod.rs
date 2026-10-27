@@ -9,15 +9,13 @@ pub mod handler;
 pub mod schema;
 
 /// What whoever sees the Tournament may read, logged in or not
+///
+/// The reader's own Match too: a Guest reads it through its Guest seat.
 pub fn viewer_routes() -> GalvynRouter {
     GalvynRouter::new()
         .handler(handler::list_tournament_rounds)
         .handler(handler::get_tournament_standings)
-}
-
-/// What a logged-in Account that sees the Tournament may do
-pub fn signed_in_viewer_routes() -> GalvynRouter {
-    GalvynRouter::new().handler(handler::get_my_tournament_match)
+        .handler(handler::get_my_tournament_match)
 }
 
 /// What the Organizers of the Tournament may do

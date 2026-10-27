@@ -1,5 +1,5 @@
 import { BestOf, Tiebreaker } from "src/api/generated";
-import type { ResultResponse, RoundErrors, SetResultRequest } from "src/api/generated";
+import type { DisputeResultErrors, ResultResponse, RoundErrors, SetResultRequest } from "src/api/generated";
 
 /**
  * A game score as players say it: "2-1", with drawn games as a third number ("1-1-1")
@@ -127,5 +127,25 @@ export function roundErrorKey(error: RoundErrors) {
         ["not_running", "error.round-not-running"],
         ["no_timer", "error.no-round-timer"],
     ] as const;
+    return reasons.find(([flag]) => error[flag])?.[1] ?? "error.round-changed";
+}
+
+/** The message of each reason a dispute was refused */
+const DISPUTE_ERRORS: Record<keyof DisputeResultErrors, string> = {
+    entered_afterwards: "error.entered-afterwards",
+    not_running: "error.round-not-running",
+    no_result: "error.result-missing",
+    own_report: "error.result-own-report",
+    confirmed: "error.result-confirmed",
+};
+
+/**
+ * Explains why disputing a Result was refused, with one message per reason.
+ *
+ * @param error service refusal flags
+ * @returns the Tournament translation key
+ */
+export function disputeErrorKey(error: DisputeResultErrors) {
+    const reasons = Object.entries(DISPUTE_ERRORS) as Array<[keyof DisputeResultErrors, string]>;
     return reasons.find(([flag]) => error[flag])?.[1] ?? "error.round-changed";
 }

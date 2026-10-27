@@ -38,6 +38,8 @@ pub struct RawTournamentSettings {
     pub participant_limit: Option<i32>,
     /// Whether Accounts may sign up themselves
     pub self_sign_up: bool,
+    /// Whether visitors without an Account may sign up themselves as Guests
+    pub guest_sign_up: bool,
     /// How many Games a one-on-one Match is played to
     pub best_of: Option<BestOf>,
     /// How many minutes the round timer gives a Round, `None` for no timer
@@ -105,6 +107,11 @@ pub struct TournamentSettings {
     pub participant_limit: Option<i32>,
     /// Whether Accounts may sign up themselves, only while Public or Unlisted
     pub self_sign_up: bool,
+    /// Whether visitors without an Account may sign up themselves as Guests
+    ///
+    /// Only with [`Self::self_sign_up`] and a [`Self::check_in`] other than
+    /// [`CheckIn::Off`], so the desk confirms every Guest before it is paired.
+    pub guest_sign_up: bool,
     /// How many Games a one-on-one Match is played to; set exactly at Table size 2
     pub best_of: Option<BestOf>,
     /// How many minutes the round timer gives a Round, 1 to [`MAX_ROUND_MINUTES`]; `None` for no timer
@@ -194,6 +201,10 @@ pub struct SettingsRefusal {
     pub participant_limit_too_small: bool,
     /// Self sign-up is on for a private Tournament, which nobody else sees
     pub self_sign_up_needs_visibility: bool,
+    /// Guest sign-up is on without Self sign-up
+    pub guest_sign_up_needs_self_sign_up: bool,
+    /// Guest sign-up is on without Check-in, so nobody would confirm the Guests
+    pub guest_sign_up_needs_check_in: bool,
     /// Best-of is missing one-on-one or given for a multiplayer Tournament
     pub best_of_mismatch: bool,
     /// The round timer is below a minute or above [`MAX_ROUND_MINUTES`]
@@ -228,6 +239,8 @@ impl TournamentSettings {
             .is_some_and(|limit| limit < MIN_PARTICIPANT_LIMIT);
         refusal.self_sign_up_needs_visibility =
             raw.self_sign_up && raw.visibility == Visibility::Private;
+        refusal.guest_sign_up_needs_self_sign_up = raw.guest_sign_up && !raw.self_sign_up;
+        refusal.guest_sign_up_needs_check_in = raw.guest_sign_up && raw.check_in == CheckIn::Off;
         let round_minutes = raw.round_minutes.map(|minutes| {
             u16::try_from(minutes)
                 .ok()
@@ -260,6 +273,7 @@ impl TournamentSettings {
                 visibility: raw.visibility,
                 participant_limit: raw.participant_limit,
                 self_sign_up: raw.self_sign_up,
+                guest_sign_up: raw.guest_sign_up,
                 best_of: raw.best_of,
                 round_minutes: round_minutes.flatten(),
                 top_cut: raw.top_cut,
@@ -300,6 +314,7 @@ mod tests {
             visibility,
             participant_limit: None,
             self_sign_up: false,
+            guest_sign_up: false,
             best_of: None,
             top_cut: None,
             top_cut_best_of: None,
@@ -573,6 +588,71 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn guest_sign_up_needs_self_sign_up_and_check_in() {
+        for (self_sign_up, check_in, needs_self_sign_up, needs_check_in) in [
+            (true, CheckIn::Required, false, false),
+            (true, CheckIn::RequiredWithDeck, false, false),
+            (false, CheckIn::Required, true, false),
+            (true, CheckIn::Off, false, true),
+            (false, CheckIn::Off, true, true),
+        ] {
+            let settings = RawTournamentSettings {
+                self_sign_up,
+                guest_sign_up: true,
+                check_in,
+                ..raw(Visibility::Public)
+            };
+            match TournamentSettings::check(settings) {
+                Ok(settings) => {
+                    assert!(!needs_self_sign_up && !needs_check_in, "{check_in:?}");
+                    assert!(settings.guest_sign_up);
+                }
+                Err(refusal) => {
+                    assert_eq!(
+                        refusal.guest_sign_up_needs_self_sign_up, needs_self_sign_up,
+                        "{self_sign_up} {check_in:?}"
+                    );
+                    assert_eq!(
+                        refusal.guest_sign_up_needs_check_in, needs_check_in,
+                        "{self_sign_up} {check_in:?}"
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn a_private_tournament_takes_no_guest_sign_up() {
+        let settings = RawTournamentSettings {
+            self_sign_up: true,
+            guest_sign_up: true,
+            check_in: CheckIn::Required,
+            ..raw(Visibility::Private)
+        };
+        let refusal = TournamentSettings::check(settings).expect_err("refused");
+        assert!(refusal.self_sign_up_needs_visibility);
+    }
+
+    #[test]
+    fn guest_sign_up_changes_neither_the_rules_nor_who_is_pairable() {
+        let before = RawTournamentSettings {
+            self_sign_up: true,
+            check_in: CheckIn::Required,
+            ..raw(Visibility::Public)
+        };
+        let tournament = Tournament::from_settings_for_test(
+            TournamentSettings::check(before.clone()).expect("valid"),
+        );
+        let settings = TournamentSettings::check(RawTournamentSettings {
+            guest_sign_up: true,
+            ..before
+        })
+        .expect("valid");
+        assert!(!settings.changes_rules_of(&tournament));
+        assert!(!settings.changes_pairable_of(&tournament));
     }
 
     #[test]

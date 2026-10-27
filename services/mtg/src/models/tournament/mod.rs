@@ -33,6 +33,7 @@ use crate::tournament::top_cut::TopCut;
 pub mod access;
 pub(in crate::models) mod db;
 pub mod deletion;
+pub mod guest_seat;
 pub mod handover;
 pub mod life_history;
 pub mod listing;
@@ -129,6 +130,8 @@ pub struct Tournament {
     pub participant_limit: Option<i32>,
     /// Whether Accounts may sign up themselves
     pub self_sign_up: bool,
+    /// Whether visitors without an Account may sign up themselves as Guests
+    pub guest_sign_up: bool,
     /// How many Games a one-on-one Match is played to, `None` multiplayer
     pub best_of: Option<BestOf>,
     /// What playing costs, `None` for nothing
@@ -190,6 +193,7 @@ impl Tournament {
                 share_token,
                 participant_limit: settings.participant_limit,
                 self_sign_up: settings.self_sign_up,
+                guest_sign_up: settings.guest_sign_up,
                 best_of: settings.best_of,
                 round_minutes: settings.round_minutes.map(stored_minutes),
                 top_cut: settings.top_cut,
@@ -234,6 +238,7 @@ impl Tournament {
                 settings.participant_limit,
             )
             .set(TournamentModel.self_sign_up, settings.self_sign_up)
+            .set(TournamentModel.guest_sign_up, settings.guest_sign_up)
             .set(TournamentModel.best_of, settings.best_of)
             .set(
                 TournamentModel.round_minutes,
@@ -268,6 +273,7 @@ impl Tournament {
             share_token,
             participant_limit: settings.participant_limit,
             self_sign_up: settings.self_sign_up,
+            guest_sign_up: settings.guest_sign_up,
             best_of: settings.best_of,
             round_minutes: settings.round_minutes,
             top_cut: settings.top_cut,
@@ -307,6 +313,7 @@ impl Tournament {
             share_token: None,
             participant_limit: settings.participant_limit,
             self_sign_up: settings.self_sign_up,
+            guest_sign_up: settings.guest_sign_up,
             best_of: settings.best_of,
             top_cut: settings.top_cut,
             top_cut_best_of: settings.top_cut_best_of,
@@ -339,6 +346,7 @@ impl From<TournamentModel> for Tournament {
             share_token: value.share_token,
             participant_limit: value.participant_limit,
             self_sign_up: value.self_sign_up,
+            guest_sign_up: value.guest_sign_up,
             best_of: value.best_of,
             entry_fee: match (value.entry_fee_amount, value.entry_fee_currency) {
                 (Some(amount), Some(currency)) => Some(EntryFee { amount, currency }),

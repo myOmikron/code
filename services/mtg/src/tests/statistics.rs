@@ -125,6 +125,7 @@ async fn create_tournament(tx: &mut Transaction, owner: AccountUuid) -> Tourname
             visibility: Visibility::Private,
             participant_limit: None,
             self_sign_up: false,
+            guest_sign_up: false,
             best_of: None,
             round_minutes: None,
             top_cut: None,

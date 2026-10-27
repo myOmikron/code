@@ -9490,7 +9490,7 @@
         "/api/frontend/v1/shared/tournaments/{token}/participants": {
             "get": {
                 "summary": "The Participants of the Tournament a share link points at",
-                "description": "The Participants of the Tournament a share link points at\n\nSays which of them is the reader, if any.",
+                "description": "The Participants of the Tournament a share link points at\n\nSays which of them is the reader, if any: its Account's, or the Guest its\nsession holds a Guest seat of.",
                 "operationId": "list_shared_tournament_participants",
                 "parameters": [
                     {
@@ -9817,6 +9817,158 @@
                             "text/event-stream": {
                                 "schema": {
                                     "$ref": "#/components/schemas/TournamentEvent"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/shared/tournaments/{token}/guest-sign-up": {
+            "post": {
+                "summary": "Sign up as a Guest for the Tournament a share link points at, without an Account",
+                "description": "Sign up as a Guest for the Tournament a share link points at, without an Account\n\nThe way into an unlisted Tournament; refused and answered like\n`sign_up_as_tournament_guest`.",
+                "operationId": "sign_up_as_shared_tournament_guest",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "token",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/GuestSignUpRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "$ref": "#/components/schemas/GuestSignUpResponse"
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/FormErrorResponse_for_GuestSignUpErrors"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/shared/tournaments/{token}/guest-seat/recover": {
+            "post": {
+                "summary": "Restore a Guest seat of the Tournament a share link points at into this session",
+                "description": "Restore a Guest seat of the Tournament a share link points at into this session\n\nRefused like `recover_tournament_guest_seat`.",
+                "operationId": "recover_shared_tournament_guest_seat",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "token",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RecoverGuestSeatRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "nullable": true
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/FormErrorResponse_for_RecoverGuestSeatErrors"
+                                        }
+                                    ]
                                 }
                             }
                         }
@@ -10509,7 +10661,7 @@
         "/api/frontend/v1/tournaments/{tournament}/participants": {
             "get": {
                 "summary": "The Participants of a Tournament the reader may see",
-                "description": "The Participants of a Tournament the reader may see\n\nSays which of them is the reader, if any.",
+                "description": "The Participants of a Tournament the reader may see\n\nSays which of them is the reader, if any: its Account's, or the Guest its\nsession holds a Guest seat of.",
                 "operationId": "list_tournament_participants",
                 "parameters": [
                     {
@@ -10759,6 +10911,68 @@
                 }
             }
         },
+        "/api/frontend/v1/tournaments/{tournament}/my-match": {
+            "get": {
+                "summary": "The reader's Match in the running Round of a Tournament, with the round timer",
+                "description": "The reader's Match in the running Round of a Tournament, with the round timer\n\nFor a Participant, an Account or a Guest through its Guest seat: its\ntable, its opponents and its Seat, or its Bye. A reader playing in none\ngets the Round and timer only.",
+                "operationId": "get_my_tournament_match",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tournament",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of a [`Tournament`]",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MyMatchResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/frontend/v1/tournaments/{tournament}/events": {
             "get": {
                 "summary": "Follow what changes in a Tournament the reader may see, as Server-Sent Events",
@@ -10784,6 +10998,521 @@
                             "text/event-stream": {
                                 "schema": {
                                     "$ref": "#/components/schemas/TournamentEvent"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/tournaments/{tournament}/guest-sign-up": {
+            "post": {
+                "summary": "Sign up as a Guest for a public Tournament, without an Account",
+                "description": "Sign up as a Guest for a public Tournament, without an Account\n\nTakes effect at once; the Guest is paired once the desk checked it in.\nThe session then holds a Guest seat, and the answer carries the Recovery\ncode that restores the seat into a fresh session. Refused unless the\nOwner allowed Guest sign-up and the Tournament is in Registration, and\nonce the participant limit is reached. A session that holds a seat for\nthe Tournament gets that Guest back with a new code instead of a second\nGuest. An unlisted Tournament is signed up for through its share link,\nsee `sign_up_as_shared_tournament_guest`.",
+                "operationId": "sign_up_as_tournament_guest",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tournament",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of a [`Tournament`]",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/GuestSignUpRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "$ref": "#/components/schemas/GuestSignUpResponse"
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/FormErrorResponse_for_GuestSignUpErrors"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/tournaments/{tournament}/guest-seat/recover": {
+            "post": {
+                "summary": "Restore a Guest seat into this session with the Recovery code its device kept",
+                "description": "Restore a Guest seat into this session with the Recovery code its device kept\n\nUntil the Tournament is over, when its Recovery codes are gone. An\nunlisted Tournament restores through its share link, see\n`recover_shared_tournament_guest_seat`.",
+                "operationId": "recover_tournament_guest_seat",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tournament",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of a [`Tournament`]",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RecoverGuestSeatRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "nullable": true
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/FormErrorResponse_for_RecoverGuestSeatErrors"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/tournaments/{tournament}/sign-up": {
+            "post": {
+                "summary": "Sign the logged-in Account up for a Tournament it sees by its id",
+                "description": "Sign the logged-in Account up for a Tournament it sees by its id\n\nTakes effect at once. Refused unless the Owner turned self sign-up on and\nthe Tournament is in Registration, and once the participant limit is\nreached. An unlisted Tournament is signed up for through its share link,\nsee `sign_up_for_shared_tournament`.",
+                "operationId": "sign_up_for_tournament",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tournament",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of a [`Tournament`]",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ParticipantResponse"
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/FormErrorResponse_for_SignUpErrors"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "summary": "Withdraw one's own sign-up, as an Account or a Guest with its Guest seat",
+                "description": "Withdraw one's own sign-up, as an Account or a Guest with its Guest seat\n\nOnly before the first Round starts; afterwards a Participant leaves by a\nDrop. A Guest's seat goes with it.",
+                "operationId": "withdraw_tournament_sign_up",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tournament",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of a [`Tournament`]",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "nullable": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/tournaments/{tournament}/drop": {
+            "post": {
+                "summary": "Drop out of a Tournament one plays in, as an Account or a Guest with its Guest seat",
+                "description": "Drop out of a Tournament one plays in, as an Account or a Guest with its Guest seat\n\nOnce the first Round started, until the Tournament is over; before the\nfirst Round a Participant withdraws its sign-up instead. No later Round\npairs it; it stays in the standings with its Results so far.",
+                "operationId": "drop_out_of_tournament",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tournament",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of a [`Tournament`]",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "nullable": true
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/FormErrorResponse_for_DropErrors"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/tournaments/{tournament}/matches/{match}/report": {
+            "post": {
+                "summary": "Report the Result of one's own Match, as its Participant",
+                "description": "Report the Result of one's own Match, as its Participant\n\nIt counts at once. The reporter may correct it while the Round runs;\nanother Participant who disagrees disputes it instead. A locked Account\ncannot report: an Organizer sets its Result.",
+                "operationId": "report_tournament_match_result",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tournament",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/TournamentUuid"
+                        },
+                        "style": "simple"
+                    },
+                    {
+                        "in": "path",
+                        "name": "match",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/MatchUuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ReportResultRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "nullable": true
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/FormErrorResponse_for_ReportResultErrors"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/tournaments/{tournament}/matches/{match}/dispute": {
+            "post": {
+                "summary": "Dispute the Result another Participant reported for one's own Match",
+                "description": "Dispute the Result another Participant reported for one's own Match\n\nPossible while the Round runs. The Round cannot end until an Organizer\nsettles the Result. A locked Account cannot dispute.",
+                "operationId": "dispute_tournament_match_result",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tournament",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/TournamentUuid"
+                        },
+                        "style": "simple"
+                    },
+                    {
+                        "in": "path",
+                        "name": "match",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/MatchUuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "nullable": true
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/FormErrorResponse_for_DisputeResultErrors"
+                                        }
+                                    ]
                                 }
                             }
                         }
@@ -11750,197 +12479,6 @@
                 }
             }
         },
-        "/api/frontend/v1/tournaments/{tournament}/sign-up": {
-            "post": {
-                "summary": "Sign the logged-in Account up for a Tournament it sees by its id",
-                "description": "Sign the logged-in Account up for a Tournament it sees by its id\n\nTakes effect at once. Refused unless the Owner turned self sign-up on and\nthe Tournament is in Registration, and once the participant limit is\nreached. An unlisted Tournament is signed up for through its share link,\nsee `sign_up_for_shared_tournament`.",
-                "operationId": "sign_up_for_tournament",
-                "parameters": [
-                    {
-                        "in": "path",
-                        "name": "tournament",
-                        "required": true,
-                        "schema": {
-                            "description": "Wrapper for the primary key of a [`Tournament`]",
-                            "type": "string",
-                            "format": "uuid"
-                        },
-                        "style": "simple"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "oneOf": [
-                                        {
-                                            "$ref": "#/components/schemas/ParticipantResponse"
-                                        },
-                                        {
-                                            "$ref": "#/components/schemas/FormErrorResponse_for_SignUpErrors"
-                                        }
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiErrorResponse"
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "summary": "Withdraw the logged-in Account's own sign-up",
-                "description": "Withdraw the logged-in Account's own sign-up\n\nOnly before the first Round starts; afterwards a Participant leaves by a Drop.",
-                "operationId": "withdraw_tournament_sign_up",
-                "parameters": [
-                    {
-                        "in": "path",
-                        "name": "tournament",
-                        "required": true,
-                        "schema": {
-                            "description": "Wrapper for the primary key of a [`Tournament`]",
-                            "type": "string",
-                            "format": "uuid"
-                        },
-                        "style": "simple"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "nullable": true
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiErrorResponse"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/frontend/v1/tournaments/{tournament}/my-match": {
-            "get": {
-                "summary": "The reader's Match in the running Round of a Tournament, with the round timer",
-                "description": "The reader's Match in the running Round of a Tournament, with the round timer\n\nFor a Participant with an Account: its table, its opponents and its Seat,\nor its Bye. An Account playing in none gets the Round and timer only.",
-                "operationId": "get_my_tournament_match",
-                "parameters": [
-                    {
-                        "in": "path",
-                        "name": "tournament",
-                        "required": true,
-                        "schema": {
-                            "description": "Wrapper for the primary key of a [`Tournament`]",
-                            "type": "string",
-                            "format": "uuid"
-                        },
-                        "style": "simple"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/MyMatchResponse"
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiErrorResponse"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/api/frontend/v1/tournaments/{tournament}/deck": {
             "get": {
                 "summary": "The logged-in Account's own Registered deck in a Tournament it plays in",
@@ -12185,236 +12723,6 @@
                                         },
                                         {
                                             "$ref": "#/components/schemas/FormErrorResponse_for_SetListSharingErrors"
-                                        }
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiErrorResponse"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/frontend/v1/tournaments/{tournament}/drop": {
-            "post": {
-                "summary": "Drop the logged-in Account out of a Tournament it plays in",
-                "description": "Drop the logged-in Account out of a Tournament it plays in\n\nOnce the first Round started, until the Tournament is over; before the\nfirst Round an Account withdraws its sign-up instead. No later Round\npairs it; it stays in the standings with its Results so far.",
-                "operationId": "drop_out_of_tournament",
-                "parameters": [
-                    {
-                        "in": "path",
-                        "name": "tournament",
-                        "required": true,
-                        "schema": {
-                            "description": "Wrapper for the primary key of a [`Tournament`]",
-                            "type": "string",
-                            "format": "uuid"
-                        },
-                        "style": "simple"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "oneOf": [
-                                        {
-                                            "nullable": true
-                                        },
-                                        {
-                                            "$ref": "#/components/schemas/FormErrorResponse_for_DropErrors"
-                                        }
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiErrorResponse"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/frontend/v1/tournaments/{tournament}/matches/{match}/report": {
-            "post": {
-                "summary": "Report the Result of one's own Match, as its Participant",
-                "description": "Report the Result of one's own Match, as its Participant\n\nIt counts at once. The reporter may correct it while the Round runs;\nanother Participant who disagrees disputes it instead. A locked Account\ncannot report: an Organizer sets its Result.",
-                "operationId": "report_tournament_match_result",
-                "parameters": [
-                    {
-                        "in": "path",
-                        "name": "tournament",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/components/schemas/TournamentUuid"
-                        },
-                        "style": "simple"
-                    },
-                    {
-                        "in": "path",
-                        "name": "match",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/components/schemas/MatchUuid"
-                        },
-                        "style": "simple"
-                    }
-                ],
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/ReportResultRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "oneOf": [
-                                        {
-                                            "nullable": true
-                                        },
-                                        {
-                                            "$ref": "#/components/schemas/FormErrorResponse_for_ReportResultErrors"
-                                        }
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ApiErrorResponse"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/frontend/v1/tournaments/{tournament}/matches/{match}/dispute": {
-            "post": {
-                "summary": "Dispute the Result another Participant reported for one's own Match",
-                "description": "Dispute the Result another Participant reported for one's own Match\n\nPossible while the Round runs. The Round cannot end until an Organizer\nsettles the Result. A locked Account cannot dispute.",
-                "operationId": "dispute_tournament_match_result",
-                "parameters": [
-                    {
-                        "in": "path",
-                        "name": "tournament",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/components/schemas/TournamentUuid"
-                        },
-                        "style": "simple"
-                    },
-                    {
-                        "in": "path",
-                        "name": "match",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/components/schemas/MatchUuid"
-                        },
-                        "style": "simple"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "oneOf": [
-                                        {
-                                            "nullable": true
-                                        },
-                                        {
-                                            "$ref": "#/components/schemas/FormErrorResponse_for_DisputeResultErrors"
                                         }
                                     ]
                                 }
@@ -13032,7 +13340,7 @@
         "/api/frontend/v1/tournaments/{tournament}/participants/guests": {
             "post": {
                 "summary": "Add a Guest by name, as an Organizer",
-                "description": "Add a Guest by name, as an Organizer\n\nIn Registration, and as a late Participant until the Swiss Rounds are\nover. The name is trimmed; two Guests may share one.",
+                "description": "Add a Guest by name, as an Organizer\n\nIn Registration, and as a late Participant until the Swiss Rounds are\nover. The name is trimmed and its blanks collapse; two Guests may share one.",
                 "operationId": "add_tournament_guest",
                 "parameters": [
                     {
@@ -20475,6 +20783,32 @@
                     "result"
                 ]
             },
+            "FormErrorResponse_for_GuestSignUpErrors": {
+                "description": "The response that is sent in a case of an error the caller should present his user",
+                "type": "object",
+                "properties": {
+                    "error": {
+                        "description": "The actual error struct",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/GuestSignUpErrors"
+                            }
+                        ]
+                    },
+                    "result": {
+                        "description": "A constant `\"Err\"` used to differentiate this schema from any other \"Ok\" schema",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ErrorConstant"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "error",
+                    "result"
+                ]
+            },
             "FormErrorResponse_for_MatchLifeErrors": {
                 "description": "The response that is sent in a case of an error the caller should present his user",
                 "type": "object",
@@ -20562,6 +20896,32 @@
                         "allOf": [
                             {
                                 "$ref": "#/components/schemas/PutDeckCollaboratorErrors"
+                            }
+                        ]
+                    },
+                    "result": {
+                        "description": "A constant `\"Err\"` used to differentiate this schema from any other \"Ok\" schema",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ErrorConstant"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "error",
+                    "result"
+                ]
+            },
+            "FormErrorResponse_for_RecoverGuestSeatErrors": {
+                "description": "The response that is sent in a case of an error the caller should present his user",
+                "type": "object",
+                "properties": {
+                    "error": {
+                        "description": "The actual error struct",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/RecoverGuestSeatErrors"
                             }
                         ]
                     },
@@ -21125,6 +21485,87 @@
                         ]
                     }
                 }
+            },
+            "GuestSignUpErrors": {
+                "description": "Why a visitor could not sign up as a Guest",
+                "type": "object",
+                "properties": {
+                    "already_participant": {
+                        "description": "The logged-in Account already plays in the Tournament",
+                        "type": "boolean"
+                    },
+                    "busy": {
+                        "description": "Too many Guests signed up for the Tournament lately; try again in a few minutes",
+                        "type": "boolean"
+                    },
+                    "closed": {
+                        "description": "Guest sign-up is off or the first Round started",
+                        "type": "boolean"
+                    },
+                    "empty_name": {
+                        "description": "The name is empty or only blanks",
+                        "type": "boolean"
+                    },
+                    "full": {
+                        "description": "The participant limit is reached",
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "already_participant",
+                    "busy",
+                    "closed",
+                    "empty_name",
+                    "full"
+                ]
+            },
+            "GuestSignUpRequest": {
+                "description": "A visitor without an Account signing itself up as a Guest",
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "description": "The name it goes by in this Tournament; blanks are trimmed and collapse",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_64"
+                            }
+                        ]
+                    },
+                    "recovery": {
+                        "nullable": true,
+                        "description": "The Guest this device signed up as before, restored instead of signing up again",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/RecoverGuestSeatRequest"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "name"
+                ]
+            },
+            "GuestSignUpResponse": {
+                "description": "The Guest a visitor signed up as, and the Recovery code its device keeps",
+                "type": "object",
+                "properties": {
+                    "participant": {
+                        "description": "The Guest, as it sees itself",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ParticipantResponse"
+                            }
+                        ]
+                    },
+                    "recovery_code": {
+                        "description": "Restores the Guest seat into a fresh session until the Tournament is over\n\nAnswered this once; a new one replaces it whenever the sign-up is repeated.",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "participant",
+                    "recovery_code"
+                ]
             },
             "ImportDeckCardsRequest": {
                 "description": "A decklist to write into a deck",
@@ -23840,6 +24281,50 @@
                 },
                 "required": [
                     "username"
+                ]
+            },
+            "RecoverGuestSeatErrors": {
+                "description": "Why a Guest seat could not be restored",
+                "type": "object",
+                "properties": {
+                    "tournament_over": {
+                        "description": "The Tournament is Finished or Cancelled, so its Recovery codes are gone",
+                        "type": "boolean"
+                    },
+                    "unknown_code": {
+                        "description": "No Guest of the Tournament has this Recovery code",
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "tournament_over",
+                    "unknown_code"
+                ]
+            },
+            "RecoverGuestSeatRequest": {
+                "description": "The Guest seat a device restores into a fresh session",
+                "type": "object",
+                "properties": {
+                    "code": {
+                        "description": "The Recovery code the device kept from the sign-up",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_64"
+                            }
+                        ]
+                    },
+                    "participant": {
+                        "description": "The Guest's Participant",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ParticipantUuid"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "code",
+                    "participant"
                 ]
             },
             "RegisterDeckErrors": {
@@ -27436,6 +27921,10 @@
                             }
                         ]
                     },
+                    "guest_sign_up": {
+                        "description": "Whether visitors without an Account may sign up themselves as Guests",
+                        "type": "boolean"
+                    },
                     "location": {
                         "nullable": true,
                         "description": "Where it takes place, as free text",
@@ -27560,6 +28049,7 @@
                 "required": [
                     "check_in",
                     "entered_afterwards",
+                    "guest_sign_up",
                     "name",
                     "ruleset",
                     "self_sign_up",
@@ -27584,6 +28074,14 @@
                     },
                     "entry_fee_not_positive": {
                         "description": "The entry fee is zero or less",
+                        "type": "boolean"
+                    },
+                    "guest_sign_up_needs_check_in": {
+                        "description": "Guest sign-up is on without Check-in",
+                        "type": "boolean"
+                    },
+                    "guest_sign_up_needs_self_sign_up": {
+                        "description": "Guest sign-up is on without Self sign-up",
                         "type": "boolean"
                     },
                     "participant_limit_too_small": {
@@ -27635,6 +28133,8 @@
                     "best_of_mismatch",
                     "check_in_deck_for_limited",
                     "entry_fee_not_positive",
+                    "guest_sign_up_needs_check_in",
+                    "guest_sign_up_needs_self_sign_up",
                     "participant_limit_too_small",
                     "round_minutes_out_of_range",
                     "rules_locked",
@@ -27701,6 +28201,11 @@
                                 "$ref": "#/components/schemas/MaxStr_32"
                             }
                         ]
+                    },
+                    "guest_sign_up": {
+                        "description": "Whether visitors without an Account may sign up themselves as Guests, `false` when left out\n\nOnly with `self_sign_up` and a `check_in` other than `Off`: the desk confirms every Guest before it is paired.",
+                        "default": false,
+                        "type": "boolean"
                     },
                     "location": {
                         "nullable": true,

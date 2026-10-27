@@ -1,0 +1,42 @@
+[Migration]
+Hash = "3146108498401518908"
+Initial = false
+Dependency = 72
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "tournament_participant"
+
+[Migration.Operations.Field]
+Name = "recovery_code_hash"
+Type = "text"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "max_length"
+Value = 64
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 213
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "tournament"
+
+[Migration.Operations.Field]
+Name = "guest_sign_up"
+Type = "boolean"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "default_value"
+Value = false
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 86
+Column = 9

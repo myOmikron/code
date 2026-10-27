@@ -41,7 +41,7 @@ use crate::models::tournament::access::TournamentGrant;
 use crate::models::tournament::listing::ListedTournament;
 use crate::models::tournament::listing::OverviewFilter;
 use crate::models::tournament::settings::TournamentSettings;
-use crate::utils::account_budget::AccountBudget;
+use crate::utils::budget::Budget;
 
 /// The public Tournaments, narrowed down by the filters given
 ///
@@ -214,8 +214,8 @@ pub fn denied<E>() -> ApiError<E> {
 }
 
 /// Unknown usernames a caller may name per hour, as Participant, Co-organizer or heir
-static UNKNOWN_USERNAMES: LazyLock<AccountBudget> =
-    LazyLock::new(|| AccountBudget::new(20, Duration::from_secs(60 * 60)));
+static UNKNOWN_USERNAMES: LazyLock<Budget<AccountUuid>> =
+    LazyLock::new(|| Budget::new(20, Duration::from_secs(60 * 60)));
 
 /// Form errors of a request that names an Account by its username
 pub trait UnknownUsernameErrors: Default {

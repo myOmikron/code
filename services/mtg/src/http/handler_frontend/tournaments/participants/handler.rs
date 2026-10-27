@@ -1,5 +1,6 @@
 use galvyn::core::Module;
 use galvyn::core::re_exports::axum::extract::Path;
+use galvyn::core::session::Session;
 use galvyn::core::stuff::api_error::ApiError;
 use galvyn::core::stuff::api_error::ApiResult;
 use galvyn::core::stuff::api_error::FormErrors;
@@ -11,7 +12,6 @@ use galvyn::put;
 use galvyn::rorm;
 use galvyn::rorm::Database;
 use galvyn::rorm::db::transaction::Transaction;
-use galvyn::rorm::fields::types::MaxStr;
 
 use crate::http::handler_frontend::tournaments::handler::denied;
 use crate::http::handler_frontend::tournaments::handler::named_account;
@@ -34,10 +34,12 @@ use crate::http::handler_frontend::tournaments::participants::schema::SetPaidReq
 use crate::http::handler_frontend::tournaments::participants::schema::SignUpErrors;
 use crate::http::handler_frontend::tournaments::results::handler::announce;
 use crate::models::account::Account;
+use crate::models::account::AccountUuid;
 use crate::models::account::extractor::Viewer;
 use crate::models::tournament::Tournament;
 use crate::models::tournament::TournamentUuid;
 use crate::models::tournament::access::TournamentGrant;
+use crate::models::tournament::guest_seat::GuestSeats;
 use crate::models::tournament::participant::CheckInRefusal;
 use crate::models::tournament::participant::DropRefusal;
 use crate::models::tournament::participant::PaidRefusal;
@@ -45,12 +47,14 @@ use crate::models::tournament::participant::Participant;
 use crate::models::tournament::participant::ParticipantUuid;
 use crate::models::tournament::participant::Player;
 use crate::models::tournament::participant::SignUpRefusal;
+use crate::models::tournament::participant::guest_name;
 use crate::models::tournament::participant::late_from_round;
 use crate::models::tournament::result::ResultChange;
 
 /// The Participants of a Tournament the reader may see
 ///
-/// Says which of them is the reader, if any.
+/// Says which of them is the reader, if any: its Account's, or the Guest its
+/// session holds a Guest seat of.
 #[get("/{tournament}/participants")]
 pub async fn list_tournament_participants(
     viewer: Viewer,
@@ -60,7 +64,7 @@ pub async fn list_tournament_participants(
     let mut tx = Database::global().start_transaction().await?;
 
     let tournament = grant.tournament;
-    let response = list(&mut tx, &tournament, viewer).await?;
+    let response = list(&mut tx, &tournament, viewer.account(), grant.participant).await?;
 
     tx.commit().await?;
 
@@ -124,21 +128,18 @@ pub async fn add_tournament_account(
 /// Add a Guest by name, as an Organizer
 ///
 /// In Registration, and as a late Participant until the Swiss Rounds are
-/// over. The name is trimmed; two Guests may share one.
+/// over. The name is trimmed and its blanks collapse; two Guests may share one.
 #[post("/{tournament}/participants/guests")]
 pub async fn add_tournament_guest(
     grant: TournamentGrant,
     Path(_): Path<TournamentUuid>,
     ApiJson(AddGuestParticipantRequest { name }): ApiJson<AddGuestParticipantRequest>,
 ) -> ApiResult<ApiJson<ParticipantResponse>, AddGuestParticipantErrors> {
-    let trimmed = name.trim();
-    if trimmed.is_empty() {
+    let Some(name) = guest_name(&name) else {
         let mut errors = FormErrors::<AddGuestParticipantErrors>::new();
         errors.empty_name = true;
         return errors.fail();
-    }
-    let name = MaxStr::<64>::new(trimmed.to_string())
-        .map_err(|_| ApiError::bad_request("Name too long"))?;
+    };
 
     let mut tx = Database::global().start_transaction().await?;
 
@@ -327,10 +328,10 @@ pub async fn check_in_tournament_participants(
     change.finish(tx, &tournament, response).await
 }
 
-/// Drop the logged-in Account out of a Tournament it plays in
+/// Drop out of a Tournament one plays in, as an Account or a Guest with its Guest seat
 ///
 /// Once the first Round started, until the Tournament is over; before the
-/// first Round an Account withdraws its sign-up instead. No later Round
+/// first Round a Participant withdraws its sign-up instead. No later Round
 /// pairs it; it stays in the standings with its Results so far.
 #[post("/{tournament}/drop")]
 pub async fn drop_out_of_tournament(
@@ -376,11 +377,13 @@ pub async fn sign_up_for_tournament(
     change.finish(tx, &tournament, response).await
 }
 
-/// Withdraw the logged-in Account's own sign-up
+/// Withdraw one's own sign-up, as an Account or a Guest with its Guest seat
 ///
-/// Only before the first Round starts; afterwards a Participant leaves by a Drop.
+/// Only before the first Round starts; afterwards a Participant leaves by a
+/// Drop. A Guest's seat goes with it.
 #[delete("/{tournament}/sign-up")]
 pub async fn withdraw_tournament_sign_up(
+    session: Session,
     grant: TournamentGrant,
     Path(_): Path<TournamentUuid>,
 ) -> ApiResult<ApiJson<()>> {
@@ -401,22 +404,22 @@ pub async fn withdraw_tournament_sign_up(
     let change = RosterChange::begin(&mut tx, &tournament).await?;
     tournament.remove_participant(&mut tx, participant).await?;
 
-    change.finish(tx, &tournament, Ok(ApiJson(()))).await
+    let response = change.finish(tx, &tournament, Ok(ApiJson(()))).await?;
+    GuestSeats::release(&session, tournament.uuid, participant).await?;
+    Ok(response)
 }
 
-/// The Participants of `tournament` as `viewer` reads them
+/// The Participants of `tournament` as `viewer` reads them, who plays in it as `me`
 pub async fn list(
     tx: &mut Transaction,
     tournament: &Tournament,
-    viewer: Viewer,
+    viewer: Option<AccountUuid>,
+    me: Option<ParticipantUuid>,
 ) -> ApiResult<ListParticipantsResponse> {
     let participants = tournament.participants(tx).await?;
-    let (me, organizer) = match viewer.account() {
-        Some(account) => (
-            tournament.participant_of(tx, account).await?,
-            tournament.organizer_role(tx, account).await?.is_some(),
-        ),
-        None => (None, false),
+    let organizer = match viewer {
+        Some(account) => tournament.organizer_role(tx, account).await?.is_some(),
+        None => false,
     };
     Ok(ListParticipantsResponse {
         participants: participants

@@ -83,7 +83,11 @@ export function TournamentDetails({ tournament }: TournamentDetailsProps) {
 
                 <DescriptionTerm>{t("label.self-sign-up")}</DescriptionTerm>
                 <DescriptionDetails>
-                    {tournament.self_sign_up ? t("label.self-sign-up-on") : t("label.self-sign-up-off")}
+                    {tournament.self_sign_up
+                        ? tournament.guest_sign_up
+                            ? t("label.self-sign-up-with-guests")
+                            : t("label.self-sign-up-on")
+                        : t("label.self-sign-up-off")}
                 </DescriptionDetails>
 
                 {tournament.participant_limit != null && (
