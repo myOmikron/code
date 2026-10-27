@@ -544,15 +544,15 @@ export interface CancelTournamentRequest {
 
 export interface CaptureMatchLifeConflictOperationRequest {
     /**
-     *
+     * 
      */
     tournament: string;
     /**
-     *
+     * 
      */
     match: string;
     /**
-     *
+     * 
      */
     CaptureMatchLifeConflictRequest?: CaptureMatchLifeConflictRequest;
 }
@@ -978,15 +978,15 @@ export interface GetDeckSourcingRequest {
 
 export interface GetMatchLifeConflictRequest {
     /**
-     *
+     * 
      */
     tournament: string;
     /**
-     *
+     * 
      */
     match: string;
     /**
-     *
+     * 
      */
     conflict: string;
 }
@@ -1227,11 +1227,11 @@ export interface ListDeckCollaboratorsRequest {
 
 export interface ListMatchLifeConflictsRequest {
     /**
-     *
+     * 
      */
     tournament: string;
     /**
-     *
+     * 
      */
     match: string;
 }
@@ -1533,15 +1533,15 @@ export interface RegisterTournamentParticipantDeckRequest {
 
 export interface ReleaseMatchLifeHistoryRequest {
     /**
-     *
+     * 
      */
     tournament: string;
     /**
-     *
+     * 
      */
     match: string;
     /**
-     *
+     * 
      */
     ClaimMatchLifeRequest?: ClaimMatchLifeRequest;
 }
@@ -2039,15 +2039,15 @@ export interface TakeDeckCardsOperationRequest {
 
 export interface TakeoverMatchLifeHistoryRequest {
     /**
-     *
+     * 
      */
     tournament: string;
     /**
-     *
+     * 
      */
     match: string;
     /**
-     *
+     * 
      */
     ClaimMatchLifeRequest?: ClaimMatchLifeRequest;
 }

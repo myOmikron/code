@@ -1252,7 +1252,7 @@ export type BugReportState = typeof BugReportState[keyof typeof BugReportState];
 
 /**
  * @type CaptureMatchLifeConflict200Response
- *
+ * 
  * @export
  */
 export type CaptureMatchLifeConflict200Response = CapturedMatchLifeConflict | FormErrorResponseForMatchLifeErrors;
@@ -4982,11 +4982,11 @@ export type MatchLifeOwnershipProof = MatchLifeOwnershipProofOneOf | MatchLifeOw
  */
 export interface MatchLifeOwnershipProofOneOf {
     /**
-     *
+     * 
      */
     kind: MatchLifeOwnershipProofOneOfKindEnum;
     /**
-     *
+     * 
      */
     request: ClaimMatchLifeRequest;
 }
@@ -5007,11 +5007,11 @@ export type MatchLifeOwnershipProofOneOfKindEnum = typeof MatchLifeOwnershipProo
  */
 export interface MatchLifeOwnershipProofOneOf1 {
     /**
-     *
+     * 
      */
     kind: MatchLifeOwnershipProofOneOf1KindEnum;
     /**
-     *
+     * 
      */
     request: ClaimMatchLifeRequest;
 }
