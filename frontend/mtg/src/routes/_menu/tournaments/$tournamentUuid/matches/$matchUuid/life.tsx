@@ -1,5 +1,5 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { Api } from "src/api/api";
+import { loadRecoverableMatch } from "src/utils/offline-match-context";
 import { TournamentMatchLife } from "src/components/tournament-match-life";
 import { TournamentLiveProvider } from "src/context/tournament-live-context";
 import i18n from "src/i18n";
@@ -10,18 +10,14 @@ export const Route = createFileRoute("/_menu/tournaments/$tournamentUuid/matches
         organizer: search.organizer === true || search.organizer === "true",
     }),
     loader: async ({ params }) => {
-        const [tournament, play] = await Promise.all([
-            Api.tournaments.get(params.tournamentUuid),
-            Api.tournaments.rounds.play(params.tournamentUuid, params.matchUuid),
-            i18n.loadNamespaces(["tournament", "game-utils"]),
-        ]);
-        return { tournament, play };
+        await i18n.loadNamespaces(["tournament", "game-utils"]);
+        return loadRecoverableMatch(params.tournamentUuid, params.matchUuid);
     },
     component: RouteComponent,
 });
 
 function RouteComponent() {
-    const { tournament, play } = Route.useLoaderData();
+    const { tournament, play, skewMs, offline } = Route.useLoaderData();
     const { organizer } = Route.useSearch();
     const router = useRouter();
     return (
@@ -35,6 +31,8 @@ function RouteComponent() {
                 key={play.round.matches[0].uuid}
                 tournament={tournament}
                 initialPlay={play}
+                initialSkewMs={skewMs}
+                offline={offline}
                 organizerView={organizer ?? false}
             />
         </TournamentLiveProvider>

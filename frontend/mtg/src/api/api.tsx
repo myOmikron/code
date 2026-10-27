@@ -561,6 +561,7 @@ export const Api = {
         listPublic: (query: ListPublicTournamentsRequest = {}) => defaultApi.listPublicTournaments(query),
         get: (tournament: UUID) => defaultApi.getTournament({ tournament }),
         mine: async () => handleError(defaultApi.getMyTournaments()),
+        mineForNavigation: () => quietSessionRead(defaultApi.getMyTournaments()),
         create: async (req: TournamentSettingsRequest) =>
             handleError(defaultApi.createTournament({ TournamentSettingsRequest: req })),
         update: async (tournament: UUID, req: TournamentSettingsRequest) =>
@@ -636,6 +637,10 @@ export const Api = {
         },
         // Running it: Organizers pair a Round as a preview only they see, start
         // it, set the Results and end it. The reads are open like `get`.
+        matchRecovery: {
+            tournament: (tournament: UUID) => defaultApi.getTournament({ tournament }),
+            play: (tournament: UUID, match: UUID) => defaultApi.getTournamentMatchPlay({ tournament, match }),
+        },
         lifeHistory: {
             get: (tournament: UUID, match: UUID) => defaultApi.getMatchLifeHistory({ tournament, match }),
             claim: (tournament: UUID, match: UUID, request: ClaimMatchLifeRequest) =>
@@ -705,6 +710,7 @@ export const Api = {
         // Reachable without naming a list, because the navigation badge is
         // drawn from it wherever the reader happens to be.
         alarms: async () => handleError(defaultApi.getWatchListAlarms()),
+        alarmsForNavigation: () => quietSessionRead(defaultApi.getWatchListAlarms()),
         entry: {
             add: async (list: UUID, req: AddWatchListEntryRequest) =>
                 handleError(defaultApi.addWatchListEntry({ list, AddWatchListEntryRequest: req })),
@@ -830,5 +836,19 @@ export async function handleError<T>(promise: Promise<T>): Promise<T> {
         }
         ERROR_STORE.report(msg);
         throw msg;
+    }
+}
+
+/**
+ * Keeps cosmetic background failures local while still respecting an expired session.
+ *
+ * @param request a background HTTP read
+ * @returns its normal response, without reporting transport failures globally
+ */
+async function quietSessionRead<T>(request: Promise<T>): Promise<T> {
+    try { return await request; }
+    catch (error) {
+        if (error instanceof ResponseError && error.response.status === 401) SESSION_STORE.expired();
+        throw error;
     }
 }

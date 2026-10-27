@@ -29,7 +29,7 @@ export function useWatchListAlarms(enabled: boolean, path: string): number {
 
         let cancelled = false;
         void Api.watchLists
-            .alarms()
+            .alarmsForNavigation()
             .then((answer) => {
                 if (!cancelled) setUnread(answer.unread);
             })

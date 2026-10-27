@@ -217,7 +217,9 @@
         "tournament-push-activation": "Benachrichtigungen konnten nicht aktiviert oder geprüft werden. Versuche es noch einmal. Deine Turnierteilnahme bleibt bestehen.",
         "life-history-save": "Der Verlauf konnte nicht vom Server geladen oder dort gespeichert werden. Deine lokalen Änderungen bleiben auf diesem Gerät.",
         "life-history-conflict": "Die Aufnahmeberechtigung oder der gespeicherte Verlauf hat sich geändert. Deine lokalen Änderungen bleiben erhalten und ersetzen den Serververlauf nicht.",
-        "life-history-invalid": "Dieser Verlauf kann nicht gespeichert werden. Er ist möglicherweise zu groß oder enthält eine nicht unterstützte Änderung. Die lokal aufgezeichneten Spiele bleiben auf diesem Gerät."
+        "life-history-invalid": "Dieser Verlauf kann nicht gespeichert werden. Er ist möglicherweise zu groß oder enthält eine nicht unterstützte Änderung. Die lokal aufgezeichneten Spiele bleiben auf diesem Gerät.",
+        "life-history-storage": "Der Browserspeicher ist nicht verfügbar. Neue Änderungen sind nur im geöffneten Fenster vorhanden. Speicherplatz freigeben und erneut versuchen.",
+        "life-history-auth": "Melde dich erneut mit dem Konto an, das dieses Match aufgezeichnet hat. Lokale Änderungen bleiben erhalten."
     },
     "heading": {
         "add-participants": "Spieler hinzufügen",
@@ -398,7 +400,8 @@
         "life-history-saving": "Verlauf wird auf dem Server gespeichert …",
         "life-history-saved": "Verlauf auf dem Server gespeichert",
         "life-history-local": "Verlauf auf diesem Gerät gespeichert",
-        "life-history-not-recording": "Noch keine Aufnahme gestartet"
+        "life-history-not-recording": "Noch keine Aufnahme gestartet",
+        "life-history-pending": "Auf diesem Gerät gespeichert, Upload ausstehend"
     },
     "toast": {
         "co-organizer-added": "{{username}} ist jetzt Mitorganisator",

@@ -63,7 +63,7 @@ export default defineConfig({
                 // self-hosted OCR runtime (public/tesseract) are far too large to precache —
                 // they are cached on demand by the runtime rules below.
                 // Includes the bundled card-symbols/*.svg for offline mana costs/charts.
-                globPatterns: ["**/*.{js,css,html,svg,woff2}"],
+                globPatterns: ["**/*.{js,css,html,svg,woff2}", "locales/{de,en}/*.json"],
                 // The scanner's worker carries OpenCV and weighs 16 MB, and the model and index
                 // are far larger still. None of it belongs in a precache that has to finish
                 // before the app is usable; all of it is content-addressed and cached on first
