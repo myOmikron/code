@@ -1,9 +1,15 @@
 import { ArrowPathIcon } from "@heroicons/react/20/solid";
-import { Badge, Button, Strong, Subheading, Text } from "components";
+import { Badge, Button, Strong, Subheading, Text, notify } from "components";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
-import type { MyMatchResponse, TournamentResponse } from "src/api/generated";
+import type { MyMatchResponse, TournamentResponse, RoundResponse, SetResultRequest } from "src/api/generated";
+import { ResultState, RoundStage, RoundState, TournamentState } from "src/api/generated";
+import { MatchActions } from "src/components/tournament-rounds";
+import { TournamentResultDialog } from "src/components/tournament-result-dialog";
+import { TournamentWinnerDialog } from "src/components/tournament-winner-dialog";
+import { isFormError } from "src/utils/error";
+import { formatResult, winnerSeat } from "src/utils/tournament-rounds";
 import { TournamentRoundClock } from "src/components/tournament-round-clock";
 import { useLiveVersion } from "src/context/tournament-live-context";
 import { clockSkew } from "src/utils/round-clock";
@@ -22,46 +28,127 @@ type Loaded = {
     response: MyMatchResponse;
     /** Milliseconds this device's clock is ahead */
     skewMs: number;
+    /** Latest visible Round, including its Result between Rounds */
+    latest: RoundResponse | null;
 };
 
 /**
  * The reader's own Match in the running Round: table, Seat and opponents, and the round timer.
  *
- * Shows nothing while no Round runs; an Account playing in none sees the timer only.
+ * Keeps the latest Result available between Rounds and offers the existing Result actions.
  *
- * @returns the Match card, or nothing
+ * @returns participation state and the personal Match card
  */
 export function TournamentMyMatch({ tournament }: TournamentMyMatchProps) {
     const [t] = useTranslation("tournament");
     const [loaded, setLoaded] = useState<Loaded | null>(null);
     const [busy, setBusy] = useState(false);
+    const [reporting, setReporting] = useState(false);
+    const [failed, setFailed] = useState(false);
     const version = useLiveVersion("rounds");
 
     const load = useCallback(async () => {
         const response = await Api.tournaments.rounds.myMatch(tournament.uuid);
-        return { response, skewMs: clockSkew(response.server_time, Date.now()) };
+        const rounds = await Api.tournaments.rounds.list(tournament.uuid);
+        return {
+            response,
+            skewMs: clockSkew(rounds.server_time, Date.now()),
+            latest: rounds.rounds.findLast((round) => round.state !== RoundState.Previewed) ?? null,
+        };
     }, [tournament.uuid, version]);
 
     useEffect(() => {
         let gone = false;
         load()
             .then((next) => {
-                if (!gone) setLoaded(next);
+                if (!gone) {
+                    setLoaded(next);
+                    setFailed(false);
+                }
             })
-            .catch(() => undefined);
+            .catch(() => {
+                if (!gone) setFailed(true);
+            });
         return () => {
             gone = true;
         };
     }, [load]);
 
-    const round = loaded?.response.round ?? null;
-    if (loaded === null || round === null) return null;
+    const round = loaded?.latest ?? null;
+    if (loaded === null)
+        return (
+            <div className={"flex flex-col gap-3"}>
+                <Text>{t(failed ? "error.load-participation" : "description.loading-participation")}</Text>
+                {failed && (
+                    <Button
+                        outline
+                        disabled={busy}
+                        onClick={() => {
+                            setBusy(true);
+                            load()
+                                .then((next) => {
+                                    setLoaded(next);
+                                    setFailed(false);
+                                })
+                                .catch(() => setFailed(true))
+                                .finally(() => setBusy(false));
+                        }}
+                    >
+                        {t("button.retry-participation")}
+                    </Button>
+                )}
+            </div>
+        );
+    if (round === null)
+        return (
+            <Text>
+                {t(
+                    tournament.state === TournamentState.Registration
+                        ? "description.preparing-to-play"
+                        : tournament.state === TournamentState.Cancelled
+                          ? "description.participation-cancelled"
+                          : tournament.state === TournamentState.Finished
+                            ? "description.participation-finished"
+                            : "description.waiting-for-match",
+                )}
+            </Text>
+        );
     const me = loaded.response.participant ?? null;
-    const played = round.my_match ?? null;
-    if (played === null && (round.timer ?? null) === null) return null;
+    const played = round.matches.find((match) => match.seats.some((seat) => seat.participant === me)) ?? null;
     const mine = played?.seats.find((seat) => seat.participant === me) ?? null;
     const opponents = played?.seats.filter((seat) => seat.participant !== me) ?? [];
 
+    const over = tournament.state === TournamentState.Finished || tournament.state === TournamentState.Cancelled;
+    const canReport =
+        !over &&
+        !tournament.entered_afterwards &&
+        round.state === RoundState.Running &&
+        played?.table_number != null &&
+        me !== null;
+    const multiplayer = tournament.table_size > 2;
+    const bestOf =
+        round.stage === RoundStage.TopCut ? (tournament.top_cut_best_of ?? tournament.best_of) : tournament.best_of;
+    const refresh = async () => {
+        setReporting(false);
+        setLoaded(await load());
+    };
+    const explain = (error: Record<string, boolean>) => {
+        if (error.not_running) return t("error.round-not-running");
+        if (error.reported_by_other) return t("error.result-reported-by-other");
+        if (error.disputed) return t("error.result-disputed");
+        if (error.confirmed) return t("error.result-confirmed");
+        if (error.dropped_winner) return t("error.dropped-winner");
+        return t("error.invalid-score");
+    };
+    const dialog = {
+        played: reporting ? played : null,
+        title: t("heading.report-result", { table: played?.table_number ?? "" }),
+        description: t(multiplayer ? "description.report-winner" : "description.report-result"),
+        onClose: () => setReporting(false),
+        save: (result: SetResultRequest) => Api.tournaments.results.report(tournament.uuid, played?.uuid ?? "", result),
+        explain,
+        onSaved: refresh,
+    };
     return (
         <section
             aria-label={t("heading.my-match", { number: round.number })}
@@ -121,6 +208,60 @@ export function TournamentMyMatch({ tournament }: TournamentMyMatchProps) {
                 </div>
             )}
 
+            {played?.result != null && (
+                <div className={"flex flex-wrap items-center gap-2"}>
+                    <Text>
+                        {t("label.result")}:{" "}
+                        {multiplayer
+                            ? winnerSeat(played.result) === null
+                                ? t("label.draw")
+                                : t("label.won-by", { name: played.seats[winnerSeat(played.result) ?? 0]?.name })
+                            : formatResult(played.result)}
+                    </Text>
+                    {played.result.state === ResultState.Disputed && (
+                        <Badge color={"red"}>{t("label.result-disputed")}</Badge>
+                    )}
+                </div>
+            )}
+            <Text>
+                {t(
+                    over
+                        ? tournament.state === TournamentState.Cancelled
+                            ? "description.participation-cancelled"
+                            : "description.participation-finished"
+                        : round.state === RoundState.Ended
+                          ? "description.waiting-for-round"
+                          : played === null
+                            ? "description.waiting-for-match"
+                            : played.result != null || played.table_number == null
+                              ? "description.waiting-for-round"
+                              : "description.play-and-report",
+                )}
+            </Text>
+            {canReport && played !== null && (
+                <MatchActions
+                    played={played}
+                    me={me ?? ""}
+                    busy={busy}
+                    onReport={() => setReporting(true)}
+                    onDispute={async () => {
+                        setBusy(true);
+                        try {
+                            const result = await Api.tournaments.results.dispute(tournament.uuid, played.uuid);
+                            if (isFormError(result)) notify.error(t("error.round-changed"));
+                            await refresh();
+                        } finally {
+                            setBusy(false);
+                        }
+                    }}
+                />
+            )}
+            {canReport &&
+                (multiplayer ? (
+                    <TournamentWinnerDialog {...dialog} />
+                ) : (
+                    bestOf != null && <TournamentResultDialog {...dialog} bestOf={bestOf} />
+                ))}
             {round.timer != null && (
                 <TournamentRoundClock timer={round.timer} ruleset={tournament.ruleset} skewMs={loaded.skewMs} />
             )}

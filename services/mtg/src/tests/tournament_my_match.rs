@@ -323,3 +323,41 @@ fn the_round_timer_length_runs_one_minute_to_four_hours() {
         }
     });
 }
+
+#[test]
+fn participation_and_recorded_results_remain_available_between_rounds() {
+    run(async {
+        let (mut event, mut player, me) = event_with_a_player().await;
+        let roster = player.get(&event.url("participants")).await.ok_json();
+        assert_eq!(roster["me"], me, "{roster}");
+        event.pair().await;
+        event.start(1).await;
+        let rounds = event.rounds_of(&mut player).await;
+        for played in rounds["rounds"][0]["matches"].as_array().expect("Matches") {
+            event
+                .result(played["uuid"].as_str().expect("Match id"), [2, 0], 0)
+                .await;
+        }
+        event.end(1).await;
+        let personal = my_match(&event, &mut player).await;
+        assert_eq!(personal["participant"], me, "{personal}");
+        assert!(personal["round"].is_null(), "{personal}");
+        let rounds = event.rounds_of(&mut player).await;
+        let round = &rounds["rounds"][0];
+        assert_eq!(round["state"], "Ended", "{rounds}");
+        let played = round["matches"]
+            .as_array()
+            .expect("Matches")
+            .iter()
+            .find(|played| {
+                played["seats"]
+                    .as_array()
+                    .expect("Seats")
+                    .iter()
+                    .any(|seat| seat["participant"] == me)
+            })
+            .expect("own Match");
+        assert_eq!(played["result"]["games_won"], json!([2, 0]), "{rounds}");
+        assert!(round["timer"].is_null(), "{rounds}");
+    });
+}

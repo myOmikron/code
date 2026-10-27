@@ -49,7 +49,10 @@
         "start-round": "Start round {{number}}",
         "take-back-round": "Take back round {{number}}",
         "withdraw-handover": "Withdraw offer",
-        "withdraw-sign-up": "Withdraw"
+        "withdraw-sign-up": "Withdraw",
+        "show-participant-view": "Show my participation",
+        "show-organizer-view": "Organize Tournament",
+        "retry-participation": "Try again"
     },
     "description": {
         "add-account": "With an account, by its exact username: the results belong to that account.",
@@ -135,6 +138,14 @@
         "visibility-private": "Only you, your co-organizers and the players see the tournament.",
         "visibility-public": "Anyone finds the tournament in the overview.",
         "visibility-unlisted": "Anyone with the link sees the tournament.",
+        "organizer-view": "Manage Rounds, Results and Participants through the Tournament sections.",
+        "loading-participation": "Loading your participation.",
+        "preparing-to-play": "You are signed up. Check your Registered deck while waiting for the first Round.",
+        "participation-cancelled": "The Tournament was cancelled. Recorded Results remain available.",
+        "participation-finished": "The Tournament has finished. You can review Results and Standings.",
+        "waiting-for-match": "You have no Match in this Round. Check the Participants or ask an Organizer.",
+        "waiting-for-round": "Wait for an Organizer to start the next Round. Results and Standings remain available.",
+        "play-and-report": "Play your Match, then report the Result.",
         "format-defaults": "The format suggests a table size and ruleset. Valid manual choices are preserved. Changing the table size adjusts incompatible rulesets and top cuts."
     },
     "error": {
@@ -185,7 +196,8 @@
         "top-cut-mismatch": "Top 4 and top 8 need 2 players at a table, a final needs more.",
         "tournament-over": "The tournament is over.",
         "unknown-format": "This format does not exist.",
-        "unknown-username": "No account goes by this username."
+        "unknown-username": "No account goes by this username.",
+        "load-participation": "Your participation could not be loaded."
     },
     "heading": {
         "add-participants": "Add players",
@@ -358,7 +370,8 @@
         "warning-legality_other": "{{count}} rule breaks",
         "winner": "Winner",
         "won-by": "{{name}} won",
-        "you": "You"
+        "you": "You",
+        "you-participate": "You are participating"
     },
     "toast": {
         "co-organizer-added": "{{username}} is now a co-organizer",
