@@ -92,7 +92,7 @@ export function SessionDialog({ session, onClose, onSave, onDelete }: SessionDia
     }
 
     return (
-        <Dialog open={open} onClose={onClose} size={"lg"} tall>
+        <Dialog open={open} onClose={onClose} size={"lg"}>
             <DialogTitle>{session ? t("heading.edit-session") : t("heading.new-session")}</DialogTitle>
             <DialogBody className={"flex flex-col gap-5"}>
                 <Field>

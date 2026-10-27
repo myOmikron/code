@@ -266,7 +266,7 @@ export function AddCollectionCardsDialog({ open, collectionUuid, onClose, onChan
     }
 
     return (
-        <Dialog open={open} onClose={() => void close()} size={"6xl"} tall={true}>
+        <Dialog open={open} onClose={() => void close()} size={"6xl"}>
             <DialogTitle>{t("heading.add-cards")}</DialogTitle>
             <DialogBody className={"!mt-3"}>
                 <div className={"flex flex-col gap-4"}>
