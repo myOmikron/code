@@ -340,6 +340,7 @@ mod tests {
             late_from_round: None,
             dropped_after_round: None,
             unpaid: false,
+            awaits_check_in: false,
         }
     }
 

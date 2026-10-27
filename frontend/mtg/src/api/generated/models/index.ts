@@ -1395,6 +1395,63 @@ export const CardRarity = {
 } as const;
 export type CardRarity = typeof CardRarity[keyof typeof CardRarity];
 
+
+/**
+ * Whether a Tournament's Participants check in before they are paired
+ * 
+ * Organizers check them in at the desk. A Participant that has to and did not is left out of the pairing, like an unpaid one.
+ * @export
+ */
+export const CheckIn = {
+    /**
+    * Nobody checks in
+    */
+    Off: 'Off',
+    /**
+    * Every Participant checks in
+    */
+    Required: 'Required',
+    /**
+    * Every Participant checks in, an Account only with a Registered deck
+
+Guests have no Registered deck; Organizers check them in anyway.
+    */
+    RequiredWithDeck: 'RequiredWithDeck',
+} as const;
+export type CheckIn = typeof CheckIn[keyof typeof CheckIn];
+
+/**
+ * Why nobody could be checked in
+ * @export
+ * @interface CheckInEveryoneErrors
+ */
+export interface CheckInEveryoneErrors {
+    /**
+     * The Tournament takes no check-in
+     */
+    no_check_in: boolean;
+    /**
+     * The Tournament is Finished or Cancelled
+     */
+    tournament_over: boolean;
+}
+/**
+ * What checking everybody in did
+ * @export
+ * @interface CheckInEveryoneResponse
+ */
+export interface CheckInEveryoneResponse {
+    /**
+     * The Accounts left out for want of a Registered deck
+     */
+    no_registered_deck: Array<string>;
+}
+/**
+ * @type CheckInTournamentParticipants200Response
+ * 
+ * @export
+ */
+export type CheckInTournamentParticipants200Response = CheckInEveryoneResponse | FormErrorResponseForCheckInEveryoneErrors;
 /**
  * Why the username step was refused
  * @export
@@ -3662,6 +3719,23 @@ export interface FormErrorResponseForArrangeRoundErrors {
 /**
  * The response that is sent in a case of an error the caller should present his user
  * @export
+ * @interface FormErrorResponseForCheckInEveryoneErrors
+ */
+export interface FormErrorResponseForCheckInEveryoneErrors {
+    /**
+     * The actual error struct
+     */
+    error: CheckInEveryoneErrors;
+    /**
+     * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
+     */
+    result: ErrorConstant;
+}
+
+
+/**
+ * The response that is sent in a case of an error the caller should present his user
+ * @export
  * @interface FormErrorResponseForChooseUsernameErrors
  */
 export interface FormErrorResponseForChooseUsernameErrors {
@@ -3941,6 +4015,23 @@ export interface FormErrorResponseForSendBugReportErrors {
      * The actual error struct
      */
     error: SendBugReportErrors;
+    /**
+     * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
+     */
+    result: ErrorConstant;
+}
+
+
+/**
+ * The response that is sent in a case of an error the caller should present his user
+ * @export
+ * @interface FormErrorResponseForSetCheckedInErrors
+ */
+export interface FormErrorResponseForSetCheckedInErrors {
+    /**
+     * The actual error struct
+     */
+    error: SetCheckedInErrors;
     /**
      * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
      */
@@ -5536,6 +5627,12 @@ export interface ParticipantDeckResponse {
  */
 export interface ParticipantResponse {
     /**
+     * Whether it is checked in, which it has to be before it is paired
+     * 
+     * Only Organizers and the Participant itself learn it, `null` for every other reader. Always `true` while the Tournament takes no check-in.
+     */
+    checked_in?: boolean | null;
+    /**
      * The last Round started before it Dropped, `null` while it plays on
      */
     dropped_after_round?: number | null;
@@ -7128,6 +7225,40 @@ export interface SetBucketResponse {
      * What those copies are worth, in euro cents
      */
     value_cents: number;
+}
+/**
+ * Why a Participant could not be checked in or out
+ * @export
+ * @interface SetCheckedInErrors
+ */
+export interface SetCheckedInErrors {
+    /**
+     * The Tournament takes no check-in
+     */
+    no_check_in: boolean;
+    /**
+     * The Tournament takes check-in with a deck and the Account has no Registered deck
+     */
+    no_registered_deck: boolean;
+    /**
+     * The first Round started, so a Participant is no longer checked out
+     */
+    round_started: boolean;
+    /**
+     * The Tournament is Finished or Cancelled
+     */
+    tournament_over: boolean;
+}
+/**
+ * Whether a Participant is checked in
+ * @export
+ * @interface SetCheckedInRequest
+ */
+export interface SetCheckedInRequest {
+    /**
+     * `true` to check it in, `false` to take that back before the first Round
+     */
+    checked_in: boolean;
 }
 /**
  * Request to change who may see a collection
@@ -8748,6 +8879,10 @@ export interface TournamentResponse {
      */
     best_of?: BestOf | null;
     /**
+     * Whether Participants check in before they are paired
+     */
+    check_in: CheckIn;
+    /**
      * What Participants should know beforehand
      */
     description?: string | null;
@@ -8853,7 +8988,7 @@ export interface TournamentSettingsErrors {
      */
     round_minutes_out_of_range: boolean;
     /**
-     * Table size, Ruleset, best-of or entering afterwards changed, or an entry fee was taken up or dropped, after the first Round started
+     * Table size, Ruleset, best-of, entering afterwards or the check-in rule changed, or an entry fee was taken up or dropped, after the first Round started
      */
     rules_locked: boolean;
     /**
@@ -8899,6 +9034,12 @@ export interface TournamentSettingsRequest {
      * How many Games a one-on-one Match is played to: required at Table size 2, `null` above
      */
     best_of?: BestOf | null;
+    /**
+     * Whether Participants check in before they are paired, `Off` when left out
+     * 
+     * With `RequiredWithDeck` an Account checks in only with a Registered deck. Changing it is refused after the first Round started.
+     */
+    check_in?: CheckIn;
     /**
      * What Participants should know beforehand
      */

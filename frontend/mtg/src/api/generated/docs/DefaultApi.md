@@ -35,6 +35,7 @@ All URIs are relative to *http://localhost*
 | [**attachDeckCollection**](DefaultApi.md#attachdeckcollection) | **POST** /api/frontend/v1/decks/{deck}/collection | Start keeping the cards that are physically in this deck |
 | [**cancelTournament**](DefaultApi.md#canceltournament) | **POST** /api/frontend/v1/tournaments/{tournament}/cancel | Cancel a Tournament, as an Organizer |
 | [**captureMatchLifeConflict**](DefaultApi.md#capturematchlifeconflictoperation) | **POST** /api/frontend/v1/tournaments/{tournament}/matches/{match}/life-history/conflicts | Preserves all recovered old-device changes as an independent authorized artifact. |
+| [**checkInTournamentParticipants**](DefaultApi.md#checkintournamentparticipants) | **POST** /api/frontend/v1/tournaments/{tournament}/participants/check-in | Check in every Participant that plays on, as an Organizer |
 | [**checkPushDevice**](DefaultApi.md#checkpushdevice) | **POST** /api/frontend/v1/accounts/me/push/devices/check | Whether a device gets the logged-in account\&#39;s pushes |
 | [**chooseUsername**](DefaultApi.md#chooseusernameoperation) | **POST** /api/frontend/v1/auth/oidc/username | Finish the username step: create the External Account and log it in |
 | [**claimMatchLifeHistory**](DefaultApi.md#claimmatchlifehistory) | **POST** /api/frontend/v1/tournaments/{tournament}/matches/{match}/life-history/claim | Deliberately claim a recording slot with a private, device-local capability. |
@@ -185,6 +186,7 @@ All URIs are relative to *http://localhost*
 | [**setMyTournamentListSharing**](DefaultApi.md#setmytournamentlistsharing) | **PUT** /api/frontend/v1/tournaments/{tournament}/deck/sharing | Choose whether others may see the logged-in Account\&#39;s list once the |
 | [**setPushSettings**](DefaultApi.md#setpushsettingsoperation) | **PUT** /api/frontend/v1/accounts/me/push | Turn tournament pushes on or off for every device of the logged-in account |
 | [**setTournamentMatchResult**](DefaultApi.md#settournamentmatchresult) | **PUT** /api/frontend/v1/tournaments/{tournament}/matches/{match}/result | Set or correct the Result of a Match, as an Organizer |
+| [**setTournamentParticipantCheckedIn**](DefaultApi.md#settournamentparticipantcheckedin) | **PUT** /api/frontend/v1/tournaments/{tournament}/participants/{participant}/checked-in | Check a Participant in or out, as an Organizer |
 | [**setTournamentParticipantPaid**](DefaultApi.md#settournamentparticipantpaid) | **PUT** /api/frontend/v1/tournaments/{tournament}/participants/{participant}/paid | Mark a Participant paid or unpaid, as an Organizer |
 | [**setTournamentRoundTimer**](DefaultApi.md#settournamentroundtimer) | **PUT** /api/frontend/v1/tournaments/{tournament}/rounds/{number}/timer | Pause, resume, adjust or reset the round timer of a running Round, as an Organizer |
 | [**setTournamentSwissRounds**](DefaultApi.md#settournamentswissrounds) | **PUT** /api/frontend/v1/tournaments/{tournament}/swiss-rounds | Set how many Swiss Rounds are played, as an Organizer |
@@ -2458,6 +2460,76 @@ No authorization required
 ### HTTP request headers
 
 - **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## checkInTournamentParticipants
+
+> CheckInTournamentParticipants200Response checkInTournamentParticipants(tournament)
+
+Check in every Participant that plays on, as an Organizer
+
+Check in every Participant that plays on, as an Organizer  Only in a Tournament that takes check-in, until it is over. Where a deck is required, Accounts without a Registered deck are left out and named in the answer; Guests are checked in all the same.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { CheckInTournamentParticipantsRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    tournament: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies CheckInTournamentParticipantsRequest;
+
+  try {
+    const data = await api.checkInTournamentParticipants(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **tournament** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**CheckInTournamentParticipants200Response**](CheckInTournamentParticipants200Response.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
 - **Accept**: `application/json`
 
 
@@ -13094,6 +13166,82 @@ example().catch(console.error);
 ### Return type
 
 [**FormErrorResponseForSetResultErrors**](FormErrorResponseForSetResultErrors.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## setTournamentParticipantCheckedIn
+
+> FormErrorResponseForSetCheckedInErrors setTournamentParticipantCheckedIn(tournament, participant, SetCheckedInRequest)
+
+Check a Participant in or out, as an Organizer
+
+Check a Participant in or out, as an Organizer  Only in a Tournament that takes check-in, until it is over; once the first Round started, in only. Where a deck is required, an Account checks in only with a Registered deck, which keeps following its deck until the first Round starts. A Participant not checked in is left out of the pairing; changing the flag discards a previewed Round.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { SetTournamentParticipantCheckedInRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    tournament: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string
+    participant: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // SetCheckedInRequest (optional)
+    SetCheckedInRequest: ...,
+  } satisfies SetTournamentParticipantCheckedInRequest;
+
+  try {
+    const data = await api.setTournamentParticipantCheckedIn(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **tournament** | `string` |  | [Defaults to `undefined`] |
+| **participant** | `string` |  | [Defaults to `undefined`] |
+| **SetCheckedInRequest** | [SetCheckedInRequest](SetCheckedInRequest.md) |  | [Optional] |
+
+### Return type
+
+[**FormErrorResponseForSetCheckedInErrors**](FormErrorResponseForSetCheckedInErrors.md)
 
 ### Authorization
 

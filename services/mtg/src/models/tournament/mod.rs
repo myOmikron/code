@@ -20,6 +20,7 @@ use crate::models::account::AccountUuid;
 use crate::models::share::generate_share_token;
 use crate::models::tournament::db::TournamentInsertPatch;
 use crate::models::tournament::db::TournamentModel;
+use crate::models::tournament::settings::CheckIn;
 use crate::models::tournament::settings::EntryFee;
 use crate::models::tournament::settings::TournamentSettings;
 use crate::models::visibility::Visibility;
@@ -61,6 +62,12 @@ custom_db_enum! {
     enum: TopCut,
     variants: [Top4, Top8, Final],
     decoder: TopCutDecoder,
+}
+
+custom_db_enum! {
+    enum: CheckIn,
+    variants: [Off, Required, RequiredWithDeck],
+    decoder: CheckInDecoder,
 }
 
 custom_db_enum! {
@@ -126,6 +133,8 @@ pub struct Tournament {
     pub best_of: Option<BestOf>,
     /// What playing costs, `None` for nothing
     pub entry_fee: Option<EntryFee>,
+    /// Whether Participants check in before they are paired
+    pub check_in: CheckIn,
     /// How many minutes the round timer gives a Round, `None` for no timer
     pub round_minutes: Option<u16>,
     /// How many Swiss Rounds are played, `None` while the suggestion applies
@@ -188,6 +197,7 @@ impl Tournament {
                 entered_afterwards: settings.entered_afterwards,
                 entry_fee_amount: settings.entry_fee.as_ref().map(|fee| fee.amount),
                 entry_fee_currency: settings.entry_fee.as_ref().map(|fee| fee.currency.clone()),
+                check_in: settings.check_in,
                 state: TournamentState::Registration,
             })
             .await?;
@@ -243,6 +253,7 @@ impl Tournament {
                 TournamentModel.entry_fee_currency,
                 settings.entry_fee.as_ref().map(|fee| fee.currency.clone()),
             )
+            .set(TournamentModel.check_in, settings.check_in)
             .condition(TournamentModel.uuid.equals(self.uuid.0))
             .await?;
         Ok(Tournament {
@@ -263,6 +274,7 @@ impl Tournament {
             top_cut_best_of: settings.top_cut_best_of,
             entered_afterwards: settings.entered_afterwards,
             entry_fee: settings.entry_fee,
+            check_in: settings.check_in,
             ..self
         })
     }
@@ -300,6 +312,7 @@ impl Tournament {
             top_cut_best_of: settings.top_cut_best_of,
             entered_afterwards: settings.entered_afterwards,
             entry_fee: settings.entry_fee,
+            check_in: settings.check_in,
             round_minutes: settings.round_minutes,
             swiss_rounds: None,
             state: TournamentState::Registration,
@@ -331,6 +344,7 @@ impl From<TournamentModel> for Tournament {
                 (Some(amount), Some(currency)) => Some(EntryFee { amount, currency }),
                 _ => None,
             },
+            check_in: value.check_in,
             round_minutes: value
                 .round_minutes
                 .and_then(|minutes| u16::try_from(minutes).ok()),

@@ -22,9 +22,13 @@ use crate::http::handler_frontend::tournaments::participants::schema::AddAccount
 use crate::http::handler_frontend::tournaments::participants::schema::AddAccountParticipantRequest;
 use crate::http::handler_frontend::tournaments::participants::schema::AddGuestParticipantErrors;
 use crate::http::handler_frontend::tournaments::participants::schema::AddGuestParticipantRequest;
+use crate::http::handler_frontend::tournaments::participants::schema::CheckInEveryoneErrors;
+use crate::http::handler_frontend::tournaments::participants::schema::CheckInEveryoneResponse;
 use crate::http::handler_frontend::tournaments::participants::schema::DropErrors;
 use crate::http::handler_frontend::tournaments::participants::schema::ListParticipantsResponse;
 use crate::http::handler_frontend::tournaments::participants::schema::ParticipantResponse;
+use crate::http::handler_frontend::tournaments::participants::schema::SetCheckedInErrors;
+use crate::http::handler_frontend::tournaments::participants::schema::SetCheckedInRequest;
 use crate::http::handler_frontend::tournaments::participants::schema::SetPaidErrors;
 use crate::http::handler_frontend::tournaments::participants::schema::SetPaidRequest;
 use crate::http::handler_frontend::tournaments::participants::schema::SignUpErrors;
@@ -34,6 +38,7 @@ use crate::models::account::extractor::Viewer;
 use crate::models::tournament::Tournament;
 use crate::models::tournament::TournamentUuid;
 use crate::models::tournament::access::TournamentGrant;
+use crate::models::tournament::participant::CheckInRefusal;
 use crate::models::tournament::participant::DropRefusal;
 use crate::models::tournament::participant::PaidRefusal;
 use crate::models::tournament::participant::Participant;
@@ -112,6 +117,7 @@ pub async fn add_tournament_account(
         late_from_round,
         dropped_after_round: None,
         unpaid: tournament.owes_entry_fee(false),
+        awaits_check_in: tournament.awaits_check_in(false),
     })))
 }
 
@@ -158,6 +164,7 @@ pub async fn add_tournament_guest(
         late_from_round,
         dropped_after_round: None,
         unpaid: tournament.owes_entry_fee(false),
+        awaits_check_in: tournament.awaits_check_in(false),
     })))
 }
 
@@ -236,6 +243,80 @@ pub async fn set_tournament_participant_paid(
             match refusal {
                 PaidRefusal::NoEntryFee => errors.no_entry_fee = true,
                 PaidRefusal::TournamentOver => errors.tournament_over = true,
+            }
+            errors.fail()
+        }
+    };
+    change.finish(tx, &tournament, response).await
+}
+
+/// Check a Participant in or out, as an Organizer
+///
+/// Only in a Tournament that takes check-in, until it is over; once the first
+/// Round started, in only. Where a deck is required, an Account checks in
+/// only with a Registered deck, which keeps following its deck until the
+/// first Round starts. A Participant not checked in is left out of the
+/// pairing; changing the flag discards a previewed Round.
+#[put("/{tournament}/participants/{participant}/checked-in")]
+pub async fn set_tournament_participant_checked_in(
+    grant: TournamentGrant,
+    Path((_, participant)): Path<(TournamentUuid, ParticipantUuid)>,
+    ApiJson(SetCheckedInRequest { checked_in }): ApiJson<SetCheckedInRequest>,
+) -> ApiResult<ApiJson<()>, SetCheckedInErrors> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    let Some(tournament) = grant.tournament.lock_for_update(&mut tx).await? else {
+        tx.rollback().await?;
+        return Err(denied());
+    };
+    let change = RosterChange::begin(&mut tx, &tournament).await?;
+    let response = match tournament
+        .check_in(&mut tx, participant, checked_in)
+        .await?
+    {
+        Ok(true) => Ok(ApiJson(())),
+        Ok(false) => Err(ApiError::bad_request("No such participant")),
+        Err(refusal) => {
+            let mut errors = FormErrors::<SetCheckedInErrors>::new();
+            match refusal {
+                CheckInRefusal::NoCheckIn => errors.no_check_in = true,
+                CheckInRefusal::TournamentOver => errors.tournament_over = true,
+                CheckInRefusal::RoundStarted => errors.round_started = true,
+                CheckInRefusal::NoRegisteredDeck => errors.no_registered_deck = true,
+            }
+            errors.fail()
+        }
+    };
+    change.finish(tx, &tournament, response).await
+}
+
+/// Check in every Participant that plays on, as an Organizer
+///
+/// Only in a Tournament that takes check-in, until it is over. Where a deck
+/// is required, Accounts without a Registered deck are left out and named
+/// in the answer; Guests are checked in all the same.
+#[post("/{tournament}/participants/check-in")]
+pub async fn check_in_tournament_participants(
+    grant: TournamentGrant,
+    Path(_): Path<TournamentUuid>,
+) -> ApiResult<ApiJson<CheckInEveryoneResponse>, CheckInEveryoneErrors> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    let Some(tournament) = grant.tournament.lock_for_update(&mut tx).await? else {
+        tx.rollback().await?;
+        return Err(denied());
+    };
+    let change = RosterChange::begin(&mut tx, &tournament).await?;
+    let response = match tournament.check_in_everyone(&mut tx).await? {
+        Ok(no_registered_deck) => Ok(ApiJson(CheckInEveryoneResponse { no_registered_deck })),
+        Err(refusal) => {
+            let mut errors = FormErrors::<CheckInEveryoneErrors>::new();
+            match refusal {
+                CheckInRefusal::NoCheckIn => errors.no_check_in = true,
+                CheckInRefusal::TournamentOver => errors.tournament_over = true,
+                CheckInRefusal::RoundStarted | CheckInRefusal::NoRegisteredDeck => {
+                    unreachable!("checking in without a deck to look at refuses neither")
+                }
             }
             errors.fail()
         }
@@ -334,13 +415,19 @@ pub async fn list(
         ),
         None => (None, false),
     };
-    let view = if organizer {
-        ParticipantResponse::for_organizers
-    } else {
-        ParticipantResponse::from
-    };
     Ok(ListParticipantsResponse {
-        participants: participants.into_iter().map(view).collect(),
+        participants: participants
+            .into_iter()
+            .map(|participant| {
+                if organizer {
+                    ParticipantResponse::for_organizers(participant)
+                } else if me == Some(participant.uuid) {
+                    ParticipantResponse::for_itself(participant)
+                } else {
+                    ParticipantResponse::from(participant)
+                }
+            })
+            .collect(),
         me,
     })
 }
@@ -406,6 +493,7 @@ pub async fn sign_up(
         late_from_round: None,
         dropped_after_round: None,
         unpaid: tournament.owes_entry_fee(false),
+        awaits_check_in: tournament.awaits_check_in(false),
     })))
 }
 

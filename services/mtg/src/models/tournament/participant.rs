@@ -13,8 +13,12 @@
 //! Every write to the roster first takes [`Tournament::lock_roster`], so two
 //! sign-ups racing for the last place under the limit are served one by one.
 //! Every change to the roster discards a previewed Round, which no longer fits it.
+//!
+//! Where the Tournament takes an entry fee or check-in, Organizers mark
+//! Participants paid and check them in; until then they are not paired.
 
 use std::collections::HashMap;
+use std::collections::HashSet;
 
 use galvyn::core::re_exports::schemars;
 use galvyn::core::re_exports::schemars::JsonSchema;
@@ -42,6 +46,7 @@ use crate::models::tournament::db::TournamentRoundModel;
 use crate::models::tournament::db::participant_key;
 use crate::models::tournament::result::ResultChange;
 use crate::models::tournament::round::RoundState;
+use crate::models::tournament::settings::CheckIn;
 use crate::models::visibility::Visibility;
 use crate::tournament::record::EntrantId;
 
@@ -60,6 +65,10 @@ pub struct Participant {
     ///
     /// For Organizers' eyes only.
     pub unpaid: bool,
+    /// Whether it still has to check in, see [`Tournament::awaits_check_in`]
+    ///
+    /// For the eyes of the Organizers and of the Participant itself.
+    pub awaits_check_in: bool,
 }
 
 /// What a Drop did
@@ -76,9 +85,10 @@ impl Participant {
         self.dropped_after_round.is_none()
     }
 
-    /// Whether the next Round pairs it: it plays on and owes no entry fee
+    /// Whether the next Round pairs it: it plays on, owes no entry fee and
+    /// does not wait to be checked in
     pub fn pairable(&self) -> bool {
-        self.plays_on() && !self.unpaid
+        self.plays_on() && !self.unpaid && !self.awaits_check_in
     }
 }
 
@@ -149,6 +159,19 @@ pub enum PaidRefusal {
     TournamentOver,
 }
 
+/// Why an Organizer may not check a Participant in or out
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CheckInRefusal {
+    /// The Tournament takes no check-in
+    NoCheckIn,
+    /// The Tournament is Finished or Cancelled
+    TournamentOver,
+    /// The first Round started: leaving now is a Drop, not a check-out
+    RoundStarted,
+    /// The Tournament takes check-in with a deck and the Account has no Registered deck
+    NoRegisteredDeck,
+}
+
 /// The first Round a Participant added after `started_rounds` Rounds started plays
 ///
 /// `None` while no Round started: Round 1 pairs everybody, nobody is late.
@@ -209,6 +232,39 @@ impl Tournament {
     /// Organizer marks it paid.
     pub fn owes_entry_fee(&self, paid: bool) -> bool {
         self.entry_fee.is_some() && !paid
+    }
+
+    /// Whether a Participant `checked_in` or not still has to check in
+    ///
+    /// Without check-in nobody does; with it, everybody until an Organizer
+    /// checks it in.
+    pub fn awaits_check_in(&self, checked_in: bool) -> bool {
+        self.check_in != CheckIn::Off && !checked_in
+    }
+
+    /// Why an Organizer may not set a Participant `checked_in`, `None` if it may
+    ///
+    /// `started_rounds` counts the Rounds that started, see [`Self::started_rounds`];
+    /// `lacks_deck` says whether the Participant is an Account without a
+    /// Registered deck. Checking in never needs a deck from a Guest, which
+    /// cannot have one, and checking out never needs one at all.
+    pub fn check_in_refusal(
+        &self,
+        checked_in: bool,
+        started_rounds: i16,
+        lacks_deck: bool,
+    ) -> Option<CheckInRefusal> {
+        if self.check_in == CheckIn::Off {
+            Some(CheckInRefusal::NoCheckIn)
+        } else if self.over() {
+            Some(CheckInRefusal::TournamentOver)
+        } else if !checked_in && started_rounds > 0 {
+            Some(CheckInRefusal::RoundStarted)
+        } else if checked_in && lacks_deck && self.check_in == CheckIn::RequiredWithDeck {
+            Some(CheckInRefusal::NoRegisteredDeck)
+        } else {
+            None
+        }
     }
 
     /// Why Organizers may not mark Participants paid or unpaid, `None` if they may
@@ -288,6 +344,7 @@ impl Tournament {
                     late_from_round: row.late_from_round,
                     dropped_after_round: row.dropped_after_round,
                     unpaid: self.owes_entry_fee(row.paid),
+                    awaits_check_in: self.awaits_check_in(row.checked_in),
                 }
             })
             .collect())
@@ -346,6 +403,7 @@ impl Tournament {
                 guest_name: None,
                 late_from_round,
                 paid: false,
+                checked_in: false,
             })
             .await?;
         self.discard_preview(tx).await?;
@@ -373,6 +431,7 @@ impl Tournament {
                 guest_name: Some(name),
                 late_from_round,
                 paid: false,
+                checked_in: false,
             })
             .await?;
         self.discard_preview(tx).await?;
@@ -498,6 +557,106 @@ impl Tournament {
             }
         }
     }
+
+    /// Check `participant` in or out, `false` if it is none of this Tournament
+    ///
+    /// Leaves its Registered deck as it is: it still follows the deck until
+    /// the first Round starts (ADR 0002). Who is checked in changes who is
+    /// pairable, so a previewed Round is discarded when the flag changes.
+    /// The caller holds [`Self::lock_roster`].
+    #[instrument(name = "Tournament::check_in", skip(tx, self), fields(tournament = ?self.uuid))]
+    pub async fn check_in(
+        &self,
+        tx: &mut Transaction,
+        participant: ParticipantUuid,
+        checked_in: bool,
+    ) -> Result<Result<bool, CheckInRefusal>, rorm::Error> {
+        let known = rorm::query(
+            &mut *tx,
+            (
+                TournamentParticipantModel.checked_in,
+                TournamentParticipantModel.account,
+            ),
+        )
+        .condition(rorm::and![
+            TournamentParticipantModel.uuid.equals(participant.0),
+            TournamentParticipantModel
+                .tournament
+                .equals(self.uuid.into_inner()),
+        ])
+        .optional()
+        .await?;
+        let Some((was, account)) = known else {
+            return Ok(Ok(false));
+        };
+        let lacks_deck = checked_in
+            && account.is_some()
+            && self.check_in == CheckIn::RequiredWithDeck
+            && self.registered_deck(tx, participant).await?.is_none();
+        let started = self.started_rounds(tx).await?;
+        if let Some(refusal) = self.check_in_refusal(checked_in, started, lacks_deck) {
+            return Ok(Err(refusal));
+        }
+        if was != checked_in {
+            rorm::update(&mut *tx, TournamentParticipantModel)
+                .set(TournamentParticipantModel.checked_in, checked_in)
+                .condition(TournamentParticipantModel.uuid.equals(participant.0))
+                .await?;
+            self.discard_preview(tx).await?;
+        }
+        Ok(Ok(true))
+    }
+
+    /// Check in every Participant that plays on and may be checked in
+    ///
+    /// Answers those left out for want of a Registered deck. A previewed
+    /// Round is discarded when anybody was checked in. The caller holds
+    /// [`Self::lock_roster`].
+    #[instrument(name = "Tournament::check_in_everyone", skip(tx, self), fields(tournament = ?self.uuid))]
+    pub async fn check_in_everyone(
+        &self,
+        tx: &mut Transaction,
+    ) -> Result<Result<Vec<ParticipantUuid>, CheckInRefusal>, rorm::Error> {
+        let started = self.started_rounds(tx).await?;
+        if let Some(refusal) = self.check_in_refusal(true, started, false) {
+            return Ok(Err(refusal));
+        }
+        let with_deck: HashSet<ParticipantUuid> = match self.check_in {
+            CheckIn::RequiredWithDeck => self
+                .registered_decks(tx)
+                .await?
+                .into_iter()
+                .map(|deck| deck.participant)
+                .collect(),
+            CheckIn::Off | CheckIn::Required => HashSet::new(),
+        };
+        let mut checking = Vec::new();
+        let mut lacking = Vec::new();
+        for participant in self.participants(tx).await? {
+            if !participant.plays_on() || !participant.awaits_check_in {
+                continue;
+            }
+            let lacks_deck = matches!(participant.player, Player::Account { .. })
+                && !with_deck.contains(&participant.uuid);
+            match self.check_in_refusal(true, started, lacks_deck) {
+                None => checking.push(participant.uuid),
+                Some(_) => lacking.push(participant.uuid),
+            }
+        }
+        if !checking.is_empty() {
+            rorm::update(&mut *tx, TournamentParticipantModel)
+                .set(TournamentParticipantModel.checked_in, true)
+                .condition(DynamicCollection::or_unchecked(
+                    checking
+                        .iter()
+                        .map(|participant| TournamentParticipantModel.uuid.equals(participant.0))
+                        .collect(),
+                ))
+                .await?;
+            self.discard_preview(tx).await?;
+        }
+        Ok(Ok(lacking))
+    }
 }
 
 #[cfg(test)]
@@ -506,6 +665,7 @@ mod tests {
     use galvyn::rorm::fields::types::MaxStr;
     use uuid::Uuid;
 
+    use super::CheckInRefusal;
     use super::DropRefusal;
     use super::PaidRefusal;
     use super::Participant;
@@ -517,6 +677,7 @@ mod tests {
     use crate::models::tournament::Tournament;
     use crate::models::tournament::TournamentState;
     use crate::models::tournament::TournamentUuid;
+    use crate::models::tournament::settings::CheckIn;
     use crate::models::tournament::settings::EntryFee;
     use crate::models::visibility::Visibility;
     use crate::tournament::ruleset::Ruleset;
@@ -540,6 +701,7 @@ mod tests {
             self_sign_up: true,
             best_of: None,
             entry_fee: None,
+            check_in: CheckIn::Off,
             round_minutes: None,
             swiss_rounds: None,
             top_cut: None,
@@ -571,6 +733,15 @@ mod tests {
             late_from_round: None,
             dropped_after_round: None,
             unpaid,
+            awaits_check_in: false,
+        }
+    }
+
+    /// [`open_tournament`] taking check-in by `rule`
+    fn checking_tournament(rule: CheckIn) -> Tournament {
+        Tournament {
+            check_in: rule,
+            ..open_tournament()
         }
     }
 
@@ -595,6 +766,93 @@ mod tests {
             ..guest(false)
         };
         assert!(!dropped.pairable());
+    }
+
+    #[test]
+    fn without_check_in_nobody_waits_to_be_checked_in() {
+        assert!(!open_tournament().awaits_check_in(false));
+        assert!(!open_tournament().awaits_check_in(true));
+    }
+
+    #[test]
+    fn with_check_in_a_participant_waits_until_checked_in() {
+        for rule in [CheckIn::Required, CheckIn::RequiredWithDeck] {
+            assert!(checking_tournament(rule).awaits_check_in(false), "{rule:?}");
+            assert!(!checking_tournament(rule).awaits_check_in(true), "{rule:?}");
+        }
+    }
+
+    #[test]
+    fn the_next_round_leaves_out_who_waits_to_be_checked_in() {
+        let waiting = Participant {
+            awaits_check_in: true,
+            ..guest(false)
+        };
+        assert!(!waiting.pairable());
+    }
+
+    #[test]
+    fn only_a_tournament_with_check_in_checks_participants_in() {
+        assert_eq!(
+            open_tournament().check_in_refusal(true, 0, false),
+            Some(CheckInRefusal::NoCheckIn)
+        );
+        assert_eq!(
+            checking_tournament(CheckIn::Required).check_in_refusal(true, 0, false),
+            None
+        );
+    }
+
+    #[test]
+    fn an_account_checks_in_without_a_deck_unless_the_rule_asks_for_one() {
+        assert_eq!(
+            checking_tournament(CheckIn::Required).check_in_refusal(true, 0, true),
+            None
+        );
+        assert_eq!(
+            checking_tournament(CheckIn::RequiredWithDeck).check_in_refusal(true, 0, true),
+            Some(CheckInRefusal::NoRegisteredDeck)
+        );
+        assert_eq!(
+            checking_tournament(CheckIn::RequiredWithDeck).check_in_refusal(true, 0, false),
+            None
+        );
+    }
+
+    #[test]
+    fn checking_out_needs_no_deck() {
+        assert_eq!(
+            checking_tournament(CheckIn::RequiredWithDeck).check_in_refusal(false, 0, true),
+            None
+        );
+    }
+
+    #[test]
+    fn once_the_first_round_started_participants_are_checked_in_but_not_out() {
+        let tournament = Tournament {
+            state: TournamentState::Swiss,
+            ..checking_tournament(CheckIn::Required)
+        };
+        assert_eq!(tournament.check_in_refusal(true, 1, false), None);
+        assert_eq!(
+            tournament.check_in_refusal(false, 1, false),
+            Some(CheckInRefusal::RoundStarted)
+        );
+    }
+
+    #[test]
+    fn nobody_checks_in_once_the_tournament_is_over() {
+        for state in [TournamentState::Finished, TournamentState::Cancelled] {
+            let tournament = Tournament {
+                state,
+                ..checking_tournament(CheckIn::Required)
+            };
+            assert_eq!(
+                tournament.check_in_refusal(true, 3, false),
+                Some(CheckInRefusal::TournamentOver),
+                "{state:?}"
+            );
+        }
     }
 
     #[test]

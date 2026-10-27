@@ -148,6 +148,10 @@ _Avoid_: TO, admin, judge
 One player in a Tournament: an Account or a Guest. Stays in the standings with its Results after a Drop. In a Tournament with an entry fee it starts unpaid, and only Organizers see who has paid; an unpaid Participant counts towards the participant limit but is not paired.
 _Avoid_: player (alone), entrant, attendee, member
 
+**Check-in**:
+An Organizer confirming at the desk that a Participant is there, in a Tournament that asks for it. A Participant not checked in counts towards the participant limit but is not paired, like an unpaid one. A Tournament may ask an Account to have a Registered deck to check in; a Guest, which cannot have one, is checked in without. Checking in leaves the Registered deck following its deck until the first Round starts. Once the first Round started a Participant is still checked in but no longer out: leaving then is a Drop. Only Organizers and the Participant itself see whether it is checked in.
+_Avoid_: attendance, confirmation, registration (that is the Tournament state)
+
 **Guest**:
 A Participant without an Account, known only by the name an Organizer gave it. A deleted Account's Participants become Guests, named by its last username or anonymously (see Deletion).
 _Avoid_: anonymous player, unregistered user

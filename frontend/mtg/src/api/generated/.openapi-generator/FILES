@@ -68,6 +68,10 @@ docs/CapturedMatchLifeConflict.md
 docs/CardCondition.md
 docs/CardFinish.md
 docs/CardRarity.md
+docs/CheckIn.md
+docs/CheckInEveryoneErrors.md
+docs/CheckInEveryoneResponse.md
+docs/CheckInTournamentParticipants200Response.md
 docs/ChooseUsernameErrors.md
 docs/ChooseUsernameRequest.md
 docs/ClaimMatchLifeRequest.md
@@ -159,6 +163,7 @@ docs/FormErrorResponseForAdminRenameAccountErrors.md
 docs/FormErrorResponseForAdminSetRoleErrors.md
 docs/FormErrorResponseForAdminUnlockAccountErrors.md
 docs/FormErrorResponseForArrangeRoundErrors.md
+docs/FormErrorResponseForCheckInEveryoneErrors.md
 docs/FormErrorResponseForChooseUsernameErrors.md
 docs/FormErrorResponseForDeleteAccountErrors.md
 docs/FormErrorResponseForDeletePasskeyErrors.md
@@ -176,6 +181,7 @@ docs/FormErrorResponseForRenamePasskeyErrors.md
 docs/FormErrorResponseForReportResultErrors.md
 docs/FormErrorResponseForRoundErrors.md
 docs/FormErrorResponseForSendBugReportErrors.md
+docs/FormErrorResponseForSetCheckedInErrors.md
 docs/FormErrorResponseForSetListSharingErrors.md
 docs/FormErrorResponseForSetPaidErrors.md
 docs/FormErrorResponseForSetResultErrors.md
@@ -328,6 +334,8 @@ docs/SendBugReportRequest.md
 docs/SendBugReportResponse.md
 docs/SetAdvisorSettingsRequest.md
 docs/SetBucketResponse.md
+docs/SetCheckedInErrors.md
+docs/SetCheckedInRequest.md
 docs/SetCollectionVisibilityRequest.md
 docs/SetDeckBracketRequest.md
 docs/SetDeckCheckpointRequest.md

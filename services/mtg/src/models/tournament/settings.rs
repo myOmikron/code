@@ -1,7 +1,11 @@
 //! The settings an Owner gives a Tournament, checked before they are stored
 
+use galvyn::core::re_exports::schemars;
+use galvyn::core::re_exports::schemars::JsonSchema;
 use galvyn::core::re_exports::time::OffsetDateTime;
 use galvyn::rorm::fields::types::MaxStr;
+use serde::Deserialize;
+use serde::Serialize;
 
 use crate::models::format::rules_for;
 use crate::models::tournament::Tournament;
@@ -46,6 +50,25 @@ pub struct RawTournamentSettings {
     pub entered_afterwards: bool,
     /// What playing costs, `None` for nothing
     pub entry_fee: Option<EntryFee>,
+    /// Whether Participants check in before they are paired
+    pub check_in: CheckIn,
+}
+
+/// Whether a Tournament's Participants check in before they are paired
+///
+/// Organizers check them in at the desk. A Participant that has to and did
+/// not is left out of the pairing, like an unpaid one.
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub enum CheckIn {
+    /// Nobody checks in
+    #[default]
+    Off,
+    /// Every Participant checks in
+    Required,
+    /// Every Participant checks in, an Account only with a Registered deck
+    ///
+    /// Guests have no Registered deck; Organizers check them in anyway.
+    RequiredWithDeck,
 }
 
 /// What playing in a Tournament costs
@@ -103,6 +126,8 @@ pub struct TournamentSettings {
     /// With a fee every Participant starts unpaid and is left out of the
     /// pairing until an Organizer marks it paid.
     pub entry_fee: Option<EntryFee>,
+    /// Whether Participants check in before they are paired
+    pub check_in: CheckIn,
 }
 
 impl TournamentSettings {
@@ -118,13 +143,15 @@ impl TournamentSettings {
     /// Table size, Ruleset, best-of and whether it is entered afterwards are
     /// fixed once the first Round started, and so is whether there is an entry fee: taking one up would leave every
     /// Participant out of the next pairing, dropping one would pair the unpaid.
-    /// Amount and currency stay editable.
+    /// Amount and currency stay editable. The check-in rule is fixed for the
+    /// same reason.
     pub fn changes_rules_of(&self, tournament: &Tournament) -> bool {
         self.table_size != tournament.table_size
             || self.ruleset != tournament.ruleset
             || self.best_of != tournament.best_of
             || self.entered_afterwards != tournament.entered_afterwards
             || self.entry_fee.is_some() != tournament.entry_fee.is_some()
+            || self.check_in != tournament.check_in
     }
 }
 
@@ -227,6 +254,7 @@ impl TournamentSettings {
                 top_cut_best_of: raw.top_cut_best_of,
                 entered_afterwards: raw.entered_afterwards,
                 entry_fee: raw.entry_fee,
+                check_in: raw.check_in,
             }),
             _ => Err(refusal),
         }
@@ -238,6 +266,7 @@ mod tests {
     use galvyn::core::re_exports::time::OffsetDateTime;
     use galvyn::rorm::fields::types::MaxStr;
 
+    use super::CheckIn;
     use super::EntryFee;
     use super::RawTournamentSettings;
     use super::TournamentSettings;
@@ -265,6 +294,7 @@ mod tests {
             entered_afterwards: false,
             entry_fee: None,
             round_minutes: None,
+            check_in: CheckIn::Off,
         }
     }
 
@@ -330,6 +360,29 @@ mod tests {
                     assert!(refusal.unknown_format, "{format}");
                 }
             }
+        }
+    }
+
+    #[test]
+    fn a_new_check_in_rule_changes_the_rules() {
+        let tournament = Tournament::from_settings_for_test(
+            TournamentSettings::check(raw(Visibility::Public)).expect("valid"),
+        );
+        for (check_in, changes) in [
+            (CheckIn::Off, false),
+            (CheckIn::Required, true),
+            (CheckIn::RequiredWithDeck, true),
+        ] {
+            let settings = TournamentSettings::check(RawTournamentSettings {
+                check_in,
+                ..raw(Visibility::Public)
+            })
+            .expect("valid");
+            assert_eq!(
+                settings.changes_rules_of(&tournament),
+                changes,
+                "{check_in:?}"
+            );
         }
     }
 
