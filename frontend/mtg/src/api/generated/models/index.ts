@@ -4810,6 +4810,10 @@ export interface MyRegisteredDeckResponse {
  */
 export interface MyTournamentsResponse {
     /**
+     * Ongoing Tournaments the Account participates in without having Dropped
+     */
+    ongoing_participations: Array<string>;
+    /**
      * The Tournaments it organizes, as Owner or Co-organizer, latest start first
      */
     organizing: Array<TournamentSummaryResponse>;

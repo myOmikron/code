@@ -23,6 +23,7 @@ use crate::models::account::Username;
 use crate::models::account::db::AccountModel;
 use crate::models::tournament::Tournament;
 use crate::models::tournament::TournamentState;
+use crate::models::tournament::TournamentUuid;
 use crate::models::tournament::db::TournamentCoOrganizerModel;
 use crate::models::tournament::db::TournamentModel;
 use crate::models::tournament::db::TournamentParticipantModel;
@@ -200,6 +201,41 @@ impl ListedTournament {
         .all()
         .await?;
         Ok(rows.into_iter().map(listed).collect())
+    }
+
+    /// The ongoing Tournaments in which the Account participates without having Dropped
+    #[instrument(name = "ListedTournament::ongoing_participations", skip(tx))]
+    pub async fn ongoing_participations(
+        tx: &mut Transaction,
+        account: AccountUuid,
+    ) -> Result<Vec<TournamentUuid>, rorm::Error> {
+        let ids = rorm::query(&mut *tx, TournamentParticipantModel.tournament.uuid)
+            .condition(rorm::and![
+                TournamentParticipantModel
+                    .account
+                    .equals(Some(account.into_inner())),
+                TournamentParticipantModel
+                    .dropped_after_round
+                    .equals(None::<i16>),
+                rorm::or![
+                    TournamentParticipantModel
+                        .tournament
+                        .state
+                        .equals(TournamentState::Registration),
+                    TournamentParticipantModel
+                        .tournament
+                        .state
+                        .equals(TournamentState::Swiss),
+                    TournamentParticipantModel
+                        .tournament
+                        .state
+                        .equals(TournamentState::TopCut),
+                ],
+            ])
+            .order_asc(TournamentParticipantModel.tournament.uuid)
+            .all()
+            .await?;
+        Ok(ids.into_iter().map(TournamentUuid).collect())
     }
 
     /// The public Tournaments `account` owns or plays in, latest start first

@@ -1,3 +1,5 @@
+import { useTranslation } from "react-i18next";
+import { useTournamentParticipation } from "src/context/tournament-participation-context";
 import { Link } from "@tanstack/react-router";
 import {
     Badge,
@@ -27,14 +29,17 @@ export type TournamentListProps = {
  * @returns the list
  */
 export function TournamentList({ tournaments, showOwner }: TournamentListProps) {
+    const [t] = useTranslation("tournament");
+    const participation = useTournamentParticipation();
+    const mine = new Set(participation?.participating.map((tournament) => tournament.uuid) ?? []);
     const labels = useTournamentLabels();
     const deckLabels = useDeckLabels();
 
     return (
         <StackedList>
             {tournaments.map((tournament) => (
-                <StackedListFlexRow key={tournament.uuid}>
-                    <StackedListItem>
+                <StackedListFlexRow key={tournament.uuid} className={"flex-col gap-y-2 max-sm:items-start sm:flex-row"}>
+                    <StackedListItem className={"max-w-full"}>
                         <StackedListTitle>
                             <Link
                                 to={"/tournaments/$tournamentUuid"}
@@ -54,7 +59,8 @@ export function TournamentList({ tournaments, showOwner }: TournamentListProps) 
                                 .join(" · ")}
                         </StackedListDescription>
                     </StackedListItem>
-                    <div className={"flex shrink-0 flex-wrap justify-end gap-2"}>
+                    <div className={"flex max-w-full flex-wrap justify-start gap-2 sm:justify-end"}>
+                        {mine.has(tournament.uuid) && <Badge color={"lime"}>{t("label.you-participate")}</Badge>}
                         {tournament.format != null && (
                             <Badge color={"lime"}>{deckLabels.format(tournament.format)}</Badge>
                         )}

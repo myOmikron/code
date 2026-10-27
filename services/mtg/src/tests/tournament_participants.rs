@@ -506,3 +506,116 @@ fn a_participant_sees_a_private_tournament() {
         assert_eq!(strangers.status.as_u16(), 400, "{strangers:?}");
     });
 }
+
+#[test]
+fn ongoing_participations_include_private_role_overlap_but_exclude_unrelated_accounts() {
+    run(async {
+        let mut fixture = Fixture::new("Private").await;
+        add_account(
+            &mut fixture.owner,
+            &fixture.tournament,
+            &fixture.owner_account.username,
+        )
+        .await;
+        let mine = fixture.owner.get(&api("tournaments/mine")).await.ok_json();
+        assert_eq!(
+            mine["ongoing_participations"],
+            json!([fixture.tournament]),
+            "{mine}"
+        );
+        assert_eq!(
+            mine["participating"][0]["uuid"], fixture.tournament,
+            "{mine}"
+        );
+        assert_eq!(mine["organizing"][0]["uuid"], fixture.tournament, "{mine}");
+        let unrelated = fixture
+            .stranger
+            .get(&api("tournaments/mine"))
+            .await
+            .ok_json();
+        assert_eq!(
+            unrelated["ongoing_participations"],
+            json!([]),
+            "{unrelated}"
+        );
+        fixture
+            .owner
+            .json(
+                Method::POST,
+                &below(&fixture.tournament, "cancel"),
+                &json!({}),
+            )
+            .await
+            .ok_json();
+        let cancelled = fixture.owner.get(&api("tournaments/mine")).await.ok_json();
+        assert_eq!(
+            cancelled["ongoing_participations"],
+            json!([]),
+            "{cancelled}"
+        );
+        assert_eq!(
+            cancelled["participating"][0]["uuid"], fixture.tournament,
+            "{cancelled}"
+        );
+    });
+}
+
+#[test]
+fn ongoing_participations_end_on_drop_or_tournament_finish() {
+    run(async {
+        let account = create_account(Role::Member).await;
+        let mut player = TestClient::logged_in(&account).await;
+        let mut dropped = crate::tests::tournament_rounds::Event::new("Three", 1).await;
+        dropped.add_account(&account.username).await;
+        dropped.pair().await;
+        dropped.start(1).await;
+        let running = player.get(&api("tournaments/mine")).await.ok_json();
+        assert_eq!(
+            running["ongoing_participations"],
+            json!([dropped.tournament]),
+            "{running}"
+        );
+        player
+            .json(Method::POST, &dropped.url("drop"), &json!({}))
+            .await
+            .ok_json();
+        let after_drop = player.get(&api("tournaments/mine")).await.ok_json();
+        assert_eq!(
+            after_drop["ongoing_participations"],
+            json!([]),
+            "{after_drop}"
+        );
+        assert_eq!(
+            after_drop["participating"][0]["uuid"], dropped.tournament,
+            "{after_drop}"
+        );
+        let mut finished = crate::tests::tournament_rounds::Event::new("Three", 1).await;
+        finished.add_account(&account.username).await;
+        finished
+            .owner
+            .json(
+                Method::PUT,
+                &finished.url("swiss-rounds"),
+                &json!({"swiss_rounds": 1}),
+            )
+            .await
+            .ok_json();
+        finished.play_round().await;
+        finished.end(1).await;
+        assert_eq!(finished.state().await, "Finished");
+        let after_finish = player.get(&api("tournaments/mine")).await.ok_json();
+        assert_eq!(
+            after_finish["ongoing_participations"],
+            json!([]),
+            "{after_finish}"
+        );
+        assert_eq!(
+            after_finish["participating"]
+                .as_array()
+                .expect("participations")
+                .len(),
+            2,
+            "{after_finish}"
+        );
+    });
+}

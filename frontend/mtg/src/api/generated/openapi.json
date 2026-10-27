@@ -21045,6 +21045,13 @@
                 "description": "The Tournaments an Account runs and the ones it plays in",
                 "type": "object",
                 "properties": {
+                    "ongoing_participations": {
+                        "description": "Ongoing Tournaments the Account participates in without having Dropped",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/TournamentUuid"
+                        }
+                    },
                     "organizing": {
                         "description": "The Tournaments it organizes, as Owner or Co-organizer, latest start first",
                         "type": "array",
@@ -21061,6 +21068,7 @@
                     }
                 },
                 "required": [
+                    "ongoing_participations",
                     "organizing",
                     "participating"
                 ]

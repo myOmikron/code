@@ -97,10 +97,13 @@ pub async fn get_my_tournaments(account: Account) -> ApiResult<ApiJson<MyTournam
 
     let organizing = ListedTournament::organized_by(&mut tx, account.uuid).await?;
     let participating = ListedTournament::played_in_by(&mut tx, account.uuid).await?;
+    let ongoing_participations =
+        ListedTournament::ongoing_participations(&mut tx, account.uuid).await?;
 
     tx.commit().await?;
 
     Ok(ApiJson(MyTournamentsResponse {
+        ongoing_participations,
         organizing: organizing
             .into_iter()
             .map(TournamentSummaryResponse::from)
