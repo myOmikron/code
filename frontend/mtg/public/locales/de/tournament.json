@@ -98,9 +98,9 @@
         "round-minutes": "Minuten pro Runde. Der Timer läuft ab dem Start jeder Runde; leer lassen für keinen Timer.",
         "round-preview": "Nur Organisatoren sehen diese Auslosung, bis die Runde startet.",
         "rules-locked": "Seit der ersten Runde fest.",
-        "ruleset-mtr": "Magic Tournament Rules: Sieg 3, Unentschieden 1, Bye zählt als 2-0.",
-        "ruleset-multiplayer-addendum": "Multiplayer Addendum: Sieg doppelte Tischgröße minus eins (7 an Vierertischen), Unentschieden 1, kleinere Tische statt Byes.",
-        "ruleset-top-deck": "TopDeck: Sieg 5, Unentschieden 1, höchstens ein kleinerer Tisch, sonst Byes.",
+        "ruleset-mtr": "Magic Tournament Rules: Sieg 3, Unentschieden 1, Niederlage 0, Bye zählt als 2-0.",
+        "ruleset-multiplayer-addendum": "Multiplayer Addendum: Sieg doppelte Tischgröße minus eins (7 an Vierertischen), Unentschieden 1, Niederlage 0, kleinere Tische statt Byes.",
+        "ruleset-top-deck": "TopDeck: Sieg 5, Unentschieden 1, Niederlage 0, höchstens ein kleinerer Tisch, sonst Byes.",
         "self-sign-up": "Spieler mit Konto melden sich selbst an, bis die erste Runde beginnt.",
         "self-sign-up-private": "Nur für öffentliche Turniere und Turniere per Link.",
         "set-result": "Gewonnene Spiele je Spieler; Korrekturen gehen jederzeit.",
@@ -134,7 +134,8 @@
         "unpaid-count_other": "{{count}} Teilnehmer haben noch nicht bezahlt und werden nicht ausgelost.",
         "visibility-private": "Nur du, deine Mitorganisatoren und die Spieler sehen das Turnier.",
         "visibility-public": "Jeder findet das Turnier in der Übersicht.",
-        "visibility-unlisted": "Jeder mit dem Link sieht das Turnier."
+        "visibility-unlisted": "Jeder mit dem Link sieht das Turnier.",
+        "format-defaults": "Das Format schlägt Tischgröße und Regelwerk vor. Eigene gültige Einstellungen bleiben erhalten. Bei einer neuen Tischgröße werden unpassende Regelwerke und Top-Cuts angepasst."
     },
     "error": {
         "all-rounds-paired": "Alle Schweizer Runden sind ausgelost.",

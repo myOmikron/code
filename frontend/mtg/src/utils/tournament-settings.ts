@@ -66,3 +66,41 @@ export function toLocalInput(instant: Date): string {
 export function fromLocalInput(value: string): Date {
     return new Date(value);
 }
+
+/**
+ * Suggested Table size and Ruleset for a deck format.
+ *
+ * @param format the selected format, or no restriction
+ * @returns editable settings suggested for the format
+ */
+export function formatDefaults(format: string | null): { tableSize: number; ruleset: Ruleset } {
+    return format === null || ["commander", "predh", "paupercommander", "oathbreaker"].includes(format)
+        ? { tableSize: 4, ruleset: Ruleset.TopDeck }
+        : { tableSize: 2, ruleset: Ruleset.Mtr };
+}
+
+/** The editable format-dependent Tournament settings. */
+export type FormatSettings = { tableSize: number; ruleset: Ruleset };
+
+/** Which settings the Organizer selected deliberately. */
+export type ManualFormatSettings = { tableSize: boolean; ruleset: boolean };
+
+/**
+ * Apply format suggestions while retaining deliberate settings whenever they remain valid.
+ *
+ * @param current the settings currently shown
+ * @param format the selected format
+ * @param manual which fields were deliberately selected or loaded for editing
+ * @returns settings compatible with the Table size
+ */
+export function withFormatDefaults(
+    current: FormatSettings,
+    format: string | null,
+    manual: ManualFormatSettings,
+): { tableSize: number; ruleset: Ruleset } {
+    const defaults = formatDefaults(format);
+    const tableSize = manual.tableSize ? current.tableSize : defaults.tableSize;
+    const ruleset =
+        manual.ruleset && rulesetFits(current.ruleset, tableSize) ? current.ruleset : rulesetsFor(tableSize)[0];
+    return { tableSize, ruleset };
+}

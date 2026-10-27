@@ -4,10 +4,7 @@ import {
     ComboboxLabel,
     ComboboxOption,
     Description,
-    Dialog,
-    DialogActions,
-    DialogBody,
-    DialogTitle,
+    Heading,
     ErrorMessage,
     Field,
     FieldGroup,
@@ -25,7 +22,7 @@ import {
 } from "components";
 import { GlobeAltIcon, LinkIcon, LockClosedIcon } from "@heroicons/react/20/solid";
 import { useForm } from "@tanstack/react-form";
-import { useEffect } from "react";
+import { useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import { BestOf, Ruleset, TopCut, TournamentState, Visibility } from "src/api/generated";
@@ -37,6 +34,7 @@ import { handleFormError, isFormError } from "src/utils/error";
 import { CURRENCIES, fromMinorUnits, toMinorUnits } from "src/utils/entry-fee";
 import {
     TABLE_SIZES,
+    withFormatDefaults,
     fromLocalInput,
     rulesetFits,
     rulesetsFor,
@@ -51,16 +49,14 @@ const DEFAULT_TABLE_SIZE = 4;
 const NO_TOP_CUT = "None";
 
 /**
- * The properties for {@link TournamentDialog}
+ * The properties for {@link TournamentForm}
  */
-export type TournamentDialogProps = {
-    /** Whether the dialog is on screen */
-    open: boolean;
+export type TournamentFormProps = {
     /** The Tournament to edit, or `null` to create a new one */
     tournament: TournamentResponse | null;
     /** The formats on offer */
     formats: Array<FormatRulesResponse>;
-    /** Called when the dialog should close without having saved anything */
+    /** Called when the Organizer cancels without saving */
     onClose: () => void;
     /** Called with the Tournament as it was saved */
     onSaved: (saved: TournamentResponse) => void;
@@ -110,19 +106,9 @@ function nextEvening(): Date {
     return start;
 }
 
-/**
- * Dialog for creating a Tournament or changing its settings.
- *
- * Only offers the Rulesets fitting the chosen Table size; changing the Table
- * size moves the Ruleset along when the old one no longer fits. Table size,
- * Ruleset, best-of, entering afterwards and taking up an entry fee are fixed
- * once the first Round started, the Top cut once the Swiss Rounds are over;
- * the entry fee's amount and currency stay editable. Every opening starts from
- * the settings of the Tournament it is opened on.
- *
- * @returns the dialog
- */
-export function TournamentDialog({ open, tournament, formats, onClose, onSaved }: TournamentDialogProps) {
+/** Shared page form for creating and editing a Tournament. */
+export function TournamentForm({ tournament, formats, onClose, onSaved }: TournamentFormProps) {
+    const manual = useRef({ tableSize: tournament !== null, ruleset: tournament !== null });
     const [t] = useTranslation("tournament");
     const [tg] = useTranslation();
     const labels = useTournamentLabels();
@@ -215,17 +201,11 @@ export function TournamentDialog({ open, tournament, formats, onClose, onSaved }
         },
     });
 
-    useEffect(() => {
-        form.reset(initialValues(tournament));
-    }, [tournament, open]);
-
     return (
-        <Dialog open={open} onClose={onClose}>
-            <DialogTitle>
-                {tournament === null ? t("heading.create-tournament") : t("heading.edit-tournament")}
-            </DialogTitle>
+        <div className={"mx-auto flex w-full max-w-3xl flex-col gap-8 py-4"}>
+            <Heading>{tournament === null ? t("heading.create-tournament") : t("heading.edit-tournament")}</Heading>
             <Form onSubmit={form.handleSubmit}>
-                <DialogBody>
+                <div>
                     <FieldGroup>
                         <form.Field name={"name"}>
                             {(fieldApi) => (
@@ -241,6 +221,129 @@ export function TournamentDialog({ open, tournament, formats, onClose, onSaved }
                                 </Field>
                             )}
                         </form.Field>
+
+                        <form.Field name={"format"}>
+                            {(fieldApi) => (
+                                <Field>
+                                    <Label>{t("label.format")}</Label>
+                                    <Description>{t("description.format")}</Description>
+                                    <Combobox<FormatRulesResponse | null>
+                                        options={formats}
+                                        by={"slug"}
+                                        value={formats.find((format) => format.slug === fieldApi.state.value) ?? null}
+                                        displayValue={(format) =>
+                                            format == null ? "" : deckLabels.format(format.slug)
+                                        }
+                                        placeholder={t("label.format-any")}
+                                        aria-label={t("label.format")}
+                                        onChange={(format) => {
+                                            const slug = format?.slug ?? null;
+                                            fieldApi.handleChange(slug);
+                                            if (rulesLocked) return;
+                                            const next = withFormatDefaults(
+                                                {
+                                                    tableSize: form.getFieldValue("tableSize"),
+                                                    ruleset: form.getFieldValue("ruleset"),
+                                                },
+                                                slug,
+                                                manual.current,
+                                            );
+                                            form.setFieldValue("tableSize", next.tableSize);
+                                            form.setFieldValue("ruleset", next.ruleset);
+                                            const topCut = form.getFieldValue("topCut");
+                                            if (topCut !== NO_TOP_CUT && !topCutsFor(next.tableSize).includes(topCut)) {
+                                                form.setFieldValue("topCut", NO_TOP_CUT);
+                                            }
+                                        }}
+                                    >
+                                        {(format) => (
+                                            <ComboboxOption value={format}>
+                                                <ComboboxLabel>{deckLabels.format(format.slug)}</ComboboxLabel>
+                                            </ComboboxOption>
+                                        )}
+                                    </Combobox>
+                                    {fieldApi.state.meta.errors.map((error) => (
+                                        <ErrorMessage key={String(error)}>{String(error)}</ErrorMessage>
+                                    ))}
+                                </Field>
+                            )}
+                        </form.Field>
+
+                        <form.Field
+                            name={"tableSize"}
+                            listeners={{
+                                onChange: ({ value }) => {
+                                    const ruleset = form.getFieldValue("ruleset");
+                                    if (!rulesetFits(ruleset, value)) {
+                                        form.setFieldValue("ruleset", rulesetsFor(value)[0] ?? Ruleset.Mtr);
+                                    }
+                                    const topCut = form.getFieldValue("topCut");
+                                    if (topCut !== NO_TOP_CUT && !topCutsFor(value).includes(topCut)) {
+                                        form.setFieldValue("topCut", NO_TOP_CUT);
+                                    }
+                                },
+                            }}
+                        >
+                            {(fieldApi) => (
+                                <Field>
+                                    <Label>{t("label.table-size")}</Label>
+                                    <Description>{t("description.format-defaults")}</Description>
+                                    {rulesLocked && <Description>{t("description.rules-locked")}</Description>}
+                                    <Listbox<number>
+                                        disabled={rulesLocked}
+                                        value={fieldApi.state.value}
+                                        onChange={(value) => {
+                                            manual.current.tableSize = true;
+                                            fieldApi.handleChange(value);
+                                        }}
+                                        invalid={fieldApi.state.meta.errors.length > 0}
+                                    >
+                                        {TABLE_SIZES.map((size) => (
+                                            <ListboxOption key={size} value={size}>
+                                                <ListboxLabel>{labels.tableSize(size)}</ListboxLabel>
+                                            </ListboxOption>
+                                        ))}
+                                    </Listbox>
+                                    {fieldApi.state.meta.errors.map((error) => (
+                                        <ErrorMessage key={String(error)}>{String(error)}</ErrorMessage>
+                                    ))}
+                                </Field>
+                            )}
+                        </form.Field>
+
+                        <form.Subscribe selector={(state) => state.values.tableSize}>
+                            {(tableSize) => (
+                                <form.Field name={"ruleset"}>
+                                    {(fieldApi) => (
+                                        <Field>
+                                            <Label>{t("label.ruleset")}</Label>
+                                            <Description>{labels.rulesetDescription(fieldApi.state.value)}</Description>
+                                            <Listbox<Ruleset>
+                                                disabled={rulesLocked}
+                                                value={fieldApi.state.value}
+                                                onChange={(value) => {
+                                                    manual.current.ruleset = true;
+                                                    fieldApi.handleChange(value);
+                                                }}
+                                                invalid={fieldApi.state.meta.errors.length > 0}
+                                            >
+                                                {rulesetsFor(tableSize).map((ruleset) => (
+                                                    <ListboxOption key={ruleset} value={ruleset}>
+                                                        <ListboxLabel>{labels.ruleset(ruleset)}</ListboxLabel>
+                                                        <ListboxDescription>
+                                                            {labels.rulesetDescription(ruleset)}
+                                                        </ListboxDescription>
+                                                    </ListboxOption>
+                                                ))}
+                                            </Listbox>
+                                            {fieldApi.state.meta.errors.map((error) => (
+                                                <ErrorMessage key={String(error)}>{String(error)}</ErrorMessage>
+                                            ))}
+                                        </Field>
+                                    )}
+                                </form.Field>
+                            )}
+                        </form.Subscribe>
 
                         <form.Field name={"startsAt"}>
                             {(fieldApi) => (
@@ -286,74 +389,6 @@ export function TournamentDialog({ open, tournament, formats, onClose, onSaved }
                                 </Field>
                             )}
                         </form.Field>
-
-                        <form.Field
-                            name={"tableSize"}
-                            listeners={{
-                                onChange: ({ value }) => {
-                                    const ruleset = form.getFieldValue("ruleset");
-                                    if (!rulesetFits(ruleset, value)) {
-                                        form.setFieldValue("ruleset", rulesetsFor(value)[0] ?? Ruleset.Mtr);
-                                    }
-                                    const topCut = form.getFieldValue("topCut");
-                                    if (topCut !== NO_TOP_CUT && !topCutsFor(value).includes(topCut)) {
-                                        form.setFieldValue("topCut", NO_TOP_CUT);
-                                    }
-                                },
-                            }}
-                        >
-                            {(fieldApi) => (
-                                <Field>
-                                    <Label>{t("label.table-size")}</Label>
-                                    {rulesLocked && <Description>{t("description.rules-locked")}</Description>}
-                                    <Listbox<number>
-                                        disabled={rulesLocked}
-                                        value={fieldApi.state.value}
-                                        onChange={fieldApi.handleChange}
-                                        invalid={fieldApi.state.meta.errors.length > 0}
-                                    >
-                                        {TABLE_SIZES.map((size) => (
-                                            <ListboxOption key={size} value={size}>
-                                                <ListboxLabel>{labels.tableSize(size)}</ListboxLabel>
-                                            </ListboxOption>
-                                        ))}
-                                    </Listbox>
-                                    {fieldApi.state.meta.errors.map((error) => (
-                                        <ErrorMessage key={String(error)}>{String(error)}</ErrorMessage>
-                                    ))}
-                                </Field>
-                            )}
-                        </form.Field>
-
-                        <form.Subscribe selector={(state) => state.values.tableSize}>
-                            {(tableSize) => (
-                                <form.Field name={"ruleset"}>
-                                    {(fieldApi) => (
-                                        <Field>
-                                            <Label>{t("label.ruleset")}</Label>
-                                            <Listbox<Ruleset>
-                                                disabled={rulesLocked}
-                                                value={fieldApi.state.value}
-                                                onChange={fieldApi.handleChange}
-                                                invalid={fieldApi.state.meta.errors.length > 0}
-                                            >
-                                                {rulesetsFor(tableSize).map((ruleset) => (
-                                                    <ListboxOption key={ruleset} value={ruleset}>
-                                                        <ListboxLabel>{labels.ruleset(ruleset)}</ListboxLabel>
-                                                        <ListboxDescription>
-                                                            {labels.rulesetDescription(ruleset)}
-                                                        </ListboxDescription>
-                                                    </ListboxOption>
-                                                ))}
-                                            </Listbox>
-                                            {fieldApi.state.meta.errors.map((error) => (
-                                                <ErrorMessage key={String(error)}>{String(error)}</ErrorMessage>
-                                            ))}
-                                        </Field>
-                                    )}
-                                </form.Field>
-                            )}
-                        </form.Subscribe>
 
                         <form.Subscribe selector={(state) => state.values.tableSize}>
                             {(tableSize) =>
@@ -451,35 +486,6 @@ export function TournamentDialog({ open, tournament, formats, onClose, onSaved }
                                 )
                             }
                         </form.Subscribe>
-
-                        <form.Field name={"format"}>
-                            {(fieldApi) => (
-                                <Field>
-                                    <Label>{t("label.format")}</Label>
-                                    <Description>{t("description.format")}</Description>
-                                    <Combobox<FormatRulesResponse | null>
-                                        options={formats}
-                                        by={"slug"}
-                                        value={formats.find((format) => format.slug === fieldApi.state.value) ?? null}
-                                        displayValue={(format) =>
-                                            format == null ? "" : deckLabels.format(format.slug)
-                                        }
-                                        placeholder={t("label.format-any")}
-                                        aria-label={t("label.format")}
-                                        onChange={(format) => fieldApi.handleChange(format?.slug ?? null)}
-                                    >
-                                        {(format) => (
-                                            <ComboboxOption value={format}>
-                                                <ComboboxLabel>{deckLabels.format(format.slug)}</ComboboxLabel>
-                                            </ComboboxOption>
-                                        )}
-                                    </Combobox>
-                                    {fieldApi.state.meta.errors.map((error) => (
-                                        <ErrorMessage key={String(error)}>{String(error)}</ErrorMessage>
-                                    ))}
-                                </Field>
-                            )}
-                        </form.Field>
 
                         <form.Field name={"description"}>
                             {(fieldApi) => (
@@ -648,8 +654,8 @@ export function TournamentDialog({ open, tournament, formats, onClose, onSaved }
                             )}
                         </form.Field>
                     </FieldGroup>
-                </DialogBody>
-                <DialogActions>
+                </div>
+                <div className={"mt-8 flex flex-wrap justify-end gap-3"}>
                     <Button plain onClick={onClose}>
                         {tg("button.cancel")}
                     </Button>
@@ -660,8 +666,8 @@ export function TournamentDialog({ open, tournament, formats, onClose, onSaved }
                             </PrimaryButton>
                         )}
                     </form.Subscribe>
-                </DialogActions>
+                </div>
             </Form>
-        </Dialog>
+        </div>
     );
 }
