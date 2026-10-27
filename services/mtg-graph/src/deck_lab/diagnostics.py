@@ -35,6 +35,7 @@ from .interaction import InteractionGrid, discount_board_wipe
 from .meta import MetaGradeReport, SceneInteractionProfile, grade_deck
 from .themes import ThemeEvidence
 from .themes import consistency as theme_consistency
+from .tracing import deck_span
 from .vocabulary import Bucket, Resource, Role
 
 
@@ -831,6 +832,7 @@ def build_diagnostics(
     )
 
 
+@deck_span("diagnose")
 def diagnose(
     entries: list[DeckEntry],
     *,

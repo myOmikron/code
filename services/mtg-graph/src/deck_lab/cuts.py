@@ -47,6 +47,7 @@ from .interaction import discount_board_wipe, is_cedh_template
 from .poolquery import PoolFilter
 from .suggestions import Phrase, _theme_gate_sides, _theme_vocabulary
 from .themes import FIT_THRESHOLD
+from .tracing import deck_span
 from .vocabulary import (
     BUCKET_ROLES,
     COMMAND_ZONE_RESOURCES,
@@ -1141,6 +1142,7 @@ def _theme_shares(
     return shares
 
 
+@deck_span("swaps")
 def suggest_swaps(
     deck_oracle_ids: list[str],
     deck_card_names: list[str],

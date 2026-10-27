@@ -264,3 +264,34 @@ def test_first_build_seeds_tribal_payoff_and_a_rebuild_is_idempotent(live_graph)
     second_counts = _relationship_counts_by_type()
 
     assert second_counts == first_counts, "a rebuild over the same corpus must be idempotent"
+
+
+@pytest.fixture
+def live_driver():
+    """The shared driver pointed at `NEO4J_TEST_URI`, nothing written to it."""
+    patch = pytest.MonkeyPatch()
+    patch.setattr(settings, "neo4j_uri", _NEO4J_TEST_URI)
+    patch.setattr(settings, "neo4j_password", os.environ.get("NEO4J_TEST_PASSWORD", "deck-lab-dev"))
+    close_driver()
+    _wait_for_neo4j()
+
+    yield
+
+    patch.undo()
+    close_driver()
+
+
+@skip_without_live_neo4j
+def test_a_query_is_a_client_span_without_its_parameters(live_driver, spans):
+    """The Cypher text is recorded; the request-derived parameters never are."""
+    from opentelemetry.trace import SpanKind
+
+    secret = "never-in-a-span-4f1d"
+    query = "RETURN $value AS value"
+    with driver() as instance, instance.session(database=settings.neo4j_database) as session:
+        assert session.run(query, value=secret).single()["value"] == secret
+
+    [span] = [s for s in spans.get_finished_spans() if s.kind == SpanKind.CLIENT]
+    assert span.attributes["db.system.name"] == "neo4j"
+    assert span.attributes["db.query.text"] == query
+    assert not [v for v in span.attributes.values() if secret in str(v)]
