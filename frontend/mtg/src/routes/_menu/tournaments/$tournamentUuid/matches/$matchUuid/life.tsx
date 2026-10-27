@@ -5,6 +5,7 @@ import { TournamentLiveProvider } from "src/context/tournament-live-context";
 import i18n from "src/i18n";
 import { tournamentEventsUrl } from "src/utils/tournament-live";
 
+/** The authorized Match counter with recoverable local recording context. */
 export const Route = createFileRoute("/_menu/tournaments/$tournamentUuid/matches/$matchUuid/life")({
     validateSearch: (search: Record<string, unknown>): { organizer?: boolean } => ({
         organizer: search.organizer === true || search.organizer === "true",

@@ -178,7 +178,8 @@
         "life-conflict-local": "Nicht übertragene Änderungen bleiben auf diesem Gerät erhalten. Versuche erneut, sie als separaten Verlauf zu speichern.",
         "life-no-conflicts": "Noch keine wiederhergestellten Verläufe vorhanden.",
         "life-branch-independent": "Dieser Verlauf bleibt getrennt von der laufenden Aufzeichnung. Er verändert weder Leben auf dem aktiven Gerät noch das Turnierergebnis.",
-        "life-takeover-changed": "Der gespeicherte Stand hat sich geändert. Prüfe ihn erneut, bevor du die Übernahme bestätigst."
+        "life-takeover-changed": "Der gespeicherte Stand hat sich geändert. Prüfe ihn erneut, bevor du die Übernahme bestätigst.",
+        "life-history-tab-lock-unavailable": "Dieser Browser kann Aufzeichnungstabs nicht sicher koordinieren. Du kannst den gespeicherten Verlauf ansehen und Ergebnisse weiterhin melden."
     },
     "error": {
         "all-rounds-paired": "Alle Schweizer Runden sind ausgelost.",
@@ -424,7 +425,8 @@
         "life-history-not-recording": "Noch keine Aufnahme gestartet",
         "life-history-pending": "Auf diesem Gerät gespeichert, Upload ausstehend",
         "life-last-upload": "Zuletzt gespeichert: {{time}}",
-        "life-no-upload": "Noch kein Verlauf hochgeladen"
+        "life-no-upload": "Noch kein Verlauf hochgeladen",
+        "life-history-other-tab": "Dieses Match wird in einem anderen Tab aufgezeichnet. Nach dem Schließen dieses Tabs kannst du hier fortsetzen."
     },
     "toast": {
         "co-organizer-added": "{{username}} ist jetzt Mitorganisator",

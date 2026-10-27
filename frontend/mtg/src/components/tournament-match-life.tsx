@@ -16,7 +16,7 @@ import { lifeResultDraft, matchLifeStorageKey, matchStartingLife } from "src/uti
 import { isMatchTransportFailure } from "src/utils/offline-match-scope";
 import { clockSkew } from "src/utils/round-clock";
 import { useDurableMatchLife } from "src/utils/use-durable-match-life";
-import { formatResult } from "src/utils/tournament-rounds";
+import { formatResult, resultErrorKey } from "src/utils/tournament-rounds";
 
 /** Counts an authorized Match locally while keeping its Round timer and explicit Result actions available. */
 export function TournamentMatchLife({
@@ -114,22 +114,7 @@ export function TournamentMatchLife({
             organizer
                 ? Api.tournaments.rounds.setResult(tournament.uuid, played.uuid, result)
                 : Api.tournaments.results.report(tournament.uuid, played.uuid, result),
-        explain: (error: Record<string, boolean>) =>
-            t(
-                error.not_running
-                    ? "error.round-not-running"
-                    : error.not_started
-                      ? "error.round-not-started"
-                      : error.reported_by_other
-                        ? "error.result-reported-by-other"
-                        : error.confirmed
-                          ? "error.result-confirmed"
-                          : error.disputed
-                            ? "error.result-disputed"
-                            : error.dropped_winner
-                              ? "error.dropped-winner"
-                              : "error.invalid-score",
-            ),
+        explain: (error: Record<string, boolean>) => t(resultErrorKey(error)),
         onSaved: async () => {
             setReporting(false);
             await refresh();
@@ -189,27 +174,31 @@ export function TournamentMatchLife({
             )}
             <Text role={"status"}>
                 {t(
-                    durable.state === "storage"
-                        ? "error.life-history-storage"
-                        : durable.state === "auth"
-                          ? "error.life-history-auth"
-                          : durable.state === "pending"
-                            ? "label.life-history-pending"
-                            : durable.state === "loading"
-                              ? "label.life-history-loading"
-                              : durable.state === "saving"
-                                ? "label.life-history-saving"
-                                : durable.state === "saved"
-                                  ? "label.life-history-saved"
-                                  : durable.state === "failed"
-                                    ? "error.life-history-save"
-                                    : durable.state === "invalid"
-                                      ? "error.life-history-invalid"
-                                      : durable.state === "conflict"
-                                        ? "error.life-history-conflict"
-                                        : history === null
-                                          ? "label.life-history-not-recording"
-                                          : "label.life-history-local",
+                    durable.state === "other-tab"
+                        ? "label.life-history-other-tab"
+                        : durable.state === "unsupported"
+                          ? "description.life-history-tab-lock-unavailable"
+                          : durable.state === "storage"
+                            ? "error.life-history-storage"
+                            : durable.state === "auth"
+                              ? "error.life-history-auth"
+                              : durable.state === "pending"
+                                ? "label.life-history-pending"
+                                : durable.state === "loading"
+                                  ? "label.life-history-loading"
+                                  : durable.state === "saving"
+                                    ? "label.life-history-saving"
+                                    : durable.state === "saved"
+                                      ? "label.life-history-saved"
+                                      : durable.state === "failed"
+                                        ? "error.life-history-save"
+                                        : durable.state === "invalid"
+                                          ? "error.life-history-invalid"
+                                          : durable.state === "conflict"
+                                            ? "error.life-history-conflict"
+                                            : history === null
+                                              ? "label.life-history-not-recording"
+                                              : "label.life-history-local",
                 )}
             </Text>
             {durable.remote !== null && !durable.writer && <Text>{t("description.life-history-observer")}</Text>}
@@ -217,7 +206,11 @@ export function TournamentMatchLife({
                 durable.remote !== null &&
                 !over &&
                 play.round.state === RoundState.Running && (
-                    <Button outline disabled={durable.state === "saving"} onClick={() => void durable.claim()}>
+                    <Button
+                        outline
+                        disabled={!durable.canRequest || durable.state === "saving"}
+                        onClick={() => void durable.claim()}
+                    >
                         {t("button.record-match-life")}
                     </Button>
                 )}
@@ -261,7 +254,9 @@ export function TournamentMatchLife({
             {showCounter && (
                 <LifeCounter
                     key={
-                        durable.writer ? "writer" : `observer-${durable.remote?.generation}-${durable.remote?.revision}`
+                        durable.writer
+                            ? `writer-${durable.viewEpoch}`
+                            : `observer-${durable.remote?.generation}-${durable.remote?.revision}-${durable.viewEpoch}`
                     }
                     initialHistory={history ?? undefined}
                     participants={players}

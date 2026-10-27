@@ -178,7 +178,8 @@
         "life-conflict-local": "Unsent changes remain on this device. Retry to save them as a separate history.",
         "life-no-conflicts": "No recovered histories yet.",
         "life-branch-independent": "This history is separate from active recording. It changes neither the active device’s totals nor the Tournament Result.",
-        "life-takeover-changed": "The saved state changed. Review it again before confirming takeover."
+        "life-takeover-changed": "The saved state changed. Review it again before confirming takeover.",
+        "life-history-tab-lock-unavailable": "This browser cannot safely coordinate recording tabs. You can view saved history and still report Results."
     },
     "error": {
         "all-rounds-paired": "Every Swiss round has been paired.",
@@ -424,7 +425,8 @@
         "life-history-not-recording": "Recording has not started",
         "life-history-pending": "Saved on this device, upload pending",
         "life-last-upload": "Last saved: {{time}}",
-        "life-no-upload": "No history uploaded yet"
+        "life-no-upload": "No history uploaded yet",
+        "life-history-other-tab": "This Match is being recorded in another tab. Close that tab to continue recording here."
     },
     "toast": {
         "co-organizer-added": "{{username}} is now a co-organizer",

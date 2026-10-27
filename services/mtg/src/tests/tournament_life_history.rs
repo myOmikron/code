@@ -449,3 +449,50 @@ fn concurrent_takeover_preserves_the_saved_timeline_and_recovers_the_full_old_de
         );
     });
 }
+
+#[test]
+fn a_removed_co_organizer_cannot_read_or_claim_guest_match_history_in_a_fresh_request() {
+    run(async {
+        let mut event = Event::new("Three", 2).await;
+        event.pair().await;
+        event.start(1).await;
+        let rounds = event.rounds().await;
+        let played = rounds["rounds"][0]["matches"][0]["uuid"].as_str().unwrap();
+        let history = event.url(&format!("matches/{played}/life-history"));
+        let account = create_account(Role::Member).await;
+        event
+            .owner
+            .json(
+                Method::POST,
+                &event.url("organizers"),
+                &json!({ "username": account.username }),
+            )
+            .await
+            .ok_json();
+        let mut co_organizer = TestClient::logged_in(&account).await;
+        assert!(co_organizer.get(&history).await.status.is_success());
+        event
+            .owner
+            .json(
+                Method::DELETE,
+                &event.url(&format!("organizers/{}", account.uuid.into_inner())),
+                &json!({}),
+            )
+            .await
+            .ok_json();
+        assert!(!co_organizer.get(&history).await.status.is_success());
+        let claim = json!({ "device": Uuid::new_v4(), "writer_token": Uuid::new_v4(), "request_id": Uuid::new_v4(), "generation": 0, "expected_revision": 0 });
+        assert!(
+            !co_organizer
+                .json(
+                    Method::POST,
+                    &event.url(&format!("matches/{played}/life-history/claim")),
+                    &claim
+                )
+                .await
+                .status
+                .is_success()
+        );
+        assert!(event.owner.get(&history).await.ok_json()["writer"].is_null());
+    });
+}

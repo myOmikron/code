@@ -46,7 +46,7 @@ import { TournamentWinnerDialog } from "src/components/tournament-winner-dialog"
 import { isFormError } from "src/utils/error";
 import { clockSkew } from "src/utils/round-clock";
 import { cutRoundSize } from "src/utils/top-cut";
-import { formatResult, winnerSeat } from "src/utils/tournament-rounds";
+import { formatResult, winnerSeat, resultErrorKey } from "src/utils/tournament-rounds";
 
 /**
  * The properties for {@link TournamentRounds}
@@ -124,11 +124,7 @@ export function TournamentRounds({ tournament, load, onTournamentChanged, me = n
      *
      * @returns the message
      */
-    const explainSet = (error: Record<string, boolean>): string => {
-        if (error.not_started) return t("error.round-not-started");
-        if (error.dropped_winner) return t("error.dropped-winner");
-        return t("error.invalid-score");
-    };
+    const explainSet = (error: Record<string, boolean>): string => t(resultErrorKey(error));
 
     /**
      * Says why a Participant's report was refused
@@ -137,14 +133,7 @@ export function TournamentRounds({ tournament, load, onTournamentChanged, me = n
      *
      * @returns the message
      */
-    const explainReport = (error: Record<string, boolean>): string => {
-        if (error.not_running) return t("error.round-not-running");
-        if (error.reported_by_other) return t("error.result-reported-by-other");
-        if (error.disputed) return t("error.result-disputed");
-        if (error.confirmed) return t("error.result-confirmed");
-        if (error.dropped_winner) return t("error.dropped-winner");
-        return t("error.invalid-score");
-    };
+    const explainReport = (error: Record<string, boolean>): string => t(resultErrorKey(error));
 
     const reload = useCallback(async () => {
         const loaded = await load();
