@@ -22,6 +22,7 @@ use crate::models::tournament::access::TournamentAccess;
 
 pub mod decks;
 pub mod handler;
+pub mod life_history;
 pub mod live;
 pub mod organizers;
 pub mod participants;
@@ -40,6 +41,7 @@ pub fn initialize_routes() -> GalvynRouter {
                 .merge(
                     GalvynRouter::new()
                         .handler(rounds::handler::get_tournament_match_play)
+                        .merge(life_history::routes())
                         .wrap(TournamentAccessLayer(TournamentAccess::MatchHistory)),
                 )
                 .merge(

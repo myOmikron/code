@@ -36,6 +36,7 @@ All URIs are relative to *http://localhost*
 | [**cancelTournament**](DefaultApi.md#canceltournament) | **POST** /api/frontend/v1/tournaments/{tournament}/cancel | Cancel a Tournament, as an Organizer |
 | [**checkPushDevice**](DefaultApi.md#checkpushdevice) | **POST** /api/frontend/v1/accounts/me/push/devices/check | Whether a device gets the logged-in account\&#39;s pushes |
 | [**chooseUsername**](DefaultApi.md#chooseusernameoperation) | **POST** /api/frontend/v1/auth/oidc/username | Finish the username step: create the External Account and log it in |
+| [**claimMatchLifeHistory**](DefaultApi.md#claimmatchlifehistory) | **POST** /api/frontend/v1/tournaments/{tournament}/matches/{match}/life-history/claim | Deliberately claim a recording slot with a private, device-local capability. |
 | [**createCollection**](DefaultApi.md#createcollectionoperation) | **POST** /api/frontend/v1/collections |  |
 | [**createDeck**](DefaultApi.md#createdeckoperation) | **POST** /api/frontend/v1/decks | Create a deck |
 | [**createDeckFolder**](DefaultApi.md#createdeckfolderoperation) | **POST** /api/frontend/v1/folders | Make a folder |
@@ -90,6 +91,7 @@ All URIs are relative to *http://localhost*
 | [**getDeckPoint**](DefaultApi.md#getdeckpoint) | **GET** /api/frontend/v1/decks/{deck}/history/{change} | The deck as it was right after one of its Deck changes, read-only |
 | [**getDeckSourcing**](DefaultApi.md#getdecksourcing) | **GET** /api/frontend/v1/decks/{deck}/sourcing | What the deck asks for, what is in it, and where the rest could come from |
 | [**getDecksSharedWithMe**](DefaultApi.md#getdeckssharedwithme) | **GET** /api/frontend/v1/decks/shared-with-me | The decks other Accounts named the caller on, alphabetically by name |
+| [**getMatchLifeHistory**](DefaultApi.md#getmatchlifehistory) | **GET** /api/frontend/v1/tournaments/{tournament}/matches/{match}/life-history | Observe uploaded history without claiming the recording device. |
 | [**getMpcfillCardbacks**](DefaultApi.md#getmpcfillcardbacks) | **GET** /api/frontend/v1/mpcfill/cardbacks | The card backs MPCFill offers |
 | [**getMyTournamentDeck**](DefaultApi.md#getmytournamentdeck) | **GET** /api/frontend/v1/tournaments/{tournament}/deck | The logged-in Account\&#39;s own Registered deck in a Tournament it plays in |
 | [**getMyTournamentMatch**](DefaultApi.md#getmytournamentmatch) | **GET** /api/frontend/v1/tournaments/{tournament}/my-match | The reader\&#39;s Match in the running Round of a Tournament, with the round timer |
@@ -165,6 +167,7 @@ All URIs are relative to *http://localhost*
 | [**returnDeckCards**](DefaultApi.md#returndeckcardsoperation) | **POST** /api/frontend/v1/decks/{deck}/sourcing/return | Sort copies out of the deck back into a collection |
 | [**rotateDeckShareToken**](DefaultApi.md#rotatedecksharetoken) | **POST** /api/frontend/v1/decks/{deck}/share-token | Mint a fresh secret for a deck\&#39;s share link |
 | [**rotateShareToken**](DefaultApi.md#rotatesharetoken) | **POST** /api/frontend/v1/collections/{collection}/share-token | Mint a fresh secret for a collection\&#39;s share link |
+| [**saveMatchLifeHistory**](DefaultApi.md#savematchlifehistory) | **PUT** /api/frontend/v1/tournaments/{tournament}/matches/{match}/life-history | Upload history using only the active recording Account, device and private capability. |
 | [**searchCollaboratorCandidates**](DefaultApi.md#searchcollaboratorcandidates) | **GET** /api/frontend/v1/decks/{deck}/collaborators/candidates | Accounts whose username starts with what the owner typed, to name on a deck |
 | [**searchMpcfillArt**](DefaultApi.md#searchmpcfillart) | **POST** /api/frontend/v1/mpcfill/search | The art MPCFill has for these cards |
 | [**searchPublicDecks**](DefaultApi.md#searchpublicdecks) | **GET** /api/frontend/v1/explore/decks | Search the decks their owners put on show |
@@ -2505,6 +2508,82 @@ example().catch(console.error);
 ### Return type
 
 [**FormErrorResponseForChooseUsernameErrors**](FormErrorResponseForChooseUsernameErrors.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## claimMatchLifeHistory
+
+> SaveMatchLifeHistory200Response claimMatchLifeHistory(tournament, match, ClaimMatchLifeRequest)
+
+Deliberately claim a recording slot with a private, device-local capability.
+
+Deliberately claim a recording slot with a private, device-local capability.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { ClaimMatchLifeHistoryRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    tournament: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string
+    match: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // ClaimMatchLifeRequest (optional)
+    ClaimMatchLifeRequest: ...,
+  } satisfies ClaimMatchLifeHistoryRequest;
+
+  try {
+    const data = await api.claimMatchLifeHistory(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **tournament** | `string` |  | [Defaults to `undefined`] |
+| **match** | `string` |  | [Defaults to `undefined`] |
+| **ClaimMatchLifeRequest** | [ClaimMatchLifeRequest](ClaimMatchLifeRequest.md) |  | [Optional] |
+
+### Return type
+
+[**SaveMatchLifeHistory200Response**](SaveMatchLifeHistory200Response.md)
 
 ### Authorization
 
@@ -6266,6 +6345,79 @@ This endpoint does not need any parameter.
 ### Return type
 
 [**ListSharedWithMeResponse**](ListSharedWithMeResponse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## getMatchLifeHistory
+
+> MatchLifeHistoryResponse getMatchLifeHistory(tournament, match)
+
+Observe uploaded history without claiming the recording device.
+
+Observe uploaded history without claiming the recording device.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { GetMatchLifeHistoryRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    tournament: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string
+    match: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies GetMatchLifeHistoryRequest;
+
+  try {
+    const data = await api.getMatchLifeHistory(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **tournament** | `string` |  | [Defaults to `undefined`] |
+| **match** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**MatchLifeHistoryResponse**](MatchLifeHistoryResponse.md)
 
 ### Authorization
 
@@ -11600,6 +11752,82 @@ No authorization required
 ### HTTP request headers
 
 - **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## saveMatchLifeHistory
+
+> SaveMatchLifeHistory200Response saveMatchLifeHistory(tournament, match, SaveMatchLifeRequest)
+
+Upload history using only the active recording Account, device and private capability.
+
+Upload history using only the active recording Account, device and private capability.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { SaveMatchLifeHistoryRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    tournament: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string
+    match: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // SaveMatchLifeRequest (optional)
+    SaveMatchLifeRequest: ...,
+  } satisfies SaveMatchLifeHistoryRequest;
+
+  try {
+    const data = await api.saveMatchLifeHistory(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **tournament** | `string` |  | [Defaults to `undefined`] |
+| **match** | `string` |  | [Defaults to `undefined`] |
+| **SaveMatchLifeRequest** | [SaveMatchLifeRequest](SaveMatchLifeRequest.md) |  | [Optional] |
+
+### Return type
+
+[**SaveMatchLifeHistory200Response**](SaveMatchLifeHistory200Response.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
 - **Accept**: `application/json`
 
 

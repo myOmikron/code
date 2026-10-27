@@ -1382,6 +1382,33 @@ export interface ChooseUsernameRequest {
     username: any;
 }
 /**
+ * An explicit claim using a private credential saved locally before the request.
+ * @export
+ * @interface ClaimMatchLifeRequest
+ */
+export interface ClaimMatchLifeRequest {
+    /**
+     * Public device identity.
+     */
+    device: string;
+    /**
+     * Saved revision observed before claiming.
+     */
+    expected_revision: number;
+    /**
+     * Ownership epoch observed before claiming.
+     */
+    generation: number;
+    /**
+     * Stable identity of this exact request.
+     */
+    request_id: string;
+    /**
+     * Private random capability, never returned to observers or logged.
+     */
+    writer_token: string;
+}
+/**
  * An Account whose username starts with what the owner typed
  * @export
  * @interface CollaboratorCandidateResponse
@@ -3693,6 +3720,23 @@ export interface FormErrorResponseForFinishLoginErrors {
 /**
  * The response that is sent in a case of an error the caller should present his user
  * @export
+ * @interface FormErrorResponseForMatchLifeErrors
+ */
+export interface FormErrorResponseForMatchLifeErrors {
+    /**
+     * The actual error struct
+     */
+    error: MatchLifeErrors;
+    /**
+     * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
+     */
+    result: ErrorConstant;
+}
+
+
+/**
+ * The response that is sent in a case of an error the caller should present his user
+ * @export
  * @interface FormErrorResponseForMeErrors
  */
 export interface FormErrorResponseForMeErrors {
@@ -4593,6 +4637,255 @@ export interface MarkedCard {
      * The oracle identity the advisor filters on
      */
     oracle_id: string;
+}
+/**
+ * Why a claim or upload could not be accepted.
+ * @export
+ * @interface MatchLifeErrors
+ */
+export interface MatchLifeErrors {
+    /**
+     * History has invalid Participants, totals, references or retained prefix.
+     */
+    invalid_history: boolean;
+    /**
+     * A request identity was reused for different content.
+     */
+    request_conflict: boolean;
+    /**
+     * The saved state changed since this request was prepared.
+     */
+    revision_conflict: boolean;
+    /**
+     * Another device owns recording, or the capability no longer matches.
+     */
+    writer_conflict: boolean;
+}
+/**
+ * One immutable operation in a Game's Life history.
+ * @export
+ * @interface MatchLifeEvent
+ */
+export interface MatchLifeEvent {
+    /**
+     * Signed life adjustment.
+     */
+    amount?: number | null;
+    /**
+     * Device-recorded operation time, independent of server receipt time.
+     */
+    at: string;
+    /**
+     * Commander damage source.
+     */
+    commander?: string | null;
+    /**
+     * Earlier operation being corrected.
+     */
+    corrects?: string | null;
+    /**
+     * Signed commander damage adjustment.
+     */
+    damageAmount?: number | null;
+    /**
+     * Stable operation identity across retries.
+     */
+    id: string;
+    /**
+     * Operation category.
+     */
+    kind: MatchLifeEventKind;
+    /**
+     * Affected Participant.
+     */
+    player?: string | null;
+    /**
+     * Earlier life operations being classified without deducting life again.
+     */
+    reclassifies?: Array<string> | null;
+}
+
+
+
+/**
+ * The kind of a retained Life operation.
+ * @export
+ */
+export const MatchLifeEventKind = {
+    /**
+    * Initial Game setup.
+    */
+    start: 'start',
+    /**
+    * Life adjustment.
+    */
+    life: 'life',
+    /**
+    * Commander damage and corresponding life adjustment.
+    */
+    commander: 'commander',
+    /**
+    * Classification of already deducted life as commander damage.
+    */
+    reclassify: 'reclassify',
+    /**
+    * Compensation retaining the original operation.
+    */
+    correction: 'correction',
+    /**
+    * Explicit Game completion.
+    */
+    end: 'end',
+} as const;
+export type MatchLifeEventKind = typeof MatchLifeEventKind[keyof typeof MatchLifeEventKind];
+
+/**
+ * A Game's original setup, current totals and retained operations.
+ * @export
+ * @interface MatchLifeGame
+ */
+export interface MatchLifeGame {
+    /**
+     * Commander damage matrix, affected Participant first.
+     */
+    damage: Array<Array<number>>;
+    /**
+     * Original, ungrouped operations.
+     */
+    events: Array<MatchLifeEvent>;
+    /**
+     * Current life totals.
+     */
+    life: Array<number>;
+    /**
+     * Explicit winner or draw, if completed.
+     */
+    outcome?: MatchLifeOutcome | null;
+    /**
+     * Match Participants in Seat order.
+     */
+    players: Array<MatchLifePlayer>;
+    /**
+     * Original life totals.
+     */
+    startingLife: Array<number>;
+}
+/**
+ * The complete, append-preserved history of a Match.
+ * @export
+ * @interface MatchLifeHistory
+ */
+export interface MatchLifeHistory {
+    /**
+     * All Games in play order.
+     */
+    games: Array<MatchLifeGame>;
+    /**
+     * Serialization version, currently one.
+     */
+    version: number;
+}
+/**
+ * Public durable state; intentionally contains no recording credential.
+ * @export
+ * @interface MatchLifeHistoryResponse
+ */
+export interface MatchLifeHistoryResponse {
+    /**
+     * Stable request acknowledged by a write, absent on reads.
+     */
+    accepted_request?: string | null;
+    /**
+     * Revision originally accepted for that request, even on a late retry.
+     */
+    accepted_revision?: number | null;
+    /**
+     * Ownership epoch, incremented by every ownership change.
+     */
+    generation: number;
+    /**
+     * Uploaded history, absent until its first save.
+     */
+    history?: MatchLifeHistory | null;
+    /**
+     * Accepted upload sequence number.
+     */
+    revision: number;
+    /**
+     * Server receipt time of the latest accepted operation.
+     */
+    updated_at?: string | null;
+    /**
+     * Public recording-device identity, never an authorization credential.
+     */
+    writer?: string | null;
+}
+/**
+ * @type MatchLifeOutcome
+ * An explicit Game outcome; never a submitted Tournament Result.
+ * @export
+ */
+export type MatchLifeOutcome = MatchLifeOutcomeOneOf | MatchLifeOutcomeOneOf1;
+/**
+ * A Participant recorded as winner.
+ * @export
+ * @interface MatchLifeOutcomeOneOf
+ */
+export interface MatchLifeOutcomeOneOf {
+    /**
+     * 
+     */
+    kind: MatchLifeOutcomeOneOfKindEnum;
+    /**
+     * The winning Participant.
+     */
+    winner: string;
+}
+
+
+/**
+ * @export
+ */
+export const MatchLifeOutcomeOneOfKindEnum = {
+    winner: 'winner',
+} as const;
+export type MatchLifeOutcomeOneOfKindEnum = typeof MatchLifeOutcomeOneOfKindEnum[keyof typeof MatchLifeOutcomeOneOfKindEnum];
+
+/**
+ * A recorded draw.
+ * @export
+ * @interface MatchLifeOutcomeOneOf1
+ */
+export interface MatchLifeOutcomeOneOf1 {
+    /**
+     * 
+     */
+    kind: MatchLifeOutcomeOneOf1KindEnum;
+}
+
+
+/**
+ * @export
+ */
+export const MatchLifeOutcomeOneOf1KindEnum = {
+    draw: 'draw',
+} as const;
+export type MatchLifeOutcomeOneOf1KindEnum = typeof MatchLifeOutcomeOneOf1KindEnum[keyof typeof MatchLifeOutcomeOneOf1KindEnum];
+
+/**
+ * One Participant in original Seat order.
+ * @export
+ * @interface MatchLifePlayer
+ */
+export interface MatchLifePlayer {
+    /**
+     * The Participant identity.
+     */
+    id: string;
+    /**
+     * Display name retained with the Game.
+     */
+    name: string;
 }
 /**
  * Authorized counting context for one started Match, including its independent Round timer.
@@ -6356,6 +6649,43 @@ export const Ruleset = {
 } as const;
 export type Ruleset = typeof Ruleset[keyof typeof Ruleset];
 
+/**
+ * @type SaveMatchLifeHistory200Response
+ * 
+ * @export
+ */
+export type SaveMatchLifeHistory200Response = FormErrorResponseForMatchLifeErrors | MatchLifeHistoryResponse;
+/**
+ * An immutable upload intent, retried with the same identity and content.
+ * @export
+ * @interface SaveMatchLifeRequest
+ */
+export interface SaveMatchLifeRequest {
+    /**
+     * Public recording-device identity.
+     */
+    device: string;
+    /**
+     * Previously acknowledged revision.
+     */
+    expected_revision: number;
+    /**
+     * Recording ownership epoch.
+     */
+    generation: number;
+    /**
+     * Complete append-preserving history.
+     */
+    history: MatchLifeHistory;
+    /**
+     * Stable identity of this exact upload.
+     */
+    request_id: string;
+    /**
+     * Private capability bound to the recording Account and device.
+     */
+    writer_token: string;
+}
 /**
  * One session together with its staging area
  * @export

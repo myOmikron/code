@@ -238,9 +238,9 @@ export function TournamentMyMatch({ tournament }: TournamentMyMatchProps) {
                               : "description.play-and-report",
                 )}
             </Text>
-            {canReport && played !== null && (
+            {played !== null && played.table_number != null && round.state !== RoundState.Previewed && (
                 <Button outline href={`/tournaments/${tournament.uuid}/matches/${played.uuid}/life`}>
-                    {t("button.count-match-life")}
+                    {t(canReport ? "button.count-match-life" : "button.view-match-life-history")}
                 </Button>
             )}
             {canReport && played !== null && (
