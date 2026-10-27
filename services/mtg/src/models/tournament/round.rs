@@ -390,7 +390,8 @@ impl Tournament {
         )
     }
 
-    /// How many Participants the next Round pairs: not those who Dropped nor those who owe the entry fee
+    /// How many Participants the next Round pairs: not those who Dropped, owe
+    /// the entry fee or wait to be checked in
     async fn pairable(&self, tx: &mut Transaction) -> Result<usize, rorm::Error> {
         Ok(self
             .participants(tx)
@@ -402,8 +403,8 @@ impl Tournament {
 
     /// The number of Swiss Rounds the engine suggests for the Participants there are now
     ///
-    /// Counts the Participants the next Round pairs, not those who Dropped
-    /// nor those who owe the entry fee.
+    /// Counts the Participants the next Round pairs, not those who Dropped,
+    /// owe the entry fee or wait to be checked in.
     pub async fn suggested_swiss_rounds(
         &self,
         tx: &mut Transaction,

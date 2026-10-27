@@ -1,0 +1,49 @@
+[Migration]
+Hash = "7309149547567068855"
+Initial = false
+Dependency = 70
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "tournament_participant"
+
+[Migration.Operations.Field]
+Name = "checked_in"
+Type = "boolean"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "default_value"
+Value = false
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 219
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "tournament"
+
+[Migration.Operations.Field]
+Name = "check_in"
+Type = "text"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "default_value"
+Value = "Off"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "max_length"
+Value = 255
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 95
+Column = 9

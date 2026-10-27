@@ -15,6 +15,7 @@ use crate::models::deck::db::DeckModel;
 use crate::models::tournament::TournamentState;
 use crate::models::tournament::round::RoundStage;
 use crate::models::tournament::round::RoundState;
+use crate::models::tournament::settings::CheckIn;
 use crate::models::visibility::Visibility;
 use crate::tournament::reporting::ResultState;
 use crate::tournament::ruleset::BestOf;
@@ -89,6 +90,10 @@ pub struct TournamentModel {
     /// The ISO 4217 code of the entry fee's currency, `None` for no fee
     pub entry_fee_currency: Option<MaxStr<3>>,
 
+    /// Whether Participants check in before they are paired
+    #[rorm(default = "Off")]
+    pub check_in: CheckIn,
+
     /// How many Swiss Rounds are played
     ///
     /// `None` until an Organizer sets it or the first Round starts, which
@@ -162,6 +167,8 @@ pub struct TournamentInsertPatch {
     pub entry_fee_amount: Option<i32>,
     /// The ISO 4217 code of the entry fee's currency
     pub entry_fee_currency: Option<MaxStr<3>>,
+    /// Whether Participants check in before they are paired
+    pub check_in: CheckIn,
     /// Where the Tournament stands
     pub state: TournamentState,
 }
@@ -204,6 +211,13 @@ pub struct TournamentParticipantModel {
     #[rorm(default = false)]
     pub paid: bool,
 
+    /// Whether an Organizer checked the Participant in
+    ///
+    /// Only means something while the Tournament takes check-in: without it
+    /// nobody waits to be checked in, whatever this says.
+    #[rorm(default = false)]
+    pub checked_in: bool,
+
     /// The point in time the Participant was added or signed up
     #[rorm(auto_create_time)]
     pub created_at: OffsetDateTime,
@@ -225,6 +239,8 @@ pub struct TournamentParticipantInsertPatch {
     pub late_from_round: Option<i16>,
     /// Whether the entry fee is paid
     pub paid: bool,
+    /// Whether it is checked in
+    pub checked_in: bool,
 }
 
 /// The primary key of an Account's Participant row in a Tournament

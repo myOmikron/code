@@ -47,6 +47,7 @@ import type {
     CardCondition,
     CardFinish,
     CardRarity,
+    CheckInTournamentParticipants200Response,
     ChooseUsernameRequest,
     ClaimMatchLifeRequest,
     CollaboratorCandidatesResponse,
@@ -100,6 +101,7 @@ import type {
     FormErrorResponseForRenamePasskeyErrors,
     FormErrorResponseForReportResultErrors,
     FormErrorResponseForRoundErrors,
+    FormErrorResponseForSetCheckedInErrors,
     FormErrorResponseForSetListSharingErrors,
     FormErrorResponseForSetPaidErrors,
     FormErrorResponseForSetResultErrors,
@@ -181,6 +183,7 @@ import type {
     SendBugReport200Response,
     SendBugReportRequest,
     SetAdvisorSettingsRequest,
+    SetCheckedInRequest,
     SetCollectionVisibilityRequest,
     SetDeckBracketRequest,
     SetDeckCheckpointRequest,
@@ -555,6 +558,13 @@ export interface CaptureMatchLifeConflictOperationRequest {
      * 
      */
     CaptureMatchLifeConflictRequest?: CaptureMatchLifeConflictRequest;
+}
+
+export interface CheckInTournamentParticipantsRequest {
+    /**
+     * 
+     */
+    tournament: string;
 }
 
 export interface CheckPushDeviceRequest {
@@ -1875,6 +1885,21 @@ export interface SetTournamentMatchResultRequest {
      * 
      */
     SetResultRequest?: SetResultRequest;
+}
+
+export interface SetTournamentParticipantCheckedInRequest {
+    /**
+     * 
+     */
+    tournament: string;
+    /**
+     * 
+     */
+    participant: string;
+    /**
+     * 
+     */
+    SetCheckedInRequest?: SetCheckedInRequest;
 }
 
 export interface SetTournamentParticipantPaidRequest {
@@ -3869,6 +3894,53 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async captureMatchLifeConflict(requestParameters: CaptureMatchLifeConflictOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CaptureMatchLifeConflict200Response> {
         const response = await this.captureMatchLifeConflictRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for checkInTournamentParticipants without sending the request
+     */
+    async checkInTournamentParticipantsRequestOpts(requestParameters: CheckInTournamentParticipantsRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tournament'] == null) {
+            throw new runtime.RequiredError(
+                'tournament',
+                'Required parameter "tournament" was null or undefined when calling checkInTournamentParticipants().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/tournaments/{tournament}/participants/check-in`;
+        urlPath = urlPath.replace('{tournament}', encodeURIComponent(String(requestParameters['tournament'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Check in every Participant that plays on, as an Organizer  Only in a Tournament that takes check-in, until it is over. Where a deck is required, Accounts without a Registered deck are left out and named in the answer; Guests are checked in all the same.
+     * Check in every Participant that plays on, as an Organizer
+     */
+    async checkInTournamentParticipantsRaw(requestParameters: CheckInTournamentParticipantsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CheckInTournamentParticipants200Response>> {
+        const requestOptions = await this.checkInTournamentParticipantsRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Check in every Participant that plays on, as an Organizer  Only in a Tournament that takes check-in, until it is over. Where a deck is required, Accounts without a Registered deck are left out and named in the answer; Guests are checked in all the same.
+     * Check in every Participant that plays on, as an Organizer
+     */
+    async checkInTournamentParticipants(requestParameters: CheckInTournamentParticipantsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CheckInTournamentParticipants200Response> {
+        const response = await this.checkInTournamentParticipantsRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -11272,6 +11344,64 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async setTournamentMatchResult(requestParameters: SetTournamentMatchResultRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FormErrorResponseForSetResultErrors> {
         const response = await this.setTournamentMatchResultRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for setTournamentParticipantCheckedIn without sending the request
+     */
+    async setTournamentParticipantCheckedInRequestOpts(requestParameters: SetTournamentParticipantCheckedInRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tournament'] == null) {
+            throw new runtime.RequiredError(
+                'tournament',
+                'Required parameter "tournament" was null or undefined when calling setTournamentParticipantCheckedIn().'
+            );
+        }
+
+        if (requestParameters['participant'] == null) {
+            throw new runtime.RequiredError(
+                'participant',
+                'Required parameter "participant" was null or undefined when calling setTournamentParticipantCheckedIn().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/tournaments/{tournament}/participants/{participant}/checked-in`;
+        urlPath = urlPath.replace('{tournament}', encodeURIComponent(String(requestParameters['tournament'])));
+        urlPath = urlPath.replace('{participant}', encodeURIComponent(String(requestParameters['participant'])));
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['SetCheckedInRequest'],
+        };
+    }
+
+    /**
+     * Check a Participant in or out, as an Organizer  Only in a Tournament that takes check-in, until it is over; once the first Round started, in only. Where a deck is required, an Account checks in only with a Registered deck, which keeps following its deck until the first Round starts. A Participant not checked in is left out of the pairing; changing the flag discards a previewed Round.
+     * Check a Participant in or out, as an Organizer
+     */
+    async setTournamentParticipantCheckedInRaw(requestParameters: SetTournamentParticipantCheckedInRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FormErrorResponseForSetCheckedInErrors>> {
+        const requestOptions = await this.setTournamentParticipantCheckedInRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Check a Participant in or out, as an Organizer  Only in a Tournament that takes check-in, until it is over; once the first Round started, in only. Where a deck is required, an Account checks in only with a Registered deck, which keeps following its deck until the first Round starts. A Participant not checked in is left out of the pairing; changing the flag discards a previewed Round.
+     * Check a Participant in or out, as an Organizer
+     */
+    async setTournamentParticipantCheckedIn(requestParameters: SetTournamentParticipantCheckedInRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FormErrorResponseForSetCheckedInErrors> {
+        const response = await this.setTournamentParticipantCheckedInRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

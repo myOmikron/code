@@ -20,6 +20,7 @@ mod rename;
 mod statistics;
 mod syncs;
 mod tournament_afterwards;
+mod tournament_check_in;
 mod tournament_decks;
 mod tournament_drops;
 mod tournament_fees;

@@ -29,6 +29,7 @@ use crate::models::scanner_session::ScannerSessionEntryInsert;
 use crate::models::scanner_session::ScannerSessionInsert;
 use crate::models::statistics::StatisticsSnapshot;
 use crate::models::tournament::Tournament;
+use crate::models::tournament::settings::CheckIn;
 use crate::models::tournament::settings::TournamentSettings;
 use crate::models::visibility::Visibility;
 use crate::tests::harness::App;
@@ -130,6 +131,7 @@ async fn create_tournament(tx: &mut Transaction, owner: AccountUuid) -> Tourname
             top_cut_best_of: None,
             entered_afterwards: false,
             entry_fee: None,
+            check_in: CheckIn::Off,
         },
     )
     .await

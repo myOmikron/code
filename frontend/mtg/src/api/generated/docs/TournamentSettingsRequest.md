@@ -8,6 +8,7 @@ Every setting of a Tournament, to create one or to replace its settings
 Name | Type
 ------------ | -------------
 `best_of` | [BestOf](BestOf.md)
+`check_in` | [CheckIn](CheckIn.md)
 `description` | string
 `entered_afterwards` | boolean
 `entry_fee` | [EntryFeeSchema](EntryFeeSchema.md)

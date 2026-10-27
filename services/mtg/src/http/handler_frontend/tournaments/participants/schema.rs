@@ -26,14 +26,29 @@ pub struct ParticipantResponse {
     /// Only Organizers learn it, `null` for every other reader. Always
     /// `false` while the Tournament has no entry fee.
     pub unpaid: Option<bool>,
+    /// Whether it is checked in, which it has to be before it is paired
+    ///
+    /// Only Organizers and the Participant itself learn it, `null` for every
+    /// other reader. Always `true` while the Tournament takes no check-in.
+    pub checked_in: Option<bool>,
 }
 
 impl ParticipantResponse {
-    /// The Participant as its Tournament's Organizers see it, with the paid flag
+    /// The Participant as its Tournament's Organizers see it, with the paid
+    /// and check-in flags
     pub fn for_organizers(value: Participant) -> Self {
         let unpaid = value.unpaid;
         Self {
             unpaid: Some(unpaid),
+            ..Self::for_itself(value)
+        }
+    }
+
+    /// The Participant as it sees itself, with its check-in flag
+    pub fn for_itself(value: Participant) -> Self {
+        let checked_in = !value.awaits_check_in;
+        Self {
+            checked_in: Some(checked_in),
             ..Self::from(value)
         }
     }
@@ -52,6 +67,7 @@ impl From<Participant> for ParticipantResponse {
             late_from_round: value.late_from_round,
             dropped_after_round: value.dropped_after_round,
             unpaid: None,
+            checked_in: None,
         }
     }
 }
@@ -135,6 +151,42 @@ pub struct SetPaidRequest {
 pub struct SetPaidErrors {
     /// The Tournament has no entry fee, so nobody is unpaid
     pub no_entry_fee: bool,
+    /// The Tournament is Finished or Cancelled
+    pub tournament_over: bool,
+}
+
+/// Whether a Participant is checked in
+#[derive(Debug, Clone, Deserialize, JsonSchema)]
+pub struct SetCheckedInRequest {
+    /// `true` to check it in, `false` to take that back before the first Round
+    pub checked_in: bool,
+}
+
+/// Why a Participant could not be checked in or out
+#[derive(Debug, Clone, Default, Serialize, JsonSchema)]
+pub struct SetCheckedInErrors {
+    /// The Tournament takes no check-in
+    pub no_check_in: bool,
+    /// The Tournament is Finished or Cancelled
+    pub tournament_over: bool,
+    /// The first Round started, so a Participant is no longer checked out
+    pub round_started: bool,
+    /// The Tournament takes check-in with a deck and the Account has no Registered deck
+    pub no_registered_deck: bool,
+}
+
+/// What checking everybody in did
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct CheckInEveryoneResponse {
+    /// The Accounts left out for want of a Registered deck
+    pub no_registered_deck: Vec<ParticipantUuid>,
+}
+
+/// Why nobody could be checked in
+#[derive(Debug, Clone, Default, Serialize, JsonSchema)]
+pub struct CheckInEveryoneErrors {
+    /// The Tournament takes no check-in
+    pub no_check_in: bool,
     /// The Tournament is Finished or Cancelled
     pub tournament_over: bool,
 }

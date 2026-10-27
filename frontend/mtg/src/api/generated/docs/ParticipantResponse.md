@@ -7,6 +7,7 @@ One Participant of a Tournament
 
 Name | Type
 ------------ | -------------
+`checked_in` | boolean
 `dropped_after_round` | number
 `guest` | boolean
 `late_from_round` | number

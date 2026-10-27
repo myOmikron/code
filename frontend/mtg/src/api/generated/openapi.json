@@ -13337,6 +13337,160 @@
                 }
             }
         },
+        "/api/frontend/v1/tournaments/{tournament}/participants/{participant}/checked-in": {
+            "put": {
+                "summary": "Check a Participant in or out, as an Organizer",
+                "description": "Check a Participant in or out, as an Organizer\n\nOnly in a Tournament that takes check-in, until it is over; once the first\nRound started, in only. Where a deck is required, an Account checks in\nonly with a Registered deck, which keeps following its deck until the\nfirst Round starts. A Participant not checked in is left out of the\npairing; changing the flag discards a previewed Round.",
+                "operationId": "set_tournament_participant_checked_in",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tournament",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/TournamentUuid"
+                        },
+                        "style": "simple"
+                    },
+                    {
+                        "in": "path",
+                        "name": "participant",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/ParticipantUuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SetCheckedInRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "nullable": true
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/FormErrorResponse_for_SetCheckedInErrors"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/tournaments/{tournament}/participants/check-in": {
+            "post": {
+                "summary": "Check in every Participant that plays on, as an Organizer",
+                "description": "Check in every Participant that plays on, as an Organizer\n\nOnly in a Tournament that takes check-in, until it is over. Where a deck\nis required, Accounts without a Registered deck are left out and named\nin the answer; Guests are checked in all the same.",
+                "operationId": "check_in_tournament_participants",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tournament",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of a [`Tournament`]",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "$ref": "#/components/schemas/CheckInEveryoneResponse"
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/FormErrorResponse_for_CheckInEveryoneErrors"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/frontend/v1/tournaments/{tournament}/rounds/{number}": {
             "delete": {
                 "summary": "Throw a previewed Round away, as an Organizer, to pair it again",
@@ -16815,6 +16969,66 @@
                     }
                 ]
             },
+            "CheckIn": {
+                "description": "Whether a Tournament's Participants check in before they are paired\n\nOrganizers check them in at the desk. A Participant that has to and did not is left out of the pairing, like an unpaid one.",
+                "oneOf": [
+                    {
+                        "description": "Nobody checks in",
+                        "type": "string",
+                        "enum": [
+                            "Off"
+                        ]
+                    },
+                    {
+                        "description": "Every Participant checks in",
+                        "type": "string",
+                        "enum": [
+                            "Required"
+                        ]
+                    },
+                    {
+                        "description": "Every Participant checks in, an Account only with a Registered deck\n\nGuests have no Registered deck; Organizers check them in anyway.",
+                        "type": "string",
+                        "enum": [
+                            "RequiredWithDeck"
+                        ]
+                    }
+                ]
+            },
+            "CheckInEveryoneErrors": {
+                "description": "Why nobody could be checked in",
+                "type": "object",
+                "properties": {
+                    "no_check_in": {
+                        "description": "The Tournament takes no check-in",
+                        "type": "boolean"
+                    },
+                    "tournament_over": {
+                        "description": "The Tournament is Finished or Cancelled",
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "no_check_in",
+                    "tournament_over"
+                ]
+            },
+            "CheckInEveryoneResponse": {
+                "description": "What checking everybody in did",
+                "type": "object",
+                "properties": {
+                    "no_registered_deck": {
+                        "description": "The Accounts left out for want of a Registered deck",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ParticipantUuid"
+                        }
+                    }
+                },
+                "required": [
+                    "no_registered_deck"
+                ]
+            },
             "ChooseUsernameErrors": {
                 "description": "Why the username step was refused",
                 "type": "object",
@@ -19993,6 +20207,32 @@
                     "result"
                 ]
             },
+            "FormErrorResponse_for_CheckInEveryoneErrors": {
+                "description": "The response that is sent in a case of an error the caller should present his user",
+                "type": "object",
+                "properties": {
+                    "error": {
+                        "description": "The actual error struct",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CheckInEveryoneErrors"
+                            }
+                        ]
+                    },
+                    "result": {
+                        "description": "A constant `\"Err\"` used to differentiate this schema from any other \"Ok\" schema",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ErrorConstant"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "error",
+                    "result"
+                ]
+            },
             "FormErrorResponse_for_ChooseUsernameErrors": {
                 "description": "The response that is sent in a case of an error the caller should present his user",
                 "type": "object",
@@ -20418,6 +20658,32 @@
                         "allOf": [
                             {
                                 "$ref": "#/components/schemas/SendBugReportErrors"
+                            }
+                        ]
+                    },
+                    "result": {
+                        "description": "A constant `\"Err\"` used to differentiate this schema from any other \"Ok\" schema",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ErrorConstant"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "error",
+                    "result"
+                ]
+            },
+            "FormErrorResponse_for_SetCheckedInErrors": {
+                "description": "The response that is sent in a case of an error the caller should present his user",
+                "type": "object",
+                "properties": {
+                    "error": {
+                        "description": "The actual error struct",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SetCheckedInErrors"
                             }
                         ]
                     },
@@ -22745,6 +23011,11 @@
                 "description": "One Participant of a Tournament",
                 "type": "object",
                 "properties": {
+                    "checked_in": {
+                        "nullable": true,
+                        "description": "Whether it is checked in, which it has to be before it is paired\n\nOnly Organizers and the Participant itself learn it, `null` for every other reader. Always `true` while the Tournament takes no check-in.",
+                        "type": "boolean"
+                    },
                     "dropped_after_round": {
                         "nullable": true,
                         "description": "The last Round started before it Dropped, `null` while it plays on",
@@ -25013,6 +25284,47 @@
                     "value_cents"
                 ]
             },
+            "SetCheckedInErrors": {
+                "description": "Why a Participant could not be checked in or out",
+                "type": "object",
+                "properties": {
+                    "no_check_in": {
+                        "description": "The Tournament takes no check-in",
+                        "type": "boolean"
+                    },
+                    "no_registered_deck": {
+                        "description": "The Tournament takes check-in with a deck and the Account has no Registered deck",
+                        "type": "boolean"
+                    },
+                    "round_started": {
+                        "description": "The first Round started, so a Participant is no longer checked out",
+                        "type": "boolean"
+                    },
+                    "tournament_over": {
+                        "description": "The Tournament is Finished or Cancelled",
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "no_check_in",
+                    "no_registered_deck",
+                    "round_started",
+                    "tournament_over"
+                ]
+            },
+            "SetCheckedInRequest": {
+                "description": "Whether a Participant is checked in",
+                "type": "object",
+                "properties": {
+                    "checked_in": {
+                        "description": "`true` to check it in, `false` to take that back before the first Round",
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "checked_in"
+                ]
+            },
             "SetCollectionVisibilityRequest": {
                 "description": "Request to change who may see a collection",
                 "type": "object",
@@ -26867,6 +27179,14 @@
                             }
                         ]
                     },
+                    "check_in": {
+                        "description": "Whether Participants check in before they are paired",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CheckIn"
+                            }
+                        ]
+                    },
                     "description": {
                         "nullable": true,
                         "description": "What Participants should know beforehand",
@@ -27020,6 +27340,7 @@
                     }
                 },
                 "required": [
+                    "check_in",
                     "entered_afterwards",
                     "name",
                     "ruleset",
@@ -27052,7 +27373,7 @@
                         "type": "boolean"
                     },
                     "rules_locked": {
-                        "description": "Table size, Ruleset, best-of or entering afterwards changed, or an entry fee was taken up or dropped, after the first Round started",
+                        "description": "Table size, Ruleset, best-of, entering afterwards or the check-in rule changed, or an entry fee was taken up or dropped, after the first Round started",
                         "type": "boolean"
                     },
                     "ruleset_mismatch": {
@@ -27114,6 +27435,15 @@
                         "allOf": [
                             {
                                 "$ref": "#/components/schemas/BestOf"
+                            }
+                        ]
+                    },
+                    "check_in": {
+                        "description": "Whether Participants check in before they are paired, `Off` when left out\n\nWith `RequiredWithDeck` an Account checks in only with a Registered deck. Changing it is refused after the first Round started.",
+                        "default": "Off",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CheckIn"
                             }
                         ]
                     },

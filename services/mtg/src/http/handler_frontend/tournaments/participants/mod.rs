@@ -1,5 +1,5 @@
-//! The Participants of a Tournament: Organizers add, remove and Drop them,
-//! Accounts sign up and Drop
+//! The Participants of a Tournament: Organizers add, remove, check in and Drop
+//! them, Accounts sign up and Drop
 //!
 //! Grouped by who may call a route, like [`super`]; [`super::initialize_routes`]
 //! merges each group into its own and wraps it in the group's checks.
@@ -34,4 +34,6 @@ pub fn organizer_routes() -> GalvynRouter {
         .handler(handler::remove_tournament_participant)
         .handler(handler::drop_tournament_participant)
         .handler(handler::set_tournament_participant_paid)
+        .handler(handler::set_tournament_participant_checked_in)
+        .handler(handler::check_in_tournament_participants)
 }

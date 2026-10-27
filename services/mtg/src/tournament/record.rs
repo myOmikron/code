@@ -39,7 +39,7 @@ pub struct Entrant {
     /// Whether the next Round pairs it
     ///
     /// A Participant stays in the standings either way; only the caller
-    /// knows why it sits out (a Drop, unpaid), the engine does not.
+    /// knows why it sits out (a Drop, unpaid, not checked in), the engine does not.
     pub pairable: bool,
 }
 

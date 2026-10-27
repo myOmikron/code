@@ -13,6 +13,7 @@ use crate::models::tournament::access::OrganizerRole;
 use crate::models::tournament::listing::ListedTournament;
 use crate::models::tournament::listing::OverviewFilter;
 use crate::models::tournament::listing::Timeframe;
+use crate::models::tournament::settings::CheckIn;
 use crate::models::tournament::settings::EntryFee;
 use crate::models::tournament::settings::RawTournamentSettings;
 use crate::models::tournament::settings::SettingsRefusal;
@@ -63,6 +64,12 @@ pub struct TournamentSettingsRequest {
     /// after the first Round started; amount and currency stay editable.
     #[serde(default)]
     pub entry_fee: Option<EntryFeeSchema>,
+    /// Whether Participants check in before they are paired, `Off` when left out
+    ///
+    /// With `RequiredWithDeck` an Account checks in only with a Registered
+    /// deck. Changing it is refused after the first Round started.
+    #[serde(default)]
+    pub check_in: CheckIn,
 }
 
 /// What playing in a Tournament costs
@@ -111,6 +118,7 @@ impl From<TournamentSettingsRequest> for RawTournamentSettings {
             top_cut_best_of: value.top_cut_best_of,
             entered_afterwards: value.entered_afterwards,
             entry_fee: value.entry_fee.map(EntryFee::from),
+            check_in: value.check_in,
         }
     }
 }
@@ -136,8 +144,8 @@ pub struct TournamentSettingsErrors {
     pub unknown_currency: bool,
     /// The round timer is below a minute or above 240
     pub round_minutes_out_of_range: bool,
-    /// Table size, Ruleset, best-of or entering afterwards changed, or an entry
-    /// fee was taken up or dropped, after the first Round started
+    /// Table size, Ruleset, best-of, entering afterwards or the check-in rule
+    /// changed, or an entry fee was taken up or dropped, after the first Round started
     pub rules_locked: bool,
     /// The Top cut is not played at the Table size
     pub top_cut_mismatch: bool,
@@ -207,6 +215,8 @@ pub struct TournamentResponse {
     pub entered_afterwards: bool,
     /// What playing costs, `null` for nothing
     pub entry_fee: Option<EntryFeeSchema>,
+    /// Whether Participants check in before they are paired
+    pub check_in: CheckIn,
     /// Its Owner's username, `null` while the Tombstone holds it
     pub owner: Option<String>,
     /// The part the reader plays in running it, `null` for none
@@ -243,6 +253,7 @@ impl TournamentResponse {
             top_cut_best_of: tournament.top_cut_best_of,
             entered_afterwards: tournament.entered_afterwards,
             entry_fee: tournament.entry_fee.map(EntryFeeSchema::from),
+            check_in: tournament.check_in,
             owner: owner.map(|owner| owner.as_str().to_string()),
             organizer_role,
             share_token: organizer_role.and(tournament.share_token),
