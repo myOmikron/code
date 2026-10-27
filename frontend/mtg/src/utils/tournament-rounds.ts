@@ -1,5 +1,5 @@
 import { BestOf, Tiebreaker } from "src/api/generated";
-import type { ResultResponse, SetResultRequest } from "src/api/generated";
+import type { ResultResponse, RoundErrors, SetResultRequest } from "src/api/generated";
 
 /**
  * A game score as players say it: "2-1", with drawn games as a third number ("1-1-1")
@@ -108,4 +108,24 @@ export function resultErrorKey(error: Record<string, boolean>) {
         ["dropped_winner", "error.dropped-winner"],
     ] as const;
     return reasons.find(([flag]) => error[flag])?.[1] ?? "error.invalid-score";
+}
+
+/**
+ * Explains Round refusals consistently in every Round action and the round timer controls.
+ *
+ * @param error service refusal flags
+ * @returns the existing Tournament translation key
+ */
+export function roundErrorKey(error: RoundErrors) {
+    const reasons = [
+        ["results_disputed", "error.results-disputed"],
+        ["results_missing", "error.results-missing"],
+        ["later_round_started", "error.later-round-started"],
+        ["too_few_participants", "error.too-few-participants"],
+        ["all_rounds_paired", "error.all-rounds-paired"],
+        ["tournament_over", "error.tournament-over"],
+        ["not_running", "error.round-not-running"],
+        ["no_timer", "error.no-round-timer"],
+    ] as const;
+    return reasons.find(([flag]) => error[flag])?.[1] ?? "error.round-changed";
 }

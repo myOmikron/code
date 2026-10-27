@@ -203,6 +203,7 @@
         "invalid-layout": "Every player must sit exactly once, at a table of the right size.",
         "invalid-score": "This score does not fit the match format.",
         "later-round-started": "A later round has already started.",
+        "no-round-timer": "This round runs without a round timer.",
         "no-entry-fee": "The Tournament has no entry fee.",
         "not-their-deck": "This deck does not belong to the player's account.",
         "participant-already": "This account already plays.",

@@ -3,7 +3,7 @@ import { ResponseError } from "src/api/generated";
 import { MatchLifeRecording } from "src/utils/match-life-recording";
 import type { OfflineMatchContext } from "src/utils/match-life-recording";
 import { isMatchTransportFailure, readOfflineMatchScope, setOfflineMatchAccount } from "src/utils/offline-match-scope";
-import { clockSkew } from "src/utils/round-clock";
+import { clockSkew } from "src/utils/round-timer";
 
 /**
  * Loads authorized Match context, falling back to this Account's recording only after transport failure.
