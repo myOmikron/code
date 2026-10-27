@@ -21,11 +21,12 @@ export const Route = createFileRoute("/_menu/tournaments/$tournamentUuid/_tourna
                 Api.tournaments.participants.list(params.tournamentUuid),
                 strings,
             ]);
-            return { tournament, me: participants.me ?? null };
+            const mine = participants.participants.find((participant) => participant.uuid === participants.me);
+            return { tournament, me: participants.me ?? null, checkedIn: mine?.checked_in ?? null };
         } catch (error) {
             if (isNotPublic(error)) {
                 await strings;
-                return { tournament: null, me: null };
+                return { tournament: null, me: null, checkedIn: null };
             }
             throw error;
         }

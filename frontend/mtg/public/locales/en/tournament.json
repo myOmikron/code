@@ -13,7 +13,10 @@
         "table-up": "Move table {{table}} up",
         "timer": "{{time}} left",
         "timer-five-minutes": "Five minutes left",
-        "timer-one-minute": "One minute left"
+        "timer-one-minute": "One minute left",
+        "check-in": "Check {{name}} in",
+        "check-out": "Undo {{name}}'s check-in",
+        "check-in-needs-deck": "{{name}} needs a deck to check in"
     },
     "button": {
         "accept-handover": "Take over",
@@ -68,7 +71,10 @@
         "life-view-local-branch": "View this device’s changes",
         "life-view-recovered": "Recovered histories",
         "life-confirm-takeover": "Take over saved state",
-        "life-close-devices": "Back to counter"
+        "life-close-devices": "Back to counter",
+        "check-in": "Check in",
+        "check-out": "Undo check-in",
+        "check-in-everyone": "Check everyone in"
     },
     "description": {
         "add-account": "With an account, by its exact username: the results belong to that account.",
@@ -180,7 +186,12 @@
         "life-branch-independent": "This history is separate from active recording. It changes neither the active device’s totals nor the Tournament Result.",
         "life-takeover-changed": "The saved state changed. Review it again before confirming takeover.",
         "life-history-tab-lock-unavailable": "This browser cannot safely coordinate recording tabs. You can view saved history and still report Results.",
-        "create-tournament": "Set up a tournament in three steps. Everything can still be changed until the first round starts."
+        "create-tournament": "Set up a tournament in three steps. Everything can still be changed until the first round starts.",
+        "check-in": "Only checked-in players are paired.",
+        "everybody-checked-in": "Every participant is checked in.",
+        "not-checked-in-count_one": "{{count}} participant is not checked in yet.",
+        "not-checked-in-count_other": "{{count}} participants are not checked in yet.",
+        "check-in-needs-deck": "You need a registered deck to check in."
     },
     "error": {
         "all-rounds-paired": "Every Swiss round has been paired.",
@@ -238,7 +249,11 @@
         "life-history-invalid": "This history cannot be saved. It may be too large or contain an unsupported change. Locally recorded games remain on this device.",
         "life-history-storage": "Browser storage is unavailable. New changes exist only in this open window. Free some space and try again.",
         "life-history-auth": "Sign in again with the Account that recorded this Match. Local changes remain retained.",
-        "life-handover-network": "The saved state could not be confirmed. Check the connection and retry."
+        "life-handover-network": "The saved state could not be confirmed. Check the connection and retry.",
+        "no-check-in": "This tournament has no check-in.",
+        "check-in-needs-deck": "No check-in without a registered deck.",
+        "check-out-started": "Check-in can no longer be undone once the first round started.",
+        "check-in-deck-for-limited": "Draft and Sealed have no check-in with deck."
     },
     "heading": {
         "add-participants": "Add players",
@@ -432,7 +447,14 @@
         "life-history-pending": "Saved on this device, upload pending",
         "life-last-upload": "Last saved: {{time}}",
         "life-no-upload": "No history uploaded yet",
-        "life-history-other-tab": "This Match is being recorded in another tab. Close that tab to continue recording here."
+        "life-history-other-tab": "This Match is being recorded in another tab. Close that tab to continue recording here.",
+        "check-in": "Check-in",
+        "check-in-off": "No check-in",
+        "check-in-required": "Check-in at the venue",
+        "check-in-required-with-deck": "Check-in with deck",
+        "checked-in": "Checked in",
+        "not-checked-in": "Not checked in",
+        "check-in-needs-deck": "Deck missing"
     },
     "toast": {
         "co-organizer-added": "{{username}} is now a co-organizer",
@@ -461,6 +483,8 @@
         "tournament-cancelled": "Tournament cancelled",
         "tournament-created": "Tournament created",
         "tournament-deleted": "Tournament deleted",
-        "tournament-saved": "Tournament saved"
+        "tournament-saved": "Tournament saved",
+        "checked-in-everyone": "Everyone checked in",
+        "check-in-skipped": "Not checked in, no deck: {{names}}"
     }
 }

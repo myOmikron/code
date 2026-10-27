@@ -21,7 +21,7 @@ export const Route = createFileRoute("/_menu/tournaments/$tournamentUuid/_tourna
  * @returns the details
  */
 function RouteComponent() {
-    const { tournament, me } = frame.useLoaderData();
+    const { tournament, me, checkedIn } = frame.useLoaderData();
     const [t] = useTranslation("tournament");
     const [organizing, setOrganizing] = useState(false);
     if (tournament === null) return null;
@@ -33,7 +33,7 @@ function RouteComponent() {
                 </Button>
             )}
             {me !== null && !organizing && <TournamentMyMatch key={tournament.uuid} tournament={tournament} />}
-            {me !== null && !organizing && <MyTournamentDeck tournament={tournament} />}
+            {me !== null && !organizing && <MyTournamentDeck tournament={tournament} checkedIn={checkedIn} />}
             {me !== null && !organizing && <TournamentPushActivation />}
             {organizing && (
                 <div className={"flex flex-col gap-3"}>

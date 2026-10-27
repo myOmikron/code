@@ -611,6 +611,16 @@ export const Api = {
                 handleError(
                     defaultApi.setTournamentParticipantPaid({ tournament, participant, SetPaidRequest: { paid } }),
                 ),
+            setCheckedIn: async (tournament: UUID, participant: UUID, checkedIn: boolean) =>
+                handleError(
+                    defaultApi.setTournamentParticipantCheckedIn({
+                        tournament,
+                        participant,
+                        SetCheckedInRequest: { checked_in: checkedIn },
+                    }),
+                ),
+            checkInEveryone: async (tournament: UUID) =>
+                handleError(defaultApi.checkInTournamentParticipants({ tournament })),
         },
         decks: {
             mine: async (tournament: UUID) => handleError(defaultApi.getMyTournamentDeck({ tournament })),

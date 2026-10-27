@@ -1,5 +1,9 @@
 {
     "label": {
+        "check-in": "Check-in",
+        "check-in-off": "No check-in",
+        "check-in-required": "Check-in at the venue",
+        "check-in-required-with-deck": "Check-in with deck",
         "description": "Description",
         "entered-afterwards": "Enter afterwards",
         "entry-fee": "Entry fee",
@@ -19,6 +23,7 @@
         "visibility-unlisted": "By link"
     },
     "description": {
+        "check-in": "Only checked-in players are paired.",
         "description": "What players should know beforehand, e.g. prizes or house rules.",
         "entered-afterwards": "For a tournament already played on paper: the date may lie in the past, organizers enter every pairing and result themselves, players report nothing.",
         "entry-fee": "Leave empty if taking part is free. With an entry fee, only Participants an Organizer marked paid are paired.",
@@ -33,6 +38,7 @@
     },
     "error": {
         "best-of-mismatch": "Best of applies to two players at a table only, and there it must be chosen.",
+        "check-in-deck-for-limited": "Draft and Sealed have no check-in with deck.",
         "entry-fee-invalid": "Enter an amount above zero, e.g. 5 or 5.50.",
         "participant-limit-too-small": "A tournament needs at least 2 players.",
         "round-minutes-out-of-range": "The round timer runs from 1 to 240 minutes.",
