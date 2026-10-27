@@ -15,8 +15,7 @@ Name | Type
 `curve` | [Array&lt;CurvePoint&gt;](CurvePoint.md)
 `type_overrides` | [Array&lt;TypeRange&gt;](TypeRange.md)
 `focus` | string
-`pinned_themes` | Array&lt;string&gt;
-`excluded_themes` | Array&lt;string&gt;
+`theme_targets` | { [key: string]: number | undefined; }
 `limit` | number
 `per_add` | number
 `max_price` | number

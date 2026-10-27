@@ -1,101 +1,126 @@
 /**
- * How much of a theme reading the deck actually supports.
+ * Which of the deck's detected themes deserve the word.
  *
  * The service's theme profile is a *distribution*: it divides every theme by
  * the grand total of all of them, so a deck in which seven cards read as
- * anything at all still comes back as "Vehicles, 34%". Drawn as a radar
- * normalised against its own strongest lobe, that becomes "this deck is
- * Vehicles" in a shape nobody can argue with — off seven cards, on a real
- * list whose nineteen reanimator cards sat second.
- *
- * So nothing here reads a share as an amount. The cards behind a theme are
- * the amount, the share only orders ties, and how much deck is behind the
- * strongest theme decides whether there is a reading to draw at all.
+ * anything at all still comes back as "Vehicles, 34%", and two cards that
+ * happen to put counters on things come back as a "+1/+1 counters" theme. A
+ * theme is a claim about what the deck is doing, and two cards do not make
+ * one. So nothing here reads a share as an amount: the cards behind a theme
+ * are the amount, and a theme is listed only once enough of the deck is
+ * behind it — or once the reader has said how much of it they want, which
+ * is the one thing that can put an unbuilt theme on the list.
  */
 
 import { Diagnostics } from "src/api/graph-generated";
+import { ThemePrefs } from "src/utils/deck-theme-prefs";
 
-/** One axis of a deck's theme profile */
-export type ThemeAxis = {
+/** One theme, as the panel lists it */
+export type ThemeRow = {
     /** The theme id */
     id: string;
     /** What the theme is called, as the service labelled it */
     label: string;
     /** How many cards in the deck read as it */
     cards: number;
-    /** Its share of the deck's theme signal, for ordering and for the tooltip */
-    share: number;
+    /** Whether enough of the deck is behind it to call it a theme on its own */
+    confident: boolean;
 };
 
-/** How confident the reading is, and what it rests on */
-export type ThemeRead = {
-    /**
-     * `clear` when enough of the deck reads as its strongest theme to draw
-     * one, `weak` when a shape exists but rests on few cards, `none` when
-     * there is nothing here worth calling an identity.
-     */
-    level: "clear" | "weak" | "none";
-    /** The themes worth naming, strongest first */
-    axes: Array<ThemeAxis>;
+/** What the deck's theme profile supports, split into what is said and what is not */
+export type ThemeListing = {
+    /** The themes worth a row: confident ones, plus any the reader set a level for */
+    listed: Array<ThemeRow>;
+    /** Themes a few cards brush past — named in a footnote, never as a row */
+    faint: Array<ThemeRow>;
     /** How many cards read as any theme at all */
     themed: number;
     /** The non-land cards those are counted out of */
     spells: number;
-    /**
-     * Whether there are enough axes to draw a shape rather than list rows.
-     * Three is the floor: two axes is a line wearing a costume.
-     */
-    shape: boolean;
 };
 
-/** How many axes the theme radar draws at most */
-const AXIS_LIMIT = 6;
-
-/** Below this a theme is one or two cards brushing past, not a strand of the deck */
-const MIN_CARDS = 3;
-
 /**
- * How many cards must read as the strongest theme before a deck is called
- * that theme.
+ * The fewest cards a theme needs before it is listed.
  *
- * Ten, from the dev decks: a built Elf list puts 51 cards behind its typal
- * read and a tokens list 47, while a good but unfocused list's top theme sat
- * at 19 — all of them decks whose owner would name the strategy. The list
- * that read as "Vehicles" off 7 is the one this number exists to catch.
+ * Six: the panel used to offer a chip at two cards and draw a radar axis at
+ * three, and "+1/+1 counters" off two cards was the most common complaint
+ * about it. Six is a real strand of a deck — a fifth of the way to the
+ * count the detector was calibrated as a clear read on.
  */
-const CLEAR_CARDS = 10;
-
-/** A radar needs three axes; two is a line wearing a costume */
-const MIN_AXES = 3;
+export const THEME_LIST_MIN_CARDS = 6;
 
 /**
- * What the deck's theme profile actually supports.
+ * The smallest share of the non-land cards a listed theme must hold.
+ *
+ * A second floor beside the card count, for decks that run more spells than
+ * a Commander deck: six cards of two hundred is not a theme either.
+ */
+export const THEME_LIST_MIN_SHARE = 0.1;
+
+/** Below this a theme is not even a footnote */
+const FAINT_MIN_CARDS = 2;
+
+/**
+ * How many cards a theme needs to be listed in a deck of this many spells
+ *
+ * @param spells the deck's non-land count
+ *
+ * @returns the floor, in cards
+ */
+export function themeListFloor(spells: number): number {
+    return Math.max(THEME_LIST_MIN_CARDS, Math.ceil(THEME_LIST_MIN_SHARE * Math.max(0, spells)));
+}
+
+/**
+ * Which themes the panel lists, and which it only footnotes.
  *
  * Ordered by *cards*, not by share: the share carries the commander anchor,
  * which is intent rather than content, and a commander is very good at
- * arguing for a theme the 99 has barely built. Both numbers ride along, so
- * the panel can say "19 cards" and still explain the ordering.
+ * arguing for a theme the 99 has barely built.
+ *
+ * A theme the reader set a level for is always listed, however few cards
+ * say so yet — on a half-built deck they are the only one who knows what it
+ * is for, and the row is the only control for the level. When the report no
+ * longer knows the theme at all, the row still exists at zero cards, named
+ * from `labels` where the caller knows a name and from the id otherwise.
+ *
+ * `cards` is optional on the wire — a report from a service older than the
+ * count reads as zero here, which keeps every theme out of the list rather
+ * than letting a confident shape be drawn from a number that is not there.
+ * The safe direction.
  *
  * @param report the diagnostics report
+ * @param prefs what the reader has said about the themes
+ * @param labels display names for themes the report does not carry, by id
  *
- * @returns the reading, and how much deck is behind it
+ * @returns the listing
  */
-export function themeRead(report: Diagnostics): ThemeRead {
+export function themeListing(report: Diagnostics, prefs: ThemePrefs, labels?: Record<string, string>): ThemeListing {
     const spells = Math.max(0, report.deck_size - report.lands);
     const themed = report.themed_cards ?? 0;
+    const floor = themeListFloor(spells);
+    const { levels } = prefs;
 
-    // `cards` is optional on the wire — a report from a service older than the
-    // count reads as zero here, which lands the whole panel on "no obvious
-    // theme" rather than on a confident shape drawn from a number that is not
-    // there. The safe direction.
-    const axes = (report.themes ?? [])
-        .map((theme) => ({ id: theme.theme, label: theme.label, cards: theme.cards ?? 0, share: theme.share }))
-        .filter((axis) => axis.cards >= MIN_CARDS)
-        .sort((left, right) => right.cards - left.cards || right.share - left.share)
-        .slice(0, AXIS_LIMIT);
+    const rows = (report.themes ?? []).map((theme) => ({
+        id: theme.theme,
+        label: theme.label,
+        cards: theme.cards ?? 0,
+        confident: (theme.cards ?? 0) >= floor,
+    }));
+    const known = new Set(rows.map((row) => row.id));
+    // Opinions the profile no longer supports, kept reachable: a theme that
+    // vanished from the report would otherwise be impossible to reset,
+    // because the row is the only control for it.
+    const orphaned = Object.keys(levels)
+        .filter((id) => !known.has(id))
+        .map((id) => ({ id, label: labels?.[id] ?? id.replace(/_/g, " "), cards: 0, confident: false }));
 
-    const top = axes[0]?.cards ?? 0;
-    const level = top >= CLEAR_CARDS ? "clear" : top >= MIN_CARDS ? "weak" : "none";
+    const byCards = (left: ThemeRow, right: ThemeRow) =>
+        right.cards - left.cards || left.label.localeCompare(right.label);
+    const listed = [...rows.filter((row) => row.confident || row.id in levels), ...orphaned].sort(byCards);
+    const faint = rows
+        .filter((row) => !row.confident && !(row.id in levels) && row.cards >= FAINT_MIN_CARDS)
+        .sort(byCards);
 
-    return { level, axes, themed, spells, shape: axes.length >= MIN_AXES };
+    return { listed, faint, themed, spells };
 }

@@ -1,8 +1,9 @@
-import { ArrowUturnLeftIcon } from "@heroicons/react/16/solid";
 import { useTranslation } from "react-i18next";
 import { TypeReport } from "src/api/graph-generated";
 import { DeckAdvisorCountCards } from "src/components/deck-advisor-count-cards";
 import { TargetCorridor } from "src/components/target-corridor";
+import { PANEL_GRID } from "src/components/deck-advisor-panel";
+import { RowResetLine } from "src/components/row-reset-line";
 import { CardArt } from "src/utils/deck-art";
 import { Corridor, MAX_CORRIDOR } from "src/utils/deck-targets";
 import { parseTypeSource, typeSourceLabel } from "src/utils/type-source";
@@ -81,7 +82,7 @@ export function DeckAdvisorTypes({ types, custom, onSet, onReset, art, source }:
     const sourceLabel = sourceInfo === null ? null : typeSourceLabel(sourceInfo);
 
     return (
-        <div className={"flex flex-col gap-4"}>
+        <div className={PANEL_GRID}>
             {types.map((report) => {
                 const preset = { low: report.default_low ?? report.low, high: report.default_high ?? report.high };
                 const edited = custom[report.type];
@@ -156,24 +157,11 @@ export function DeckAdvisorTypes({ types, custom, onSet, onReset, art, source }:
                             the way back where the corridor was moved, and
                             nothing at all where it would carry neither. */}
                         {(say || edited !== undefined) && (
-                            <div className={"-mt-0.5 flex h-5 items-center justify-between gap-3"}>
-                                <span className={"truncate text-xs/5 text-zinc-500 dark:text-zinc-400"}>
-                                    {say ? verdict : ""}
-                                </span>
-                                {edited !== undefined && (
-                                    <button
-                                        type={"button"}
-                                        onClick={() => onReset(report.type)}
-                                        aria-label={t("accessibility.quota-reset", { name: label })}
-                                        className={
-                                            "flex shrink-0 items-center gap-1 rounded-(--radius-pill) px-1.5 py-0.5 text-xs/5 text-zinc-400 opacity-0 transition group-hover:opacity-100 hover:bg-lime-400/15 hover:text-lime-700 focus-visible:opacity-100 dark:text-zinc-500 dark:hover:bg-lime-400/15 dark:hover:text-lime-300"
-                                        }
-                                    >
-                                        <ArrowUturnLeftIcon className={"size-3"} />
-                                        {t("button.reset-one")}
-                                    </button>
-                                )}
-                            </div>
+                            <RowResetLine
+                                verdict={say ? verdict : ""}
+                                onReset={edited !== undefined ? () => onReset(report.type) : undefined}
+                                resetLabel={t("accessibility.quota-reset", { name: label })}
+                            />
                         )}
                     </div>
                 );

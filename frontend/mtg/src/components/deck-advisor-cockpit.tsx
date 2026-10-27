@@ -1,19 +1,21 @@
 import { ArrowUturnLeftIcon } from "@heroicons/react/16/solid";
 import { Text } from "components";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ChartPanel } from "src/components/charts/chart-card";
 import type { Diagnostics } from "src/api/graph-generated";
 import type { Corridor, DeckTargets } from "src/utils/deck-targets";
-import { curveCounts, isDefault } from "src/utils/deck-targets";
+import { curveCounts, curveShort, isDefault } from "src/utils/deck-targets";
+import { COCKPIT_PANELS, CockpitPanel, DeckAdvisorCockpitTiles } from "src/components/deck-advisor-cockpit-tiles";
 import { DeckAdvisorCurve } from "src/components/deck-advisor-curve";
-import { DeckAdvisorPanelRail, RAIL_ITEM } from "src/components/deck-advisor-panel-rail";
+import { DeckAdvisorPanel } from "src/components/deck-advisor-panel";
 import { DeckAdvisorQuotas } from "src/components/deck-advisor-quotas";
 import { DeckAdvisorState } from "src/components/deck-advisor-state";
 import { DeckAdvisorThemes } from "src/components/deck-advisor-themes";
 import { DeckAdvisorTypes } from "src/components/deck-advisor-types";
 import { QuietButton } from "src/components/quiet-button";
 import type { CardArt } from "src/utils/deck-art";
-import type { ThemePrefs } from "src/utils/deck-theme-prefs";
+import type { ThemeLevel, ThemePrefs } from "src/utils/deck-theme-prefs";
+import { loadCockpitPanel, saveCockpitPanel } from "src/utils/cockpit-panel-storage";
 import type { GraphQuery } from "src/utils/use-graph-query";
 
 /**
@@ -44,10 +46,8 @@ export type DeckAdvisorCockpitProps = {
     eminence: boolean;
     /** What the advisor is told to favour and avoid */
     themePrefs: ThemePrefs;
-    /** Walks one theme to its next state */
-    onCycleTheme: (themeId: string) => void;
-    /** Records the themes the deck is played for */
-    onDefineThemes: (themes: Array<string>) => void;
+    /** Sets how much of one theme the deck should hold, or clears the opinion */
+    onSetThemeLevel: (themeId: string, level: ThemeLevel | null) => void;
     /** Display names for themes the deck no longer reads as, by id */
     themeLabels?: Record<string, string>;
     /** The deck's own artwork, for the cards behind each count */
@@ -57,23 +57,12 @@ export type DeckAdvisorCockpitProps = {
 /**
  * Refine-phase cockpit: the four shapes the advisor grades a finished deck on.
  *
- * Every number here is one the service actually uses, and the curve and the
- * corridors are draggable in place — a swap offered against a target is only
- * arguable if the target is on screen and can be argued with. They sit above
- * the exchanges for that reason.
+ * Four tiles and one open panel: the tiles carry every panel's state (a
+ * tinted tile has something to fix) and the open panel gets the whole width.
+ * The curve and corridors are draggable in place, since a swap argued against
+ * a target is only arguable while the target is on screen.
  *
- * Card types is the odd one out only in where its corridors come from:
- * measured off decks like this one rather than offered by a bracket. Dragging
- * the Land row moves the mana-source quota beside it, which is the point —
- * the panels are views of one decision.
- *
- * Themes is the fourth, and the only one that is not a target: it is what the
- * deck already reads as, and its chips steer what gets offered rather than
- * what gets graded. It is placed under the curve rather than beside the
- * corridors for the same reason — the first column is the deck describing
- * itself, the other two are the numbers it is held to.
- *
- * @returns the cockpit grid
+ * @returns the cockpit
  */
 export function DeckAdvisorCockpit({
     analysis,
@@ -88,23 +77,48 @@ export function DeckAdvisorCockpit({
     onResetTargets,
     eminence,
     themePrefs,
-    onCycleTheme,
-    onDefineThemes,
+    onSetThemeLevel,
     themeLabels,
     art,
 }: DeckAdvisorCockpitProps) {
     const [t] = useTranslation("advisor");
+    const [open, setOpen] = useState<CockpitPanel>(() => loadCockpitPanel() ?? "curve");
+
+    /**
+     * Opens one panel and remembers it for the next visit
+     *
+     * @param panel the panel to open
+     */
+    function select(panel: CockpitPanel) {
+        setOpen(panel);
+        saveCockpitPanel(panel);
+    }
+
+    const report = analysis.data;
+    const types = report?.types ?? [];
+    const available = new Set<CockpitPanel>(COCKPIT_PANELS.filter((panel) => panel !== "types" || types.length > 0));
+    // A panel the service did not report cannot stay open. Resolved at render
+    // rather than in an effect, so the fallback and the tile row agree on the
+    // same frame.
+    const selected = available.has(open) ? open : "curve";
 
     // The panels keep the last report through a refetch; only a cockpit that
     // has never had one says so, rather than leaving a silent gap above the
     // exchanges when the analysis is slow or the graph is down.
-    if (analysis.data === null) {
+    if (report === null) {
         return <DeckAdvisorState state={analysis.state} />;
     }
 
-    const report = analysis.data;
-    const types = report.types ?? [];
     const spells = Math.max(0, report.deck_size - report.lands);
+    const curveTargets = curveCounts(targets, spells);
+    // What each tile says with its tint, by the panels' own tests.
+    const issues = new Set<CockpitPanel>();
+    if (report.curve.some((bucket, index) => curveShort(bucket.count, curveTargets?.[index] ?? bucket.target))) {
+        issues.add("curve");
+    }
+    if (report.buckets.some((bucket) => bucket.status === "low")) issues.add("quotas");
+    if (types.some((type) => type.status === "low")) issues.add("types");
+
     // What the graph could not resolve plus what the catalog itself does not
     // know — either way the analysis is missing those cards and says so.
     const missing = (report.unresolved?.length ?? 0) + unknown;
@@ -127,48 +141,33 @@ export function DeckAdvisorCockpit({
                 </div>
             )}
 
-            {/* Panels rather than ChartCards: none of these is a recharts chart
-                at the top level, and ChartCard lays its child out in the 0x0
-                box recharts sizes charts through — which collapsed the curve
-                into nothing and spilled its axis over the swaps below.
+            <DeckAdvisorCockpitTiles selected={selected} issues={issues} available={available} onSelect={select} />
 
-                Started rather than stretched: the panels are four different
-                lengths, and a stretched curve is a small chart in a tall empty
-                box.
-
-                On a phone the same four panels are a rail instead — see
-                DeckAdvisorPanelRail for why, and for what every child has to
-                carry to be one of its stops. */}
-            <DeckAdvisorPanelRail
-                hintKey={"mtg.advisor.cockpit-rail-hint"}
-                label={t("accessibility.cockpit-panels")}
-                gridClassName={"sm:grid sm:items-start sm:gap-4 sm:grid-cols-2 lg:grid-cols-3"}
-            >
-                <ChartPanel
-                    className={RAIL_ITEM}
-                    title={t("heading.curve")}
+            {selected === "curve" && (
+                <DeckAdvisorPanel
                     hint={
                         eminence
                             ? `${t("description.curve-legend")} ${t("description.curve-eminence")}`
                             : t("description.curve-legend")
                     }
-                    minHeight={240}
                 >
-                    <DeckAdvisorCurve
-                        curve={report.curve}
-                        targets={curveCounts(targets, spells)}
-                        spells={spells}
-                        onSet={onSetCurve}
-                        onReset={onResetCurve}
-                    />
-                </ChartPanel>
+                    {/* Capped rather than stretched: seven columns across the
+                        whole page are seven slabs, and the chart reads no
+                        better for it. */}
+                    <div className={"sm:max-w-2xl"}>
+                        <DeckAdvisorCurve
+                            curve={report.curve}
+                            targets={curveTargets}
+                            spells={spells}
+                            onSet={onSetCurve}
+                            onReset={onResetCurve}
+                        />
+                    </div>
+                </DeckAdvisorPanel>
+            )}
 
-                <ChartPanel
-                    className={RAIL_ITEM}
-                    title={t("heading.quotas")}
-                    hint={t("description.quotas")}
-                    minHeight={240}
-                >
+            {selected === "quotas" && (
+                <DeckAdvisorPanel hint={t("description.quotas")}>
                     <DeckAdvisorQuotas
                         buckets={report.buckets}
                         custom={targets.buckets}
@@ -176,46 +175,30 @@ export function DeckAdvisorCockpit({
                         onReset={onResetCorridor}
                         art={art}
                     />
-                </ChartPanel>
+                </DeckAdvisorPanel>
+            )}
 
-                {types.length > 0 && (
-                    <ChartPanel
-                        className={RAIL_ITEM}
-                        title={t("heading.types")}
-                        hint={t("description.types")}
-                        minHeight={240}
-                    >
-                        <DeckAdvisorTypes
-                            types={types}
-                            custom={targets.types}
-                            onSet={onSetTypeCorridor}
-                            onReset={onResetTypeCorridor}
-                            art={art}
-                            source={report.type_source}
-                        />
-                    </ChartPanel>
-                )}
-
-                {/* Placed rather than flowed: under the curve is where this
-                    panel belongs, and a deck whose types the service did not
-                    report would otherwise leave a hole and slide it up beside
-                    the corridors. Narrower than three columns it simply
-                    follows the others. */}
-                {/* Stretched to the rail's tallest panel below `sm`, where
-                    flex items share a height and a themes card floating
-                    short of the others would read as a rendering fault. The
-                    first child is the panel; the second is its dialog, which
-                    must stay a sibling of the deferred ChartPanel body. */}
-                <div className={`${RAIL_ITEM} flex flex-col lg:col-start-1 lg:row-start-2 [&>*:first-child]:grow`}>
-                    <DeckAdvisorThemes
-                        report={report}
-                        prefs={themePrefs}
-                        onCycle={onCycleTheme}
-                        onDefine={onDefineThemes}
-                        labels={themeLabels}
+            {selected === "types" && (
+                <DeckAdvisorPanel hint={t("description.types")}>
+                    <DeckAdvisorTypes
+                        types={types}
+                        custom={targets.types}
+                        onSet={onSetTypeCorridor}
+                        onReset={onResetTypeCorridor}
+                        art={art}
+                        source={report.type_source}
                     />
-                </div>
-            </DeckAdvisorPanelRail>
+                </DeckAdvisorPanel>
+            )}
+
+            {selected === "themes" && (
+                <DeckAdvisorThemes
+                    report={report}
+                    prefs={themePrefs}
+                    onSetLevel={onSetThemeLevel}
+                    labels={themeLabels}
+                />
+            )}
         </div>
     );
 }

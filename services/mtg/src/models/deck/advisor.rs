@@ -33,15 +33,55 @@ use crate::models::deck::db::DeckAdvisorSettingsModel;
 use crate::models::deck::db::DeckModel;
 use crate::models::deck::owned_by;
 
-/// Which themes the advisor argues for, and which it steers away from
+/// How much of a theme the reader wants in the deck
+///
+/// Four steps rather than a number. The frontend turns each into a target
+/// share of the deck's non-land cards (`THEME_LEVEL_SHARE`) for the graph
+/// service, which argues by how far the deck is from it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "lowercase")]
+pub enum ThemeLevel {
+    /// Steer away from the theme entirely
+    Avoid,
+    /// A touch of it
+    Light,
+    /// A strand the deck is built around
+    Core,
+    /// The plan
+    AllIn,
+}
+
+/// How much of each theme the advisor argues for
+///
+/// A document stored before `levels` existed holds only the two legacy
+/// lists; [`ThemePrefs::normalised`] reads them back as `core` and `avoid`
+/// when the document is loaded, and they are never written again.
 #[derive(Debug, Clone, Default, Serialize, Deserialize, JsonSchema)]
 pub struct ThemePrefs {
-    /// Themes to steer toward
+    /// How much of each theme the reader wants, by theme id
     #[serde(default)]
-    pub pinned: Vec<String>,
-    /// Themes to steer away from
-    #[serde(default)]
-    pub excluded: Vec<String>,
+    pub levels: HashMap<String, ThemeLevel>,
+    /// Legacy: themes pinned before levels existed
+    #[serde(default, skip_serializing)]
+    #[schemars(skip)]
+    pinned: Vec<String>,
+    /// Legacy: themes excluded before levels existed
+    #[serde(default, skip_serializing)]
+    #[schemars(skip)]
+    excluded: Vec<String>,
+}
+
+impl ThemePrefs {
+    /// Folds the legacy lists into `levels`; a theme that has a level keeps it
+    pub fn normalised(mut self) -> Self {
+        for id in std::mem::take(&mut self.pinned) {
+            self.levels.entry(id).or_insert(ThemeLevel::Core);
+        }
+        for id in std::mem::take(&mut self.excluded) {
+            self.levels.entry(id).or_insert(ThemeLevel::Avoid);
+        }
+        self
+    }
 }
 
 /// One bucket's target corridor, in cards
@@ -105,7 +145,7 @@ pub struct AdvisorSettings {
 impl From<DeckAdvisorSettingsModel> for AdvisorSettings {
     fn from(row: DeckAdvisorSettingsModel) -> Self {
         Self {
-            themes: row.themes.0,
+            themes: row.themes.0.normalised(),
             targets: row.targets.0,
             pool_query: row.pool_query,
             ignored: row.ignored.0,
@@ -203,5 +243,26 @@ impl Deck {
         }
 
         Ok(DeckAccess::Granted(()))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ThemeLevel;
+    use super::ThemePrefs;
+
+    /// A document from before levels reads back as levels, and only levels are written
+    #[test]
+    fn legacy_lists_read_back_as_levels() {
+        let stored = r#"{"pinned":["tokens","stax"],"excluded":["stax","mill"],"levels":{"tokens":"allin"}}"#;
+        let prefs = serde_json::from_str::<ThemePrefs>(stored)
+            .expect("a legacy document parses")
+            .normalised();
+
+        assert_eq!(prefs.levels.get("tokens"), Some(&ThemeLevel::AllIn));
+        assert_eq!(prefs.levels.get("stax"), Some(&ThemeLevel::Core));
+        assert_eq!(prefs.levels.get("mill"), Some(&ThemeLevel::Avoid));
+        let written = serde_json::to_value(&prefs).expect("prefs serialise");
+        assert!(written.get("pinned").is_none() && written.get("excluded").is_none());
     }
 }

@@ -21,7 +21,7 @@ import { DeckAdvisorPool } from "src/components/deck-advisor-pool";
 import { DeckAdvisorSetup, shapeChoiceFor } from "src/components/deck-advisor-setup";
 import { ManaCost } from "src/components/mana-cost";
 import { useDeckLabels } from "src/components/deck-labels";
-import { AdvisorSettings, IgnoredCard, KeptCard } from "src/utils/advisor-settings";
+import { AdvisorSettings, IgnoredCard, KeptCard, playedThemes } from "src/utils/advisor-settings";
 import type { HouseRule } from "src/utils/deck-rules";
 import { parseTypeSource, typeSourceLabel } from "src/utils/type-source";
 import { useSuggestionCards } from "src/utils/use-suggestion-cards";
@@ -343,13 +343,15 @@ export function DeckAdvisorAssumptions({
                                     "mt-3 flex flex-col gap-1 border-t border-zinc-950/5 pt-3 dark:border-white/10"
                                 }
                             >
-                                {settings.themes.pinned.length > 0 && (
+                                {playedThemes(settings.themes).length > 0 && (
                                     <div className={"flex items-baseline justify-between gap-4 text-xs/5"}>
                                         <dt className={"text-zinc-500 dark:text-zinc-400"}>
                                             {t("label.assumed-themes")}
                                         </dt>
                                         <dd className={"text-right text-zinc-950 dark:text-white"}>
-                                            {settings.themes.pinned.map((id) => id.replace(/_/g, " ")).join(", ")}
+                                            {playedThemes(settings.themes)
+                                                .map((id) => id.replace(/_/g, " "))
+                                                .join(", ")}
                                         </dd>
                                     </div>
                                 )}

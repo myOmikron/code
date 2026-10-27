@@ -1,119 +1,160 @@
 /**
- * Which themes the advisor should favour, and which it should avoid.
+ * How much of each theme the advisor should argue for — or against.
  *
- * The document type and the pure logic around it — cycling a theme through
- * its states, retiring one the service no longer knows, keying a request on
- * the pair. The preference itself now lives on the server as part of
- * {@link AdvisorSettings} (`advisor-settings.ts`); this module holds what
- * both that document and the panels that edit it need, and nothing that
- * talks to storage or the network.
- *
- * Theme ids are the service's and the set changes between releases. Nothing
- * here validates against a live list: the service ignores unknown ids with a
- * note, and {@link pruneThemePrefs} retires them once a report says which
- * themes exist now — never from a guess, or a transient failure would wipe
- * real preferences.
+ * The document type and the pure logic around it; the preference itself lives
+ * on the server as part of {@link AdvisorSettings} (`advisor-settings.ts`),
+ * which also reads a document stored before levels existed back as levels.
  */
+
+/**
+ * How much of a theme the deck should hold, in the four steps the panel
+ * offers.
+ *
+ * Steps rather than a number because a number needs a denominator the
+ * reader does not have in their head. Each step is a share of the deck's
+ * non-land cards, see {@link THEME_LEVEL_SHARE}; the service turns that into
+ * cards against the deck it is looking at and argues for the difference.
+ */
+export type ThemeLevel = "avoid" | "light" | "core" | "allin";
+
+/** The levels in the order the control shows them, least to most */
+export const THEME_LEVELS: ReadonlyArray<ThemeLevel> = ["avoid", "light", "core", "allin"];
+
+/**
+ * The share of the non-land cards each level asks for.
+ *
+ * Zero is today's exclusion. A tenth is a touch — six cards of a Commander
+ * deck's sixty-odd spells. A quarter is a strand the deck is built around,
+ * and forty percent is the plan: the built Elf and tokens lists the theme
+ * detector was calibrated on put 47 to 51 cards behind their top theme.
+ */
+export const THEME_LEVEL_SHARE: Record<ThemeLevel, number> = { avoid: 0, light: 0.1, core: 0.25, allin: 0.4 };
 
 /** What the advisor should favour and avoid for one deck */
 export type ThemePrefs = {
-    /** Themes to steer toward */
-    pinned: Array<string>;
-    /** Themes to steer away from */
-    excluded: Array<string>;
+    /** How much of each theme the deck should hold, by theme id */
+    levels: Record<string, ThemeLevel>;
 };
 
 /** A deck with no opinion recorded */
-export const DEFAULT_THEME_PREFS: ThemePrefs = { pinned: [], excluded: [] };
-
-/** What one theme currently is to the advisor */
-export type ThemeState = "neutral" | "pinned" | "excluded";
+export const DEFAULT_THEME_PREFS: ThemePrefs = { levels: {} };
 
 /**
- * Strings only, deduped, and a theme in both lists keeps the pin.
+ * Whether a value names a level
  *
- * The service resolves the conflict the same way; disagreeing here would make
- * the chips lie about the request that was actually sent.
+ * @param value whatever was stored
  *
- * @param prefs the preferences to clean
+ * @returns the type guard
+ */
+function isLevel(value: unknown): value is ThemeLevel {
+    return typeof value === "string" && (THEME_LEVELS as ReadonlyArray<string>).includes(value);
+}
+
+/**
+ * Whatever the server handed back, as a well-formed preference: anything
+ * that is not a level is dropped.
+ *
+ * @param levels the stored levels
  *
  * @returns the cleaned preferences
  */
-function sanitise(prefs: Partial<ThemePrefs> | undefined): ThemePrefs {
-    // Array-checked, not just null-checked: the server hands back whatever
-    // was last written, and a stale client or a hand-edited request could
-    // still leave something malformed here — calling `.filter` on a string
-    // throws, and this is the one place that has to survive it.
-    const list = (value: unknown): Array<string> =>
-        Array.isArray(value) ? value.filter((id): id is string => typeof id === "string") : [];
-
-    const pinned = [...new Set(list(prefs?.pinned))];
-    const excluded = [...new Set(list(prefs?.excluded))].filter((id) => !pinned.includes(id));
-    return { pinned, excluded };
+export function normaliseThemePrefs(levels: Record<string, unknown> | undefined): ThemePrefs {
+    const kept: Record<string, ThemeLevel> = {};
+    for (const [id, level] of Object.entries(levels ?? {})) {
+        if (isLevel(level)) kept[id] = level;
+    }
+    return { levels: kept };
 }
 
 /**
- * Walks one theme through its three states on a click:
- * neutral → pinned → excluded → neutral.
+ * The themes the deck is played for: every one at `light` or above
  *
  * @param prefs the current preferences
- * @param themeId the theme that was clicked
  *
- * @returns the preferences after the click
+ * @returns their ids
  */
-export function cycleTheme(prefs: ThemePrefs, themeId: string): ThemePrefs {
-    const { pinned, excluded } = sanitise(prefs);
-    if (pinned.includes(themeId)) {
-        return { pinned: pinned.filter((id) => id !== themeId), excluded: [...excluded, themeId] };
-    }
-    if (excluded.includes(themeId)) {
-        return { pinned, excluded: excluded.filter((id) => id !== themeId) };
-    }
-    return { pinned: [...pinned, themeId], excluded };
+export function playedThemes(prefs: ThemePrefs): Array<string> {
+    return Object.keys(prefs.levels).filter((id) => prefs.levels[id] !== "avoid");
 }
 
 /**
- * What one theme currently is to the advisor
+ * Sets one theme's level, or clears it
  *
  * @param prefs the current preferences
- * @param themeId the theme to ask about
+ * @param themeId the theme that was set
+ * @param level its new level, or `null` to hold no opinion about it
  *
- * @returns its state
+ * @returns the preferences after the change
  */
-export function themeState(prefs: ThemePrefs, themeId: string): ThemeState {
-    if (prefs.pinned.includes(themeId)) return "pinned";
-    if (prefs.excluded.includes(themeId)) return "excluded";
-    return "neutral";
+export function withThemeLevel(prefs: ThemePrefs, themeId: string, level: ThemeLevel | null): ThemePrefs {
+    const levels = { ...prefs.levels };
+    if (level === null) delete levels[themeId];
+    else levels[themeId] = level;
+    return { levels };
 }
 
 /**
- * Drops ids the live theme layer no longer knows.
+ * Records the set of themes the deck is *played* for, as the setup wizard
+ * asks it.
  *
- * Call with the ids from a report the service actually answered — never with
- * a guess, or one failed request would wipe real preferences.
+ * A picked theme without a level lands on `core`; one already argued for
+ * keeps its level, since the wizard never asked how much. A theme that was
+ * argued for and is no longer picked loses its level — the wizard opened on
+ * the current picks and hands back the whole answer, so an unticked theme is
+ * meant to be gone. Avoided themes are left alone — they are the other half
+ * of the conversation and the wizard did not ask about them.
  *
- * @param prefs the stored preferences
- * @param liveIds the themes the service currently knows
+ * @param prefs the current preferences
+ * @param picked the themes the deck plays
  *
- * @returns the preferences with retired themes dropped
+ * @returns the preferences after the change
  */
-export function pruneThemePrefs(prefs: ThemePrefs, liveIds: Array<string>): ThemePrefs {
-    const live = new Set(liveIds);
-    const { pinned, excluded } = sanitise(prefs);
-    return {
-        pinned: pinned.filter((id) => live.has(id)),
-        excluded: excluded.filter((id) => live.has(id)),
-    };
+export function withThemesPicked(prefs: ThemePrefs, picked: Array<string>): ThemePrefs {
+    const levels: Record<string, ThemeLevel> = {};
+    for (const [id, level] of Object.entries(prefs.levels)) {
+        if (level === "avoid" && !picked.includes(id)) levels[id] = level;
+    }
+    for (const id of picked) {
+        const held = prefs.levels[id];
+        levels[id] = held === undefined || held === "avoid" ? "core" : held;
+    }
+    return { levels };
 }
 
 /**
- * An order-independent key fragment, so reordering a list is not a new request
+ * The target share of the non-land cards per theme, as the graph service
+ * reads it — every theme with a level, `avoid` included at zero
+ *
+ * @param prefs the current preferences
+ *
+ * @returns theme id to share, 0 to 1
+ */
+export function themeTargets(prefs: ThemePrefs): Record<string, number> {
+    return Object.fromEntries(Object.entries(prefs.levels).map(([id, level]) => [id, THEME_LEVEL_SHARE[level]]));
+}
+
+/**
+ * How many cards a level asks for in a deck of this many non-land cards
+ *
+ * @param level the level
+ * @param spells the deck's non-land count
+ *
+ * @returns the cards, half rounded up — the service's `resolve_theme_targets` rounds the same way
+ */
+export function themeTargetCards(level: ThemeLevel, spells: number): number {
+    return Math.round(THEME_LEVEL_SHARE[level] * Math.max(0, spells));
+}
+
+/**
+ * An order-independent key fragment, so reordering is not a new request
  *
  * @param prefs the preferences to key
  *
  * @returns a string equal for equal preferences
  */
 export function themePrefsKey(prefs: ThemePrefs): string {
-    const { pinned, excluded } = sanitise(prefs);
-    return `${[...pinned].sort().join(",")}|${[...excluded].sort().join(",")}`;
+    return Object.keys(prefs.levels)
+        .sort()
+        .map((id) => `${id}=${prefs.levels[id]}`)
+        .join(",");
 }

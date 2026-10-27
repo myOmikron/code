@@ -31,6 +31,7 @@ would make the measurement harder to read, not better.
 from __future__ import annotations
 
 import contextvars
+import math
 from collections.abc import Iterable, Mapping
 from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass, field
@@ -1540,6 +1541,16 @@ def _theme_gate_sides(theme: Theme) -> list[str]:
     return ["CARES_ABOUT"]
 
 
+def _theme_share_spec(theme: Theme) -> dict:
+    """One theme as `theme_share_among` asks for it."""
+    return {
+        "id": theme.id,
+        "resources": sorted(_theme_vocabulary(theme)),
+        "sides": _theme_gate_sides(theme),
+        "gate": sorted(str(r) for r in theme.requires_any),
+    }
+
+
 def _supply_match_targets(idf: Mapping[str, float], excluded_theme_ids: Iterable[str]) -> set[str]:
     """Resources a supply match may land on.
 
@@ -1803,6 +1814,112 @@ def _parse_focus(focus: str | None) -> Focus | None:
         return Focus(kind="theme", value=raw, label=raw)
 
     return Focus(kind=kind, value=value, label=value.replace("_", " "))
+
+
+@dataclass(frozen=True, slots=True)
+class ThemeTargetRead:
+    """What a set of per-theme targets asks of this deck, in cards.
+
+    A target is a *share of the non-land cards* the reader wants reading as a
+    theme — the frontend's four levels are 0 / 0.10 / 0.25 / 0.40 — and it
+    only means something against what the deck already holds. Resolved here
+    into the three things the layer can act on: themes to argue for (with
+    how many cards short they are), themes to steer away from, and themes to
+    trim (with what fraction of their cards is surplus).
+    """
+
+    # Theme id -> cards the deck is short of its target. Every entry is pinned.
+    gaps: dict[str, int]
+    # Theme id -> share of its cards that are over the target, in (0, 1].
+    trims: dict[str, float]
+    # Targets of exactly zero: today's exclusion.
+    excluded: list[str]
+    # Targets the deck meets exactly: neither argued for nor against.
+    held: frozenset[str] = frozenset()
+
+    @property
+    def pinned(self) -> list[str]:
+        return list(self.gaps)
+
+    @property
+    def targeted(self) -> set[str]:
+        return set(self.gaps) | set(self.trims) | set(self.excluded) | self.held
+
+
+def resolve_theme_targets(
+    theme_targets: Mapping[str, float] | None,
+    theme_shares: Iterable,
+    spells: int,
+) -> ThemeTargetRead:
+    """Turn per-theme target shares into gaps, trims and exclusions.
+
+    `theme_shares` is the diagnostics report's theme list (`ThemeShare` rows,
+    read for `.theme` and `.cards`); a theme absent from it holds zero cards.
+    `spells` is the deck's non-land count, the denominator the share is of.
+
+    - target 0 → excluded, whatever the deck holds.
+    - target above the deck → a gap of that many cards; the theme is pinned.
+    - target below the deck → a trim: `(held - target) / held` of its cards
+      are surplus and the cut side may take them first.
+    - target met exactly → held: neither argued for nor against, but still
+      *targeted*, which is what stops a stale pin or exclusion in the legacy
+      lists from speaking for it.
+
+    Unknown theme ids pass through; `_resolve_theme_prefs` notes them. Cards
+    round half up, the way the frontend's `themeTargetCards` does — Python's
+    own `round` goes half to even and would disagree on every .5.
+    """
+    gaps: dict[str, int] = {}
+    trims: dict[str, float] = {}
+    excluded: list[str] = []
+    held: set[str] = set()
+    holding = {row.theme: int(row.cards or 0) for row in theme_shares}
+    for theme_id, share in (theme_targets or {}).items():
+        target = math.floor(share * max(spells, 0) + 0.5)
+        have = holding.get(theme_id, 0)
+        if target == 0:
+            excluded.append(theme_id)
+        elif target > have:
+            gaps[theme_id] = target - have
+        elif have > target:
+            trims[theme_id] = (have - target) / have
+        else:
+            held.add(theme_id)
+    return ThemeTargetRead(gaps, trims, excluded, frozenset(held))
+
+
+def merge_theme_targets(
+    pinned: list[str] | None,
+    excluded: list[str] | None,
+    read: ThemeTargetRead,
+) -> tuple[list[str], list[str]]:
+    """Fold a target read into the pinned/excluded lists.
+
+    A theme with a target is spoken for by the target alone — it leaves both
+    lists first, so a pin cannot argue for a theme its own target says to trim.
+    """
+    spoken = read.targeted
+    pins = [t for t in (pinned or []) if t not in spoken] + read.pinned
+    outs = [t for t in (excluded or []) if t not in spoken] + read.excluded
+    return list(dict.fromkeys(pins)), list(dict.fromkeys(outs))
+
+
+def apply_theme_targets(
+    pinned: list[str] | None,
+    excluded: list[str] | None,
+    theme_targets: Mapping[str, float] | None,
+    report: Diagnostics,
+) -> tuple[list[str], list[str], ThemeTargetRead]:
+    """Resolve the targets against `report` and fold them into the lists.
+
+    Called once per request; `suggest_swaps` hands the read on to `suggest()`
+    so the cut side and the add side act on the same answer.
+    """
+    read = resolve_theme_targets(
+        theme_targets, report.themes, max(0, report.deck_size - report.lands)
+    )
+    pins, outs = merge_theme_targets(pinned, excluded, read)
+    return pins, outs, read
 
 
 def _resolve_theme_prefs(
@@ -2563,19 +2680,27 @@ def _carries_pinned(candidate: _Candidate, wanted: set[str]) -> bool:
 
 
 def _reserve_pinned_slots(
-    ranked: list[_Candidate], pins: list, limit: int
+    ranked: list[_Candidate], pins: list, limit: int, gaps: Mapping[str, int] | None = None
 ) -> tuple[list[_Candidate], int]:
     """Guarantee pinned themes `PINNED_THEME_SHARE` of the answer.
 
     The mechanics and their rationale live at `_promote_floor`; this binds
     them to the pins.
+
+    `gaps` is how many cards short each pinned theme is of its target (see
+    `resolve_theme_targets`). When every pin carries one, the floor is the
+    cards actually asked for — a theme two cards short of its target does not
+    need thirteen slots to say so — never above the share and never below
+    one. A pin without a target keeps the full share: "argue for this" with
+    no number attached is the older, louder ask.
     """
     if not pins:
         return ranked, 0
     wanted = {theme.id for theme in pins}
-    return _promote_floor(
-        ranked, limit, int(limit * PINNED_THEME_SHARE), lambda c: _carries_pinned(c, wanted)
-    )
+    floor = int(limit * PINNED_THEME_SHARE)
+    if gaps and all(theme.id in gaps for theme in pins):
+        floor = max(1, min(floor, sum(gaps[theme.id] for theme in pins)))
+    return _promote_floor(ranked, limit, floor, lambda c: _carries_pinned(c, wanted))
 
 
 # The seat reserve's ceiling. The floor is `min(seats, 4)` — it *is* the seat
@@ -2772,6 +2897,8 @@ def suggest(
     focus: str | None = None,
     pinned_themes: list[str] | None = None,
     excluded_themes: list[str] | None = None,
+    theme_targets: Mapping[str, float] | None = None,
+    theme_read: ThemeTargetRead | None = None,
     excluded: list[str] | None = None,
     identity: list[str] | None = None,
     deck_size: int = 99,
@@ -3179,6 +3306,16 @@ def suggest(
             deck_size=deck_size,
             allow_network=True,
         )
+    # --- Theme targets: "how much of this theme", read against the report --
+    # Resolved before anything reads the preference lists, so every consumer
+    # below — the deck's theme identity, the theme channel, the pin floor —
+    # sees one answer. A caller that already resolved them (`suggest_swaps`)
+    # hands its read over with the lists it merged; see `apply_theme_targets`.
+    if theme_read is None:
+        pinned_themes, excluded_themes, theme_read = apply_theme_targets(
+            pinned_themes, excluded_themes, theme_targets, report
+        )
+    targets_read = theme_read
     wanted = [{"resource": row.resource, "gap": row.gap} for row in report.balance if row.gap > 0][
         :12
     ]
@@ -3784,21 +3921,9 @@ def suggest(
 
     if outs:
         fits_rows = fits_theme_among(list(pool), [t.id for t in outs])
-        # The card-normalised half of the exclusion strength, one query per
-        # excluded theme — `theme_share_among` needs each theme's own
-        # vocabulary and gate sides, so a single batched call across themes
-        # would blur them together. Exclusion lists are short; this is
-        # acceptable the same way `fits_theme_among` per pin loop already is.
-        share_rows = [
-            {**row, "theme_id": theme.id}
-            for theme in outs
-            for row in theme_share_among(
-                list(pool),
-                sorted(_theme_vocabulary(theme)),
-                _theme_gate_sides(theme),
-                sorted(str(r) for r in theme.requires_any),
-            )
-        ]
+        # The card-normalised half of the exclusion strength, every excluded
+        # theme in one query, each with its own vocabulary and gate sides.
+        share_rows = theme_share_among(list(pool), [_theme_share_spec(t) for t in outs])
         candidates, demoted = _apply_theme_exclusions(
             candidates, fits_rows, {t.id: t.label for t in outs}, share_rows=share_rows
         )
@@ -3949,7 +4074,7 @@ def suggest(
             )
 
     ranked = sorted(candidates, key=lambda c: -c.score())
-    ranked, promoted = _reserve_pinned_slots(ranked, pins, limit)
+    ranked, promoted = _reserve_pinned_slots(ranked, pins, limit, gaps=targets_read.gaps)
     if promoted:
         told = ", ".join(t.label for t in pins)
         notes.append(

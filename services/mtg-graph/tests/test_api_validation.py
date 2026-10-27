@@ -175,13 +175,14 @@ def test_oversized_replace_target_is_rejected():
     assert _post("/replace", body) == 422
 
 
-def test_too_many_replace_pinned_themes_is_rejected():
-    body = {"cards": _deck(1), "target_oracle_id": "id-0", "pinned_themes": ["landfall"] * 65}
+def test_too_many_replace_theme_targets_is_rejected():
+    targets = {f"theme-{i}": 0.1 for i in range(65)}
+    body = {"cards": _deck(1), "target_oracle_id": "id-0", "theme_targets": targets}
     assert _post("/replace", body) == 422
 
 
-def test_too_many_replace_excluded_themes_is_rejected():
-    body = {"cards": _deck(1), "target_oracle_id": "id-0", "excluded_themes": ["artifacts"] * 65}
+def test_a_theme_target_above_the_whole_deck_is_rejected():
+    body = {"cards": _deck(1), "target_oracle_id": "id-0", "theme_targets": {"landfall": 1.4}}
     assert _post("/replace", body) == 422
 
 
@@ -215,18 +216,14 @@ def test_largest_honest_payloads_validate():
     fill = FillRequest(cards=entries[:1], rejected=["id"] * MAX_CARDS)
     assert len(fill.rejected) == MAX_CARDS
 
-    # The theme prefs round-trip through the model exactly like `SwapsRequest`
-    # and `SuggestionsRequest`'s fields of the same name — Task 3 copied their
-    # field definitions onto `ReplaceRequest`, so the same 64-entry cap and
-    # plain pass-through apply here too.
+    # The theme targets share `SwapsRequest` and `SuggestionsRequest`'s
+    # 64-entry cap and plain pass-through.
     replace = ReplaceRequest(
         cards=entries[:1],
         target_oracle_id="id-0",
-        pinned_themes=["landfall"] * 64,
-        excluded_themes=["artifacts"] * 64,
+        theme_targets={f"theme-{i}": 0.4 for i in range(64)},
     )
-    assert len(replace.pinned_themes) == 64
-    assert len(replace.excluded_themes) == 64
+    assert len(replace.theme_targets) == 64
 
 
 # --- the ignore list -------------------------------------------------------

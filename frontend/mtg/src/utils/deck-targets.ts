@@ -230,6 +230,19 @@ export function curveCounts(targets: DeckTargets, spells: number): Array<number>
 }
 
 /**
+ * Whether a curve column sits under its target by more than the half card
+ * the curve paints amber at
+ *
+ * @param count how many cards the deck holds at this mana value
+ * @param target the target count there
+ *
+ * @returns true when the column is short
+ */
+export function curveShort(count: number, target: number): boolean {
+    return count + 0.5 < target;
+}
+
+/**
  * The bucket corridors as the service takes them
  *
  * @param targets what the deck is read against

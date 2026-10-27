@@ -1,8 +1,9 @@
-import { ArrowUturnLeftIcon } from "@heroicons/react/16/solid";
 import { useTranslation } from "react-i18next";
 import { BucketReport } from "src/api/graph-generated";
 import { DeckAdvisorCountCards } from "src/components/deck-advisor-count-cards";
 import { TargetCorridor } from "src/components/target-corridor";
+import { PANEL_GRID } from "src/components/deck-advisor-panel";
+import { RowResetLine } from "src/components/row-reset-line";
 import { CardArt } from "src/utils/deck-art";
 import { Corridor, MAX_CORRIDOR } from "src/utils/deck-targets";
 
@@ -68,7 +69,7 @@ export function DeckAdvisorQuotas({ buckets, custom, onSet, onReset, art }: Deck
     const anyShort = buckets.some((bucket) => bucket.status === "low");
 
     return (
-        <div className={"flex flex-col gap-4"}>
+        <div className={PANEL_GRID}>
             {buckets.map((bucket) => {
                 const preset = { low: bucket.default_low ?? bucket.low, high: bucket.default_high ?? bucket.high };
                 const edited = custom[bucket.bucket];
@@ -144,24 +145,11 @@ export function DeckAdvisorQuotas({ buckets, custom, onSet, onReset, art }: Deck
                             it would carry neither, which is every row of a
                             deck that is doing fine. */}
                         {(say || edited !== undefined) && (
-                            <div className={"-mt-0.5 flex h-5 items-center justify-between gap-3"}>
-                                <span className={"truncate text-xs/5 text-zinc-500 dark:text-zinc-400"}>
-                                    {say ? verdict : ""}
-                                </span>
-                                {edited !== undefined && (
-                                    <button
-                                        type={"button"}
-                                        onClick={() => onReset(bucket.bucket)}
-                                        aria-label={t("accessibility.quota-reset", { name: label })}
-                                        className={
-                                            "flex shrink-0 items-center gap-1 rounded-(--radius-pill) px-1.5 py-0.5 text-xs/5 text-zinc-400 opacity-0 transition group-hover:opacity-100 hover:bg-lime-400/15 hover:text-lime-700 focus-visible:opacity-100 dark:text-zinc-500 dark:hover:bg-lime-400/15 dark:hover:text-lime-300"
-                                        }
-                                    >
-                                        <ArrowUturnLeftIcon className={"size-3"} />
-                                        {t("button.reset-one")}
-                                    </button>
-                                )}
-                            </div>
+                            <RowResetLine
+                                verdict={say ? verdict : ""}
+                                onReset={edited !== undefined ? () => onReset(bucket.bucket) : undefined}
+                                resetLabel={t("accessibility.quota-reset", { name: label })}
+                            />
                         )}
                     </div>
                 );

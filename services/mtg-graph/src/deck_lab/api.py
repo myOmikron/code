@@ -67,6 +67,10 @@ OracleId = Annotated[str, Field(max_length=64)]
 # Card names reach ~141 characters in the un-sets; themes and resource names
 # are short. 256 leaves room without inviting a payload.
 Term = Annotated[str, Field(max_length=256)]
+# A target share of the non-land cards, per theme id. The share is clamped
+# to the unit interval at the boundary rather than deep in the scorer, so a
+# client asking for 140% of a theme learns so from a 422.
+ThemeTargets = dict[Term, Annotated[float, Field(ge=0.0, le=1.0)]]
 
 # Clears a Commander "pile" (every card owned for a commander, ~1200 copies
 # over ~830 oracle ids) so the advisor does not 422 the deck that most needs
@@ -242,11 +246,8 @@ def _suggestions_key(request: SuggestionsRequest) -> tuple:
         _canonical_curve(request.curve),
         _canonical_type_overrides(request.type_overrides),
         request.focus,
-        # Pin order is preserved rather than sorted: it may affect ranking,
-        # and sorting a key for an ordering the scorer might honour would be
-        # a bet on behaviour rather than a statement about it.
-        tuple(request.pinned_themes),
-        tuple(request.excluded_themes),
+        # Sorted: a mapping has no order a reader could mean anything by.
+        tuple(sorted(request.theme_targets.items())),
         tuple(sorted(set(request.excluded))),
         # `None` (derive from the commander) and `()` (deliberate colourless)
         # are different requests and must not share a cache entry.
@@ -642,14 +643,15 @@ class SuggestionsRequest(BaseModel):
     type_overrides: list[TypeRange] = Field(default_factory=list, max_length=MAX_TYPE_OVERRIDES)
     # "landfall" | "theme:landfall" | "bucket:ramp" | "resource:etb_trigger"
     focus: Term | None = None
-    # Stored per-deck preferences, unlike `focus` which is a per-request ask.
+    # Stored per-deck preferences, unlike `focus` which is a per-request ask:
+    # how much of a theme the reader wants, as a share of the non-land cards
+    # (0 = steer away; the frontend's levels are `THEME_LEVEL_SHARE`).
     # Unknown ids are noted and ignored, never a 422 — themes can be renamed
     # between the release that stored a preference and the one serving it.
-    # Bounded to keep a hostile payload from smuggling a list of thousands,
-    # not to mirror the theme count — the layer grows, and a cap that encodes
-    # today's size 422s the release that adds a theme.
-    pinned_themes: list[Term] = Field(default_factory=list, max_length=64)
-    excluded_themes: list[Term] = Field(default_factory=list, max_length=64)
+    # Bounded to keep a hostile payload from smuggling thousands, not to
+    # mirror the theme count — a cap that encodes today's size 422s the
+    # release that adds a theme.
+    theme_targets: ThemeTargets = Field(default_factory=dict, max_length=64)
     # Cards the user never wants suggested — the builder's ignore list.
     excluded: list[OracleId] = Field(default_factory=list, max_length=MAX_CARDS)
     # The deck's allowed colours as WUBRG letters — Rule 0 house rules. `None`
@@ -711,8 +713,7 @@ def post_suggestions(request: SuggestionsRequest) -> SuggestionReport:
             curve=_as_curve(request.curve),
             type_overrides=_as_type_overrides(request.type_overrides),
             focus=request.focus,
-            pinned_themes=request.pinned_themes,
-            excluded_themes=request.excluded_themes,
+            theme_targets=request.theme_targets,
             excluded=request.excluded,
             identity=request.identity,
             deck_size=request.deck_size,
@@ -1338,11 +1339,8 @@ class SwapsRequest(BaseModel):
     # ones. Empty keeps them.
     type_overrides: list[TypeRange] = Field(default_factory=list, max_length=MAX_TYPE_OVERRIDES)
     focus: Term | None = None
-    # Bounded to keep a hostile payload from smuggling a list of thousands,
-    # not to mirror the theme count — the layer grows, and a cap that encodes
-    # today's size 422s the release that adds a theme.
-    pinned_themes: list[Term] = Field(default_factory=list, max_length=64)
-    excluded_themes: list[Term] = Field(default_factory=list, max_length=64)
+    # See `SuggestionsRequest.theme_targets`.
+    theme_targets: ThemeTargets = Field(default_factory=dict, max_length=64)
     # 24, not 12: the pairer can only offer swaps for adds inside this window,
     # and in an EDHREC-covered deck the first ~20 slots belong to synergy
     # hits — a window of 12 never reached the structural tier (fixing lands,
@@ -1401,8 +1399,7 @@ def post_swaps(request: SwapsRequest) -> SwapsResponse:
         curve=_as_curve(request.curve),
         type_overrides=_as_type_overrides(request.type_overrides),
         focus=request.focus,
-        pinned_themes=request.pinned_themes,
-        excluded_themes=request.excluded_themes,
+        theme_targets=request.theme_targets,
         excluded=request.excluded,
         identity=request.identity,
         deck_size=request.deck_size,
@@ -1435,11 +1432,8 @@ class ReplaceRequest(BaseModel):
     # The builder's own type corridors, replacing the archetype's measured
     # ones. Empty keeps them.
     type_overrides: list[TypeRange] = Field(default_factory=list, max_length=MAX_TYPE_OVERRIDES)
-    # Bounded to keep a hostile payload from smuggling a list of thousands,
-    # not to mirror the theme count — the layer grows, and a cap that encodes
-    # today's size 422s the release that adds a theme.
-    pinned_themes: list[Term] = Field(default_factory=list, max_length=64)
-    excluded_themes: list[Term] = Field(default_factory=list, max_length=64)
+    # See `SuggestionsRequest.theme_targets`.
+    theme_targets: ThemeTargets = Field(default_factory=dict, max_length=64)
     limit: int = Field(10, ge=1, le=40)
     max_price: float | None = Field(None, gt=0)
     # A Scryfall-style pool restriction — see `SuggestionsRequest.pool_query`.
@@ -1482,8 +1476,7 @@ def post_replace(request: ReplaceRequest) -> ReplaceResponse:
         type_overrides=_as_type_overrides(request.type_overrides),
         limit=request.limit,
         pool_filter=pool_filter,
-        pinned_themes=request.pinned_themes,
-        excluded_themes=request.excluded_themes,
+        theme_targets=request.theme_targets,
         excluded=request.excluded,
         identity=request.identity,
         deck_size=request.deck_size,
@@ -1517,11 +1510,8 @@ class FillRequest(BaseModel):
     # ones. Empty keeps them.
     type_overrides: list[TypeRange] = Field(default_factory=list, max_length=MAX_TYPE_OVERRIDES)
     focus: Term | None = None
-    # Bounded to keep a hostile payload from smuggling a list of thousands,
-    # not to mirror the theme count — the layer grows, and a cap that encodes
-    # today's size 422s the release that adds a theme.
-    pinned_themes: list[Term] = Field(default_factory=list, max_length=64)
-    excluded_themes: list[Term] = Field(default_factory=list, max_length=64)
+    # See `SuggestionsRequest.theme_targets`.
+    theme_targets: ThemeTargets = Field(default_factory=dict, max_length=64)
     # The deck's target card count outside the command zone — both the size
     # /fill fills to and, like every advisor endpoint, the size the grading
     # quotas are scaled to (tuned for 99, scaled by deck_size/99).
@@ -1554,8 +1544,7 @@ def post_fill(request: FillRequest) -> FillResult:
             curve=_as_curve(request.curve),
             type_overrides=_as_type_overrides(request.type_overrides),
             focus=request.focus,
-            pinned_themes=request.pinned_themes,
-            excluded_themes=request.excluded_themes,
+            theme_targets=request.theme_targets,
             deck_size=request.deck_size,
             budget=request.budget,
             pool_filter=pool_filter,

@@ -8330,20 +8330,45 @@ export interface TakeDeckCardsRequest {
      */
     slot?: string | null;
 }
+
 /**
- * Which themes the advisor argues for, and which it steers away from
+ * How much of a theme the reader wants in the deck
+ * 
+ * Four steps rather than a number. The frontend turns each into a target share of the deck's non-land cards (`THEME_LEVEL_SHARE`) for the graph service, which argues by how far the deck is from it.
+ * @export
+ */
+export const ThemeLevel = {
+    /**
+    * Steer away from the theme entirely
+    */
+    avoid: 'avoid',
+    /**
+    * A touch of it
+    */
+    light: 'light',
+    /**
+    * A strand the deck is built around
+    */
+    core: 'core',
+    /**
+    * The plan
+    */
+    allin: 'allin',
+} as const;
+export type ThemeLevel = typeof ThemeLevel[keyof typeof ThemeLevel];
+
+/**
+ * How much of each theme the advisor argues for
+ * 
+ * A document stored before `levels` existed holds only the two legacy lists; [`ThemePrefs::normalised`] reads them back as `core` and `avoid` when the document is loaded, and they are never written again.
  * @export
  * @interface ThemePrefs
  */
 export interface ThemePrefs {
     /**
-     * Themes to steer away from
+     * How much of each theme the reader wants, by theme id
      */
-    excluded?: Array<string>;
-    /**
-     * Themes to steer toward
-     */
-    pinned?: Array<string>;
+    levels?: { [key: string]: ThemeLevel | undefined; };
 }
 
 /**

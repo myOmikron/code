@@ -9,7 +9,7 @@ import { BracketRulesResponse, DeckResponse } from "src/api/generated";
 import { DeckAdvisorPool } from "src/components/deck-advisor-pool";
 import { useDeckLabels } from "src/components/deck-labels";
 import { DeckThemePicker } from "src/components/deck-theme-picker";
-import { AdvisorSettings } from "src/utils/advisor-settings";
+import { AdvisorSettings, playedThemes, withThemesPicked } from "src/utils/advisor-settings";
 import { DEFAULT_TARGETS, withCurve } from "src/utils/deck-targets";
 
 /** A step of the wizard, numbered as the reader sees it */
@@ -183,7 +183,7 @@ export function DeckAdvisorSetup({
     const labels = useDeckLabels();
 
     const [step, setStep] = useState<Step>(1);
-    const [draftThemes, setDraftThemes] = useState<Array<string>>(settings.themes.pinned);
+    const [draftThemes, setDraftThemes] = useState<Array<string>>(playedThemes(settings.themes));
     const [shapeChoice, setShapeChoice] = useState<ShapeChoice>("balanced");
     const [draftBracket, setDraftBracket] = useState<number | null>(deck.bracket ?? null);
     const [budgetChoice, setBudgetChoice] = useState<BudgetChoice>("cap100");
@@ -206,7 +206,7 @@ export function DeckAdvisorSetup({
     useEffect(() => {
         if (!open) return;
         setStep(1);
-        setDraftThemes(settings.themes.pinned);
+        setDraftThemes(playedThemes(settings.themes));
         setShapeChoice(shapeChoiceFor(settings.targets.curve));
         setDraftBracket(deck.bracket ?? null);
         setBudgetTouched(false);
@@ -255,7 +255,7 @@ export function DeckAdvisorSetup({
     function useDefaults() {
         onSave({
             ...settings,
-            themes: { ...settings.themes, pinned: [] },
+            themes: withThemesPicked(settings.themes, []),
             targets: { ...settings.targets, curve: null },
             pool_query: defaultPoolQuery(deck.bracket ?? null),
             setup_done: true,
@@ -281,7 +281,7 @@ export function DeckAdvisorSetup({
             shapeChoice === "balanced" ? null : (withCurve(DEFAULT_TARGETS, SHAPE_COUNTS[shapeChoice]).curve ?? null);
         onSave({
             ...settings,
-            themes: { ...settings.themes, pinned: draftThemes },
+            themes: withThemesPicked(settings.themes, draftThemes),
             targets: { ...settings.targets, curve },
             pool_query: draftPoolQuery,
             setup_done: true,

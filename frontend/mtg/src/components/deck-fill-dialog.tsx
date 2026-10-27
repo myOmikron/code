@@ -17,7 +17,7 @@ import { say } from "src/utils/advisor-phrase";
 import { AdvisorDeck, advisorAccepts } from "src/utils/deck-advisor";
 import { BracketCounts } from "src/utils/deck-rules";
 import { DeckTargets, bucketRanges, curvePoints, typeRanges } from "src/utils/deck-targets";
-import { ThemePrefs } from "src/utils/deck-theme-prefs";
+import { ThemePrefs, themeTargets } from "src/utils/deck-theme-prefs";
 import { useBracketFillMarks } from "src/utils/use-bracket-marks";
 import { useSuggestionCards } from "src/utils/use-suggestion-cards";
 import { defaultFoil } from "src/utils/default-finish";
@@ -141,8 +141,7 @@ export function DeckFillDialog({
                 speed,
                 pool_query: poolQuery ?? undefined,
                 rejected: [...excluded, ...rejected],
-                pinned_themes: themes.pinned,
-                excluded_themes: themes.excluded,
+                theme_targets: themeTargets(themes),
                 // The solve fills to the same shape the diagnostics panel
                 // shows; a fill that ignored the moved targets would hand back
                 // cards the panel then calls a surplus.

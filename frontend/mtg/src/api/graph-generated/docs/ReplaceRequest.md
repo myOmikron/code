@@ -15,8 +15,7 @@ Name | Type
 `overrides` | [Array&lt;BucketRange&gt;](BucketRange.md)
 `curve` | [Array&lt;CurvePoint&gt;](CurvePoint.md)
 `type_overrides` | [Array&lt;TypeRange&gt;](TypeRange.md)
-`pinned_themes` | Array&lt;string&gt;
-`excluded_themes` | Array&lt;string&gt;
+`theme_targets` | { [key: string]: number | undefined; }
 `limit` | number
 `max_price` | number
 `pool_query` | string

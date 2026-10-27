@@ -552,7 +552,7 @@ def test_theme_share_among_restricts_the_match_to_the_given_sides():
     query."""
     from deck_lab import graph
 
-    assert "type(rel) IN $sides" in graph.THEME_SHARE_AMONG
+    assert "type(rel) IN theme.sides" in graph.THEME_SHARE_AMONG
 
 
 def test_theme_share_among_zeroes_a_card_that_fails_the_requires_any_gate():
@@ -565,7 +565,7 @@ def test_theme_share_among_zeroes_a_card_that_fails_the_requires_any_gate():
     present somewhere in the string."""
     from deck_lab import graph
 
-    assert "CASE WHEN any(x IN identity WHERE x IN $gate)" in graph.THEME_SHARE_AMONG
+    assert "CASE WHEN any(x IN identity WHERE x IN theme.gate)" in graph.THEME_SHARE_AMONG
     assert "ELSE 0.0 END" in graph.THEME_SHARE_AMONG
 
 
@@ -1774,6 +1774,9 @@ class _EmptyDiagnostics:
     every list it touches, empty, so every channel that gates on one stays
     quiet and the run reaches the end with nothing in the pool."""
 
+    deck_size: int = 99
+    lands: int = 36
+
     balance: list = []
     buckets: list = []
     types: list = []
@@ -2680,7 +2683,7 @@ def test_a_goblin_king_shaped_bridge_row_survives_without_tribes_and_dies_with_t
     _stub_commander(monkeypatch)
     monkeypatch.setattr(graph, "has_recommendations", lambda oid: True)
     monkeypatch.setattr(graph, "channel_edhrec", lambda cid, deck, identity, pool_filter=None: [])
-    monkeypatch.setattr(graph, "theme_share_among", lambda ids, resources, sides, gate: [])
+    monkeypatch.setattr(graph, "theme_share_among", lambda ids, themes: [])
     monkeypatch.setattr(diagnostics, "resource_relative_idf", lambda: {})
 
     king_row = {
@@ -3075,7 +3078,7 @@ def test_excluding_a_theme_denies_the_supply_boost_in_suggest(monkeypatch):
     # The exclusion pass now also asks for card-normalised share (Task 1) —
     # this test is about the supply arm, not the exclusion strength, so an
     # empty result is enough to keep it off the real Neo4j.
-    monkeypatch.setattr(graph, "theme_share_among", lambda ids, resources, sides, gate: [])
+    monkeypatch.setattr(graph, "theme_share_among", lambda ids, themes: [])
 
     wincon_row = {
         "oracle_id": "wincon",
@@ -3154,7 +3157,7 @@ def test_excluding_a_theme_keeps_its_resources_out_of_the_bridge_channel(monkeyp
     _stub_commander(monkeypatch)
     monkeypatch.setattr(graph, "has_recommendations", lambda oid: True)
     monkeypatch.setattr(graph, "channel_edhrec", lambda cid, deck, identity, pool_filter=None: [])
-    monkeypatch.setattr(graph, "theme_share_among", lambda ids, resources, sides, gate: [])
+    monkeypatch.setattr(graph, "theme_share_among", lambda ids, themes: [])
     monkeypatch.setattr(diagnostics, "resource_relative_idf", lambda: {})
 
     seen: list[list[dict]] = []
@@ -3205,7 +3208,7 @@ def test_tribal_payoff_never_reaches_the_bridge_channel(monkeypatch):
     _stub_commander(monkeypatch)
     monkeypatch.setattr(graph, "has_recommendations", lambda oid: True)
     monkeypatch.setattr(graph, "channel_edhrec", lambda cid, deck, identity, pool_filter=None: [])
-    monkeypatch.setattr(graph, "theme_share_among", lambda ids, resources, sides, gate: [])
+    monkeypatch.setattr(graph, "theme_share_among", lambda ids, themes: [])
     monkeypatch.setattr(diagnostics, "resource_relative_idf", lambda: {})
 
     seen: list[list[dict]] = []
@@ -3245,7 +3248,7 @@ def test_a_tribal_payoff_only_deficit_gets_no_bridge_rows_and_no_false_no_gaps_n
     _stub_commander(monkeypatch)
     monkeypatch.setattr(graph, "has_recommendations", lambda oid: True)
     monkeypatch.setattr(graph, "channel_edhrec", lambda cid, deck, identity, pool_filter=None: [])
-    monkeypatch.setattr(graph, "theme_share_among", lambda ids, resources, sides, gate: [])
+    monkeypatch.setattr(graph, "theme_share_among", lambda ids, themes: [])
     monkeypatch.setattr(diagnostics, "resource_relative_idf", lambda: {})
 
     seen: list[list[dict]] = []
@@ -3294,7 +3297,7 @@ def test_excluding_tribal_silences_the_typal_channel_and_the_on_profile_boost_in
     # Task 1's card-normalised share, along the same "keep it off real Neo4j"
     # line as the supply-boost integration test above — this gate is about
     # the tribal switch, not exclusion strength.
-    monkeypatch.setattr(graph, "theme_share_among", lambda ids, resources, sides, gate: [])
+    monkeypatch.setattr(graph, "theme_share_among", lambda ids, themes: [])
 
     typal_row = {
         "oracle_id": "lord",
