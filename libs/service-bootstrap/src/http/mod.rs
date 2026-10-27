@@ -2,6 +2,7 @@
 
 use galvyn::core::GalvynRouter;
 
+pub mod client;
 mod handler;
 pub mod rate_limit;
 mod trace;
