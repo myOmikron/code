@@ -46,6 +46,7 @@ from .solver import DEFAULT_TIME_LIMIT, FillResult, SolverBusy
 from .solver import fill_deck as run_fill
 from .spellbook import deck_combos as run_combos
 from .suggestions import SuggestionReport, suggest
+from .tracing import TELEMETRY, log_trace_ids, start_tracing
 from .type_targets import PRIMARY_TYPES
 from .vocabulary import Bucket
 
@@ -245,6 +246,7 @@ def _suggestions_key(request: SuggestionsRequest) -> tuple:
     )
 
 
+log_trace_ids()
 log = structlog.get_logger(__name__)
 
 
@@ -288,6 +290,8 @@ def _startup_warmup() -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    tracer_provider = start_tracing(settings)
+
     if settings.warmup_on_start:
         # Synchronous on purpose: uvicorn serves nothing until startup
         # returns, which is what makes the first real request fast.
@@ -299,11 +303,15 @@ async def lifespan(app: FastAPI):
 
     close_driver()
 
+    if tracer_provider is not None:
+        tracer_provider.shutdown()
+
 
 app = FastAPI(
     title="Deck Lab",
     version="0.1.0",
     lifespan=lifespan,
+    telemetry=TELEMETRY,
     # Route names become the OpenAPI operation ids — the same rule the Rust
     # services follow — so the generated TS client's methods read as written
     # (`postDiagnostics`, not `postDiagnosticsDiagnosticsPost`).

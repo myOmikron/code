@@ -10,6 +10,10 @@ dependencies = [
     "httpx>=0.28",
     "structlog>=24.4",
     "typer>=0.15",
+    "opentelemetry-api>=1.45.1",
+    "opentelemetry-sdk>=1.45.1",
+    "opentelemetry-exporter-otlp-proto-grpc>=1.45.1",
+    "opentelemetry-instrumentation-httpx>=0.66b1",
 ]
 
 [project.optional-dependencies]

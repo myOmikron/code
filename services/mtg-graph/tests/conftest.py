@@ -48,3 +48,31 @@ def no_live_graph(request, monkeypatch):
         yield  # pragma: no cover - unreachable, keeps this a generator
 
     monkeypatch.setattr(graph, "driver", refuse)
+
+
+@pytest.fixture(scope="session")
+def _span_exporter():
+    """One in-memory exporter behind the process-wide tracer provider.
+
+    OpenTelemetry lets the global provider be set once per process, so the
+    session installs it and `spans` empties it per test. Spans are exported
+    synchronously as they end, so a test reads them right after its request.
+    """
+    from opentelemetry import trace
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+    from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
+
+    exporter = InMemorySpanExporter()
+    provider = TracerProvider()
+    provider.add_span_processor(SimpleSpanProcessor(exporter))
+    trace.set_tracer_provider(provider)
+    return exporter
+
+
+@pytest.fixture
+def spans(_span_exporter):
+    """The spans ended during this test, read with `spans.get_finished_spans()`."""
+    _span_exporter.clear()
+    yield _span_exporter
+    _span_exporter.clear()

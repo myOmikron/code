@@ -209,6 +209,7 @@ services:
       # false = start the API immediately and load the corpus by hand
       # (`just graph bootstrap`).
       - BOOTSTRAP_ON_START=${BOOTSTRAP_ON_START:-true}
+      - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT:-}
     depends_on:
       neo4j:
         condition: service_healthy

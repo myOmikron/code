@@ -204,6 +204,7 @@ services:
       # false = serve immediately and load the corpus by hand
       # (`just prod mtg exec graph deck-lab bootstrap`).
       - BOOTSTRAP_ON_START=${BOOTSTRAP_ON_START:-true}
+      - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT:-}
     volumes:
       - vol-graph-data:/data
     depends_on:
