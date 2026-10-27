@@ -80,3 +80,21 @@ export async function unsubscribeDevice(): Promise<void> {
     await Api.accounts.push.unsubscribe(subscription.endpoint);
     await subscription.unsubscribe();
 }
+
+/**
+ * Enable Tournament pushes for this device and Account after an explicit activation tap.
+ *
+ * @param publicKey the server's VAPID key, loaded before the tap
+ * @param language the device's push language
+ * @param subscribed whether this device already belongs to the Account
+ * @returns the subscription outcome, after updating the Account preference on success
+ */
+export async function activateTournamentPushes(
+    publicKey: string,
+    language: PushLanguage,
+    subscribed: boolean,
+): Promise<SubscribeOutcome> {
+    const outcome = subscribed ? "subscribed" : await subscribeDevice(publicKey, language);
+    if (outcome === "subscribed") await Api.accounts.push.setTournamentPushes(true);
+    return outcome;
+}
