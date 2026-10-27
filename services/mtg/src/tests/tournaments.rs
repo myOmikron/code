@@ -216,6 +216,20 @@ fn a_format_must_be_one_on_offer() {
 }
 
 #[test]
+fn a_limited_format_is_on_offer() {
+    run(async {
+        let account = create_account(Role::Member).await;
+        let mut client = TestClient::logged_in(&account).await;
+        let mut request = settings("Private");
+        request["format"] = json!("draft");
+
+        let body = create(&mut client, &request).await;
+
+        assert_eq!(body["format"], "draft", "{body}");
+    });
+}
+
+#[test]
 fn creating_needs_an_account() {
     run(async {
         let mut anonymous = TestClient::new();

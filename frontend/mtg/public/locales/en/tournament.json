@@ -310,6 +310,8 @@
         "filter-location": "Search location",
         "format": "Format",
         "format-any": "Any format",
+        "formats-popular": "Commonly played",
+        "formats-rare": "Rarely played",
         "games-drawn": "Drawn games",
         "guest": "Guest",
         "guest-name": "Name",

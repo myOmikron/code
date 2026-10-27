@@ -8,6 +8,7 @@
 
 import type { BracketRulesResponse, RegisteredListResponse, FormatRulesResponse } from "src/api/generated";
 import { type BracketRuleCheck, checkBracket, checkDeck, countBracket } from "src/utils/deck-rules";
+import { isLimited } from "src/utils/tournament-settings";
 
 /** One thing about a Registered deck worth a word with its player */
 export type RegisteredListWarning =
@@ -22,11 +23,13 @@ export type RegisteredListWarning =
  * Check a Registered deck against the Tournament it is played in
  *
  * The rules are those of the Tournament's format, whatever format the deck
- * claims; without a Tournament format, the deck's own.
+ * claims; without a Tournament format, the deck's own. A Limited Tournament
+ * has no rules to hold a deck against: the deck is what was opened, so it
+ * gets no warnings at all.
  *
  * @param list the Registered deck's list
  * @param tournamentFormat the Tournament's format, `null` when it names none
- * @param formats every format's rules
+ * @param formats every deck format's rules
  * @param brackets the Commander brackets
  *
  * @returns the warnings, empty for a deck nobody needs to talk about
@@ -38,6 +41,7 @@ export function registeredListWarnings(
     brackets: Array<BracketRulesResponse>,
 ): Array<RegisteredListWarning> {
     const warnings: Array<RegisteredListWarning> = [];
+    if (isLimited(tournamentFormat)) return warnings;
     if (tournamentFormat != null && list.format !== tournamentFormat) {
         warnings.push({ kind: "format", format: list.format });
     }

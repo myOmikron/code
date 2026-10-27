@@ -127,6 +127,11 @@ describe("registeredListWarnings", () => {
         expect(registeredListWarnings(agreed, "modern", [MODERN], [])).toEqual([]);
     });
 
+    it("says nothing about any deck in a Limited Tournament", () => {
+        const pauper = list({ format: "pauper", cards: [slot("Hymn", ["pauper"])] });
+        expect(registeredListWarnings(pauper, "draft", [MODERN], [])).toEqual([]);
+    });
+
     it("checks a Tournament without a format against the deck's own", () => {
         const pauper = list({ format: "pauper", cards: [slot("Hymn", ["pauper"])] });
 

@@ -36,7 +36,7 @@ pub struct TournamentSettingsRequest {
     pub table_size: i16,
     /// The Ruleset to follow: `Mtr` at 2, `TopDeck` or `MultiplayerAddendum` at 3 to 5
     pub ruleset: Ruleset,
-    /// The format played, a slug from the deck formats; `null` for any
+    /// The format played, a slug from the deck formats or `draft` / `sealed`; `null` for any
     pub format: Option<MaxStr<32>>,
     /// Who may see the Tournament
     pub visibility: Visibility,
@@ -122,7 +122,7 @@ pub struct TournamentSettingsErrors {
     pub table_size_out_of_range: bool,
     /// The Ruleset is not played at the Table size
     pub ruleset_mismatch: bool,
-    /// The format is not one a deck can be built for
+    /// The format is neither a deck format nor `draft` / `sealed`
     pub unknown_format: bool,
     /// The participant limit is below two
     pub participant_limit_too_small: bool,
@@ -311,7 +311,7 @@ pub struct ListTournamentsResponse {
 pub struct ListPublicTournamentsQuery {
     /// Only upcoming (soonest first) or only past (latest first) Tournaments
     pub timeframe: Option<Timeframe>,
-    /// Only Tournaments of this format, a slug from the deck formats
+    /// Only Tournaments of this format, a slug from the deck formats or `draft` / `sealed`
     pub format: Option<MaxStr<32>>,
     /// Only Tournaments whose location contains this text, case ignored
     pub location: Option<MaxStr<255>>,

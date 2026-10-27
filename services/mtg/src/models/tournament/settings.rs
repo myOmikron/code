@@ -26,7 +26,7 @@ pub struct RawTournamentSettings {
     pub table_size: i16,
     /// The Ruleset to follow
     pub ruleset: Ruleset,
-    /// The format played, `None` for any
+    /// The format played, a deck format or one of the [`LIMITED_FORMATS`]; `None` for any
     pub format: Option<MaxStr<32>>,
     /// Who may see the Tournament
     pub visibility: Visibility,
@@ -72,7 +72,7 @@ pub struct TournamentSettings {
     pub table_size: TableSize,
     /// The Ruleset to follow, one fitting [`Self::table_size`]
     pub ruleset: Ruleset,
-    /// The format played, one on offer, `None` for any
+    /// The format played, a deck format or one of the [`LIMITED_FORMATS`]; `None` for any
     pub format: Option<MaxStr<32>>,
     /// Who may see the Tournament
     pub visibility: Visibility,
@@ -128,6 +128,18 @@ impl TournamentSettings {
     }
 }
 
+/// The Limited formats a Tournament is played in, besides the deck formats
+///
+/// Draft and Sealed are no deck formats: no deck exists before the
+/// Tournament, and what was opened is legal. They are offered to Tournaments
+/// only; the frontend mirrors this list in `tournament-settings.ts`.
+pub const LIMITED_FORMATS: [&str; 2] = ["draft", "sealed"];
+
+/// Whether `slug` is one of the [`LIMITED_FORMATS`]
+pub fn is_limited(slug: &str) -> bool {
+    LIMITED_FORMATS.contains(&slug)
+}
+
 /// The smallest participant limit: a Tournament takes at least two Participants
 pub const MIN_PARTICIPANT_LIMIT: i32 = 2;
 
@@ -141,7 +153,7 @@ pub struct SettingsRefusal {
     pub table_size_out_of_range: bool,
     /// The Ruleset is not played at the Table size
     pub ruleset_mismatch: bool,
-    /// The format is not one a deck can be built for
+    /// The format is neither a deck format nor one of the [`LIMITED_FORMATS`]
     pub unknown_format: bool,
     /// The participant limit is below [`MIN_PARTICIPANT_LIMIT`]
     pub participant_limit_too_small: bool,
@@ -173,7 +185,7 @@ impl TournamentSettings {
         refusal.unknown_format = raw
             .format
             .as_ref()
-            .is_some_and(|format| rules_for(format).is_none());
+            .is_some_and(|format| rules_for(format).is_none() && !is_limited(format));
         refusal.participant_limit_too_small = raw
             .participant_limit
             .is_some_and(|limit| limit < MIN_PARTICIPANT_LIMIT);
@@ -291,6 +303,34 @@ mod tests {
         );
         let settings = TournamentSettings::check(tournament_settings).expect("valid");
         assert!(settings.changes_rules_of(&free));
+    }
+
+    #[test]
+    fn a_format_is_a_deck_format_or_limited() {
+        for (format, valid) in [
+            ("commander", true),
+            ("modern", true),
+            ("draft", true),
+            ("sealed", true),
+            ("limited", false),
+            ("cube", false),
+            ("", false),
+        ] {
+            let settings = RawTournamentSettings {
+                format: Some(MaxStr::new(format.to_string()).expect("short")),
+                ..raw(Visibility::Public)
+            };
+            match TournamentSettings::check(settings) {
+                Ok(settings) => {
+                    assert!(valid, "{format}");
+                    assert_eq!(settings.format.as_deref(), Some(format));
+                }
+                Err(refusal) => {
+                    assert!(!valid, "{format}");
+                    assert!(refusal.unknown_format, "{format}");
+                }
+            }
+        }
     }
 
     #[test]

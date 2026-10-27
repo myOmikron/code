@@ -187,6 +187,10 @@ function formatName(t: Translate, slug: string): string {
             return t("label.format-alchemy");
         case "tlr":
             return t("label.format-tlr");
+        case "draft":
+            return t("label.format-draft");
+        case "sealed":
+            return t("label.format-sealed");
         default:
             return slug;
     }
