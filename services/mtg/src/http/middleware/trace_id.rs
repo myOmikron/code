@@ -16,6 +16,9 @@ pub const TRACE_ID_HEADER: HeaderName = HeaderName::from_static("x-trace-id");
 ///
 /// A Bug report lists the recent requests with this id, so an Admin finds
 /// their traces. Without opentelemetry there is no trace and no header.
+///
+/// Wrapped around the frontend routes and the graph advisor proxy alike: the
+/// proxy's answer is the advisor's, but the trace it belongs to is this one.
 #[derive(Copy, Clone, Debug)]
 pub struct TraceIdLayer;
 

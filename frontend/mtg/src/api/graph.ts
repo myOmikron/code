@@ -11,6 +11,7 @@ import {
     SwapsRequest,
     WarmRequest,
 } from "src/api/graph-generated";
+import { DIAGNOSTICS } from "src/utils/diagnostics";
 
 /**
  * The graph advisor (services/mtg-graph) — a second backend beside the
@@ -24,9 +25,13 @@ import {
  * top of a deck, and an unreachable graph must read as "advisor unavailable"
  * where the panel would be — not replace the page with the error screen.
  * Callers render the failure themselves.
+ *
+ * The requests are recorded for Bug reports like the webserver's: the proxy
+ * answers with the `x-trace-id` of the trace the advisor's spans join.
  */
 const configuration = new Configuration({
     basePath: window.location.origin + "/api/graph",
+    middleware: [DIAGNOSTICS.middleware],
 });
 const graphApi = new DefaultApi(configuration);
 

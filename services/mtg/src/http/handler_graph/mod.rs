@@ -6,10 +6,15 @@
 //! `/warm` writes into the graph. So traefik no longer routes `/api/graph`
 //! anywhere — these handlers are the only way in, and the allowlist below
 //! is the public surface.
+//!
+//! The proxy hands its trace on to the advisor, so the advisor's spans join
+//! the request's trace and the `x-trace-id` the browser gets is the one trace
+//! of both services.
 
 use galvyn::core::GalvynRouter;
 
 use crate::http::middleware::account_required::AccountRequiredLayer;
+use crate::http::middleware::trace_id::TraceIdLayer;
 
 pub mod proxy;
 
@@ -27,6 +32,7 @@ pub fn initialize_routes() -> GalvynRouter {
             .handler(proxy::post_warm)
             .handler(proxy::post_pool_query)
             .handler(proxy::get_facets)
-            .wrap(AccountRequiredLayer),
+            .wrap(AccountRequiredLayer)
+            .wrap(TraceIdLayer),
     )
 }
