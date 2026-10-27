@@ -310,6 +310,8 @@
         "filter-location": "Ort suchen",
         "format": "Format",
         "format-any": "Jedes Format",
+        "formats-popular": "Viel gespielt",
+        "formats-rare": "Wenig gespielt",
         "games-drawn": "Unentschiedene Spiele",
         "guest": "Gast",
         "guest-name": "Name",

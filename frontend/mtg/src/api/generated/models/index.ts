@@ -8752,7 +8752,7 @@ export interface TournamentSettingsErrors {
      */
     unknown_currency: boolean;
     /**
-     * The format is not one a deck can be built for
+     * The format is neither a deck format nor `draft` / `sealed`
      */
     unknown_format: boolean;
 }
@@ -8781,7 +8781,7 @@ export interface TournamentSettingsRequest {
      */
     entry_fee?: EntryFeeSchema | null;
     /**
-     * The format played, a slug from the deck formats; `null` for any
+     * The format played, a slug from the deck formats or `draft` / `sealed`; `null` for any
      */
     format?: string | null;
     /**

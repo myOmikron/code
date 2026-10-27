@@ -1,6 +1,7 @@
 import {
     Button,
     Combobox,
+    ComboboxHeading,
     ComboboxLabel,
     ComboboxOption,
     Description,
@@ -22,7 +23,7 @@ import {
 } from "components";
 import { GlobeAltIcon, LinkIcon, LockClosedIcon } from "@heroicons/react/20/solid";
 import { useForm } from "@tanstack/react-form";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import { BestOf, Ruleset, TopCut, TournamentState, Visibility } from "src/api/generated";
@@ -32,6 +33,7 @@ import { PrimaryButton } from "src/components/primary-button";
 import { useTournamentLabels } from "src/components/tournament-labels";
 import { handleFormError, isFormError } from "src/utils/error";
 import { CURRENCIES, fromMinorUnits, toMinorUnits } from "src/utils/entry-fee";
+import { type FormatEntry, formatEntries } from "src/utils/format-groups";
 import {
     TABLE_SIZES,
     withFormatDefaults,
@@ -40,6 +42,7 @@ import {
     rulesetsFor,
     toLocalInput,
     topCutsFor,
+    tournamentFormats,
 } from "src/utils/tournament-settings";
 
 /** The Table size a new Tournament starts out with: a Commander table */
@@ -54,7 +57,7 @@ const NO_TOP_CUT = "None";
 export type TournamentFormProps = {
     /** The Tournament to edit, or `null` to create a new one */
     tournament: TournamentResponse | null;
-    /** The formats on offer */
+    /** The deck formats on offer; the Limited formats join them in the form */
     formats: Array<FormatRulesResponse>;
     /** Called when the Organizer cancels without saving */
     onClose: () => void;
@@ -114,6 +117,10 @@ export function TournamentForm({ tournament, formats, onClose, onSaved }: Tourna
     const labels = useTournamentLabels();
     const deckLabels = useDeckLabels();
     const rulesLocked = tournament !== null && tournament.state !== TournamentState.Registration;
+    const [formatQuery, setFormatQuery] = useState("");
+    const formatChoices = formatEntries(tournamentFormats(formats), deckLabels.format, formatQuery);
+    const formatChoice = (slug: string | null): FormatEntry | null =>
+        formatChoices.find((entry) => entry.kind === "format" && entry.slug === slug) ?? null;
     const topCutLocked =
         tournament !== null &&
         tournament.state !== TournamentState.Registration &&
@@ -227,17 +234,18 @@ export function TournamentForm({ tournament, formats, onClose, onSaved }: Tourna
                                 <Field>
                                     <Label>{t("label.format")}</Label>
                                     <Description>{t("description.format")}</Description>
-                                    <Combobox<FormatRulesResponse | null>
-                                        options={formats}
+                                    <Combobox<FormatEntry | null>
+                                        options={formatChoices}
                                         by={"slug"}
-                                        value={formats.find((format) => format.slug === fieldApi.state.value) ?? null}
-                                        displayValue={(format) =>
-                                            format == null ? "" : deckLabels.format(format.slug)
-                                        }
+                                        optionDisabled={(entry) => entry?.kind === "heading"}
+                                        filter={() => true}
+                                        onQueryChange={setFormatQuery}
+                                        value={formatChoice(fieldApi.state.value)}
+                                        displayValue={(entry) => (entry?.kind === "format" ? entry.name : "")}
                                         placeholder={t("label.format-any")}
                                         aria-label={t("label.format")}
-                                        onChange={(format) => {
-                                            const slug = format?.slug ?? null;
+                                        onChange={(entry) => {
+                                            const slug = entry?.kind === "format" ? entry.slug : null;
                                             fieldApi.handleChange(slug);
                                             if (rulesLocked) return;
                                             const next = withFormatDefaults(
@@ -256,11 +264,19 @@ export function TournamentForm({ tournament, formats, onClose, onSaved }: Tourna
                                             }
                                         }}
                                     >
-                                        {(format) => (
-                                            <ComboboxOption value={format}>
-                                                <ComboboxLabel>{deckLabels.format(format.slug)}</ComboboxLabel>
-                                            </ComboboxOption>
-                                        )}
+                                        {(entry) =>
+                                            entry.kind === "heading" ? (
+                                                <ComboboxHeading value={entry}>
+                                                    {entry.group === "popular"
+                                                        ? t("label.formats-popular")
+                                                        : t("label.formats-rare")}
+                                                </ComboboxHeading>
+                                            ) : (
+                                                <ComboboxOption value={entry}>
+                                                    <ComboboxLabel>{entry.name}</ComboboxLabel>
+                                                </ComboboxOption>
+                                            )
+                                        }
                                     </Combobox>
                                     {fieldApi.state.meta.errors.map((error) => (
                                         <ErrorMessage key={String(error)}>{String(error)}</ErrorMessage>

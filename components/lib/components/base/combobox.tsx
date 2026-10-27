@@ -14,6 +14,8 @@ export type ComboboxProps<T> = {
     displayValue: (value: T | null) => string | undefined;
     /** Custom filter function for options */
     filter?: (value: T, query: string) => boolean;
+    /** Which options cannot be picked and are skipped by the keyboard, such as a {@link ComboboxHeading} */
+    optionDisabled?: (value: T) => boolean;
     /** Additional CSS classes */
     className?: string;
     /** Placeholder text for the input */
@@ -90,6 +92,7 @@ export function Combobox<T>(props: ComboboxProps<T>) {
         options,
         displayValue,
         filter,
+        optionDisabled,
         anchor = "bottom",
         className,
         placeholder,
@@ -112,7 +115,7 @@ export function Combobox<T>(props: ComboboxProps<T>) {
         <Headless.Combobox
             {...rest}
             multiple={false}
-            virtual={{ options: filteredOptions }}
+            virtual={{ options: filteredOptions, disabled: optionDisabled }}
             onClose={() => {
                 setQuery("");
                 onQueryChange?.("");
@@ -272,6 +275,39 @@ export function ComboboxOption<T>(props: ComboboxOptionProps<T>) {
             >
                 <path d="M4 8.5l3 3L12 4" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
             </svg>
+        </Headless.ComboboxOption>
+    );
+}
+
+/**
+ * The properties for {@link ComboboxHeading}
+ */
+export type ComboboxHeadingProps<T> = {
+    /** Additional CSS classes */
+    className?: string;
+    /** The heading text */
+    children?: React.ReactNode;
+} & Omit<Headless.ComboboxOptionProps<"div", T>, "as" | "className" | "disabled">;
+
+/**
+ * A heading over a group of options within a {@link Combobox}
+ *
+ * One of the `options` like any other, so it takes a `value` of its own and
+ * is listed where the group begins; the Combobox's `optionDisabled` has to name it
+ * so it is neither picked nor reached by the keyboard.
+ */
+export function ComboboxHeading<T>(props: ComboboxHeadingProps<T>) {
+    const { children, className, ...rest } = props;
+    return (
+        <Headless.ComboboxOption
+            {...rest}
+            disabled={true}
+            className={clsx(
+                className,
+                "block w-full cursor-default px-3.5 pt-2 pb-1 text-sm/5 font-medium text-zinc-500 select-none sm:px-3 sm:text-xs/5 dark:text-zinc-400",
+            )}
+        >
+            {children}
         </Headless.ComboboxOption>
     );
 }

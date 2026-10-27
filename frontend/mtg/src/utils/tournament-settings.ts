@@ -1,4 +1,5 @@
 import { Ruleset, TopCut } from "src/api/generated";
+import type { FormatRulesResponse } from "src/api/generated";
 
 /** The Table sizes a Tournament can be played at, smallest first */
 export const TABLE_SIZES: Array<number> = [2, 3, 4, 5];
@@ -68,7 +69,39 @@ export function fromLocalInput(value: string): Date {
 }
 
 /**
- * Suggested Table size and Ruleset for a deck format.
+ * The Limited formats a Tournament is played in, besides the deck formats.
+ *
+ * Draft and Sealed are no deck formats: no deck exists before the Tournament,
+ * and what was opened is legal. Mirrors `LIMITED_FORMATS` of the backend's
+ * `tournament/settings.rs`, which is what accepts them.
+ */
+export const LIMITED_FORMATS: ReadonlyArray<string> = ["draft", "sealed"];
+
+/**
+ * Whether a Tournament format is one of the {@link LIMITED_FORMATS}
+ *
+ * @param format the Tournament's format, `null` when it names none
+ * @returns `true` for Draft and Sealed
+ */
+export function isLimited(format: string | null | undefined): boolean {
+    return format != null && LIMITED_FORMATS.includes(format);
+}
+
+/**
+ * The formats a Tournament can be played in: the deck formats, then the Limited ones.
+ *
+ * @param formats the deck formats on offer
+ * @returns their slugs, followed by the {@link LIMITED_FORMATS}
+ */
+export function tournamentFormats(formats: Array<FormatRulesResponse>): Array<string> {
+    return [...formats.map((format) => format.slug), ...LIMITED_FORMATS];
+}
+
+/**
+ * Suggested Table size and Ruleset for a format.
+ *
+ * The multiplayer deck formats and no format suggest a Commander table;
+ * everything else, Limited included, is played one-on-one.
  *
  * @param format the selected format, or no restriction
  * @returns editable settings suggested for the format

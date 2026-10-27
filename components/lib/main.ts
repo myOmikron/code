@@ -41,7 +41,13 @@ export {
     type PrimaryButtonProps,
 } from "./components/base/button.tsx";
 export { CheckboxGroup, CheckboxField, Checkbox } from "./components/base/checkbox.tsx";
-export { Combobox, ComboboxOption, ComboboxLabel, ComboboxDescription } from "./components/base/combobox.tsx";
+export {
+    Combobox,
+    ComboboxOption,
+    ComboboxHeading,
+    ComboboxLabel,
+    ComboboxDescription,
+} from "./components/base/combobox.tsx";
 export { DescriptionList, DescriptionTerm, DescriptionDetails } from "./components/base/description-list.tsx";
 export {
     type DialogProps,

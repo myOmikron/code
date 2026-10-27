@@ -128,6 +128,10 @@ An event that Accounts run and play with their decks: Swiss Rounds, optionally f
 One event of Rounds played under one Ruleset at one Table size, with its name, date, place, Participants and settings. Either run live in mtg or entered afterwards, with every pairing and Result set by its Organizers. Leagues are not Tournaments.
 _Avoid_: event, league, competition
 
+**Limited**:
+A Tournament format without a deck format behind it: **Draft** or **Sealed**, where every deck is built from what was opened at the event. Offered to Tournaments only, never to decks; a Limited Tournament suggests one-on-one under MTR, and its Registered decks get no format, legality or bracket warnings, since there is nothing to hold them against.
+_Avoid_: constructed (that is every deck format), cube
+
 **Owner**:
 The one Account a Tournament belongs to. Only the Owner deletes it, removes Co-organizers and hands it on to another Account, which becomes Owner once it accepts; the former Owner stays as a Co-organizer.
 _Avoid_: host, admin, TO (an Owner is unrelated to the Admin Role)

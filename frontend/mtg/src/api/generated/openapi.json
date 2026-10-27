@@ -10101,7 +10101,7 @@
                         "name": "format",
                         "schema": {
                             "nullable": true,
-                            "description": "Only Tournaments of this format, a slug from the deck formats",
+                            "description": "Only Tournaments of this format, a slug from the deck formats or `draft` / `sealed`",
                             "allOf": [
                                 {
                                     "$ref": "#/components/schemas/MaxStr_32"
@@ -27084,7 +27084,7 @@
                         "type": "boolean"
                     },
                     "unknown_format": {
-                        "description": "The format is not one a deck can be built for",
+                        "description": "The format is neither a deck format nor `draft` / `sealed`",
                         "type": "boolean"
                     }
                 },
@@ -27142,7 +27142,7 @@
                     },
                     "format": {
                         "nullable": true,
-                        "description": "The format played, a slug from the deck formats; `null` for any",
+                        "description": "The format played, a slug from the deck formats or `draft` / `sealed`; `null` for any",
                         "allOf": [
                             {
                                 "$ref": "#/components/schemas/MaxStr_32"

@@ -1,13 +1,17 @@
 import { describe, expect, it } from "vitest";
 import { Ruleset, TopCut } from "src/api/generated";
+import type { FormatRulesResponse } from "src/api/generated";
 import {
+    LIMITED_FORMATS,
     formatDefaults,
     withFormatDefaults,
     fromLocalInput,
+    isLimited,
     rulesetFits,
     rulesetsFor,
     toLocalInput,
     topCutsFor,
+    tournamentFormats,
 } from "src/utils/tournament-settings";
 
 describe("rulesetsFor", () => {
@@ -62,6 +66,27 @@ describe("deck format suggestions", () => {
         for (const format of ["standard", "duel", "archon", "brawl", "competitivebrawl", "standardbrawl"]) {
             expect(formatDefaults(format)).toEqual({ tableSize: 2, ruleset: Ruleset.Mtr });
         }
+    });
+
+    it("suggests one-on-one for Limited", () => {
+        for (const format of LIMITED_FORMATS) {
+            expect(formatDefaults(format)).toEqual({ tableSize: 2, ruleset: Ruleset.Mtr });
+        }
+    });
+});
+
+describe("the formats on offer", () => {
+    it("lists the deck formats first and the Limited formats after them", () => {
+        const formats = tournamentFormats([{ slug: "commander" }, { slug: "modern" }] as Array<FormatRulesResponse>);
+        expect(formats).toEqual(["commander", "modern", "draft", "sealed"]);
+    });
+
+    it("tells Limited from a deck format and from no format", () => {
+        expect(isLimited("draft")).toBe(true);
+        expect(isLimited("sealed")).toBe(true);
+        expect(isLimited("modern")).toBe(false);
+        expect(isLimited(null)).toBe(false);
+        expect(isLimited(undefined)).toBe(false);
     });
 });
 
