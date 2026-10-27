@@ -13,17 +13,19 @@ use galvyn::put;
 use galvyn::rorm::Database;
 use galvyn::rorm::db::transaction::Transaction;
 
-use super::handler::denied;
+use super::super::handler::denied;
+use super::schema::CaptureMatchLifeConflictRequest;
+use super::schema::CapturedMatchLifeConflict;
+use super::schema::ClaimMatchLifeRequest;
+use super::schema::MatchLifeConflict;
+use super::schema::MatchLifeConflicts;
+use super::schema::MatchLifeErrors;
+use super::schema::MatchLifeHistoryResponse;
+use super::schema::SaveMatchLifeRequest;
 use crate::models::account::Account;
-use crate::models::tournament::Tournament;
 use crate::models::tournament::TournamentUuid;
-use crate::models::tournament::access::TournamentAccess;
 use crate::models::tournament::access::TournamentGrant;
 use crate::models::tournament::life_history;
-use crate::models::tournament::life_history::ClaimMatchLifeRequest;
-use crate::models::tournament::life_history::MatchLifeErrors;
-use crate::models::tournament::life_history::MatchLifeHistoryResponse;
-use crate::models::tournament::life_history::SaveMatchLifeRequest;
 use crate::models::tournament::round::MatchUuid;
 
 /// History routes in the authenticated Organizer-or-Participant group.
@@ -54,34 +56,29 @@ pub async fn get_match_life_history(
     }
     let state = life_history::read(&mut tx, played.into_inner()).await?;
     tx.commit().await?;
-    Ok(ApiJson(state))
+    Ok(ApiJson(state.into()))
 }
 
-async fn fresh_grant(
+async fn locked_grant(
     tx: &mut Transaction,
     original: &TournamentGrant,
-    account: &Account,
 ) -> ApiResult<TournamentGrant, MatchLifeErrors> {
-    original
+    let tournament = original
         .tournament
         .lock_for_update(tx)
         .await?
         .ok_or_else(denied)?;
-    Tournament::get_granted(
-        tx,
-        original.tournament.uuid,
-        Some(account.uuid),
-        TournamentAccess::MatchHistory,
-    )
-    .await?
-    .ok_or_else(denied)
+    Ok(TournamentGrant {
+        tournament,
+        ..original.clone()
+    })
 }
 
 fn accepted(
-    result: Result<MatchLifeHistoryResponse, MatchLifeErrors>,
+    result: Result<life_history::RecordingState, life_history::RecordingRefusal>,
 ) -> ApiResult<ApiJson<MatchLifeHistoryResponse>, MatchLifeErrors> {
     match result {
-        Ok(response) => Ok(ApiJson(response)),
+        Ok(response) => Ok(ApiJson(response.into())),
         Err(refusal) => {
             let mut errors = FormErrors::<MatchLifeErrors>::new();
             errors.writer_conflict = refusal.writer_conflict;
@@ -102,12 +99,13 @@ pub async fn claim_match_life_history(
     ApiJson(request): ApiJson<ClaimMatchLifeRequest>,
 ) -> ApiResult<ApiJson<MatchLifeHistoryResponse>, MatchLifeErrors> {
     let mut tx = Database::global().start_transaction().await?;
-    let fresh = fresh_grant(&mut tx, &grant, &account).await?;
+    let fresh = locked_grant(&mut tx, &grant).await?;
     if fresh.match_play(&mut tx, played).await?.is_none() {
         tx.rollback().await?;
         return Err(denied());
     }
-    let result = life_history::claim(&mut tx, played.into_inner(), account.uuid, request).await?;
+    let result =
+        life_history::claim(&mut tx, played.into_inner(), account.uuid, request.into()).await?;
     if result.is_ok() {
         tx.commit().await?;
     } else {
@@ -125,12 +123,12 @@ pub async fn save_match_life_history(
     ApiJson(request): ApiJson<SaveMatchLifeRequest>,
 ) -> ApiResult<ApiJson<MatchLifeHistoryResponse>, MatchLifeErrors> {
     let mut tx = Database::global().start_transaction().await?;
-    let fresh = fresh_grant(&mut tx, &grant, &account).await?;
+    let fresh = locked_grant(&mut tx, &grant).await?;
     let Some(context) = fresh.match_play(&mut tx, played).await? else {
         tx.rollback().await?;
         return Err(denied());
     };
-    let result = life_history::save(&mut tx, &context, account.uuid, request).await?;
+    let result = life_history::save(&mut tx, &context, account.uuid, request.into()).await?;
     if result.is_ok() {
         tx.commit().await?;
     } else {
@@ -169,14 +167,19 @@ async fn transfer(
     release: bool,
 ) -> ApiResult<ApiJson<MatchLifeHistoryResponse>, MatchLifeErrors> {
     let mut tx = Database::global().start_transaction().await?;
-    let fresh = fresh_grant(&mut tx, &grant, &account).await?;
+    let fresh = locked_grant(&mut tx, &grant).await?;
     if fresh.match_play(&mut tx, played).await?.is_none() {
         tx.rollback().await?;
         return Err(denied());
     }
-    let result =
-        life_history::transfer(&mut tx, played.into_inner(), account.uuid, request, release)
-            .await?;
+    let result = life_history::transfer(
+        &mut tx,
+        played.into_inner(),
+        account.uuid,
+        request.into(),
+        release,
+    )
+    .await?;
     if result.is_ok() {
         tx.commit().await?;
     } else {
@@ -190,7 +193,7 @@ async fn transfer(
 pub async fn list_match_life_conflicts(
     grant: TournamentGrant,
     Path((_, played)): Path<(TournamentUuid, MatchUuid)>,
-) -> ApiResult<ApiJson<life_history::MatchLifeConflicts>> {
+) -> ApiResult<ApiJson<MatchLifeConflicts>> {
     let mut tx = Database::global().start_transaction().await?;
     if grant.match_play(&mut tx, played).await?.is_none() {
         tx.commit().await?;
@@ -198,7 +201,7 @@ pub async fn list_match_life_conflicts(
     }
     let result = life_history::conflicts(&mut tx, played.into_inner()).await?;
     tx.commit().await?;
-    Ok(ApiJson(result))
+    Ok(ApiJson(result.into()))
 }
 
 /// Reads one recovered branch without applying it to the Match.
@@ -206,7 +209,7 @@ pub async fn list_match_life_conflicts(
 pub async fn get_match_life_conflict(
     grant: TournamentGrant,
     Path((_, played, conflict)): Path<(TournamentUuid, MatchUuid, uuid::Uuid)>,
-) -> ApiResult<ApiJson<life_history::MatchLifeConflict>> {
+) -> ApiResult<ApiJson<MatchLifeConflict>> {
     let mut tx = Database::global().start_transaction().await?;
     if grant.match_play(&mut tx, played).await?.is_none() {
         tx.commit().await?;
@@ -214,7 +217,7 @@ pub async fn get_match_life_conflict(
     }
     let result = life_history::conflict(&mut tx, played.into_inner(), conflict).await?;
     tx.commit().await?;
-    Ok(ApiJson(result.ok_or_else(denied)?))
+    Ok(ApiJson(result.ok_or_else(denied)?.into()))
 }
 
 /// Preserves all recovered old-device changes as an independent authorized artifact.
@@ -223,19 +226,20 @@ pub async fn capture_match_life_conflict(
     account: Account,
     grant: TournamentGrant,
     Path((_, played)): Path<(TournamentUuid, MatchUuid)>,
-    ApiJson(request): ApiJson<life_history::CaptureMatchLifeConflictRequest>,
-) -> ApiResult<ApiJson<life_history::CapturedMatchLifeConflict>, MatchLifeErrors> {
+    ApiJson(request): ApiJson<CaptureMatchLifeConflictRequest>,
+) -> ApiResult<ApiJson<CapturedMatchLifeConflict>, MatchLifeErrors> {
     let mut tx = Database::global().start_transaction().await?;
-    let fresh = fresh_grant(&mut tx, &grant, &account).await?;
+    let fresh = locked_grant(&mut tx, &grant).await?;
     let Some(context) = fresh.match_play(&mut tx, played).await? else {
         tx.rollback().await?;
         return Err(denied());
     };
-    let result = life_history::capture_conflict(&mut tx, &context, account.uuid, request).await?;
+    let result =
+        life_history::capture_conflict(&mut tx, &context, account.uuid, request.into()).await?;
     match result {
         Ok(result) => {
             tx.commit().await?;
-            Ok(ApiJson(result))
+            Ok(ApiJson(result.into()))
         }
         Err(error) => {
             tx.rollback().await?;

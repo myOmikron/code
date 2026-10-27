@@ -91,3 +91,21 @@ export function singleGameResult(seats: number, winner: number | null): SetResul
         games_drawn: winner === null ? 1 : 0,
     };
 }
+
+/**
+ * Explains Result refusals consistently in all reporting and Organizer forms.
+ *
+ * @param error service refusal flags
+ * @returns the existing Tournament translation key
+ */
+export function resultErrorKey(error: Record<string, boolean>) {
+    const reasons = [
+        ["not_running", "error.round-not-running"],
+        ["not_started", "error.round-not-started"],
+        ["reported_by_other", "error.result-reported-by-other"],
+        ["disputed", "error.result-disputed"],
+        ["confirmed", "error.result-confirmed"],
+        ["dropped_winner", "error.dropped-winner"],
+    ] as const;
+    return reasons.find(([flag]) => error[flag])?.[1] ?? "error.invalid-score";
+}

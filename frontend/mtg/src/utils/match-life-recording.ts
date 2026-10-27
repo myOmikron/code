@@ -19,6 +19,7 @@ export type OfflineMatchContext = {
 /** One atomic recording record, retaining at most one immutable upload and the latest local history. */
 export type RecordingEnvelope = RecordingScope & {
     version: 1;
+    storageRevision?: number;
     claim?: ClaimMatchLifeRequest;
     claimAccepted: boolean;
     ownershipKind?: "claim" | "takeover";
@@ -61,6 +62,7 @@ export class MatchLifeRecording {
      *
      * @param scope Account and Match identity
      * @param storage browser persistence boundary
+     * @param writeAccess whether this controller still holds the local recording lock
      */
     constructor(
         private scope: RecordingScope,
@@ -68,6 +70,7 @@ export class MatchLifeRecording {
             getItem: (key) => localStorage.getItem(key),
             setItem: (key, value) => localStorage.setItem(key, value),
         },
+        private writeAccess: () => boolean = () => true,
     ) {
         this.value = {
             ...scope,
@@ -78,13 +81,24 @@ export class MatchLifeRecording {
             configured: false,
             dirty: false,
         };
+        this.refreshFromStorage();
+    }
+
+    /**
+     * Restores the complete latest envelope before local-tab promotion or read-only projection.
+     *
+     * @returns whether a valid persisted recording was found
+     */
+    refreshFromStorage(): boolean {
         try {
-            const stored = JSON.parse(storage.getItem(recordingKey(scope)) ?? "null") as RecordingEnvelope | null;
+            const stored = JSON.parse(
+                this.storage.getItem(recordingKey(this.scope)) ?? "null",
+            ) as RecordingEnvelope | null;
             if (
                 stored?.version === 1 &&
-                stored.account === scope.account &&
-                stored.tournament === scope.tournament &&
-                stored.match === scope.match &&
+                stored.account === this.scope.account &&
+                stored.tournament === this.scope.tournament &&
+                stored.match === this.scope.match &&
                 typeof stored.dirty === "boolean" &&
                 typeof stored.claimAccepted === "boolean"
             ) {
@@ -94,11 +108,15 @@ export class MatchLifeRecording {
                         getItem: () => JSON.stringify(stored.local),
                         setItem: () => undefined,
                     }) !== null;
-                if (validHistory) this.value = stored;
+                if (validHistory) {
+                    this.value = stored;
+                    return true;
+                }
             }
         } catch {
             this.storageFailed = true;
         }
+        return false;
     }
 
     /**
@@ -121,7 +139,7 @@ export class MatchLifeRecording {
 
     /** @returns whether the acknowledged writer may flush retained uploads, including during transfer. */
     canUpload(): boolean {
-        return this.value.claimAccepted && !this.value.blocked;
+        return this.writeAccess() && this.value.claimAccepted && !this.value.blocked;
     }
 
     /** Freezes further counting before the transfer flush begins. */
@@ -140,6 +158,7 @@ export class MatchLifeRecording {
 
     /** @returns a durable release intent only after every counted change has been acknowledged. */
     prepareRelease(): ClaimMatchLifeRequest | null {
+        if (!this.writeAccess()) return null;
         if (this.value.release) return this.persist() ? this.value.release : null;
         const { claim, remote, transfer, dirty, inFlight } = this.value;
         if (!transfer || !this.canUpload() || dirty || inFlight || !claim || !remote) return null;
@@ -162,6 +181,7 @@ export class MatchLifeRecording {
      * @param remote current state and receipt
      */
     acceptRelease(remote: MatchLifeHistoryResponse): void {
+        if (!this.writeAccess()) return;
         const release = this.value.release;
         if (
             !release ||
@@ -189,7 +209,16 @@ export class MatchLifeRecording {
      * @returns whether the complete envelope was persisted
      */
     private persist(): boolean {
+        if (!this.writeAccess()) return false;
         try {
+            const latest = JSON.parse(
+                this.storage.getItem(recordingKey(this.scope)) ?? "null",
+            ) as RecordingEnvelope | null;
+            if ((latest?.storageRevision ?? 0) > (this.value.storageRevision ?? 0)) {
+                this.refreshFromStorage();
+                return false;
+            }
+            this.value = { ...this.value, storageRevision: (this.value.storageRevision ?? 0) + 1 };
             this.storage.setItem(recordingKey(this.scope), JSON.stringify(this.value));
             this.storageFailed = false;
             return true;
@@ -205,6 +234,7 @@ export class MatchLifeRecording {
      * @param context authorized Match context and clock offset
      */
     rememberContext(context: OfflineMatchContext): void {
+        if (!this.writeAccess()) return;
         this.value = { ...this.value, context };
         this.persist();
     }
@@ -217,6 +247,7 @@ export class MatchLifeRecording {
      */
     change(local: LifeHistory, configured: boolean): void {
         if (!this.writer()) return;
+        if (this.value.configured && this.value.local && isHistoryPrefix(local, this.value.local)) return;
         if (
             this.value.local &&
             JSON.stringify(this.value.local) === JSON.stringify(local) &&
@@ -270,7 +301,8 @@ export class MatchLifeRecording {
      *
      * @returns the exact request to claim or retry
      */
-    prepareClaim(): ClaimMatchLifeRequest {
+    prepareClaim(): ClaimMatchLifeRequest | null {
+        if (!this.writeAccess()) return null;
         if (!this.value.claim || (!this.value.dirty && !this.value.inFlight && this.value.blocked === "conflict")) {
             this.value = {
                 ...this.value,
@@ -296,6 +328,7 @@ export class MatchLifeRecording {
      * @returns a persisted ownership intent or null while an unsent branch remains
      */
     prepareTakeover(confirmed: MatchLifeHistoryResponse): ClaimMatchLifeRequest | null {
+        if (!this.writeAccess()) return null;
         if (this.value.dirty || this.value.inFlight || this.writer()) return null;
         this.value = {
             ...this.value,
@@ -319,6 +352,7 @@ export class MatchLifeRecording {
 
     /** @returns the complete frozen unsent branch, retaining its exact ownership proof across retries. */
     prepareConflict(): CaptureMatchLifeConflictRequest | null {
+        if (!this.writeAccess()) return null;
         if (this.value.conflictUpload) return this.persist() ? this.value.conflictUpload : null;
         if (
             this.value.blocked !== "conflict" ||
@@ -346,6 +380,7 @@ export class MatchLifeRecording {
      * @param artifact authorized server artifact identity
      */
     acceptConflict(request: string, artifact: string): void {
+        if (!this.writeAccess()) return;
         if (this.value.conflictUpload?.request_id !== request) return;
         this.value = {
             ...this.value,
@@ -364,6 +399,7 @@ export class MatchLifeRecording {
      * @param remote server response to the original claim
      */
     acceptClaim(remote: MatchLifeHistoryResponse): void {
+        if (!this.writeAccess()) return;
         const claim = this.value.claim;
         const accepted =
             !!claim &&
@@ -425,6 +461,7 @@ export class MatchLifeRecording {
      * @param remote fresh state and receipt returned by an upload
      */
     acceptUpload(remote: MatchLifeHistoryResponse): void {
+        if (!this.writeAccess()) return;
         const request = this.value.inFlight;
         if (
             !request ||
@@ -456,7 +493,30 @@ export class MatchLifeRecording {
      * @param blocked why automatic upload must stop
      */
     reject(blocked: "conflict" | "invalid" | "auth"): void {
+        if (!this.writeAccess()) return;
         this.value = { ...this.value, blocked };
         this.persist();
     }
+}
+
+/**
+ * Recognizes an old counter projection without treating it as new local counting.
+ *
+ * @param candidate possibly stale history emitted by a mounted counter
+ * @param current latest durable local history
+ * @returns whether the candidate contains only a retained prefix of the current record
+ */
+function isHistoryPrefix(candidate: LifeHistory, current: LifeHistory): boolean {
+    return (
+        candidate.games.length <= current.games.length &&
+        candidate.games.every((game, index) => {
+            const next = current.games[index];
+            return (
+                game.events.length <= next.events.length &&
+                JSON.stringify(game.players) === JSON.stringify(next.players) &&
+                JSON.stringify(game.startingLife) === JSON.stringify(next.startingLife) &&
+                game.events.every((event, position) => JSON.stringify(event) === JSON.stringify(next.events[position]))
+            );
+        })
+    );
 }

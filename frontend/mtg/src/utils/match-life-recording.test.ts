@@ -29,7 +29,7 @@ function storage() {
 function start(store = storage()) {
     const recording = new MatchLifeRecording(scope, store);
     recording.observe(empty);
-    const claim = recording.prepareClaim();
+    const claim = recording.prepareClaim()!;
     recording.acceptClaim({
         ...empty,
         writer: claim.device,
@@ -249,7 +249,7 @@ it("resumes an existing saved Game after a released slot is claimed without reop
     const recording = new MatchLifeRecording(scope, storage());
     const history = createLifeHistory([{ id: "alice", name: "Alice" }], [30], 1000);
     recording.observe({ ...empty, generation: 2, revision: 1, history: toMatchLifeHistory(history) });
-    const claim = recording.prepareClaim();
+    const claim = recording.prepareClaim()!;
     recording.acceptClaim({
         ...empty,
         generation: 3,
@@ -262,4 +262,72 @@ it("resumes an existing saved Game after a released slot is claimed without reop
     expect(recording.snapshot().configured).toBe(true);
     expect(recording.snapshot().local).toEqual(history);
     expect(recording.writer()).toBe(true);
+});
+
+it("preserves pending A and latest B when a passive tab writes metadata or receives a late receipt", () => {
+    const { recording, store, claim } = start();
+    const first = createLifeHistory([{ id: "alice", name: "Alice" }], [20], 1000);
+    recording.change(first, true);
+    const initial = recording.prepareUpload()!;
+    recording.acceptUpload({
+        ...empty,
+        writer: claim.device,
+        generation: 1,
+        revision: 1,
+        history: initial.history,
+        accepted_request: initial.request_id,
+        accepted_revision: 1,
+    });
+    let writable = false;
+    const passive = new MatchLifeRecording(scope, store, () => writable);
+    const latest = changeLifeHistory(first, 0, -2, 2000);
+    recording.change(latest, true);
+    const pending = recording.prepareUpload()!;
+    recording.freezeTransfer();
+    passive.rememberContext({ tournament: { uuid: "stale" } } as never);
+    passive.observe({ ...empty, writer: claim.device, generation: 1, revision: 1, history: initial.history });
+    passive.acceptUpload({
+        ...empty,
+        writer: claim.device,
+        generation: 1,
+        revision: 1,
+        accepted_request: initial.request_id,
+        accepted_revision: 1,
+    });
+    writable = true;
+    passive.refreshFromStorage();
+    expect(passive.snapshot().local).toEqual(latest);
+    expect(passive.snapshot().inFlight).toEqual(pending);
+    expect(passive.snapshot().claim).toEqual(claim);
+    expect(passive.snapshot().transfer).toBe(true);
+    expect(passive.writer()).toBe(false);
+    expect(passive.prepareUpload()).toEqual(pending);
+});
+
+it("fences a former local owner after another tab preserves a frozen conflict branch", () => {
+    const { recording, store, claim } = start();
+    const first = createLifeHistory([{ id: "alice", name: "Alice" }], [40], 1000);
+    recording.change(first, true);
+    const pending = recording.prepareUpload()!;
+    let active = true;
+    const former = new MatchLifeRecording(scope, store, () => active);
+    active = false;
+    const promoted = new MatchLifeRecording(scope, store);
+    const latest = changeLifeHistory(first, 0, -4, 2000);
+    promoted.change(latest, true);
+    promoted.observe({ ...empty, writer: "new-phone", generation: 2, revision: 0 });
+    const captured = promoted.prepareConflict()!;
+    former.acceptUpload({
+        ...empty,
+        writer: claim.device,
+        generation: 1,
+        revision: 1,
+        accepted_request: pending.request_id,
+        accepted_revision: 1,
+    });
+    former.reject("auth");
+    const restored = new MatchLifeRecording(scope, store);
+    expect(restored.snapshot().local).toEqual(latest);
+    expect(restored.snapshot().conflictUpload).toEqual(captured);
+    expect(restored.snapshot().claim).toEqual(claim);
 });

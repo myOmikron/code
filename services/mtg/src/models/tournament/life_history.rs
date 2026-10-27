@@ -125,8 +125,8 @@ pub struct MatchLifeHistory {
 }
 
 /// Public durable state; intentionally contains no recording credential.
-#[derive(Clone, Debug, Serialize, JsonSchema)]
-pub struct MatchLifeHistoryResponse {
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct RecordingState {
     /// Uploaded history, absent until its first save.
     pub history: Option<MatchLifeHistory>,
     /// Ownership epoch, incremented by every ownership change.
@@ -144,8 +144,8 @@ pub struct MatchLifeHistoryResponse {
 }
 
 /// An explicit claim using a private credential saved locally before the request.
-#[derive(Clone, Deserialize, Serialize, JsonSchema)]
-pub struct ClaimMatchLifeRequest {
+#[derive(Clone, Deserialize, Serialize)]
+pub struct RecordingClaim {
     /// Public device identity.
     pub device: Uuid,
     /// Private random capability, never returned to observers or logged.
@@ -159,8 +159,8 @@ pub struct ClaimMatchLifeRequest {
 }
 
 /// An immutable upload intent, retried with the same identity and content.
-#[derive(Clone, Deserialize, Serialize, JsonSchema)]
-pub struct SaveMatchLifeRequest {
+#[derive(Clone, Deserialize, Serialize)]
+pub struct RecordingUpload {
     /// Public recording-device identity.
     pub device: Uuid,
     /// Private capability bound to the recording Account and device.
@@ -176,8 +176,8 @@ pub struct SaveMatchLifeRequest {
 }
 
 /// Why a claim or upload could not be accepted.
-#[derive(Default, Debug, Clone, Serialize, JsonSchema)]
-pub struct MatchLifeErrors {
+#[derive(Default, Debug, Clone, Serialize, Deserialize)]
+pub struct RecordingRefusal {
     /// Another device owns recording, or the capability no longer matches.
     pub writer_conflict: bool,
     /// The saved state changed since this request was prepared.
@@ -189,10 +189,7 @@ pub struct MatchLifeErrors {
 }
 
 /// The durable state of one authorized Match, without claiming ownership.
-pub async fn read(
-    tx: &mut Transaction,
-    played: Uuid,
-) -> Result<MatchLifeHistoryResponse, rorm::Error> {
+pub async fn read(tx: &mut Transaction, played: Uuid) -> Result<RecordingState, rorm::Error> {
     let row = rorm::query(&mut *tx, MatchLifeHistoryModel)
         .condition(MatchLifeHistoryModel.tournament_match.equals(played))
         .optional()
@@ -200,11 +197,20 @@ pub async fn read(
     Ok(response(row, None))
 }
 
-fn response(
-    row: Option<MatchLifeHistoryModel>,
-    receipt: Option<(Uuid, i64)>,
-) -> MatchLifeHistoryResponse {
-    MatchLifeHistoryResponse {
+async fn acknowledged(
+    tx: &mut Transaction,
+    played: Uuid,
+    request: Uuid,
+    revision: i64,
+) -> Result<RecordingState, rorm::Error> {
+    let mut state = read(tx, played).await?;
+    state.accepted_request = Some(request);
+    state.accepted_revision = Some(revision);
+    Ok(state)
+}
+
+fn response(row: Option<MatchLifeHistoryModel>, receipt: Option<(Uuid, i64)>) -> RecordingState {
+    RecordingState {
         history: row
             .as_ref()
             .and_then(|r| r.history.as_ref().map(|h| h.0.clone())),
@@ -234,7 +240,7 @@ async fn receipt(
     request: Uuid,
     hash: &MaxStr<64>,
     account: AccountUuid,
-) -> Result<Option<Result<i64, MatchLifeErrors>>, rorm::Error> {
+) -> Result<Option<Result<i64, RecordingRefusal>>, rorm::Error> {
     let stored = rorm::query(&mut *tx, MatchLifeReceiptModel)
         .condition(
             MatchLifeReceiptModel
@@ -247,7 +253,7 @@ async fn receipt(
         if r.request_hash == *hash && r.account.0 == account.into_inner() {
             Ok(r.accepted_revision)
         } else {
-            Err(MatchLifeErrors {
+            Err(RecordingRefusal {
                 request_conflict: true,
                 ..Default::default()
             })
@@ -280,29 +286,26 @@ pub async fn claim(
     tx: &mut Transaction,
     played: Uuid,
     account: AccountUuid,
-    request: ClaimMatchLifeRequest,
-) -> Result<Result<MatchLifeHistoryResponse, MatchLifeErrors>, rorm::Error> {
+    request: RecordingClaim,
+) -> Result<Result<RecordingState, RecordingRefusal>, rorm::Error> {
     let hash = digest(&serde_json::to_vec(&("claim", &request)).expect("typed claim serializes"));
     if let Some(retried) = receipt(tx, played, request.request_id, &hash, account).await? {
         return match retried {
-            Ok(revision) => {
-                let mut state = read(tx, played).await?;
-                state.accepted_request = Some(request.request_id);
-                state.accepted_revision = Some(revision);
-                Ok(Ok(state))
-            }
+            Ok(revision) => Ok(Ok(
+                acknowledged(tx, played, request.request_id, revision).await?
+            )),
             Err(e) => Ok(Err(e)),
         };
     }
     let state = read(tx, played).await?;
     if state.writer.is_some() {
-        return Ok(Err(MatchLifeErrors {
+        return Ok(Err(RecordingRefusal {
             writer_conflict: true,
             ..Default::default()
         }));
     }
     if state.generation != request.generation || state.revision != request.expected_revision {
-        return Ok(Err(MatchLifeErrors {
+        return Ok(Err(RecordingRefusal {
             revision_conflict: true,
             ..Default::default()
         }));
@@ -357,18 +360,15 @@ pub async fn save(
     tx: &mut Transaction,
     context: &MatchPlay,
     account: AccountUuid,
-    request: SaveMatchLifeRequest,
-) -> Result<Result<MatchLifeHistoryResponse, MatchLifeErrors>, rorm::Error> {
+    request: RecordingUpload,
+) -> Result<Result<RecordingState, RecordingRefusal>, rorm::Error> {
     let played = context.played.uuid.into_inner();
     let hash = digest(&serde_json::to_vec(&("save", &request)).expect("typed history serializes"));
     if let Some(retried) = receipt(tx, played, request.request_id, &hash, account).await? {
         return match retried {
-            Ok(revision) => {
-                let mut state = read(tx, played).await?;
-                state.accepted_request = Some(request.request_id);
-                state.accepted_revision = Some(revision);
-                Ok(Ok(state))
-            }
+            Ok(revision) => Ok(Ok(
+                acknowledged(tx, played, request.request_id, revision).await?
+            )),
             Err(e) => Ok(Err(e)),
         };
     }
@@ -377,7 +377,7 @@ pub async fn save(
         .optional()
         .await?;
     let Some(row) = row else {
-        return Ok(Err(MatchLifeErrors {
+        return Ok(Err(RecordingRefusal {
             writer_conflict: true,
             ..Default::default()
         }));
@@ -387,13 +387,13 @@ pub async fn save(
         || row.writer_token_hash.as_ref() != Some(&digest(request.writer_token.as_bytes()))
         || row.generation != request.generation
     {
-        return Ok(Err(MatchLifeErrors {
+        return Ok(Err(RecordingRefusal {
             writer_conflict: true,
             ..Default::default()
         }));
     }
     if row.revision != request.expected_revision {
-        return Ok(Err(MatchLifeErrors {
+        return Ok(Err(RecordingRefusal {
             revision_conflict: true,
             ..Default::default()
         }));
@@ -403,7 +403,7 @@ pub async fn save(
         row.history.as_ref().map(|h| &h.0),
         context,
     ) {
-        return Ok(Err(MatchLifeErrors {
+        return Ok(Err(RecordingRefusal {
             invalid_history: true,
             ..Default::default()
         }));
@@ -621,20 +621,17 @@ pub async fn transfer(
     tx: &mut Transaction,
     played: Uuid,
     account: AccountUuid,
-    request: ClaimMatchLifeRequest,
+    request: RecordingClaim,
     release: bool,
-) -> Result<Result<MatchLifeHistoryResponse, MatchLifeErrors>, rorm::Error> {
+) -> Result<Result<RecordingState, RecordingRefusal>, rorm::Error> {
     let operation = if release { "release" } else { "takeover" };
     let hash =
         digest(&serde_json::to_vec(&(operation, &request)).expect("typed transfer serializes"));
     if let Some(retried) = receipt(tx, played, request.request_id, &hash, account).await? {
         return match retried {
-            Ok(revision) => {
-                let mut state = read(tx, played).await?;
-                state.accepted_request = Some(request.request_id);
-                state.accepted_revision = Some(revision);
-                Ok(Ok(state))
-            }
+            Ok(revision) => Ok(Ok(
+                acknowledged(tx, played, request.request_id, revision).await?
+            )),
             Err(e) => Ok(Err(e)),
         };
     }
@@ -643,7 +640,7 @@ pub async fn transfer(
         .optional()
         .await?;
     let Some(row) = row else {
-        return Ok(Err(MatchLifeErrors {
+        return Ok(Err(RecordingRefusal {
             writer_conflict: true,
             ..Default::default()
         }));
@@ -655,13 +652,13 @@ pub async fn transfer(
                 || row.writer_token_hash.as_ref()
                     != Some(&digest(request.writer_token.as_bytes()))))
     {
-        return Ok(Err(MatchLifeErrors {
+        return Ok(Err(RecordingRefusal {
             writer_conflict: true,
             ..Default::default()
         }));
     }
     if row.generation != request.generation || row.revision != request.expected_revision {
-        return Ok(Err(MatchLifeErrors {
+        return Ok(Err(RecordingRefusal {
             revision_conflict: true,
             ..Default::default()
         }));
@@ -699,22 +696,22 @@ pub async fn transfer(
 }
 
 /// Exact retained ownership intent, including its private capability.
-#[derive(Clone, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Serialize, Deserialize)]
 #[serde(tag = "kind", content = "request", rename_all = "lowercase")]
-pub enum MatchLifeOwnershipProof {
+pub enum RecordingOwnership {
     /// Original acknowledged claim.
-    Claim(ClaimMatchLifeRequest),
+    Claim(RecordingClaim),
     /// Original acknowledged takeover.
-    Takeover(ClaimMatchLifeRequest),
+    Takeover(RecordingClaim),
 }
 
 /// Immutable request preserving all unsent old-device history.
-#[derive(Clone, Serialize, Deserialize, JsonSchema)]
-pub struct CaptureMatchLifeConflictRequest {
+#[derive(Clone, Serialize, Deserialize)]
+pub struct RecoveredBranch {
     /// Stable exact capture identity.
     pub request_id: Uuid,
     /// Account-bound proof of former recording ownership, never returned publicly.
-    pub ownership: MatchLifeOwnershipProof,
+    pub ownership: RecordingOwnership,
     /// Last server revision known before the branch diverged.
     pub base_revision: i64,
     /// Full frozen local branch, including changes newer than an in-flight upload.
@@ -722,8 +719,8 @@ pub struct CaptureMatchLifeConflictRequest {
 }
 
 /// Recoverable branch metadata, without credentials or the potentially large snapshot.
-#[derive(Clone, Serialize, Deserialize, JsonSchema)]
-pub struct MatchLifeConflictSummary {
+#[derive(Clone, Serialize, Deserialize)]
+pub struct RecoveredBranchSummary {
     /// Authorized artifact identity.
     pub id: Uuid,
     /// Recording device.
@@ -737,32 +734,32 @@ pub struct MatchLifeConflictSummary {
 }
 
 /// Complete recovered history, separate from the current timeline and Result.
-#[derive(Clone, Serialize, Deserialize, JsonSchema)]
-pub struct MatchLifeConflict {
+#[derive(Clone, Serialize, Deserialize)]
+pub struct RecoveredHistory {
     /// Origin and capture metadata.
-    pub summary: MatchLifeConflictSummary,
+    pub summary: RecoveredBranchSummary,
     /// Complete original branch.
     pub history: MatchLifeHistory,
 }
 
 /// Authorized recovered branches of a Match.
-#[derive(Serialize, Deserialize, JsonSchema)]
-pub struct MatchLifeConflicts {
+#[derive(Serialize, Deserialize)]
+pub struct RecoveredBranches {
     /// Metadata, newest capture first.
-    pub conflicts: Vec<MatchLifeConflictSummary>,
+    pub conflicts: Vec<RecoveredBranchSummary>,
 }
 
 /// Stable acknowledgement of a captured branch.
-#[derive(Serialize, Deserialize, JsonSchema)]
-pub struct CapturedMatchLifeConflict {
+#[derive(Serialize, Deserialize)]
+pub struct CapturedBranch {
     /// Exact accepted capture request.
     pub accepted_request: Uuid,
     /// Durable artifact identity and origin.
-    pub conflict: MatchLifeConflictSummary,
+    pub conflict: RecoveredBranchSummary,
 }
 
-fn conflict_summary(row: &super::db::MatchLifeConflictModel) -> MatchLifeConflictSummary {
-    MatchLifeConflictSummary {
+fn conflict_summary(row: &super::db::MatchLifeConflictModel) -> RecoveredBranchSummary {
+    RecoveredBranchSummary {
         id: row.uuid,
         device: row.device,
         generation: row.generation,
@@ -775,7 +772,7 @@ fn conflict_summary(row: &super::db::MatchLifeConflictModel) -> MatchLifeConflic
 pub async fn conflicts(
     tx: &mut Transaction,
     played: Uuid,
-) -> Result<MatchLifeConflicts, rorm::Error> {
+) -> Result<RecoveredBranches, rorm::Error> {
     use super::db::MatchLifeConflictModel as M;
     let rows = rorm::query(
         &mut *tx,
@@ -791,11 +788,11 @@ pub async fn conflicts(
     .order_desc(M.captured_at)
     .all()
     .await?;
-    Ok(MatchLifeConflicts {
+    Ok(RecoveredBranches {
         conflicts: rows
             .into_iter()
             .map(
-                |(id, device, generation, base_revision, captured_at)| MatchLifeConflictSummary {
+                |(id, device, generation, base_revision, captured_at)| RecoveredBranchSummary {
                     id,
                     device,
                     generation,
@@ -812,7 +809,7 @@ pub async fn conflict(
     tx: &mut Transaction,
     played: Uuid,
     id: Uuid,
-) -> Result<Option<MatchLifeConflict>, rorm::Error> {
+) -> Result<Option<RecoveredHistory>, rorm::Error> {
     use super::db::MatchLifeConflictModel as M;
     let row = rorm::query(&mut *tx, M)
         .condition(rorm::and![
@@ -821,7 +818,7 @@ pub async fn conflict(
         ])
         .optional()
         .await?;
-    Ok(row.map(|row| MatchLifeConflict {
+    Ok(row.map(|row| RecoveredHistory {
         summary: conflict_summary(&row),
         history: row.history.0,
     }))
@@ -832,8 +829,8 @@ pub async fn capture_conflict(
     tx: &mut Transaction,
     context: &MatchPlay,
     account: AccountUuid,
-    request: CaptureMatchLifeConflictRequest,
-) -> Result<Result<CapturedMatchLifeConflict, MatchLifeErrors>, rorm::Error> {
+    request: RecoveredBranch,
+) -> Result<Result<CapturedBranch, RecordingRefusal>, rorm::Error> {
     let played = context.played.uuid.into_inner();
     let hash =
         digest(&serde_json::to_vec(&("conflict", &request)).expect("typed conflict serializes"));
@@ -844,7 +841,7 @@ pub async fn capture_conflict(
                 let stored = conflict(tx, played, id)
                     .await?
                     .expect("committed conflict receipt has its artifact");
-                Ok(Ok(CapturedMatchLifeConflict {
+                Ok(Ok(CapturedBranch {
                     accepted_request: request.request_id,
                     conflict: stored.summary,
                 }))
@@ -853,8 +850,8 @@ pub async fn capture_conflict(
         };
     }
     let (operation, proof) = match &request.ownership {
-        MatchLifeOwnershipProof::Claim(proof) => ("claim", proof),
-        MatchLifeOwnershipProof::Takeover(proof) => ("takeover", proof),
+        RecordingOwnership::Claim(proof) => ("claim", proof),
+        RecordingOwnership::Takeover(proof) => ("takeover", proof),
     };
     let proof_hash =
         digest(&serde_json::to_vec(&(operation, proof)).expect("typed proof serializes"));
@@ -868,13 +865,13 @@ pub async fn capture_conflict(
         || request.base_revision < proof.expected_revision
         || request.base_revision > state.revision
     {
-        return Ok(Err(MatchLifeErrors {
+        return Ok(Err(RecordingRefusal {
             writer_conflict: true,
             ..Default::default()
         }));
     }
     if !valid_history(&request.history, None, context) {
-        return Ok(Err(MatchLifeErrors {
+        return Ok(Err(RecordingRefusal {
             invalid_history: true,
             ..Default::default()
         }));
@@ -904,7 +901,7 @@ pub async fn capture_conflict(
     let stored = conflict(tx, played, id)
         .await?
         .expect("inserted conflict exists");
-    Ok(Ok(CapturedMatchLifeConflict {
+    Ok(Ok(CapturedBranch {
         accepted_request: request.request_id,
         conflict: stored.summary,
     }))

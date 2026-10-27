@@ -1,0 +1,3 @@
+kind: fixed
+de: Ein zusätzlicher offener Tab kann ausstehende Lebenspunkte nicht mehr überschreiben. Wenn du den Aufzeichnungstab schließt, setzt ein anderer Tab mit allen lokal gespeicherten Änderungen fort.
+en: An extra open tab can no longer overwrite pending life changes. When you close the recording tab, another tab resumes with every locally saved change.

@@ -6,6 +6,7 @@ import { RequireAccount } from "src/components/require-account";
 import { TournamentForm } from "src/components/tournament-form";
 import i18n from "src/i18n";
 
+/** The dedicated Tournament creation page. */
 export const Route = createFileRoute("/_menu/tournaments/create")({
     loader: async () => {
         const [offered] = await Promise.all([Api.decks.formats(), i18n.loadNamespaces(["tournament", "deck"])]);

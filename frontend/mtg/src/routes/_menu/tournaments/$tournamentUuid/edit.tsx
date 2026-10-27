@@ -6,6 +6,7 @@ import { Api } from "src/api/api";
 import { TournamentForm } from "src/components/tournament-form";
 import i18n from "src/i18n";
 
+/** The authorized Tournament settings page. */
 export const Route = createFileRoute("/_menu/tournaments/$tournamentUuid/edit")({
     loader: async ({ params }) => {
         const [tournament, offered] = await Promise.all([

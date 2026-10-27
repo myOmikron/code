@@ -9,7 +9,7 @@ import { MatchActions } from "src/components/tournament-rounds";
 import { TournamentResultDialog } from "src/components/tournament-result-dialog";
 import { TournamentWinnerDialog } from "src/components/tournament-winner-dialog";
 import { isFormError } from "src/utils/error";
-import { formatResult, winnerSeat } from "src/utils/tournament-rounds";
+import { formatResult, winnerSeat, resultErrorKey } from "src/utils/tournament-rounds";
 import { TournamentRoundClock } from "src/components/tournament-round-clock";
 import { useLiveVersion } from "src/context/tournament-live-context";
 import { clockSkew } from "src/utils/round-clock";
@@ -132,14 +132,8 @@ export function TournamentMyMatch({ tournament }: TournamentMyMatchProps) {
         setReporting(false);
         setLoaded(await load());
     };
-    const explain = (error: Record<string, boolean>) => {
-        if (error.not_running) return t("error.round-not-running");
-        if (error.reported_by_other) return t("error.result-reported-by-other");
-        if (error.disputed) return t("error.result-disputed");
-        if (error.confirmed) return t("error.result-confirmed");
-        if (error.dropped_winner) return t("error.dropped-winner");
-        return t("error.invalid-score");
-    };
+    const explain = (error: Record<string, boolean>) => t(resultErrorKey(error));
+
     const dialog = {
         played: reporting ? played : null,
         title: t("heading.report-result", { table: played?.table_number ?? "" }),

@@ -7,7 +7,7 @@ import { SESSION_STORE } from "src/api/session";
 import { useAccount } from "src/context/account";
 import { isFormError } from "src/utils/error";
 import type { LifeHistory } from "src/utils/life-history";
-import { MatchLifeRecording } from "src/utils/match-life-recording";
+import { recordingKey, MatchLifeRecording } from "src/utils/match-life-recording";
 import type { OfflineMatchContext } from "src/utils/match-life-recording";
 import {
     OFFLINE_MATCH_SCOPE_CHANGED,
@@ -18,7 +18,18 @@ import {
 
 /** Distinguishes local persistence, pending uploads and server acknowledgement. */
 export type MatchLifeSaveState =
-    "loading" | "local" | "pending" | "saving" | "saved" | "failed" | "conflict" | "invalid" | "storage" | "auth";
+    | "loading"
+    | "local"
+    | "pending"
+    | "saving"
+    | "saved"
+    | "failed"
+    | "conflict"
+    | "invalid"
+    | "storage"
+    | "auth"
+    | "other-tab"
+    | "unsupported";
 
 /**
  * Restores and synchronizes the existing Match history through one durable upload controller.
@@ -43,10 +54,23 @@ export function useDurableMatchLife(
         scope && !loading && (account?.uuid === scope.account || (account === null && unavailable))
             ? scope.account
             : null;
-    const controller = useMemo(
-        () => (identity ? new MatchLifeRecording({ account: identity, tournament, match: played }) : null),
-        [identity, tournament, played],
-    );
+    const slot = useMemo(() => {
+        if (!identity) return null;
+        const lease = { active: false };
+        const controller = new MatchLifeRecording(
+            { account: identity, tournament, match: played },
+            undefined,
+            () => lease.active,
+        );
+        return { controller, lease };
+    }, [identity, tournament, played]);
+    const controller = slot?.controller ?? null;
+    const [tab, setTab] = useState<{
+        controller: MatchLifeRecording;
+        state: "active" | "passive" | "unsupported";
+    } | null>(null);
+    const [viewEpoch, setViewEpoch] = useState(0);
+    const tabActive = tab?.controller === controller && tab?.state === "active" && slot?.lease.active === true;
     const active = useRef(controller);
     active.current = controller;
     const flush = useRef<(observe?: boolean) => Promise<void>>(async () => undefined);
@@ -66,8 +90,53 @@ export function useDurableMatchLife(
     }, []);
 
     useEffect(() => {
+        if (!slot || !identity) return;
+        const { controller, lease } = slot;
+        let disposed = false;
+        let release: (() => void) | undefined;
+        const abort = new AbortController();
+        setTab({ controller, state: "passive" });
+        const changed = (event: StorageEvent) => {
+            if (event.key !== recordingKey({ account: identity, tournament, match: played }) || lease.active) return;
+            controller.refreshFromStorage();
+            setViewEpoch((epoch) => epoch + 1);
+            render((version) => version + 1);
+        };
+        window.addEventListener("storage", changed);
+        if (!navigator.locks) setTab({ controller, state: "unsupported" });
+        else
+            void navigator.locks
+                .request(
+                    recordingKey({ account: identity, tournament, match: played }),
+                    { signal: abort.signal },
+                    async () => {
+                        if (disposed) return;
+                        lease.active = true;
+                        controller.refreshFromStorage();
+                        setViewEpoch((epoch) => epoch + 1);
+                        setTab({ controller, state: "active" });
+                        await new Promise<void>((resolve) => {
+                            release = resolve;
+                        });
+                        lease.active = false;
+                    },
+                )
+                .catch((error: unknown) => {
+                    if (!disposed && !(error instanceof DOMException && error.name === "AbortError"))
+                        setTab({ controller, state: "unsupported" });
+                });
+        return () => {
+            disposed = true;
+            lease.active = false;
+            release?.();
+            abort.abort();
+            window.removeEventListener("storage", changed);
+        };
+    }, [slot, identity, tournament, played]);
+
+    useEffect(() => {
         if (controller && context) controller.rememberContext(context);
-    }, [controller, context]);
+    }, [controller, context, tabActive]);
 
     useEffect(() => {
         if (!controller) return;
@@ -95,6 +164,10 @@ export function useDurableMatchLife(
                     const remote = await Api.tournaments.lifeHistory.get(tournament, played);
                     if (!allowed()) return;
                     controller.observe(remote);
+                }
+                if (!tabActive) {
+                    display();
+                    return;
                 }
                 let record = controller.snapshot();
                 if (record.claim && !record.claimAccepted && !record.blocked) {
@@ -177,7 +250,7 @@ export function useDurableMatchLife(
             window.removeEventListener("focus", retry);
             document.removeEventListener("visibilitychange", retry);
         };
-    }, [controller, identity, tournament, played]);
+    }, [controller, identity, tournament, played, tabActive]);
 
     const changed = useCallback(
         (next: LifeHistory, configured: boolean) => {
@@ -200,17 +273,18 @@ export function useDurableMatchLife(
 
     const claim = useCallback(async () => {
         if (!controller || !account || !controller.snapshot().remote) return;
-        controller.prepareClaim();
+        if (!tabActive || !controller.prepareClaim()) return;
         if (controller.storageFailed) {
             setState("storage");
             return;
         }
         await flush.current(false);
-    }, [controller, account]);
+    }, [controller, account, tabActive]);
 
     return {
         remote: record?.remote ?? null,
-        canRequest: account !== null,
+        canRequest: account !== null && tabActive,
+        viewEpoch,
         history:
             record?.blocked === "auth"
                 ? null
@@ -236,7 +310,11 @@ export function useDurableMatchLife(
                     : account !== null
                       ? ("storage" as const)
                       : ("auth" as const)
-                : state,
+                : !tabActive
+                  ? tab?.state === "unsupported"
+                      ? ("unsupported" as const)
+                      : ("other-tab" as const)
+                  : state,
         claim,
         transfer: async () => {
             if (!controller?.writer() || !account) return;
@@ -253,7 +331,7 @@ export function useDurableMatchLife(
             render((value) => value + 1);
         },
         savedState: async () => {
-            if (!controller || !account) return null;
+            if (!controller || !account || !tabActive) return null;
             try {
                 const response = await Api.tournaments.lifeHistory.get(tournament, played);
                 if (active.current !== controller) return null;
@@ -266,7 +344,7 @@ export function useDurableMatchLife(
             }
         },
         takeover: async (confirmed: MatchLifeHistoryResponse) => {
-            if (!controller || !account || !controller.prepareTakeover(confirmed)) return;
+            if (!controller || !account || !tabActive || !controller.prepareTakeover(confirmed)) return;
             render((value) => value + 1);
             await flush.current(false);
         },
