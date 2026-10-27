@@ -37,7 +37,11 @@
         "reset_one": "Zurücksetzen",
         "reset_other": "Alle zurücksetzen",
         "settings": "Einstellungen",
-        "start": "Lifetracker starten"
+        "start": "Lifetracker starten",
+        "life-history": "Verlauf",
+        "next-game": "Nächstes Spiel",
+        "end-game": "Spiel beenden",
+        "correct-change": "Änderung zurücknehmen"
     },
     "description": {
         "add-cards": "Suche Karten oder übernimm ein ganzes Deck. Die Bilder werden automatisch gesucht.",
@@ -67,7 +71,9 @@
         "proxy-printer": "Karten in Originalgröße auf DIN A4, zum Ausschneiden.",
         "reset-game_one": "Setzt dich auf {{life}} Leben zurück. Das lässt sich nicht rückgängig machen.",
         "reset-game_other": "Setzt alle Spieler auf {{life}} Leben zurück und löscht den Commander-Schaden. Das lässt sich nicht rückgängig machen.",
-        "skip-basics": "Standardländer bleiben vom Bogen, die liegen ohnehin in jeder Sammlung."
+        "skip-basics": "Standardländer bleiben vom Bogen, die liegen ohnehin in jeder Sammlung.",
+        "end-game": "Gewinner oder Unentschieden festhalten. Leben und Verlauf bestimmen kein Turnierergebnis. Frühere Spiele bleiben gespeichert.",
+        "next-game-settings": "Geänderte Startwerte gelten für das nächste Spiel. Beende zuerst das laufende Spiel."
     },
     "heading": {
         "add-cards": "Karten hinzufügen",
@@ -83,7 +89,9 @@
         "print-list": "Druckliste",
         "proxy-printer": "Proxy-Drucker",
         "reset-game": "Neue Partie starten?",
-        "settings": "Lifetracker einstellen"
+        "settings": "Lifetracker einstellen",
+        "end-game": "Spiel beenden",
+        "life-game": "Spiel {{number}}"
     },
     "label": {
         "arrangement": "Anordnung",
@@ -123,7 +131,16 @@
         "skip-basics": "Grundländer weglassen",
         "starting-life": "Startleben",
         "stock": "Kartenmaterial",
-        "two-sided": "zweiseitig"
+        "two-sided": "zweiseitig",
+        "game-outcome": "Spielausgang",
+        "draw": "Unentschieden",
+        "game-winner": "{{player}} gewinnt",
+        "history-start": "Spiel begonnen",
+        "history-end": "Spiel beendet",
+        "history-life": "{{player}}: {{amount}} Leben",
+        "history-commander": "{{player}}: {{amount}} Leben, {{damage}} Kommandeursschaden von {{commander}}",
+        "history-reclassify": "{{player}}: letzter Treffer als {{damage}} Kommandeursschaden von {{commander}} eingeordnet",
+        "history-correction": "Korrektur für {{player}}: {{amount}} Leben, {{damage}} Kommandeursschaden"
     },
     "toast": {
         "art-not-searched": "MPCFill hat nicht geantwortet",
