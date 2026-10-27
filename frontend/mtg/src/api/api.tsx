@@ -124,6 +124,15 @@ export const Api = {
             delete: async (uuid: string) => handleError(defaultApi.deletePasskey({ uuid })),
         },
         push: {
+            contextual: {
+                settings: () => localAccountAction(defaultApi.getPushSettings()),
+                setTournamentPushes: (tournament_pushes: boolean) =>
+                    localAccountAction(defaultApi.setPushSettings({ SetPushSettingsRequest: { tournament_pushes } })),
+                subscribe: (request: SubscribePushDeviceRequest) =>
+                    localAccountAction(defaultApi.subscribePushDevice({ SubscribePushDeviceRequest: request })),
+                check: (endpoint: string) =>
+                    localAccountAction(defaultApi.checkPushDevice({ PushDeviceRequest: { endpoint } })),
+            },
             settings: async () => handleError(defaultApi.getPushSettings()),
             setTournamentPushes: async (tournament_pushes: boolean) =>
                 handleError(defaultApi.setPushSettings({ SetPushSettingsRequest: { tournament_pushes } })),
@@ -767,6 +776,23 @@ async function quietly<T>(promise: Promise<T>): Promise<T | null> {
         }
         console.error("Request failed quietly", error);
         return null;
+    }
+}
+
+/**
+ * Keep optional Account action failures with their caller while honoring session expiration.
+ *
+ * @param promise the generated request without global error reporting
+ * @returns its response, or the original failure for local feedback
+ */
+async function localAccountAction<T>(promise: Promise<T>): Promise<T> {
+    try {
+        return await promise;
+    } catch (error) {
+        if (error instanceof ResponseError && error.response.status === 401) {
+            return handleError(Promise.reject(error));
+        }
+        throw error;
     }
 }
 

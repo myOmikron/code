@@ -34,13 +34,15 @@ async function browserSubscription(): Promise<PushSubscription | null> {
 /**
  * Whether this device gets the logged-in account's pushes
  *
+ * @param localErrors whether an optional activation card handles non-session failures
  * @returns true if the browser has a subscription the server keeps for this account
  */
-export async function deviceSubscribed(): Promise<boolean> {
+export async function deviceSubscribed(localErrors = false): Promise<boolean> {
     if (!pushSupported()) return false;
     const subscription = await browserSubscription();
     if (subscription === null) return false;
-    const { subscribed } = await Api.accounts.push.check(subscription.endpoint);
+    const api = localErrors ? Api.accounts.push.contextual : Api.accounts.push;
+    const { subscribed } = await api.check(subscription.endpoint);
     return subscribed;
 }
 
@@ -52,9 +54,14 @@ export async function deviceSubscribed(): Promise<boolean> {
  *
  * @param publicKey the server's VAPID key
  * @param language the language pushes to this device are written in
+ * @param localErrors whether an optional activation card handles non-session failures
  * @returns what came of it
  */
-export async function subscribeDevice(publicKey: string, language: PushLanguage): Promise<SubscribeOutcome> {
+export async function subscribeDevice(
+    publicKey: string,
+    language: PushLanguage,
+    localErrors = false,
+): Promise<SubscribeOutcome> {
     if ((await Notification.requestPermission()) !== "granted") return "denied";
 
     const registration = await navigator.serviceWorker.ready;
@@ -67,7 +74,8 @@ export async function subscribeDevice(publicKey: string, language: PushLanguage)
     const { endpoint, keys } = subscription.toJSON();
     if (endpoint === undefined || keys?.p256dh === undefined || keys.auth === undefined) return "failed";
 
-    const result = await Api.accounts.push.subscribe({ endpoint, p256dh: keys.p256dh, auth: keys.auth, language });
+    const api = localErrors ? Api.accounts.push.contextual : Api.accounts.push;
+    const result = await api.subscribe({ endpoint, p256dh: keys.p256dh, auth: keys.auth, language });
     return isFormError(result) ? "failed" : "subscribed";
 }
 
@@ -94,7 +102,7 @@ export async function activateTournamentPushes(
     language: PushLanguage,
     subscribed: boolean,
 ): Promise<SubscribeOutcome> {
-    const outcome = subscribed ? "subscribed" : await subscribeDevice(publicKey, language);
-    if (outcome === "subscribed") await Api.accounts.push.setTournamentPushes(true);
+    const outcome = subscribed ? "subscribed" : await subscribeDevice(publicKey, language, true);
+    if (outcome === "subscribed") await Api.accounts.push.contextual.setTournamentPushes(true);
     return outcome;
 }
