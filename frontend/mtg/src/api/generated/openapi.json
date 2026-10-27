@@ -10309,7 +10309,7 @@
             },
             "put": {
                 "summary": "Replace a Tournament's settings, as one of its Organizers",
-                "description": "Replace a Tournament's settings, as one of its Organizers\n\nTable size, Ruleset and best-of stay as they are once the first Round started,\nthe Top cut and its best-of once the Swiss Rounds are over.",
+                "description": "Replace a Tournament's settings, as one of its Organizers\n\nTable size, Ruleset and best-of stay as they are once the first Round started,\nthe Top cut and its best-of once the Swiss Rounds are over. Settings that\nchange which Participants are pairable throw a previewed Round away.",
                 "operationId": "update_tournament",
                 "parameters": [
                     {
@@ -13340,7 +13340,7 @@
         "/api/frontend/v1/tournaments/{tournament}/participants/{participant}/checked-in": {
             "put": {
                 "summary": "Check a Participant in or out, as an Organizer",
-                "description": "Check a Participant in or out, as an Organizer\n\nOnly in a Tournament that takes check-in, until it is over; once the first\nRound started, in only. Where a deck is required, an Account checks in\nonly with a Registered deck, which keeps following its deck until the\nfirst Round starts. A Participant not checked in is left out of the\npairing; changing the flag discards a previewed Round.",
+                "description": "Check a Participant in or out, as an Organizer\n\nOnly in a Tournament that takes check-in, until it is over, and not for a\nParticipant that dropped; once the first Round started, in only. Where a deck is required, an Account checks in\nonly with a Registered deck, which keeps following its deck until the\nfirst Round starts. A Participant not checked in is left out of the\npairing; changing the flag discards a previewed Round.",
                 "operationId": "set_tournament_participant_checked_in",
                 "parameters": [
                     {
@@ -25288,6 +25288,10 @@
                 "description": "Why a Participant could not be checked in or out",
                 "type": "object",
                 "properties": {
+                    "dropped": {
+                        "description": "The Participant dropped",
+                        "type": "boolean"
+                    },
                     "no_check_in": {
                         "description": "The Tournament takes no check-in",
                         "type": "boolean"
@@ -25306,6 +25310,7 @@
                     }
                 },
                 "required": [
+                    "dropped",
                     "no_check_in",
                     "no_registered_deck",
                     "round_started",
@@ -26961,7 +26966,7 @@
                         ]
                     },
                     {
-                        "description": "A change to the Participants threw the previewed Round away, since it no longer fits them; only Organizers hear it",
+                        "description": "A change to the Participants, or to which of them are pairable, threw the previewed Round away, since it no longer fits them; only Organizers hear it",
                         "type": "object",
                         "properties": {
                             "kind": {

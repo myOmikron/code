@@ -206,6 +206,44 @@ fn with_check_in_only_who_is_checked_in_is_paired() {
 }
 
 #[test]
+fn changing_the_check_in_rule_discards_a_previewed_round() {
+    run(async {
+        let mut event = Event::new("One", 2).await;
+        event.pair().await;
+        require(&mut event, "Required").await;
+        let rounds = event.rounds().await;
+        assert_eq!(
+            rounds["rounds"],
+            json!([]),
+            "the preview paired who is not checked in: {rounds}"
+        );
+    });
+}
+
+#[test]
+fn a_participant_that_dropped_is_not_checked_in() {
+    run(async {
+        let mut event = Event::new("One", 3).await;
+        require(&mut event, "Required").await;
+        let players = event.players.clone();
+        check(&mut event, &players[0], true).await;
+        check(&mut event, &players[1], true).await;
+        event.pair().await;
+        event.start(1).await;
+        let url = event.url(&format!("participants/{}/drop", players[2]));
+        event
+            .owner
+            .json(Method::POST, &url, &json!({}))
+            .await
+            .ok_json();
+
+        let refused = check(&mut event, &players[2], true).await;
+        assert_eq!(refused["error"]["dropped"], true, "{refused}");
+        assert_eq!(flag(&mut event, &players[2]).await, false);
+    });
+}
+
+#[test]
 fn a_participant_is_checked_out_again_before_the_first_round() {
     run(async {
         let mut event = Event::new("One", 1).await;

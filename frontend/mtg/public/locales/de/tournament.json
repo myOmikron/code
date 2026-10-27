@@ -253,6 +253,7 @@
         "no-check-in": "Das Turnier hat keinen Check-in.",
         "check-in-needs-deck": "Ohne angemeldetes Deck kein Check-in.",
         "check-out-started": "Seit der ersten Runde lässt sich der Check-in nicht zurücknehmen.",
+        "check-in-dropped": "Wer gedroppt hat, lässt sich nicht mehr ein- oder auschecken.",
         "check-in-deck-for-limited": "Bei Draft und Sealed gibt es keinen Check-in mit Deck."
     },
     "heading": {

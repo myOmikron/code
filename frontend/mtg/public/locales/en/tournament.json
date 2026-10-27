@@ -253,6 +253,7 @@
         "no-check-in": "This tournament has no check-in.",
         "check-in-needs-deck": "No check-in without a registered deck.",
         "check-out-started": "Check-in can no longer be undone once the first round started.",
+        "check-in-dropped": "A participant who dropped can no longer be checked in or out.",
         "check-in-deck-for-limited": "Draft and Sealed have no check-in with deck."
     },
     "heading": {

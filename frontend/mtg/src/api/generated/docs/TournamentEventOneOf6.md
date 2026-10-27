@@ -1,7 +1,7 @@
 
 # TournamentEventOneOf6
 
-A change to the Participants threw the previewed Round away, since it no longer fits them; only Organizers hear it
+A change to the Participants, or to which of them are pairable, threw the previewed Round away, since it no longer fits them; only Organizers hear it
 
 ## Properties
 

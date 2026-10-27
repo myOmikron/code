@@ -173,6 +173,8 @@ pub struct SetCheckedInErrors {
     pub round_started: bool,
     /// The Tournament takes check-in with a deck and the Account has no Registered deck
     pub no_registered_deck: bool,
+    /// The Participant dropped
+    pub dropped: bool,
 }
 
 /// What checking everybody in did

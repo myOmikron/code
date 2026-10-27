@@ -140,7 +140,8 @@ pub async fn create_tournament(
 /// Replace a Tournament's settings, as one of its Organizers
 ///
 /// Table size, Ruleset and best-of stay as they are once the first Round started,
-/// the Top cut and its best-of once the Swiss Rounds are over.
+/// the Top cut and its best-of once the Swiss Rounds are over. Settings that
+/// change which Participants are pairable throw a previewed Round away.
 #[put("/{tournament}")]
 pub async fn update_tournament(
     grant: TournamentGrant,
@@ -167,12 +168,23 @@ pub async fn update_tournament(
         errors.top_cut_locked = true;
         return errors.fail();
     }
+    let outdated = if settings.changes_pairable_of(&tournament) {
+        tournament.previewed_round(&mut tx).await?
+    } else {
+        None
+    };
     let tournament = tournament.update_settings(&mut tx, settings).await?;
+    if outdated.is_some() {
+        tournament.discard_preview(&mut tx).await?;
+    }
     let owner = tournament.owner_name(&mut tx).await?;
 
     tx.commit().await?;
 
     emit(tournament.uuid, TournamentEvent::TournamentChanged);
+    if let Some(round) = outdated {
+        emit(tournament.uuid, TournamentEvent::PreviewOutdated { round });
+    }
     Ok(ApiJson(TournamentResponse::new(tournament, owner, role)))
 }
 

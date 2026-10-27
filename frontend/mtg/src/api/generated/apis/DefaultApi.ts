@@ -11386,7 +11386,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Check a Participant in or out, as an Organizer  Only in a Tournament that takes check-in, until it is over; once the first Round started, in only. Where a deck is required, an Account checks in only with a Registered deck, which keeps following its deck until the first Round starts. A Participant not checked in is left out of the pairing; changing the flag discards a previewed Round.
+     * Check a Participant in or out, as an Organizer  Only in a Tournament that takes check-in, until it is over, and not for a Participant that dropped; once the first Round started, in only. Where a deck is required, an Account checks in only with a Registered deck, which keeps following its deck until the first Round starts. A Participant not checked in is left out of the pairing; changing the flag discards a previewed Round.
      * Check a Participant in or out, as an Organizer
      */
     async setTournamentParticipantCheckedInRaw(requestParameters: SetTournamentParticipantCheckedInRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FormErrorResponseForSetCheckedInErrors>> {
@@ -11397,7 +11397,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Check a Participant in or out, as an Organizer  Only in a Tournament that takes check-in, until it is over; once the first Round started, in only. Where a deck is required, an Account checks in only with a Registered deck, which keeps following its deck until the first Round starts. A Participant not checked in is left out of the pairing; changing the flag discards a previewed Round.
+     * Check a Participant in or out, as an Organizer  Only in a Tournament that takes check-in, until it is over, and not for a Participant that dropped; once the first Round started, in only. Where a deck is required, an Account checks in only with a Registered deck, which keeps following its deck until the first Round starts. A Participant not checked in is left out of the pairing; changing the flag discards a previewed Round.
      * Check a Participant in or out, as an Organizer
      */
     async setTournamentParticipantCheckedIn(requestParameters: SetTournamentParticipantCheckedInRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FormErrorResponseForSetCheckedInErrors> {
@@ -13066,7 +13066,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Replace a Tournament\'s settings, as one of its Organizers  Table size, Ruleset and best-of stay as they are once the first Round started, the Top cut and its best-of once the Swiss Rounds are over.
+     * Replace a Tournament\'s settings, as one of its Organizers  Table size, Ruleset and best-of stay as they are once the first Round started, the Top cut and its best-of once the Swiss Rounds are over. Settings that change which Participants are pairable throw a previewed Round away.
      * Replace a Tournament\'s settings, as one of its Organizers
      */
     async updateTournamentRaw(requestParameters: UpdateTournamentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CreateTournament200Response>> {
@@ -13077,7 +13077,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Replace a Tournament\'s settings, as one of its Organizers  Table size, Ruleset and best-of stay as they are once the first Round started, the Top cut and its best-of once the Swiss Rounds are over.
+     * Replace a Tournament\'s settings, as one of its Organizers  Table size, Ruleset and best-of stay as they are once the first Round started, the Top cut and its best-of once the Swiss Rounds are over. Settings that change which Participants are pairable throw a previewed Round away.
      * Replace a Tournament\'s settings, as one of its Organizers
      */
     async updateTournament(requestParameters: UpdateTournamentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CreateTournament200Response> {
