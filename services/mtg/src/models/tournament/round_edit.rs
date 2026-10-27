@@ -148,6 +148,7 @@ impl Tournament {
             .set(TournamentRoundModel.ended_at, None)
             .set(TournamentRoundModel.timer_seconds, None)
             .set(TournamentRoundModel.timer_ends_at, None)
+            .set(TournamentRoundModel.timer_paused_at, None)
             .condition(
                 TournamentRoundModel
                     .uuid

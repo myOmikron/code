@@ -29,6 +29,7 @@ pub fn organizer_routes() -> GalvynRouter {
         .handler(handler::end_tournament_round)
         .handler(handler::arrange_tournament_round)
         .handler(handler::take_back_tournament_round)
+        .handler(handler::set_tournament_round_timer)
         .handler(handler::set_tournament_match_result)
         .handler(handler::set_tournament_swiss_rounds)
         .handler(handler::cancel_tournament)

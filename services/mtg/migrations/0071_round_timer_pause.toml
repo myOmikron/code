@@ -1,0 +1,19 @@
+[Migration]
+Hash = "16131119450715185705"
+Initial = false
+Dependency = 70
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "tournament_round"
+
+[Migration.Operations.Field]
+Name = "timer_paused_at"
+Type = "datetime"
+Annotations = []
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 365
+Column = 9
