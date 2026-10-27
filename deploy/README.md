@@ -15,6 +15,7 @@ git pull --ff-only
 $EDITOR deploy/mtg/.env          # bump <SERVICE>_VERSION
 just prod mtg pull
 just prod mtg up -d
+docker image prune -af           # drop the images the old release left behind
 ```
 
 Or the same thing in one step, which is exactly what CI does:

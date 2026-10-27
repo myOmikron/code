@@ -57,3 +57,9 @@ docker compose -f "$COMPOSE" pull
 # startup looks like a green deploy.
 docker compose -f "$COMPOSE" up -d --remove-orphans --wait --wait-timeout "$TIMEOUT"
 docker compose -f "$COMPOSE" ps
+
+# Every release leaves the previous tag behind, and nothing else ever removes it.
+# `-a` because those old tags are not dangling, only unused; it drops every image
+# no container references, so a rollback pulls its image again. Only after
+# `--wait` passed, and a failed prune does not fail a deploy that went through.
+docker image prune -af || echo "image prune failed, the deploy itself went through" >&2
