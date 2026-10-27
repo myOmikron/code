@@ -199,6 +199,13 @@
       "automerge": false
     },
     {
+      "description": "The mtg-graph runtime image must share the Python minor of its uv build stage, whose tag only moves by hand: a minor bump of python alone ships a venv the interpreter cannot see",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["python"],
+      "matchUpdateTypes": ["minor", "major"],
+      "automerge": false
+    },
+    {
       "description": "neo4j uses calendar versions with an edition suffix and holds the production graph, never automerged",
       "matchDatasources": ["docker"],
       "matchPackageNames": ["neo4j"],

@@ -17,7 +17,13 @@ RUN uv sync --locked --no-dev --extra api --extra solver --extra edhrec
 
 # Not dhi.io/alpine-base like the Rust services: ortools only ships manylinux
 # (glibc) wheels, so the runtime has to stay Debian-based.
-FROM python:3.15.1-slim-trixie@sha256:533b0b2f9b5d46fd097091cf826f27902f1d6c3bca714b6dc74551356aa97a51
+#
+# The Python minor must match the build stage's: the venv copied from there
+# keeps its packages under lib/python3.X/, and an interpreter of another minor
+# looks elsewhere and finds nothing (ModuleNotFoundError for every import).
+# Move both FROM lines together; Renovate never automerges a minor bump of
+# this one (renovate.json).
+FROM python:3.14.8-slim-trixie@sha256:fbecd461fc72d21b2143c6eaba25143738079154a6d0ea3da3aec724f50eed4a
 
 RUN <<EOF
 set -e
