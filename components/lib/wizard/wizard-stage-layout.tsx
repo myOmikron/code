@@ -48,7 +48,11 @@ export default function WizardStageLayout(props: WizardStageLayoutProps) {
     return (
         <div
             data-full-bleed={""}
-            className={clsx("grid flex-1", !screen && "lg:grid-cols-[minmax(20rem,1fr)_minmax(0,50rem)_minmax(0,1fr)]")}
+            className={clsx(
+                "grid flex-1",
+                !screen &&
+                    "grid-rows-[auto_1fr] lg:grid-cols-[minmax(20rem,1fr)_minmax(0,50rem)_minmax(0,1fr)] lg:grid-rows-1",
+            )}
         >
             <motion.div
                 layout={!reducedMotion}

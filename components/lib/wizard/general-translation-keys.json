@@ -9,6 +9,7 @@
     "button.replace",
     "button.submit",
     "description.wizard-invalid",
+    "error.invalid-integer",
     "error.invalid-number",
     "error.invalid-option",
     "error.invalid-phone",

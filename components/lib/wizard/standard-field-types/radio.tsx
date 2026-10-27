@@ -1,12 +1,13 @@
 import { Label } from "../../components/base/fieldset";
 import { Radio, RadioField, RadioGroup } from "../../components/base/radio";
-import type { WizardFieldComponentProps, WizardFieldType } from "../field-types";
+import { type WizardFieldComponentProps, type WizardFieldType, useWizardAccent } from "../field-types";
 import { type OptionsFieldConfig, nonEmptyOptions, optionLabel, validateOption } from "./options";
 
 /**
  * The control of the `radio` Field Type
  */
 function RadioFieldControl(props: WizardFieldComponentProps<string | null, OptionsFieldConfig>) {
+    const accent = useWizardAccent();
     return (
         <RadioGroup
             value={props.value ?? ""}
@@ -15,7 +16,7 @@ function RadioFieldControl(props: WizardFieldComponentProps<string | null, Optio
         >
             {nonEmptyOptions(props.config).map((option) => (
                 <RadioField key={option.value}>
-                    <Radio value={option.value} color={"blue"} />
+                    <Radio value={option.value} color={accent} />
                     <Label>{props.i18n.t(option.label)}</Label>
                 </RadioField>
             ))}

@@ -7,6 +7,8 @@ import { useTranslation } from "react-i18next";
 export type BlockUnsavedChangesProps = {
     /** The condition to block navigation */
     condition: boolean;
+    /** Allow navigation that only changes the search params, e.g. between the steps of a Wizard */
+    ignoreSearchChanges?: boolean;
 };
 
 /**
@@ -17,7 +19,9 @@ export default function BlockUnsavedChanges(props: BlockUnsavedChangesProps) {
     return (
         <Block
             withResolver={false}
-            shouldBlockFn={() => {
+            enableBeforeUnload={props.condition}
+            shouldBlockFn={({ current, next }) => {
+                if (props.ignoreSearchChanges && current.pathname === next.pathname) return false;
                 if (props.condition) {
                     // eslint-disable-next-line no-alert
                     return !window.confirm(tg("toast.unsaved-changes"));

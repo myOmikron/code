@@ -4,7 +4,10 @@ import type { WizardInvalidInput } from "../definition";
 import type { WizardFieldComponentProps, WizardFieldType } from "../field-types";
 
 /** Config of the standard `number` Wizard Field Type */
-export type NumberFieldConfig = {};
+export type NumberFieldConfig = {
+    /** Only whole numbers are valid */
+    readonly integer?: boolean;
+};
 
 /** The value of a `number` field: the number, `null` while empty, the raw text while unparsable */
 type NumberValue = number | null | WizardInvalidInput;
@@ -22,7 +25,7 @@ function NumberField(props: WizardFieldComponentProps<NumberValue, NumberFieldCo
     return (
         <Input
             type={"text"}
-            inputMode={"decimal"}
+            inputMode={props.config.integer ? "numeric" : "decimal"}
             value={text}
             disabled={props.disabled}
             invalid={props.errors.length > 0}
@@ -82,12 +85,16 @@ export const numberFieldType: WizardFieldType<NumberValue, NumberFieldConfig> = 
     component: NumberField,
     defaultValue: null,
     /**
-     * Rejects unparsable input
+     * Rejects unparsable input, and fractions where only whole numbers are valid
      *
      * @param value The value
-     * @returns `error.invalid-number` for {@link WizardInvalidInput}
+     * @param config The config
+     * @returns `error.invalid-number` for {@link WizardInvalidInput}, `error.invalid-integer` for a fraction
      */
-    validate: (value) => (typeof value === "number" ? [] : ["error.invalid-number"]),
+    validate: (value, config) => {
+        if (typeof value !== "number") return ["error.invalid-number"];
+        return config.integer && !Number.isInteger(value) ? ["error.invalid-integer"] : [];
+    },
     /**
      * Shows the number in the i18n language with every fraction digit
      *
