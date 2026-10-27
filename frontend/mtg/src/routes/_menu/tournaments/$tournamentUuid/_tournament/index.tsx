@@ -1,8 +1,10 @@
 import { createFileRoute, getRouteApi } from "@tanstack/react-router";
-import { TournamentState } from "src/api/generated";
+import { Button, Text } from "components";
+import { useState } from "react";
+import { useTranslation } from "react-i18next";
+import { MyTournamentDeck } from "src/components/tournament-decks";
 import { TournamentDetails } from "src/components/tournament-details";
 import { TournamentMyMatch } from "src/components/tournament-my-match";
-import { useAccount } from "src/context/account";
 
 /** The frame this tab sits in, which already loaded the Tournament */
 const frame = getRouteApi("/_menu/tournaments/$tournamentUuid/_tournament");
@@ -18,13 +20,38 @@ export const Route = createFileRoute("/_menu/tournaments/$tournamentUuid/_tourna
  * @returns the details
  */
 function RouteComponent() {
-    const { tournament } = frame.useLoaderData();
-    const { account } = useAccount();
+    const { tournament, me } = frame.useLoaderData();
+    const [t] = useTranslation("tournament");
+    const [organizing, setOrganizing] = useState(false);
     if (tournament === null) return null;
-    const playing = tournament.state === TournamentState.Swiss || tournament.state === TournamentState.TopCut;
     return (
         <div className={"flex flex-col gap-8"}>
-            {account !== null && playing && <TournamentMyMatch key={tournament.uuid} tournament={tournament} />}
+            {me !== null && tournament.organizer_role != null && (
+                <Button outline onClick={() => setOrganizing(!organizing)} aria-pressed={organizing}>
+                    {t(organizing ? "button.show-participant-view" : "button.show-organizer-view")}
+                </Button>
+            )}
+            {me !== null && !organizing && <TournamentMyMatch key={tournament.uuid} tournament={tournament} />}
+            {me !== null && !organizing && <MyTournamentDeck tournament={tournament} />}
+            {organizing && (
+                <div className={"flex flex-col gap-3"}>
+                    <Text>{t("description.organizer-view")}</Text>
+                    <Button
+                        outline
+                        href={"/tournaments/$tournamentUuid/rounds"}
+                        params={{ tournamentUuid: tournament.uuid }}
+                    >
+                        {t("heading.rounds")}
+                    </Button>
+                    <Button
+                        outline
+                        href={"/tournaments/$tournamentUuid/participants"}
+                        params={{ tournamentUuid: tournament.uuid }}
+                    >
+                        {t("heading.participants")}
+                    </Button>
+                </div>
+            )}
             <TournamentDetails tournament={tournament} />
         </div>
     );

@@ -49,7 +49,10 @@
         "start-round": "Runde {{number}} starten",
         "take-back-round": "Runde {{number}} zurücknehmen",
         "withdraw-handover": "Angebot zurückziehen",
-        "withdraw-sign-up": "Abmelden"
+        "withdraw-sign-up": "Abmelden",
+        "show-participant-view": "Meine Teilnahme anzeigen",
+        "show-organizer-view": "Turnier organisieren",
+        "retry-participation": "Erneut versuchen"
     },
     "description": {
         "add-account": "Mit Konto, nach dem genauen Benutzernamen: Die Ergebnisse gehören zu diesem Konto.",
@@ -135,6 +138,14 @@
         "visibility-private": "Nur du, deine Mitorganisatoren und die Spieler sehen das Turnier.",
         "visibility-public": "Jeder findet das Turnier in der Übersicht.",
         "visibility-unlisted": "Jeder mit dem Link sieht das Turnier.",
+        "organizer-view": "Verwalte Runden, Ergebnisse und Teilnehmer über die Turnierbereiche.",
+        "loading-participation": "Deine Teilnahme wird geladen.",
+        "preparing-to-play": "Du bist angemeldet. Prüfe dein registriertes Deck, während du auf die erste Runde wartest.",
+        "participation-cancelled": "Das Turnier wurde abgesagt. Bisherige Ergebnisse bleiben einsehbar.",
+        "participation-finished": "Das Turnier ist beendet. Du kannst Ergebnisse und Rangliste ansehen.",
+        "waiting-for-match": "Du bist in dieser Runde keinem Match zugeteilt. Prüfe die Teilnehmerliste oder frage die Organisation.",
+        "waiting-for-round": "Warte, bis die Organisation die nächste Runde startet. Ergebnisse und Rangliste sind weiterhin erreichbar.",
+        "play-and-report": "Spielt euer Match und meldet danach das Ergebnis.",
         "format-defaults": "Das Format schlägt Tischgröße und Regelwerk vor. Eigene gültige Einstellungen bleiben erhalten. Bei einer neuen Tischgröße werden unpassende Regelwerke und Top-Cuts angepasst."
     },
     "error": {
@@ -185,7 +196,8 @@
         "top-cut-mismatch": "Top 4 und Top 8 gibt es nur bei 2 Spielern am Tisch, ein Finale nur bei mehr.",
         "tournament-over": "Das Turnier ist vorbei.",
         "unknown-format": "Dieses Format gibt es nicht.",
-        "unknown-username": "Diesen Benutzernamen gibt es nicht."
+        "unknown-username": "Diesen Benutzernamen gibt es nicht.",
+        "load-participation": "Deine Teilnahme konnte nicht geladen werden."
     },
     "heading": {
         "add-participants": "Spieler hinzufügen",
@@ -358,7 +370,8 @@
         "warning-legality_other": "{{count}} Regelverstöße",
         "winner": "Sieger",
         "won-by": "{{name}} gewinnt",
-        "you": "Du"
+        "you": "Du",
+        "you-participate": "Du nimmst teil"
     },
     "toast": {
         "co-organizer-added": "{{username}} ist jetzt Mitorganisator",

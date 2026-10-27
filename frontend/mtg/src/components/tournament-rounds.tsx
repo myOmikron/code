@@ -782,7 +782,7 @@ type MatchActionsProps = {
  *
  * @returns the button, or a note why there is none
  */
-function MatchActions({ played, me, busy, onReport, onDispute }: MatchActionsProps) {
+export function MatchActions({ played, me, busy, onReport, onDispute }: MatchActionsProps) {
     const [t] = useTranslation("tournament");
     const result = played.result;
 

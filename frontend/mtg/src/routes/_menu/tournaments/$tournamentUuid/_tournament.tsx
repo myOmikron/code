@@ -16,12 +16,16 @@ export const Route = createFileRoute("/_menu/tournaments/$tournamentUuid/_tourna
     loader: async ({ params }) => {
         const strings = i18n.loadNamespaces(["tournament", "deck"]);
         try {
-            const [tournament] = await Promise.all([Api.tournaments.get(params.tournamentUuid), strings]);
-            return { tournament };
+            const [tournament, participants] = await Promise.all([
+                Api.tournaments.get(params.tournamentUuid),
+                Api.tournaments.participants.list(params.tournamentUuid),
+                strings,
+            ]);
+            return { tournament, me: participants.me ?? null };
         } catch (error) {
             if (isNotPublic(error)) {
                 await strings;
-                return { tournament: null };
+                return { tournament: null, me: null };
             }
             throw error;
         }
@@ -40,7 +44,7 @@ export const Route = createFileRoute("/_menu/tournaments/$tournamentUuid/_tourna
 function RouteComponent() {
     const [t] = useTranslation("tournament");
     const { tournamentUuid } = Route.useParams();
-    const { tournament } = Route.useLoaderData();
+    const { tournament, me } = Route.useLoaderData();
     const labels = useTournamentLabels();
     const router = useRouter();
     const navigate = useNavigate();
@@ -91,6 +95,7 @@ function RouteComponent() {
             headingDescription={
                 <span className={"flex flex-wrap items-center gap-2"}>
                     <Badge color={"sky"}>{labels.state(tournament.state)}</Badge>
+                    {me !== null && <Badge color={"lime"}>{t("label.you-participate")}</Badge>}
                     <span>{labels.organizedBy(tournament.owner)}</span>
                 </span>
             }
