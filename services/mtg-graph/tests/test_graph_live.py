@@ -295,3 +295,45 @@ def test_a_query_is_a_client_span_without_its_parameters(live_driver, spans):
     assert span.attributes["db.system.name"] == "neo4j"
     assert span.attributes["db.query.text"] == query
     assert not [v for v in span.attributes.values() if secret in str(v)]
+
+
+def _query_spans(spans) -> list:
+    from opentelemetry.trace import SpanKind
+
+    return [s for s in spans.get_finished_spans() if s.kind == SpanKind.CLIENT]
+
+
+_THREE_ROWS = "UNWIND range(1, 3) AS n RETURN n"
+
+
+@skip_without_live_neo4j
+def test_a_query_span_lasts_until_its_records_are_read(live_driver, spans):
+    """Streaming the records is part of what a query costs."""
+    with driver() as instance, instance.session(database=settings.neo4j_database) as session:
+        result = session.run(_THREE_ROWS)
+        assert _query_spans(spans) == []
+
+        assert [record["n"] for record in result] == [1, 2, 3]
+        assert len(_query_spans(spans)) == 1
+
+
+@skip_without_live_neo4j
+def test_a_query_span_ends_with_its_session_when_left_unread(live_driver, spans):
+    with driver() as instance, instance.session(database=settings.neo4j_database) as session:
+        result = session.run(_THREE_ROWS)
+        assert next(iter(result))["n"] == 1
+
+    assert len(_query_spans(spans)) == 1
+
+
+@skip_without_live_neo4j
+def test_a_managed_transaction_ends_its_query_spans(live_driver, spans):
+    def work(tx) -> int:
+        result = tx.run(_THREE_ROWS)
+        assert _query_spans(spans) == []
+        return len(result.data())
+
+    with driver() as instance, instance.session(database=settings.neo4j_database) as session:
+        assert session.execute_read(work) == 3
+
+    assert len(_query_spans(spans)) == 1

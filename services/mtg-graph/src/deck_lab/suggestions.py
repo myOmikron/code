@@ -2754,7 +2754,7 @@ def effective_commanders(primary: str | None, extras: list[str] | None) -> list[
     return out
 
 
-@deck_span("suggest")
+@deck_span("suggest", deck="deck_oracle_ids")
 def suggest(
     deck_oracle_ids: list[str],
     deck_card_names: list[str],

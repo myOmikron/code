@@ -60,8 +60,6 @@ class Settings(BaseSettings):
     rate_limit_burst: int = 10
 
     # --- tracing ----------------------------------------------------------
-    # The same two variables the Rust services read through service-bootstrap.
-    # Empty exports nothing; set, spans go there over OTLP/gRPC.
     otel_exporter_otlp_endpoint: str = ""
     otel_service_name: str = "mtg-graph"
 

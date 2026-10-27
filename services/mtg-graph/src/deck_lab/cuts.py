@@ -1142,7 +1142,7 @@ def _theme_shares(
     return shares
 
 
-@deck_span("swaps")
+@deck_span("swaps", deck="deck_oracle_ids")
 def suggest_swaps(
     deck_oracle_ids: list[str],
     deck_card_names: list[str],

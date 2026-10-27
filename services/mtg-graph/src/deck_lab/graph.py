@@ -8,9 +8,9 @@ from threading import Lock
 from typing import Any
 
 import structlog
-from neo4j import Driver, GraphDatabase, ManagedTransaction, Result, Session
+from neo4j import Driver, GraphDatabase, ManagedTransaction, Record, Result, Session
 from opentelemetry import trace
-from opentelemetry.trace import SpanKind
+from opentelemetry.trace import Span, SpanKind, Status, StatusCode
 
 from .config import settings
 from .models import Card
@@ -51,67 +51,167 @@ _driver_lock = Lock()
 _tracer = trace.get_tracer(__name__)
 
 
-@contextmanager
-def _query_span(query: Any, database: str | None) -> Iterator[None]:
-    """A client span around one query: its Cypher text, never its parameters.
+def _fail(span: Span, error: Exception) -> None:
+    """End `span` as failed by `error`."""
+    span.record_exception(error)
+    span.set_status(Status(StatusCode.ERROR, f"{type(error).__name__}: {error}"))
+    span.end()
 
-    The parameters carry request data, decklists among it. The span ends when
-    the server has answered the query, before its records are consumed.
+
+class _TracedResult:
+    """A query's result whose client span ends once the result has been read.
+
+    Reading it to the end (iterating, `single`, `data`, `consume`, ...) ends the
+    span, so the span covers streaming the records too. A result left partly
+    read ends its span at the latest when its session closes or its managed
+    transaction's work returns.
     """
-    attributes = {"db.system.name": "neo4j", "db.query.text": str(getattr(query, "text", query))}
-    if database:
-        attributes["db.namespace"] = database
-    with _tracer.start_as_current_span("neo4j", kind=SpanKind.CLIENT, attributes=attributes):
-        yield
 
+    _READ_WHOLE = frozenset(
+        {"consume", "single", "value", "values", "data", "graph", "to_eager_result", "to_df"}
+    )
 
-class _TracedTransaction:
-    """A managed transaction whose queries are traced."""
+    def __init__(self, result: Result, span: Span, on_end: Callable[[_TracedResult], None]) -> None:
+        self._result = result
+        self._span = span
+        self._on_end = on_end
+        self._ended = False
 
-    def __init__(self, tx: ManagedTransaction, database: str | None) -> None:
-        self._tx = tx
-        self._database = database
+    def end(self) -> None:
+        """End the span, once."""
+        if not self._ended:
+            self._ended = True
+            self._span.end()
+            self._on_end(self)
 
-    def run(self, query: Any, parameters: dict[str, Any] | None = None, **kwargs: Any) -> Result:
-        with _query_span(query, self._database):
-            return self._tx.run(query, parameters, **kwargs)
+    def _failed(self, error: Exception) -> None:
+        if not self._ended:
+            self._ended = True
+            _fail(self._span, error)
+            self._on_end(self)
+
+    def __iter__(self) -> Iterator[Record]:
+        try:
+            yield from self._result
+        except Exception as error:
+            self._failed(error)
+            raise
+        self.end()
+
+    def __next__(self) -> Record:
+        try:
+            return next(self._result)
+        except StopIteration:
+            self.end()
+            raise
+        except Exception as error:
+            self._failed(error)
+            raise
 
     def __getattr__(self, name: str) -> Any:
-        return getattr(self._tx, name)
+        attribute = getattr(self._result, name)
+        if name not in self._READ_WHOLE:
+            return attribute
+
+        def read_whole(*args: Any, **kwargs: Any) -> Any:
+            try:
+                answer = attribute(*args, **kwargs)
+            except Exception as error:
+                self._failed(error)
+                raise
+            self.end()
+            return answer
+
+        return read_whole
 
 
-class _TracedSession:
+class _TracedQueries:
+    """Runs queries on a session or managed transaction, each in a client span.
+
+    The span carries the Cypher text, never the parameters: those carry request
+    data, decklists among it. It lasts until the result has been read (see
+    `_TracedResult`).
+    """
+
+    def __init__(self, target: Session | ManagedTransaction, database: str | None) -> None:
+        self._target = target
+        self._database = database
+        self._unread: set[_TracedResult] = set()
+
+    def run(
+        self, query: Any, parameters: dict[str, Any] | None = None, **kwargs: Any
+    ) -> _TracedResult:
+        attributes = {
+            "db.system.name": "neo4j",
+            "db.query.text": str(getattr(query, "text", query)),
+        }
+        if self._database:
+            attributes["db.namespace"] = self._database
+        span = _tracer.start_span("neo4j", kind=SpanKind.CLIENT, attributes=attributes)
+        try:
+            result = self._target.run(query, parameters, **kwargs)
+        except Exception as error:
+            _fail(span, error)
+            raise
+        traced = _TracedResult(result, span, self._unread.discard)
+        self._unread.add(traced)
+        return traced
+
+    def _end_unread(self) -> None:
+        """End the spans of the results nobody read to the end."""
+        for traced in list(self._unread):
+            traced.end()
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._target, name)
+
+
+class _TracedTransaction(_TracedQueries):
+    """A managed transaction whose queries are traced."""
+
+
+class _TracedSession(_TracedQueries):
     """A session whose queries are traced, directly or in a managed transaction."""
 
     def __init__(self, session: Session, database: str | None) -> None:
+        super().__init__(session, database)
         self._session = session
-        self._database = database
 
     def __enter__(self) -> _TracedSession:
         self._session.__enter__()
         return self
 
     def __exit__(self, *exc_info: Any) -> None:
-        self._session.__exit__(*exc_info)
+        try:
+            self._session.__exit__(*exc_info)
+        finally:
+            self._end_unread()
 
-    def run(self, query: Any, parameters: dict[str, Any] | None = None, **kwargs: Any) -> Result:
-        with _query_span(query, self._database):
-            return self._session.run(query, parameters, **kwargs)
+    def close(self) -> None:
+        try:
+            self._session.close()
+        finally:
+            self._end_unread()
 
     def execute_read(self, work: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
-        return self._session.execute_read(self._traced(work), *args, **kwargs)
+        return self._execute(self._session.execute_read, work, *args, **kwargs)
 
     def execute_write(self, work: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
-        return self._session.execute_write(self._traced(work), *args, **kwargs)
+        return self._execute(self._session.execute_write, work, *args, **kwargs)
 
-    def _traced(self, work: Callable[..., Any]) -> Callable[..., Any]:
+    def _execute(
+        self, execute: Callable[..., Any], work: Callable[..., Any], *args: Any, **kwargs: Any
+    ) -> Any:
+        """`execute(work)`, the managed transaction `work` gets traced."""
+
         def traced(tx: ManagedTransaction, *args: Any, **kwargs: Any) -> Any:
-            return work(_TracedTransaction(tx, self._database), *args, **kwargs)
+            transaction = _TracedTransaction(tx, self._database)
+            try:
+                return work(transaction, *args, **kwargs)
+            finally:
+                transaction._end_unread()
 
-        return traced
-
-    def __getattr__(self, name: str) -> Any:
-        return getattr(self._session, name)
+        return execute(traced, *args, **kwargs)
 
 
 class TracedDriver:
@@ -137,7 +237,7 @@ def driver() -> Iterator[TracedDriver]:
     the existing `with driver()` call sites keep their shape; the pool
     deliberately outlives the block.
 
-    Every query run through it is a client span (see `_query_span`).
+    Every query run through it is a client span (see `_TracedQueries`).
     """
     global _driver
     if _driver is None:

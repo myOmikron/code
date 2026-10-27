@@ -56,8 +56,10 @@ def test_a_sync_handler_runs_inside_the_request_trace(spans, capsys, monkeypatch
         structlog.get_logger().info("facets.computed")
         return {}
 
-    monkeypatch.setattr(api, "_facets_cached", facets)
+    monkeypatch.setattr(api, "run_facets", facets)
+    api.facets_cache.clear()
     client.get("/facets", headers={"traceparent": TRACEPARENT})
+    api.facets_cache.clear()
 
     span_ids = {format(s.context.span_id, "016x") for s in spans.get_finished_spans()}
     [line] = _lines(capsys, "facets.computed")
@@ -180,3 +182,47 @@ def test_a_warm_job_is_its_own_trace_linked_to_the_request(spans, monkeypatch):
     }
     assert format(link.context.trace_id, "032x") == TRACE_ID
     assert link.context.span_id in request_span_ids
+
+
+def test_the_cache_leaves_its_callers_span_alone(spans):
+    """Startup warmup fills the facets cache too; only an endpoint reports `cache.hit`."""
+    from deck_lab.cache import LruTtlCache
+    from deck_lab.tracing import tracer
+
+    cache = LruTtlCache("test", max_entries=4, ttl_seconds=60.0)
+    with tracer.start_as_current_span("caller"):
+        cache.get_or_compute("k", lambda: "computed")
+        cache.get_or_compute("k", lambda: "computed")
+
+    [caller] = spans.get_finished_spans()
+    assert "cache.hit" not in caller.attributes
+
+
+def test_a_deck_span_names_the_deck_it_counts(spans):
+    from deck_lab.tracing import deck_span
+
+    @deck_span("count", deck="entries")
+    def count(
+        flags: list[str], entries: list[str], *, commander_oracle_id=None, deck_size=99
+    ) -> int:
+        return len(entries)
+
+    count(["flag"], DECK, deck_size=60)
+
+    [span] = spans.get_finished_spans()
+    assert span.attributes["deck.card_count"] == len(DECK)
+    assert span.attributes["deck_size"] == 60
+    assert "commander_oracle_id" not in span.attributes
+
+
+def test_a_deck_span_refuses_a_function_without_the_fields_it_records():
+    """Caught where the decorator is applied, not on the first request."""
+    import pytest
+
+    from deck_lab.tracing import deck_span
+
+    with pytest.raises(TypeError, match="deck_size"):
+
+        @deck_span("count", deck="entries")
+        def count(entries: list[str], *, commander_oracle_id=None) -> int:
+            return len(entries)

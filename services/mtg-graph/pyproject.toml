@@ -17,7 +17,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-api = ["fastapi>=0.115", "uvicorn[standard]>=0.34"]
+api = ["fastapi>=0.148", "uvicorn[standard]>=0.34"]
 # CP-SAT solves the overlapping-quota problem. See docs/composition.md.
 solver = ["ortools>=9.15"]
 # PyPI only carries 0.0.2. The library is the one the plan names
@@ -30,7 +30,7 @@ llm = ["anthropic>=0.45"]
 # fastapi is also an `api` extra, and is repeated here because the tests now
 # cover the HTTP surface: without it `uv run pytest` fails at collection
 # rather than running the pure tests, which reads as a broken suite.
-dev = ["pytest>=8.3", "pytest-asyncio>=0.25", "ruff>=0.9", "fastapi>=0.115"]
+dev = ["pytest>=8.3", "pytest-asyncio>=0.25", "ruff>=0.9", "fastapi>=0.148"]
 
 [project.scripts]
 deck-lab = "deck_lab.cli:app"

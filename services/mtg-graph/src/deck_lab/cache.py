@@ -26,7 +26,6 @@ from collections.abc import Callable, Hashable
 from typing import Any
 
 import structlog
-from opentelemetry import trace
 
 from .config import settings
 
@@ -123,20 +122,15 @@ class LruTtlCache:
         and "value computed" as small as possible, so a `clear()` (a /warm
         ingest landing) is maximally likely to be observed as a stale write
         and dropped, instead of resurrecting a pre-clear answer for a full TTL.
-
-        The current span, the endpoint's, gets `cache.hit`.
         """
-        span = trace.get_current_span()
         hit = self.get(key)
         if hit is not None:
-            span.set_attribute("cache.hit", True)
             return hit
         with self._lock:
             gate = self._inflight.setdefault(key, threading.Lock())
         try:
             with gate:
                 hit = self.get(key)  # a peer may have landed it while we waited
-                span.set_attribute("cache.hit", hit is not None)
                 if hit is not None:
                     return hit
                 generation = self.generation
