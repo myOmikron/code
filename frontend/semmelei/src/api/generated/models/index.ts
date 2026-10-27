@@ -1091,6 +1091,78 @@ export interface StartRegistrationResponse {
     username: string;
 }
 /**
+ * An order position as the statistics see it
+ * @export
+ * @interface StatisticsPosition
+ */
+export interface StatisticsPosition {
+    /**
+     * Whether the pickup day is Called Off
+     */
+    called_off: boolean;
+    /**
+     * The Item's current category, unset once the Item was deleted or if it has none
+     */
+    category?: PublicCategory | null;
+    /**
+     * The Deadline of the order's pickup day
+     */
+    deadline: string;
+    /**
+     * Whether the pickup day has been Dispatched
+     */
+    dispatched: boolean;
+    /**
+     * The Item, unset once it was deleted
+     */
+    item?: string | null;
+    /**
+     * The Item's current name, unset once it was deleted
+     */
+    item_name?: string | null;
+    /**
+     * The name the Item had when the order was placed
+     */
+    name: string;
+    /**
+     * The order the position belongs to
+     */
+    order: string;
+    /**
+     * The point in time the order was placed
+     */
+    ordered_at: string;
+    /**
+     * The effective pickup date of the order's pickup day
+     */
+    pickup_date: string;
+    /**
+     * The price per unit (euro cents) when the order was placed
+     */
+    price_cents: number;
+    /**
+     * How many units were ordered
+     */
+    quantity: number;
+    /**
+     * The order's status
+     */
+    status: OrderStatus;
+}
+
+
+/**
+ * The positions of every order placed or picked up in the period
+ * @export
+ * @interface StatisticsPositionsResponse
+ */
+export interface StatisticsPositionsResponse {
+    /**
+     * The positions, in no particular order
+     */
+    positions: Array<StatisticsPosition>;
+}
+/**
  * Request to update a staff account
  * @export
  * @interface UpdateAccountRequest

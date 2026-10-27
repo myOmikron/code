@@ -2431,6 +2431,83 @@
                 }
             }
         },
+        "/api/frontend/v1/admin/statistics/positions": {
+            "get": {
+                "summary": "The positions of every order placed or picked up in a period",
+                "description": "The positions of every order placed or picked up in a period\n\nA position is returned when its order was placed on one of the period's\ndays (Europe/Berlin) or its pickup day's effective date lies in it.",
+                "operationId": "get_statistics_positions",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "from",
+                        "schema": {
+                            "description": "First day of the period (Europe/Berlin), inclusive",
+                            "allOf": [
+                                {
+                                    "$ref": "#/components/schemas/SchemaDate"
+                                }
+                            ]
+                        },
+                        "style": "form"
+                    },
+                    {
+                        "in": "query",
+                        "name": "to",
+                        "schema": {
+                            "description": "Last day of the period (Europe/Berlin), inclusive",
+                            "allOf": [
+                                {
+                                    "$ref": "#/components/schemas/SchemaDate"
+                                }
+                            ]
+                        },
+                        "style": "form"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/StatisticsPositionsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/frontend/v1/admin/legal": {
             "get": {
                 "summary": "Get the imprint and privacy policy links",
@@ -4738,6 +4815,125 @@
                 "required": [
                     "options",
                     "username"
+                ]
+            },
+            "StatisticsPosition": {
+                "description": "An order position as the statistics see it",
+                "type": "object",
+                "properties": {
+                    "called_off": {
+                        "description": "Whether the pickup day is Called Off",
+                        "type": "boolean"
+                    },
+                    "category": {
+                        "nullable": true,
+                        "description": "The Item's current category, unset once the Item was deleted or if it has none",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/PublicCategory"
+                            }
+                        ]
+                    },
+                    "deadline": {
+                        "description": "The Deadline of the order's pickup day",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDateTime"
+                            }
+                        ]
+                    },
+                    "dispatched": {
+                        "description": "Whether the pickup day has been Dispatched",
+                        "type": "boolean"
+                    },
+                    "item": {
+                        "nullable": true,
+                        "description": "The Item, unset once it was deleted",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ItemUuid"
+                            }
+                        ]
+                    },
+                    "item_name": {
+                        "nullable": true,
+                        "description": "The Item's current name, unset once it was deleted",
+                        "type": "string"
+                    },
+                    "name": {
+                        "description": "The name the Item had when the order was placed",
+                        "type": "string"
+                    },
+                    "order": {
+                        "description": "The order the position belongs to",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/OrderUuid"
+                            }
+                        ]
+                    },
+                    "ordered_at": {
+                        "description": "The point in time the order was placed",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDateTime"
+                            }
+                        ]
+                    },
+                    "pickup_date": {
+                        "description": "The effective pickup date of the order's pickup day",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDate"
+                            }
+                        ]
+                    },
+                    "price_cents": {
+                        "description": "The price per unit (euro cents) when the order was placed",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "quantity": {
+                        "description": "How many units were ordered",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "status": {
+                        "description": "The order's status",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/OrderStatus"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "called_off",
+                    "deadline",
+                    "dispatched",
+                    "name",
+                    "order",
+                    "ordered_at",
+                    "pickup_date",
+                    "price_cents",
+                    "quantity",
+                    "status"
+                ]
+            },
+            "StatisticsPositionsResponse": {
+                "description": "The positions of every order placed or picked up in the period",
+                "type": "object",
+                "properties": {
+                    "positions": {
+                        "description": "The positions, in no particular order",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/StatisticsPosition"
+                        }
+                    }
+                },
+                "required": [
+                    "positions"
                 ]
             },
             "UpdateAccountRequest": {

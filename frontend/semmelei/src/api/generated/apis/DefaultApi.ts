@@ -51,6 +51,7 @@ import type {
     StartLoginResponse,
     StartRegistrationRequest,
     StartRegistrationResponse,
+    StatisticsPositionsResponse,
     UpdateAccountRequest,
     UpdateOrderItemPackedRequest,
     UpdateOrderStatusRequest,
@@ -195,6 +196,17 @@ export interface GetProcurementSummaryRequest {
      * 
      */
     date: string;
+}
+
+export interface GetStatisticsPositionsRequest {
+    /**
+     * 
+     */
+    from?: string;
+    /**
+     * 
+     */
+    to?: string;
 }
 
 export interface ListOrdersRequest {
@@ -1531,6 +1543,53 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async getSchedule(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ScheduleSchema> {
         const response = await this.getScheduleRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for getStatisticsPositions without sending the request
+     */
+    async getStatisticsPositionsRequestOpts(requestParameters: GetStatisticsPositionsRequest): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        if (requestParameters['from'] != null) {
+            queryParameters['from'] = requestParameters['from'];
+        }
+
+        if (requestParameters['to'] != null) {
+            queryParameters['to'] = requestParameters['to'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/admin/statistics/positions`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * The positions of every order placed or picked up in a period  A position is returned when its order was placed on one of the period\'s days (Europe/Berlin) or its pickup day\'s effective date lies in it.
+     * The positions of every order placed or picked up in a period
+     */
+    async getStatisticsPositionsRaw(requestParameters: GetStatisticsPositionsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<StatisticsPositionsResponse>> {
+        const requestOptions = await this.getStatisticsPositionsRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * The positions of every order placed or picked up in a period  A position is returned when its order was placed on one of the period\'s days (Europe/Berlin) or its pickup day\'s effective date lies in it.
+     * The positions of every order placed or picked up in a period
+     */
+    async getStatisticsPositions(requestParameters: GetStatisticsPositionsRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<StatisticsPositionsResponse> {
+        const response = await this.getStatisticsPositionsRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
