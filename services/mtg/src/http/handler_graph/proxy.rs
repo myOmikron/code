@@ -19,7 +19,10 @@ use galvyn::core::re_exports::axum::http::header;
 use galvyn::core::re_exports::axum::response::Response;
 use galvyn::get;
 use galvyn::post;
+use service_bootstrap::http::client::PropagateTrace;
 use service_bootstrap::http::rate_limit::trusted_client_ip;
+use tracing::Instrument;
+use tracing::info_span;
 use tracing::warn;
 
 use crate::modules::graph::GraphClient;
@@ -107,7 +110,8 @@ const MAX_REQUEST_BODY: usize = 4 * 1024 * 1024;
 ///
 /// Opaque on purpose, with three deliberate edits to the request:
 /// - Only `Content-Type` crosses over — in particular the session cookie
-///   must not reach the advisor.
+///   must not reach the advisor. The trace context is added fresh from the
+///   proxy's client span, so the advisor's spans join this request's trace.
 /// - `X-Forwarded-For` is written fresh with the client as its only hop.
 ///   The advisor's per-client rate limiter reads the *first* hop while
 ///   [`trusted_client_ip`] believes only the *last* — a single hop is what
@@ -138,6 +142,15 @@ async fn proxy(upstream_path: &str, req: Request) -> Response {
         return status_only(StatusCode::PAYLOAD_TOO_LARGE);
     };
 
+    let span = info_span!(
+        "graph request",
+        otel.name = format!("{} {upstream_path}", parts.method),
+        otel.kind = "client",
+        http.request.method = %parts.method,
+        url.path = upstream_path,
+        http.response.status_code = tracing::field::Empty,
+    );
+
     let mut upstream = graph.client.request(parts.method, url).body(body);
     if let Some(content_type) = parts.headers.get(header::CONTENT_TYPE) {
         upstream = upstream.header(header::CONTENT_TYPE, content_type);
@@ -145,8 +158,16 @@ async fn proxy(upstream_path: &str, req: Request) -> Response {
     if let Some(ip) = client_ip {
         upstream = upstream.header("x-forwarded-for", ip.to_string());
     }
+    let upstream = {
+        let _entered = span.enter();
+        upstream.propagate_trace()
+    };
 
-    let upstream_response = match upstream.send().await {
+    let sent = upstream.send().instrument(span.clone()).await;
+    if let Ok(response) = &sent {
+        span.record("http.response.status_code", response.status().as_u16());
+    }
+    let upstream_response = match sent {
         Ok(response) => response,
         Err(error) => {
             warn!(
