@@ -33,18 +33,25 @@ export function TournamentPushActivation() {
             return;
         }
         setState("loading");
-        Promise.all([Api.accounts.push.settings(), deviceSubscribed()])
-            .then(([loaded, device]) => {
+        Api.accounts.push
+            .settings()
+            .then(async (loaded) => {
                 if (!current) return;
                 setSettings(loaded);
+                if (loaded.public_key == null) {
+                    setState("unavailable");
+                    return;
+                }
+                const registration = await navigator.serviceWorker.getRegistration();
+                if (!current) return;
+                if (!registration?.active) {
+                    setState("unavailable");
+                    return;
+                }
+                const device = await deviceSubscribed();
+                if (!current) return;
                 setSubscribed(device);
-                setState(
-                    loaded.public_key == null
-                        ? "unavailable"
-                        : device && loaded.tournament_pushes
-                          ? "enabled"
-                          : "offer",
-                );
+                setState(device && loaded.tournament_pushes ? "enabled" : "offer");
             })
             .catch(() => {
                 if (current) setState("failed");
