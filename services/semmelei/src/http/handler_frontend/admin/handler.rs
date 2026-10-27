@@ -632,7 +632,7 @@ pub async fn get_statistics_positions(
         .ok_or(ApiError::bad_request("The period ends too late"))?;
 
     let mut tx = Database::global().start_transaction().await?;
-    let positions = OrderItem::get_for_statistics(
+    let rows = OrderItem::get_for_statistics(
         &mut tx,
         schedule::start_of_day(from),
         schedule::start_of_day(after_to),
@@ -653,18 +653,18 @@ pub async fn get_statistics_positions(
     tx.commit().await?;
 
     Ok(ApiJson(StatisticsPositionsResponse {
-        positions: positions
+        positions: rows
             .into_iter()
-            .map(|position| {
-                let item = position.item.and_then(|uuid| items.get(&uuid));
+            .map(|row| {
+                let item = row.item.and_then(|uuid| items.get(&uuid));
                 StatisticsPosition {
-                    order: position.order,
-                    ordered_at: SchemaDateTime(position.ordered_at),
-                    status: position.status,
-                    pickup_date: SchemaDate(position.pickup_date),
-                    deadline: SchemaDateTime(position.deadline_at),
-                    dispatched: position.dispatched,
-                    called_off: position.called_off,
+                    order: row.order,
+                    ordered_at: SchemaDateTime(row.ordered_at),
+                    status: row.status,
+                    pickup_date: SchemaDate(row.pickup_date),
+                    deadline: SchemaDateTime(row.deadline_at),
+                    dispatched: row.dispatched,
+                    called_off: row.called_off,
                     item: item.map(|item| item.uuid),
                     item_name: item.map(|item| item.name.to_string()),
                     category: item
@@ -674,9 +674,9 @@ pub async fn get_statistics_positions(
                             uuid: category.uuid,
                             name: category.name.to_string(),
                         }),
-                    name: position.name.to_string(),
-                    quantity: position.quantity,
-                    price_cents: position.price_cents,
+                    name: row.name.to_string(),
+                    quantity: row.quantity,
+                    price_cents: row.price_cents,
                 }
             })
             .collect(),
