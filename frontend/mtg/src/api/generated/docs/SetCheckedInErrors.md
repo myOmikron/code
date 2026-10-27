@@ -7,6 +7,7 @@ Why a Participant could not be checked in or out
 
 Name | Type
 ------------ | -------------
+`dropped` | boolean
 `no_check_in` | boolean
 `no_registered_deck` | boolean
 `round_started` | boolean

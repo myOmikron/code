@@ -13194,7 +13194,7 @@ No authorization required
 
 Check a Participant in or out, as an Organizer
 
-Check a Participant in or out, as an Organizer  Only in a Tournament that takes check-in, until it is over; once the first Round started, in only. Where a deck is required, an Account checks in only with a Registered deck, which keeps following its deck until the first Round starts. A Participant not checked in is left out of the pairing; changing the flag discards a previewed Round.
+Check a Participant in or out, as an Organizer  Only in a Tournament that takes check-in, until it is over, and not for a Participant that dropped; once the first Round started, in only. Where a deck is required, an Account checks in only with a Registered deck, which keeps following its deck until the first Round starts. A Participant not checked in is left out of the pairing; changing the flag discards a previewed Round.
 
 ### Example
 
@@ -15599,7 +15599,7 @@ No authorization required
 
 Replace a Tournament\&#39;s settings, as one of its Organizers
 
-Replace a Tournament\&#39;s settings, as one of its Organizers  Table size, Ruleset and best-of stay as they are once the first Round started, the Top cut and its best-of once the Swiss Rounds are over.
+Replace a Tournament\&#39;s settings, as one of its Organizers  Table size, Ruleset and best-of stay as they are once the first Round started, the Top cut and its best-of once the Swiss Rounds are over. Settings that change which Participants are pairable throw a previewed Round away.
 
 ### Example
 

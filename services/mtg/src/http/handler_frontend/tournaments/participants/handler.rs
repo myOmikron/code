@@ -252,8 +252,8 @@ pub async fn set_tournament_participant_paid(
 
 /// Check a Participant in or out, as an Organizer
 ///
-/// Only in a Tournament that takes check-in, until it is over; once the first
-/// Round started, in only. Where a deck is required, an Account checks in
+/// Only in a Tournament that takes check-in, until it is over, and not for a
+/// Participant that dropped; once the first Round started, in only. Where a deck is required, an Account checks in
 /// only with a Registered deck, which keeps following its deck until the
 /// first Round starts. A Participant not checked in is left out of the
 /// pairing; changing the flag discards a previewed Round.
@@ -283,6 +283,7 @@ pub async fn set_tournament_participant_checked_in(
                 CheckInRefusal::TournamentOver => errors.tournament_over = true,
                 CheckInRefusal::RoundStarted => errors.round_started = true,
                 CheckInRefusal::NoRegisteredDeck => errors.no_registered_deck = true,
+                CheckInRefusal::Dropped => errors.dropped = true,
             }
             errors.fail()
         }
@@ -314,8 +315,10 @@ pub async fn check_in_tournament_participants(
             match refusal {
                 CheckInRefusal::NoCheckIn => errors.no_check_in = true,
                 CheckInRefusal::TournamentOver => errors.tournament_over = true,
-                CheckInRefusal::RoundStarted | CheckInRefusal::NoRegisteredDeck => {
-                    unreachable!("checking in without a deck to look at refuses neither")
+                CheckInRefusal::RoundStarted
+                | CheckInRefusal::NoRegisteredDeck
+                | CheckInRefusal::Dropped => {
+                    unreachable!("checking in nobody in particular refuses none of these")
                 }
             }
             errors.fail()

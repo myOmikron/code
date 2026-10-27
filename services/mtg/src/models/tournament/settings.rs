@@ -150,7 +150,15 @@ impl TournamentSettings {
             || self.ruleset != tournament.ruleset
             || self.best_of != tournament.best_of
             || self.entered_afterwards != tournament.entered_afterwards
-            || self.entry_fee.is_some() != tournament.entry_fee.is_some()
+            || self.changes_pairable_of(tournament)
+    }
+
+    /// Whether these settings change which Participants of `tournament` are pairable
+    ///
+    /// Taking up or dropping an entry fee and changing the check-in rule
+    /// both do, so a previewed Round no longer fits.
+    pub fn changes_pairable_of(&self, tournament: &Tournament) -> bool {
+        self.entry_fee.is_some() != tournament.entry_fee.is_some()
             || self.check_in != tournament.check_in
     }
 }

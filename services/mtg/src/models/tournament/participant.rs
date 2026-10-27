@@ -170,6 +170,8 @@ pub enum CheckInRefusal {
     RoundStarted,
     /// The Tournament takes check-in with a deck and the Account has no Registered deck
     NoRegisteredDeck,
+    /// The Participant dropped: no later Round pairs it, checked in or not
+    Dropped,
 }
 
 /// The first Round a Participant added after `started_rounds` Rounds started plays
@@ -560,8 +562,9 @@ impl Tournament {
 
     /// Check `participant` in or out, `false` if it is none of this Tournament
     ///
-    /// Leaves its Registered deck as it is: it still follows the deck until
-    /// the first Round starts (ADR 0002). Who is checked in changes who is
+    /// A Participant that dropped is neither checked in nor out. Leaves its
+    /// Registered deck as it is: it still follows the deck until the first
+    /// Round starts (ADR 0002). Who is checked in changes who is
     /// pairable, so a previewed Round is discarded when the flag changes.
     /// The caller holds [`Self::lock_roster`].
     #[instrument(name = "Tournament::check_in", skip(tx, self), fields(tournament = ?self.uuid))]
@@ -576,6 +579,7 @@ impl Tournament {
             (
                 TournamentParticipantModel.checked_in,
                 TournamentParticipantModel.account,
+                TournamentParticipantModel.dropped_after_round,
             ),
         )
         .condition(rorm::and![
@@ -586,7 +590,7 @@ impl Tournament {
         ])
         .optional()
         .await?;
-        let Some((was, account)) = known else {
+        let Some((was, account, dropped_after_round)) = known else {
             return Ok(Ok(false));
         };
         let lacks_deck = checked_in
@@ -596,6 +600,9 @@ impl Tournament {
         let started = self.started_rounds(tx).await?;
         if let Some(refusal) = self.check_in_refusal(checked_in, started, lacks_deck) {
             return Ok(Err(refusal));
+        }
+        if dropped_after_round.is_some() {
+            return Ok(Err(CheckInRefusal::Dropped));
         }
         if was != checked_in {
             rorm::update(&mut *tx, TournamentParticipantModel)

@@ -7233,6 +7233,10 @@ export interface SetBucketResponse {
  */
 export interface SetCheckedInErrors {
     /**
+     * The Participant dropped
+     */
+    dropped: boolean;
+    /**
      * The Tournament takes no check-in
      */
     no_check_in: boolean;
@@ -8769,7 +8773,7 @@ export const TournamentEventOneOf5KindEnum = {
 export type TournamentEventOneOf5KindEnum = typeof TournamentEventOneOf5KindEnum[keyof typeof TournamentEventOneOf5KindEnum];
 
 /**
- * A change to the Participants threw the previewed Round away, since it no longer fits them; only Organizers hear it
+ * A change to the Participants, or to which of them are pairable, threw the previewed Round away, since it no longer fits them; only Organizers hear it
  * @export
  * @interface TournamentEventOneOf6
  */

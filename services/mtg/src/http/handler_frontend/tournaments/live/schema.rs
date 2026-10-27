@@ -47,8 +47,8 @@ pub enum TournamentEvent {
         /// The Round's number
         round: i16,
     },
-    /// A change to the Participants threw the previewed Round away, since it
-    /// no longer fits them; only Organizers hear it
+    /// A change to the Participants, or to which of them are pairable, threw
+    /// the previewed Round away, since it no longer fits them; only Organizers hear it
     PreviewOutdated {
         /// The Round's number
         round: i16,

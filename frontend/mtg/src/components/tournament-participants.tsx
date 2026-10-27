@@ -270,6 +270,7 @@ export function TournamentParticipants({ tournament, load, signUp }: TournamentP
     function checkInRefusal(errors: SetCheckedInErrors) {
         if (errors.no_registered_deck) return t("error.check-in-needs-deck");
         if (errors.round_started) return t("error.check-out-started");
+        if (errors.dropped) return t("error.check-in-dropped");
         if (errors.no_check_in) return t("error.no-check-in");
         return t("error.tournament-over");
     }
@@ -405,6 +406,13 @@ export function TournamentParticipants({ tournament, load, signUp }: TournamentP
                                 tournament.check_in !== CheckIn.Off &&
                                 participant.dropped_after_round == null && (
                                     <Badge color={"orange"}>{t("label.not-checked-in")}</Badge>
+                                )}
+                            {organizer &&
+                                deckRequired &&
+                                !participant.guest &&
+                                participant.checked_in === true &&
+                                !decks.has(participant.uuid) && (
+                                    <Badge color={"orange"}>{t("label.check-in-needs-deck")}</Badge>
                                 )}
                             {organizer && deckRequired && participant.guest && participant.checked_in === true && (
                                 <span className={"text-sm/6 text-zinc-500 dark:text-zinc-400"}>
