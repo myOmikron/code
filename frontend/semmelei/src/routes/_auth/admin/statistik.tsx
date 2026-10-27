@@ -26,6 +26,7 @@ import { ItemSeries, MAX_SERIES, seriesColor } from "src/components/statistics/s
 import {
     aggregateStatistics,
     assignColorSlots,
+    Catalog,
     Measure,
     Period,
     quickPeriod,
@@ -39,6 +40,7 @@ const ZOOM_BOUND = new Intl.DateTimeFormat("de-DE", {
     dateStyle: "medium",
     timeStyle: "short",
 });
+const EMPTY_CATALOG: Catalog = { items: [], categories: [] };
 const MEASURES: Measure[] = ["units", "orders", "orderValue"];
 const MEASURE_LABELS: Record<Measure, string> = {
     units: "button.measure-units",
@@ -57,6 +59,7 @@ function Statistik() {
     const [period, setPeriod] = React.useState<Period>(() => quickPeriod("30d", Date.now()));
     const [zoom, setZoom] = React.useState<TimeRange>();
     const [positions, setPositions] = React.useState<StatisticsPosition[]>();
+    const [catalog, setCatalog] = React.useState<Catalog>();
     const [measure, setMeasure] = React.useState<Measure>("units");
     const [segmentChoice, setSegmentChoice] = React.useState<SegmentSize | "auto">("auto");
     const [selection, setSelection] = React.useState<string[] | "top">("top");
@@ -75,6 +78,16 @@ function Statistik() {
         };
     }, [period]);
 
+    React.useEffect(() => {
+        let current = true;
+        Promise.all([Api.admin.items.list(), Api.admin.categories.list()]).then(([items, categories]) => {
+            if (current) setCatalog({ items: items.items, categories: categories.categories });
+        });
+        return () => {
+            current = false;
+        };
+    }, []);
+
     const viewPeriod = zoom ?? period;
     const stats = React.useMemo(
         () =>
@@ -84,8 +97,9 @@ function Statistik() {
                 measure,
                 selectedItems: selection,
                 category,
+                catalog: catalog ?? EMPTY_CATALOG,
             }),
-        [positions, viewPeriod, segmentChoice, measure, selection, category],
+        [positions, viewPeriod, segmentChoice, measure, selection, category, catalog],
     );
 
     const selected = React.useMemo(
@@ -162,7 +176,7 @@ function Statistik() {
                 </Text>
             )}
 
-            {positions === undefined ? (
+            {positions === undefined || catalog === undefined ? (
                 <div className={"grid gap-6 lg:grid-cols-2"}>
                     <CardSkeleton />
                     <CardSkeleton />

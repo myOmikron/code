@@ -1,4 +1,4 @@
-import { PublicCategory, StatisticsPosition } from "src/api/generated";
+import { AdminItem, PublicCategory, StatisticsPosition } from "src/api/generated";
 
 /** What the charts count */
 export type Measure = "units" | "orders" | "orderValue";
@@ -24,6 +24,16 @@ export type StatisticsOptions = {
     selectedItems: string[] | "top";
     /** Uuid of the category to restrict everything to, null for all */
     category: string | null;
+    /** The shop's Items and categories; active Items without orders in the period get a table row of zeros */
+    catalog: Catalog;
+};
+
+/** The shop's Items and categories, as the Admin endpoints return them */
+export type Catalog = {
+    /** All Items, active or not */
+    items: AdminItem[];
+    /** All categories, to name the category of an Item */
+    categories: PublicCategory[];
 };
 
 /** Values of one chart point: per selected Item, their total and the cancelled series */
@@ -361,17 +371,35 @@ function measure(positions: StatisticsPosition[], what: Measure): number {
 /**
  * Item table rows, by units descending, then by name
  *
- * @param positions the positions placed in the period
+ * @param positions the positions placed in the period, in the category filter
+ * @param options the catalog and category filter
  *
- * @returns one row per Item
+ * @returns one row per Item ordered in the period and per other active Item in the category filter
  */
-function itemRows(positions: StatisticsPosition[]): ItemRow[] {
+function itemRows(positions: StatisticsPosition[], options: StatisticsOptions): ItemRow[] {
     const groups = new Map<string, StatisticsPosition[]>();
     for (const position of positions) {
         const key = itemKey(position);
         groups.set(key, [...(groups.get(key) ?? []), position]);
     }
-    return [...groups].map(([key, group]) => itemRow(key, group)).sort(byUnitsThenName);
+    const rows = [...groups].map(([key, group]) => itemRow(key, group));
+    const categories = new Map(options.catalog.categories.map((category) => [category.uuid, category]));
+    for (const item of options.catalog.items) {
+        if (!item.active || groups.has(item.uuid)) continue;
+        if (options.category !== null && item.category !== options.category) continue;
+        rows.push({
+            key: item.uuid,
+            name: item.name,
+            deleted: false,
+            category: (item.category && categories.get(item.category)) || null,
+            units: 0,
+            orders: 0,
+            orderValueCents: 0,
+            cancelledUnits: 0,
+            calledOffUnits: 0,
+        });
+    }
+    return rows.sort(byUnitsThenName);
 }
 
 /**
@@ -533,7 +561,7 @@ export function aggregateStatistics(positions: StatisticsPosition[], options: St
         return at >= periodStart && at < periodEnd;
     });
 
-    const items = itemRows(placed);
+    const items = itemRows(placed, options);
     const top = topItems(items, options.measure);
     const chartOptions = { ...options, selectedItems: options.selectedItems === "top" ? top : options.selectedItems };
 

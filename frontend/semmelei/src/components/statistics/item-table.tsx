@@ -27,7 +27,7 @@ export type ItemTableProps = {
 };
 
 /**
- * Sortable table of every Item in the period, deleted Items marked
+ * Sortable table of every active Item and every Item ordered in the period, deleted Items marked
  *
  * @returns the table
  */

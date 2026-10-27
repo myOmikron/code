@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { StatisticsPosition } from "src/api/generated";
+import { AdminItem, StatisticsPosition } from "src/api/generated";
 import {
     aggregateStatistics,
     autoSegmentSize,
@@ -19,7 +19,27 @@ const OPTIONS: StatisticsOptions = {
     measure: "units",
     selectedItems: [],
     category: null,
+    catalog: { items: [], categories: [] },
 };
+
+/**
+ * An Item of the shop as the Admin items endpoint returns it
+ *
+ * @param overrides fields that differ from the default
+ *
+ * @returns the Item, active, in the category "Brot"
+ */
+function shopItem(overrides: Partial<AdminItem> = {}): AdminItem {
+    return {
+        uuid: BREAD,
+        name: "Bauernbrot",
+        active: true,
+        category: "cat-bread",
+        price_cents: 350,
+        created_at: "2026-01-01T00:00:00Z",
+        ...overrides,
+    };
+}
 
 /**
  * A position of an Open order placed on 2026-07-01 10:00 Berlin time, picked up on 2026-07-03
@@ -233,6 +253,56 @@ describe("item table", () => {
         ]);
     });
 
+    test("active Items without orders in the period appear with zeros, inactive ones do not", () => {
+        const catalog = {
+            items: [
+                shopItem(),
+                shopItem({ uuid: ROLL, name: "Semmel" }),
+                shopItem({ uuid: "cake", name: "Kuchen", category: null }),
+                shopItem({ uuid: "stollen", name: "Stollen", active: false }),
+            ],
+            categories: [{ uuid: "cat-bread", name: "Brot" }],
+        };
+
+        const { items } = aggregateStatistics([position({ quantity: 2 })], { ...OPTIONS, catalog });
+
+        expect(items).toEqual([
+            {
+                key: BREAD,
+                name: "Bauernbrot",
+                deleted: false,
+                category: { uuid: "cat-bread", name: "Brot" },
+                units: 2,
+                orders: 1,
+                orderValueCents: 700,
+                cancelledUnits: 0,
+                calledOffUnits: 0,
+            },
+            {
+                key: "cake",
+                name: "Kuchen",
+                deleted: false,
+                category: null,
+                units: 0,
+                orders: 0,
+                orderValueCents: 0,
+                cancelledUnits: 0,
+                calledOffUnits: 0,
+            },
+            {
+                key: ROLL,
+                name: "Semmel",
+                deleted: false,
+                category: { uuid: "cat-bread", name: "Brot" },
+                units: 0,
+                orders: 0,
+                orderValueCents: 0,
+                cancelledUnits: 0,
+                calledOffUnits: 0,
+            },
+        ]);
+    });
+
     test("a renamed Item stays one row under its current name", () => {
         const { items } = aggregateStatistics(
             [
@@ -368,6 +438,26 @@ describe("category filter", () => {
         expect(stats.intake[0]).toMatchObject({ items: { [ROLL]: 3 }, total: 3 });
         expect(stats.items.map((row) => row.key)).toEqual([ROLL]);
         expect(stats.topItems).toEqual([ROLL]);
+    });
+
+    test("active Items without orders appear only within the category", () => {
+        const catalog = {
+            items: [
+                shopItem({ uuid: "baguette", name: "Baguette" }),
+                shopItem({ uuid: "pretzel", name: "Brezel", category: "cat-pastry" }),
+            ],
+            categories: [
+                { uuid: "cat-bread", name: "Brot" },
+                { uuid: "cat-pastry", name: "Gebäck" },
+            ],
+        };
+
+        const stats = aggregateStatistics(positions, { ...pastryOnly, catalog });
+
+        expect(stats.items.map((row) => [row.key, row.units])).toEqual([
+            [ROLL, 3],
+            ["pretzel", 0],
+        ]);
     });
 
     test("null shows every category and deleted Items", () => {
