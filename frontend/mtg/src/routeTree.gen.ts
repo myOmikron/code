@@ -38,6 +38,7 @@ import { Route as MenuProfileProfileRouteImport } from './routes/_menu/profile/_
 import { Route as MenuScanIndexRouteImport } from './routes/_menu/scan/index'
 import { Route as MenuScanBenchRouteImport } from './routes/_menu/scan/bench'
 import { Route as MenuTournamentsOverviewRouteImport } from './routes/_menu/tournaments/_overview'
+import { Route as MenuTournamentsCreateRouteImport } from './routes/_menu/tournaments/create'
 import { Route as MenuWatchListsIndexRouteImport } from './routes/_menu/watch-lists/index'
 import { Route as MenuWatchListsWatchListUuidRouteImport } from './routes/_menu/watch-lists/$watchListUuid'
 import { Route as MenuAdminAccountsIndexRouteImport } from './routes/_menu/admin/accounts/index'
@@ -54,6 +55,7 @@ import { Route as MenuProfileProfileSecurityRouteImport } from './routes/_menu/p
 import { Route as MenuProfileProfileSettingsRouteImport } from './routes/_menu/profile/_profile/settings'
 import { Route as MenuScanStagedSessionUuidRouteImport } from './routes/_menu/scan/staged/$sessionUuid'
 import { Route as MenuTournamentsTournamentUuidTournamentRouteImport } from './routes/_menu/tournaments/$tournamentUuid/_tournament'
+import { Route as MenuTournamentsTournamentUuidEditRouteImport } from './routes/_menu/tournaments/$tournamentUuid/edit'
 import { Route as MenuTournamentsOverviewIndexRouteImport } from './routes/_menu/tournaments/_overview/index'
 import { Route as MenuTournamentsOverviewMineRouteImport } from './routes/_menu/tournaments/_overview/mine'
 import { Route as CollectScanScanLiveIndexRouteImport } from './routes/_collect/_scan/scan/live/index'
@@ -246,6 +248,11 @@ const MenuTournamentsOverviewRoute = MenuTournamentsOverviewRouteImport.update({
   path: '/tournaments',
   getParentRoute: () => MenuRoute,
 } as any)
+const MenuTournamentsCreateRoute = MenuTournamentsCreateRouteImport.update({
+  id: '/tournaments/create',
+  path: '/tournaments/create',
+  getParentRoute: () => MenuRoute,
+} as any)
 const MenuWatchListsIndexRoute = MenuWatchListsIndexRouteImport.update({
   id: '/watch-lists/',
   path: '/watch-lists/',
@@ -335,6 +342,12 @@ const MenuTournamentsTournamentUuidTournamentRoute =
   MenuTournamentsTournamentUuidTournamentRouteImport.update({
     id: '/tournaments/$tournamentUuid/_tournament',
     path: '/tournaments/$tournamentUuid',
+    getParentRoute: () => MenuRoute,
+  } as any)
+const MenuTournamentsTournamentUuidEditRoute =
+  MenuTournamentsTournamentUuidEditRouteImport.update({
+    id: '/tournaments/$tournamentUuid/edit',
+    path: '/tournaments/$tournamentUuid/edit',
     getParentRoute: () => MenuRoute,
   } as any)
 const MenuTournamentsOverviewIndexRoute =
@@ -642,6 +655,7 @@ export interface FileRoutesByFullPath {
   '/profile': typeof MenuProfileProfileRouteWithChildren
   '/scan/bench': typeof MenuScanBenchRoute
   '/tournaments': typeof MenuTournamentsOverviewRouteWithChildren
+  '/tournaments/create': typeof MenuTournamentsCreateRoute
   '/watch-lists/$watchListUuid': typeof MenuWatchListsWatchListUuidRoute
   '/admin/': typeof MenuAdminIndexRoute
   '/collections/': typeof MenuCollectionsIndexRoute
@@ -659,6 +673,7 @@ export interface FileRoutesByFullPath {
   '/profile/settings': typeof MenuProfileProfileSettingsRoute
   '/scan/staged/$sessionUuid': typeof MenuScanStagedSessionUuidRoute
   '/tournaments/$tournamentUuid': typeof MenuTournamentsTournamentUuidTournamentRouteWithChildren
+  '/tournaments/$tournamentUuid/edit': typeof MenuTournamentsTournamentUuidEditRoute
   '/tournaments/mine': typeof MenuTournamentsOverviewMineRoute
   '/admin/accounts/': typeof MenuAdminAccountsIndexRoute
   '/admin/bug-reports/': typeof MenuAdminBugReportsIndexRoute
@@ -729,6 +744,7 @@ export interface FileRoutesByTo {
   '/game-utils/mpc-fill': typeof MenuGameUtilsMpcFillRoute
   '/game-utils/proxy-printer': typeof MenuGameUtilsProxyPrinterRoute
   '/scan/bench': typeof MenuScanBenchRoute
+  '/tournaments/create': typeof MenuTournamentsCreateRoute
   '/watch-lists/$watchListUuid': typeof MenuWatchListsWatchListUuidRoute
   '/admin': typeof MenuAdminIndexRoute
   '/collections': typeof MenuCollectionsIndexRoute
@@ -742,6 +758,7 @@ export interface FileRoutesByTo {
   '/profile/security': typeof MenuProfileProfileSecurityRoute
   '/profile/settings': typeof MenuProfileProfileSettingsRoute
   '/scan/staged/$sessionUuid': typeof MenuScanStagedSessionUuidRoute
+  '/tournaments/$tournamentUuid/edit': typeof MenuTournamentsTournamentUuidEditRoute
   '/tournaments/mine': typeof MenuTournamentsOverviewMineRoute
   '/admin/accounts': typeof MenuAdminAccountsIndexRoute
   '/admin/bug-reports': typeof MenuAdminBugReportsIndexRoute
@@ -815,6 +832,7 @@ export interface FileRoutesById {
   '/_menu/profile/_profile': typeof MenuProfileProfileRouteWithChildren
   '/_menu/scan/bench': typeof MenuScanBenchRoute
   '/_menu/tournaments/_overview': typeof MenuTournamentsOverviewRouteWithChildren
+  '/_menu/tournaments/create': typeof MenuTournamentsCreateRoute
   '/_menu/watch-lists/$watchListUuid': typeof MenuWatchListsWatchListUuidRoute
   '/_menu/admin/': typeof MenuAdminIndexRoute
   '/_menu/collections/': typeof MenuCollectionsIndexRoute
@@ -832,6 +850,7 @@ export interface FileRoutesById {
   '/_menu/profile/_profile/settings': typeof MenuProfileProfileSettingsRoute
   '/_menu/scan/staged/$sessionUuid': typeof MenuScanStagedSessionUuidRoute
   '/_menu/tournaments/$tournamentUuid/_tournament': typeof MenuTournamentsTournamentUuidTournamentRouteWithChildren
+  '/_menu/tournaments/$tournamentUuid/edit': typeof MenuTournamentsTournamentUuidEditRoute
   '/_menu/tournaments/_overview/mine': typeof MenuTournamentsOverviewMineRoute
   '/_menu/admin/accounts/': typeof MenuAdminAccountsIndexRoute
   '/_menu/admin/bug-reports/': typeof MenuAdminBugReportsIndexRoute
@@ -908,6 +927,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/scan/bench'
     | '/tournaments'
+    | '/tournaments/create'
     | '/watch-lists/$watchListUuid'
     | '/admin/'
     | '/collections/'
@@ -925,6 +945,7 @@ export interface FileRouteTypes {
     | '/profile/settings'
     | '/scan/staged/$sessionUuid'
     | '/tournaments/$tournamentUuid'
+    | '/tournaments/$tournamentUuid/edit'
     | '/tournaments/mine'
     | '/admin/accounts/'
     | '/admin/bug-reports/'
@@ -995,6 +1016,7 @@ export interface FileRouteTypes {
     | '/game-utils/mpc-fill'
     | '/game-utils/proxy-printer'
     | '/scan/bench'
+    | '/tournaments/create'
     | '/watch-lists/$watchListUuid'
     | '/admin'
     | '/collections'
@@ -1008,6 +1030,7 @@ export interface FileRouteTypes {
     | '/profile/security'
     | '/profile/settings'
     | '/scan/staged/$sessionUuid'
+    | '/tournaments/$tournamentUuid/edit'
     | '/tournaments/mine'
     | '/admin/accounts'
     | '/admin/bug-reports'
@@ -1080,6 +1103,7 @@ export interface FileRouteTypes {
     | '/_menu/profile/_profile'
     | '/_menu/scan/bench'
     | '/_menu/tournaments/_overview'
+    | '/_menu/tournaments/create'
     | '/_menu/watch-lists/$watchListUuid'
     | '/_menu/admin/'
     | '/_menu/collections/'
@@ -1097,6 +1121,7 @@ export interface FileRouteTypes {
     | '/_menu/profile/_profile/settings'
     | '/_menu/scan/staged/$sessionUuid'
     | '/_menu/tournaments/$tournamentUuid/_tournament'
+    | '/_menu/tournaments/$tournamentUuid/edit'
     | '/_menu/tournaments/_overview/mine'
     | '/_menu/admin/accounts/'
     | '/_menu/admin/bug-reports/'
@@ -1360,6 +1385,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MenuTournamentsOverviewRouteImport
       parentRoute: typeof MenuRoute
     }
+    '/_menu/tournaments/create': {
+      id: '/_menu/tournaments/create'
+      path: '/tournaments/create'
+      fullPath: '/tournaments/create'
+      preLoaderRoute: typeof MenuTournamentsCreateRouteImport
+      parentRoute: typeof MenuRoute
+    }
     '/_menu/watch-lists/': {
       id: '/_menu/watch-lists/'
       path: '/watch-lists'
@@ -1470,6 +1502,13 @@ declare module '@tanstack/react-router' {
       path: '/tournaments/$tournamentUuid'
       fullPath: '/tournaments/$tournamentUuid'
       preLoaderRoute: typeof MenuTournamentsTournamentUuidTournamentRouteImport
+      parentRoute: typeof MenuRoute
+    }
+    '/_menu/tournaments/$tournamentUuid/edit': {
+      id: '/_menu/tournaments/$tournamentUuid/edit'
+      path: '/tournaments/$tournamentUuid/edit'
+      fullPath: '/tournaments/$tournamentUuid/edit'
+      preLoaderRoute: typeof MenuTournamentsTournamentUuidEditRouteImport
       parentRoute: typeof MenuRoute
     }
     '/_menu/tournaments/_overview/': {
@@ -2147,6 +2186,7 @@ interface MenuRouteChildren {
   MenuProfileProfileRoute: typeof MenuProfileProfileRouteWithChildren
   MenuScanBenchRoute: typeof MenuScanBenchRoute
   MenuTournamentsOverviewRoute: typeof MenuTournamentsOverviewRouteWithChildren
+  MenuTournamentsCreateRoute: typeof MenuTournamentsCreateRoute
   MenuWatchListsWatchListUuidRoute: typeof MenuWatchListsWatchListUuidRoute
   MenuCollectionsIndexRoute: typeof MenuCollectionsIndexRoute
   MenuDecksIndexRoute: typeof MenuDecksIndexRoute
@@ -2158,6 +2198,7 @@ interface MenuRouteChildren {
   MenuGlobalProfilesUsernameRoute: typeof MenuGlobalProfilesUsernameRoute
   MenuScanStagedSessionUuidRoute: typeof MenuScanStagedSessionUuidRoute
   MenuTournamentsTournamentUuidTournamentRoute: typeof MenuTournamentsTournamentUuidTournamentRouteWithChildren
+  MenuTournamentsTournamentUuidEditRoute: typeof MenuTournamentsTournamentUuidEditRoute
   MenuGlobalDecksIndexRoute: typeof MenuGlobalDecksIndexRoute
   MenuGlobalCollectionsCollectionUuidCollectionRoute: typeof MenuGlobalCollectionsCollectionUuidCollectionRouteWithChildren
   MenuGlobalDecksDeckUuidDeckRoute: typeof MenuGlobalDecksDeckUuidDeckRouteWithChildren
@@ -2178,6 +2219,7 @@ const MenuRouteChildren: MenuRouteChildren = {
   MenuProfileProfileRoute: MenuProfileProfileRouteWithChildren,
   MenuScanBenchRoute: MenuScanBenchRoute,
   MenuTournamentsOverviewRoute: MenuTournamentsOverviewRouteWithChildren,
+  MenuTournamentsCreateRoute: MenuTournamentsCreateRoute,
   MenuWatchListsWatchListUuidRoute: MenuWatchListsWatchListUuidRoute,
   MenuCollectionsIndexRoute: MenuCollectionsIndexRoute,
   MenuDecksIndexRoute: MenuDecksIndexRoute,
@@ -2192,6 +2234,8 @@ const MenuRouteChildren: MenuRouteChildren = {
   MenuScanStagedSessionUuidRoute: MenuScanStagedSessionUuidRoute,
   MenuTournamentsTournamentUuidTournamentRoute:
     MenuTournamentsTournamentUuidTournamentRouteWithChildren,
+  MenuTournamentsTournamentUuidEditRoute:
+    MenuTournamentsTournamentUuidEditRoute,
   MenuGlobalDecksIndexRoute: MenuGlobalDecksIndexRoute,
   MenuGlobalCollectionsCollectionUuidCollectionRoute:
     MenuGlobalCollectionsCollectionUuidCollectionRouteWithChildren,

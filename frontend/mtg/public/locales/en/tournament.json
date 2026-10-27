@@ -98,9 +98,9 @@
         "round-minutes": "Minutes per round. The timer runs from the start of every round; leave empty for no timer.",
         "round-preview": "Only organizers see these pairings until the round starts.",
         "rules-locked": "Fixed since the first round.",
-        "ruleset-mtr": "Magic Tournament Rules: a win is 3, a draw 1, a bye counts as 2-0.",
-        "ruleset-multiplayer-addendum": "Multiplayer Addendum: a win is twice the table size minus one (7 at tables of four), a draw 1, smaller tables instead of byes.",
-        "ruleset-top-deck": "TopDeck: a win is 5, a draw 1, at most one smaller table, then byes.",
+        "ruleset-mtr": "Magic Tournament Rules: a win is 3, a draw 1, a loss 0, a bye counts as 2-0.",
+        "ruleset-multiplayer-addendum": "Multiplayer Addendum: a win is twice the table size minus one (7 at tables of four), a draw 1, a loss 0, smaller tables instead of byes.",
+        "ruleset-top-deck": "TopDeck: a win is 5, a draw 1, a loss 0, at most one smaller table, then byes.",
         "self-sign-up": "Players with an account sign up themselves until the first round starts.",
         "self-sign-up-private": "Only for public tournaments and tournaments by link.",
         "set-result": "Games won by each player; corrections are possible at any time.",
@@ -134,7 +134,8 @@
         "unpaid-count_other": "{{count}} Participants have not paid yet and are not paired.",
         "visibility-private": "Only you, your co-organizers and the players see the tournament.",
         "visibility-public": "Anyone finds the tournament in the overview.",
-        "visibility-unlisted": "Anyone with the link sees the tournament."
+        "visibility-unlisted": "Anyone with the link sees the tournament.",
+        "format-defaults": "The format suggests a table size and ruleset. Valid manual choices are preserved. Changing the table size adjusts incompatible rulesets and top cuts."
     },
     "error": {
         "all-rounds-paired": "Every Swiss round has been paired.",

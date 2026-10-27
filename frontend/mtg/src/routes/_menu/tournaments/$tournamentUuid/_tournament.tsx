@@ -6,7 +6,6 @@ import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import { OrganizerRole, TournamentState } from "src/api/generated";
-import { TournamentDialog } from "src/components/tournament-dialog";
 import { TournamentLiveProvider } from "src/context/tournament-live-context";
 import { useTournamentLabels } from "src/components/tournament-labels";
 import i18n from "src/i18n";
@@ -17,16 +16,12 @@ export const Route = createFileRoute("/_menu/tournaments/$tournamentUuid/_tourna
     loader: async ({ params }) => {
         const strings = i18n.loadNamespaces(["tournament", "deck"]);
         try {
-            const [tournament, offered] = await Promise.all([
-                Api.tournaments.get(params.tournamentUuid),
-                Api.decks.formats(),
-                strings,
-            ]);
-            return { tournament, formats: offered.formats };
+            const [tournament] = await Promise.all([Api.tournaments.get(params.tournamentUuid), strings]);
+            return { tournament };
         } catch (error) {
             if (isNotPublic(error)) {
                 await strings;
-                return { tournament: null, formats: [] };
+                return { tournament: null };
             }
             throw error;
         }
@@ -45,11 +40,10 @@ export const Route = createFileRoute("/_menu/tournaments/$tournamentUuid/_tourna
 function RouteComponent() {
     const [t] = useTranslation("tournament");
     const { tournamentUuid } = Route.useParams();
-    const { tournament, formats } = Route.useLoaderData();
+    const { tournament } = Route.useLoaderData();
     const labels = useTournamentLabels();
     const router = useRouter();
     const navigate = useNavigate();
-    const [editing, setEditing] = useState(false);
     const [deleting, setDeleting] = useState(false);
     const [cancelling, setCancelling] = useState(false);
     const refresh = useCallback(() => void router.invalidate(), [router]);
@@ -103,7 +97,7 @@ function RouteComponent() {
             headingChildren={
                 role !== null && (
                     <>
-                        <Button outline onClick={() => setEditing(true)}>
+                        <Button outline href={"/tournaments/$tournamentUuid/edit"} params={{ tournamentUuid }}>
                             <PencilSquareIcon />
                             {t("button.edit-tournament")}
                         </Button>
@@ -160,20 +154,6 @@ function RouteComponent() {
             >
                 <Outlet />
             </TournamentLiveProvider>
-
-            {role !== null && (
-                <TournamentDialog
-                    open={editing}
-                    tournament={tournament}
-                    formats={formats}
-                    onClose={() => setEditing(false)}
-                    onSaved={() => {
-                        setEditing(false);
-                        notify.success(t("toast.tournament-saved"));
-                        void router.invalidate();
-                    }}
-                />
-            )}
 
             <ConfirmDialog
                 open={cancelling}
