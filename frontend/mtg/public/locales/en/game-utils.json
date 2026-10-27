@@ -37,7 +37,11 @@
         "reset_one": "Reset",
         "reset_other": "Reset all",
         "settings": "Settings",
-        "start": "Start life tracker"
+        "start": "Start life tracker",
+        "life-history": "History",
+        "next-game": "Next Game",
+        "end-game": "End Game",
+        "correct-change": "Correct change"
     },
     "description": {
         "add-cards": "Search for cards or add a whole deck. Their art is searched for automatically.",
@@ -67,7 +71,9 @@
         "proxy-printer": "Cards at their real size on A4, ready to cut out.",
         "reset-game_one": "Puts you back on {{life}} life. This cannot be undone.",
         "reset-game_other": "Puts every player back on {{life}} life and clears the commander damage. This cannot be undone.",
-        "skip-basics": "Basics stay off the sheet, everyone has those in a box already."
+        "skip-basics": "Basics stay off the sheet, everyone has those in a box already.",
+        "end-game": "Record the winner or a draw. Life totals and history do not determine a Tournament Result. Earlier Games stay saved.",
+        "next-game-settings": "Changed starting totals apply to the next Game. End the current Game first."
     },
     "heading": {
         "add-cards": "Add cards",
@@ -83,7 +89,9 @@
         "print-list": "Print list",
         "proxy-printer": "Proxy printer",
         "reset-game": "Start a new game?",
-        "settings": "Set up life tracker"
+        "settings": "Set up life tracker",
+        "end-game": "End Game",
+        "life-game": "Game {{number}}"
     },
     "label": {
         "arrangement": "Arrangement",
@@ -123,7 +131,16 @@
         "skip-basics": "Skip basic lands",
         "starting-life": "Starting life",
         "stock": "Cardstock",
-        "two-sided": "two-sided"
+        "two-sided": "two-sided",
+        "game-outcome": "Game outcome",
+        "draw": "Draw",
+        "game-winner": "{{player}} wins",
+        "history-start": "Game started",
+        "history-end": "Game ended",
+        "history-life": "{{player}}: {{amount}} life",
+        "history-commander": "{{player}}: {{amount}} life, {{damage}} commander damage from {{commander}}",
+        "history-reclassify": "{{player}}: recent hit recorded as {{damage}} commander damage from {{commander}}",
+        "history-correction": "Correction for {{player}}: {{amount}} life, {{damage}} commander damage"
     },
     "toast": {
         "art-not-searched": "MPCFill did not answer",

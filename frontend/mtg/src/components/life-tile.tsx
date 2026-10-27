@@ -98,6 +98,8 @@ export type TileBooking =
 export type LifeTileProps = {
     /** Which player this is, counted from one */
     number: number;
+    /** Supplied participant name, falling back to the Seat number. */
+    name?: string;
     /** Their current total */
     life: number;
     /** What the last few taps came to, gone once they have settled */
@@ -150,6 +152,7 @@ export type LifeTileProps = {
  */
 export function LifeTile({
     number,
+    name,
     life,
     delta,
     damage,
@@ -162,7 +165,7 @@ export function LifeTile({
     onToggleBooking,
 }: LifeTileProps) {
     const [t] = useTranslation("game-utils");
-    const player = t("label.player", { number });
+    const player = name ?? t("label.player", { number });
     const hint = t("label.hold-step", { amount: HOLD_STEP });
     const out = isEliminated(life, damage);
     // A player counting on their own has nobody to book commander damage
