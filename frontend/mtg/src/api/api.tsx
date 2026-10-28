@@ -634,6 +634,11 @@ export const Api = {
                 orGone(defaultApi.signUpAsTournamentGuest({ tournament, GuestSignUpRequest: request })),
             recover: async (tournament: UUID, request: RecoverGuestSeatRequest) =>
                 quietly(defaultApi.recoverTournamentGuestSeat({ tournament, RecoverGuestSeatRequest: request })),
+            claim: async (tournament: UUID) => handleError(defaultApi.claimTournamentGuestSeat({ tournament })),
+            seatLink: async (tournament: UUID, participant: UUID) =>
+                handleError(defaultApi.issueTournamentSeatLink({ tournament, participant })),
+            redeemSeatLink: async (secret: string) =>
+                quietly(defaultApi.redeemTournamentSeatLink({ RedeemSeatLinkRequest: { secret } })),
         },
         decks: {
             mine: async (tournament: UUID) => handleError(defaultApi.getMyTournamentDeck({ tournament })),

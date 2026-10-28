@@ -18,7 +18,10 @@
         "check-out": "Undo {{name}}'s check-in",
         "check-in-needs-deck": "{{name}} needs a deck to check in",
         "sign-up-qr": "QR code for signing up",
-        "copy-sign-up-link": "Copy sign-up link"
+        "copy-sign-up-link": "Copy sign-up link",
+        "seat-link": "Seat link for {{name}}",
+        "seat-link-qr": "QR code of the seat link",
+        "copy-seat-link": "Copy seat link"
     },
     "button": {
         "accept-handover": "Take over",
@@ -84,7 +87,10 @@
         "check-in-everyone": "Check everyone in",
         "sign-up-as-guest": "Join",
         "sign-up-with-account": "Sign up with an account",
-        "show-sign-up-qr": "Full screen"
+        "show-sign-up-qr": "Full screen",
+        "seat-link": "Seat link",
+        "keep-guest-seat": "Keep",
+        "log-in-to-keep-guest-seat": "Log in to keep it"
     },
     "description": {
         "add-account": "With an account, by its exact username: the results belong to that account.",
@@ -204,7 +210,9 @@
         "not-checked-in-count_other": "{{count}} participants are not checked in yet.",
         "check-in-needs-deck": "You need a registered deck to check in.",
         "guest-sign-up": "No account, just a name.",
-        "guest-sign-up-unavailable": "Needs self sign-up and check-in."
+        "guest-sign-up-unavailable": "Needs self sign-up and check-in.",
+        "seat-link": "Works once, for 15 minutes.",
+        "keep-guest-seat": "Keep this seat with your account."
     },
     "error": {
         "all-rounds-paired": "Every Swiss round has been paired.",
@@ -273,7 +281,12 @@
         "guest-sign-up-needs-check-in": "Guests need a check-in.",
         "guest-sign-up-busy": "Too many sign-ups, try again in a moment.",
         "guest-sign-up-failed": "Signing up isn't possible right now.",
-        "entered-afterwards": "Organizers enter the results here."
+        "entered-afterwards": "Organizers enter the results here.",
+        "seat-link-unknown": "This seat link no longer works.",
+        "seat-link-expired": "This seat link has expired.",
+        "seat-link-failed": "The seat link couldn't be used right now.",
+        "seat-link-not-a-guest": "Players with an account log in.",
+        "claim-no-seat": "This device holds no guest seat."
     },
     "heading": {
         "add-participants": "Add players",
@@ -322,7 +335,8 @@
         "life-recovered-list": "Recovered histories",
         "life-recording-devices": "Change recording device",
         "guest-sign-up": "Play as a guest",
-        "sign-up-qr": "Sign-up QR code"
+        "sign-up-qr": "Sign-up QR code",
+        "seat-link": "Seat link for {{name}}"
     },
     "label": {
         "add-account": "Account",
@@ -513,6 +527,7 @@
         "tournament-deleted": "Tournament deleted",
         "tournament-saved": "Tournament saved",
         "checked-in-everyone": "Everyone checked in",
-        "check-in-skipped": "Not checked in, no deck: {{names}}"
+        "check-in-skipped": "Not checked in, no deck: {{names}}",
+        "guest-seat-claimed": "The seat is now your account's"
     }
 }

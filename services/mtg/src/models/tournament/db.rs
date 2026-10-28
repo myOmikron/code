@@ -212,6 +212,16 @@ pub struct TournamentParticipantModel {
     /// Tournament is Finished or Cancelled.
     pub recovery_code_hash: Option<MaxStr<64>>,
 
+    /// The SHA-256 of the secret of the Seat link an Organizer issued for this Guest, as hex
+    ///
+    /// Indexed: a Seat link is redeemed by its secret alone. `None` once it is
+    /// redeemed, and once the Tournament is Finished or Cancelled.
+    #[rorm(index)]
+    pub seat_link_hash: Option<MaxStr<64>>,
+
+    /// Until when the Seat link works, set exactly with [`Self::seat_link_hash`]
+    pub seat_link_expires_at: Option<OffsetDateTime>,
+
     /// The first Round a late Participant plays, `None` for one there before Round 1 started
     pub late_from_round: Option<i16>,
 

@@ -1483,6 +1483,21 @@ export interface ChooseUsernameRequest {
     username: any;
 }
 /**
+ * Why the Guest a session holds a seat of could not be claimed
+ * @export
+ * @interface ClaimGuestSeatErrors
+ */
+export interface ClaimGuestSeatErrors {
+    /**
+     * The Account plays in the Tournament already
+     */
+    already_participant: boolean;
+    /**
+     * The session holds no seat of a Guest of the Tournament
+     */
+    no_seat: boolean;
+}
+/**
  * An explicit claim using a private credential saved locally before the request.
  * @export
  * @interface ClaimMatchLifeRequest
@@ -1509,6 +1524,12 @@ export interface ClaimMatchLifeRequest {
      */
     writer_token: string;
 }
+/**
+ * @type ClaimTournamentGuestSeat200Response
+ * 
+ * @export
+ */
+export type ClaimTournamentGuestSeat200Response = FormErrorResponseForClaimGuestSeatErrors | ParticipantResponse;
 /**
  * An Account whose username starts with what the owner typed
  * @export
@@ -3753,6 +3774,23 @@ export interface FormErrorResponseForChooseUsernameErrors {
 /**
  * The response that is sent in a case of an error the caller should present his user
  * @export
+ * @interface FormErrorResponseForClaimGuestSeatErrors
+ */
+export interface FormErrorResponseForClaimGuestSeatErrors {
+    /**
+     * The actual error struct
+     */
+    error: ClaimGuestSeatErrors;
+    /**
+     * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
+     */
+    result: ErrorConstant;
+}
+
+
+/**
+ * The response that is sent in a case of an error the caller should present his user
+ * @export
  * @interface FormErrorResponseForDeleteAccountErrors
  */
 export interface FormErrorResponseForDeleteAccountErrors {
@@ -3940,6 +3978,23 @@ export interface FormErrorResponseForRecoverGuestSeatErrors {
 /**
  * The response that is sent in a case of an error the caller should present his user
  * @export
+ * @interface FormErrorResponseForRedeemSeatLinkErrors
+ */
+export interface FormErrorResponseForRedeemSeatLinkErrors {
+    /**
+     * The actual error struct
+     */
+    error: RedeemSeatLinkErrors;
+    /**
+     * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
+     */
+    result: ErrorConstant;
+}
+
+
+/**
+ * The response that is sent in a case of an error the caller should present his user
+ * @export
  * @interface FormErrorResponseForRegisterDeckErrors
  */
 export interface FormErrorResponseForRegisterDeckErrors {
@@ -4032,6 +4087,23 @@ export interface FormErrorResponseForRoundErrors {
      * The actual error struct
      */
     error: RoundErrors;
+    /**
+     * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
+     */
+    result: ErrorConstant;
+}
+
+
+/**
+ * The response that is sent in a case of an error the caller should present his user
+ * @export
+ * @interface FormErrorResponseForSeatLinkErrors
+ */
+export interface FormErrorResponseForSeatLinkErrors {
+    /**
+     * The actual error struct
+     */
+    error: SeatLinkErrors;
     /**
      * A constant `"Err"` used to differentiate this schema from any other "Ok" schema
      */
@@ -4403,6 +4475,12 @@ Gives every slot a new id, so anything hanging off those ids is lost. That is ri
 } as const;
 export type ImportMode = typeof ImportMode[keyof typeof ImportMode];
 
+/**
+ * @type IssueTournamentSeatLink200Response
+ * 
+ * @export
+ */
+export type IssueTournamentSeatLink200Response = FormErrorResponseForSeatLinkErrors | SeatLinkResponse;
 /**
  * One page of a collection
  * @export
@@ -6293,6 +6371,59 @@ export interface RecoverGuestSeatRequest {
     participant: string;
 }
 /**
+ * Why a Seat link could not be redeemed
+ * @export
+ * @interface RedeemSeatLinkErrors
+ */
+export interface RedeemSeatLinkErrors {
+    /**
+     * The Seat link ran out; the desk issues a new one
+     */
+    expired: boolean;
+    /**
+     * No Seat link has this secret: it is wrong, used, replaced or its Tournament is over
+     */
+    unknown_link: boolean;
+}
+/**
+ * A Seat link to redeem
+ * @export
+ * @interface RedeemSeatLinkRequest
+ */
+export interface RedeemSeatLinkRequest {
+    /**
+     * The secret from the link's fragment
+     */
+    secret: string;
+}
+/**
+ * The Guest a Seat link put into the session, and the Recovery code its device keeps
+ * @export
+ * @interface RedeemSeatLinkResponse
+ */
+export interface RedeemSeatLinkResponse {
+    /**
+     * The Guest, as it sees itself
+     */
+    participant: ParticipantResponse;
+    /**
+     * Restores the Guest seat into a fresh session until the Tournament is over
+     * 
+     * A new one, which replaces the Recovery code the Guest had.
+     */
+    recovery_code: string;
+    /**
+     * The Tournament the Guest plays in
+     */
+    tournament: string;
+}
+/**
+ * @type RedeemTournamentSeatLink200Response
+ * 
+ * @export
+ */
+export type RedeemTournamentSeatLink200Response = FormErrorResponseForRedeemSeatLinkErrors | RedeemSeatLinkResponse;
+/**
  * Why a Registered deck could not be registered, swapped or removed
  * @export
  * @interface RegisterDeckErrors
@@ -7180,6 +7311,36 @@ export interface SearchPublicDecksResponse {
      * How many decks the search found in total
      */
     total: number;
+}
+/**
+ * Why an Organizer could not issue a Seat link
+ * @export
+ * @interface SeatLinkErrors
+ */
+export interface SeatLinkErrors {
+    /**
+     * The Participant is an Account, which logs in instead
+     */
+    not_a_guest: boolean;
+    /**
+     * The Tournament is Finished or Cancelled
+     */
+    tournament_over: boolean;
+}
+/**
+ * A Seat link an Organizer issued for a Guest
+ * @export
+ * @interface SeatLinkResponse
+ */
+export interface SeatLinkResponse {
+    /**
+     * Until when the link works
+     */
+    expires_at: string;
+    /**
+     * The secret, for the fragment of the link; shown this once
+     */
+    secret: string;
 }
 /**
  * A Participant's Seat in a Match

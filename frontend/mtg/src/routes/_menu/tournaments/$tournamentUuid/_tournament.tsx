@@ -2,7 +2,7 @@ import { Outlet, createFileRoute, useNavigate, useRouter } from "@tanstack/react
 import { NoSymbolIcon, PencilSquareIcon, TrashIcon } from "@heroicons/react/20/solid";
 import { EyeSlashIcon } from "@heroicons/react/24/outline";
 import { Badge, Button, ConfirmDialog, EmptyState, Tab, TabLayout, TabMenu, notify } from "components";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import { OrganizerRole, TournamentState } from "src/api/generated";
@@ -10,12 +10,13 @@ import { TournamentLiveProvider } from "src/context/tournament-live-context";
 import { useTournamentLabels } from "src/components/tournament-labels";
 import i18n from "src/i18n";
 import { isNotPublic } from "src/utils/public-page";
-import { ownSeat, restoreGuestSeat } from "src/utils/tournament-guest";
+import { ownSeat, redeemSeatLinkOfPage, restoreGuestSeat } from "src/utils/tournament-guest";
 import { tournamentEventsUrl } from "src/utils/tournament-live";
 
 export const Route = createFileRoute("/_menu/tournaments/$tournamentUuid/_tournament")({
     loader: async ({ params }) => {
         const strings = i18n.loadNamespaces(["tournament", "deck"]);
+        const seatLinkRefused = await redeemSeatLinkOfPage((secret) => Api.tournaments.guests.redeemSeatLink(secret));
         try {
             const [tournament, listed] = await Promise.all([
                 Api.tournaments.get(params.tournamentUuid),
@@ -26,11 +27,11 @@ export const Route = createFileRoute("/_menu/tournaments/$tournamentUuid/_tourna
                 Api.tournaments.guests.recover(tournament.uuid, request),
             );
             const participants = restored ? await Api.tournaments.participants.list(tournament.uuid) : listed;
-            return { tournament, ...ownSeat(participants) };
+            return { tournament, seatLinkRefused, ...ownSeat(participants) };
         } catch (error) {
             if (isNotPublic(error)) {
                 await strings;
-                return { tournament: null, ...ownSeat(null) };
+                return { tournament: null, seatLinkRefused, ...ownSeat(null) };
             }
             throw error;
         }
@@ -49,7 +50,10 @@ export const Route = createFileRoute("/_menu/tournaments/$tournamentUuid/_tourna
 function RouteComponent() {
     const [t] = useTranslation("tournament");
     const { tournamentUuid } = Route.useParams();
-    const { tournament, me } = Route.useLoaderData();
+    const { tournament, me, seatLinkRefused } = Route.useLoaderData();
+    useEffect(() => {
+        if (seatLinkRefused !== null) notify.error(t(seatLinkRefused));
+    }, [seatLinkRefused, t]);
     const labels = useTournamentLabels();
     const router = useRouter();
     const navigate = useNavigate();

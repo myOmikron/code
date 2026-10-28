@@ -50,6 +50,7 @@ import type {
     CheckInTournamentParticipants200Response,
     ChooseUsernameRequest,
     ClaimMatchLifeRequest,
+    ClaimTournamentGuestSeat200Response,
     CollaboratorCandidatesResponse,
     CollectionEntryResponse,
     CollectionOverviewResponse,
@@ -111,6 +112,7 @@ import type {
     GuestSignUpRequest,
     ImportDeckCardsRequest,
     ImportDeckCardsResponse,
+    IssueTournamentSeatLink200Response,
     ListCardsResponse,
     ListCollectionEntriesResponse,
     ListDeckCardsResponse,
@@ -162,6 +164,8 @@ import type {
     ReadDeckUrlResponse,
     RecoverAccountRequest,
     RecoverGuestSeatRequest,
+    RedeemSeatLinkRequest,
+    RedeemTournamentSeatLink200Response,
     RegisterDeckRequest,
     RegisteredListsResponse,
     RenameAccount200Response,
@@ -600,6 +604,13 @@ export interface ClaimMatchLifeHistoryRequest {
      * 
      */
     ClaimMatchLifeRequest?: ClaimMatchLifeRequest;
+}
+
+export interface ClaimTournamentGuestSeatRequest {
+    /**
+     * 
+     */
+    tournament: string;
 }
 
 export interface CreateCollectionOperationRequest {
@@ -1159,6 +1170,17 @@ export interface ImportDeckCardsOperationRequest {
     ImportDeckCardsRequest?: ImportDeckCardsRequest;
 }
 
+export interface IssueTournamentSeatLinkRequest {
+    /**
+     * 
+     */
+    tournament: string;
+    /**
+     * 
+     */
+    participant: string;
+}
+
 export interface LeaveDeckRequest {
     /**
      * 
@@ -1534,6 +1556,13 @@ export interface RecoverTournamentGuestSeatRequest {
      * 
      */
     RecoverGuestSeatRequest?: RecoverGuestSeatRequest;
+}
+
+export interface RedeemTournamentSeatLinkRequest {
+    /**
+     * 
+     */
+    RedeemSeatLinkRequest?: RedeemSeatLinkRequest;
 }
 
 export interface RedoDeckChangeRequest {
@@ -4148,6 +4177,53 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async claimMatchLifeHistory(requestParameters: ClaimMatchLifeHistoryRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SaveMatchLifeHistory200Response> {
         const response = await this.claimMatchLifeHistoryRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for claimTournamentGuestSeat without sending the request
+     */
+    async claimTournamentGuestSeatRequestOpts(requestParameters: ClaimTournamentGuestSeatRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tournament'] == null) {
+            throw new runtime.RequiredError(
+                'tournament',
+                'Required parameter "tournament" was null or undefined when calling claimTournamentGuestSeat().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/tournaments/{tournament}/guest-seat/claim`;
+        urlPath = urlPath.replace('{tournament}', encodeURIComponent(String(requestParameters['tournament'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Keep the Guest this session holds a seat of as the logged-in Account\'s own Participant  The Guest becomes the Account\'s Participant with its Seats, Results and any Drop; its name gives way to the username, its Recovery code and Seat link go, and so does the seat. Refused for an Account that plays in the Tournament already.
+     * Keep the Guest this session holds a seat of as the logged-in Account\'s own Participant
+     */
+    async claimTournamentGuestSeatRaw(requestParameters: ClaimTournamentGuestSeatRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ClaimTournamentGuestSeat200Response>> {
+        const requestOptions = await this.claimTournamentGuestSeatRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Keep the Guest this session holds a seat of as the logged-in Account\'s own Participant  The Guest becomes the Account\'s Participant with its Seats, Results and any Drop; its name gives way to the username, its Recovery code and Seat link go, and so does the seat. Refused for an Account that plays in the Tournament already.
+     * Keep the Guest this session holds a seat of as the logged-in Account\'s own Participant
+     */
+    async claimTournamentGuestSeat(requestParameters: ClaimTournamentGuestSeatRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ClaimTournamentGuestSeat200Response> {
+        const response = await this.claimTournamentGuestSeatRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -7962,6 +8038,61 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for issueTournamentSeatLink without sending the request
+     */
+    async issueTournamentSeatLinkRequestOpts(requestParameters: IssueTournamentSeatLinkRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tournament'] == null) {
+            throw new runtime.RequiredError(
+                'tournament',
+                'Required parameter "tournament" was null or undefined when calling issueTournamentSeatLink().'
+            );
+        }
+
+        if (requestParameters['participant'] == null) {
+            throw new runtime.RequiredError(
+                'participant',
+                'Required parameter "participant" was null or undefined when calling issueTournamentSeatLink().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/tournaments/{tournament}/participants/{participant}/seat-link`;
+        urlPath = urlPath.replace('{tournament}', encodeURIComponent(String(requestParameters['tournament'])));
+        urlPath = urlPath.replace('{participant}', encodeURIComponent(String(requestParameters['participant'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Issue a Seat link for a Guest whose device lost its Guest seat, as an Organizer  Single use and good for 15 minutes; a new one replaces the last. The answer carries the secret once, for the fragment of the link the desk shows: a fragment never reaches a server, so the secret lands in no log.
+     * Issue a Seat link for a Guest whose device lost its Guest seat, as an Organizer
+     */
+    async issueTournamentSeatLinkRaw(requestParameters: IssueTournamentSeatLinkRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<IssueTournamentSeatLink200Response>> {
+        const requestOptions = await this.issueTournamentSeatLinkRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Issue a Seat link for a Guest whose device lost its Guest seat, as an Organizer  Single use and good for 15 minutes; a new one replaces the last. The answer carries the secret once, for the fragment of the link the desk shows: a fragment never reaches a server, so the secret lands in no log.
+     * Issue a Seat link for a Guest whose device lost its Guest seat, as an Organizer
+     */
+    async issueTournamentSeatLink(requestParameters: IssueTournamentSeatLinkRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<IssueTournamentSeatLink200Response> {
+        const response = await this.issueTournamentSeatLinkRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for leaveDeck without sending the request
      */
     async leaveDeckRequestOpts(requestParameters: LeaveDeckRequest): Promise<runtime.RequestOpts> {
@@ -9731,6 +9862,48 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async recoverTournamentGuestSeat(requestParameters: RecoverTournamentGuestSeatRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FormErrorResponseForRecoverGuestSeatErrors> {
         const response = await this.recoverTournamentGuestSeatRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for redeemTournamentSeatLink without sending the request
+     */
+    async redeemTournamentSeatLinkRequestOpts(requestParameters: RedeemTournamentSeatLinkRequest): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/tournaments/seat-links/redeem`;
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['RedeemSeatLinkRequest'],
+        };
+    }
+
+    /**
+     * Redeem a Seat link: its Guest seat goes into this session, with a new Recovery code  The secret is the authorization, as a share link\'s is, so this works for a Tournament of any Visibility; it is posted in the body, never in a path. Single use: a second redeem of the same secret is refused.
+     * Redeem a Seat link: its Guest seat goes into this session, with a new Recovery code
+     */
+    async redeemTournamentSeatLinkRaw(requestParameters: RedeemTournamentSeatLinkRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<RedeemTournamentSeatLink200Response>> {
+        const requestOptions = await this.redeemTournamentSeatLinkRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Redeem a Seat link: its Guest seat goes into this session, with a new Recovery code  The secret is the authorization, as a share link\'s is, so this works for a Tournament of any Visibility; it is posted in the body, never in a path. Single use: a second redeem of the same secret is refused.
+     * Redeem a Seat link: its Guest seat goes into this session, with a new Recovery code
+     */
+    async redeemTournamentSeatLink(requestParameters: RedeemTournamentSeatLinkRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<RedeemTournamentSeatLink200Response> {
+        const response = await this.redeemTournamentSeatLinkRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

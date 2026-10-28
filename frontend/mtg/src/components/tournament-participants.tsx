@@ -2,6 +2,7 @@ import {
     BanknotesIcon,
     CheckCircleIcon,
     PlusIcon,
+    QrCodeIcon,
     RectangleStackIcon,
     TrashIcon,
     UserMinusIcon,
@@ -37,6 +38,7 @@ import type {
 } from "src/api/generated";
 import { TournamentGuestSignUp } from "src/components/tournament-guest-sign-up";
 import { TournamentPushActivation } from "src/components/tournament-push-activation";
+import { TournamentSeatLinkDialog } from "src/components/tournament-seat-link-dialog";
 import { PrimaryButton } from "src/components/primary-button";
 import { RegisteredListWarnings, MyTournamentDeck, RegisteredDeckDialog } from "src/components/tournament-decks";
 import { useAccount } from "src/context/account";
@@ -81,12 +83,14 @@ export function TournamentParticipants({ tournament, load, signUp, guestSignUp }
     const [dropping, setDropping] = useState<ParticipantResponse | null>(null);
     const [decks, setDecks] = useState<Map<string, RegisteredDeckResponse>>(new Map());
     const [deckOf, setDeckOf] = useState<ParticipantResponse | null>(null);
+    const [seatLinkOf, setSeatLinkOf] = useState<ParticipantResponse | null>(null);
     const [warnings, setWarnings] = useState<Map<string, Array<RegisteredListWarning>>>(new Map());
 
     const organizer = tournament.organizer_role != null;
     const registration = tournament.state === TournamentState.Registration;
     const takesParticipants = registration || tournament.state === TournamentState.Swiss;
     const dropsOpen = tournament.state === TournamentState.Swiss || tournament.state === TournamentState.TopCut;
+    const over = tournament.state === TournamentState.Finished || tournament.state === TournamentState.Cancelled;
     const participants = list?.participants ?? [];
     const mine = participants.find((participant) => participant.uuid === list?.me) ?? null;
     const limit = tournament.participant_limit ?? null;
@@ -476,6 +480,17 @@ export function TournamentParticipants({ tournament, load, signUp, guestSignUp }
                                     <CheckCircleIcon />
                                 </Button>
                             )}
+                            {organizer && participant.guest && !over && (
+                                <Button
+                                    plain
+                                    disabled={busy}
+                                    aria-label={t("accessibility.seat-link", { name: participant.name })}
+                                    title={t("button.seat-link")}
+                                    onClick={() => setSeatLinkOf(participant)}
+                                >
+                                    <QrCodeIcon />
+                                </Button>
+                            )}
                             {organizer && dropsOpen && participant.dropped_after_round == null && (
                                 <Button
                                     plain
@@ -537,6 +552,13 @@ export function TournamentParticipants({ tournament, load, signUp, guestSignUp }
                 }
                 confirmLabel={t("button.drop")}
             />
+            {organizer && (
+                <TournamentSeatLinkDialog
+                    tournament={tournament}
+                    participant={seatLinkOf}
+                    onClose={() => setSeatLinkOf(null)}
+                />
+            )}
             {organizer && (
                 <RegisteredDeckDialog
                     tournament={tournament}

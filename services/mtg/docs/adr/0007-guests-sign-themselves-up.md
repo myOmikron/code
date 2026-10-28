@@ -20,3 +20,11 @@ This amends ADR 0003. The Participant route group now admits a caller that plays
 - Losing the session and the Recovery code together leaves the Guest to the Organizers, who report and Drop for it as for a Guest they added.
 - Sign-up and recovery are rate-limited per IP address, sized for a store where every player shares one address, and Guest sign-ups are capped per Tournament, so one address cannot fill a Tournament and the participant limit still holds for everybody else.
 - Guest names stay as public as every Participant's name is today. Hiding them from people outside the Tournament is a follow-up.
+
+## Addendum: Claim and Seat links
+
+An Account whose session holds a Guest seat can **Claim** the Guest. The Participant row takes the Account's key, the one a Participant of an Account always has, so the Account is found in the Tournament like any other; every foreign key to the row cascades on update, so Seats, reported and disputed Results and a Registered deck follow it. The Guest's name, Recovery code and Seat link go, and so does the seat. It is the reverse of a Deletion, which turns an Account's Participants into Guests and keeps their keys.
+
+A Guest that lost its device and its Recovery code gets a **Seat link** from the desk: a random secret, of which only the hash is kept, good for one use within 15 minutes, and replaced by the next one issued. The secret sits in the fragment of the link, which no browser sends to a server, and the page posts it in a request body. Redeeming it needs no Tournament in the path: the secret names the Guest and is the authorization, as a share link's token is, so it works for a Tournament of any Visibility. Redeeming answers a new Recovery code. Seat links are forgotten with the Recovery codes once the Tournament is over.
+
+- Creating an Account goes through a mailed Registration link, so a Guest that signs up for an Account leaves the Tournament's page. When it comes back logged in, the Recovery code its device kept restores the seat and the Claim is offered there.

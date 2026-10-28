@@ -1,0 +1,43 @@
+[Migration]
+Hash = "5634691324444145454"
+Initial = false
+Dependency = 73
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "tournament_participant"
+
+[Migration.Operations.Field]
+Name = "seat_link_hash"
+Type = "text"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "max_length"
+Value = 64
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 220
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "tournament_participant"
+
+[Migration.Operations.Field]
+Name = "seat_link_expires_at"
+Type = "datetime"
+Annotations = []
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/tournament/db.rs"
+Line = 223
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateIndex"
+Model = "tournament_participant"
+
+[Migration.Operations.Index]
+Columns = ["seat_link_hash"]

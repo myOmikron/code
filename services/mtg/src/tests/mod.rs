@@ -25,6 +25,7 @@ mod tournament_decks;
 mod tournament_drops;
 mod tournament_fees;
 mod tournament_final;
+mod tournament_guest_claim;
 mod tournament_guest_sign_up;
 mod tournament_life_history;
 mod tournament_lists;

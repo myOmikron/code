@@ -11191,6 +11191,71 @@
                 }
             }
         },
+        "/api/frontend/v1/tournaments/seat-links/redeem": {
+            "post": {
+                "summary": "Redeem a Seat link: its Guest seat goes into this session, with a new Recovery code",
+                "description": "Redeem a Seat link: its Guest seat goes into this session, with a new Recovery code\n\nThe secret is the authorization, as a share link's is, so this works for\na Tournament of any Visibility; it is posted in the body, never in a path.\nSingle use: a second redeem of the same secret is refused.",
+                "operationId": "redeem_tournament_seat_link",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RedeemSeatLinkRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "$ref": "#/components/schemas/RedeemSeatLinkResponse"
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/FormErrorResponse_for_RedeemSeatLinkErrors"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/frontend/v1/tournaments/{tournament}/sign-up": {
             "post": {
                 "summary": "Sign the logged-in Account up for a Tournament it sees by its id",
@@ -12762,6 +12827,75 @@
                 }
             }
         },
+        "/api/frontend/v1/tournaments/{tournament}/guest-seat/claim": {
+            "post": {
+                "summary": "Keep the Guest this session holds a seat of as the logged-in Account's own Participant",
+                "description": "Keep the Guest this session holds a seat of as the logged-in Account's own Participant\n\nThe Guest becomes the Account's Participant with its Seats, Results and\nany Drop; its name gives way to the username, its Recovery code and Seat\nlink go, and so does the seat. Refused for an Account that plays in the\nTournament already.",
+                "operationId": "claim_tournament_guest_seat",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tournament",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of a [`Tournament`]",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ParticipantResponse"
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/FormErrorResponse_for_ClaimGuestSeatErrors"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/frontend/v1/tournaments/{tournament}/registered-decks": {
             "get": {
                 "summary": "Every Registered deck of a Tournament, as an Organizer",
@@ -13013,6 +13147,82 @@
                                         },
                                         {
                                             "$ref": "#/components/schemas/FormErrorResponse_for_RegisterDeckErrors"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/tournaments/{tournament}/participants/{participant}/seat-link": {
+            "post": {
+                "summary": "Issue a Seat link for a Guest whose device lost its Guest seat, as an Organizer",
+                "description": "Issue a Seat link for a Guest whose device lost its Guest seat, as an Organizer\n\nSingle use and good for 15 minutes; a new one replaces the last. The\nanswer carries the secret once, for the fragment of the link the desk\nshows: a fragment never reaches a server, so the secret lands in no log.",
+                "operationId": "issue_tournament_seat_link",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "tournament",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/TournamentUuid"
+                        },
+                        "style": "simple"
+                    },
+                    {
+                        "in": "path",
+                        "name": "participant",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/ParticipantUuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "$ref": "#/components/schemas/SeatLinkResponse"
+                                        },
+                                        {
+                                            "$ref": "#/components/schemas/FormErrorResponse_for_SeatLinkErrors"
                                         }
                                     ]
                                 }
@@ -17463,6 +17673,24 @@
                     "username"
                 ]
             },
+            "ClaimGuestSeatErrors": {
+                "description": "Why the Guest a session holds a seat of could not be claimed",
+                "type": "object",
+                "properties": {
+                    "already_participant": {
+                        "description": "The Account plays in the Tournament already",
+                        "type": "boolean"
+                    },
+                    "no_seat": {
+                        "description": "The session holds no seat of a Guest of the Tournament",
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "already_participant",
+                    "no_seat"
+                ]
+            },
             "ClaimMatchLifeRequest": {
                 "description": "An explicit claim using a private credential saved locally before the request.",
                 "type": "object",
@@ -20653,6 +20881,32 @@
                     "result"
                 ]
             },
+            "FormErrorResponse_for_ClaimGuestSeatErrors": {
+                "description": "The response that is sent in a case of an error the caller should present his user",
+                "type": "object",
+                "properties": {
+                    "error": {
+                        "description": "The actual error struct",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ClaimGuestSeatErrors"
+                            }
+                        ]
+                    },
+                    "result": {
+                        "description": "A constant `\"Err\"` used to differentiate this schema from any other \"Ok\" schema",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ErrorConstant"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "error",
+                    "result"
+                ]
+            },
             "FormErrorResponse_for_DeleteAccountErrors": {
                 "description": "The response that is sent in a case of an error the caller should present his user",
                 "type": "object",
@@ -20939,6 +21193,32 @@
                     "result"
                 ]
             },
+            "FormErrorResponse_for_RedeemSeatLinkErrors": {
+                "description": "The response that is sent in a case of an error the caller should present his user",
+                "type": "object",
+                "properties": {
+                    "error": {
+                        "description": "The actual error struct",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/RedeemSeatLinkErrors"
+                            }
+                        ]
+                    },
+                    "result": {
+                        "description": "A constant `\"Err\"` used to differentiate this schema from any other \"Ok\" schema",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ErrorConstant"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "error",
+                    "result"
+                ]
+            },
             "FormErrorResponse_for_RegisterDeckErrors": {
                 "description": "The response that is sent in a case of an error the caller should present his user",
                 "type": "object",
@@ -21078,6 +21358,32 @@
                         "allOf": [
                             {
                                 "$ref": "#/components/schemas/RoundErrors"
+                            }
+                        ]
+                    },
+                    "result": {
+                        "description": "A constant `\"Err\"` used to differentiate this schema from any other \"Ok\" schema",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ErrorConstant"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "error",
+                    "result"
+                ]
+            },
+            "FormErrorResponse_for_SeatLinkErrors": {
+                "description": "The response that is sent in a case of an error the caller should present his user",
+                "type": "object",
+                "properties": {
+                    "error": {
+                        "description": "The actual error struct",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SeatLinkErrors"
                             }
                         ]
                     },
@@ -24327,6 +24633,72 @@
                     "participant"
                 ]
             },
+            "RedeemSeatLinkErrors": {
+                "description": "Why a Seat link could not be redeemed",
+                "type": "object",
+                "properties": {
+                    "expired": {
+                        "description": "The Seat link ran out; the desk issues a new one",
+                        "type": "boolean"
+                    },
+                    "unknown_link": {
+                        "description": "No Seat link has this secret: it is wrong, used, replaced or its Tournament is over",
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "expired",
+                    "unknown_link"
+                ]
+            },
+            "RedeemSeatLinkRequest": {
+                "description": "A Seat link to redeem",
+                "type": "object",
+                "properties": {
+                    "secret": {
+                        "description": "The secret from the link's fragment",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_64"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "secret"
+                ]
+            },
+            "RedeemSeatLinkResponse": {
+                "description": "The Guest a Seat link put into the session, and the Recovery code its device keeps",
+                "type": "object",
+                "properties": {
+                    "participant": {
+                        "description": "The Guest, as it sees itself",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ParticipantResponse"
+                            }
+                        ]
+                    },
+                    "recovery_code": {
+                        "description": "Restores the Guest seat into a fresh session until the Tournament is over\n\nA new one, which replaces the Recovery code the Guest had.",
+                        "type": "string"
+                    },
+                    "tournament": {
+                        "description": "The Tournament the Guest plays in",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/TournamentUuid"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "participant",
+                    "recovery_code",
+                    "tournament"
+                ]
+            },
             "RegisterDeckErrors": {
                 "description": "Why a Registered deck could not be registered, swapped or removed",
                 "type": "object",
@@ -25596,6 +25968,46 @@
                     "limit",
                     "offset",
                     "total"
+                ]
+            },
+            "SeatLinkErrors": {
+                "description": "Why an Organizer could not issue a Seat link",
+                "type": "object",
+                "properties": {
+                    "not_a_guest": {
+                        "description": "The Participant is an Account, which logs in instead",
+                        "type": "boolean"
+                    },
+                    "tournament_over": {
+                        "description": "The Tournament is Finished or Cancelled",
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "not_a_guest",
+                    "tournament_over"
+                ]
+            },
+            "SeatLinkResponse": {
+                "description": "A Seat link an Organizer issued for a Guest",
+                "type": "object",
+                "properties": {
+                    "expires_at": {
+                        "description": "Until when the link works",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDateTime"
+                            }
+                        ]
+                    },
+                    "secret": {
+                        "description": "The secret, for the fragment of the link; shown this once",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "expires_at",
+                    "secret"
                 ]
             },
             "SeatResponse": {

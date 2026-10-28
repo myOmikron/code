@@ -74,7 +74,9 @@ docs/CheckInEveryoneResponse.md
 docs/CheckInTournamentParticipants200Response.md
 docs/ChooseUsernameErrors.md
 docs/ChooseUsernameRequest.md
+docs/ClaimGuestSeatErrors.md
 docs/ClaimMatchLifeRequest.md
+docs/ClaimTournamentGuestSeat200Response.md
 docs/CollaboratorCandidateResponse.md
 docs/CollaboratorCandidatesResponse.md
 docs/CollaboratorLevel.md
@@ -165,6 +167,7 @@ docs/FormErrorResponseForAdminUnlockAccountErrors.md
 docs/FormErrorResponseForArrangeRoundErrors.md
 docs/FormErrorResponseForCheckInEveryoneErrors.md
 docs/FormErrorResponseForChooseUsernameErrors.md
+docs/FormErrorResponseForClaimGuestSeatErrors.md
 docs/FormErrorResponseForDeleteAccountErrors.md
 docs/FormErrorResponseForDeletePasskeyErrors.md
 docs/FormErrorResponseForDisputeResultErrors.md
@@ -176,12 +179,14 @@ docs/FormErrorResponseForMeErrors.md
 docs/FormErrorResponseForOfferHandoverErrors.md
 docs/FormErrorResponseForPutDeckCollaboratorErrors.md
 docs/FormErrorResponseForRecoverGuestSeatErrors.md
+docs/FormErrorResponseForRedeemSeatLinkErrors.md
 docs/FormErrorResponseForRegisterDeckErrors.md
 docs/FormErrorResponseForRegistrationErrors.md
 docs/FormErrorResponseForRenameAccountErrors.md
 docs/FormErrorResponseForRenamePasskeyErrors.md
 docs/FormErrorResponseForReportResultErrors.md
 docs/FormErrorResponseForRoundErrors.md
+docs/FormErrorResponseForSeatLinkErrors.md
 docs/FormErrorResponseForSendBugReportErrors.md
 docs/FormErrorResponseForSetCheckedInErrors.md
 docs/FormErrorResponseForSetListSharingErrors.md
@@ -202,6 +207,7 @@ docs/GuestSignUpResponse.md
 docs/ImportDeckCardsRequest.md
 docs/ImportDeckCardsResponse.md
 docs/ImportMode.md
+docs/IssueTournamentSeatLink200Response.md
 docs/ListCardsResponse.md
 docs/ListCollectionEntriesResponse.md
 docs/ListDeckCardsResponse.md
@@ -295,6 +301,10 @@ docs/ReadDeckUrlResponse.md
 docs/RecoverAccountRequest.md
 docs/RecoverGuestSeatErrors.md
 docs/RecoverGuestSeatRequest.md
+docs/RedeemSeatLinkErrors.md
+docs/RedeemSeatLinkRequest.md
+docs/RedeemSeatLinkResponse.md
+docs/RedeemTournamentSeatLink200Response.md
 docs/RegisterDeckErrors.md
 docs/RegisterDeckRequest.md
 docs/RegisteredDeckResponse.md
@@ -334,6 +344,8 @@ docs/ScannerSessionDetailResponse.md
 docs/ScannerSessionEntryResponse.md
 docs/ScannerSessionResponse.md
 docs/SearchPublicDecksResponse.md
+docs/SeatLinkErrors.md
+docs/SeatLinkResponse.md
 docs/SeatResponse.md
 docs/SendBugReport200Response.md
 docs/SendBugReportErrors.md

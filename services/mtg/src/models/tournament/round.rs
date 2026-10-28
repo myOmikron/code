@@ -796,7 +796,7 @@ impl Tournament {
     /// Cancel the Tournament, `false` if it is over already
     ///
     /// The previewed Round goes; the Rounds that started stay as they are.
-    /// The Recovery codes of its Guests go too (ADR 0007).
+    /// The Recovery codes and Seat links of its Guests go too (ADR 0007).
     #[instrument(name = "Tournament::cancel", skip(tx, self), fields(tournament = ?self.uuid))]
     pub async fn cancel(&self, tx: &mut Transaction) -> Result<bool, rorm::Error> {
         if self.over() {
@@ -807,7 +807,7 @@ impl Tournament {
             .set(TournamentModel.state, TournamentState::Cancelled)
             .condition(TournamentModel.uuid.equals(self.uuid.into_inner()))
             .await?;
-        self.forget_recovery_codes(tx).await?;
+        self.forget_guest_secrets(tx).await?;
         Ok(true)
     }
 
@@ -952,7 +952,7 @@ impl Tournament {
     /// After the last Swiss Round the Top cut follows, if the Tournament has
     /// one and at least two Participants play on; otherwise, and after the
     /// final of the Top cut, the Tournament is Finished.
-    /// Finishing forgets the Recovery codes of its Guests (ADR 0007).
+    /// Finishing forgets the Recovery codes and Seat links of its Guests (ADR 0007).
     async fn finish_if_played(
         &self,
         tx: &mut Transaction,
@@ -983,7 +983,7 @@ impl Tournament {
             .condition(TournamentModel.uuid.equals(self.uuid.into_inner()))
             .await?;
         if next == TournamentState::Finished {
-            self.forget_recovery_codes(tx).await?;
+            self.forget_guest_secrets(tx).await?;
         }
         Ok(next)
     }

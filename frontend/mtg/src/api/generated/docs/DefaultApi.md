@@ -39,6 +39,7 @@ All URIs are relative to *http://localhost*
 | [**checkPushDevice**](DefaultApi.md#checkpushdevice) | **POST** /api/frontend/v1/accounts/me/push/devices/check | Whether a device gets the logged-in account\&#39;s pushes |
 | [**chooseUsername**](DefaultApi.md#chooseusernameoperation) | **POST** /api/frontend/v1/auth/oidc/username | Finish the username step: create the External Account and log it in |
 | [**claimMatchLifeHistory**](DefaultApi.md#claimmatchlifehistory) | **POST** /api/frontend/v1/tournaments/{tournament}/matches/{match}/life-history/claim | Deliberately claim a recording slot with a private, device-local capability. |
+| [**claimTournamentGuestSeat**](DefaultApi.md#claimtournamentguestseat) | **POST** /api/frontend/v1/tournaments/{tournament}/guest-seat/claim | Keep the Guest this session holds a seat of as the logged-in Account\&#39;s own Participant |
 | [**createCollection**](DefaultApi.md#createcollectionoperation) | **POST** /api/frontend/v1/collections |  |
 | [**createDeck**](DefaultApi.md#createdeckoperation) | **POST** /api/frontend/v1/decks | Create a deck |
 | [**createDeckFolder**](DefaultApi.md#createdeckfolderoperation) | **POST** /api/frontend/v1/folders | Make a folder |
@@ -120,6 +121,7 @@ All URIs are relative to *http://localhost*
 | [**getWatchList**](DefaultApi.md#getwatchlist) | **GET** /api/frontend/v1/watch-lists/{list} | One watch list, without what is on it |
 | [**getWatchListAlarms**](DefaultApi.md#getwatchlistalarms) | **GET** /api/frontend/v1/watch-lists/alarms | Every alarm standing across the account\&#39;s watch lists |
 | [**importDeckCards**](DefaultApi.md#importdeckcardsoperation) | **POST** /api/frontend/v1/decks/{deck}/cards/import | Write a whole decklist into a deck |
+| [**issueTournamentSeatLink**](DefaultApi.md#issuetournamentseatlink) | **POST** /api/frontend/v1/tournaments/{tournament}/participants/{participant}/seat-link | Issue a Seat link for a Guest whose device lost its Guest seat, as an Organizer |
 | [**leaveDeck**](DefaultApi.md#leavedeck) | **POST** /api/frontend/v1/decks/{deck}/leave | Take oneself off a deck another Account named one on |
 | [**listCollectionCards**](DefaultApi.md#listcollectioncards) | **GET** /api/frontend/v1/collections/{collection}/cards | List a page of a collection\&#39;s cards, sorted and filtered |
 | [**listCollectionEntries**](DefaultApi.md#listcollectionentries) | **GET** /api/frontend/v1/collections/{collection}/entries | List every stack filed in a collection |
@@ -155,6 +157,7 @@ All URIs are relative to *http://localhost*
 | [**recoverAccount**](DefaultApi.md#recoveraccountoperation) | **POST** /api/frontend/v1/auth/recover | Send a fresh registration link to an account\&#39;s stored address |
 | [**recoverSharedTournamentGuestSeat**](DefaultApi.md#recoversharedtournamentguestseat) | **POST** /api/frontend/v1/shared/tournaments/{token}/guest-seat/recover | Restore a Guest seat of the Tournament a share link points at into this session |
 | [**recoverTournamentGuestSeat**](DefaultApi.md#recovertournamentguestseat) | **POST** /api/frontend/v1/tournaments/{tournament}/guest-seat/recover | Restore a Guest seat into this session with the Recovery code its device kept |
+| [**redeemTournamentSeatLink**](DefaultApi.md#redeemtournamentseatlink) | **POST** /api/frontend/v1/tournaments/seat-links/redeem | Redeem a Seat link: its Guest seat goes into this session, with a new Recovery code |
 | [**redoDeckChange**](DefaultApi.md#redodeckchange) | **POST** /api/frontend/v1/decks/{deck}/history/redo | Apply the latest undone Deck change again |
 | [**registerMyTournamentDeck**](DefaultApi.md#registermytournamentdeck) | **PUT** /api/frontend/v1/tournaments/{tournament}/deck | Register one of the logged-in Account\&#39;s decks for a Tournament it plays in, |
 | [**registerTournamentParticipantDeck**](DefaultApi.md#registertournamentparticipantdeck) | **PUT** /api/frontend/v1/tournaments/{tournament}/participants/{participant}/deck | Register or swap a Participant\&#39;s Registered deck, as an Organizer |
@@ -2750,6 +2753,76 @@ No authorization required
 ### HTTP request headers
 
 - **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## claimTournamentGuestSeat
+
+> ClaimTournamentGuestSeat200Response claimTournamentGuestSeat(tournament)
+
+Keep the Guest this session holds a seat of as the logged-in Account\&#39;s own Participant
+
+Keep the Guest this session holds a seat of as the logged-in Account\&#39;s own Participant  The Guest becomes the Account\&#39;s Participant with its Seats, Results and any Drop; its name gives way to the username, its Recovery code and Seat link go, and so does the seat. Refused for an Account that plays in the Tournament already.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { ClaimTournamentGuestSeatRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    tournament: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies ClaimTournamentGuestSeatRequest;
+
+  try {
+    const data = await api.claimTournamentGuestSeat(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **tournament** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**ClaimTournamentGuestSeat200Response**](ClaimTournamentGuestSeat200Response.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
 - **Accept**: `application/json`
 
 
@@ -8382,6 +8455,79 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## issueTournamentSeatLink
+
+> IssueTournamentSeatLink200Response issueTournamentSeatLink(tournament, participant)
+
+Issue a Seat link for a Guest whose device lost its Guest seat, as an Organizer
+
+Issue a Seat link for a Guest whose device lost its Guest seat, as an Organizer  Single use and good for 15 minutes; a new one replaces the last. The answer carries the secret once, for the fragment of the link the desk shows: a fragment never reaches a server, so the secret lands in no log.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { IssueTournamentSeatLinkRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    tournament: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // string
+    participant: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+  } satisfies IssueTournamentSeatLinkRequest;
+
+  try {
+    const data = await api.issueTournamentSeatLink(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **tournament** | `string` |  | [Defaults to `undefined`] |
+| **participant** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**IssueTournamentSeatLink200Response**](IssueTournamentSeatLink200Response.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## leaveDeck
 
 > any leaveDeck(deck)
@@ -10895,6 +11041,76 @@ example().catch(console.error);
 ### Return type
 
 [**FormErrorResponseForRecoverGuestSeatErrors**](FormErrorResponseForRecoverGuestSeatErrors.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## redeemTournamentSeatLink
+
+> RedeemTournamentSeatLink200Response redeemTournamentSeatLink(RedeemSeatLinkRequest)
+
+Redeem a Seat link: its Guest seat goes into this session, with a new Recovery code
+
+Redeem a Seat link: its Guest seat goes into this session, with a new Recovery code  The secret is the authorization, as a share link\&#39;s is, so this works for a Tournament of any Visibility; it is posted in the body, never in a path. Single use: a second redeem of the same secret is refused.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { RedeemTournamentSeatLinkRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // RedeemSeatLinkRequest (optional)
+    RedeemSeatLinkRequest: ...,
+  } satisfies RedeemTournamentSeatLinkRequest;
+
+  try {
+    const data = await api.redeemTournamentSeatLink(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **RedeemSeatLinkRequest** | [RedeemSeatLinkRequest](RedeemSeatLinkRequest.md) |  | [Optional] |
+
+### Return type
+
+[**RedeemTournamentSeatLink200Response**](RedeemTournamentSeatLink200Response.md)
 
 ### Authorization
 

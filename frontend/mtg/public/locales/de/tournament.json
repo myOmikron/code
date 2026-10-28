@@ -18,7 +18,10 @@
         "check-out": "Check-in von {{name}} zurücknehmen",
         "check-in-needs-deck": "{{name}} braucht ein Deck zum Einchecken",
         "sign-up-qr": "QR-Code zur Anmeldung",
-        "copy-sign-up-link": "Anmeldelink kopieren"
+        "copy-sign-up-link": "Anmeldelink kopieren",
+        "seat-link": "Platz-Link für {{name}}",
+        "seat-link-qr": "QR-Code des Platz-Links",
+        "copy-seat-link": "Platz-Link kopieren"
     },
     "button": {
         "accept-handover": "Übernehmen",
@@ -84,7 +87,10 @@
         "check-in-everyone": "Alle einchecken",
         "sign-up-as-guest": "Mitspielen",
         "sign-up-with-account": "Mit Konto anmelden",
-        "show-sign-up-qr": "Vollbild"
+        "show-sign-up-qr": "Vollbild",
+        "seat-link": "Platz-Link",
+        "keep-guest-seat": "Behalten",
+        "log-in-to-keep-guest-seat": "Anmelden und behalten"
     },
     "description": {
         "add-account": "Mit Konto, nach dem genauen Benutzernamen: Die Ergebnisse gehören zu diesem Konto.",
@@ -204,7 +210,9 @@
         "not-checked-in-count_other": "{{count}} Teilnehmer sind noch nicht eingecheckt.",
         "check-in-needs-deck": "Zum Einchecken brauchst du ein angemeldetes Deck.",
         "guest-sign-up": "Ohne Konto, nur mit Namen.",
-        "guest-sign-up-unavailable": "Braucht Selbstanmeldung und Check-in."
+        "guest-sign-up-unavailable": "Braucht Selbstanmeldung und Check-in.",
+        "seat-link": "Gilt 15 Minuten, einmal.",
+        "keep-guest-seat": "Behalte diesen Platz mit deinem Konto."
     },
     "error": {
         "all-rounds-paired": "Alle Schweizer Runden sind ausgelost.",
@@ -273,7 +281,12 @@
         "guest-sign-up-needs-check-in": "Gäste brauchen einen Check-in.",
         "guest-sign-up-busy": "Zu viele Anmeldungen, versuch es gleich noch mal.",
         "guest-sign-up-failed": "Anmeldung gerade nicht möglich.",
-        "entered-afterwards": "Hier tragen die Organisatoren die Ergebnisse ein."
+        "entered-afterwards": "Hier tragen die Organisatoren die Ergebnisse ein.",
+        "seat-link-unknown": "Dieser Platz-Link gilt nicht mehr.",
+        "seat-link-expired": "Dieser Platz-Link ist abgelaufen.",
+        "seat-link-failed": "Der Platz-Link ließ sich gerade nicht einlösen.",
+        "seat-link-not-a-guest": "Spieler mit Konto melden sich an.",
+        "claim-no-seat": "Auf diesem Gerät ist kein Gastplatz."
     },
     "heading": {
         "add-participants": "Spieler hinzufügen",
@@ -322,7 +335,8 @@
         "life-recovered-list": "Wiederhergestellte Verläufe",
         "life-recording-devices": "Aufzeichnungsgerät wechseln",
         "guest-sign-up": "Als Gast mitspielen",
-        "sign-up-qr": "Anmeldung per QR-Code"
+        "sign-up-qr": "Anmeldung per QR-Code",
+        "seat-link": "Platz-Link für {{name}}"
     },
     "label": {
         "add-account": "Konto",
@@ -513,6 +527,7 @@
         "tournament-deleted": "Turnier gelöscht",
         "tournament-saved": "Turnier gespeichert",
         "checked-in-everyone": "Alle eingecheckt",
-        "check-in-skipped": "Ohne Deck nicht eingecheckt: {{names}}"
+        "check-in-skipped": "Ohne Deck nicht eingecheckt: {{names}}",
+        "guest-seat-claimed": "Platz gehört jetzt deinem Konto"
     }
 }

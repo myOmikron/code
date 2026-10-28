@@ -164,6 +164,14 @@ _Avoid_: guest token, claim token, guest login
 The secret a Guest seat is restored with in a fresh session, given to the device once at Guest sign-up and replaced when it signs up again. Only its hash is kept, and it stops working once the Tournament is Finished or Cancelled.
 _Avoid_: claim token, password, PIN
 
+**Seat link**:
+A link an Organizer gives a Guest whose device lost its Guest seat: opened once within 15 minutes, it puts the seat into the session that opens it, with a new Recovery code. A new Seat link replaces the last; none works once the Tournament is Finished or Cancelled.
+_Avoid_: claim link, magic link, invite
+
+**Claim**:
+An Account taking over the Guest its session holds a Guest seat of: the Guest becomes the Account's Participant with its Seats, Results and any Drop, and its name gives way to the username. The reverse of what a Deletion does. An Account that plays in the Tournament already claims nothing.
+_Avoid_: merge, convert, adopt
+
 **Self sign-up**:
 An Account making itself a Participant of a public or unlisted Tournament in Registration, where the Owner allowed it; it takes effect at once. Where the Owner also allows **Guest sign-up**, which needs Check-in, a visitor without an Account signs itself up as a Guest the same way, and the desk confirms it before it is paired. Organizers add Accounts and Guests whether it is allowed or not.
 _Avoid_: registration (that is the Tournament state), join, enrol

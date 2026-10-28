@@ -3,7 +3,8 @@
 //! Reached without an Account: a public Tournament by its id here, an
 //! unlisted one through its share link in [`super::super::shared`]. Both
 //! ways share one rate limit per IP address for signing up and one for
-//! restoring a seat.
+//! restoring a seat, which redeeming a Seat link shares too. An Account
+//! holding a seat claims its Guest, and the Organizers issue Seat links.
 
 use std::sync::LazyLock;
 use std::time::Duration;
@@ -55,4 +56,19 @@ pub fn sign_up_routes() -> GalvynRouter {
 /// Restoring a Guest seat, for whoever sees the Tournament, logged in or not
 pub fn recovery_routes() -> GalvynRouter {
     GalvynRouter::new().handler(handler::recover_tournament_guest_seat)
+}
+
+/// Redeeming a Seat link, on no Tournament in particular: its secret names it and is the authorization
+pub fn seat_link_routes() -> GalvynRouter {
+    GalvynRouter::new().handler(handler::redeem_tournament_seat_link)
+}
+
+/// What an Account holding a Guest seat in the Tournament may do
+pub fn account_routes() -> GalvynRouter {
+    GalvynRouter::new().handler(handler::claim_tournament_guest_seat)
+}
+
+/// What the Organizers of the Tournament may do for its Guests
+pub fn organizer_routes() -> GalvynRouter {
+    GalvynRouter::new().handler(handler::issue_tournament_seat_link)
 }

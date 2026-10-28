@@ -49,6 +49,7 @@ pub fn initialize_routes() -> GalvynRouter {
                 .wrap(TournamentAccessLayer(TournamentAccess::Viewer))
                 .wrap(guests::recovery_limit()),
         )
+        .merge(guests::seat_link_routes().wrap(guests::recovery_limit()))
         .merge(
             participant_routes()
                 .wrap(TournamentAccessLayer(TournamentAccess::Participant))
@@ -69,6 +70,10 @@ pub fn initialize_routes() -> GalvynRouter {
                 .merge(
                     account_participant_routes()
                         .wrap(TournamentAccessLayer(TournamentAccess::AccountParticipant)),
+                )
+                .merge(
+                    guests::account_routes()
+                        .wrap(TournamentAccessLayer(TournamentAccess::Participant)),
                 )
                 .merge(organizer_routes().wrap(TournamentAccessLayer(TournamentAccess::Organizer)))
                 .merge(owner_routes().wrap(TournamentAccessLayer(TournamentAccess::Owner)))
@@ -116,6 +121,7 @@ fn organizer_routes() -> GalvynRouter {
     GalvynRouter::new()
         .handler(handler::update_tournament)
         .merge(decks::organizer_routes())
+        .merge(guests::organizer_routes())
         .merge(organizers::organizer_routes())
         .merge(participants::organizer_routes())
         .merge(rounds::organizer_routes())

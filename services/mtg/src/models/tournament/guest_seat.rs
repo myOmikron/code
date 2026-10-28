@@ -5,9 +5,15 @@
 //! for that Tournament, which [`Tournament::get_granted`] reads like an
 //! Account's participation. A [`RecoveryCode`], of which only the hash is
 //! kept, restores the seat into a fresh session until the Tournament is over.
+//! A Guest whose device lost both gets a single-use Seat link from the desk,
+//! see [`Tournament::issue_seat_link`]. An Account whose session holds a seat
+//! keeps the Guest as its own Participant by claiming it, see
+//! [`Tournament::claim_guest`]; the Deletion of an Account does the reverse.
 
 use std::collections::HashSet;
 
+use galvyn::core::re_exports::time::Duration;
+use galvyn::core::re_exports::time::OffsetDateTime;
 use galvyn::core::session::Session;
 use galvyn::core::stuff::api_error::ApiError;
 use galvyn::rorm;
@@ -23,12 +29,14 @@ use subtle::ConstantTimeEq;
 use tracing::instrument;
 use uuid::Uuid;
 
+use crate::models::account::AccountUuid;
 use crate::models::tournament::Tournament;
 use crate::models::tournament::TournamentState;
 use crate::models::tournament::TournamentUuid;
 use crate::models::tournament::db::TournamentModel;
 use crate::models::tournament::db::TournamentParticipantInsertPatch;
 use crate::models::tournament::db::TournamentParticipantModel;
+use crate::models::tournament::db::participant_key;
 use crate::models::tournament::life_history::digest;
 use crate::models::tournament::participant::Participant;
 use crate::models::tournament::participant::ParticipantUuid;
@@ -44,8 +52,16 @@ const SEATS: &str = "tournament_guest_seats";
 /// How many Guest seats one session holds at most; the oldest goes first
 pub const MAX_SEATS: usize = 16;
 
-/// How many characters a Recovery code has: 62 letters and digits each, about 190 bits
-const RECOVERY_CODE_LEN: usize = 32;
+/// How many characters a Recovery code or a Seat link's secret has: 62 letters and digits each, about 190 bits
+const SECRET_LEN: usize = 32;
+
+/// How long a Seat link works after an Organizer issued it
+pub const SEAT_LINK_LIFETIME: Duration = Duration::minutes(15);
+
+/// A random secret of [`SECRET_LEN`] letters and digits, fit for a URL as it is
+fn random_secret() -> String {
+    Alphanumeric.sample_string(&mut rand::rng(), SECRET_LEN)
+}
 
 /// One Guest seat: the Guest a session acts as in one Tournament
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -215,7 +231,7 @@ pub struct RecoveryCode(String);
 impl RecoveryCode {
     /// A new random Recovery code
     pub fn generate() -> Self {
-        Self(Alphanumeric.sample_string(&mut rand::rng(), RECOVERY_CODE_LEN))
+        Self(random_secret())
     }
 
     /// The code as the device keeps it
@@ -235,6 +251,61 @@ pub fn recovery_code_matches(code: &str, stored: &str) -> bool {
         .as_bytes()
         .ct_eq(stored.as_bytes())
         .into()
+}
+
+/// The secret of a Seat link, put into the fragment of the link the desk hands a Guest
+///
+/// Handed out once; only its [`Self::hash`] is kept.
+#[derive(Debug, Clone)]
+pub struct SeatLinkSecret(String);
+
+impl SeatLinkSecret {
+    /// A new random secret
+    fn generate() -> Self {
+        Self(random_secret())
+    }
+
+    /// The secret as the link carries it
+    pub fn into_inner(self) -> String {
+        self.0
+    }
+
+    /// The hash kept instead of the secret
+    fn hash(&self) -> MaxStr<64> {
+        digest(self.0.as_bytes())
+    }
+}
+
+/// Whether a Seat link that works until `expires_at` still works at `now`
+pub fn seat_link_usable(expires_at: OffsetDateTime, now: OffsetDateTime) -> bool {
+    now < expires_at
+}
+
+/// Why an Organizer may not issue a Seat link
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SeatLinkRefusal {
+    /// The Participant is an Account, which logs in instead
+    NotAGuest,
+    /// The Tournament is Finished or Cancelled
+    TournamentOver,
+}
+
+/// Why a Seat link could not be redeemed
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RedeemRefusal {
+    /// No Seat link has this secret: it is wrong, redeemed already or replaced
+    UnknownLink,
+    /// The Seat link ran out, see [`SEAT_LINK_LIFETIME`]
+    Expired,
+}
+
+/// Why an Account may not claim the Guest its session holds a seat of
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ClaimRefusal {
+    /// The Account plays in the Tournament already
+    AlreadyParticipant,
+    /// The session holds no seat of a Guest of the Tournament
+    NoSeat,
 }
 
 /// Why a Guest seat could not be restored
@@ -413,22 +484,181 @@ impl Tournament {
         }
     }
 
-    /// Forget every Recovery code of this Tournament, once it is Finished or Cancelled
-    #[instrument(name = "Tournament::forget_recovery_codes", skip(tx, self), fields(tournament = ?self.uuid))]
-    pub(in crate::models::tournament) async fn forget_recovery_codes(
+    /// Forget every Recovery code and Seat link of this Tournament, once it is Finished or Cancelled
+    #[instrument(name = "Tournament::forget_guest_secrets", skip(tx, self), fields(tournament = ?self.uuid))]
+    pub(in crate::models::tournament) async fn forget_guest_secrets(
         &self,
         tx: &mut Transaction,
     ) -> Result<(), rorm::Error> {
         rorm::update(&mut *tx, TournamentParticipantModel)
             .set(TournamentParticipantModel.recovery_code_hash, None)
+            .set(TournamentParticipantModel.seat_link_hash, None)
+            .set(TournamentParticipantModel.seat_link_expires_at, None)
             .condition(rorm::and![
                 TournamentParticipantModel
                     .tournament
                     .equals(self.uuid.into_inner()),
-                TournamentParticipantModel.recovery_code_hash.is_some(),
+                rorm::or![
+                    TournamentParticipantModel.recovery_code_hash.is_some(),
+                    TournamentParticipantModel.seat_link_hash.is_some(),
+                ],
             ])
             .await?;
         Ok(())
+    }
+
+    /// Issue a Seat link for the Guest `participant`, working until [`SEAT_LINK_LIFETIME`] after `now`
+    ///
+    /// Replaces the Seat link issued for it before. Answers `None` if it is
+    /// none of this Tournament's Participants.
+    #[instrument(name = "Tournament::issue_seat_link", skip(tx, self), fields(tournament = ?self.uuid))]
+    pub async fn issue_seat_link(
+        &self,
+        tx: &mut Transaction,
+        participant: ParticipantUuid,
+        now: OffsetDateTime,
+    ) -> Result<Result<Option<(SeatLinkSecret, OffsetDateTime)>, SeatLinkRefusal>, rorm::Error>
+    {
+        if self.over() {
+            return Ok(Err(SeatLinkRefusal::TournamentOver));
+        }
+        let account = rorm::query(&mut *tx, TournamentParticipantModel.account)
+            .condition(rorm::and![
+                TournamentParticipantModel
+                    .uuid
+                    .equals(participant.into_inner()),
+                TournamentParticipantModel
+                    .tournament
+                    .equals(self.uuid.into_inner()),
+            ])
+            .optional()
+            .await?;
+        match account {
+            None => return Ok(Ok(None)),
+            Some(Some(_)) => return Ok(Err(SeatLinkRefusal::NotAGuest)),
+            Some(None) => {}
+        }
+        let secret = SeatLinkSecret::generate();
+        let expires_at = now + SEAT_LINK_LIFETIME;
+        rorm::update(&mut *tx, TournamentParticipantModel)
+            .set(
+                TournamentParticipantModel.seat_link_hash,
+                Some(secret.hash()),
+            )
+            .set(
+                TournamentParticipantModel.seat_link_expires_at,
+                Some(expires_at),
+            )
+            .condition(
+                TournamentParticipantModel
+                    .uuid
+                    .equals(participant.into_inner()),
+            )
+            .await?;
+        Ok(Ok(Some((secret, expires_at))))
+    }
+
+    /// Redeem the Seat link carrying `secret` at `now`: its Guest, whose link is used up
+    ///
+    /// Answers the Tournament along with the Guest: the secret alone names
+    /// both. The link is used up by an update that still asks for its
+    /// secret, so of two redeems at once the one that waited on the row
+    /// finds nothing left. The caller restores the seat into its session.
+    #[instrument(name = "Tournament::redeem_seat_link", skip(tx, secret))]
+    pub async fn redeem_seat_link(
+        tx: &mut Transaction,
+        secret: &str,
+        now: OffsetDateTime,
+    ) -> Result<Result<(Tournament, ParticipantUuid), RedeemRefusal>, rorm::Error> {
+        let found = rorm::query(
+            &mut *tx,
+            (
+                TournamentParticipantModel.uuid,
+                TournamentParticipantModel.tournament,
+                TournamentParticipantModel.seat_link_expires_at,
+            ),
+        )
+        .condition(rorm::and![
+            TournamentParticipantModel
+                .seat_link_hash
+                .equals(Some(digest(secret.as_bytes()))),
+            TournamentParticipantModel.account.is_none(),
+        ])
+        .optional()
+        .await?;
+        let Some((participant, tournament, expires_at)) = found else {
+            return Ok(Err(RedeemRefusal::UnknownLink));
+        };
+        if !expires_at.is_some_and(|expires_at| seat_link_usable(expires_at, now)) {
+            return Ok(Err(RedeemRefusal::Expired));
+        }
+        let Some(tournament) = Self::get(tx, TournamentUuid(tournament.0)).await? else {
+            return Ok(Err(RedeemRefusal::UnknownLink));
+        };
+        if tournament.over() {
+            return Ok(Err(RedeemRefusal::UnknownLink));
+        }
+        let consumed = rorm::update(&mut *tx, TournamentParticipantModel)
+            .set(TournamentParticipantModel.seat_link_hash, None)
+            .set(TournamentParticipantModel.seat_link_expires_at, None)
+            .condition(rorm::and![
+                TournamentParticipantModel.uuid.equals(participant),
+                TournamentParticipantModel
+                    .seat_link_hash
+                    .equals(Some(digest(secret.as_bytes()))),
+                TournamentParticipantModel.account.is_none(),
+            ])
+            .await?;
+        if consumed == 0 {
+            return Ok(Err(RedeemRefusal::UnknownLink));
+        }
+        Ok(Ok((tournament, ParticipantUuid::new(participant))))
+    }
+
+    /// Make the Guest of `seat` the Participant of `account`, which claims it
+    ///
+    /// The row takes the Account's key, [`participant_key`], so the Account
+    /// is found in the Tournament like any; whatever points at the row
+    /// follows, its foreign keys cascade. The Guest's name, Recovery code and
+    /// Seat link go. Mirrors the Deletion, which turns an Account's
+    /// Participants into Guests. The caller holds [`Self::lock_roster`].
+    #[instrument(name = "Tournament::claim_guest", skip(tx, self), fields(tournament = ?self.uuid))]
+    pub async fn claim_guest(
+        &self,
+        tx: &mut Transaction,
+        seat: Option<ParticipantUuid>,
+        account: AccountUuid,
+    ) -> Result<Result<ParticipantUuid, ClaimRefusal>, rorm::Error> {
+        if self.participant_of(tx, account).await?.is_some() {
+            return Ok(Err(ClaimRefusal::AlreadyParticipant));
+        }
+        let guest = match seat {
+            Some(seat) => self.guest_of_seat(tx, seat).await?,
+            None => None,
+        };
+        let Some(guest) = guest else {
+            return Ok(Err(ClaimRefusal::NoSeat));
+        };
+        let key = participant_key(self.uuid.into_inner(), account.into_inner());
+        rorm::update(&mut *tx, TournamentParticipantModel)
+            .set(TournamentParticipantModel.uuid, key)
+            .set(
+                TournamentParticipantModel.account,
+                Some(ForeignModelByField(account.into_inner())),
+            )
+            .set(TournamentParticipantModel.guest_name, None)
+            .set(TournamentParticipantModel.recovery_code_hash, None)
+            .set(TournamentParticipantModel.seat_link_hash, None)
+            .set(TournamentParticipantModel.seat_link_expires_at, None)
+            .condition(rorm::and![
+                TournamentParticipantModel.uuid.equals(guest.into_inner()),
+                TournamentParticipantModel
+                    .tournament
+                    .equals(self.uuid.into_inner()),
+                TournamentParticipantModel.account.is_none(),
+            ])
+            .await?;
+        Ok(Ok(ParticipantUuid::new(key)))
     }
 }
 
@@ -436,12 +666,16 @@ impl Tournament {
 mod tests {
     use std::collections::HashSet;
 
+    use galvyn::core::re_exports::time::Duration;
+    use galvyn::core::re_exports::time::OffsetDateTime;
     use uuid::Uuid;
 
     use super::GuestSeats;
     use super::MAX_SEATS;
     use super::RecoveryCode;
+    use super::SEAT_LINK_LIFETIME;
     use super::recovery_code_matches;
+    use super::seat_link_usable;
     use crate::models::tournament::TournamentUuid;
     use crate::models::tournament::participant::ParticipantUuid;
 
@@ -520,6 +754,16 @@ mod tests {
             &hash
         ));
         assert!(!recovery_code_matches("", &hash));
+    }
+
+    #[test]
+    fn a_seat_link_works_for_fifteen_minutes() {
+        let issued = OffsetDateTime::UNIX_EPOCH;
+        let expires_at = issued + SEAT_LINK_LIFETIME;
+        assert!(seat_link_usable(expires_at, issued));
+        assert!(seat_link_usable(expires_at, issued + Duration::minutes(14)));
+        assert!(!seat_link_usable(expires_at, expires_at));
+        assert!(!seat_link_usable(expires_at, issued + Duration::hours(1)));
     }
 
     #[test]

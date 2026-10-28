@@ -24,17 +24,17 @@ use crate::tests::tournament_top_cut::set_swiss_rounds;
 use crate::tests::tournaments::tournament_url;
 
 /// A Guest that signed itself up, with the session that holds its seat
-struct Guest {
+pub(super) struct Guest {
     /// The session holding the Guest seat
-    client: TestClient,
+    pub(super) client: TestClient,
     /// Its Participant uuid
-    participant: String,
+    pub(super) participant: String,
     /// The Recovery code its device keeps
-    code: String,
+    pub(super) code: String,
 }
 
 /// Replace the Event's settings by `change` applied to them, as the Owner, returning the response
-async fn configure(event: &mut Event, change: impl FnOnce(&mut Value)) -> TestResponse {
+pub(super) async fn configure(event: &mut Event, change: impl FnOnce(&mut Value)) -> TestResponse {
     change(&mut event.settings);
     let url = tournament_url(&event.tournament);
     let settings = event.settings.clone();
@@ -42,7 +42,7 @@ async fn configure(event: &mut Event, change: impl FnOnce(&mut Value)) -> TestRe
 }
 
 /// A public one-on-one Event without Participants that takes Guest sign-ups and check-in
-async fn open_event() -> Event {
+pub(super) async fn open_event() -> Event {
     let mut event = Event::new("One", 0).await;
     let body = configure(&mut event, |settings| {
         settings["self_sign_up"] = json!(true);
@@ -56,19 +56,19 @@ async fn open_event() -> Event {
 }
 
 /// The url of the Guest sign-up of the Event's Tournament
-fn sign_up_url(event: &Event) -> Url {
+pub(super) fn sign_up_url(event: &Event) -> Url {
     event.url("guest-sign-up")
 }
 
 /// Sign `client` up as a Guest named `name`, returning the response
-async fn sign_up(client: &mut TestClient, url: &Url, name: &str) -> TestResponse {
+pub(super) async fn sign_up(client: &mut TestClient, url: &Url, name: &str) -> TestResponse {
     client
         .json(Method::POST, url, &json!({ "name": name }))
         .await
 }
 
 /// Sign a fresh visitor up as a Guest named `name`
-async fn guest(event: &Event, name: &str) -> Guest {
+pub(super) async fn guest(event: &Event, name: &str) -> Guest {
     let mut client = TestClient::new();
     let body = sign_up(&mut client, &sign_up_url(event), name)
         .await
@@ -87,7 +87,7 @@ async fn guest(event: &Event, name: &str) -> Guest {
 }
 
 /// Restore a Guest seat into `client` through `url`, returning the response
-async fn recover(
+pub(super) async fn recover(
     client: &mut TestClient,
     url: &Url,
     participant: &str,
@@ -103,12 +103,12 @@ async fn recover(
 }
 
 /// Who `client` plays as in the Event's Tournament, by the participant list
-async fn me(event: &Event, client: &mut TestClient) -> Value {
+pub(super) async fn me(event: &Event, client: &mut TestClient) -> Value {
     client.get(&event.url("participants")).await.ok_json()["me"].clone()
 }
 
 /// Check `participant` in as the Owner
-async fn check_in(event: &mut Event, participant: &str) {
+pub(super) async fn check_in(event: &mut Event, participant: &str) {
     let url = event.url(&format!("participants/{participant}/checked-in"));
     event
         .owner
@@ -118,7 +118,7 @@ async fn check_in(event: &mut Event, participant: &str) {
 }
 
 /// The error flags of a refused response
-fn refusal(response: &TestResponse) -> Value {
+pub(super) fn refusal(response: &TestResponse) -> Value {
     response.ok_json()["error"].clone()
 }
 
@@ -395,7 +395,7 @@ fn a_guest_is_paired_only_once_the_desk_checked_it_in() {
 }
 
 /// An open Event with four Guests that signed themselves up, checked in, in a running Round 1
-async fn running_event() -> (Event, Vec<Guest>) {
+pub(super) async fn running_event() -> (Event, Vec<Guest>) {
     let mut event = open_event().await;
     let mut guests = Vec::new();
     for name in ["Ajani", "Teferi", "Nissa", "Gideon"] {
@@ -409,7 +409,7 @@ async fn running_event() -> (Event, Vec<Guest>) {
 }
 
 /// The Match of Round 1 `participant` sits in, by its uuid
-async fn match_of(event: &mut Event, participant: &str) -> String {
+pub(super) async fn match_of(event: &mut Event, participant: &str) -> String {
     let rounds = event.rounds().await;
     matches(round(&rounds, 1))
         .into_iter()
