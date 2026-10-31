@@ -38,7 +38,7 @@ export function ScanStagingSheet({ open, onClose }: ScanStagingSheetProps) {
             {/* `tall`, because this is the whole point of the screen it opens from: a two thirds
                 sheet on a phone cut the list to one and a half rows and put the rest behind a
                 scroll inside a scroll. */}
-            <Dialog open={open} onClose={onClose} size={"2xl"} tall>
+            <Dialog open={open} onClose={onClose} size={"2xl"}>
                 <DialogTitle>{t("heading.staged", { count: copies })}</DialogTitle>
                 <DialogBody>
                     {active !== null && <Text className={"mb-3 truncate"}>{active.name}</Text>}

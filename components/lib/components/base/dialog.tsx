@@ -3,6 +3,7 @@ import { XMarkIcon } from "@heroicons/react/20/solid";
 import clsx from "clsx";
 import type React from "react";
 import { useTranslation } from "react-i18next";
+import { useSheetDrag } from "./sheet-drag";
 import { Text } from "./text";
 
 const sizes = {
@@ -24,8 +25,6 @@ const sizes = {
 export type DialogProps = {
     /** The maximum width of the dialog */
     size?: keyof typeof sizes;
-    /** Lets the sheet rise to most of a phone's screen, see {@link Dialog} */
-    tall?: boolean;
     /** Additional CSS classes */
     className?: string;
     /** Callback when the dialog is closed */
@@ -38,8 +37,6 @@ export type DialogProps = {
 export type RawDialogProps = {
     /** The maximum width of the dialog */
     size?: keyof typeof sizes;
-    /** Lets the sheet rise to most of a phone's screen, see {@link Dialog} */
-    tall?: boolean;
     /** Additional CSS classes */
     className?: string;
     /** The dialog content */
@@ -54,6 +51,9 @@ export type RawDialogProps = {
  * so that i18n and other async resources stay loaded inside a Suspense boundary.
  * Control visibility via the `open` prop, or use a content-or-undefined prop
  * pattern where `open={!!prop}`.
+ *
+ * On a phone it is a bottom sheet that grows with its content up to nearly the
+ * whole screen and closes with a swipe down.
  *
  * @example
  * ```tsx
@@ -97,10 +97,12 @@ export type RawDialogProps = {
  * @see https://catalyst.tailwindui.com/docs/dialog
  */
 export function Dialog(props: RawDialogProps) {
-    const { size = "lg", tall = false, className, children, ...rest } = props;
+    const { size = "lg", className, children, ...rest } = props;
+    const sheet = useSheetDrag(rest.onClose);
     return (
         <Headless.Dialog {...rest}>
             <Headless.DialogBackdrop
+                ref={sheet.backdrop}
                 transition
                 className="fixed inset-0 flex w-screen justify-center overflow-y-auto bg-zinc-950/25 px-2 py-2 transition duration-100 focus:outline-0 data-closed:opacity-0 data-enter:ease-out data-leave:ease-in sm:px-6 sm:py-8 lg:px-8 lg:py-16 dark:bg-zinc-950/50"
             />
@@ -108,39 +110,43 @@ export function Dialog(props: RawDialogProps) {
             <div className="fixed inset-0 w-screen overflow-y-auto pt-6 sm:pt-0">
                 <div className="grid min-h-full grid-rows-[1fr_auto] justify-items-center sm:grid-rows-[1fr_auto_3fr] sm:p-4">
                     <Headless.DialogPanel
+                        ref={sheet.panel}
                         transition
                         className={clsx(
                             className,
                             sizes[size],
                             "row-start-2 w-full min-w-0 rounded-t-3xl bg-white p-(--gutter) shadow-lg ring-1 ring-zinc-950/10 [--gutter:--spacing(8)] sm:mb-auto sm:rounded-2xl dark:bg-zinc-900 dark:ring-white/10 forced-colors:outline",
-                            // Two thirds of the screen at most on a phone, the
-                            // rest scrolling inside the panel: a sheet that
-                            // covers the whole screen leaves no backdrop left
-                            // to tap it closed with. A `tall` dialog trades
-                            // most of that backdrop for room — right where the
-                            // content is the whole point, like a card search
-                            // whose results a short sheet cuts to half a row —
-                            // and keeps a sliver of it so the tap still works.
-                            //
-                            // Measured against the viewport's *height*, not its
-                            // width. The case that needs the cap most is a
-                            // phone in landscape — 390px tall and 844px wide —
-                            // where a `max-sm:` width query never fires and the
-                            // panel was left uncapped on the shortest screen we
-                            // serve. `dvh` rather than `vh` so the cap follows
-                            // the address bar as it collapses instead of
-                            // measuring the tallest the viewport could be.
-                            "max-h-[85dvh] overflow-y-auto overscroll-contain",
-                            tall ? "max-sm:max-h-[92dvh]" : "max-sm:max-h-[66dvh]",
+                            "max-sm:pb-[max(var(--gutter),calc(env(safe-area-inset-bottom)+0.75rem))]",
+                            "max-h-[85dvh] overflow-y-auto overscroll-contain max-sm:max-h-[calc(100dvh-2.5rem-env(safe-area-inset-top))]",
                             "transition duration-100 will-change-transform data-closed:translate-y-12 data-closed:opacity-0 data-enter:ease-out data-leave:ease-in sm:data-closed:translate-y-0 sm:data-closed:data-enter:scale-95",
                         )}
                     >
+                        <SheetHandle />
                         <DialogCloseButton onClose={rest.onClose} />
                         {children}
                     </Headless.DialogPanel>
                 </div>
             </div>
         </Headless.Dialog>
+    );
+}
+
+/**
+ * The grab handle atop a {@link Dialog} while it is a phone's bottom sheet.
+ * Decorative: the close button stays the accessible way out.
+ *
+ * @returns The handle
+ */
+function SheetHandle() {
+    return (
+        <div aria-hidden className="relative h-0 sm:hidden pointer-fine:hidden">
+            <div
+                data-sheet-handle
+                className="absolute inset-x-0 -top-(--gutter) mx-auto flex h-(--gutter) w-24 touch-none justify-center pt-2"
+            >
+                <div className="h-1 w-9 rounded-full bg-zinc-300 dark:bg-zinc-600" />
+            </div>
+        </div>
     );
 }
 

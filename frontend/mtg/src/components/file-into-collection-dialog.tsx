@@ -79,7 +79,7 @@ export function FileIntoCollectionDialog({ open, onClose }: FileIntoCollectionDi
     }
 
     return (
-        <Dialog open={open} onClose={onClose} size={"xl"} tall>
+        <Dialog open={open} onClose={onClose} size={"xl"}>
             <DialogTitle>{t("heading.file-into")}</DialogTitle>
             <DialogBody>
                 <Text>{t("description.file-into", { count: copies, amount: copies })}</Text>
