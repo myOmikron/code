@@ -1,0 +1,3 @@
+kind: fixed
+de: Der Scanner liest Kartennamen wieder, statt beim Start der Texterkennung abzubrechen.
+en: The scanner reads card names again instead of failing when text recognition starts.
