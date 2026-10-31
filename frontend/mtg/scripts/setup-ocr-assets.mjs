@@ -2,7 +2,7 @@
 // the English traineddata, so OCR runs fully offline (no CDN, PWA-cacheable). Re-run after
 // bumping tesseract.js / tesseract.js-core. Output is generated (like public/data), not
 // committed. Usage: node scripts/setup-ocr-assets.mjs
-import { cp, mkdir, writeFile, stat } from "node:fs/promises";
+import { cp, mkdir, readFile, rm, writeFile, stat } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -29,23 +29,39 @@ async function main() {
     process.stdout.write("  mtg.traineddata.gz fehlt — \"pnpm run ocr:model\" trainiert es (~1 h)\n");
   }
 
-  // Idempotent, because `dev` and `build` run it every time. Checking a file inside core/ rather
-  // than core/ itself: an interrupted copy leaves the directory behind and nothing in it.
-  if ((await exists(target)) && (await exists(core)) && (await exists(worker))) {
+  // Idempotent, because `dev` and `build` run it every time. The runtime is compared against the
+  // installed packages rather than merely checked for: tesseract.js asks for core variants by
+  // name, a newer one asks for files an older core never had, and nginx answers a missing file
+  // with index.html, which the worker then refuses as a script.
+  const coreSrc = join(root, "node_modules", "tesseract.js-core");
+  const workerSrc = join(root, "node_modules", "tesseract.js", "dist", "worker.min.js");
+  const version = async (dir) => JSON.parse(await readFile(join(dir, "package.json"), "utf8")).version;
+  const runtimeCurrent =
+    (await exists(core)) &&
+    (await exists(worker)) &&
+    (await version(join(outDir, "core"))) === (await version(coreSrc)) &&
+    (await readFile(worker)).equals(await readFile(workerSrc));
+  if (runtimeCurrent && (await exists(target))) {
     process.stdout.write(`OCR-Assets bereits in ${outDir}\n`);
     return;
   }
 
-  // 1. Worker script.
-  await cp(join(root, "node_modules", "tesseract.js", "dist", "worker.min.js"), worker);
+  if (!runtimeCurrent) {
+    // 1. Worker script.
+    await cp(workerSrc, worker);
 
-  // 2. Core WASM package (whole directory; the loader picks the SIMD/LSTM variant at runtime).
-  //    Dereferenced: pnpm links packages into node_modules, and copying the link itself leaves
-  //    a relative path that resolves to nothing from public/, which vite then fails to build.
-  await cp(join(root, "node_modules", "tesseract.js-core"), join(outDir, "core"), {
-    recursive: true,
-    dereference: true,
-  });
+    // 2. Core WASM package (whole directory; the loader picks the SIMD/LSTM variant at runtime).
+    //    Emptied first so variants a previous version shipped do not linger. Dereferenced: pnpm
+    //    links packages into node_modules, and copying the link itself leaves a relative path
+    //    that resolves to nothing from public/, which vite then fails to build.
+    await rm(join(outDir, "core"), { recursive: true, force: true });
+    await cp(coreSrc, join(outDir, "core"), { recursive: true, dereference: true });
+  }
+
+  if (await exists(target)) {
+    process.stdout.write(`OCR-Runtime aktualisiert in ${outDir}\n`);
+    return;
+  }
 
   // 3. English traineddata.
   const response = await fetch(TRAINEDDATA_URL);
