@@ -9,10 +9,6 @@ import {
 
 import clsx from "clsx";
 import {
-    Alert,
-    AlertActions,
-    AlertDescription,
-    AlertTitle,
     Button,
     Dialog,
     DialogActions,
@@ -25,13 +21,12 @@ import {
     Listbox,
     ListboxLabel,
     ListboxOption,
-    Text,
 } from "components";
 import { PrimaryButton } from "src/components/primary-button";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useReducer, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { LifeHistoryView } from "src/components/life-history-view";
-import type { LifeHistory, LifePlayer } from "src/utils/life-history";
+import type { LifeHistory, LifeOutcome, LifePlayer } from "src/utils/life-history";
 import {
     createLifeHistory,
     changeLifeHistory,
@@ -41,9 +36,11 @@ import {
     loadLifeHistory,
     saveLifeHistory,
     correctLifeEvent,
+    matchGoesOn,
 } from "src/utils/life-history";
+import { endingReducer, endingView } from "src/utils/life-ending";
 import { useTranslation } from "react-i18next";
-import type { TileBooking } from "src/components/life-tile";
+import type { TileBooking, TileVerdict } from "src/components/life-tile";
 import { LifeTile } from "src/components/life-tile";
 import type { LifeTrackerSettings, Table } from "src/utils/life-tracker";
 import { hapticConfirm } from "src/utils/haptics";
@@ -65,6 +62,7 @@ import {
     rebookableHit,
     saveLifeTrackerSettings,
     seatingFor,
+    seatsFacing,
     trackHit,
     withHit,
 } from "src/utils/life-tracker";
@@ -100,13 +98,33 @@ type Booking = {
     offer: number | undefined;
 };
 
+/** A Match being counted, as opposed to a casual table */
+export type CountedMatch = {
+    /** Who plays it, in Seat order */
+    players: LifePlayer[];
+    /** Which of them holds this device, `undefined` for nobody at the table */
+    me: string | undefined;
+    /** How many Games win it, `undefined` when its one Game settles it */
+    gamesToWin: number | undefined;
+    /** Whether its format counts commander damage */
+    commanderDamage: boolean;
+};
+
 /**
  * Everyone's life total on one screen, each tile turned towards its seat.
+ *
+ * Given a `match`, it counts one: it takes the whole screen (on the first tap
+ * on the tiles where only a tap may ask for fullscreen), a Game ends with an
+ * explicit outcome, and the next one starts right away while the Match goes
+ * on. Who won is picked on the tiles themselves, and ends on the same verdict
+ * as a player running out of life.
+ * Without one, a new game simply starts over.
  *
  * @returns the life tracker
  */
 export function LifeCounter({
-    participants,
+    match,
+    actions,
     backHref = "/game-utils",
     initialTotals,
     context,
@@ -115,9 +133,9 @@ export function LifeCounter({
     initialConfigured,
     onHistoryChange,
     readOnly = false,
-    allowNextGame = true,
 }: {
-    participants?: LifePlayer[];
+    match?: CountedMatch;
+    actions?: ReactNode;
     backHref?: string;
     initialTotals?: number[];
     context?: ReactNode;
@@ -126,12 +144,21 @@ export function LifeCounter({
     initialConfigured?: boolean;
     onHistoryChange?: (history: LifeHistory, configured: boolean) => void;
     readOnly?: boolean;
-    allowNextGame?: boolean;
 }) {
     const historyChange = useRef(onHistoryChange);
     historyChange.current = onHistoryChange;
     const [t] = useTranslation("game-utils");
     const [tg] = useTranslation();
+    const participants = match?.players;
+    const isMatch = match !== undefined;
+    const freshPlayers = (count: number): LifePlayer[] =>
+        Array.from({ length: count }, (_, index) => ({
+            id: String(index + 1),
+            name:
+                count === 2
+                    ? t(index === 0 ? "label.your-opponent" : "label.you")
+                    : t("label.player", { number: index + 1 }),
+        }));
     const [settings, setSettings] = useState(() => ({
         ...loadLifeTrackerSettings(),
         ...(participants ? { playerCount: participants.length, startingLife: initialTotals?.[0] ?? 40 } : {}),
@@ -141,12 +168,7 @@ export function LifeCounter({
             initialHistory ??
             loadLifeHistory(storageKey) ??
             (() => {
-                const players =
-                    participants ??
-                    Array.from({ length: settings.playerCount }, (_, index) => ({
-                        id: String(index + 1),
-                        name: t("label.player", { number: index + 1 }),
-                    }));
+                const players = participants ?? freshPlayers(settings.playerCount);
                 const legacy = participants ? null : loadLifeTrackerGame(settings);
                 const created = createLifeHistory(
                     players,
@@ -160,7 +182,6 @@ export function LifeCounter({
     const [feedback, setFeedback] = useState<Pick<Table, "deltas" | "hits">>({ deltas: {}, hits: {} });
     const table: Table = { life: game.life, damage: game.damage, ...feedback };
     const [showHistory, setShowHistory] = useState(false);
-    const [outcome, setOutcome] = useState<string>("draw");
     const [editedTotals, setEditedTotals] = useState(false);
     const [typedLife, setTypedLife] = useState(() => String(settings.startingLife));
     const [configured, setConfigured] = useState(() => {
@@ -175,7 +196,7 @@ export function LifeCounter({
         }
     });
     const [configuring, setConfiguring] = useState(!readOnly && !configured);
-    const [resetting, setResetting] = useState(false);
+    const [ending, dispatchEnding] = useReducer(endingReducer, { game: history.games.length, phase: "playing" });
 
     const [booking, setBooking] = useState<Booking | undefined>(undefined);
     const timers = useRef(new Map<number, number>());
@@ -197,6 +218,14 @@ export function LifeCounter({
     }, [history, storageKey, configured]);
 
     const immersive = useImmersive(true);
+    const immersiveRef = useRef(immersive);
+    immersiveRef.current = immersive;
+
+    const tookScreen = useRef(false);
+
+    useEffect(() => {
+        if (isMatch && !readOnly && !immersiveRef.current.supported) immersiveRef.current.enter();
+    }, [isMatch, readOnly]);
 
     useWakeLock();
     useOrientationLock();
@@ -204,6 +233,35 @@ export function LifeCounter({
     const orientation = useTableOrientation();
 
     const seating = seatingFor(game.players.length, settings.arrangement, orientation);
+    const holder =
+        match?.me !== undefined
+            ? game.players.findIndex((player) => player.id === match.me)
+            : !isMatch && game.players.length === 2
+              ? 1
+              : -1;
+    const seats = seatsFacing(seating.seats, holder === -1 ? undefined : holder);
+    const names = game.players.map((player, index) => (index === holder ? t("label.you") : player.name));
+    const over = Boolean(game.outcome) && isMatch && !matchGoesOn(history, match.gamesToWin);
+    const gameNumber = history.games.length;
+    const view = endingView(ending, history, isMatch && !readOnly);
+    const verdictNext =
+        view.kind === "verdict" && match
+            ? t(
+                  matchGoesOn(endLifeGame(history, view.outcome), match.gamesToWin)
+                      ? "button.next-game"
+                      : "button.end-game",
+              )
+            : "";
+
+    /**
+     * What everyone starts the next Game on
+     *
+     * @param players who plays it
+     * @returns the totals in Seat order
+     */
+    function nextTotals(players: LifePlayer[]): number[] {
+        return players.map((_, index) => (!editedTotals ? initialTotals?.[index] : undefined) ?? settings.startingLife);
+    }
 
     /**
      * Records a change to the setup on this device
@@ -429,6 +487,7 @@ export function LifeCounter({
         if (booking.player === index)
             return {
                 role: "booking",
+                you: index === holder,
                 taken: table.damage[index][index],
                 offer: booking.offer,
                 onDismiss: dropOffer,
@@ -437,8 +496,9 @@ export function LifeCounter({
             };
         return {
             role: "target",
-            player: booking.player + 1,
-            reader: seating.seats[booking.player].seat,
+            name: names[booking.player],
+            you: booking.player === holder,
+            reader: seats[booking.player].seat,
             taken: table.damage[booking.player][index],
             offer: booking.offer,
             onChange: (amount) => bookDamage(index, amount),
@@ -447,20 +507,15 @@ export function LifeCounter({
     }
 
     /**
-     * Closes the setup and hands the table the whole screen
+     * Closes the setup and hands the table the whole screen; a casual table
+     * starts a new game with it.
      */
     function start() {
-        if (readOnly || (game.outcome && !allowNextGame)) return;
-        if (!readOnly && (game.outcome || (!configured && history.games.length === 1 && game.events.length === 1))) {
-            const players =
-                participants ??
-                Array.from({ length: settings.playerCount }, (_, index) => ({
-                    id: String(index + 1),
-                    name: t("label.player", { number: index + 1 }),
-                }));
-            const totals = players.map(
-                (_, index) => (!editedTotals ? initialTotals?.[index] : undefined) ?? settings.startingLife,
-            );
+        if (readOnly || over) return;
+        if (game.outcome || !isMatch || (!configured && history.games.length === 1 && game.events.length === 1)) {
+            closeBooking();
+            const players = participants ?? freshPlayers(settings.playerCount);
+            const totals = nextTotals(players);
             setHistory((current) =>
                 current.games.at(-1)!.outcome
                     ? nextLifeGame(current, players, totals)
@@ -473,14 +528,73 @@ export function LifeCounter({
         immersive.enter();
     }
 
-    /** Records the explicit Game outcome and keeps earlier Games. */
-    function reset() {
-        hapticConfirm();
-        setResetting(false);
+    /** Starts the next Game on the same layout, or asks who won the one being played in a Match. */
+    function nextGame() {
         closeBooking();
+        if (isMatch && !game.outcome) {
+            dispatchEnding({ type: "pick", game: gameNumber });
+            return;
+        }
+        hapticConfirm();
+        clearFeedback();
+        setHistory((current) => {
+            const last = current.games.at(-1)!;
+            return last.outcome
+                ? nextLifeGame(current, last.players, nextTotals(last.players))
+                : createLifeHistory(freshPlayers(last.players.length), last.startingLife);
+        });
+    }
+
+    /**
+     * Records how the Game ended and starts the next one while the Match goes on
+     *
+     * @param result the winner, or a draw
+     */
+    function finishGame(result: LifeOutcome) {
+        hapticConfirm();
+        closeBooking();
+        clearFeedback();
+        setHistory((current) => {
+            const ended = endLifeGame(current, result);
+            const players = ended.games.at(-1)!.players;
+            return !match || matchGoesOn(ended, match.gamesToWin)
+                ? nextLifeGame(ended, players, nextTotals(players))
+                : ended;
+        });
+    }
+
+    /**
+     * How the Game ended for one player, while the table has not acted on it
+     *
+     * @param index whose tile
+     * @returns the verdict, or `undefined` while the Game goes on
+     */
+    function verdictFor(index: number): TileVerdict | undefined {
+        if (view.kind !== "verdict") return undefined;
+        const { outcome, picked } = view;
+        return {
+            result: "draw" in outcome ? "draw" : game.players[index].id === outcome.winner ? "won" : "lost",
+            next: verdictNext,
+            onNext: () => finishGame(outcome),
+            dismiss: t(picked ? "button.pick-again" : "button.keep-playing"),
+            onDismiss: () =>
+                dispatchEnding(
+                    picked ? { type: "back", game: gameNumber } : { type: "play-on", game: gameNumber, outcome },
+                ),
+        };
+    }
+
+    /** Takes the whole screen on the first tap on the tiles, where only a tap may ask for it */
+    function takeScreen() {
+        if (tookScreen.current || !isMatch || readOnly) return;
+        tookScreen.current = true;
+        immersive.enter();
+    }
+
+    /** Lets every run of taps go, since the totals they ran up are gone */
+    function clearFeedback() {
         timers.current.forEach((timer) => window.clearTimeout(timer));
         timers.current.clear();
-        setHistory((current) => endLifeGame(current, outcome === "draw" ? { draw: true } : { winner: outcome }));
         setFeedback({ deltas: {}, hits: {} });
     }
 
@@ -494,57 +608,78 @@ export function LifeCounter({
                     : "h-[calc(100svh-8.5rem)] sm:h-[calc(100svh-9.5rem)]",
             )}
         >
-            <header className={"flex shrink-0 flex-wrap items-center justify-between gap-2"}>
-                <div className={"flex min-w-0 items-center gap-2"}>
-                    <Button plain={true} href={backHref} aria-label={t("button.back-to-tools")}>
-                        <ArrowLeftIcon />
-                    </Button>
-                    <Heading className={"truncate"}>{t("heading.life-counter")}</Heading>
-                </div>
-                <div className={"flex shrink-0 items-center gap-2"}>
-                    <Button
-                        outline={true}
-                        onClick={() => {
-                            closeBooking();
-                            setShowHistory(true);
-                        }}
-                        aria-label={t("button.life-history")}
-                    >
-                        <ClockIcon />
-                    </Button>
-                    <Button
-                        outline={true}
-                        onClick={immersive.toggle}
-                        aria-label={immersive.active ? t("button.exit-fullscreen") : t("button.fullscreen")}
-                    >
-                        {immersive.active ? <ArrowsPointingInIcon /> : <ArrowsPointingOutIcon />}
-                    </Button>
-                    <Button
-                        outline={true}
-                        disabled={readOnly}
-                        onClick={() => setConfiguring(true)}
-                        aria-label={t("button.settings")}
-                    >
-                        <AdjustmentsHorizontalIcon />
-                        <span className={"max-sm:hidden"}>{t("button.settings")}</span>
-                    </Button>
-                    <Button
-                        outline={true}
-                        disabled={readOnly || Boolean(game.outcome && !allowNextGame)}
-                        onClick={() => (game.outcome ? setConfiguring(true) : setResetting(true))}
-                        aria-label={t(game.outcome ? "button.next-game" : "button.end-game")}
-                    >
-                        <ArrowPathIcon />
-                        <span className={"max-sm:hidden"}>
-                            {t(game.outcome ? "button.next-game" : "button.end-game")}
-                        </span>
-                    </Button>
-                </div>
+            <header className={"flex shrink-0 items-center gap-2"}>
+                <Heading className={"sr-only"}>{t("heading.life-counter")}</Heading>
+                <Button plain={true} href={backHref} aria-label={t("button.back-to-tools")}>
+                    <ArrowLeftIcon />
+                </Button>
+                {view.kind === "picking" ? (
+                    <div className={"ml-auto flex items-center gap-2"}>
+                        <Button
+                            outline={true}
+                            onClick={() =>
+                                dispatchEnding({ type: "choose", game: gameNumber, outcome: { draw: true } })
+                            }
+                        >
+                            {t("label.draw")}
+                        </Button>
+                        <Button plain={true} onClick={() => dispatchEnding({ type: "cancel", game: gameNumber })}>
+                            {tg("button.cancel")}
+                        </Button>
+                    </div>
+                ) : (
+                    <div className={"ml-auto flex min-w-0 items-center gap-2"}>
+                        <Button
+                            outline={true}
+                            onClick={() => {
+                                closeBooking();
+                                setShowHistory(true);
+                            }}
+                            aria-label={t("button.life-history")}
+                        >
+                            <ClockIcon />
+                        </Button>
+                        <Button
+                            outline={true}
+                            onClick={immersive.toggle}
+                            aria-label={immersive.active ? t("button.exit-fullscreen") : t("button.fullscreen")}
+                        >
+                            {immersive.active ? <ArrowsPointingInIcon /> : <ArrowsPointingOutIcon />}
+                        </Button>
+                        <Button
+                            outline={true}
+                            disabled={readOnly}
+                            onClick={() => {
+                                closeBooking();
+                                setConfiguring(true);
+                            }}
+                            aria-label={t(isMatch ? "button.settings" : "button.new-game")}
+                        >
+                            <AdjustmentsHorizontalIcon />
+                            <span className={"max-sm:hidden"}>
+                                {t(isMatch ? "button.settings" : "button.new-game")}
+                            </span>
+                        </Button>
+                        <Button
+                            outline={true}
+                            disabled={readOnly || over}
+                            onClick={nextGame}
+                            aria-label={t(isMatch && !game.outcome ? "button.end-game" : "button.next-game")}
+                        >
+                            <ArrowPathIcon />
+                            <span className={"max-sm:hidden"}>
+                                {t(isMatch && !game.outcome ? "button.end-game" : "button.next-game")}
+                            </span>
+                        </Button>
+                        {actions}
+                    </div>
+                )}
             </header>
 
             {context}
             <section
                 aria-label={t("heading.life-counter")}
+                onPointerUp={takeScreen}
                 className={clsx(
                     "grid min-h-0 min-w-0 flex-1",
                     seating.grid,
@@ -557,19 +692,30 @@ export function LifeCounter({
                     <LifeTile
                         key={index}
                         number={index + 1}
-                        name={game.players[index].name}
+                        name={names[index]}
                         life={total}
                         delta={table.deltas[index]}
                         damage={table.damage[index]}
-                        dealt={table.damage.map((row) => row[index])}
-                        opponents={opponentOrder(seating.seats, index)}
-                        placement={seating.seats[index]}
+                        opponents={opponentOrder(seats, index)}
+                        placement={seats[index]}
                         flush={seating.flush}
+                        commanderDamage={match?.commanderDamage ?? true}
                         onChange={(amount) => changeLife(index, amount)}
                         booking={bookingFor(index)}
                         onToggleBooking={() => {
                             if (!readOnly && !game.outcome) toggleBooking(index);
                         }}
+                        verdict={verdictFor(index)}
+                        onClaim={
+                            view.kind === "picking"
+                                ? () =>
+                                      dispatchEnding({
+                                          type: "choose",
+                                          game: gameNumber,
+                                          outcome: { winner: game.players[index].id },
+                                      })
+                                : undefined
+                        }
                     />
                 ))}
             </section>
@@ -578,14 +724,9 @@ export function LifeCounter({
                 <DialogTitle>{t("heading.settings")}</DialogTitle>
                 <DialogBody>
                     <div className={"flex flex-col gap-5"}>
-                        {!game.outcome && configured && <Text>{t("description.next-game-settings")}</Text>}
                         <Field>
                             <Label>{t("label.players")}</Label>
-                            <Listbox
-                                disabled={Boolean(participants) || (!game.outcome && configured)}
-                                value={settings.playerCount}
-                                onChange={changePlayerCount}
-                            >
+                            <Listbox disabled={isMatch} value={settings.playerCount} onChange={changePlayerCount}>
                                 {PLAYER_COUNTS.map((count) => (
                                     <ListboxOption key={count} value={count}>
                                         <ListboxLabel>{count}</ListboxLabel>
@@ -637,8 +778,14 @@ export function LifeCounter({
                     </div>
                 </DialogBody>
                 <DialogActions>
-                    <PrimaryButton disabled={readOnly || Boolean(game.outcome && !allowNextGame)} onClick={start}>
-                        {t("button.start")}
+                    <PrimaryButton disabled={readOnly || over} onClick={start}>
+                        {!configured
+                            ? t("button.start")
+                            : !isMatch
+                              ? t("button.new-game")
+                              : game.outcome
+                                ? t("button.next-game")
+                                : tg("button.close")}
                     </PrimaryButton>
                 </DialogActions>
             </Dialog>
@@ -664,31 +811,6 @@ export function LifeCounter({
                     <Button onClick={() => setShowHistory(false)}>{t("button.back-to-life")}</Button>
                 </DialogActions>
             </Dialog>
-            <Alert open={resetting} onClose={() => setResetting(false)}>
-                <AlertTitle>{t("heading.end-game")}</AlertTitle>
-                <AlertDescription>{t("description.end-game")}</AlertDescription>
-                <Field>
-                    <Label>{t("label.game-outcome")}</Label>
-                    <Listbox value={outcome} onChange={setOutcome}>
-                        <ListboxOption value="draw">
-                            <ListboxLabel>{t("label.draw")}</ListboxLabel>
-                        </ListboxOption>
-                        {game.players.map((player) => (
-                            <ListboxOption key={player.id} value={player.id}>
-                                <ListboxLabel>{player.name}</ListboxLabel>
-                            </ListboxOption>
-                        ))}
-                    </Listbox>
-                </Field>
-                <AlertActions>
-                    <Button plain={true} onClick={() => setResetting(false)}>
-                        {tg("button.cancel")}
-                    </Button>
-                    <Button color={"red"} onClick={reset}>
-                        {t("button.end-game")}
-                    </Button>
-                </AlertActions>
-            </Alert>
         </div>
     );
 }

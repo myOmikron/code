@@ -1,5 +1,6 @@
 import { Button, Dialog, DialogActions, DialogBody, DialogTitle, Text } from "components";
 import { useState } from "react";
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import type { MatchLifeHistoryResponse, MatchLifeConflictSummary } from "src/api/generated";
@@ -16,6 +17,7 @@ export function MatchLifeHandover({
     playable,
     open,
     onClose,
+    status,
 }: {
     tournament: string;
     played: string;
@@ -23,6 +25,7 @@ export function MatchLifeHandover({
     playable: boolean;
     open: boolean;
     onClose: () => void;
+    status: ReactNode;
 }) {
     const [t] = useTranslation("tournament");
     const [view, setView] = useState<"devices" | "confirm" | "list" | "branch">("devices");
@@ -67,6 +70,7 @@ export function MatchLifeHandover({
                     <div className="space-y-4">
                         {view === "devices" && (
                             <>
+                                {status}
                                 {!durable.canRequest && <Text>{t("error.life-handover-network")}</Text>}
                                 {durable.recording?.snapshot().ownershipKind === "takeover" &&
                                     !durable.recording.snapshot().claimAccepted &&

@@ -25,6 +25,8 @@ import { useFullscreen } from "src/utils/use-fullscreen";
 export type Immersive = {
     /** Whether the page has the whole window right now, however it got it */
     active: boolean;
+    /** Whether taking it means the real fullscreen api, which only a tap may ask for */
+    supported: boolean;
     /** Takes the window, if it is not already taken */
     enter: () => void;
     /** Takes the window, or gives it back */
@@ -72,5 +74,5 @@ export function useImmersive(releaseOnLeave: boolean = false): Immersive {
         }
     }
 
-    return { active, enter, toggle };
+    return { active, supported: fullscreen.supported, enter, toggle };
 }

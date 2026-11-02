@@ -94,6 +94,25 @@ export function endLifeGame(history: LifeHistory, outcome: LifeOutcome, at = Dat
 }
 
 /**
+ * Whether a Match plays another Game after its last one ended.
+ *
+ * A drawn Game counts towards nobody, so it is played over.
+ *
+ * @param history the Games counted so far
+ * @param gamesToWin how many Games win the Match, `undefined` when its one Game settles it
+ * @returns whether another Game follows
+ */
+export function matchGoesOn(history: LifeHistory, gamesToWin: number | undefined): boolean {
+    if (gamesToWin === undefined) return false;
+    return history.games[0].players.every(
+        (player) =>
+            history.games.filter(
+                (game) => game.outcome && "winner" in game.outcome && game.outcome.winner === player.id,
+            ).length < gamesToWin,
+    );
+}
+
+/**
  * Records a life change to the current Game.
  *
  * @param history complete counting record

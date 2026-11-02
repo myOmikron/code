@@ -20,7 +20,6 @@
         "change-life": "Change {{player}}'s life by {{amount}}",
         "clear-list": "Clear list",
         "commander-damage": "Commander damage dealt to {{player}}",
-        "confirm-reset": "Reset",
         "copy-list": "Copy list",
         "dismiss-rebook": "That was not commander damage",
         "download-xml": "Download XML",
@@ -41,7 +40,11 @@
         "life-history": "History",
         "next-game": "Next Game",
         "end-game": "End Game",
-        "correct-change": "Correct change"
+        "correct-change": "Correct change",
+        "new-game": "New game",
+        "keep-playing": "Keep playing",
+        "won": "Won",
+        "pick-again": "Back"
     },
     "description": {
         "add-cards": "Search for cards or add a whole deck. Their art is searched for automatically.",
@@ -69,11 +72,7 @@
         "print-backs": "Two-sided cards go on the sheet with both faces.",
         "print-scale": "Nine cards at their real size per A4 sheet. Set the print dialog to 100% scale.",
         "proxy-printer": "Cards at their real size on A4, ready to cut out.",
-        "reset-game_one": "Puts you back on {{life}} life. This cannot be undone.",
-        "reset-game_other": "Puts every player back on {{life}} life and clears the commander damage. This cannot be undone.",
-        "skip-basics": "Basics stay off the sheet, everyone has those in a box already.",
-        "end-game": "Record the winner or a draw. Life totals and history do not determine a Tournament Result. Earlier Games stay saved.",
-        "next-game-settings": "Changed starting totals apply to the next Game. End the current Game first."
+        "skip-basics": "Basics stay off the sheet, everyone has those in a box already."
     },
     "heading": {
         "add-cards": "Add cards",
@@ -88,9 +87,7 @@
         "page": "Game utils",
         "print-list": "Print list",
         "proxy-printer": "Proxy printer",
-        "reset-game": "Start a new game?",
         "settings": "Set up life tracker",
-        "end-game": "End Game",
         "life-game": "Game {{number}}"
     },
     "label": {
@@ -132,7 +129,6 @@
         "starting-life": "Starting life",
         "stock": "Cardstock",
         "two-sided": "two-sided",
-        "game-outcome": "Game outcome",
         "draw": "Draw",
         "game-winner": "{{player}} wins",
         "history-start": "Game started",
@@ -140,7 +136,12 @@
         "history-life": "{{player}}: {{amount}} life",
         "history-commander": "{{player}}: {{amount}} life, {{damage}} commander damage from {{commander}}",
         "history-reclassify": "{{player}}: recent hit recorded as {{damage}} commander damage from {{commander}}",
-        "history-correction": "Correction for {{player}}: {{amount}} life, {{damage}} commander damage"
+        "history-correction": "Correction for {{player}}: {{amount}} life, {{damage}} commander damage",
+        "you": "You",
+        "your-opponent": "Your opponent",
+        "commander-damage-to-you": "Commander damage to you",
+        "victory": "Victory",
+        "defeat": "Defeat"
     },
     "toast": {
         "art-not-searched": "MPCFill did not answer",

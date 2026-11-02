@@ -80,6 +80,7 @@ function Probe() {
         if (booking.player === index) {
             return {
                 role: "booking",
+                you: false,
                 taken: table.damage[index][index],
                 onChange: (amount) => book(index, amount, true),
                 onRebook: () => book(index, booking.offer ?? 0, false),
@@ -89,7 +90,8 @@ function Probe() {
         }
         return {
             role: "target",
-            player: booking.player + 1,
+            name: `Player ${booking.player + 1}`,
+            you: false,
             reader: seating.seats[booking.player].seat,
             taken: table.damage[booking.player][index],
             offer: booking.offer,
@@ -104,13 +106,14 @@ function Probe() {
                 <LifeTile
                     key={index}
                     number={index + 1}
+                    name={`Player ${index + 1}`}
                     life={total}
                     delta={table.deltas[index]}
                     damage={table.damage[index]}
-                    dealt={table.damage.map((row) => row[index])}
                     opponents={opponentOrder(seating.seats, index)}
                     placement={seating.seats[index]}
                     flush={seating.flush}
+                    commanderDamage={true}
                     onChange={(amount) =>
                         setTable((current) => ({
                             ...current,
@@ -127,6 +130,8 @@ function Probe() {
                                 : { player: index, offer: rebookableHit(table.hits[index], Date.now()) },
                         )
                     }
+                    verdict={undefined}
+                    onClaim={undefined}
                 />
             ))}
         </div>

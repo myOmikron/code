@@ -20,7 +20,6 @@
         "change-life": "Leben von {{player}} um {{amount}} ändern",
         "clear-list": "Liste leeren",
         "commander-damage": "Commander-Schaden an {{player}}",
-        "confirm-reset": "Zurücksetzen",
         "copy-list": "Liste kopieren",
         "download-xml": "XML herunterladen",
         "dismiss-rebook": "War kein Commander-Schaden",
@@ -41,7 +40,11 @@
         "life-history": "Verlauf",
         "next-game": "Nächstes Spiel",
         "end-game": "Spiel beenden",
-        "correct-change": "Änderung zurücknehmen"
+        "correct-change": "Änderung zurücknehmen",
+        "new-game": "Neues Spiel",
+        "keep-playing": "Weiterspielen",
+        "won": "Gewonnen",
+        "pick-again": "Zurück"
     },
     "description": {
         "add-cards": "Suche Karten oder übernimm ein ganzes Deck. Die Bilder werden automatisch gesucht.",
@@ -69,11 +72,7 @@
         "print-backs": "Doppelseitige Karten kommen mit beiden Seiten aufs Blatt.",
         "print-scale": "Neun Karten in Originalgröße je DIN-A4-Blatt. Im Druckdialog die Skalierung auf 100 % stellen.",
         "proxy-printer": "Karten in Originalgröße auf DIN A4, zum Ausschneiden.",
-        "reset-game_one": "Setzt dich auf {{life}} Leben zurück. Das lässt sich nicht rückgängig machen.",
-        "reset-game_other": "Setzt alle Spieler auf {{life}} Leben zurück und löscht den Commander-Schaden. Das lässt sich nicht rückgängig machen.",
-        "skip-basics": "Standardländer bleiben vom Bogen, die liegen ohnehin in jeder Sammlung.",
-        "end-game": "Gewinner oder Unentschieden festhalten. Leben und Verlauf bestimmen kein Turnierergebnis. Frühere Spiele bleiben gespeichert.",
-        "next-game-settings": "Geänderte Startwerte gelten für das nächste Spiel. Beende zuerst das laufende Spiel."
+        "skip-basics": "Standardländer bleiben vom Bogen, die liegen ohnehin in jeder Sammlung."
     },
     "heading": {
         "add-cards": "Karten hinzufügen",
@@ -88,9 +87,7 @@
         "page": "Game-Tools",
         "print-list": "Druckliste",
         "proxy-printer": "Proxy-Drucker",
-        "reset-game": "Neue Partie starten?",
         "settings": "Lifetracker einstellen",
-        "end-game": "Spiel beenden",
         "life-game": "Spiel {{number}}"
     },
     "label": {
@@ -132,7 +129,6 @@
         "starting-life": "Startleben",
         "stock": "Kartenmaterial",
         "two-sided": "zweiseitig",
-        "game-outcome": "Spielausgang",
         "draw": "Unentschieden",
         "game-winner": "{{player}} gewinnt",
         "history-start": "Spiel begonnen",
@@ -140,7 +136,12 @@
         "history-life": "{{player}}: {{amount}} Leben",
         "history-commander": "{{player}}: {{amount}} Leben, {{damage}} Kommandeursschaden von {{commander}}",
         "history-reclassify": "{{player}}: letzter Treffer als {{damage}} Kommandeursschaden von {{commander}} eingeordnet",
-        "history-correction": "Korrektur für {{player}}: {{amount}} Leben, {{damage}} Kommandeursschaden"
+        "history-correction": "Korrektur für {{player}}: {{amount}} Leben, {{damage}} Kommandeursschaden",
+        "you": "Du",
+        "your-opponent": "Dein Gegenüber",
+        "commander-damage-to-you": "Commander-Schaden an dich",
+        "victory": "Sieg",
+        "defeat": "Niederlage"
     },
     "toast": {
         "art-not-searched": "MPCFill hat nicht geantwortet",

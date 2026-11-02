@@ -8,10 +8,12 @@ import { COMMANDER_DAMAGE_LETHAL, REBOOK_LINGER } from "src/utils/life-tracker";
  * The properties for {@link CommanderDamageTarget}
  */
 export type CommanderDamageTargetProps = {
-    /** Which player is booking, counted from one */
-    player: number;
-    /** Whose commander this tile stands for, counted from one */
-    number: number;
+    /** The name of the player booking */
+    reader: string;
+    /** Whether the player booking holds the device */
+    you: boolean;
+    /** The name of the player whose commander this tile stands for */
+    name: string;
     /** What that commander has put on the booking player */
     taken: number;
     /**
@@ -54,16 +56,15 @@ export type CommanderDamageTargetProps = {
  * @returns the target
  */
 export function CommanderDamageTarget({
-    player,
-    number,
+    reader,
+    you,
+    name,
     taken,
     offer,
     onChange,
     onRebook,
 }: CommanderDamageTargetProps) {
     const [t] = useTranslation("game-utils");
-    const reader = t("label.player", { number: player });
-    const name = t("label.player", { number });
     const lethal = taken >= COMMANDER_DAMAGE_LETHAL;
 
     return (
@@ -82,7 +83,7 @@ export function CommanderDamageTarget({
                         "truncate text-[min(9cqh,3.2cqw,0.75rem)] font-bold tracking-wider uppercase @min-[22rem]:text-[min(9cqh,3.2cqw,1.5rem)]"
                     }
                 >
-                    {t("label.commander-damage-to", { player: reader })}
+                    {you ? t("label.commander-damage-to-you") : t("label.commander-damage-to", { player: reader })}
                 </span>
             </div>
             <div className={"relative flex min-h-0 flex-1 items-stretch"}>

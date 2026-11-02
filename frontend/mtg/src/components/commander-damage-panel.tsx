@@ -9,8 +9,10 @@ import { REBOOK_LINGER } from "src/utils/life-tracker";
  * The properties for {@link CommanderDamagePanel}
  */
 export type CommanderDamagePanelProps = {
-    /** Which player is booking, counted from one */
-    number: number;
+    /** The name of the player booking */
+    name: string;
+    /** Whether the player booking holds the device */
+    you: boolean;
     /** Their current total */
     life: number;
     /** What the last few taps came to, gone once they have settled */
@@ -50,7 +52,8 @@ export type CommanderDamagePanelProps = {
  * @returns the panel
  */
 export function CommanderDamagePanel({
-    number,
+    name,
+    you,
     life,
     delta,
     taken,
@@ -60,15 +63,15 @@ export function CommanderDamagePanel({
     onDismiss,
 }: CommanderDamagePanelProps) {
     const [t] = useTranslation("game-utils");
-    const player = t("label.player", { number });
 
     return (
         <div className={"relative flex h-full w-full flex-col items-center"}>
             <span aria-hidden={true} className={"pointer-events-none absolute inset-0 bg-black/20"} />
             <div className={"[container-type:size] relative min-h-0 w-full flex-1"}>
                 <CommanderDamageTarget
-                    player={number}
-                    number={number}
+                    reader={name}
+                    you={you}
+                    name={name}
                     taken={taken}
                     offer={offer}
                     onChange={onChange}
@@ -79,12 +82,12 @@ export function CommanderDamagePanel({
             <div
                 className={"[container-type:size] relative flex h-[30%] min-h-0 w-full shrink-0 flex-col items-stretch"}
             >
-                <LifeTotal name={player} life={life} delta={delta} />
+                <LifeTotal name={name} life={life} delta={delta} />
             </div>
             {offer !== undefined && (
                 <div
                     role={"group"}
-                    aria-label={t("accessibility.rebook-offer", { player, count: offer })}
+                    aria-label={t("accessibility.rebook-offer", { player: name, count: offer })}
                     className={
                         "[container-type:size] relative flex h-[22%] max-h-[4rem] min-h-[2rem] w-full shrink-0 items-center justify-center gap-[2cqw] border-t border-white/20 bg-black/45 p-1"
                     }
