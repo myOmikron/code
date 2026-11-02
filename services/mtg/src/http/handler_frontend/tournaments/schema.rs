@@ -6,6 +6,7 @@ use serde::Deserialize;
 use serde::Serialize;
 
 use crate::models::account::Username;
+use crate::models::format::has_commander;
 use crate::models::tournament::Tournament;
 use crate::models::tournament::TournamentState;
 use crate::models::tournament::TournamentUuid;
@@ -197,6 +198,9 @@ pub struct TournamentResponse {
     pub ruleset: Ruleset,
     /// The format played, `null` for any
     pub format: Option<MaxStr<32>>,
+    /// Whether its Games count commander damage: the format is played with a
+    /// commander, or any format goes
+    pub commander_damage: bool,
     /// Who may see it
     pub visibility: Visibility,
     /// Where it stands
@@ -245,6 +249,7 @@ impl TournamentResponse {
             starts_at: SchemaDateTime(tournament.starts_at),
             table_size: tournament.table_size.get(),
             ruleset: tournament.ruleset,
+            commander_damage: tournament.format.as_deref().is_none_or(has_commander),
             format: tournament.format,
             visibility: tournament.visibility,
             state: tournament.state,
