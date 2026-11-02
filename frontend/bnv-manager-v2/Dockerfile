@@ -34,7 +34,7 @@ mv frontend/bnv-manager-v2/dist /frontend
 EOF
 
 
-FROM nginx:1.31.8@sha256:6e67f8eaac94fc456588d4ff6c470d984841f5b5dc4279863d5cbe6ec5a60def AS final
+FROM nginx:1.31.8@sha256:5ab5b0b01097420873a3f3330f44248e34a3c2a3e8d5ee30658aeae8cb7435da AS final
 
 COPY frontend/bnv-manager-v2/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build-frontend /frontend /usr/share/nginx/html
