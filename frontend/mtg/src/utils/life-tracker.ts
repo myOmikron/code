@@ -174,19 +174,6 @@ export const SEAT_COLORS = [
 ] as const;
 
 /**
- * The same seats as a ring, for a marker that is outlined in a seat's colour
- * rather than filled with it
- */
-export const SEAT_RINGS = [
-    "ring-blue-500",
-    "ring-rose-500",
-    "ring-emerald-500",
-    "ring-amber-400",
-    "ring-violet-500",
-    "ring-cyan-500",
-] as const;
-
-/**
  * Whether a player is out of the game.
  *
  * The tracker only greys their tile out for it; nothing stops them counting
@@ -470,6 +457,23 @@ export function seatingFor(playerCount: number, arrangement: LifeArrangement, or
 export function opponentOrder(seats: Array<SeatPlacement>, player: number): Array<number> {
     if (seats[player] === undefined) return [];
     return Array.from({ length: seats.length - 1 }, (_, step) => (player + 1 + step) % seats.length);
+}
+
+/**
+ * Turns the table so that the player holding the device sits at its near edge.
+ *
+ * A rotation keeps the clockwise order {@link opponentOrder} relies on.
+ *
+ * @param seats the whole table, in seat order
+ * @param player who holds the device, counted from zero
+ *
+ * @returns the placements rotated so that player gets the last bottom seat
+ */
+export function seatsFacing(seats: Array<SeatPlacement>, player: number | undefined): Array<SeatPlacement> {
+    if (player === undefined || seats[player] === undefined) return seats;
+    const bottom = seats.findLastIndex((placement) => placement.seat === "bottom");
+    const shift = (bottom === -1 ? seats.length - 1 : bottom) - player + seats.length;
+    return seats.map((_, index) => seats[(index + shift) % seats.length]);
 }
 
 /** How a device is set up for the table it sits on */

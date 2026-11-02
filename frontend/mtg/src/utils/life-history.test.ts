@@ -9,6 +9,7 @@ import {
     saveLifeHistory,
     loadLifeHistory,
     changeCommanderHistory,
+    matchGoesOn,
 } from "./life-history";
 const players = [
     { id: "a", name: "Alice" },
@@ -109,4 +110,20 @@ it("corrects a reclassified life hit together with its commander tally", () => {
     history = correctLifeEvent(history, hit.id, 400);
     expect(history.games[0].life).toEqual([40, 40]);
     expect(history.games[0].damage[0]).toEqual([0, 0]);
+});
+
+describe("Match length", () => {
+    it("plays on until a player has the Games to win, replaying draws", () => {
+        let history = endLifeGame(createLifeHistory(players, [20, 20]), { winner: "a" });
+        expect(matchGoesOn(history, 2)).toBe(true);
+        expect(matchGoesOn(history, 1)).toBe(false);
+        history = endLifeGame(nextLifeGame(history, players, [20, 20]), { draw: true });
+        expect(matchGoesOn(history, 2)).toBe(true);
+        history = endLifeGame(nextLifeGame(history, players, [20, 20]), { winner: "a" });
+        expect(matchGoesOn(history, 2)).toBe(false);
+    });
+
+    it("lets a pod's one Game settle it, a draw included", () => {
+        expect(matchGoesOn(endLifeGame(createLifeHistory(players, [40, 40]), { draw: true }), undefined)).toBe(false);
+    });
 });

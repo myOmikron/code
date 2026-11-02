@@ -1,9 +1,11 @@
+import { DevicePhoneMobileIcon } from "@heroicons/react/20/solid";
+import clsx from "clsx";
 import { Button, Strong, Text, notify } from "components";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import type { MatchPlayResponse, SetResultRequest, TournamentResponse } from "src/api/generated";
-import { BestOf, RoundStage, RoundState, TournamentState } from "src/api/generated";
+import { RoundStage, RoundState, TournamentState } from "src/api/generated";
 import { MatchLifeHandover } from "src/components/match-life-handover";
 import { LifeCounter } from "src/components/life-counter";
 import { MatchActions } from "src/components/tournament-rounds";
@@ -13,10 +15,59 @@ import { TournamentWinnerDialog } from "src/components/tournament-winner-dialog"
 import { useLiveVersion } from "src/context/tournament-live-context";
 import { isFormError } from "src/utils/error";
 import { lifeResultDraft, matchLifeStorageKey, matchStartingLife } from "src/utils/match-life";
+import { gamesToWin } from "src/utils/tournament-rounds";
 import { isMatchTransportFailure } from "src/utils/offline-match-scope";
+import type { MatchLifeSaveState } from "src/utils/use-durable-match-life";
 import { clockSkew } from "src/utils/round-timer";
 import { useDurableMatchLife } from "src/utils/use-durable-match-life";
 import { formatResult, resultErrorKey } from "src/utils/tournament-rounds";
+
+/** Save states that need the player to act, shown on the counter rather than behind the devices button */
+const LIFE_PROBLEMS: ReadonlyArray<MatchLifeSaveState> = [
+    "failed",
+    "conflict",
+    "invalid",
+    "storage",
+    "auth",
+    "other-tab",
+    "unsupported",
+];
+
+/**
+ * Names how the Match's life history is kept right now.
+ *
+ * @param state the durable save state
+ * @param recording whether a history exists
+ * @returns the translation key
+ */
+function lifeStatusKey(state: MatchLifeSaveState, recording: boolean): string {
+    switch (state) {
+        case "other-tab":
+            return "label.life-history-other-tab";
+        case "unsupported":
+            return "description.life-history-tab-lock-unavailable";
+        case "storage":
+            return "error.life-history-storage";
+        case "auth":
+            return "error.life-history-auth";
+        case "pending":
+            return "label.life-history-pending";
+        case "loading":
+            return "label.life-history-loading";
+        case "saving":
+            return "label.life-history-saving";
+        case "saved":
+            return "label.life-history-saved";
+        case "failed":
+            return "error.life-history-save";
+        case "invalid":
+            return "error.life-history-invalid";
+        case "conflict":
+            return "error.life-history-conflict";
+        case "local":
+            return recording ? "label.life-history-local" : "label.life-history-not-recording";
+    }
+}
 
 /** Counts an authorized Match locally while keeping its Round timer and explicit Result actions available. */
 export function TournamentMatchLife({
@@ -165,72 +216,76 @@ export function TournamentMatchLife({
     );
     const showCounter =
         durable.identity !== null && durable.state !== "auth" && (durable.writer || durable.history !== null);
+    const problem = LIFE_PROBLEMS.includes(durable.state);
+    const retryable =
+        durable.state === "failed" ||
+        durable.state === "storage" ||
+        durable.state === "pending" ||
+        durable.state === "conflict";
+    const claimable =
+        durable.remote?.writer == null && durable.remote !== null && !over && play.round.state === RoundState.Running;
+    const status = <Text role={"status"}>{t(lifeStatusKey(durable.state, history !== null))}</Text>;
+    const claim = claimable && (
+        <Button
+            outline
+            disabled={!durable.canRequest || durable.state === "saving"}
+            onClick={() => void durable.claim()}
+        >
+            {t("button.record-match-life")}
+        </Button>
+    );
+    const retry = retryable && (
+        <Button outline onClick={durable.retry}>
+            {t("button.retry-life-history-save")}
+        </Button>
+    );
     const saveControls = (
         <div className={"flex flex-wrap items-center gap-3 p-3"}>
-            {!showCounter && (
-                <Button plain href={`/tournaments/${tournament.uuid}`}>
-                    {t("button.back-to-tournament")}
-                </Button>
-            )}
-            <Text role={"status"}>
-                {t(
-                    durable.state === "other-tab"
-                        ? "label.life-history-other-tab"
-                        : durable.state === "unsupported"
-                          ? "description.life-history-tab-lock-unavailable"
-                          : durable.state === "storage"
-                            ? "error.life-history-storage"
-                            : durable.state === "auth"
-                              ? "error.life-history-auth"
-                              : durable.state === "pending"
-                                ? "label.life-history-pending"
-                                : durable.state === "loading"
-                                  ? "label.life-history-loading"
-                                  : durable.state === "saving"
-                                    ? "label.life-history-saving"
-                                    : durable.state === "saved"
-                                      ? "label.life-history-saved"
-                                      : durable.state === "failed"
-                                        ? "error.life-history-save"
-                                        : durable.state === "invalid"
-                                          ? "error.life-history-invalid"
-                                          : durable.state === "conflict"
-                                            ? "error.life-history-conflict"
-                                            : history === null
-                                              ? "label.life-history-not-recording"
-                                              : "label.life-history-local",
-                )}
-            </Text>
-            {durable.remote !== null && !durable.writer && <Text>{t("description.life-history-observer")}</Text>}
-            {durable.remote?.writer == null &&
-                durable.remote !== null &&
-                !over &&
-                play.round.state === RoundState.Running && (
-                    <Button
-                        outline
-                        disabled={!durable.canRequest || durable.state === "saving"}
-                        onClick={() => void durable.claim()}
-                    >
-                        {t("button.record-match-life")}
-                    </Button>
-                )}
-            {(durable.state === "failed" ||
-                durable.state === "storage" ||
-                durable.state === "pending" ||
-                durable.state === "conflict") && (
-                <Button outline onClick={durable.retry}>
-                    {t("button.retry-life-history-save")}
-                </Button>
-            )}
+            <Button plain href={`/tournaments/${tournament.uuid}`}>
+                {t("button.back-to-tournament")}
+            </Button>
+            {status}
+            {claim}
+            {retry}
             {durable.identity !== null && durable.state !== "auth" && (
                 <Button plain onClick={() => setShowHandover(true)}>
                     {t("button.life-recording-devices")}
                 </Button>
             )}
+            {durable.remote !== null && !durable.writer && <Text>{t("description.life-history-observer")}</Text>}
             {durable.remote !== null && !durable.writer && !durable.remote.history && (
                 <Text>{t("description.life-history-empty")}</Text>
             )}
         </div>
+    );
+    const devices = (
+        <Button
+            outline
+            onClick={() => setShowHandover(true)}
+            aria-label={t("button.life-recording-devices")}
+            className={"relative"}
+        >
+            <DevicePhoneMobileIcon />
+            {(problem || retryable) && (
+                <span
+                    aria-hidden={true}
+                    className={clsx(
+                        "absolute -top-1 -right-1 size-2.5 rounded-full",
+                        problem ? "bg-red-500" : "bg-amber-400",
+                    )}
+                />
+            )}
+        </Button>
+    );
+    const handoverStatus = (
+        <>
+            {status}
+            {durable.remote !== null && !durable.writer && <Text>{t("description.life-history-observer")}</Text>}
+            {durable.remote !== null && !durable.writer && !durable.remote.history && (
+                <Text>{t("description.life-history-empty")}</Text>
+            )}
+            {retry}
+        </>
     );
     return (
         <>
@@ -243,6 +298,7 @@ export function TournamentMatchLife({
                     played={played.uuid}
                     durable={durable}
                     playable={!over && play.round.state === RoundState.Running}
+                    status={handoverStatus}
                 />
             )}
             {!showCounter && (
@@ -259,12 +315,13 @@ export function TournamentMatchLife({
                             : `observer-${durable.remote?.generation}-${durable.remote?.revision}-${durable.viewEpoch}`
                     }
                     initialHistory={history ?? undefined}
-                    participants={players}
-                    allowNextGame={
-                        tournament.table_size === 2 &&
-                        bestOf === BestOf.Three &&
-                        !draft?.games_won.some((wins) => wins >= 2)
-                    }
+                    match={{
+                        players,
+                        me: mine ? (play.participant ?? undefined) : undefined,
+                        gamesToWin: tournament.table_size === 2 && bestOf != null ? gamesToWin(bestOf) : undefined,
+                        commanderDamage: tournament.commander_damage,
+                    }}
+                    actions={devices}
                     initialTotals={players.map(() => matchStartingLife(tournament.format, players.length))}
                     storageKey={durable.writer ? durable.storageKey : `${durable.storageKey}.observer`}
                     initialConfigured={durable.configured}
@@ -273,7 +330,13 @@ export function TournamentMatchLife({
                     readOnly={!durable.writer || play.round.state !== RoundState.Running || over}
                     context={
                         <div className={"flex shrink-0 flex-col gap-2"}>
-                            {saveControls}
+                            {(problem || claimable) && (
+                                <div className={"flex flex-wrap items-center gap-3"}>
+                                    {problem && status}
+                                    {claim}
+                                    {retry}
+                                </div>
+                            )}
                             {controls}
                         </div>
                     }

@@ -1,12 +1,13 @@
-import { BoltIcon, HeartIcon, ShieldExclamationIcon } from "@heroicons/react/20/solid";
+import { HeartIcon, ShieldExclamationIcon } from "@heroicons/react/20/solid";
 import clsx from "clsx";
 import { useTranslation } from "react-i18next";
 import { CommanderDamagePanel } from "src/components/commander-damage-panel";
 import { CommanderDamageTarget } from "src/components/commander-damage-target";
 import { CounterButton } from "src/components/counter-button";
 import { LifeTotal } from "src/components/life-total";
+import { TableButton } from "src/components/table-button";
 import type { Seat, SeatPlacement } from "src/utils/life-tracker";
-import { COMMANDER_DAMAGE_LETHAL, SEAT_COLORS, SEAT_RINGS, isEliminated } from "src/utils/life-tracker";
+import { COMMANDER_DAMAGE_LETHAL, SEAT_COLORS, isEliminated } from "src/utils/life-tracker";
 
 /** What a held life button is worth per step */
 const HOLD_STEP = 10;
@@ -49,6 +50,16 @@ const FRAME: Record<Seat, string> = {
     right: "top-1/2 left-1/2 h-[100cqw] w-[100cqh] -translate-x-1/2 -translate-y-1/2 -rotate-90",
 };
 
+/** The size of the buttons under a verdict */
+const VERDICT_BUTTON = "px-[5cqw] py-[2cqh] text-[min(8cqh,4.5cqw,1rem)] @min-[22rem]:text-[min(8cqh,4.5cqw,1.5rem)]";
+
+/** What each verdict reads as */
+const VERDICT_LABELS = {
+    won: "label.victory",
+    lost: "label.defeat",
+    draw: "label.draw",
+} as const;
+
 /**
  * How a tile takes part in the commander damage one player is booking.
  *
@@ -60,6 +71,8 @@ export type TileBooking =
     | {
           /** The tile of the player doing the booking */
           role: "booking";
+          /** Whether that player holds the device */
+          you: boolean;
           /** Damage from this player's own commander, including when stolen */
           taken: number;
           onChange: (amount: number) => void;
@@ -75,8 +88,10 @@ export type TileBooking =
     | {
           /** The tile of an opponent, standing for their commander */
           role: "target";
-          /** Which player is booking, counted from one */
-          player: number;
+          /** The name of the player booking */
+          name: string;
+          /** Whether that player holds the device */
+          you: boolean;
           /** Where that player reads from, so the tile is turned towards them */
           reader: Seat;
           /** What this commander has put on them */
@@ -92,34 +107,52 @@ export type TileBooking =
           onRebook: () => void;
       };
 
+/** How the game ended for one player, shown until the table records it or plays on */
+export type TileVerdict = {
+    /** What the game came to for this player */
+    result: "won" | "lost" | "draw";
+    /** What recording it is called: the next game, or ending the last one */
+    next: string;
+    /** Records the outcome */
+    onNext: () => void;
+    /** What taking it back is called: playing on, or picking again */
+    dismiss: string;
+    /** Takes it back, for an effect that keeps a player in the game or a wrong pick */
+    onDismiss: () => void;
+};
+
 /**
  * The properties for {@link LifeTile}
  */
 export type LifeTileProps = {
     /** Which player this is, counted from one */
     number: number;
-    /** Supplied participant name, falling back to the Seat number. */
-    name?: string;
+    /** Their name */
+    name: string;
     /** Their current total */
     life: number;
     /** What the last few taps came to, gone once they have settled */
     delta: number | undefined;
     /** What every seat's commander has put on them, in seat order */
     damage: Array<number>;
-    /** What their own commander has put on every seat, in seat order */
-    dealt: Array<number>;
     /** The other seats, in turn order after this one */
     opponents: Array<number>;
     /** Where they sit and where their tile goes */
     placement: SeatPlacement;
     /** Whether the tile butts against its neighbours instead of standing apart */
     flush: boolean;
+    /** Whether the format counts commander damage */
+    commanderDamage: boolean;
     /** Adds to the total; repeats while a button is held */
     onChange: (amount: number) => void;
     /** What part the tile plays in a booking, while one is open at the table */
     booking: TileBooking | undefined;
     /** Opens booking commander damage for this player, or closes it again */
     onToggleBooking: () => void;
+    /** How the game ended for them, once only one player is left standing or the table said who won */
+    verdict: TileVerdict | undefined;
+    /** Names them the winner, while the table says who won */
+    onClaim: (() => void) | undefined;
 };
 
 /**
@@ -135,37 +168,33 @@ export type LifeTileProps = {
  * a table, and a marker that has to be leaned in for is one nobody keeps up to
  * date.
  *
- * The strip also carries the other direction: what this player's own commander
- * has put on everyone else, so they can see how far each opponent is from the
- * lethal helping without asking round the table. Those are outlined in the
- * opponent's colour rather than filled with it — filled means taken, outlined
- * means dealt, and the bolt in front of them says so too.
- *
  * While an opponent is booking, the tile is theirs to tap: it is turned towards
  * them and stands for this player's commander, and its own counter is out of
  * reach until they are done or the table takes it back.
  *
  * A player counting on their own is left with the counter alone: no strip and no
- * name, since neither has anything to point at.
+ * name, since neither has anything to point at. A format without commanders
+ * drops the strip as well.
  *
  * @returns the tile
  */
 export function LifeTile({
     number,
-    name,
+    name: player,
     life,
     delta,
     damage,
-    dealt,
     opponents,
     placement,
     flush,
+    commanderDamage,
     onChange,
     booking,
     onToggleBooking,
+    verdict,
+    onClaim,
 }: LifeTileProps) {
     const [t] = useTranslation("game-utils");
-    const player = name ?? t("label.player", { number });
     const hint = t("label.hold-step", { amount: HOLD_STEP });
     const out = isEliminated(life, damage);
     // A player counting on their own has nobody to book commander damage
@@ -175,7 +204,6 @@ export function LifeTile({
     const alone = opponents.length === 0;
     const booked = booking?.role === "booking";
     const commanders = [...opponents, number - 1];
-    const dealing = commanders.filter((opponent) => dealt[opponent] > 0);
     // A target is read by the player booking, not by the one it belongs to.
     const seat = booking?.role === "target" ? booking.reader : placement.seat;
 
@@ -192,8 +220,9 @@ export function LifeTile({
             <div className={clsx("[container-type:size] absolute flex flex-col", FRAME[seat])}>
                 {booking?.role === "target" ? (
                     <CommanderDamageTarget
-                        player={booking.player}
-                        number={number}
+                        reader={booking.name}
+                        you={booking.you}
+                        name={player}
                         taken={booking.taken}
                         offer={booking.offer}
                         onChange={booking.onChange}
@@ -204,7 +233,8 @@ export function LifeTile({
                         <div className={"flex min-h-0 flex-1 items-stretch"}>
                             {booking?.role === "booking" ? (
                                 <CommanderDamagePanel
-                                    number={number}
+                                    name={player}
+                                    you={booking.you}
                                     life={life}
                                     delta={delta}
                                     offer={booking.offer}
@@ -273,7 +303,7 @@ export function LifeTile({
                                 </>
                             )}
                         </div>
-                        {!alone && (
+                        {!alone && commanderDamage && (
                             <button
                                 type={"button"}
                                 aria-label={
@@ -314,31 +344,55 @@ export function LifeTile({
                                         </span>
                                     ),
                                 )}
-                                {dealing.length > 0 && (
-                                    <>
-                                        <BoltIcon
-                                            className={
-                                                "ml-[2cqw] size-[min(16cqh,4cqw,1.1rem)] text-white/70 @min-[22rem]:size-[min(16cqh,4cqw,2.2rem)]"
-                                            }
-                                        />
-                                        {dealing.map((opponent) => (
-                                            <span
-                                                key={opponent}
-                                                className={clsx(
-                                                    "flex items-center rounded-(--radius-pill) px-[2.5cqw] py-[0.5cqh] text-[min(20cqh,6cqw,1.25rem)] leading-tight font-black text-white tabular-nums ring-2 ring-inset @min-[22rem]:text-[min(20cqh,6cqw,2.5rem)]",
-                                                    dealt[opponent] >= COMMANDER_DAMAGE_LETHAL
-                                                        ? "bg-rose-600/60 ring-rose-300"
-                                                        : clsx("bg-black/30", SEAT_RINGS[opponent]),
-                                                )}
-                                            >
-                                                {dealt[opponent]}
-                                            </span>
-                                        ))}
-                                    </>
-                                )}
                             </button>
                         )}
                     </>
+                )}
+                {onClaim && !verdict && (
+                    <div
+                        className={
+                            "absolute inset-0 z-20 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+                        }
+                    >
+                        <TableButton
+                            tone={"lime"}
+                            onClick={onClaim}
+                            className={
+                                "px-[7cqw] py-[3cqh] text-[min(10cqh,6cqw,1.25rem)] shadow-(--shadow-card-md) @min-[22rem]:text-[min(10cqh,6cqw,2rem)]"
+                            }
+                        >
+                            {t("button.won")}
+                        </TableButton>
+                    </div>
+                )}
+                {verdict && (
+                    <div
+                        role={"group"}
+                        aria-label={t(VERDICT_LABELS[verdict.result])}
+                        className={
+                            "absolute inset-0 z-20 flex flex-col items-center justify-center gap-[5cqh] bg-black/60 p-[4cqw] backdrop-blur-sm"
+                        }
+                    >
+                        <span
+                            className={clsx(
+                                "leading-none font-black tracking-tight uppercase",
+                                verdict.result === "draw"
+                                    ? "text-[min(24cqh,10cqw,3.5rem)] @min-[22rem]:text-[min(24cqh,10cqw,7rem)]"
+                                    : "text-[min(24cqh,15cqw,3.5rem)] @min-[22rem]:text-[min(24cqh,15cqw,7rem)]",
+                                verdict.result === "won" ? "text-lime-300" : "text-white/85",
+                            )}
+                        >
+                            {t(VERDICT_LABELS[verdict.result])}
+                        </span>
+                        <div className={"flex flex-wrap items-center justify-center gap-[3cqw]"}>
+                            <TableButton tone={"outline"} onClick={verdict.onDismiss} className={VERDICT_BUTTON}>
+                                {verdict.dismiss}
+                            </TableButton>
+                            <TableButton tone={"lime"} onClick={verdict.onNext} className={VERDICT_BUTTON}>
+                                {verdict.next}
+                            </TableButton>
+                        </div>
+                    </div>
                 )}
             </div>
         </article>

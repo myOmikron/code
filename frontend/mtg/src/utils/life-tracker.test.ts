@@ -15,6 +15,7 @@ import {
     saveLifeTrackerGame,
     saveLifeTrackerSettings,
     seatingFor,
+    seatsFacing,
     trackHit,
     withHit,
 } from "src/utils/life-tracker";
@@ -236,6 +237,31 @@ describe("commander damage order", () => {
                 }
             }
         }
+    });
+});
+
+describe("seating the device holder", () => {
+    it("puts the holder of a duel at the bottom, whichever seat they have", () => {
+        const { seats } = seatingFor(2, "sides", "portrait");
+
+        expect(seatsFacing(seats, 0).map((placement) => placement.seat)).toEqual(["bottom", "top"]);
+        expect(seatsFacing(seats, 1)).toEqual(seats);
+    });
+
+    it("keeps the pod clockwise around the holder", () => {
+        const { seats } = seatingFor(4, "cross", "landscape");
+        const turned = seatsFacing(seats, 1);
+
+        expect(turned[1].seat).toBe("bottom");
+        expect(turned.map((placement) => placement.area)).toEqual(
+            [...seats.slice(2), ...seats.slice(0, 2)].map((placement) => placement.area),
+        );
+    });
+
+    it("leaves the table alone without a holder", () => {
+        const { seats } = seatingFor(3, "sides", "portrait");
+
+        expect(seatsFacing(seats, undefined)).toBe(seats);
     });
 });
 
