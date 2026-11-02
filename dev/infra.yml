@@ -8,7 +8,7 @@ name: infra
 
 services:
   nats:
-    image: nats:2.15.1
+    image: nats:2.15.2
     command: "--jetstream"
     networks: [ net-dev ]
 

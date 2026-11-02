@@ -60,7 +60,7 @@ services:
         condition: service_started
 
   nats:
-    image: nats:2.15.1
+    image: nats:2.15.2
     restart: unless-stopped
     # JetStream state on disk: the MAIL stream is a durable work queue,
     # queued mails must survive a restart.
