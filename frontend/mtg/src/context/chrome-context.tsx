@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect } from "react";
 
-/** What the menu hands the pages about its own chrome */
+/** What the app hands the pages about its own chrome */
 export type Chrome = {
     /** Whether the chrome is hidden right now */
     bare: boolean;

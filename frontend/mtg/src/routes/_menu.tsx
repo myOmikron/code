@@ -52,8 +52,7 @@ import { BugReportDialog } from "src/components/bug-report-dialog";
 import { ShortcutHelpDialog } from "src/components/shortcut-help-dialog";
 import { UnreadDot } from "src/components/unread-dot";
 import { useUnreadReleaseNotes } from "src/utils/use-release-notes";
-import { ChromeProvider } from "src/context/chrome-context";
-import type { Chrome } from "src/context/chrome-context";
+import { useChromeBare } from "src/context/chrome-context";
 import { ShortcutHelpProvider } from "src/context/shortcut-help-context";
 import type { ShortcutHelp, ShortcutRow } from "src/context/shortcut-help-context";
 import { useFullscreen } from "src/utils/use-fullscreen";
@@ -92,8 +91,7 @@ function RouteComponent() {
     // A page that has taken the whole screen keeps it: the navbar would be a
     // strip of browser back in the middle of a game.
     const { active: fullscreen } = useFullscreen();
-    const [pageBare, setPageBare] = useState(false);
-    const chrome = useMemo<Chrome>(() => ({ bare: pageBare, setBare: setPageBare }), [pageBare]);
+    const pageBare = useChromeBare();
 
     // Workspaces get the whole window: the deck builder needs room for a
     // hundred cards, while the table counter divides every available
@@ -121,16 +119,15 @@ function RouteComponent() {
     );
 
     return (
-        <ChromeProvider value={chrome}>
-            <ShortcutHelpProvider value={shortcutHelp}>
-                <StackedLayout
-                    navCollapseBelow={"sm"}
-                    contentWidth={building ? "full" : "wide"}
-                    bare={fullscreen || pageBare}
-                    footer={<AppFooter />}
-                    navbar={
-                        <Navbar className={"max-lg:gap-2"}>
-                            {/* Three tiers, because the app is used half-screen and as an installed
+        <ShortcutHelpProvider value={shortcutHelp}>
+            <StackedLayout
+                navCollapseBelow={"sm"}
+                contentWidth={building ? "full" : "wide"}
+                bare={fullscreen || pageBare}
+                footer={<AppFooter />}
+                navbar={
+                    <Navbar className={"max-lg:gap-2"}>
+                        {/* Three tiers, because the app is used half-screen and as an installed
                         pwa far more often than full-width: from `lg` the sections carry their
                         labels, between `sm` and `lg` they shrink to icons (the labels stay for
                         screen readers and as tooltips), and only below `sm` do they move into
@@ -139,263 +136,252 @@ function RouteComponent() {
                         upright — an ipad mini is 768px across — has the help entry, the install
                         prompt and the avatar to fit beside it. The tighter gaps below `lg` are
                         what keeps the icon row roomy for those. */}
-                            <NavbarSection className={"max-lg:gap-1 max-sm:hidden"}>
-                                <NavbarItem href={"/home"} title={t("label.home")}>
-                                    <HomeIcon />
-                                    <NavbarLabel className={"max-lg:sr-only"}>{t("label.home")}</NavbarLabel>
-                                </NavbarItem>
-                                <NavbarItem href={"/global/decks"} title={t("label.decks")}>
-                                    <GlobeAltIcon />
-                                    <NavbarLabel className={"max-lg:sr-only"}>{t("label.decks")}</NavbarLabel>
-                                </NavbarItem>
-                                <NavbarItem href={"/tournaments"} title={t("label.tournaments")}>
-                                    <TrophyIcon />
-                                    <NavbarLabel className={"max-lg:sr-only"}>{t("label.tournaments")}</NavbarLabel>
-                                </NavbarItem>
-                                <NavbarItem href={"/game-utils"} title={t("label.game-utils")}>
-                                    <HeartIcon />
-                                    <NavbarLabel className={"max-lg:sr-only"}>{t("label.game-utils")}</NavbarLabel>
-                                </NavbarItem>
-                                {/* The scanner's own front page, not the camera. That page says
+                        <NavbarSection className={"max-lg:gap-1 max-sm:hidden"}>
+                            <NavbarItem href={"/home"} title={t("label.home")}>
+                                <HomeIcon />
+                                <NavbarLabel className={"max-lg:sr-only"}>{t("label.home")}</NavbarLabel>
+                            </NavbarItem>
+                            <NavbarItem href={"/global/decks"} title={t("label.decks")}>
+                                <GlobeAltIcon />
+                                <NavbarLabel className={"max-lg:sr-only"}>{t("label.decks")}</NavbarLabel>
+                            </NavbarItem>
+                            <NavbarItem href={"/tournaments"} title={t("label.tournaments")}>
+                                <TrophyIcon />
+                                <NavbarLabel className={"max-lg:sr-only"}>{t("label.tournaments")}</NavbarLabel>
+                            </NavbarItem>
+                            <NavbarItem href={"/game-utils"} title={t("label.game-utils")}>
+                                <HeartIcon />
+                                <NavbarLabel className={"max-lg:sr-only"}>{t("label.game-utils")}</NavbarLabel>
+                            </NavbarItem>
+                            {/* The scanner's own front page, not the camera. That page says
                                 which collection is being filled, and it starts loading the
                                 catalogue while the button to the camera is still being read —
                                 going straight to the viewfinder skips both. */}
-                                <NavbarItem href={"/scan"} title={t("label.scan")}>
-                                    <CameraIcon />
-                                    <NavbarLabel className={"max-lg:sr-only"}>{t("label.scan")}</NavbarLabel>
+                            <NavbarItem href={"/scan"} title={t("label.scan")}>
+                                <CameraIcon />
+                                <NavbarLabel className={"max-lg:sr-only"}>{t("label.scan")}</NavbarLabel>
+                            </NavbarItem>
+                        </NavbarSection>
+                        {known && loggedIn && (
+                            <>
+                                <NavbarDivider className={"max-sm:hidden"} />
+                                <NavbarSection className={"max-lg:gap-1 max-sm:hidden"}>
+                                    <NavbarItem href={"/decks"} title={t("label.my-decks")}>
+                                        <RectangleStackIcon />
+                                        <NavbarLabel className={"max-lg:sr-only"}>{t("label.my-decks")}</NavbarLabel>
+                                    </NavbarItem>
+                                    <NavbarItem href={"/collections"} title={t("label.collection")}>
+                                        <ArchiveBoxIcon />
+                                        <NavbarLabel className={"max-lg:sr-only"}>{t("label.collection")}</NavbarLabel>
+                                    </NavbarItem>
+                                    <NavbarItem href={"/watch-lists"} title={t("label.watch-lists")}>
+                                        <QueueListIcon />
+                                        <NavbarLabel className={"max-lg:sr-only"}>{t("label.watch-lists")}</NavbarLabel>
+                                        {alarms > 0 && (
+                                            <Badge color={"amber"} className={"ml-1"}>
+                                                {alarms}
+                                            </Badge>
+                                        )}
+                                    </NavbarItem>
+                                    {admin && (
+                                        <NavbarItem href={"/admin"} title={t("label.admin")}>
+                                            <ShieldCheckIcon />
+                                            <NavbarLabel className={"max-lg:sr-only"}>{t("label.admin")}</NavbarLabel>
+                                        </NavbarItem>
+                                    )}
+                                </NavbarSection>
+                            </>
+                        )}
+                        <NavbarSpacer />
+                        <NavbarSection>
+                            <NavbarItem href={"/whats-new"} title={t("label.whats-new")}>
+                                <SparklesIcon />
+                                <NavbarLabel className={"sr-only"}>{t("label.whats-new")}</NavbarLabel>
+                                {unreadReleaseNotes && <UnreadDot label={t("accessibility.unread-release-notes")} />}
+                            </NavbarItem>
+                            {/* Shortcuts need a keyboard, which a touch screen rarely has. */}
+                            <NavbarItem
+                                onClick={() => setHelping(true)}
+                                title={t("heading.shortcuts")}
+                                className={"pointer-coarse:hidden"}
+                            >
+                                <QuestionMarkCircleIcon />
+                                <NavbarLabel className={"sr-only"}>{t("heading.shortcuts")}</NavbarLabel>
+                            </NavbarItem>
+                        </NavbarSection>
+                        {/* Labelled and on every width, unlike the sections next to it: the entry
+                        is the only place offering the install, and an icon alone does not say
+                        what it does. It disappears once the app runs from the home screen. */}
+                        {install.canInstall && (
+                            <NavbarSection>
+                                <NavbarItem onClick={install.install} title={tg("button.install-app")}>
+                                    <ArrowDownTrayIcon />
+                                    <NavbarLabel className={"whitespace-nowrap"}>
+                                        {tg("button.install-app")}
+                                    </NavbarLabel>
                                 </NavbarItem>
                             </NavbarSection>
+                        )}
+                        {!known ? null : loggedIn ? (
+                            <NavbarSection>
+                                <Dropdown>
+                                    <DropdownButton plain={true}>
+                                        <Avatar
+                                            className={"size-6"}
+                                            initials={me.account?.username.substring(0, 2)}
+                                            alt={`Avatar of ${me.account?.username}`}
+                                        />
+                                        <ChevronDownIcon className={"size-3"} />
+                                    </DropdownButton>
+                                    <DropdownMenu anchor={"bottom end"}>
+                                        <DropdownItem href={"/profile"}>
+                                            <UserIcon />
+                                            <DropdownLabel>{t("label.profile-settings")}</DropdownLabel>
+                                        </DropdownItem>
+                                        <DropdownItem onClick={() => setReporting(true)}>
+                                            <BugAntIcon />
+                                            <DropdownLabel>{tg("button.report-bug")}</DropdownLabel>
+                                        </DropdownItem>
+                                        <DropdownItem
+                                            onClick={async () => {
+                                                await me.logout();
+                                                await navigate({ to: "/" });
+                                            }}
+                                        >
+                                            <ArrowLeftStartOnRectangleIcon />
+                                            <DropdownLabel>{t("label.logout")}</DropdownLabel>
+                                        </DropdownItem>
+                                    </DropdownMenu>
+                                </Dropdown>
+                            </NavbarSection>
+                        ) : authPage ? null : (
+                            // The auth pages are the form and link the other one themselves. On a
+                            // phone the bar only fits one button: signing in is what returning
+                            // players come for, signing up stays in the slide-over and in the
+                            // home page's call to action.
+                            <NavbarSection>
+                                <Button outline={true} href={"/auth/login"} className={"whitespace-nowrap"}>
+                                    {t("label.login")}
+                                </Button>
+                                <PrimaryButton href={"/auth/signup"} className={"whitespace-nowrap max-sm:hidden"}>
+                                    {t("label.sign-up")}
+                                </PrimaryButton>
+                            </NavbarSection>
+                        )}
+                    </Navbar>
+                }
+                sidebar={
+                    <Sidebar>
+                        <SidebarBody>
+                            <SidebarSection>
+                                <SidebarItem href={"/home"}>
+                                    <HomeIcon />
+                                    <SidebarLabel>{t("label.home")}</SidebarLabel>
+                                </SidebarItem>
+                                <SidebarItem href={"/global/decks"}>
+                                    <GlobeAltIcon />
+                                    <SidebarLabel>{t("label.decks")}</SidebarLabel>
+                                </SidebarItem>
+                                <SidebarItem href={"/tournaments"}>
+                                    <TrophyIcon />
+                                    <SidebarLabel>{t("label.tournaments")}</SidebarLabel>
+                                </SidebarItem>
+                                <SidebarItem href={"/game-utils"}>
+                                    <HeartIcon />
+                                    <SidebarLabel>{t("label.game-utils")}</SidebarLabel>
+                                </SidebarItem>
+                                <SidebarItem href={"/scan"}>
+                                    <CameraIcon />
+                                    <SidebarLabel>{t("label.scan")}</SidebarLabel>
+                                </SidebarItem>
+                            </SidebarSection>
+
                             {known && loggedIn && (
                                 <>
-                                    <NavbarDivider className={"max-sm:hidden"} />
-                                    <NavbarSection className={"max-lg:gap-1 max-sm:hidden"}>
-                                        <NavbarItem href={"/decks"} title={t("label.my-decks")}>
+                                    <SidebarDivider />
+                                    <SidebarSection>
+                                        <SidebarItem href={"/decks"}>
                                             <RectangleStackIcon />
-                                            <NavbarLabel className={"max-lg:sr-only"}>
-                                                {t("label.my-decks")}
-                                            </NavbarLabel>
-                                        </NavbarItem>
-                                        <NavbarItem href={"/collections"} title={t("label.collection")}>
+                                            <SidebarLabel>{t("label.my-decks")}</SidebarLabel>
+                                        </SidebarItem>
+                                        <SidebarItem href={"/collections"}>
                                             <ArchiveBoxIcon />
-                                            <NavbarLabel className={"max-lg:sr-only"}>
-                                                {t("label.collection")}
-                                            </NavbarLabel>
-                                        </NavbarItem>
-                                        <NavbarItem href={"/watch-lists"} title={t("label.watch-lists")}>
+                                            <SidebarLabel>{t("label.collection")}</SidebarLabel>
+                                        </SidebarItem>
+                                        <SidebarItem href={"/watch-lists"}>
                                             <QueueListIcon />
-                                            <NavbarLabel className={"max-lg:sr-only"}>
-                                                {t("label.watch-lists")}
-                                            </NavbarLabel>
-                                            {alarms > 0 && (
-                                                <Badge color={"amber"} className={"ml-1"}>
-                                                    {alarms}
-                                                </Badge>
-                                            )}
-                                        </NavbarItem>
+                                            <SidebarLabel>{t("label.watch-lists")}</SidebarLabel>
+                                            {alarms > 0 && <Badge color={"amber"}>{alarms}</Badge>}
+                                        </SidebarItem>
                                         {admin && (
-                                            <NavbarItem href={"/admin"} title={t("label.admin")}>
+                                            <SidebarItem href={"/admin"}>
                                                 <ShieldCheckIcon />
-                                                <NavbarLabel className={"max-lg:sr-only"}>
-                                                    {t("label.admin")}
-                                                </NavbarLabel>
-                                            </NavbarItem>
+                                                <SidebarLabel>{t("label.admin")}</SidebarLabel>
+                                            </SidebarItem>
                                         )}
-                                    </NavbarSection>
+                                    </SidebarSection>
                                 </>
                             )}
-                            <NavbarSpacer />
-                            <NavbarSection>
-                                <NavbarItem href={"/whats-new"} title={t("label.whats-new")}>
+
+                            <SidebarSpacer />
+
+                            <SidebarSection>
+                                <SidebarItem href={"/whats-new"}>
                                     <SparklesIcon />
-                                    <NavbarLabel className={"sr-only"}>{t("label.whats-new")}</NavbarLabel>
+                                    <SidebarLabel>{t("label.whats-new")}</SidebarLabel>
                                     {unreadReleaseNotes && (
                                         <UnreadDot label={t("accessibility.unread-release-notes")} />
                                     )}
-                                </NavbarItem>
-                                {/* Shortcuts need a keyboard, which a touch screen rarely has. */}
-                                <NavbarItem
-                                    onClick={() => setHelping(true)}
-                                    title={t("heading.shortcuts")}
-                                    className={"pointer-coarse:hidden"}
-                                >
+                                </SidebarItem>
+                                <SidebarItem onClick={() => setHelping(true)} className={"pointer-coarse:hidden"}>
                                     <QuestionMarkCircleIcon />
-                                    <NavbarLabel className={"sr-only"}>{t("heading.shortcuts")}</NavbarLabel>
-                                </NavbarItem>
-                            </NavbarSection>
-                            {/* Labelled and on every width, unlike the sections next to it: the entry
-                        is the only place offering the install, and an icon alone does not say
-                        what it does. It disappears once the app runs from the home screen. */}
-                            {install.canInstall && (
-                                <NavbarSection>
-                                    <NavbarItem onClick={install.install} title={tg("button.install-app")}>
-                                        <ArrowDownTrayIcon />
-                                        <NavbarLabel className={"whitespace-nowrap"}>
-                                            {tg("button.install-app")}
-                                        </NavbarLabel>
-                                    </NavbarItem>
-                                </NavbarSection>
-                            )}
-                            {!known ? null : loggedIn ? (
-                                <NavbarSection>
-                                    <Dropdown>
-                                        <DropdownButton plain={true}>
-                                            <Avatar
-                                                className={"size-6"}
-                                                initials={me.account?.username.substring(0, 2)}
-                                                alt={`Avatar of ${me.account?.username}`}
-                                            />
-                                            <ChevronDownIcon className={"size-3"} />
-                                        </DropdownButton>
-                                        <DropdownMenu anchor={"bottom end"}>
-                                            <DropdownItem href={"/profile"}>
-                                                <UserIcon />
-                                                <DropdownLabel>{t("label.profile-settings")}</DropdownLabel>
-                                            </DropdownItem>
-                                            <DropdownItem onClick={() => setReporting(true)}>
-                                                <BugAntIcon />
-                                                <DropdownLabel>{tg("button.report-bug")}</DropdownLabel>
-                                            </DropdownItem>
-                                            <DropdownItem
-                                                onClick={async () => {
-                                                    await me.logout();
-                                                    await navigate({ to: "/" });
-                                                }}
-                                            >
-                                                <ArrowLeftStartOnRectangleIcon />
-                                                <DropdownLabel>{t("label.logout")}</DropdownLabel>
-                                            </DropdownItem>
-                                        </DropdownMenu>
-                                    </Dropdown>
-                                </NavbarSection>
-                            ) : authPage ? null : (
-                                // The auth pages are the form and link the other one themselves. On a
-                                // phone the bar only fits one button: signing in is what returning
-                                // players come for, signing up stays in the slide-over and in the
-                                // home page's call to action.
-                                <NavbarSection>
-                                    <Button outline={true} href={"/auth/login"} className={"whitespace-nowrap"}>
-                                        {t("label.login")}
-                                    </Button>
-                                    <PrimaryButton href={"/auth/signup"} className={"whitespace-nowrap max-sm:hidden"}>
-                                        {t("label.sign-up")}
-                                    </PrimaryButton>
-                                </NavbarSection>
-                            )}
-                        </Navbar>
-                    }
-                    sidebar={
-                        <Sidebar>
-                            <SidebarBody>
-                                <SidebarSection>
-                                    <SidebarItem href={"/home"}>
-                                        <HomeIcon />
-                                        <SidebarLabel>{t("label.home")}</SidebarLabel>
-                                    </SidebarItem>
-                                    <SidebarItem href={"/global/decks"}>
-                                        <GlobeAltIcon />
-                                        <SidebarLabel>{t("label.decks")}</SidebarLabel>
-                                    </SidebarItem>
-                                    <SidebarItem href={"/tournaments"}>
-                                        <TrophyIcon />
-                                        <SidebarLabel>{t("label.tournaments")}</SidebarLabel>
-                                    </SidebarItem>
-                                    <SidebarItem href={"/game-utils"}>
-                                        <HeartIcon />
-                                        <SidebarLabel>{t("label.game-utils")}</SidebarLabel>
-                                    </SidebarItem>
-                                    <SidebarItem href={"/scan"}>
-                                        <CameraIcon />
-                                        <SidebarLabel>{t("label.scan")}</SidebarLabel>
-                                    </SidebarItem>
-                                </SidebarSection>
-
-                                {known && loggedIn && (
+                                    <SidebarLabel>{t("heading.shortcuts")}</SidebarLabel>
+                                </SidebarItem>
+                                {!known ? null : loggedIn ? (
                                     <>
-                                        <SidebarDivider />
-                                        <SidebarSection>
-                                            <SidebarItem href={"/decks"}>
-                                                <RectangleStackIcon />
-                                                <SidebarLabel>{t("label.my-decks")}</SidebarLabel>
-                                            </SidebarItem>
-                                            <SidebarItem href={"/collections"}>
-                                                <ArchiveBoxIcon />
-                                                <SidebarLabel>{t("label.collection")}</SidebarLabel>
-                                            </SidebarItem>
-                                            <SidebarItem href={"/watch-lists"}>
-                                                <QueueListIcon />
-                                                <SidebarLabel>{t("label.watch-lists")}</SidebarLabel>
-                                                {alarms > 0 && <Badge color={"amber"}>{alarms}</Badge>}
-                                            </SidebarItem>
-                                            {admin && (
-                                                <SidebarItem href={"/admin"}>
-                                                    <ShieldCheckIcon />
-                                                    <SidebarLabel>{t("label.admin")}</SidebarLabel>
-                                                </SidebarItem>
-                                            )}
-                                        </SidebarSection>
+                                        <SidebarItem href={"/profile"}>
+                                            <UserIcon />
+                                            <SidebarLabel>{t("label.profile-settings")}</SidebarLabel>
+                                        </SidebarItem>
+                                        <SidebarItem onClick={() => setReporting(true)}>
+                                            <BugAntIcon />
+                                            <SidebarLabel>{tg("button.report-bug")}</SidebarLabel>
+                                        </SidebarItem>
+                                        <SidebarItem
+                                            onClick={async () => {
+                                                await me.logout();
+                                                await navigate({ to: "/" });
+                                            }}
+                                        >
+                                            <ArrowLeftStartOnRectangleIcon />
+                                            <SidebarLabel>{t("label.logout")}</SidebarLabel>
+                                        </SidebarItem>
+                                    </>
+                                ) : (
+                                    <>
+                                        <SidebarItem href={"/auth/login"}>
+                                            <SidebarLabel>{t("label.login")}</SidebarLabel>
+                                        </SidebarItem>
+                                        <SidebarItem href={"/auth/signup"}>
+                                            <SidebarLabel>{t("label.sign-up")}</SidebarLabel>
+                                        </SidebarItem>
                                     </>
                                 )}
-
-                                <SidebarSpacer />
-
-                                <SidebarSection>
-                                    <SidebarItem href={"/whats-new"}>
-                                        <SparklesIcon />
-                                        <SidebarLabel>{t("label.whats-new")}</SidebarLabel>
-                                        {unreadReleaseNotes && (
-                                            <UnreadDot label={t("accessibility.unread-release-notes")} />
-                                        )}
-                                    </SidebarItem>
-                                    <SidebarItem onClick={() => setHelping(true)} className={"pointer-coarse:hidden"}>
-                                        <QuestionMarkCircleIcon />
-                                        <SidebarLabel>{t("heading.shortcuts")}</SidebarLabel>
-                                    </SidebarItem>
-                                    {!known ? null : loggedIn ? (
-                                        <>
-                                            <SidebarItem href={"/profile"}>
-                                                <UserIcon />
-                                                <SidebarLabel>{t("label.profile-settings")}</SidebarLabel>
-                                            </SidebarItem>
-                                            <SidebarItem onClick={() => setReporting(true)}>
-                                                <BugAntIcon />
-                                                <SidebarLabel>{tg("button.report-bug")}</SidebarLabel>
-                                            </SidebarItem>
-                                            <SidebarItem
-                                                onClick={async () => {
-                                                    await me.logout();
-                                                    await navigate({ to: "/" });
-                                                }}
-                                            >
-                                                <ArrowLeftStartOnRectangleIcon />
-                                                <SidebarLabel>{t("label.logout")}</SidebarLabel>
-                                            </SidebarItem>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <SidebarItem href={"/auth/login"}>
-                                                <SidebarLabel>{t("label.login")}</SidebarLabel>
-                                            </SidebarItem>
-                                            <SidebarItem href={"/auth/signup"}>
-                                                <SidebarLabel>{t("label.sign-up")}</SidebarLabel>
-                                            </SidebarItem>
-                                        </>
-                                    )}
-                                </SidebarSection>
-                            </SidebarBody>
-                        </Sidebar>
-                    }
-                >
-                    {!fullscreen && !pageBare && <TournamentParticipationEntry />}
-                    <Suspense>
-                        <Outlet />
-                    </Suspense>
-                </StackedLayout>
-                <ShortcutHelpDialog open={helping} shortcuts={shortcuts} onClose={() => setHelping(false)} />
-                {loggedIn ? (
-                    <BugReportDialog open={reporting} onClose={() => setReporting(false)} start={MENU_START} />
-                ) : null}
-            </ShortcutHelpProvider>
-        </ChromeProvider>
+                            </SidebarSection>
+                        </SidebarBody>
+                    </Sidebar>
+                }
+            >
+                {!fullscreen && !pageBare && <TournamentParticipationEntry />}
+                <Suspense>
+                    <Outlet />
+                </Suspense>
+            </StackedLayout>
+            <ShortcutHelpDialog open={helping} shortcuts={shortcuts} onClose={() => setHelping(false)} />
+            {loggedIn ? (
+                <BugReportDialog open={reporting} onClose={() => setReporting(false)} start={MENU_START} />
+            ) : null}
+        </ShortcutHelpProvider>
     );
 }
 

@@ -1,6 +1,7 @@
 import { ExclamationTriangleIcon, XMarkIcon } from "@heroicons/react/20/solid";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useChromeBare } from "src/context/chrome-context";
 
 /** The browser-local dismissal marker */
 const STORAGE_KEY = "version-warning-dismissed";
@@ -33,13 +34,16 @@ function wasDismissed(): boolean {
  * `localStorage`. If storage is unavailable, the banner still stays dismissed
  * until the page is reloaded.
  *
+ * A page that has taken the whole screen goes without it.
+ *
  * @returns the banner, or nothing from 1.0 on
  */
 export function VersionWarning() {
     const [tg] = useTranslation();
     const [dismissed, setDismissed] = useState(wasDismissed);
+    const bare = useChromeBare();
 
-    if (!__APP_VERSION__.startsWith("0.") || dismissed) {
+    if (!__APP_VERSION__.startsWith("0.") || dismissed || bare) {
         return null;
     }
 
