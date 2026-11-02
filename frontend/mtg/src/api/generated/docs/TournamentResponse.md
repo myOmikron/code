@@ -9,6 +9,7 @@ Name | Type
 ------------ | -------------
 `best_of` | [BestOf](BestOf.md)
 `check_in` | [CheckIn](CheckIn.md)
+`commander_damage` | boolean
 `description` | string
 `entered_afterwards` | boolean
 `entry_fee` | [EntryFeeSchema](EntryFeeSchema.md)

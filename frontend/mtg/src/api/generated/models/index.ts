@@ -8912,6 +8912,10 @@ export interface TournamentResponse {
      */
     check_in: CheckIn;
     /**
+     * Whether its Games count commander damage: the format is played with a commander, or any format goes
+     */
+    commander_damage: boolean;
+    /**
      * What Participants should know beforehand
      */
     description?: string | null;

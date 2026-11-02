@@ -325,6 +325,13 @@ pub fn has_brackets(slug: &str) -> bool {
     rules_for(slug).is_some_and(|rules| rules.has_brackets)
 }
 
+/// Whether a format is played with a commander, so its games count commander damage
+///
+/// A slug the service does not offer has none.
+pub fn has_commander(slug: &str) -> bool {
+    rules_for(slug).is_some_and(|rules| matches!(rules.commander, CommanderRule::Required { .. }))
+}
+
 /// How much extra-turn play a bracket tolerates
 ///
 /// Three values rather than a yes/no, because the published rule is not one:
@@ -494,6 +501,14 @@ mod tests {
         assert!(!has_brackets("duel"));
         assert!(!has_brackets("modern"));
         assert!(!has_brackets("archon"));
+    }
+
+    #[test]
+    fn commander_damage_counts_where_a_commander_is_played() {
+        assert!(has_commander("commander"));
+        assert!(has_commander("oathbreaker"));
+        assert!(!has_commander("modern"));
+        assert!(!has_commander("nonsense"));
     }
 
     #[test]

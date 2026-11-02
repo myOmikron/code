@@ -27405,6 +27405,10 @@
                             }
                         ]
                     },
+                    "commander_damage": {
+                        "description": "Whether its Games count commander damage: the format is played with a commander, or any format goes",
+                        "type": "boolean"
+                    },
                     "description": {
                         "nullable": true,
                         "description": "What Participants should know beforehand",
@@ -27559,6 +27563,7 @@
                 },
                 "required": [
                     "check_in",
+                    "commander_damage",
                     "entered_afterwards",
                     "name",
                     "ruleset",
