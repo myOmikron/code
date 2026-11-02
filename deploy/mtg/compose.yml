@@ -2,7 +2,7 @@ name: mtg
 
 services:
   traefik:
-    image: traefik:v3.7.16
+    image: traefik:v3.7.17
     restart: unless-stopped
     ports:
       - "80:80"
