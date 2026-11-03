@@ -59,11 +59,21 @@ function sameShape(stored: Array<number> | null, preset: Array<number>): boolean
 }
 
 /**
+ * The curve a shape answer stands for
+ *
+ * @param choice the shape
+ *
+ * @returns the curve shares, `null` for the bracket's own shape
+ */
+export function shapeCurve(choice: ShapeChoice): Array<number> | null {
+    return choice === "balanced" ? null : (withCurve(DEFAULT_TARGETS, SHAPE_COUNTS[choice]).curve ?? null);
+}
+
+/**
  * Which shape choice a stored curve matches, for pre-filling a re-run.
  *
- * Exported for {@link DeckAdvisorAssumptions}'s "Form" readout, which names
- * the same preset this dialog would pre-select on a re-run — one matcher,
- * not two copies of the same three-way comparison.
+ * Exported for the goals dialog's shape control, so it shows the preset
+ * this dialog would pre-select on a re-run.
  *
  * @param curve what the settings currently hold
  *
@@ -277,8 +287,7 @@ export function DeckAdvisorSetup({
      * advising" path.
      */
     function finish() {
-        const curve =
-            shapeChoice === "balanced" ? null : (withCurve(DEFAULT_TARGETS, SHAPE_COUNTS[shapeChoice]).curve ?? null);
+        const curve = shapeCurve(shapeChoice);
         onSave({
             ...settings,
             themes: withThemesPicked(settings.themes, draftThemes),

@@ -65,15 +65,7 @@ export function DeckAdvisorThemes({ report, prefs, onSetLevel, labels }: DeckAdv
 
     return (
         <>
-            <DeckAdvisorPanel
-                hint={t("description.themes")}
-                action={
-                    <QuietButton onClick={() => setAdding(true)} className={"shrink-0"}>
-                        <PlusIcon className={"size-3.5"} />
-                        {t("button.add-theme")}
-                    </QuietButton>
-                }
-            >
+            <DeckAdvisorPanel hint={t("description.themes")}>
                 {rows.length === 0 ? (
                     <NoRead onAdd={() => setAdding(true)} />
                 ) : (
@@ -88,6 +80,16 @@ export function DeckAdvisorThemes({ report, prefs, onSetLevel, labels }: DeckAdv
                                 onSetLevel={(level) => onSetLevel(row.id, level)}
                             />
                         ))}
+                        <button
+                            type={"button"}
+                            onClick={() => setAdding(true)}
+                            className={
+                                "flex min-h-12 items-center justify-center gap-1.5 rounded-(--radius-control) border border-dashed border-zinc-950/20 px-3 py-2 text-sm/6 font-medium text-zinc-500 transition hover:border-lime-600/50 hover:text-lime-700 dark:border-white/20 dark:text-zinc-400 dark:hover:border-lime-300/50 dark:hover:text-lime-300"
+                            }
+                        >
+                            <PlusIcon className={"size-4"} />
+                            {t("button.new-theme")}
+                        </button>
                     </div>
                 )}
 

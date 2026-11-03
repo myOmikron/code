@@ -17,6 +17,7 @@
  */
 
 import { AdvisorSettingsResponse, MarkedCard, SetAdvisorSettingsRequest } from "src/api/generated";
+import type { Direction } from "src/utils/advisor-directions";
 import { Corridor, DEFAULT_TARGETS, DeckTargets, heldTargets } from "src/utils/deck-targets";
 import {
     DEFAULT_THEME_PREFS,
@@ -49,6 +50,10 @@ export type AdvisorSettings = {
     kept: Array<KeptCard>;
     /** Whether the reader has been through the advisor's questions */
     setup_done: boolean;
+    /** Goals the reader chose after playing the deck */
+    directions: Array<Direction>;
+    /** When to next ask how the deck played, `null` when nothing is pending */
+    debrief_at: string | null;
 };
 
 /** A deck nobody has advised yet — every list empty, nothing graded, nothing asked */
@@ -59,6 +64,8 @@ export const DEFAULT_ADVISOR_SETTINGS: AdvisorSettings = {
     ignored: [],
     kept: [],
     setup_done: false,
+    directions: [],
+    debrief_at: null,
 };
 
 /**
@@ -90,6 +97,8 @@ export function fromResponse(response: AdvisorSettingsResponse): AdvisorSettings
         ignored: response.ignored,
         kept: response.kept,
         setup_done: response.setup_done,
+        directions: response.directions ?? [],
+        debrief_at: response.debrief_at ?? null,
     };
 }
 
@@ -108,6 +117,8 @@ export function toRequest(settings: AdvisorSettings): SetAdvisorSettingsRequest 
         ignored: settings.ignored,
         kept: settings.kept,
         setup_done: settings.setup_done,
+        directions: settings.directions,
+        debrief_at: settings.debrief_at,
     };
 }
 

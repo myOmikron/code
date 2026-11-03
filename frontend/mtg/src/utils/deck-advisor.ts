@@ -1,5 +1,5 @@
 import { DeckCardResponse } from "src/api/generated";
-import { DeckEntry, Swap, SuggestionReport } from "src/api/graph-generated";
+import { DeckEntry, SuggestionReport } from "src/api/graph-generated";
 import { isBasicLand } from "src/utils/card-types";
 import { letters } from "src/utils/deck-rules";
 
@@ -267,29 +267,22 @@ export function filterReport(report: SuggestionReport, accepted: Array<string>):
 }
 
 /**
- * Filters the service's add-centric swap pairings down to the exchanges that
- * are still live.
+ * The cut candidates still live: not kept, and still in the main deck
  *
- * The service answers in seconds; the reader's own click acts sooner than
- * that. A "keep" lands in `accepted` the instant it is clicked, and a cut or
- * swap already made removes the card's Main-zone slot from `cards` the
- * instant the loader refetches — both well before the graph catches up. This
- * is what lets the acted-on row leave the cuts tab immediately instead of
- * waiting out the next report.
- *
- * @param swaps the pairings as the service returned them
- * @param accepted oracle ids the reader kept, or the deck now holds, this session
+ * @param cuts the candidates as the service returned them
+ * @param kept oracle ids the reader kept or accepted
  * @param cards every slot of the deck, as the loader holds them
  *
- * @returns the pairings whose cut card is still a live candidate
+ * @returns the candidates still worth offering
  */
-export function filterSwaps(swaps: Array<Swap>, accepted: Array<string>, cards: Array<DeckCardResponse>): Array<Swap> {
-    // No early return on an empty `accepted`, unlike {@link filterReport}: the
-    // Main-zone check below is not gated on it — a plain cut leaves `accepted`
-    // untouched, and its row still has to disappear the moment the slot does.
-    return swaps.filter(
-        (pairing) =>
-            !accepted.includes(pairing.cut.oracle_id) &&
-            cards.some((slot) => slot.zone === "Main" && slot.card?.oracle_id === pairing.cut.oracle_id),
+export function filterCuts<Cut extends { oracle_id: string }>(
+    cuts: Array<Cut>,
+    kept: Array<string>,
+    cards: Array<DeckCardResponse>,
+): Array<Cut> {
+    return cuts.filter(
+        (cut) =>
+            !kept.includes(cut.oracle_id) &&
+            cards.some((slot) => slot.zone === "Main" && slot.card?.oracle_id === cut.oracle_id),
     );
 }
