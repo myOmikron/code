@@ -14,6 +14,7 @@ Name | Type
 `playability` | number
 `score` | number
 `reasons` | [Array&lt;CutPhrase&gt;](CutPhrase.md)
+`profile` | [CardProfile](CardProfile.md)
 
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)

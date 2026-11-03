@@ -15,6 +15,7 @@ Name | Type
 `provenance` | [Array&lt;Provenance&gt;](Provenance.md)
 `playability` | number
 `game_changer` | boolean
+`profile` | [CardProfile](CardProfile.md)
 
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)

@@ -162,6 +162,24 @@ export interface BucketReport {
     cards?: Array<CountedCard>;
 }
 /**
+ * The buckets a card counts toward, and the themes it plays.
+ * 
+ * `buckets` maps a bucket to the card's coverage, counted the way diagnostics
+ * counts the deck: its strongest role within each bucket.
+ * @export
+ * @interface CardProfile
+ */
+export interface CardProfile {
+    /**
+     * 
+     */
+    buckets?: { [key: string]: number | undefined; };
+    /**
+     * 
+     */
+    themes?: Array<string>;
+}
+/**
  * The consistency-math counts a competitive player already works out by
  * hand (Task D, cEDH Pro round) — `None` on `Diagnostics.cedh_stats` below
  * bracket 5, additive, every other field on `Diagnostics` unaffected.
@@ -403,6 +421,10 @@ export interface CutCandidate {
      * 
      */
     reasons?: Array<CutPhrase>;
+    /**
+     * 
+     */
+    profile?: CardProfile | null;
 }
 
 /**
@@ -1785,6 +1807,10 @@ export interface Suggestion {
      * 
      */
     game_changer?: boolean;
+    /**
+     * 
+     */
+    profile?: CardProfile | null;
 }
 /**
  * Suggestions gathered under the gap they close.
