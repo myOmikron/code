@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { DeckCardResponse } from "src/api/generated";
-import { CutCandidate, Suggestion, SuggestionGroup, SuggestionReport, Swap } from "src/api/graph-generated";
+import { Suggestion, SuggestionGroup, SuggestionReport } from "src/api/graph-generated";
 import {
     ADVISOR_MAX_CARDS,
     advisorAccepts,
@@ -8,7 +8,7 @@ import {
     advisorSignature,
     bracketSpeed,
     filterReport,
-    filterSwaps,
+    filterCuts,
     suggestionAddQuantity,
 } from "src/utils/deck-advisor";
 
@@ -252,34 +252,20 @@ describe("filterReport", () => {
     });
 });
 
-/**
- * Builds the smallest swap pairing {@link filterSwaps} can read
- *
- * @param cutOracleId the oracle identity of the card being given up
- *
- * @returns the pairing
- */
-function pairing(cutOracleId: string): Swap {
-    const cut: CutCandidate = { oracle_id: cutOracleId, name: cutOracleId };
-    return { add_oracle_id: "add", add_name: "add", cut };
-}
+describe("filterCuts", () => {
+    const cut = (oracle_id: string) => ({ oracle_id });
+    const cards = [slot("Main", "aaa"), slot("Main", "bbb")];
 
-describe("filterSwaps", () => {
-    test("drops a pairing whose cut was kept this session", () => {
-        const cards = [slot("Main", "aaa"), slot("Main", "bbb")];
-        const filtered = filterSwaps([pairing("aaa"), pairing("bbb")], ["aaa"], cards);
-        expect(filtered.map((p) => p.cut.oracle_id)).toEqual(["bbb"]);
+    test("drops a kept card", () => {
+        expect(filterCuts([cut("aaa"), cut("bbb")], ["aaa"], cards)).toEqual([cut("bbb")]);
     });
 
-    test("drops a pairing whose cut no longer holds a Main-zone slot, even with nothing accepted", () => {
-        const cards = [slot("Main", "bbb")]; // "aaa" was already cut
-        const filtered = filterSwaps([pairing("aaa"), pairing("bbb")], [], cards);
-        expect(filtered.map((p) => p.cut.oracle_id)).toEqual(["bbb"]);
+    test("keeps every live candidate", () => {
+        expect(filterCuts([cut("aaa"), cut("bbb")], [], cards)).toEqual([cut("aaa"), cut("bbb")]);
     });
 
-    test("ignores a copy sitting outside the Main zone", () => {
-        const cards = [slot("Side", "aaa")];
-        expect(filterSwaps([pairing("aaa")], [], cards)).toEqual([]);
+    test("drops a card no longer in the main deck", () => {
+        expect(filterCuts([cut("aaa")], [], [])).toEqual([]);
     });
 });
 
