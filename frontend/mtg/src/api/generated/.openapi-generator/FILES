@@ -134,6 +134,7 @@ docs/DeleteAccountRequest.md
 docs/DeletePasskeyErrors.md
 docs/DeletionMode.md
 docs/DeviationCopiesResponse.md
+docs/Direction.md
 docs/DiscardDeckCardsRequest.md
 docs/DisputeResultErrors.md
 docs/DropErrors.md

@@ -1,0 +1,39 @@
+[Migration]
+Hash = "7339746924842995416"
+Initial = false
+Dependency = 78
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "deck_advisor_settings"
+
+[Migration.Operations.Field]
+Name = "directions"
+Type = "binary"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "default_value"
+Value = "[]"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/deck/db.rs"
+Line = 429
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "deck_advisor_settings"
+
+[Migration.Operations.Field]
+Name = "debrief_at"
+Type = "datetime"
+Annotations = []
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/deck/db.rs"
+Line = 432
+Column = 9

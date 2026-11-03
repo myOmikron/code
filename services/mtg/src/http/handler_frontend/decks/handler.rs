@@ -901,8 +901,8 @@ pub async fn get_deck_advisor_settings(
 ///
 /// A theme id, a bucket id and an oracle id are the graph service's
 /// vocabulary and it already reports what it cannot parse, so nothing here
-/// validates them. The only two shapes checked are the pool query's length
-/// and the curve's.
+/// validates them. The only shapes checked are the pool query's length, the
+/// curve's and the number of directions.
 #[put("/{deck}/advisor-settings")]
 pub async fn set_deck_advisor_settings(
     account: Account,
@@ -921,6 +921,10 @@ pub async fn set_deck_advisor_settings(
         && (curve.len() != 7 || curve.iter().any(|share| !share.is_finite() || *share < 0.0))
     {
         return Err(ApiError::bad_request("A curve is seven mana values"));
+    }
+
+    if request.directions.len() > 8 {
+        return Err(ApiError::bad_request("At most eight directions"));
     }
 
     let mut tx = Database::global().start_transaction().await?;
@@ -947,6 +951,8 @@ pub async fn set_deck_advisor_settings(
                 ignored: request.ignored,
                 kept: request.kept,
                 setup_done: request.setup_done,
+                directions: request.directions,
+                debrief_at: request.debrief_at,
             },
         )
         .await?,

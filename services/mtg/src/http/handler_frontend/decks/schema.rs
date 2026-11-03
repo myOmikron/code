@@ -19,6 +19,7 @@ use crate::models::deck::DeckZone;
 use crate::models::deck::access::DeckRole;
 use crate::models::deck::advisor::AdvisorSettings;
 use crate::models::deck::advisor::DeckTargets;
+use crate::models::deck::advisor::Direction;
 use crate::models::deck::advisor::MarkedCard;
 use crate::models::deck::advisor::ThemePrefs;
 use crate::models::deck::deviation::DeckDeviation;
@@ -630,9 +631,9 @@ pub struct SetDeckRuleZeroRequest {
 
 /// One reader's advisor settings for one deck
 ///
-/// The same six fields as [`SetAdvisorSettingsRequest`] — a settings document
-/// is the same document going in and coming out. Two named types rather than
-/// one reused so the generated client names request and response separately.
+/// The same fields as [`SetAdvisorSettingsRequest`]: a settings document is
+/// the same document going in and coming out. Two named types rather than one
+/// reused so the generated client names request and response separately.
 #[derive(Debug, Clone, Default, Serialize, Deserialize, JsonSchema)]
 pub struct AdvisorSettingsResponse {
     /// Which themes to argue for and which to avoid
@@ -647,6 +648,10 @@ pub struct AdvisorSettingsResponse {
     pub kept: Vec<MarkedCard>,
     /// Whether the reader has been through the advisor's questions
     pub setup_done: bool,
+    /// Goals the reader chose after playing the deck
+    pub directions: Vec<Direction>,
+    /// When to next ask how the deck played, `null` when nothing is pending
+    pub debrief_at: Option<SchemaDateTime>,
 }
 
 impl From<AdvisorSettings> for AdvisorSettingsResponse {
@@ -658,6 +663,8 @@ impl From<AdvisorSettings> for AdvisorSettingsResponse {
             ignored: settings.ignored,
             kept: settings.kept,
             setup_done: settings.setup_done,
+            directions: settings.directions,
+            debrief_at: settings.debrief_at,
         }
     }
 }
@@ -686,6 +693,12 @@ pub struct SetAdvisorSettingsRequest {
     pub kept: Vec<MarkedCard>,
     /// Whether the reader has been through the advisor's questions
     pub setup_done: bool,
+    /// Goals the reader chose after playing the deck, at most eight
+    #[serde(default)]
+    pub directions: Vec<Direction>,
+    /// When to next ask how the deck played, `null` when nothing is pending
+    #[serde(default)]
+    pub debrief_at: Option<SchemaDateTime>,
 }
 
 /// What a Commander bracket asks of a deck

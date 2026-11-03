@@ -11353,7 +11353,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Replace this deck\'s advisor settings  A theme id, a bucket id and an oracle id are the graph service\'s vocabulary and it already reports what it cannot parse, so nothing here validates them. The only two shapes checked are the pool query\'s length and the curve\'s.
+     * Replace this deck\'s advisor settings  A theme id, a bucket id and an oracle id are the graph service\'s vocabulary and it already reports what it cannot parse, so nothing here validates them. The only shapes checked are the pool query\'s length, the curve\'s and the number of directions.
      * Replace this deck\'s advisor settings
      */
     async setDeckAdvisorSettingsRaw(requestParameters: SetDeckAdvisorSettingsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
@@ -11368,7 +11368,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Replace this deck\'s advisor settings  A theme id, a bucket id and an oracle id are the graph service\'s vocabulary and it already reports what it cannot parse, so nothing here validates them. The only two shapes checked are the pool query\'s length and the curve\'s.
+     * Replace this deck\'s advisor settings  A theme id, a bucket id and an oracle id are the graph service\'s vocabulary and it already reports what it cannot parse, so nothing here validates them. The only shapes checked are the pool query\'s length, the curve\'s and the number of directions.
      * Replace this deck\'s advisor settings
      */
     async setDeckAdvisorSettings(requestParameters: SetDeckAdvisorSettingsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {

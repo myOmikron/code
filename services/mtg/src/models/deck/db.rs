@@ -11,6 +11,7 @@ use uuid::Uuid;
 use crate::models::account::db::AccountModel;
 use crate::models::deck::DeckZone;
 use crate::models::deck::advisor::DeckTargets;
+use crate::models::deck::advisor::Direction;
 use crate::models::deck::advisor::MarkedCard;
 use crate::models::deck::advisor::ThemePrefs;
 use crate::models::deck::collaborator::CollaboratorLevel;
@@ -422,6 +423,13 @@ pub struct DeckAdvisorSettingsModel {
     /// Whether the reader has been through the advisor's questions
     #[rorm(default = false)]
     pub setup_done: bool,
+
+    /// Goals the reader chose after playing the deck
+    #[rorm(default = "[]")]
+    pub directions: Json<Vec<Direction>>,
+
+    /// When to next ask how the deck played, `None` when nothing is pending
+    pub debrief_at: Option<OffsetDateTime>,
 }
 
 /// Insert patch for [`DeckAdvisorSettingsModel`]
@@ -444,6 +452,10 @@ pub struct DeckAdvisorSettingsInsertPatch {
     pub kept: Json<Vec<MarkedCard>>,
     /// Whether the reader has been through the advisor's questions
     pub setup_done: bool,
+    /// Goals the reader chose after playing the deck
+    pub directions: Json<Vec<Direction>>,
+    /// When to next ask how the deck played, `None` when nothing is pending
+    pub debrief_at: Option<OffsetDateTime>,
 }
 
 /// An Account the owner named on one of their decks
