@@ -13032,7 +13032,7 @@ No authorization required
 
 Replace this deck\&#39;s advisor settings
 
-Replace this deck\&#39;s advisor settings  A theme id, a bucket id and an oracle id are the graph service\&#39;s vocabulary and it already reports what it cannot parse, so nothing here validates them. The only two shapes checked are the pool query\&#39;s length and the curve\&#39;s.
+Replace this deck\&#39;s advisor settings  A theme id, a bucket id and an oracle id are the graph service\&#39;s vocabulary and it already reports what it cannot parse, so nothing here validates them. The only shapes checked are the pool query\&#39;s length, the curve\&#39;s and the number of directions.
 
 ### Example
 

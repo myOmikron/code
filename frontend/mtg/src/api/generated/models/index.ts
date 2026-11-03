@@ -1085,11 +1085,19 @@ export interface AdminUnlockAccountRequest {
 /**
  * One reader's advisor settings for one deck
  * 
- * The same six fields as [`SetAdvisorSettingsRequest`] — a settings document is the same document going in and coming out. Two named types rather than one reused so the generated client names request and response separately.
+ * The same fields as [`SetAdvisorSettingsRequest`]: a settings document is the same document going in and coming out. Two named types rather than one reused so the generated client names request and response separately.
  * @export
  * @interface AdvisorSettingsResponse
  */
 export interface AdvisorSettingsResponse {
+    /**
+     * When to next ask how the deck played, `null` when nothing is pending
+     */
+    debrief_at?: string | null;
+    /**
+     * Goals the reader chose after playing the deck
+     */
+    directions: Array<Direction>;
     /**
      * Cards the advisor must never offer
      */
@@ -3105,6 +3113,23 @@ export interface DeviationCopiesResponse {
      * How many copies
      */
     quantity: number;
+}
+
+
+/**
+ * A goal the reader chose after playing the deck
+ * @export
+ * @interface Direction
+ */
+export interface Direction {
+    /**
+     * What the advisor should steer towards
+     */
+    fix: string;
+    /**
+     * What went wrong in play
+     */
+    problem: string;
 }
 
 
@@ -7675,6 +7700,14 @@ export interface SendBugReportResponse {
  * @interface SetAdvisorSettingsRequest
  */
 export interface SetAdvisorSettingsRequest {
+    /**
+     * When to next ask how the deck played, `null` when nothing is pending
+     */
+    debrief_at?: string | null;
+    /**
+     * Goals the reader chose after playing the deck, at most eight
+     */
+    directions?: Array<Direction>;
     /**
      * Cards the advisor must never offer
      */

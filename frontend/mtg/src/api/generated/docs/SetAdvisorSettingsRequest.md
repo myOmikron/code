@@ -7,6 +7,8 @@ Request to replace a deck\'s advisor settings  Whole-document, not per-field: ev
 
 Name | Type
 ------------ | -------------
+`debrief_at` | string
+`directions` | [Array&lt;Direction&gt;](Direction.md)
 `ignored` | [Array&lt;MarkedCard&gt;](MarkedCard.md)
 `kept` | [Array&lt;MarkedCard&gt;](MarkedCard.md)
 `pool_query` | string

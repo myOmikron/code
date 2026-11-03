@@ -1,12 +1,14 @@
 
 # AdvisorSettingsResponse
 
-One reader\'s advisor settings for one deck  The same six fields as [`SetAdvisorSettingsRequest`] — a settings document is the same document going in and coming out. Two named types rather than one reused so the generated client names request and response separately.
+One reader\'s advisor settings for one deck  The same fields as [`SetAdvisorSettingsRequest`]: a settings document is the same document going in and coming out. Two named types rather than one reused so the generated client names request and response separately.
 
 ## Properties
 
 Name | Type
 ------------ | -------------
+`debrief_at` | string
+`directions` | [Array&lt;Direction&gt;](Direction.md)
 `ignored` | [Array&lt;MarkedCard&gt;](MarkedCard.md)
 `kept` | [Array&lt;MarkedCard&gt;](MarkedCard.md)
 `pool_query` | string

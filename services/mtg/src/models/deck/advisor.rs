@@ -1,9 +1,9 @@
 //! What one reader's advisor knows about one deck.
 //!
-//! Six settings the advisor used to keep in the browser: which themes to
-//! argue for, the shape to grade the curve against, how much a card may
-//! cost, the cards never to offer, the cards never to cut, and whether the
-//! reader has been asked any of it yet.
+//! Which themes to argue for, the shape to grade the curve against, how much
+//! a card may cost, the cards never to offer, the cards never to cut, whether
+//! the reader has been asked any of it yet, the directions chosen after
+//! playing the deck and when to ask how it played.
 //!
 //! Stored as JSON rather than as five tables on purpose: this service never
 //! reads inside these values. A theme id, a bucket id and a corridor are the
@@ -14,6 +14,7 @@ use std::collections::HashMap;
 
 use galvyn::core::re_exports::schemars;
 use galvyn::core::re_exports::schemars::JsonSchema;
+use galvyn::core::stuff::schema::SchemaDateTime;
 use galvyn::rorm;
 use galvyn::rorm::db::transaction::Transaction;
 use galvyn::rorm::fields::types::ForeignModelByField;
@@ -116,12 +117,20 @@ pub struct MarkedCard {
     pub name: String,
 }
 
+/// A goal the reader chose after playing the deck
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct Direction {
+    /// What went wrong in play
+    pub problem: MaxStr<64>,
+    /// What the advisor should steer towards
+    pub fix: MaxStr<64>,
+}
+
 /// One reader's whole advisor settings document for one deck
 ///
-/// The same six fields the [`DeckAdvisorSettingsModel`] columns hold, read out
-/// and written back as one document — a deck nobody has advised yet still has
-/// one of these, simply with every field at its default. See the module doc
-/// for why this is JSON rather than five tables.
+/// The fields the [`DeckAdvisorSettingsModel`] columns hold, read out and
+/// written back as one document. A deck nobody has advised yet still has one
+/// of these, with every field at its default.
 #[derive(Debug, Clone, Default, Serialize, Deserialize, JsonSchema)]
 pub struct AdvisorSettings {
     /// Which themes to argue for and which to avoid
@@ -139,6 +148,12 @@ pub struct AdvisorSettings {
     /// Whether the reader has been through the advisor's questions
     #[serde(default)]
     pub setup_done: bool,
+    /// Goals the reader chose after playing the deck
+    #[serde(default)]
+    pub directions: Vec<Direction>,
+    /// When to next ask how the deck played, `None` when nothing is pending
+    #[serde(default)]
+    pub debrief_at: Option<SchemaDateTime>,
 }
 
 /// Reads a stored row back into the document the rest of the service works with
@@ -151,6 +166,8 @@ impl From<DeckAdvisorSettingsModel> for AdvisorSettings {
             ignored: row.ignored.0,
             kept: row.kept.0,
             setup_done: row.setup_done,
+            directions: row.directions.0,
+            debrief_at: row.debrief_at.map(SchemaDateTime),
         }
     }
 }
@@ -224,6 +241,14 @@ impl Deck {
             )
             .set(DeckAdvisorSettingsModel.kept, Json(settings.kept.clone()))
             .set(DeckAdvisorSettingsModel.setup_done, settings.setup_done)
+            .set(
+                DeckAdvisorSettingsModel.directions,
+                Json(settings.directions.clone()),
+            )
+            .set(
+                DeckAdvisorSettingsModel.debrief_at,
+                settings.debrief_at.map(|at| at.0),
+            )
             .condition(DeckAdvisorSettingsModel.deck.equals(uuid.into_inner()))
             .await?;
 
@@ -238,6 +263,8 @@ impl Deck {
                     ignored: Json(settings.ignored),
                     kept: Json(settings.kept),
                     setup_done: settings.setup_done,
+                    directions: Json(settings.directions),
+                    debrief_at: settings.debrief_at.map(|at| at.0),
                 })
                 .await?;
         }
