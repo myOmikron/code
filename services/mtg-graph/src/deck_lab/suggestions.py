@@ -50,6 +50,7 @@ from .composition import (
 )
 from .poolquery import PoolFilter
 from .power import weight_within_group
+from .profiles import CardProfile
 from .tracing import deck_span
 from .type_targets import CEDH_MIN_DECKS
 from .vocabulary import Resource, Role
@@ -1101,6 +1102,7 @@ class Suggestion(BaseModel):
     provenance: list[Provenance]
     playability: float = 0.0
     game_changer: bool = False
+    profile: CardProfile | None = None
 
     @property
     def channels(self) -> set[str]:

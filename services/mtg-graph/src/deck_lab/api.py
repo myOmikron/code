@@ -40,6 +40,7 @@ from .meta import (
 )
 from .meta import resolve_expected_meta as run_resolve_expected_meta
 from .poolquery import MAX_QUERY_LENGTH, PoolFilter, PoolQueryError, parse_pool_query
+from .profiles import attach_profiles
 from .ratelimit import RateLimiter
 from .search import DEFAULT_SORT, SORTS, SearchQuery
 from .search import facets as run_facets
@@ -1411,7 +1412,10 @@ def post_swaps(request: SwapsRequest) -> SwapsResponse:
             request.commander_oracle_id, request.commander_oracle_ids
         ),
     )
-    return SwapsResponse(suggestions=result["adds"], cuts=result["cuts"], swaps=result["swaps"])
+    adds, cuts = result["adds"], result["cuts"]
+    grouped = [s for group in adds.groups for s in group.suggestions]
+    attach_profiles([*adds.suggestions, *grouped], [*cuts, *(swap.cut for swap in result["swaps"])])
+    return SwapsResponse(suggestions=adds, cuts=cuts, swaps=result["swaps"])
 
 
 class ReplaceRequest(BaseModel):

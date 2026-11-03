@@ -45,6 +45,7 @@ from .composition import (
 )
 from .interaction import discount_board_wipe, is_cedh_template
 from .poolquery import PoolFilter
+from .profiles import CardProfile
 from .suggestions import Phrase, _theme_share_spec
 from .themes import FIT_THRESHOLD
 from .tracing import deck_span
@@ -182,6 +183,7 @@ class CutCandidate(BaseModel):
     # Structured so a localised UI can word them itself; each still carries its
     # English rendering for the CLI and anything without translations.
     reasons: list[CutPhrase] = Field(default_factory=list)
+    profile: CardProfile | None = None
 
 
 class Swap(BaseModel):
