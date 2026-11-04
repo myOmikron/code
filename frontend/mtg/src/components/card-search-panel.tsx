@@ -96,6 +96,10 @@ export type CardSearchPanelProps = {
     stickySearch?: boolean;
     /** Saves vertical room on phones by hiding explanatory copy */
     hideInfoOnMobile?: boolean;
+    /** Hides the explanatory copy everywhere */
+    hideInfo?: boolean;
+    /** Told whenever the search field changes */
+    onQueryChange?: (query: string) => void;
     /**
      * Whether the search field takes the cursor on mount.
      *
@@ -156,6 +160,8 @@ export function CardSearchPanel({
     toolbar,
     stickySearch = false,
     hideInfoOnMobile = false,
+    hideInfo = false,
+    onQueryChange,
     autoFocus = true,
     graph = false,
     graphIdentity,
@@ -349,9 +355,19 @@ export function CardSearchPanel({
     function pick(printing: Printing) {
         (onPick ?? onAdd)?.(printing);
         if (clearNameSearches && !browsing) {
-            setQuery("");
+            changeQuery("");
             searchInput.current?.focus();
         }
+    }
+
+    /**
+     * Changes the search field and tells the page
+     *
+     * @param next what it now holds
+     */
+    function changeQuery(next: string) {
+        setQuery(next);
+        onQueryChange?.(next);
     }
 
     /**
@@ -444,16 +460,18 @@ export function CardSearchPanel({
             <div className={clsx(stickySearch && "sticky top-0 z-20 bg-white pb-1 dark:bg-zinc-900")}>
                 <Field>
                     <Label>{t("label.card-search")}</Label>
-                    <Description className={hideInfoOnMobile ? "max-sm:hidden" : undefined}>
-                        {t("description.card-search")}
-                    </Description>
+                    {!hideInfo && (
+                        <Description className={hideInfoOnMobile ? "max-sm:hidden" : undefined}>
+                            {t("description.card-search")}
+                        </Description>
+                    )}
                     <Input
                         ref={searchInput}
                         type={"search"}
                         autoFocus={autoFocus}
                         value={query}
                         placeholder={t("label.card-search-placeholder")}
-                        onChange={(e) => setQuery(e.target.value)}
+                        onChange={(e) => changeQuery(e.target.value)}
                         onKeyDown={onSearchKeyDown}
                     />
                 </Field>

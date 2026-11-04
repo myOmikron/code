@@ -14,6 +14,7 @@ import { useTranslation } from "react-i18next";
 import type { DeckOverviewResponse } from "src/api/generated";
 import { CardSearchPanel } from "src/components/card-search-panel";
 import { ProxyDeckPicker } from "src/components/proxy-deck-picker";
+import { ProxyGroupRow } from "src/components/proxy-group-row";
 import type { ProxyGroup } from "src/utils/proxy-list";
 import type { Printing } from "src/utils/scryfall";
 
@@ -29,8 +30,8 @@ export type MpcFillAddDialogProps = {
     groups: Array<ProxyGroup>;
     /** How many cards of a group go out */
     groupCount: (group: ProxyGroup) => number;
-    /** Takes a deck and its cards off */
-    onDropDeck: (uuid: string) => void;
+    /** Takes a group and its cards off, `null` for the hand picks */
+    onDropDeck: (uuid: string | null) => void;
     /** The deck the combobox stands on */
     deck: DeckOverviewResponse | null;
     /** Chooses a deck without taking it yet */
@@ -83,6 +84,7 @@ export function MpcFillAddDialog({
 }: MpcFillAddDialogProps) {
     const [t] = useTranslation("game-utils");
     const [tg] = useTranslation();
+    const added = groups.filter((group) => group.deck !== null);
 
     return (
         <Dialog open={open} onClose={onClose} size={"3xl"}>
@@ -95,13 +97,24 @@ export function MpcFillAddDialog({
                             <ProxyDeckPicker
                                 decks={decks}
                                 groups={groups}
-                                countOf={groupCount}
-                                onDropDeck={onDropDeck}
                                 deck={deck}
                                 onDeck={onDeck}
                                 loading={loading}
                                 onAdd={onAddDeck}
                             />
+                            {added.length > 0 && (
+                                <ul className={"flex flex-col divide-y divide-zinc-950/5 dark:divide-white/10"}>
+                                    {added.map((group) => (
+                                        <li key={group.deck?.uuid} className={"py-1"}>
+                                            <ProxyGroupRow
+                                                group={group}
+                                                count={groupCount(group)}
+                                                onDropDeck={onDropDeck}
+                                            />
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
                             <SwitchField>
                                 <Label>{t("label.only-proxies")}</Label>
                                 <Description>{t("description.only-proxies")}</Description>

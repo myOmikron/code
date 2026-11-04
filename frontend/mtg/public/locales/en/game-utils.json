@@ -1,5 +1,9 @@
 {
     "accessibility": {
+        "next-sheet": "Next sheet",
+        "previous-sheet": "Previous sheet",
+        "sheet-preview": "Sheet preview, turn pages with the arrow keys",
+        "show-sheet": "Show sheet {{number}}",
         "browse-art": "See every image for {{name}}",
         "commander-damage-taken": "{{count}} commander damage from {{opponent}} to {{player}}",
         "drop-card": "Take {{name}} off the list",
@@ -14,6 +18,7 @@
         "starting-life-presets": "Common starting totals"
     },
     "button": {
+        "back-to-list": "Back to the list",
         "add-cards": "Add cards",
         "back-to-life": "Back to the life total",
         "back-to-tools": "Back to the game tools",
@@ -53,7 +58,6 @@
         "choose-cards": "Search for a card or add a deck, and the sheet shows up here.",
         "choose-order": "Search for a card or add a deck, and the order list shows up here.",
         "choose-tool": "Choose a tool for the table.",
-        "cut-lines": "A hairline along every card edge to cut on.",
         "foil": "Costs extra and cannot be decided per card.",
         "foil-impossible": "Plastic comes in no foil finish.",
         "import-xml": "Import the file into MPCFill under “Add Cards → XML”.",
@@ -70,10 +74,8 @@
         "paste-into-mpc-fill": "Paste it into MPCFill under “Add Cards → Text” and submit.",
         "pick-art_one": "1 image in the drives.",
         "pick-art_other": "{{count}} images in the drives. The one you pick goes into the order file.",
-        "print-backs": "Two-sided cards go on the sheet with both faces.",
         "print-scale": "Nine cards at their real size per A4 sheet. Set the print dialog to 100% scale.",
-        "proxy-printer": "Cards at their real size on A4, ready to cut out.",
-        "skip-basics": "Basics stay off the sheet, everyone has those in a box already."
+        "proxy-printer": "Cards at their real size on A4, ready to cut out."
     },
     "heading": {
         "add-cards": "Add cards",
@@ -92,6 +94,7 @@
         "life-game": "Game {{number}}"
     },
     "label": {
+        "sheet-range": "Sheets {{first}}–{{last}}",
         "arrangement": "Arrangement",
         "arrangement-cross": "Cross",
         "arrangement-sides": "Side seats",
@@ -123,12 +126,12 @@
         "player": "Player {{number}}",
         "player-short": "P{{number}}",
         "players": "Players",
-        "print-backs": "Print backs",
+        "print-backs": "Backs",
         "search-deck": "Search deck",
         "sheet-count_one": "1 sheet",
         "sheet-count_other": "{{count}} sheets",
         "sheet-number": "Sheet {{number}}",
-        "skip-basics": "Skip basic lands",
+        "skip-basics": "No basic lands",
         "starting-life": "Starting life",
         "stock": "Cardstock",
         "two-sided": "two-sided",
