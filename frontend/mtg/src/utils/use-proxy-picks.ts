@@ -8,11 +8,15 @@
  * nothing but their own output.
  */
 
+import { notify } from "components";
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import type { DeckOverviewResponse } from "src/api/generated";
 import { useAccount } from "src/context/account";
-import { MAX_COPIES, deckProxyCards, isBasicLand, printableImage } from "src/utils/proxy-print";
+import { addCard, addDeck, changeCopies, copiesOf, dropCard, dropDeck, onlyProxyCards } from "src/utils/proxy-list";
+import type { ProxyGroup } from "src/utils/proxy-list";
+import { deckProxyCards, isBasicLand, printableImage } from "src/utils/proxy-print";
 import type { ProxyCard } from "src/utils/proxy-print";
 import type { Printing } from "src/utils/scryfall";
 
@@ -28,7 +32,9 @@ export type ProxyPickOptions = {
 
 /** What {@link useProxyPicks} hands back */
 export type ProxyPicks = {
-    /** What is on the list */
+    /** What is on the list, deck by deck, as the proxy filter leaves it */
+    groups: Array<ProxyGroup>;
+    /** The same, as one list */
     picked: Array<ProxyCard>;
     /** The decks the account may take from, empty without one */
     decks: Array<DeckOverviewResponse>;
@@ -36,12 +42,14 @@ export type ProxyPicks = {
     deck: DeckOverviewResponse | null;
     /** Chooses a deck, without taking it yet */
     setDeck: (deck: DeckOverviewResponse | null) => void;
-    /** Whether a deck is taken with only its proxy-marked slots */
+    /** Whether the list is filtered down to its proxies */
     onlyProxies: boolean;
     /** Switches that over */
     setOnlyProxies: (only: boolean) => void;
     /** Whether a deck is being read right now */
     loading: boolean;
+    /** How many copies of a card are on the list */
+    countOf: (key: string) => number;
     /** Puts one more copy of a searched card on the list */
     add: (printing: Printing) => void;
     /** Puts one more copy of a card already on the list on it */
@@ -50,10 +58,12 @@ export type ProxyPicks = {
     fewer: (key: string) => void;
     /** Takes a card off the list altogether */
     drop: (key: string) => void;
+    /** Takes a deck and its cards off the list */
+    dropDeck: (uuid: string) => void;
     /** Empties the list */
     clear: () => void;
-    /** Adds everything a deck plays to the list */
-    loadDeck: (chosen: DeckOverviewResponse | null, proxiesOnly: boolean) => Promise<void>;
+    /** Adds a deck to the list, or tops up one already on it */
+    loadDeck: (chosen: DeckOverviewResponse | null) => Promise<void>;
 };
 
 /**
@@ -67,39 +77,46 @@ export type ProxyPicks = {
  * @returns the list and its mutators
  */
 export function useProxyPicks({ deck: opened, proxies, needsImage }: ProxyPickOptions): ProxyPicks {
+    const [t] = useTranslation("game-utils");
+
     // A deck handed over in the url is taken once. Without the mark, going back
     // to the tab would file the deck a second time.
     const taken = useRef<string | null>(null);
+    // The latest read of each deck; a read that was overtaken or whose deck was
+    // taken off in the meantime is thrown away.
+    const reads = useRef(new Map<string, symbol>());
 
-    const [picked, setPicked] = useState<Array<ProxyCard>>([]);
+    const [groups, setGroups] = useState<Array<ProxyGroup>>([]);
     const [decks, setDecks] = useState<Array<DeckOverviewResponse>>([]);
     const [deck, setDeck] = useState<DeckOverviewResponse | null>(null);
     const [onlyProxies, setOnlyProxies] = useState(proxies === true);
-    const [loading, setLoading] = useState(false);
+    const [reading, setReading] = useState(0);
     const { account } = useAccount();
 
     /**
-     * Adds everything a deck plays to the list
+     * Adds a deck to the list, or tops up one already on it
      *
      * @param chosen the deck to take, nothing when none is picked
-     * @param proxiesOnly whether to load only the slots marked as proxies
      */
-    async function loadDeck(chosen: DeckOverviewResponse | null, proxiesOnly: boolean) {
+    async function loadDeck(chosen: DeckOverviewResponse | null) {
         if (chosen === null) return;
 
-        setLoading(true);
+        const { uuid, name } = chosen.deck;
+        const read = Symbol(uuid);
+        reads.current.set(uuid, read);
+        setReading((count) => count + 1);
         try {
-            const { cards } = await Api.decks.cards.list(chosen.deck.uuid);
-            const added = deckProxyCards(cards, proxiesOnly).filter((card) => !needsImage || card.front !== null);
-            // A slot already on the list is not added twice: taking a deck
-            // again — after switching the proxy filter off, say — should top up
-            // what is missing rather than order every card twice.
-            setPicked((previous) => {
-                const known = new Set(previous.map((card) => card.key));
-                return [...previous, ...added.filter((card) => !known.has(card.key))];
-            });
+            const { cards } = await Api.decks.cards.list(uuid);
+            if (reads.current.get(uuid) !== read) return;
+            reads.current.delete(uuid);
+
+            const added = deckProxyCards(cards).filter((card) => !needsImage || card.front !== null);
+            if (added.length === 0) notify.info(t("toast.deck-nothing-to-add", { name }));
+
+            setGroups((previous) => addDeck(previous, { uuid, name }, added));
+            setDeck((current) => (current?.deck.uuid === uuid ? null : current));
         } finally {
-            setLoading(false);
+            setReading((count) => count - 1);
         }
     }
 
@@ -114,8 +131,8 @@ export function useProxyPicks({ deck: opened, proxies, needsImage }: ProxyPickOp
         void Api.decks.list().then(setDecks);
     }, [account]);
 
-    // Opened from a deck: it is chosen and its cards are on the list before the
-    // page is looked at, which is the whole point of getting here that way.
+    // Opened from a deck: its cards are on the list before the page is looked
+    // at, which is the whole point of getting here that way.
     useEffect(() => {
         if (opened === undefined || taken.current === opened) return;
 
@@ -123,9 +140,8 @@ export function useProxyPicks({ deck: opened, proxies, needsImage }: ProxyPickOp
         if (listed === undefined) return;
 
         taken.current = opened;
-        setDeck(listed);
         setOnlyProxies(proxies === true);
-        void loadDeck(listed, proxies === true);
+        void loadDeck(listed);
         // Deliberately not keyed on `loadDeck`, which is rebuilt on every render.
     }, [decks, opened, proxies]);
 
@@ -135,77 +151,45 @@ export function useProxyPicks({ deck: opened, proxies, needsImage }: ProxyPickOp
      * @param printing the card that was picked
      */
     function add(printing: Printing) {
-        setPicked((previous) => {
-            const known = previous.find((card) => card.key === printing.id);
-            if (known !== undefined) {
-                return previous.map((card) =>
-                    card.key === printing.id ? { ...card, copies: Math.min(MAX_COPIES, card.copies + 1) } : card,
-                );
-            }
-            return [
-                ...previous,
-                {
-                    key: printing.id,
-                    name: printing.name,
-                    set: printing.setCode,
-                    number: printing.collectorNumber,
-                    front: printableImage(printing.largeImageUrl),
-                    back: printableImage(printing.backLargeImageUrl),
-                    copies: 1,
-                    basic: isBasicLand(printing.typeLine),
-                },
-            ];
-        });
-    }
-
-    /**
-     * Puts one more copy of a card already on the list on it
-     *
-     * @param key the card
-     */
-    function more(key: string) {
-        setPicked((previous) =>
-            previous.map((card) =>
-                card.key === key ? { ...card, copies: Math.min(MAX_COPIES, card.copies + 1) } : card,
-            ),
+        setGroups((previous) =>
+            addCard(previous, {
+                key: printing.id,
+                name: printing.name,
+                set: printing.setCode,
+                number: printing.collectorNumber,
+                front: printableImage(printing.largeImageUrl),
+                back: printableImage(printing.backLargeImageUrl),
+                copies: 1,
+                basic: isBasicLand(printing.typeLine),
+                proxy: true,
+            }),
         );
     }
 
-    /**
-     * Takes one copy back off the list, and the row with the last of them
-     *
-     * @param key the card
-     */
-    function fewer(key: string) {
-        setPicked((previous) =>
-            previous
-                .map((card) => (card.key === key ? { ...card, copies: card.copies - 1 } : card))
-                .filter((card) => card.copies > 0),
-        );
-    }
-
-    /**
-     * Takes a card off the list altogether
-     *
-     * @param key the card
-     */
-    function drop(key: string) {
-        setPicked((previous) => previous.filter((card) => card.key !== key));
-    }
+    const shown = onlyProxies ? onlyProxyCards(groups) : groups;
 
     return {
-        picked,
+        groups: shown,
+        picked: shown.flatMap((group) => group.cards),
         decks,
         deck,
         setDeck,
         onlyProxies,
         setOnlyProxies,
-        loading,
+        loading: reading > 0,
+        countOf: (key) => copiesOf(shown, key),
         add,
-        more,
-        fewer,
-        drop,
-        clear: () => setPicked([]),
+        more: (key) => setGroups((previous) => changeCopies(previous, key, 1)),
+        fewer: (key) => setGroups((previous) => changeCopies(previous, key, -1)),
+        drop: (key) => setGroups((previous) => dropCard(previous, key)),
+        dropDeck: (uuid) => {
+            reads.current.delete(uuid);
+            setGroups((previous) => dropDeck(previous, uuid));
+        },
+        clear: () => {
+            reads.current.clear();
+            setGroups([]);
+        },
         loadDeck,
     };
 }

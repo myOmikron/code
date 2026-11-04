@@ -57,6 +57,8 @@ export type ProxyCard = {
     copies: number;
     /** Whether it is a basic land, which a sheet is rarely printed for */
     basic: boolean;
+    /** Whether it counts as a proxy: marked so in its deck, or picked by hand */
+    proxy: boolean;
 };
 
 /** One picture on the paper */
@@ -169,13 +171,12 @@ export function isBasicLand(typeLine: string | null | undefined): boolean {
  * that needs a picture has to say so.
  *
  * @param cards the deck's slots
- * @param proxiesOnly whether only the slots marked as proxies are taken
  *
  * @returns the cards, in the order the deck lists them
  */
-export function deckProxyCards(cards: Array<DeckCardResponse>, proxiesOnly: boolean): Array<ProxyCard> {
+export function deckProxyCards(cards: Array<DeckCardResponse>): Array<ProxyCard> {
     return cards
-        .filter((slot) => (slot.zone === "Main" || slot.zone === "Commander") && (!proxiesOnly || slot.proxy))
+        .filter((slot) => slot.zone === "Main" || slot.zone === "Commander")
         .map((slot) => ({
             key: slot.uuid,
             name: slot.card?.name ?? "",
@@ -185,5 +186,6 @@ export function deckProxyCards(cards: Array<DeckCardResponse>, proxiesOnly: bool
             back: printableImage(slot.card?.image_back_normal),
             copies: Math.min(MAX_COPIES, slot.quantity),
             basic: isBasicLand(slot.card?.type_line),
+            proxy: slot.proxy,
         }));
 }
