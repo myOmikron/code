@@ -58,8 +58,8 @@ export type ProxyPicks = {
     fewer: (key: string) => void;
     /** Takes a card off the list altogether */
     drop: (key: string) => void;
-    /** Takes a deck and its cards off the list */
-    dropDeck: (uuid: string) => void;
+    /** Takes a group and its cards off the list, `null` for the hand picks */
+    dropDeck: (uuid: string | null) => void;
     /** Empties the list */
     clear: () => void;
     /** Adds a deck to the list, or tops up one already on it */
@@ -183,7 +183,7 @@ export function useProxyPicks({ deck: opened, proxies, needsImage }: ProxyPickOp
         fewer: (key) => setGroups((previous) => changeCopies(previous, key, -1)),
         drop: (key) => setGroups((previous) => dropCard(previous, key)),
         dropDeck: (uuid) => {
-            reads.current.delete(uuid);
+            if (uuid !== null) reads.current.delete(uuid);
             setGroups((previous) => dropDeck(previous, uuid));
         },
         clear: () => {

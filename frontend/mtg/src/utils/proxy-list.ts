@@ -5,7 +5,7 @@
  * Every change returns a new list, and a group left without cards is dropped.
  */
 
-import { MAX_COPIES } from "src/utils/proxy-print";
+import { MAX_COPIES, PER_SHEET, proxyFaces } from "src/utils/proxy-print";
 import type { ProxyCard } from "src/utils/proxy-print";
 
 /** A deck on a proxy list */
@@ -22,6 +22,16 @@ export type ProxyGroup = {
     deck: ProxyDeck | null;
     /** Its cards, in the order the deck lists them */
     cards: Array<ProxyCard>;
+};
+
+/** Where one group lands on the sheets */
+export type ProxyGroupSheets = {
+    /** The group */
+    group: ProxyGroup;
+    /** The first sheet it is on, counted from 0 */
+    first: number;
+    /** The last sheet it is on, counted from 0 */
+    last: number;
 };
 
 /**
@@ -107,15 +117,15 @@ export function dropCard(groups: Array<ProxyGroup>, key: string): Array<ProxyGro
 }
 
 /**
- * Takes a deck and its cards off the list
+ * Takes a group and its cards off the list
  *
  * @param groups the list
- * @param uuid the deck
+ * @param uuid the deck, `null` for the cards picked by hand
  *
  * @returns the new list
  */
-export function dropDeck(groups: Array<ProxyGroup>, uuid: string): Array<ProxyGroup> {
-    return groups.filter((group) => group.deck?.uuid !== uuid);
+export function dropDeck(groups: Array<ProxyGroup>, uuid: string | null): Array<ProxyGroup> {
+    return groups.filter((group) => (group.deck?.uuid ?? null) !== uuid);
 }
 
 /**
@@ -156,6 +166,34 @@ export function onlyProxyCards(groups: Array<ProxyGroup>): Array<ProxyGroup> {
  */
 export function showsHeadings(groups: Array<ProxyGroup>): boolean {
     return groups.length > 1 || (groups[0] !== undefined && groups[0].deck !== null);
+}
+
+/**
+ * Which sheets each group lands on, for a list printed in order
+ *
+ * @param groups the list
+ * @param backs whether the second face of a two-sided card is printed too
+ * @param skipBasics whether the basic lands are left off the sheet
+ *
+ * @returns the groups that put anything on paper, in order
+ */
+export function groupSheets(groups: Array<ProxyGroup>, backs: boolean, skipBasics: boolean): Array<ProxyGroupSheets> {
+    const spans: Array<ProxyGroupSheets> = [];
+    let printed = 0;
+
+    for (const group of groups) {
+        const faces = proxyFaces(group.cards, backs, skipBasics).length;
+        if (faces === 0) continue;
+
+        spans.push({
+            group,
+            first: Math.floor(printed / PER_SHEET),
+            last: Math.floor((printed + faces - 1) / PER_SHEET),
+        });
+        printed += faces;
+    }
+
+    return spans;
 }
 
 /**
