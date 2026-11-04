@@ -1,15 +1,11 @@
 import {
     Button,
-    Combobox,
-    ComboboxLabel,
-    ComboboxOption,
     Description,
     Dialog,
     DialogActions,
     DialogBody,
     DialogDescription,
     DialogTitle,
-    Field,
     Label,
     Switch,
     SwitchField,
@@ -17,6 +13,8 @@ import {
 import { useTranslation } from "react-i18next";
 import type { DeckOverviewResponse } from "src/api/generated";
 import { CardSearchPanel } from "src/components/card-search-panel";
+import { ProxyDeckPicker } from "src/components/proxy-deck-picker";
+import type { ProxyGroup } from "src/utils/proxy-list";
 import type { Printing } from "src/utils/scryfall";
 
 /**
@@ -27,6 +25,12 @@ export type MpcFillAddDialogProps = {
     open: boolean;
     /** The decks the account may take from, empty without one */
     decks: Array<DeckOverviewResponse>;
+    /** What is on the order */
+    groups: Array<ProxyGroup>;
+    /** How many cards of a group go out */
+    groupCount: (group: ProxyGroup) => number;
+    /** Takes a deck and its cards off */
+    onDropDeck: (uuid: string) => void;
     /** The deck the combobox stands on */
     deck: DeckOverviewResponse | null;
     /** Chooses a deck without taking it yet */
@@ -37,8 +41,8 @@ export type MpcFillAddDialogProps = {
     onOnlyProxies: (only: boolean) => void;
     /** Whether a deck is being read right now */
     loading: boolean;
-    /** Takes the chosen deck */
-    onLoadDeck: () => void;
+    /** Adds the chosen deck */
+    onAddDeck: () => void;
     /** How many copies of a hit are already on the order */
     countOf: (printing: Printing) => number;
     /** Puts one more copy on the order */
@@ -63,12 +67,15 @@ export type MpcFillAddDialogProps = {
 export function MpcFillAddDialog({
     open,
     decks,
+    groups,
+    groupCount,
+    onDropDeck,
     deck,
     onDeck,
     onlyProxies,
     onOnlyProxies,
     loading,
-    onLoadDeck,
+    onAddDeck,
     countOf,
     onAdd,
     onRemove,
@@ -85,32 +92,16 @@ export function MpcFillAddDialog({
                 <div className={"flex flex-col gap-5"}>
                     {decks.length > 0 && (
                         <div className={"flex flex-col gap-3"}>
-                            <div className={"flex items-end gap-2"}>
-                                <Field className={"min-w-0 flex-1"}>
-                                    <Label>{t("label.deck")}</Label>
-                                    <Combobox
-                                        options={decks}
-                                        value={deck}
-                                        onChange={(chosen) => onDeck(chosen)}
-                                        placeholder={t("label.search-deck")}
-                                        displayValue={(overview) => overview?.deck.name ?? ""}
-                                    >
-                                        {(overview) => (
-                                            <ComboboxOption value={overview}>
-                                                <ComboboxLabel>{overview.deck.name}</ComboboxLabel>
-                                            </ComboboxOption>
-                                        )}
-                                    </Combobox>
-                                </Field>
-                                <Button
-                                    outline={true}
-                                    className={"shrink-0"}
-                                    disabled={deck === null || loading}
-                                    onClick={onLoadDeck}
-                                >
-                                    {t("button.load-deck")}
-                                </Button>
-                            </div>
+                            <ProxyDeckPicker
+                                decks={decks}
+                                groups={groups}
+                                countOf={groupCount}
+                                onDropDeck={onDropDeck}
+                                deck={deck}
+                                onDeck={onDeck}
+                                loading={loading}
+                                onAdd={onAddDeck}
+                            />
                             <SwitchField>
                                 <Label>{t("label.only-proxies")}</Label>
                                 <Description>{t("description.only-proxies")}</Description>

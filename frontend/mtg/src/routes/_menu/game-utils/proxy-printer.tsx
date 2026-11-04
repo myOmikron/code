@@ -1,26 +1,15 @@
 import { ArrowLeftIcon, PrinterIcon } from "@heroicons/react/20/solid";
 import { createFileRoute } from "@tanstack/react-router";
-import {
-    Button,
-    Combobox,
-    ComboboxLabel,
-    ComboboxOption,
-    Description,
-    EmptyState,
-    Field,
-    Heading,
-    Label,
-    Switch,
-    SwitchField,
-    Text,
-} from "components";
+import { Button, Description, EmptyState, Heading, Label, Switch, SwitchField, Text } from "components";
 import { PrimaryButton } from "src/components/primary-button";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { CardSearchPanel } from "src/components/card-search-panel";
+import { ProxyDeckPicker } from "src/components/proxy-deck-picker";
 import { ProxyPickList } from "src/components/proxy-pick-list";
 import { ProxySheet } from "src/components/proxy-sheet";
+import type { ProxyGroup } from "src/utils/proxy-list";
 import { proxyFaces, proxySheets } from "src/utils/proxy-print";
 import { useProxyPicks } from "src/utils/use-proxy-picks";
 
@@ -65,6 +54,17 @@ function RouteComponent() {
     const sheets = proxySheets(faces);
 
     /**
+     * How many pictures of a group go on paper, which is what the print list counts
+     *
+     * @param group the group
+     *
+     * @returns the pictures
+     */
+    function countOf(group: ProxyGroup): number {
+        return proxyFaces(group.cards, backs, skipBasics).length;
+    }
+
+    /**
      * Hands the sheets to the printer, once every picture is there
      *
      * A print dialog photographs the page as it stands, so an image still on
@@ -106,32 +106,16 @@ function RouteComponent() {
                     }
                 >
                     {picks.decks.length > 0 && (
-                        <div className={"flex items-end gap-2"}>
-                            <Field className={"min-w-0 flex-1"}>
-                                <Label>{t("label.deck")}</Label>
-                                <Combobox
-                                    options={picks.decks}
-                                    value={picks.deck}
-                                    onChange={(chosen) => picks.setDeck(chosen)}
-                                    placeholder={t("label.search-deck")}
-                                    displayValue={(overview) => overview?.deck.name ?? ""}
-                                >
-                                    {(overview) => (
-                                        <ComboboxOption value={overview}>
-                                            <ComboboxLabel>{overview.deck.name}</ComboboxLabel>
-                                        </ComboboxOption>
-                                    )}
-                                </Combobox>
-                            </Field>
-                            <Button
-                                outline={true}
-                                className={"shrink-0"}
-                                disabled={picks.deck === null || picks.loading}
-                                onClick={() => void picks.loadDeck(picks.deck, picks.onlyProxies)}
-                            >
-                                {t("button.load-deck")}
-                            </Button>
-                        </div>
+                        <ProxyDeckPicker
+                            decks={picks.decks}
+                            groups={picks.groups}
+                            countOf={countOf}
+                            onDropDeck={picks.dropDeck}
+                            deck={picks.deck}
+                            onDeck={picks.setDeck}
+                            loading={picks.loading}
+                            onAdd={() => void picks.loadDeck(picks.deck)}
+                        />
                     )}
 
                     <div>
@@ -140,7 +124,7 @@ function RouteComponent() {
                             autoFocus={false}
                             stickySearch={true}
                             hideInfoOnMobile={true}
-                            countOf={(printing) => picks.picked.find((card) => card.key === printing.id)?.copies ?? 0}
+                            countOf={(printing) => picks.countOf(printing.id)}
                             onAdd={picks.add}
                             onRemove={(printing) => picks.fewer(printing.id)}
                         />
@@ -186,10 +170,12 @@ function RouteComponent() {
                         </SwitchField>
 
                         <ProxyPickList
-                            cards={picks.picked}
+                            groups={picks.groups}
+                            countOf={countOf}
                             onMore={picks.more}
                             onFewer={picks.fewer}
                             onDrop={picks.drop}
+                            onDropDeck={picks.dropDeck}
                             onClear={picks.clear}
                         />
                     </div>

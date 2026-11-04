@@ -14,7 +14,7 @@ import type { MpcFillImageResponse } from "src/api/generated";
 
 /** One side of a card and the art there is for it */
 export type MpcFillTileFace = {
-    /** The name MPCFill was asked for, which is what a pick is filed under */
+    /** The name MPCFill was asked for */
     name: string;
     /** Everything found for it, in MPCFill's own order */
     images: Array<MpcFillImageResponse>;
