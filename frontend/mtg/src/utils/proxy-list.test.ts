@@ -6,6 +6,7 @@ import {
     copiesOf,
     dropCard,
     dropDeck,
+    groupSheets,
     onlyProxyCards,
     showsHeadings,
 } from "src/utils/proxy-list";
@@ -25,7 +26,7 @@ const KRENKO = { uuid: "k", name: "Krenko" };
  * @returns the card
  */
 function card(key: string, copies = 1, proxy = false): ProxyCard {
-    return { key, name: key, set: "LEB", number: "161", front: null, back: null, copies, basic: false, proxy };
+    return { key, name: key, set: "LEB", number: "161", front: "front.jpg", back: null, copies, basic: false, proxy };
 }
 
 /**
@@ -85,6 +86,45 @@ describe("dropCard and dropDeck", () => {
 
         expect(shape(dropCard(groups, "a"))).toStrictEqual(["Atraxa: b", "Krenko: c"]);
         expect(shape(dropDeck(groups, "a"))).toStrictEqual(["Krenko: c"]);
+    });
+});
+
+describe("dropDeck", () => {
+    it("takes the hand picks off too", () => {
+        const groups = addCard(addDeck([], ATRAXA, [card("a")]), card("bolt", 1, true));
+
+        expect(shape(dropDeck(groups, null))).toStrictEqual(["Atraxa: a"]);
+    });
+});
+
+describe("groupSheets", () => {
+    /**
+     * The sheets a list lands on
+     *
+     * @param groups the list
+     *
+     * @returns one line per group
+     */
+    function spans(groups: Array<ProxyGroup>): Array<string> {
+        return groupSheets(groups, true, true).map(({ group, first, last }) => `${group.deck?.name}: ${first}-${last}`);
+    }
+
+    it("shares a sheet where one deck ends and the next begins", () => {
+        const groups = addDeck(addDeck([], ATRAXA, [card("a", 10)]), KRENKO, [card("k", 10)]);
+
+        expect(spans(groups)).toStrictEqual(["Atraxa: 0-1", "Krenko: 1-2"]);
+    });
+
+    it("starts the next deck on a new sheet after a full one", () => {
+        const groups = addDeck(addDeck([], ATRAXA, [card("a", 9)]), KRENKO, [card("k", 1)]);
+
+        expect(spans(groups)).toStrictEqual(["Atraxa: 0-0", "Krenko: 1-1"]);
+    });
+
+    it("skips a group that puts nothing on paper", () => {
+        const empty = { deck: ATRAXA, cards: [] };
+
+        expect(spans([empty, ...addDeck([], KRENKO, [card("k")])])).toStrictEqual(["Krenko: 0-0"]);
     });
 });
 
