@@ -146,6 +146,11 @@ mtg query cost). A review applies all of it; read the sections a change touches 
   format and rules in `frontend/mtg/release-notes/README.md`. Admin-only changes get none.
   `just release mtg <version>` files them under the version (see Release Workflow).
 
+#### mtg German terms
+
+- Magic terms in `frontend/mtg/public/locales/de/` come from the lookup in
+  `services/mtg/docs/german-magic-terms.md`, never from memory.
+
 #### New frontend apps
 
 - Copy `frontend/example/`, rename in `package.json`, adjust `index.html` and the

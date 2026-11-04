@@ -92,6 +92,9 @@ predates a rule stays as it is until a change touches it.
 - **Wording**: the thing cards live in is a collection (de: Sammlung), in UI strings,
   identifiers and doc comments. The icon slug `"box"`, `ArchiveBoxIcon` and CSS/layout
   boxes keep their names.
+- **Magic terms in German**: look them up in `services/mtg/docs/german-magic-terms.md`, never
+  from memory. What cards print uses the card wording, deckbuilding jargon stays English, and
+  if in doubt the original term. A missing term gets added there with its source.
 - **Switches** _(checked: `mtg-switch-lime` in `.ast-grep/rules/`)_: every `Switch` gets `color={"lime"}`.
 - **Release notes**: a change players notice (website, scanner, deck advisor) carries a
   Release note fragment in `frontend/mtg/release-notes/unreleased/` in the same commit

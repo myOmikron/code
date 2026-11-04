@@ -1,7 +1,7 @@
 {
     "accessibility": {
         "capture": "Aufnahme von {{name}}",
-        "change-printing-of": "Druck von {{name}} ändern",
+        "change-printing-of": "Printing von {{name}} ändern",
         "enlarge": "{{name}} groß ansehen",
         "language-of": "Sprache von {{name}}",
         "one-fewer": "Eine Kopie von {{name}} weniger",
@@ -33,7 +33,7 @@
         "camera-insecure": "Diese Seite läuft nicht über HTTPS. Kameras gibt der Browser nur in einem sicheren Kontext frei — über https:// oder localhost öffnen (im Dev-Server: \"pnpm dev:mobile\").",
         "camera-missing": "Dieses Gerät meldet gar keine Kamera.",
         "camera-unavailable": "Die Kamera ließ sich nicht öffnen. Meist hält sie gerade eine andere App oder ein anderer Tab.",
-        "card-language": "In welcher Sprache deine Karten gedruckt sind. Das wählt das Lesemodell und bevorzugt passende Drucke.",
+        "card-language": "In welcher Sprache deine Karten gedruckt sind. Das wählt das Lesemodell und bevorzugt passende Printings.",
         "index-not-loaded": "Der Kartenindex konnte nicht geladen werden. Prüfe die Verbindung und lade die Seite neu.",
         "live-scanner": "Karte vor die Kamera halten. Erkannt wird erst, wenn zwei Bilder dasselbe sagen.",
         "load-card-data": "Der Scanner erkennt Karten auf dem Gerät, ohne sie an einen Server zu schicken. Dafür lädt er den Kartenindex einmalig herunter. Danach bleibt er gespeichert und funktioniert auch ohne Verbindung.",
@@ -98,7 +98,7 @@
         "point-at-card": "Karte in den Rahmen halten",
         "runner-up": "Zweiter: {{count}}",
         "scanner-loading": "Scanner wird geladen",
-        "scanner-ready": "{{amount}} Drucke geladen, Modell läuft auf {{backend}}",
+        "scanner-ready": "{{amount}} Printings geladen, Modell läuft auf {{backend}}",
         "scanner-warming": "Scanner wird vorbereitet",
         "set-scope": "Sets",
         "sets-limited": "{{count}} Sets",

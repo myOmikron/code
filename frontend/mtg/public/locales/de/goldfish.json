@@ -26,7 +26,7 @@
         "look-count_other": "{{count}} Karten ansehen",
         "look-library": "Bibliothek durchsuchen",
         "look-top": "Oberste Karten ansehen …",
-        "mill-top": "Oberste Karte in den Friedhof",
+        "mill-top": "Oberste Karte auf den Friedhof",
         "mulligan": "Mulligan",
         "next-turn": "Nächster Zug",
         "peek-top": "Oberste Karte ansehen",
@@ -41,7 +41,7 @@
         "to-battlefield": "Ins Spiel bringen",
         "to-command": "In die Kommandozone",
         "to-exile": "Ins Exil",
-        "to-graveyard": "In den Friedhof",
+        "to-graveyard": "Auf den Friedhof",
         "to-hand": "Auf die Hand",
         "to-library-bottom": "Unter die Bibliothek",
         "to-library-top": "Oben auf die Bibliothek",
@@ -85,7 +85,7 @@
         "tokens-loading": "Token werden bei Scryfall nachgeschlagen …"
     },
     "heading": {
-        "cast": "Betritt das Schlachtfeld",
+        "cast": "Kommt ins Spiel",
         "confirm-end": "Spiel beenden?",
         "confirm-restart": "Neu starten?",
         "counters": "Marken auf {{name}}",
