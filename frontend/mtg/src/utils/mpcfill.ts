@@ -24,6 +24,15 @@ import type { ProxyCard } from "src/utils/proxy-print";
 /** Where the list is pasted in */
 export const MPC_FILL_URL = "https://mpcfill.com";
 
+/** How the tiles of an order can be sorted */
+export const MPC_SORTS = ["added", "name"] as const;
+
+/** One way of sorting the tiles of an order */
+export type MpcSort = (typeof MPC_SORTS)[number];
+
+/** Where the chosen sort is remembered on this device */
+const SORT_KEY = "cardlens.mpcfill-sort.v1";
+
 /** What separates the two faces of a card, in both Scryfall's name and MPCFill's syntax */
 const FACES = " // ";
 
@@ -67,6 +76,59 @@ export function mpcCards(cards: Array<ProxyCard>, skipBasics: boolean): Array<Pr
     }
 
     return [...rows.values()].sort((left, right) => left.name.localeCompare(right.name));
+}
+
+/**
+ * The tiles of one group, as the reader wants to see them
+ *
+ * Only what is on screen: the order file keeps its own sequence. Cards picked by
+ * hand come newest first; a deck arrives all at once and keeps its own order.
+ *
+ * @param cards the group's cards, in the order they were added
+ * @param sort how to sort them
+ * @param newestFirst whether the group's last card counts as its newest
+ * @param query the text a tile's name has to contain
+ *
+ * @returns the cards to show
+ */
+export function mpcTiles(
+    cards: Array<ProxyCard>,
+    sort: MpcSort,
+    newestFirst: boolean,
+    query: string,
+): Array<ProxyCard> {
+    const wanted = mpcQuery(query);
+    const named = cards.filter((card) => card.name !== "" && mpcQuery(card.name).includes(wanted));
+
+    if (sort === "name") return named.sort((left, right) => left.name.localeCompare(right.name));
+    return newestFirst ? named.reverse() : named;
+}
+
+/**
+ * The sort this device last chose
+ *
+ * @returns the sort, newest cards first when there is none
+ */
+export function loadMpcSort(): MpcSort {
+    try {
+        const stored = localStorage.getItem(SORT_KEY);
+        return MPC_SORTS.find((sort) => sort === stored) ?? "added";
+    } catch {
+        return "added";
+    }
+}
+
+/**
+ * Remembers the chosen sort on this device
+ *
+ * @param sort the sort
+ */
+export function saveMpcSort(sort: MpcSort) {
+    try {
+        localStorage.setItem(SORT_KEY, sort);
+    } catch {
+        // Blocked storage only costs the memory of the choice.
+    }
 }
 
 /**

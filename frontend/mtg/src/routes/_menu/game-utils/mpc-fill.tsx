@@ -12,10 +12,24 @@ import { MpcFillCardTile } from "src/components/mpcfill-card-tile";
 import type { MpcFillTileFace } from "src/components/mpcfill-card-tile";
 import { MpcFillOrderDialog } from "src/components/mpcfill-order-dialog";
 import { MpcFillOrderDock } from "src/components/mpcfill-order-dock";
+import { MpcFillOrderToolbar } from "src/components/mpcfill-order-toolbar";
 import { ProxyGroupRow } from "src/components/proxy-group-row";
-import { MPC_BRACKETS, mpcBracket, mpcCards, mpcCount, mpcFaces, mpcFillList, mpcQuery } from "src/utils/mpcfill";
+import {
+    MPC_BRACKETS,
+    loadMpcSort,
+    mpcBracket,
+    mpcCards,
+    mpcCount,
+    mpcFaces,
+    mpcFillList,
+    mpcQuery,
+    mpcTiles,
+    saveMpcSort,
+} from "src/utils/mpcfill";
+import type { MpcSort } from "src/utils/mpcfill";
 import { DEFAULT_MPC_STOCK, mpcFillReady, mpcFillXml } from "src/utils/mpcfill-xml";
 import type { MpcFillOrderCard, MpcFillPick, MpcStock } from "src/utils/mpcfill-xml";
+import type { ProxyCard } from "src/utils/proxy-print";
 import { showsHeadings } from "src/utils/proxy-list";
 import { useProxyPicks } from "src/utils/use-proxy-picks";
 
@@ -79,17 +93,20 @@ function RouteComponent() {
     const [settings, setSettings] = useState(false);
     const [browsing, setBrowsing] = useState<{ scope: string; face: string; label: string } | "cardback" | null>(null);
 
+    // Finding a card in the grid. None of it touches what is ordered.
+    const [query, setQuery] = useState("");
+    const [sort, setSort] = useState<MpcSort>(loadMpcSort);
+    const [onlyMissing, setOnlyMissing] = useState(false);
+
     // What the order adds up to, deck by deck: the same print asked for twice
     // in one deck is one card with two copies. The tiles are the rows as they
     // were picked, not the merged ones: a tile's copies act on the row it came
-    // from. Sorted by name within a deck.
+    // from.
     const sections = picks.groups.map((group) => ({
         group,
         scope: group.deck?.uuid ?? "",
         rows: mpcCards(group.cards, false),
-        tiles: group.cards
-            .filter((card) => card.name !== "")
-            .sort((left, right) => left.name.localeCompare(right.name)),
+        tiles: mpcTiles(group.cards, sort, group.deck === null, query),
     }));
     const headed = showsHeadings(picks.groups);
     const count = mpcCount(sections.flatMap((section) => section.rows));
@@ -108,6 +125,19 @@ function RouteComponent() {
         const images = art[name] ?? [];
         const pick = chosen[pickKey(scope, name)];
         return images.find((image) => image.id === pick?.id) ?? images[0] ?? null;
+    }
+
+    /**
+     * Whether a card still lacks art on one of its sides
+     *
+     * @param scope the deck's uuid, empty for the cards picked by hand
+     * @param card the card
+     *
+     * @returns whether it does
+     */
+    function needsArt(scope: string, card: ProxyCard): boolean {
+        const { front, back } = mpcFaces(card);
+        return pickOf(scope, front) === null || (back !== null && pickOf(scope, back) === null);
     }
 
     /**
@@ -150,7 +180,20 @@ function RouteComponent() {
         }),
     );
     const ready = mpcFillReady(orderCards);
-    const missing = orderCards.length - ready.length;
+    const missing = sections.reduce(
+        (total, { group, scope }) =>
+            total + group.cards.filter((card) => card.name !== "" && needsArt(scope, card)).length,
+        0,
+    );
+    // Off by itself once nothing is left to show under it.
+    const missingOnly = onlyMissing && missing > 0;
+    const filtering = missingOnly || query.trim() !== "";
+    const shown = sections
+        .map((section) => ({
+            ...section,
+            tiles: section.tiles.filter((card) => !missingOnly || needsArt(section.scope, card)),
+        }))
+        .filter((section) => !filtering || section.tiles.length > 0);
     const xml = mpcFillXml({ cards: orderCards, stock, foil, cardback });
 
     // Every face on the order, and the ones nothing has been asked about yet.
@@ -263,7 +306,7 @@ function RouteComponent() {
         // Room at the bottom for the dock, which floats over the page.
         <div className={"mx-auto flex w-full max-w-7xl flex-col gap-6 pb-20"}>
             <header className={"flex flex-wrap items-center justify-between gap-2"}>
-                <div className={"flex min-w-0 flex-1 items-center gap-2"}>
+                <div className={"flex min-w-0 flex-1 items-center gap-2 max-sm:basis-full"}>
                     <Button plain={true} href={"/game-utils"} aria-label={t("button.back-to-tools")}>
                         <ArrowLeftIcon />
                     </Button>
@@ -272,7 +315,15 @@ function RouteComponent() {
                         <Text className={"mt-1 text-xs"}>{t("description.mpc-order")}</Text>
                     </div>
                 </div>
-                <PrimaryButton onClick={() => setAdding(true)}>
+                <PrimaryButton
+                    className={"max-sm:w-full"}
+                    onClick={() => {
+                        // A card added behind a filter would seem to have gone missing.
+                        setQuery("");
+                        setOnlyMissing(false);
+                        setAdding(true);
+                    }}
+                >
                     <PlusIcon />
                     {t("button.add-cards")}
                 </PrimaryButton>
@@ -288,7 +339,22 @@ function RouteComponent() {
                         </Text>
                     )}
 
-                    {sections.map(({ group, scope, rows, tiles }) => (
+                    <MpcFillOrderToolbar
+                        query={query}
+                        onQuery={setQuery}
+                        sort={sort}
+                        onSort={(next) => {
+                            setSort(next);
+                            saveMpcSort(next);
+                        }}
+                        missing={missing}
+                        onlyMissing={missingOnly}
+                        onOnlyMissing={setOnlyMissing}
+                    />
+
+                    {shown.length === 0 && <Text className={"text-sm"}>{t("description.no-matching-card")}</Text>}
+
+                    {shown.map(({ group, scope, rows, tiles }) => (
                         <section key={scope} className={"flex flex-col gap-3"}>
                             {headed && (
                                 <ProxyGroupRow
@@ -330,6 +396,7 @@ function RouteComponent() {
                     count={count}
                     bracket={bracket}
                     missing={missing}
+                    onMissing={() => setOnlyMissing(!missingOnly)}
                     cardback={cardbacks.find((image) => image.id === cardback?.id)?.thumbnail_small ?? null}
                     ready={ready.length > 0}
                     onCardback={() => setBrowsing("cardback")}

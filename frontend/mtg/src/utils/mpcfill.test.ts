@@ -1,5 +1,15 @@
-import { describe, expect, it } from "vitest";
-import { MPC_BRACKETS, mpcBracket, mpcCards, mpcCount, mpcFillList, mpcQuery } from "src/utils/mpcfill";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+    loadMpcSort,
+    MPC_BRACKETS,
+    mpcBracket,
+    mpcCards,
+    mpcCount,
+    mpcFillList,
+    mpcQuery,
+    mpcTiles,
+    saveMpcSort,
+} from "src/utils/mpcfill";
 import type { ProxyCard } from "src/utils/proxy-print";
 
 /**
@@ -25,6 +35,78 @@ function card(name: string, copies: number, print: [string, string] | null = ["L
         proxy: false,
     };
 }
+
+describe("mpcTiles", () => {
+    const cards = [card("Urza's Saga", 1), card("Arcane Signet", 1), card("Sol Ring", 1), card("", 1, null)];
+
+    /**
+     * The names of some tiles
+     *
+     * @param tiles the tiles
+     *
+     * @returns their names
+     */
+    const names = (tiles: Array<ProxyCard>) => tiles.map((tile) => tile.name);
+
+    it("puts the newest hand pick first", () => {
+        expect(names(mpcTiles(cards, "added", true, ""))).toStrictEqual(["Sol Ring", "Arcane Signet", "Urza's Saga"]);
+    });
+
+    it("keeps a deck in its own order", () => {
+        expect(names(mpcTiles(cards, "added", false, ""))).toStrictEqual(["Urza's Saga", "Arcane Signet", "Sol Ring"]);
+    });
+
+    it("sorts by name on request", () => {
+        expect(names(mpcTiles(cards, "name", true, ""))).toStrictEqual(["Arcane Signet", "Sol Ring", "Urza's Saga"]);
+    });
+
+    it("finds a name however its punctuation is typed", () => {
+        expect(names(mpcTiles(cards, "name", true, "URZAS"))).toStrictEqual(["Urza's Saga"]);
+        expect(names(mpcTiles(cards, "name", true, "urza's sa"))).toStrictEqual(["Urza's Saga"]);
+    });
+
+    it("leaves the list it was given alone", () => {
+        mpcTiles(cards, "added", true, "");
+
+        expect(cards[0]?.name).toBe("Urza's Saga");
+    });
+});
+
+describe("mpc sort memory", () => {
+    afterEach(() => vi.unstubAllGlobals());
+
+    it("starts on the newest cards and remembers a choice", () => {
+        const values = new Map<string, string>();
+        vi.stubGlobal("localStorage", {
+            getItem: (key: string) => values.get(key) ?? null,
+            setItem: (key: string, value: string) => values.set(key, value),
+        });
+
+        expect(loadMpcSort()).toBe("added");
+        saveMpcSort("name");
+        expect(loadMpcSort()).toBe("name");
+    });
+
+    it("falls back on a value it does not know", () => {
+        vi.stubGlobal("localStorage", { getItem: () => "price" });
+
+        expect(loadMpcSort()).toBe("added");
+    });
+
+    it("survives blocked storage", () => {
+        vi.stubGlobal("localStorage", {
+            getItem: () => {
+                throw new Error("blocked");
+            },
+            setItem: () => {
+                throw new Error("blocked");
+            },
+        });
+
+        expect(loadMpcSort()).toBe("added");
+        expect(() => saveMpcSort("name")).not.toThrow();
+    });
+});
 
 describe("mpcCards", () => {
     it("adds up the copies of one print", () => {
