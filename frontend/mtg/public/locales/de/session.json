@@ -1,6 +1,6 @@
 {
     "accessibility": {
-        "change-printing": "Druck von {{name}} ändern",
+        "change-printing": "Printing von {{name}} ändern",
         "enlarge": "{{name}} groß ansehen",
         "one-fewer": "Eine Kopie von {{name}} weniger",
         "one-more": "Eine Kopie von {{name}} mehr",
