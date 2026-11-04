@@ -354,10 +354,13 @@ impl MpcFill {
     /// resolution is ruled out, because a reader who is looking at the art with
     /// their own eyes is the better filter. The drives have to be named, though
     /// — MPCFill searches the ones it is given and nothing else.
+    ///
+    /// Names come from the catalog, so none needs a typo forgiven. A fuzzy
+    /// search only adds other cards: `Reshape the Earth` for `Reshape`.
     async fn search_settings(&self) -> anyhow::Result<SearchSettings> {
         Ok(SearchSettings {
             search_type_settings: SearchTypeSettings {
-                fuzzy_search: true,
+                fuzzy_search: false,
                 filter_cardbacks: false,
             },
             source_settings: SourceSettings {
@@ -718,7 +721,7 @@ mod tests {
             }],
             search_settings: SearchSettings {
                 search_type_settings: SearchTypeSettings {
-                    fuzzy_search: true,
+                    fuzzy_search: false,
                     filter_cardbacks: false,
                 },
                 source_settings: SourceSettings {
@@ -747,7 +750,7 @@ mod tests {
         assert_eq!(json["queries"][0]["cardType"], "CARD");
         assert_eq!(
             json["searchSettings"]["searchTypeSettings"]["fuzzySearch"],
-            true
+            false
         );
         assert_eq!(json["searchSettings"]["sourceSettings"]["sources"][1][0], 2);
         assert_eq!(
