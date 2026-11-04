@@ -14,6 +14,8 @@ export type MpcFillOrderDockProps = {
     missing: number;
     /** The thumbnail of the chosen card back, `null` while none is chosen */
     cardback: string | null;
+    /** Shows only the cards still missing art, or everything again */
+    onMissing: () => void;
     /** Whether the order file can be written */
     ready: boolean;
     /** Opens the choice of card backs */
@@ -41,6 +43,7 @@ export function MpcFillOrderDock({
     count,
     bracket,
     missing,
+    onMissing,
     cardback,
     ready,
     onCardback,
@@ -69,15 +72,21 @@ export function MpcFillOrderDock({
                         : `${t("label.card-count", { count })} · ${t("label.bracket", { cards: bracket })}`}
                 </span>
 
-                <span
-                    className={
-                        missing === 0
-                            ? "rounded-xl bg-(--color-success)/15 px-2 py-1 text-xs text-(--color-success)"
-                            : "rounded-xl bg-(--color-warning)/20 px-2 py-1 text-xs text-(--color-warning)"
-                    }
-                >
-                    {missing === 0 ? t("label.art-complete") : t("label.art-missing", { count: missing })}
-                </span>
+                {missing === 0 ? (
+                    <span className={"rounded-xl bg-(--color-success)/15 px-2 py-1 text-xs text-(--color-success)"}>
+                        {t("label.art-complete")}
+                    </span>
+                ) : (
+                    <button
+                        type={"button"}
+                        onClick={onMissing}
+                        className={
+                            "cursor-pointer rounded-xl bg-(--color-warning)/20 px-2 py-1 text-xs text-(--color-warning) transition hover:bg-(--color-warning)/30"
+                        }
+                    >
+                        {t("label.art-missing", { count: missing })}
+                    </button>
+                )}
 
                 <button
                     type={"button"}

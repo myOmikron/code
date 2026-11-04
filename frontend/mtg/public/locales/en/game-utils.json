@@ -18,6 +18,7 @@
         "starting-life-presets": "Common starting totals"
     },
     "button": {
+        "without-art": "No art ({{cards}})",
         "back-to-list": "Back to the list",
         "add-cards": "Add cards",
         "back-to-life": "Back to the life total",
@@ -53,6 +54,7 @@
         "pick-again": "Back"
     },
     "description": {
+        "no-matching-card": "No matching card.",
         "add-cards": "Search for cards or add a whole deck. Their art is searched for automatically.",
         "book-commander-damage": "Tap the tile of the player whose commander hit you.",
         "choose-cards": "Search for a card or add a deck, and the sheet shows up here.",
@@ -94,6 +96,10 @@
         "life-game": "Game {{number}}"
     },
     "label": {
+        "find-card": "Find a card",
+        "sort": "Sort by",
+        "sort-added": "Recently added",
+        "sort-name": "Name A–Z",
         "sheet-range": "Sheets {{first}}–{{last}}",
         "arrangement": "Arrangement",
         "arrangement-cross": "Cross",

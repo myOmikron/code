@@ -18,6 +18,7 @@
         "starting-life-presets": "Übliche Startleben"
     },
     "button": {
+        "without-art": "Ohne Bild ({{cards}})",
         "back-to-list": "Zurück zur Liste",
         "add-cards": "Karten hinzufügen",
         "back-to-life": "Zurück zum Lebenszähler",
@@ -53,6 +54,7 @@
         "pick-again": "Zurück"
     },
     "description": {
+        "no-matching-card": "Keine passende Karte.",
         "add-cards": "Suche Karten oder übernimm ein ganzes Deck. Die Bilder werden automatisch gesucht.",
         "book-commander-damage": "Tippe auf die Kachel des Spielers, dessen Commander dich getroffen hat.",
         "choose-cards": "Such eine Karte oder übernimm ein Deck, dann steht hier der Bogen.",
@@ -94,6 +96,10 @@
         "life-game": "Spiel {{number}}"
     },
     "label": {
+        "find-card": "Karte finden",
+        "sort": "Sortierung",
+        "sort-added": "Zuletzt hinzugefügt",
+        "sort-name": "Name A–Z",
         "sheet-range": "Blätter {{first}}–{{last}}",
         "arrangement": "Anordnung",
         "arrangement-cross": "Kreuz",
