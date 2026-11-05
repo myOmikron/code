@@ -1,26 +1,18 @@
 import { ArrowLeftIcon, PrinterIcon } from "@heroicons/react/20/solid";
 import { createFileRoute } from "@tanstack/react-router";
-import {
-    Button,
-    Combobox,
-    ComboboxLabel,
-    ComboboxOption,
-    Description,
-    EmptyState,
-    Field,
-    Heading,
-    Label,
-    Switch,
-    SwitchField,
-    Text,
-} from "components";
+import clsx from "clsx";
+import { Button, EmptyState, Heading, Label, Switch, SwitchField, Text } from "components";
 import { PrimaryButton } from "src/components/primary-button";
-import { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { CardSearchPanel } from "src/components/card-search-panel";
+import { ProxyDeckPicker } from "src/components/proxy-deck-picker";
 import { ProxyPickList } from "src/components/proxy-pick-list";
+import { PrintSheets } from "src/components/proxy-print-sheets";
 import { ProxySheet } from "src/components/proxy-sheet";
+import { ProxySheetPager } from "src/components/proxy-sheet-pager";
+import { groupSheets } from "src/utils/proxy-list";
+import type { ProxyGroup } from "src/utils/proxy-list";
 import { proxyFaces, proxySheets } from "src/utils/proxy-print";
 import { useProxyPicks } from "src/utils/use-proxy-picks";
 
@@ -60,9 +52,22 @@ function RouteComponent() {
     const [cutLines, setCutLines] = useState(true);
     const [skipBasics, setSkipBasics] = useState(true);
     const [preparing, setPreparing] = useState(false);
+    const [searching, setSearching] = useState(false);
+    const [searchRun, setSearchRun] = useState(0);
 
     const faces = proxyFaces(picks.picked, backs, skipBasics);
     const sheets = proxySheets(faces);
+
+    /**
+     * How many pictures of a group go on paper, which is what the print list counts
+     *
+     * @param group the group
+     *
+     * @returns the pictures
+     */
+    function countOf(group: ProxyGroup): number {
+        return proxyFaces(group.cards, backs, skipBasics).length;
+    }
 
     /**
      * Hands the sheets to the printer, once every picture is there
@@ -99,112 +104,96 @@ function RouteComponent() {
                 </PrimaryButton>
             </header>
 
-            <div className={"grid gap-6 lg:grid-cols-2"}>
+            <div className={"grid items-start gap-6 lg:grid-cols-2"}>
                 <div
                     className={
                         "flex min-w-0 flex-col gap-4 rounded-(--radius-card) bg-(--surface-card) p-5 shadow-(--shadow-card-sm) ring-1 ring-zinc-950/5 dark:ring-white/10"
                     }
                 >
-                    {picks.decks.length > 0 && (
-                        <div className={"flex items-end gap-2"}>
-                            <Field className={"min-w-0 flex-1"}>
-                                <Label>{t("label.deck")}</Label>
-                                <Combobox
-                                    options={picks.decks}
-                                    value={picks.deck}
-                                    onChange={(chosen) => picks.setDeck(chosen)}
-                                    placeholder={t("label.search-deck")}
-                                    displayValue={(overview) => overview?.deck.name ?? ""}
-                                >
-                                    {(overview) => (
-                                        <ComboboxOption value={overview}>
-                                            <ComboboxLabel>{overview.deck.name}</ComboboxLabel>
-                                        </ComboboxOption>
-                                    )}
-                                </Combobox>
-                            </Field>
-                            <Button
-                                outline={true}
-                                className={"shrink-0"}
-                                disabled={picks.deck === null || picks.loading}
-                                onClick={() => void picks.loadDeck(picks.deck, picks.onlyProxies)}
-                            >
-                                {t("button.load-deck")}
-                            </Button>
-                        </div>
-                    )}
+                    {picks.decks.length > 0 && <ProxyDeckPicker picks={picks} />}
 
                     <div>
                         <CardSearchPanel
+                            key={searchRun}
                             unique={"cards"}
                             autoFocus={false}
                             stickySearch={true}
-                            hideInfoOnMobile={true}
-                            countOf={(printing) => picks.picked.find((card) => card.key === printing.id)?.copies ?? 0}
+                            hideInfo={true}
+                            onQueryChange={(query) => setSearching(query.trim() !== "")}
+                            countOf={(printing) => picks.countOf(printing.id)}
                             onAdd={picks.add}
                             onRemove={(printing) => picks.fewer(printing.id)}
                         />
                     </div>
-                </div>
 
-                <div className={"flex min-w-0 flex-col gap-4"}>
-                    <div
-                        className={
-                            "flex flex-col gap-4 rounded-(--radius-card) bg-(--surface-card) p-5 shadow-(--shadow-card-sm) ring-1 ring-zinc-950/5 dark:ring-white/10"
-                        }
-                    >
-                        <div className={"flex items-baseline justify-between gap-3"}>
-                            <h3 className={"text-sm/6 font-medium text-zinc-950 dark:text-white"}>
-                                {t("heading.print-list")}
-                            </h3>
-                            <Text className={"text-xs"}>
-                                {`${t("label.card-count", { count: faces.length })} · ${t("label.sheet-count", {
-                                    count: sheets.length,
-                                })}`}
-                            </Text>
-                        </div>
+                    {searching && (
+                        <Button
+                            outline={true}
+                            onClick={() => {
+                                setSearching(false);
+                                setSearchRun((run) => run + 1);
+                            }}
+                        >
+                            {t("button.back-to-list")}
+                        </Button>
+                    )}
 
-                        <SwitchField>
-                            <Label>{t("label.print-backs")}</Label>
-                            <Description>{t("description.print-backs")}</Description>
-                            <Switch color={"lime"} checked={backs} onChange={setBacks} />
-                        </SwitchField>
-                        <SwitchField>
-                            <Label>{t("label.cut-lines")}</Label>
-                            <Description>{t("description.cut-lines")}</Description>
-                            <Switch color={"lime"} checked={cutLines} onChange={setCutLines} />
-                        </SwitchField>
-                        <SwitchField>
-                            <Label>{t("label.skip-basics")}</Label>
-                            <Description>{t("description.skip-basics")}</Description>
-                            <Switch color={"lime"} checked={skipBasics} onChange={setSkipBasics} />
-                        </SwitchField>
+                    <div className={clsx("flex flex-col gap-4", searching && "hidden")}>
                         <SwitchField>
                             <Label>{t("label.only-proxies")}</Label>
-                            <Description>{t("description.only-proxies")}</Description>
                             <Switch color={"lime"} checked={picks.onlyProxies} onChange={picks.setOnlyProxies} />
                         </SwitchField>
-
                         <ProxyPickList
-                            cards={picks.picked}
+                            groups={picks.groups}
+                            countOf={countOf}
                             onMore={picks.more}
                             onFewer={picks.fewer}
                             onDrop={picks.drop}
+                            onDropDeck={picks.dropDeck}
                             onClear={picks.clear}
                         />
+                    </div>
+                </div>
+
+                <div
+                    className={
+                        "flex min-w-0 flex-col gap-4 rounded-(--radius-card) bg-(--surface-card) p-5 shadow-(--shadow-card-sm) ring-1 ring-zinc-950/5 lg:sticky lg:top-4 dark:ring-white/10"
+                    }
+                >
+                    <div className={"flex items-baseline justify-between gap-3"}>
+                        <h2 className={"text-sm/6 font-medium text-zinc-950 dark:text-white"}>
+                            {t("heading.print-list")}
+                        </h2>
+                        <Text className={"text-xs"}>
+                            {`${t("label.card-count", { count: faces.length })} · ${t("label.sheet-count", {
+                                count: sheets.length,
+                            })}`}
+                        </Text>
+                    </div>
+
+                    <div className={"flex flex-wrap gap-x-6 gap-y-2"}>
+                        <SwitchField className={"gap-x-2!"}>
+                            <Label>{t("label.print-backs")}</Label>
+                            <Switch color={"lime"} checked={backs} onChange={setBacks} />
+                        </SwitchField>
+                        <SwitchField className={"gap-x-2!"}>
+                            <Label>{t("label.cut-lines")}</Label>
+                            <Switch color={"lime"} checked={cutLines} onChange={setCutLines} />
+                        </SwitchField>
+                        <SwitchField className={"gap-x-2!"}>
+                            <Label>{t("label.skip-basics")}</Label>
+                            <Switch color={"lime"} checked={skipBasics} onChange={setSkipBasics} />
+                        </SwitchField>
                     </div>
 
                     {sheets.length === 0 ? (
                         <EmptyState title={t("heading.nothing-picked")} description={t("description.choose-cards")} />
                     ) : (
-                        <div className={"flex flex-col gap-4 max-sm:mx-auto max-sm:max-w-72"}>
-                            {sheets.map((sheet, index) => (
-                                <div key={index} className={"flex flex-col gap-1.5"}>
-                                    <Text className={"text-xs"}>{t("label.sheet-number", { number: index + 1 })}</Text>
-                                    <ProxySheet faces={sheet} cutLines={cutLines} mode={"screen"} />
-                                </div>
-                            ))}
-                        </div>
+                        <ProxySheetPager
+                            sheets={sheets}
+                            cutLines={cutLines}
+                            spans={groupSheets(picks.groups, backs, skipBasics)}
+                        />
                     )}
                 </div>
             </div>
@@ -216,38 +205,6 @@ function RouteComponent() {
             </PrintSheets>
         </div>
     );
-}
-
-/**
- * The properties for {@link PrintSheets}
- */
-type PrintSheetsProps = {
-    /** The sheets to hand to the printer */
-    children: React.ReactNode;
-};
-
-/**
- * The sheets, parked outside the app for the printer to find.
- *
- * Everything the page wears around the sheets — the navigation, the list, the
- * preview — has no business on paper, and a sheet measured in millimetres has
- * no business inside a column that is as wide as the window. Both are settled
- * by putting the paper copy directly under `body`, where the app's print rule
- * hides everything that is not it.
- *
- * @returns the parked sheets
- */
-function PrintSheets({ children }: PrintSheetsProps) {
-    const [host] = useState(() => document.createElement("div"));
-
-    useEffect(() => {
-        host.dataset.printSheets = "true";
-        host.className = "hidden print:block";
-        document.body.append(host);
-        return () => host.remove();
-    }, [host]);
-
-    return createPortal(children, host);
 }
 
 /**

@@ -1,8 +1,13 @@
 {
     "accessibility": {
+        "next-sheet": "Nächstes Blatt",
+        "previous-sheet": "Vorheriges Blatt",
+        "sheet-preview": "Blattvorschau, mit den Pfeiltasten blättern",
+        "show-sheet": "Blatt {{number}} zeigen",
         "browse-art": "Alle Bilder für {{name}} ansehen",
         "commander-damage-taken": "{{count}} Commander-Schaden von {{opponent}} an {{player}}",
         "drop-card": "{{name}} von der Liste nehmen",
+        "drop-deck": "{{name}} mit seinen Karten von der Liste nehmen",
         "fewer-copies": "Eine Kopie von {{name}} weniger",
         "flip-card": "{{name}} umdrehen",
         "more-copies": "Eine Kopie von {{name}} mehr",
@@ -13,6 +18,7 @@
         "starting-life-presets": "Übliche Startleben"
     },
     "button": {
+        "back-to-list": "Zurück zur Liste",
         "add-cards": "Karten hinzufügen",
         "back-to-life": "Zurück zum Lebenszähler",
         "back-to-tools": "Zurück zu den Game-Tools",
@@ -25,7 +31,7 @@
         "dismiss-rebook": "War kein Commander-Schaden",
         "exit-fullscreen": "Vollbild verlassen",
         "fullscreen": "Vollbild",
-        "load-deck": "Übernehmen",
+        "load-deck": "Deck hinzufügen",
         "open-mpc-fill": "MPCFill öffnen",
         "order-settings": "Bestellung",
         "pick-cardback": "Rückseite wählen",
@@ -47,12 +53,12 @@
         "pick-again": "Zurück"
     },
     "description": {
+        "no-matching-card": "Keine passende Karte.",
         "add-cards": "Suche Karten oder übernimm ein ganzes Deck. Die Bilder werden automatisch gesucht.",
         "book-commander-damage": "Tippe auf die Kachel des Spielers, dessen Commander dich getroffen hat.",
         "choose-cards": "Such eine Karte oder übernimm ein Deck, dann steht hier der Bogen.",
         "choose-order": "Such eine Karte oder übernimm ein Deck, dann steht hier die Bestellliste.",
         "choose-tool": "Wähle ein Werkzeug für den Spieltisch.",
-        "cut-lines": "Dünne Linie an jeder Kartenkante, an der geschnitten wird.",
         "foil": "Kostet Aufpreis und lässt sich nicht pro Karte entscheiden.",
         "foil-impossible": "Auf Plastik gibt es kein Foil.",
         "import-xml": "Die Datei bei MPCFill über „Add Cards → XML“ importieren.",
@@ -64,15 +70,13 @@
         "no-art-hint": "In den Drives liegt kein Bild für diese Karte. Bei MPCFill lässt sich eins hochladen — oder die Karte bleibt aus der Bestelldatei.",
         "nothing-picked": "Noch keine Karte auf der Liste.",
         "nothing-to-order": "Noch hat keine Karte ein Bild — ohne das steht nichts in der Datei.",
-        "only-proxies": "Lädt aus dem Deck nur die als Proxy markierten Karten.",
+        "only-proxies": "Von den Decks bleiben nur die als Proxy markierten Karten.",
         "order-too-large": "Mehr als {{cards}} Karten gehen nicht in eine Bestellung — teile die Liste auf.",
         "paste-into-mpc-fill": "Bei MPCFill unter „Add Cards → Text“ einfügen und abschicken.",
         "pick-art_one": "1 Bild in den Drives.",
         "pick-art_other": "{{count}} Bilder in den Drives. Das gewählte steht in der Bestelldatei.",
-        "print-backs": "Doppelseitige Karten kommen mit beiden Seiten aufs Blatt.",
         "print-scale": "Neun Karten in Originalgröße je DIN-A4-Blatt. Im Druckdialog die Skalierung auf 100 % stellen.",
-        "proxy-printer": "Karten in Originalgröße auf DIN A4, zum Ausschneiden.",
-        "skip-basics": "Standardländer bleiben vom Bogen, die liegen ohnehin in jeder Sammlung."
+        "proxy-printer": "Karten in Originalgröße auf DIN A4, zum Ausschneiden."
     },
     "heading": {
         "add-cards": "Karten hinzufügen",
@@ -91,6 +95,11 @@
         "life-game": "Spiel {{number}}"
     },
     "label": {
+        "find-card": "Karte finden",
+        "sort": "Sortierung",
+        "sort-added": "Zuletzt hinzugefügt",
+        "sort-name": "Name A–Z",
+        "sheet-range": "Blätter {{first}}–{{last}}",
         "arrangement": "Anordnung",
         "arrangement-cross": "Kreuz",
         "arrangement-sides": "Seitlich",
@@ -111,24 +120,27 @@
         "deck": "Aus einem Deck",
         "dpi": "{{dpi}} dpi",
         "foil": "Foil",
+        "hand-picked": "Einzelkarten",
         "hold-step": "Halten für {{amount}}",
         "last-hit": "Letzter Treffer",
         "life": "{{count}} Leben",
         "more-tools-soon": "Weitere Tools folgen",
         "navigation": "Game-Tools-Navigation",
         "only-proxies": "Nur Proxy-Karten",
+        "on-the-list": "Auf der Liste",
         "player": "Spieler {{number}}",
         "player-short": "S{{number}}",
         "players": "Spieler",
-        "print-backs": "Rückseiten mitdrucken",
+        "print-backs": "Rückseiten",
         "search-deck": "Deck suchen",
         "sheet-count_one": "1 Blatt",
         "sheet-count_other": "{{count}} Blätter",
         "sheet-number": "Blatt {{number}}",
-        "skip-basics": "Standardländer weglassen",
+        "skip-basics": "Ohne Standardländer",
         "starting-life": "Startleben",
         "stock": "Kartenmaterial",
         "two-sided": "zweiseitig",
+        "without-art": "Ohne Bild",
         "draw": "Unentschieden",
         "game-winner": "{{player}} gewinnt",
         "history-start": "Spiel begonnen",
@@ -145,6 +157,7 @@
     },
     "toast": {
         "art-not-searched": "MPCFill hat nicht geantwortet",
+        "deck-nothing-to-add": "Aus {{name}} gibt es nichts hinzuzufügen",
         "list-copied": "Liste kopiert",
         "list-not-copied": "Liste konnte nicht kopiert werden"
     }

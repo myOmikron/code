@@ -1,5 +1,20 @@
-import { describe, expect, it } from "vitest";
-import { MPC_BRACKETS, mpcBracket, mpcCards, mpcCount, mpcFillList, mpcQuery } from "src/utils/mpcfill";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import type { MpcFillImageResponse } from "src/api/generated";
+import {
+    loadMpcSort,
+    MPC_BRACKETS,
+    mpcBracket,
+    mpcCards,
+    mpcCount,
+    mpcFillList,
+    mpcNeedsArt,
+    mpcPick,
+    mpcPickKey,
+    mpcQuery,
+    mpcTiles,
+    saveMpcSort,
+} from "src/utils/mpcfill";
+import type { ProxyGroup } from "src/utils/proxy-list";
 import type { ProxyCard } from "src/utils/proxy-print";
 
 /**
@@ -22,8 +37,128 @@ function card(name: string, copies: number, print: [string, string] | null = ["L
         back: null,
         copies,
         basic,
+        proxy: false,
     };
 }
+
+describe("mpcTiles", () => {
+    const cards = [card("Urza's Saga", 1), card("Arcane Signet", 1), card("Sol Ring", 1), card("", 1, null)];
+    const hand: ProxyGroup = { deck: null, cards };
+    const deck: ProxyGroup = { deck: { uuid: "a", name: "Atraxa" }, cards };
+
+    /**
+     * The names of some tiles
+     *
+     * @param tiles the tiles
+     *
+     * @returns their names
+     */
+    const names = (tiles: Array<ProxyCard>) => tiles.map((tile) => tile.name);
+
+    it("puts the newest hand pick first", () => {
+        expect(names(mpcTiles(hand, "added", ""))).toStrictEqual(["Sol Ring", "Arcane Signet", "Urza's Saga"]);
+    });
+
+    it("keeps a deck in its own order", () => {
+        expect(names(mpcTiles(deck, "added", ""))).toStrictEqual(["Urza's Saga", "Arcane Signet", "Sol Ring"]);
+    });
+
+    it("sorts by name on request", () => {
+        expect(names(mpcTiles(hand, "name", ""))).toStrictEqual(["Arcane Signet", "Sol Ring", "Urza's Saga"]);
+    });
+
+    it("finds a name however its punctuation is typed", () => {
+        expect(names(mpcTiles(hand, "name", "URZAS"))).toStrictEqual(["Urza's Saga"]);
+        expect(names(mpcTiles(hand, "name", "urza's sa"))).toStrictEqual(["Urza's Saga"]);
+    });
+
+    it("leaves the list it was given alone", () => {
+        mpcTiles(hand, "added", "");
+
+        expect(cards[0]?.name).toBe("Urza's Saga");
+    });
+});
+
+describe("art picks", () => {
+    /**
+     * An image MPCFill found
+     *
+     * @param id its drive id
+     *
+     * @returns the image
+     */
+    const image = (id: string): MpcFillImageResponse => ({
+        id,
+        name: `${id}.png`,
+        dpi: 800,
+        language: "EN",
+        size: 1,
+        source: "drive",
+        tags: [],
+        thumbnail_medium: "",
+        thumbnail_small: "",
+    });
+    const first = image("1");
+    const second = image("2");
+
+    it("takes the top hit until another is picked", () => {
+        expect(mpcPick([first, second], undefined)).toBe(first);
+        expect(mpcPick([first, second], "2")).toBe(second);
+        expect(mpcPick([first, second], "gone")).toBe(first);
+        expect(mpcPick([], undefined)).toBeNull();
+    });
+
+    it("files a pick per deck", () => {
+        const atraxa: ProxyGroup = { deck: { uuid: "a", name: "Atraxa" }, cards: [] };
+        const hand: ProxyGroup = { deck: null, cards: [] };
+
+        expect(mpcPickKey(atraxa, "Sol Ring")).not.toBe(mpcPickKey(hand, "Sol Ring"));
+    });
+
+    it("misses art when either side has none", () => {
+        const delver = { ...card("Delver of Secrets // Insectile Aberration", 1), back: "back.jpg" };
+
+        expect(mpcNeedsArt({ "Delver of Secrets": [first] }, delver)).toBe(true);
+        expect(mpcNeedsArt({ "Delver of Secrets": [first], "Insectile Aberration": [] }, delver)).toBe(true);
+        expect(mpcNeedsArt({ "Delver of Secrets": [first], "Insectile Aberration": [second] }, delver)).toBe(false);
+    });
+});
+
+describe("mpc sort memory", () => {
+    afterEach(() => vi.unstubAllGlobals());
+
+    it("starts on the newest cards and remembers a choice", () => {
+        const values = new Map<string, string>();
+        vi.stubGlobal("localStorage", {
+            getItem: (key: string) => values.get(key) ?? null,
+            setItem: (key: string, value: string) => values.set(key, value),
+        });
+
+        expect(loadMpcSort()).toBe("added");
+        saveMpcSort("name");
+        expect(loadMpcSort()).toBe("name");
+    });
+
+    it("falls back on a value it does not know", () => {
+        vi.stubGlobal("localStorage", { getItem: () => "price" });
+
+        expect(loadMpcSort()).toBe("added");
+    });
+
+    it("survives blocked storage", () => {
+        vi.stubGlobal("localStorage", {
+            getItem: () => {
+                throw new Error("blocked");
+            },
+            setItem: () => {
+                throw new Error("blocked");
+            },
+        });
+
+        expect(loadMpcSort()).toBe("added");
+        expect(() => saveMpcSort("name")).not.toThrow();
+    });
+});
 
 describe("mpcCards", () => {
     it("adds up the copies of one print", () => {

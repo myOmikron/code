@@ -19,10 +19,24 @@
  * it is about to cross, and worth splitting once it grows past the largest one.
  */
 
+import type { MpcFillImageResponse } from "src/api/generated";
+import type { ProxyGroup } from "src/utils/proxy-list";
 import type { ProxyCard } from "src/utils/proxy-print";
 
 /** Where the list is pasted in */
 export const MPC_FILL_URL = "https://mpcfill.com";
+
+/** How the tiles of an order can be sorted */
+export const MPC_SORTS = ["added", "name"] as const;
+
+/** One way of sorting the tiles of an order */
+export type MpcSort = (typeof MPC_SORTS)[number];
+
+/** Where the chosen sort is remembered on this device */
+const SORT_KEY = "cardlens.mpcfill-sort.v1";
+
+/** The most names the service looks up in one request */
+export const MPC_MAX_NAMES = 300;
 
 /** What separates the two faces of a card, in both Scryfall's name and MPCFill's syntax */
 const FACES = " // ";
@@ -67,6 +81,90 @@ export function mpcCards(cards: Array<ProxyCard>, skipBasics: boolean): Array<Pr
     }
 
     return [...rows.values()].sort((left, right) => left.name.localeCompare(right.name));
+}
+
+/**
+ * The tiles of one group, as the reader wants to see them
+ *
+ * Only what is on screen: the order file keeps its own sequence. Cards picked by
+ * hand come newest first; a deck arrives all at once and keeps its own order.
+ *
+ * @param group the group
+ * @param sort how to sort its cards
+ * @param query the text a tile's name has to contain
+ *
+ * @returns the cards to show
+ */
+export function mpcTiles(group: ProxyGroup, sort: MpcSort, query: string): Array<ProxyCard> {
+    const wanted = mpcQuery(query);
+    const named = group.cards.filter((card) => card.name !== "" && mpcQuery(card.name).includes(wanted));
+
+    if (sort === "name") return named.sort((left, right) => left.name.localeCompare(right.name));
+    return group.deck === null ? named.reverse() : named;
+}
+
+/**
+ * What an art pick is filed under: each deck picks its own art
+ *
+ * @param group the group the card is in
+ * @param face the name MPCFill is asked for
+ *
+ * @returns the key
+ */
+export function mpcPickKey(group: ProxyGroup, face: string): string {
+    return `${group.deck?.uuid ?? ""}|${face}`;
+}
+
+/**
+ * The art taken for one face, the top hit until another is picked
+ *
+ * @param images what was found for the face
+ * @param chosen the id of the image picked, if any
+ *
+ * @returns the image, `null` while there is none
+ */
+export function mpcPick(images: Array<MpcFillImageResponse>, chosen: string | undefined): MpcFillImageResponse | null {
+    return images.find((image) => image.id === chosen) ?? images[0] ?? null;
+}
+
+/**
+ * Whether a card has no art for one of its sides
+ *
+ * @param art what was found, by face
+ * @param card the card
+ *
+ * @returns whether it does
+ */
+export function mpcNeedsArt(art: Record<string, Array<MpcFillImageResponse>>, card: ProxyCard): boolean {
+    const { front, back } = mpcFaces(card);
+    return (art[front] ?? []).length === 0 || (back !== null && (art[back] ?? []).length === 0);
+}
+
+/**
+ * The sort this device last chose
+ *
+ * @returns the sort, newest cards first when there is none
+ */
+export function loadMpcSort(): MpcSort {
+    try {
+        const stored = localStorage.getItem(SORT_KEY);
+        return MPC_SORTS.find((sort) => sort === stored) ?? "added";
+    } catch {
+        return "added";
+    }
+}
+
+/**
+ * Remembers the chosen sort on this device
+ *
+ * @param sort the sort
+ */
+export function saveMpcSort(sort: MpcSort) {
+    try {
+        localStorage.setItem(SORT_KEY, sort);
+    } catch {
+        return;
+    }
 }
 
 /**

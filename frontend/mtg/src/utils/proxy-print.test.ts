@@ -31,6 +31,7 @@ function card(key: string, copies: number, back = false, basic = false): ProxyCa
         back: back ? `https://cards.scryfall.io/normal/back/a/b/${key}.jpg` : null,
         copies,
         basic,
+        proxy: false,
     };
 }
 
@@ -169,26 +170,26 @@ describe("deckProxyCards", () => {
             slot("Ponder", "Maybe"),
         ];
 
-        expect(deckProxyCards(cards, false).map((card) => card.name)).toStrictEqual(["Sol Ring", "Kenrith"]);
+        expect(deckProxyCards(cards).map((card) => card.name)).toStrictEqual(["Sol Ring", "Kenrith"]);
     });
 
-    it("takes only the marked slots when that is asked for", () => {
+    it("says which slots are marked as proxies", () => {
         const cards = [slot("Sol Ring", "Main", 1, true), slot("Ponder", "Main")];
 
-        expect(deckProxyCards(cards, true).map((card) => card.name)).toStrictEqual(["Sol Ring"]);
+        expect(deckProxyCards(cards).map((card) => card.proxy)).toStrictEqual([true, false]);
     });
 
     it("carries the print over, for a list that names it", () => {
-        expect(deckProxyCards([slot("Sol Ring", "Main")], false)[0]).toMatchObject({ set: "LEB", number: "161" });
+        expect(deckProxyCards([slot("Sol Ring", "Main")])[0]).toMatchObject({ set: "LEB", number: "161" });
     });
 
     it("keeps a slot the catalog has not caught up with", () => {
-        const [card] = deckProxyCards([slot("", "Main")], false);
+        const [card] = deckProxyCards([slot("", "Main")]);
 
         expect(card).toMatchObject({ name: "", set: "", number: "", front: null });
     });
 
     it("holds a slot to what a list takes", () => {
-        expect(deckProxyCards([slot("Sol Ring", "Main", MAX_COPIES + 5)], false)[0]?.copies).toBe(MAX_COPIES);
+        expect(deckProxyCards([slot("Sol Ring", "Main", MAX_COPIES + 5)])[0]?.copies).toBe(MAX_COPIES);
     });
 });

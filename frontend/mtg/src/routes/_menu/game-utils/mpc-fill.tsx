@@ -2,7 +2,7 @@ import { ArrowLeftIcon, PlusIcon } from "@heroicons/react/20/solid";
 import { createFileRoute } from "@tanstack/react-router";
 import { Button, EmptyState, Heading, Text, notify } from "components";
 import { PrimaryButton } from "src/components/primary-button";
-import { useEffect, useState } from "react";
+import { useDeferredValue, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import type { MpcFillImageResponse } from "src/api/generated";
@@ -12,9 +12,29 @@ import { MpcFillCardTile } from "src/components/mpcfill-card-tile";
 import type { MpcFillTileFace } from "src/components/mpcfill-card-tile";
 import { MpcFillOrderDialog } from "src/components/mpcfill-order-dialog";
 import { MpcFillOrderDock } from "src/components/mpcfill-order-dock";
-import { MPC_BRACKETS, mpcBracket, mpcCards, mpcCount, mpcFaces, mpcFillList, mpcQuery } from "src/utils/mpcfill";
+import { MpcFillOrderToolbar } from "src/components/mpcfill-order-toolbar";
+import { ProxyGroupRow } from "src/components/proxy-group-row";
+import {
+    MPC_BRACKETS,
+    MPC_MAX_NAMES,
+    loadMpcSort,
+    mpcBracket,
+    mpcCards,
+    mpcCount,
+    mpcFaces,
+    mpcFillList,
+    mpcNeedsArt,
+    mpcPick,
+    mpcPickKey,
+    mpcQuery,
+    mpcTiles,
+    saveMpcSort,
+} from "src/utils/mpcfill";
+import type { MpcSort } from "src/utils/mpcfill";
 import { DEFAULT_MPC_STOCK, mpcFillReady, mpcFillXml } from "src/utils/mpcfill-xml";
 import type { MpcFillOrderCard, MpcFillPick, MpcStock } from "src/utils/mpcfill-xml";
+import { groupKey, showsHeadings } from "src/utils/proxy-list";
+import type { ProxyGroup } from "src/utils/proxy-list";
 import { useProxyPicks } from "src/utils/use-proxy-picks";
 
 /** What the page can be opened on */
@@ -66,59 +86,78 @@ function RouteComponent() {
     const [stock, setStock] = useState<MpcStock>(DEFAULT_MPC_STOCK);
     const [foil, setFoil] = useState(false);
 
-    // The art, keyed by the name it was searched under, and what was taken out
-    // of it. Keyed by face rather than by card: four copies of a card are four
-    // slots of the same picture, and a card in two decks is the same picture
-    // again.
     const [art, setArt] = useState<Record<string, Array<MpcFillImageResponse>>>({});
-    const [chosen, setChosen] = useState<Record<string, MpcFillPick>>({});
+    const [chosen, setChosen] = useState<Record<string, string>>({});
     const [cardbacks, setCardbacks] = useState<Array<MpcFillImageResponse>>([]);
     const [cardback, setCardback] = useState<MpcFillPick | null>(null);
+    const asking = useRef(new Set<string>());
 
     const [adding, setAdding] = useState(false);
     const [settings, setSettings] = useState(false);
-    const [browsing, setBrowsing] = useState<{ face: string; label: string } | "cardback" | null>(null);
+    const [browsing, setBrowsing] = useState<{ group: ProxyGroup; face: string; label: string } | "cardback" | null>(
+        null,
+    );
 
-    // What the order adds up to: the same print asked for twice is one card
-    // with two copies, however it got onto the list.
-    const rows = mpcCards(picks.picked, false);
+    const [query, setQuery] = useState("");
+    const [sort, setSort] = useState<MpcSort>(loadMpcSort);
+    const [onlyMissing, setOnlyMissing] = useState(false);
+    const found = useDeferredValue(query);
+
+    const sections = picks.groups.map((group) => ({ group, rows: mpcCards(group.cards, false) }));
+    const rows = sections.flatMap((section) => section.rows);
+    const headed = showsHeadings(picks.groups);
     const count = mpcCount(rows);
     const bracket = mpcBracket(count);
     const list = mpcFillList(rows);
 
     /**
+     * The art taken for one face in one group
+     *
+     * @param group the group
+     * @param face the name MPCFill is asked for
+     *
+     * @returns the image, `null` while there is none
+     */
+    function pickOf(group: ProxyGroup, face: string): MpcFillImageResponse | null {
+        return mpcPick(art[face] ?? [], chosen[mpcPickKey(group, face)]);
+    }
+
+    /**
      * One side of a card, with the art there is for it
      *
+     * @param group the group the card is in
      * @param name the name MPCFill is asked for
      *
      * @returns the face
      */
-    function faceOf(name: string): MpcFillTileFace {
-        const images = art[name];
-        const pick = chosen[name];
-        return {
-            name,
-            images: images ?? [],
-            chosen: images?.find((image) => image.id === pick?.id) ?? null,
-            searched: images !== undefined,
-        };
+    function faceOf(group: ProxyGroup, name: string): MpcFillTileFace {
+        return { name, images: art[name] ?? [], chosen: pickOf(group, name), searched: art[name] !== undefined };
     }
 
-    const orderCards: Array<MpcFillOrderCard> = rows.map((card) => {
-        const { front, back } = mpcFaces(card);
-        return {
-            copies: card.copies,
-            // The folded name, not the printed one: it is what MPCFill was
-            // asked, and what it would search again on a re-import.
-            frontQuery: mpcQuery(front),
-            front: chosen[front] ?? null,
-            backQuery: back === null ? null : mpcQuery(back),
-            back: back === null ? null : (chosen[back] ?? null),
-        };
-    });
+    const orderCards: Array<MpcFillOrderCard> = sections.flatMap((section) =>
+        section.rows.map((card) => {
+            const { front, back } = mpcFaces(card);
+            return {
+                copies: card.copies,
+                // The folded name, not the printed one: it is what MPCFill was
+                // asked, and what it would search again on a re-import.
+                frontQuery: mpcQuery(front),
+                front: pickOf(section.group, front),
+                backQuery: back === null ? null : mpcQuery(back),
+                back: back === null ? null : pickOf(section.group, back),
+            };
+        }),
+    );
     const ready = mpcFillReady(orderCards);
-    const missing = orderCards.length - ready.length;
-    const xml = mpcFillXml({ cards: orderCards, stock, foil, cardback });
+    const missing = picks.picked.filter((card) => card.name !== "" && mpcNeedsArt(art, card)).length;
+    const missingOnly = onlyMissing && missing > 0;
+    const filtering = missingOnly || found.trim() !== "";
+    const shown = sections
+        .map((section) => ({
+            ...section,
+            tiles: mpcTiles(section.group, sort, found).filter((card) => !missingOnly || mpcNeedsArt(art, card)),
+        }))
+        .filter((section) => !filtering || section.tiles.length > 0);
 
     // Every face on the order, and the ones nothing has been asked about yet.
     // Joined into a string as the effect's key: a new array every render would
@@ -129,14 +168,6 @@ function RouteComponent() {
     });
     const unsearched = [...new Set(faces)].filter((name) => art[name] === undefined);
     const pending = unsearched.join("|");
-
-    // The tiles are the rows as they were picked, not the merged ones: a tile's
-    // copies and its way off the order act on the row it came from, and a
-    // merged row is nobody's. Sorted by name, because that is how a card is
-    // found again in a grid of a hundred.
-    const tiles = [...picks.picked]
-        .filter((card) => card.name !== "")
-        .sort((left, right) => left.name.localeCompare(right.name));
 
     // Searched as the cards arrive rather than on a button: a card with no
     // picture on it is not an order yet, and the service caches per name, so
@@ -153,16 +184,22 @@ function RouteComponent() {
     /**
      * Asks MPCFill what art it has for these card faces
      *
-     * The first hit of each is taken right away: MPCFill ranks the drives, so
-     * the top one is the answer most of the time and the picker is for the
-     * times it is not. Anything already picked keeps its pick.
+     * A face nobody picked for shows the first hit: MPCFill ranks the drives,
+     * so the top one is the answer most of the time.
      *
      * @param names the faces to look up
      */
     async function searchArt(names: Array<string>) {
+        const fresh = names.filter((name) => !asking.current.has(name));
+        if (fresh.length === 0) return;
+
+        const batches: Array<Array<string>> = [];
+        for (let at = 0; at < fresh.length; at += MPC_MAX_NAMES) batches.push(fresh.slice(at, at + MPC_MAX_NAMES));
+
+        for (const name of fresh) asking.current.add(name);
         try {
-            const [found, backs] = await Promise.all([
-                Api.mpcfill.art(names),
+            const [answers, backs] = await Promise.all([
+                Promise.all(batches.map((batch) => Api.mpcfill.art(batch))),
                 cardbacks.length === 0 ? Api.mpcfill.cardbacks() : Promise.resolve({ cardbacks }),
             ]);
 
@@ -171,44 +208,43 @@ function RouteComponent() {
                 // without that, a card nobody drew stays unsearched and is
                 // asked about again on the next render.
                 const next = { ...previous };
-                for (const name of names) next[name] ??= [];
-                for (const result of found.results) next[result.name] = result.images;
+                for (const name of fresh) next[name] ??= [];
+                for (const result of answers.flatMap((answer) => answer.results)) next[result.name] = result.images;
                 return next;
             });
-            setChosen((previous) => {
-                const next = { ...previous };
-                for (const result of found.results) {
-                    const first = result.images[0];
-                    if (next[result.name] === undefined && first !== undefined) {
-                        next[result.name] = { id: first.id, name: first.name };
-                    }
-                }
-                return next;
-            });
-
             setCardbacks(backs.cardbacks);
             const back = backs.cardbacks[0];
             if (cardback === null && back !== undefined) setCardback({ id: back.id, name: back.name });
         } catch {
             // The names stay unwritten, so the next card added asks again.
             notify.error(t("toast.art-not-searched"));
+        } finally {
+            for (const name of fresh) asking.current.delete(name);
         }
+    }
+
+    /**
+     * Takes an image for one face in one group
+     *
+     * @param group the group
+     * @param face the name MPCFill is asked for
+     * @param image the image
+     */
+    function pick(group: ProxyGroup, face: string, image: MpcFillImageResponse) {
+        setChosen((previous) => ({ ...previous, [mpcPickKey(group, face)]: image.id }));
     }
 
     /**
      * Takes the art a step along in what was found for one face
      *
+     * @param group the group the card is in
      * @param face the face
      * @param step how far, in either direction
      */
-    function cycle(face: MpcFillTileFace, step: number) {
-        if (face.images.length === 0) return;
-
+    function cycle(group: ProxyGroup, face: MpcFillTileFace, step: number) {
         const at = face.images.findIndex((image) => image.id === face.chosen?.id);
         const next = face.images[(at + step + face.images.length) % face.images.length];
-        if (next === undefined) return;
-
-        setChosen((previous) => ({ ...previous, [face.name]: { id: next.id, name: next.name } }));
+        if (next !== undefined) pick(group, face.name, next);
     }
 
     /**
@@ -221,14 +257,20 @@ function RouteComponent() {
         if (browsing === "cardback") {
             setCardback({ id: image.id, name: image.name });
         } else {
-            setChosen((previous) => ({ ...previous, [browsing.face]: { id: image.id, name: image.name } }));
+            pick(browsing.group, browsing.face, image);
         }
         setBrowsing(null);
     }
 
+    /** Shows only the cards still missing art, or everything again */
+    function toggleMissing() {
+        setOnlyMissing(!missingOnly);
+    }
+
     /** Hands the order file to the browser as a download */
     function downloadXml() {
-        download(`${filename(picks.deck?.deck.name)}.xml`, xml);
+        const only = picks.groups.length === 1 ? picks.groups[0]?.deck : undefined;
+        download(`${filename(only?.name)}.xml`, mpcFillXml({ cards: orderCards, stock, foil, cardback }));
     }
 
     /** Puts the text list on the clipboard, which is what MPCFill's text import takes */
@@ -245,7 +287,7 @@ function RouteComponent() {
         // Room at the bottom for the dock, which floats over the page.
         <div className={"mx-auto flex w-full max-w-7xl flex-col gap-6 pb-20"}>
             <header className={"flex flex-wrap items-center justify-between gap-2"}>
-                <div className={"flex min-w-0 flex-1 items-center gap-2"}>
+                <div className={"flex min-w-0 flex-1 items-center gap-2 max-sm:basis-full"}>
                     <Button plain={true} href={"/game-utils"} aria-label={t("button.back-to-tools")}>
                         <ArrowLeftIcon />
                     </Button>
@@ -254,13 +296,20 @@ function RouteComponent() {
                         <Text className={"mt-1 text-xs"}>{t("description.mpc-order")}</Text>
                     </div>
                 </div>
-                <PrimaryButton onClick={() => setAdding(true)}>
+                <PrimaryButton
+                    className={"max-sm:w-full"}
+                    onClick={() => {
+                        setQuery("");
+                        setOnlyMissing(false);
+                        setAdding(true);
+                    }}
+                >
                     <PlusIcon />
                     {t("button.add-cards")}
                 </PrimaryButton>
             </header>
 
-            {rows.length === 0 ? (
+            {orderCards.length === 0 ? (
                 <EmptyState title={t("heading.nothing-ordered")} description={t("description.choose-order")} />
             ) : (
                 <>
@@ -270,34 +319,64 @@ function RouteComponent() {
                         </Text>
                     )}
 
-                    <ul className={"grid grid-cols-2 gap-x-4 gap-y-5 md:grid-cols-3 xl:grid-cols-4"}>
-                        {tiles.map((card) => {
-                            const { front, back } = mpcFaces(card);
-                            return (
-                                <li key={card.key} className={"min-w-0"}>
-                                    <MpcFillCardTile
-                                        label={card.name}
-                                        copies={card.copies}
-                                        front={faceOf(front)}
-                                        back={back === null ? null : faceOf(back)}
-                                        onCycle={cycle}
-                                        onBrowse={(face, label) => setBrowsing({ face: face.name, label })}
-                                        onMore={() => picks.more(card.key)}
-                                        onFewer={() => picks.fewer(card.key)}
-                                        onDrop={() => picks.drop(card.key)}
-                                    />
-                                </li>
-                            );
-                        })}
-                    </ul>
+                    <MpcFillOrderToolbar
+                        query={query}
+                        onQuery={setQuery}
+                        sort={sort}
+                        onSort={(next) => {
+                            setSort(next);
+                            saveMpcSort(next);
+                        }}
+                        missing={missing}
+                        onlyMissing={missingOnly}
+                        onMissing={toggleMissing}
+                    />
+
+                    {shown.length === 0 && <Text className={"text-sm"}>{t("description.no-matching-card")}</Text>}
+
+                    {shown.map(({ group, rows: groupRows, tiles }) => (
+                        <section key={groupKey(group)} className={"flex flex-col gap-3"}>
+                            {headed && (
+                                <ProxyGroupRow
+                                    group={group}
+                                    count={mpcCount(groupRows)}
+                                    level={2}
+                                    onDropDeck={picks.dropDeck}
+                                />
+                            )}
+                            <ul className={"grid grid-cols-2 gap-x-4 gap-y-5 md:grid-cols-3 xl:grid-cols-4"}>
+                                {tiles.map((card) => {
+                                    const { front, back } = mpcFaces(card);
+                                    return (
+                                        <li key={card.key} className={"min-w-0"}>
+                                            <MpcFillCardTile
+                                                label={card.name}
+                                                copies={card.copies}
+                                                front={faceOf(group, front)}
+                                                back={back === null ? null : faceOf(group, back)}
+                                                onCycle={(face, step) => cycle(group, face, step)}
+                                                onBrowse={(face, label) =>
+                                                    setBrowsing({ group, face: face.name, label })
+                                                }
+                                                onMore={() => picks.more(card.key)}
+                                                onFewer={() => picks.fewer(card.key)}
+                                                onDrop={() => picks.drop(card.key)}
+                                            />
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                        </section>
+                    ))}
                 </>
             )}
 
-            {rows.length > 0 && (
+            {orderCards.length > 0 && (
                 <MpcFillOrderDock
                     count={count}
                     bracket={bracket}
                     missing={missing}
+                    onMissing={toggleMissing}
                     cardback={cardbacks.find((image) => image.id === cardback?.id)?.thumbnail_small ?? null}
                     ready={ready.length > 0}
                     onCardback={() => setBrowsing("cardback")}
@@ -306,20 +385,7 @@ function RouteComponent() {
                 />
             )}
 
-            <MpcFillAddDialog
-                open={adding}
-                decks={picks.decks}
-                deck={picks.deck}
-                onDeck={picks.setDeck}
-                onlyProxies={picks.onlyProxies}
-                onOnlyProxies={picks.setOnlyProxies}
-                loading={picks.loading}
-                onLoadDeck={() => void picks.loadDeck(picks.deck, picks.onlyProxies)}
-                countOf={(printing) => picks.picked.find((card) => card.key === printing.id)?.copies ?? 0}
-                onAdd={picks.add}
-                onRemove={(printing) => picks.fewer(printing.id)}
-                onClose={() => setAdding(false)}
-            />
+            <MpcFillAddDialog open={adding} picks={picks} onClose={() => setAdding(false)} />
 
             <MpcFillOrderDialog
                 open={settings}
@@ -343,7 +409,7 @@ function RouteComponent() {
                         ? null
                         : browsing === "cardback"
                           ? (cardback?.id ?? null)
-                          : (chosen[browsing.face]?.id ?? null)
+                          : (pickOf(browsing.group, browsing.face)?.id ?? null)
                 }
                 onChoose={choose}
                 onClose={() => setBrowsing(null)}
@@ -376,7 +442,7 @@ function download(name: string, text: string) {
  * Named after the deck it was written for, because an order kept next to three
  * others is only worth keeping if it says which deck it is.
  *
- * @param deck the deck's name, nothing when the cards were searched together by hand
+ * @param deck the deck's name, nothing for an order of several decks or hand picks
  *
  * @returns the file's name, without the extension
  */
