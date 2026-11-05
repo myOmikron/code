@@ -3,8 +3,9 @@ import { Button, Strong, Text } from "components";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ProxyGroupRow } from "src/components/proxy-group-row";
-import { showsHeadings } from "src/utils/proxy-list";
+import { groupKey, showsHeadings } from "src/utils/proxy-list";
 import type { ProxyGroup } from "src/utils/proxy-list";
+import type { ProxyCard } from "src/utils/proxy-print";
 
 /**
  * The properties for {@link ProxyPickList}
@@ -43,8 +44,7 @@ export function ProxyPickList({ groups, countOf, onMore, onFewer, onDrop, onDrop
         <>
             <div className={"flex flex-col divide-y divide-zinc-950/10 dark:divide-white/10"}>
                 {groups.map((group) => {
-                    const key = group.deck?.uuid ?? "hand";
-                    // A lone deck shows its cards, several start folded.
+                    const key = groupKey(group);
                     const open = !headed || (unfolded[key] ?? groups.length === 1);
                     return (
                         <section key={key}>
@@ -61,46 +61,13 @@ export function ProxyPickList({ groups, countOf, onMore, onFewer, onDrop, onDrop
                             {open && (
                                 <ul className={"flex flex-col divide-y divide-zinc-950/5 dark:divide-white/10"}>
                                     {group.cards.map((card) => (
-                                        <li key={card.key} className={"flex items-center gap-2 py-2"}>
-                                            <Strong className={"min-w-0 flex-1 truncate text-sm"}>{card.name}</Strong>
-                                            {card.back !== null && (
-                                                <span
-                                                    className={
-                                                        "shrink-0 text-xs text-zinc-500 max-sm:hidden dark:text-zinc-400"
-                                                    }
-                                                >
-                                                    {t("label.two-sided")}
-                                                </span>
-                                            )}
-                                            <Button
-                                                plain={true}
-                                                aria-label={t("accessibility.fewer-copies", { name: card.name })}
-                                                onClick={() => onFewer(card.key)}
-                                            >
-                                                <MinusIcon />
-                                            </Button>
-                                            <span
-                                                className={
-                                                    "w-6 shrink-0 text-center text-sm text-zinc-950 tabular-nums dark:text-white"
-                                                }
-                                            >
-                                                {card.copies}
-                                            </span>
-                                            <Button
-                                                plain={true}
-                                                aria-label={t("accessibility.more-copies", { name: card.name })}
-                                                onClick={() => onMore(card.key)}
-                                            >
-                                                <PlusIcon />
-                                            </Button>
-                                            <Button
-                                                plain={true}
-                                                aria-label={t("accessibility.drop-card", { name: card.name })}
-                                                onClick={() => onDrop(card.key)}
-                                            >
-                                                <XMarkIcon />
-                                            </Button>
-                                        </li>
+                                        <PickRow
+                                            key={card.key}
+                                            card={card}
+                                            onMore={onMore}
+                                            onFewer={onFewer}
+                                            onDrop={onDrop}
+                                        />
                                     ))}
                                 </ul>
                             )}
@@ -113,5 +80,63 @@ export function ProxyPickList({ groups, countOf, onMore, onFewer, onDrop, onDrop
                 {t("button.clear-list")}
             </Button>
         </>
+    );
+}
+
+/**
+ * The properties for {@link PickRow}
+ */
+type PickRowProps = {
+    /** The card */
+    card: ProxyCard;
+    /** Puts one more copy of it on the list */
+    onMore: (key: string) => void;
+    /** Takes one copy back off */
+    onFewer: (key: string) => void;
+    /** Takes it off altogether */
+    onDrop: (key: string) => void;
+};
+
+/**
+ * One card of a print run, with its copies.
+ *
+ * @returns the row
+ */
+function PickRow({ card, onMore, onFewer, onDrop }: PickRowProps) {
+    const [t] = useTranslation("game-utils");
+
+    return (
+        <li className={"flex items-center gap-2 py-2"}>
+            <Strong className={"min-w-0 flex-1 truncate text-sm"}>{card.name}</Strong>
+            {card.back !== null && (
+                <span className={"shrink-0 text-xs text-zinc-500 max-sm:hidden dark:text-zinc-400"}>
+                    {t("label.two-sided")}
+                </span>
+            )}
+            <Button
+                plain={true}
+                aria-label={t("accessibility.fewer-copies", { name: card.name })}
+                onClick={() => onFewer(card.key)}
+            >
+                <MinusIcon />
+            </Button>
+            <span className={"w-6 shrink-0 text-center text-sm text-zinc-950 tabular-nums dark:text-white"}>
+                {card.copies}
+            </span>
+            <Button
+                plain={true}
+                aria-label={t("accessibility.more-copies", { name: card.name })}
+                onClick={() => onMore(card.key)}
+            >
+                <PlusIcon />
+            </Button>
+            <Button
+                plain={true}
+                aria-label={t("accessibility.drop-card", { name: card.name })}
+                onClick={() => onDrop(card.key)}
+            >
+                <XMarkIcon />
+            </Button>
+        </li>
     );
 }
