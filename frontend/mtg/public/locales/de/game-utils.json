@@ -18,7 +18,6 @@
         "starting-life-presets": "Übliche Startleben"
     },
     "button": {
-        "without-art": "Ohne Bild ({{cards}})",
         "back-to-list": "Zurück zur Liste",
         "add-cards": "Karten hinzufügen",
         "back-to-life": "Zurück zum Lebenszähler",
@@ -141,6 +140,7 @@
         "starting-life": "Startleben",
         "stock": "Kartenmaterial",
         "two-sided": "zweiseitig",
+        "without-art": "Ohne Bild",
         "draw": "Unentschieden",
         "game-winner": "{{player}} gewinnt",
         "history-start": "Spiel begonnen",

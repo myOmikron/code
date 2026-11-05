@@ -3,12 +3,12 @@ import { createFileRoute } from "@tanstack/react-router";
 import clsx from "clsx";
 import { Button, EmptyState, Heading, Label, Switch, SwitchField, Text } from "components";
 import { PrimaryButton } from "src/components/primary-button";
-import { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { CardSearchPanel } from "src/components/card-search-panel";
 import { ProxyDeckPicker } from "src/components/proxy-deck-picker";
 import { ProxyPickList } from "src/components/proxy-pick-list";
+import { PrintSheets } from "src/components/proxy-print-sheets";
 import { ProxySheet } from "src/components/proxy-sheet";
 import { ProxySheetPager } from "src/components/proxy-sheet-pager";
 import { groupSheets } from "src/utils/proxy-list";
@@ -52,10 +52,8 @@ function RouteComponent() {
     const [cutLines, setCutLines] = useState(true);
     const [skipBasics, setSkipBasics] = useState(true);
     const [preparing, setPreparing] = useState(false);
-    // The search owns its field, so going back to the list starts a new one.
-    const [query, setQuery] = useState("");
+    const [searching, setSearching] = useState(false);
     const [searchRun, setSearchRun] = useState(0);
-    const searching = query.trim() !== "";
 
     const faces = proxyFaces(picks.picked, backs, skipBasics);
     const sheets = proxySheets(faces);
@@ -112,16 +110,7 @@ function RouteComponent() {
                         "flex min-w-0 flex-col gap-4 rounded-(--radius-card) bg-(--surface-card) p-5 shadow-(--shadow-card-sm) ring-1 ring-zinc-950/5 dark:ring-white/10"
                     }
                 >
-                    {picks.decks.length > 0 && (
-                        <ProxyDeckPicker
-                            decks={picks.decks}
-                            groups={picks.groups}
-                            deck={picks.deck}
-                            onDeck={picks.setDeck}
-                            loading={picks.loading}
-                            onAdd={() => void picks.loadDeck(picks.deck)}
-                        />
-                    )}
+                    {picks.decks.length > 0 && <ProxyDeckPicker picks={picks} />}
 
                     <div>
                         <CardSearchPanel
@@ -130,7 +119,7 @@ function RouteComponent() {
                             autoFocus={false}
                             stickySearch={true}
                             hideInfo={true}
-                            onQueryChange={setQuery}
+                            onQueryChange={(query) => setSearching(query.trim() !== "")}
                             countOf={(printing) => picks.countOf(printing.id)}
                             onAdd={picks.add}
                             onRemove={(printing) => picks.fewer(printing.id)}
@@ -141,7 +130,7 @@ function RouteComponent() {
                         <Button
                             outline={true}
                             onClick={() => {
-                                setQuery("");
+                                setSearching(false);
                                 setSearchRun((run) => run + 1);
                             }}
                         >
@@ -149,7 +138,6 @@ function RouteComponent() {
                         </Button>
                     )}
 
-                    {/* Hidden rather than gone, so the list keeps which decks are open. */}
                     <div className={clsx("flex flex-col gap-4", searching && "hidden")}>
                         <SwitchField>
                             <Label>{t("label.only-proxies")}</Label>
@@ -217,38 +205,6 @@ function RouteComponent() {
             </PrintSheets>
         </div>
     );
-}
-
-/**
- * The properties for {@link PrintSheets}
- */
-type PrintSheetsProps = {
-    /** The sheets to hand to the printer */
-    children: React.ReactNode;
-};
-
-/**
- * The sheets, parked outside the app for the printer to find.
- *
- * Everything the page wears around the sheets — the navigation, the list, the
- * preview — has no business on paper, and a sheet measured in millimetres has
- * no business inside a column that is as wide as the window. Both are settled
- * by putting the paper copy directly under `body`, where the app's print rule
- * hides everything that is not it.
- *
- * @returns the parked sheets
- */
-function PrintSheets({ children }: PrintSheetsProps) {
-    const [host] = useState(() => document.createElement("div"));
-
-    useEffect(() => {
-        host.dataset.printSheets = "true";
-        host.className = "hidden print:block";
-        document.body.append(host);
-        return () => host.remove();
-    }, [host]);
-
-    return createPortal(children, host);
 }
 
 /**

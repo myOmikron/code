@@ -87,10 +87,8 @@ describe("dropCard and dropDeck", () => {
         expect(shape(dropCard(groups, "a"))).toStrictEqual(["Atraxa: b", "Krenko: c"]);
         expect(shape(dropDeck(groups, "a"))).toStrictEqual(["Krenko: c"]);
     });
-});
 
-describe("dropDeck", () => {
-    it("takes the hand picks off too", () => {
+    it("take the hand picks off too", () => {
         const groups = addCard(addDeck([], ATRAXA, [card("a")]), card("bolt", 1, true));
 
         expect(shape(dropDeck(groups, null))).toStrictEqual(["Atraxa: a"]);
@@ -136,11 +134,7 @@ describe("onlyProxyCards", () => {
         expect(shape(groups)).toStrictEqual(["Atraxa: sol-ring,ponder"]);
     });
 
-    it("keeps a deck without proxies on the list, empty", () => {
-        expect(shape(onlyProxyCards(addDeck([], ATRAXA, [card("ponder")])))).toStrictEqual(["Atraxa: "]);
-    });
-
-    it("keeps the cards picked by hand", () => {
+    it("keeps a deck without proxies, empty, and the cards picked by hand", () => {
         const groups = addCard(addDeck([], ATRAXA, [card("ponder")]), card("bolt", 1, true));
 
         expect(shape(onlyProxyCards(groups))).toStrictEqual(["Atraxa: ", "hand: bolt"]);
@@ -151,5 +145,6 @@ describe("showsHeadings", () => {
     it("leaves a list of hand picks alone without headings", () => {
         expect(showsHeadings(addCard([], card("bolt")))).toBe(false);
         expect(showsHeadings(addDeck([], ATRAXA, [card("a")]))).toBe(true);
+        expect(showsHeadings(addCard(addDeck([], ATRAXA, [card("a")]), card("bolt")))).toBe(true);
     });
 });
