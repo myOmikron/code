@@ -62,8 +62,8 @@ export type ProxyPicks = {
     dropDeck: (uuid: string | null) => void;
     /** Empties the list */
     clear: () => void;
-    /** Adds a deck to the list, or tops up one already on it */
-    loadDeck: (chosen: DeckOverviewResponse | null) => Promise<void>;
+    /** Adds the chosen deck to the list, or tops it up when it is already on it */
+    addChosenDeck: () => void;
 };
 
 /**
@@ -82,33 +82,27 @@ export function useProxyPicks({ deck: opened, proxies, needsImage }: ProxyPickOp
     // A deck handed over in the url is taken once. Without the mark, going back
     // to the tab would file the deck a second time.
     const taken = useRef<string | null>(null);
-    // The latest read of each deck; a read that was overtaken or whose deck was
-    // taken off in the meantime is thrown away.
-    const reads = useRef(new Map<string, symbol>());
+    const reading = useRef(new Set<string>());
 
     const [groups, setGroups] = useState<Array<ProxyGroup>>([]);
     const [decks, setDecks] = useState<Array<DeckOverviewResponse>>([]);
     const [deck, setDeck] = useState<DeckOverviewResponse | null>(null);
     const [onlyProxies, setOnlyProxies] = useState(proxies === true);
-    const [reading, setReading] = useState(0);
+    const [loading, setLoading] = useState(0);
     const { account } = useAccount();
 
     /**
      * Adds a deck to the list, or tops up one already on it
      *
-     * @param chosen the deck to take, nothing when none is picked
+     * @param chosen the deck to take
      */
-    async function loadDeck(chosen: DeckOverviewResponse | null) {
-        if (chosen === null) return;
-
+    async function loadDeck(chosen: DeckOverviewResponse) {
         const { uuid, name } = chosen.deck;
-        const read = Symbol(uuid);
-        reads.current.set(uuid, read);
-        setReading((count) => count + 1);
+        reading.current.add(uuid);
+        setLoading((count) => count + 1);
         try {
             const { cards } = await Api.decks.cards.list(uuid);
-            if (reads.current.get(uuid) !== read) return;
-            reads.current.delete(uuid);
+            if (!reading.current.delete(uuid)) return;
 
             const added = deckProxyCards(cards).filter((card) => !needsImage || card.front !== null);
             if (added.length === 0) notify.info(t("toast.deck-nothing-to-add", { name }));
@@ -116,7 +110,7 @@ export function useProxyPicks({ deck: opened, proxies, needsImage }: ProxyPickOp
             setGroups((previous) => addDeck(previous, { uuid, name }, added));
             setDeck((current) => (current?.deck.uuid === uuid ? null : current));
         } finally {
-            setReading((count) => count - 1);
+            setLoading((count) => count - 1);
         }
     }
 
@@ -131,8 +125,6 @@ export function useProxyPicks({ deck: opened, proxies, needsImage }: ProxyPickOp
         void Api.decks.list().then(setDecks);
     }, [account]);
 
-    // Opened from a deck: its cards are on the list before the page is looked
-    // at, which is the whole point of getting here that way.
     useEffect(() => {
         if (opened === undefined || taken.current === opened) return;
 
@@ -176,20 +168,22 @@ export function useProxyPicks({ deck: opened, proxies, needsImage }: ProxyPickOp
         setDeck,
         onlyProxies,
         setOnlyProxies,
-        loading: reading > 0,
+        loading: loading > 0,
         countOf: (key) => copiesOf(shown, key),
         add,
         more: (key) => setGroups((previous) => changeCopies(previous, key, 1)),
         fewer: (key) => setGroups((previous) => changeCopies(previous, key, -1)),
         drop: (key) => setGroups((previous) => dropCard(previous, key)),
         dropDeck: (uuid) => {
-            if (uuid !== null) reads.current.delete(uuid);
+            if (uuid !== null) reading.current.delete(uuid);
             setGroups((previous) => dropDeck(previous, uuid));
         },
         clear: () => {
-            reads.current.clear();
+            reading.current.clear();
             setGroups([]);
         },
-        loadDeck,
+        addChosenDeck: () => {
+            if (deck !== null) void loadDeck(deck);
+        },
     };
 }

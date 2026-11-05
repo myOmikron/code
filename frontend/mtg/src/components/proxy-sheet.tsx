@@ -88,6 +88,7 @@ export function ProxySheet({ faces, cutLines, mode }: ProxySheetProps) {
                         key={face.key}
                         src={face.image}
                         alt={face.name}
+                        loading={paper ? undefined : "lazy"}
                         className={clsx("object-cover", cutLines && "outline outline-black/40")}
                         style={
                             paper

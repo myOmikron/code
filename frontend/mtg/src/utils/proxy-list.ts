@@ -9,7 +9,7 @@ import { MAX_COPIES, PER_SHEET, proxyFaces } from "src/utils/proxy-print";
 import type { ProxyCard } from "src/utils/proxy-print";
 
 /** A deck on a proxy list */
-export type ProxyDeck = {
+type ProxyDeck = {
     /** The deck's uuid */
     uuid: string;
     /** The deck's name */
@@ -137,11 +137,7 @@ export function dropDeck(groups: Array<ProxyGroup>, uuid: string | null): Array<
  * @returns the copies, 0 when it is not on the list
  */
 export function copiesOf(groups: Array<ProxyGroup>, key: string): number {
-    for (const group of groups) {
-        const card = group.cards.find((known) => known.key === key);
-        if (card !== undefined) return card.copies;
-    }
-    return 0;
+    return groups.flatMap((group) => group.cards).find((card) => card.key === key)?.copies ?? 0;
 }
 
 /**
@@ -165,7 +161,18 @@ export function onlyProxyCards(groups: Array<ProxyGroup>): Array<ProxyGroup> {
  * @returns `false` only for a list of cards picked by hand alone
  */
 export function showsHeadings(groups: Array<ProxyGroup>): boolean {
-    return groups.length > 1 || (groups[0] !== undefined && groups[0].deck !== null);
+    return groups.some((group) => group.deck !== null);
+}
+
+/**
+ * What a group is told apart by
+ *
+ * @param group the group
+ *
+ * @returns its deck's uuid, `"hand"` for the cards picked by hand
+ */
+export function groupKey(group: ProxyGroup): string {
+    return group.deck?.uuid ?? "hand";
 }
 
 /**

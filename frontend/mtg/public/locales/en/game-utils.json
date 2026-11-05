@@ -18,7 +18,6 @@
         "starting-life-presets": "Common starting totals"
     },
     "button": {
-        "without-art": "No art ({{cards}})",
         "back-to-list": "Back to the list",
         "add-cards": "Add cards",
         "back-to-life": "Back to the life total",
@@ -141,6 +140,7 @@
         "starting-life": "Starting life",
         "stock": "Cardstock",
         "two-sided": "two-sided",
+        "without-art": "No art",
         "draw": "Draw",
         "game-winner": "{{player}} wins",
         "history-start": "Game started",

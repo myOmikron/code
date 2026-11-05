@@ -1,9 +1,10 @@
 import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
 import clsx from "clsx";
 import { Button, Text } from "components";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ProxySheet } from "src/components/proxy-sheet";
+import { groupKey } from "src/utils/proxy-list";
 import type { ProxyGroupSheets } from "src/utils/proxy-list";
 import type { ProxyFace } from "src/utils/proxy-print";
 
@@ -31,12 +32,19 @@ export function ProxySheetPager({ sheets, cutLines, spans }: ProxySheetPagerProp
     const [t] = useTranslation("game-utils");
     const [wanted, setWanted] = useState(0);
     const strip = useRef<HTMLOListElement>(null);
-    const thumbnails = useRef<Array<HTMLButtonElement | null>>([]);
     const touch = useRef<{ x: number; y: number } | null>(null);
 
-    // The list can shrink under the page on show.
     const page = Math.min(wanted, sheets.length - 1);
     const sheet = sheets[page];
+
+    useEffect(() => {
+        const row = strip.current;
+        const thumbnail = row?.children[page]?.getBoundingClientRect();
+        if (row === null || thumbnail === undefined) return;
+
+        const box = row.getBoundingClientRect();
+        row.scrollBy({ left: thumbnail.left + thumbnail.width / 2 - (box.left + box.width / 2) });
+    }, [page]);
 
     /**
      * Turns to a sheet, if there is one
@@ -46,13 +54,6 @@ export function ProxySheetPager({ sheets, cutLines, spans }: ProxySheetPagerProp
     function turnTo(next: number) {
         if (next < 0 || next >= sheets.length) return;
         setWanted(next);
-
-        // By hand: scrollIntoView would move the page along with the strip.
-        const thumbnail = thumbnails.current[next]?.getBoundingClientRect();
-        const row = strip.current?.getBoundingClientRect();
-        if (thumbnail !== undefined && row !== undefined) {
-            strip.current?.scrollBy({ left: thumbnail.left + thumbnail.width / 2 - (row.left + row.width / 2) });
-        }
     }
 
     return (
@@ -89,8 +90,9 @@ export function ProxySheetPager({ sheets, cutLines, spans }: ProxySheetPagerProp
                 >
                     <ChevronLeftIcon />
                 </Button>
-                {/* Fits the sticky column on a short screen: 0.707 is a sheet's width over its height. */}
-                <div className={"w-full max-w-[390px] min-w-0 flex-1 lg:max-w-[min(390px,calc((100dvh-20rem)*0.707))]"}>
+                <div
+                    className={"w-full max-w-[390px] min-w-0 flex-1 lg:max-w-[min(390px,calc((100dvh-20rem)*210/297))]"}
+                >
                     {sheet !== undefined && <ProxySheet faces={sheet} cutLines={cutLines} mode={"screen"} />}
                 </div>
                 <Button
@@ -107,9 +109,6 @@ export function ProxySheetPager({ sheets, cutLines, spans }: ProxySheetPagerProp
                 {sheets.map((faces, index) => (
                     <li key={index} className={"shrink-0"}>
                         <button
-                            ref={(button) => {
-                                thumbnails.current[index] = button;
-                            }}
                             type={"button"}
                             aria-label={t("accessibility.show-sheet", { number: index + 1 })}
                             aria-current={index === page ? "page" : undefined}
@@ -133,7 +132,7 @@ export function ProxySheetPager({ sheets, cutLines, spans }: ProxySheetPagerProp
             {spans.length > 1 && (
                 <ul className={"flex flex-wrap gap-x-4 gap-y-1"}>
                     {spans.map(({ group, first, last }) => (
-                        <li key={group.deck?.uuid ?? "hand"}>
+                        <li key={groupKey(group)}>
                             <button type={"button"} className={"min-h-9 text-left"} onClick={() => turnTo(first)}>
                                 <Text className={"text-xs"}>
                                     <span className={"font-medium text-zinc-950 dark:text-white"}>
