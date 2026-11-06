@@ -75,7 +75,7 @@ openssl = { version = "~0.10", features = ["vendored"] }
 # ---- #
 
 # Client library for the NATS messaging system
-async-nats = { version = "~0.50.0" }
+async-nats = { version = "~0.51.0" }
 
 # Shared constants for all NATS subjects used in the workspace
 nats-subjects = { path = "libs/nats-subjects" }
