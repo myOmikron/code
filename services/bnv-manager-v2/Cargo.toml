@@ -23,7 +23,7 @@ service-bootstrap = { workspace = true }
 bcrypt = { version = "~0.19" }
 rand = { version = "~0.10.0" }
 jsonwebtoken = { version = "~11", features = ["rust_crypto"] }
-rsa = { version = "~0.9", features = ["pem"] }
+rsa = { version = "~0.10.0", features = ["pem"] }
 sha2 = { workspace = true }
 base64ct = { version = "~1", features = ["std"] }
 zxcvbn = { version = "~3" }
