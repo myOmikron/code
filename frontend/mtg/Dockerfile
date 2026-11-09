@@ -4,7 +4,7 @@
 ARG MTG_ASSETS_VERSION=v1
 FROM ghcr.io/myomikron/mtg/assets:${MTG_ASSETS_VERSION} AS scanner-assets
 
-FROM node:24-bookworm-slim@sha256:c86ecead9e55a5210ac1727de38a4ca840bf03dcaf34dc9749addbf383b1920c AS build-frontend
+FROM node:24-bookworm-slim@sha256:01d566e8d94d8c619591d78652babfccd3c6992a3dffa9ed5ab39e11cf6c70e9 AS build-frontend
 
 WORKDIR /app
 
