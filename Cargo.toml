@@ -61,7 +61,7 @@ sqlx = { version = "~0.9", default-features = false, features = ["postgres", "ru
 webauthn-rs = { version = "~0.5", features = ["danger-allow-state-serialisation"] }
 
 # WebAuthn wire types
-webauthn-rs-proto = { version = "~0.5" }
+webauthn-rs-proto = { version = "~0.6.0" }
 
 # CBOR decoding
 serde_cbor_2 = { version = "0.13" }
