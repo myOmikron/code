@@ -114,17 +114,31 @@
       "automerge": true
     },
     {
-      "description": "Automerge frontend utility dependencies (patch)",
+      "description": "Automerge frontend runtime dependencies (patch)",
+      "matchManagers": ["npm"],
+      "matchDepTypes": ["dependencies", "pnpm.catalog.dependencies"],
+      "matchUpdateTypes": ["patch"],
+      "automerge": true
+    },
+    {
+      "description": "Automerge frontend runtime dependencies with stable minors",
       "matchManagers": ["npm"],
       "matchPackageNames": [
+        "@tanstack/**",
+        "motion",
         "clsx",
         "react-toastify",
-        "react-i18next",
-        "i18next-browser-languagedetector",
-        "i18next-http-backend",
+        "/i18next/",
         "qrcode.react"
       ],
-      "matchUpdateTypes": ["patch"],
+      "matchUpdateTypes": ["minor"],
+      "automerge": true
+    },
+    {
+      "description": "Automerge the pnpm version pinned in packageManager",
+      "matchDepTypes": ["packageManager"],
+      "matchPackageNames": ["pnpm"],
+      "matchUpdateTypes": ["patch", "minor"],
       "automerge": true
     },
     {
@@ -134,9 +148,41 @@
       "automerge": true
     },
     {
-      "description": "Automerge GitHub Actions (patch and digest)",
+      "description": "Automerge GitHub Actions (patch, minor and digest)",
       "matchManagers": ["github-actions"],
-      "matchUpdateTypes": ["patch", "digest"],
+      "matchUpdateTypes": ["patch", "minor", "digest"],
+      "automerge": true
+    },
+    {
+      "description": "Automerge dev stack images; only dev/*.yml is managed, production compose files are not",
+      "matchManagers": ["docker-compose"],
+      "matchUpdateTypes": ["patch", "minor", "digest"],
+      "automerge": true
+    },
+    {
+      "description": "Automerge tool versions pinned by renovate comments (ast-grep, uv, cargo-deny, ...); the rust toolchain rule below opts out",
+      "matchManagers": ["custom.regex"],
+      "matchUpdateTypes": ["patch", "minor"],
+      "automerge": true
+    },
+    {
+      "description": "Automerge Python patch updates of mtg-graph (lock file only)",
+      "matchManagers": ["pep621"],
+      "matchUpdateTypes": ["patch"],
+      "automerge": true
+    },
+    {
+      "description": "Automerge Python minor updates of dev tools and stable libraries; fastapi (0.x) and anthropic stay manual",
+      "matchManagers": ["pep621"],
+      "matchPackageNames": [
+        "pytest",
+        "pytest-asyncio",
+        "ruff",
+        "pydantic",
+        "pydantic-settings",
+        "opentelemetry-**"
+      ],
+      "matchUpdateTypes": ["minor"],
       "automerge": true
     },
     {
