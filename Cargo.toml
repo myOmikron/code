@@ -173,7 +173,7 @@ serde_urlencoded = { version = "~0.7" }
 uuid = { version = "~1", features = ["v3", "v4", "v7", "serde", "std"] }
 
 # Arbitrary-precision integers, for exact fractions that outgrow any fixed-width integer
-num-bigint = { version = "~0.4" }
+num-bigint = { version = "~0.5.0" }
 
 # -------------- #
 # Error handling #
