@@ -48,7 +48,7 @@
     "@types/node": "catalog:devDependencies",
     "@types/react": "catalog:devDependencies",
     "@types/react-dom": "catalog:devDependencies",
-    "@vitejs/plugin-react": "6.1.2",
+    "@vitejs/plugin-react": "6.2.1",
     "@zxcvbn-ts/core": "catalog:dependencies",
     "@zxcvbn-ts/language-common": "catalog:dependencies",
     "@zxcvbn-ts/language-de": "catalog:dependencies",
