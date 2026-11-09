@@ -33,7 +33,7 @@ cargo-deny --version
 EOF
 
 # renovate: datasource=github-releases depName=ast-grep/ast-grep versioning=semver
-ARG AST_GREP_VERSION=0.51.0
+ARG AST_GREP_VERSION=0.51.1
 RUN <<EOF
 set -e
 curl -fsSL -o /tmp/ast-grep.zip "https://github.com/ast-grep/ast-grep/releases/download/${AST_GREP_VERSION}/app-x86_64-unknown-linux-gnu.zip"
