@@ -57,7 +57,7 @@
     "country-flag-icons": "catalog:dependencies",
     "eslint": "catalog:devDependencies",
     "eslint-plugin-jsdoc": "catalog:devDependencies",
-    "globals": "17.13.0",
+    "globals": "17.14.0",
     "i18next": "catalog:dependencies",
     "jsdom": "catalog:devDependencies",
     "libphonenumber-js": "catalog:dependencies",
