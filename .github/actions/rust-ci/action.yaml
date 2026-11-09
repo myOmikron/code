@@ -107,7 +107,7 @@ runs:
       run: |
         set -euo pipefail
         # renovate: datasource=github-releases depName=ast-grep/ast-grep versioning=semver
-        AST_GREP_VERSION=0.51.0
+        AST_GREP_VERSION=0.51.1
         # renovate: datasource=github-releases depName=tamasfe/taplo versioning=semver
         TAPLO_VERSION=0.10.0
         curl -fsSL -o /tmp/ast-grep.zip "https://github.com/ast-grep/ast-grep/releases/download/${AST_GREP_VERSION}/app-x86_64-unknown-linux-gnu.zip"
