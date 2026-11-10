@@ -344,7 +344,13 @@ impl TestClient {
     /// A client whose session is logged in as `account`
     pub async fn logged_in(account: &TestAccount) -> Self {
         let mut client = Self::new();
-        let response = client
+        client.log_in(account).await;
+        client
+    }
+
+    /// Logs the client's session in as `account`, as a login in the same browser would
+    pub async fn log_in(&mut self, account: &TestAccount) {
+        let response = self
             .send(
                 request(
                     Method::POST,
@@ -357,7 +363,6 @@ impl TestClient {
             )
             .await;
         assert_eq!(response.status, StatusCode::OK, "log in: {response:?}");
-        client
     }
 
     /// Lets the hour of the session's Impersonation pass

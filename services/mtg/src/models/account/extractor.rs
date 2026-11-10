@@ -9,6 +9,9 @@
 //! working on their next request. The Lock that counts is the session's own
 //! Account's: an Admin can impersonate a locked Account.
 //!
+//! An Impersonation counts only for the Admin that started it: logging in as
+//! another Account in the same session drops it, writing no end entry.
+//!
 //! An Impersonation is checked again on every request. The impersonating
 //! Account must still be an unlocked Admin, else the session fails as its own
 //! session would: locked, or logged out. The impersonated Account must still
@@ -65,10 +68,15 @@ impl Caller {
     ///
     /// Logs out a session whose impersonating Account lost the Admin Role.
     async fn resolve(session: &Session, identity: &Identity) -> Result<Self, ApiError> {
-        let impersonation = Impersonation::read(session).await?;
+        let stored = Impersonation::read(session).await?;
 
         let mut tx = Database::global().start_transaction().await?;
         let own = Account::get_by_identity(&mut tx, identity.uuid).await?;
+        let own_uuid = own.as_ref().map(|own| own.uuid);
+        let foreign = stored
+            .as_ref()
+            .is_some_and(|stored| Some(stored.admin) != own_uuid);
+        let impersonation = stored.filter(|stored| Some(stored.admin) == own_uuid);
         let impersonated = match &impersonation {
             Some(impersonation) if !impersonation.has_expired() => {
                 Account::get_manageable(&mut tx, impersonation.account)
@@ -80,6 +88,9 @@ impl Caller {
         tx.commit().await?;
 
         let own = own.ok_or(ApiError::unauthorized("No account for the identity"))?;
+        if foreign {
+            Impersonation::remove_from(session).await?;
+        }
         if own.locked {
             return Err(ApiError::unauthorized("The account is locked"));
         }

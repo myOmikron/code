@@ -420,6 +420,21 @@ async fn set_role(account: &TestAccount, role: &str) {
 }
 
 #[test]
+fn logging_in_as_another_admin_in_the_same_session_drops_the_impersonation() {
+    run(async {
+        let member = create_account(Role::Member).await;
+        let (_, mut client) = impersonating(&member).await;
+        let other = create_account(Role::Admin).await;
+
+        client.log_in(&other).await;
+
+        let me = client.get(&api("accounts/me")).await.ok_json();
+        assert_eq!(me["username"], other.username.as_str());
+        assert!(me.get("impersonation").is_none(), "{me}");
+    });
+}
+
+#[test]
 fn promoting_the_impersonated_account_ends_the_impersonation() {
     run(async {
         let member = create_account(Role::Member).await;

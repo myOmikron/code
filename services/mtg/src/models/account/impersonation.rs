@@ -35,6 +35,8 @@ const SESSION_KEY: &str = "impersonation";
 /// An Admin's session acting as a Member Account, as the session stores it
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Impersonation {
+    /// The impersonating Admin's Account
+    pub admin: AccountUuid,
     /// The impersonated Account
     pub account: AccountUuid,
     /// The Admin log entry that records the start
@@ -66,6 +68,7 @@ impl Impersonation {
         )
         .await?;
         Ok(Self {
+            admin: admin.uuid,
             account: account.uuid,
             start_entry,
             expires_at,
