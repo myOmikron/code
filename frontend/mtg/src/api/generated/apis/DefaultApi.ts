@@ -34,6 +34,7 @@ import type {
     AdminRenameAccountRequest,
     AdminSetBugReportNoteRequest,
     AdminSetRoleRequest,
+    AdminStartImpersonationRequest,
     AdminStatisticsResponse,
     AdminSyncsResponse,
     AdminUnlockAccountRequest,
@@ -88,6 +89,7 @@ import type {
     FormErrorResponseForAdminLockAccountErrors,
     FormErrorResponseForAdminRenameAccountErrors,
     FormErrorResponseForAdminSetRoleErrors,
+    FormErrorResponseForAdminStartImpersonationErrors,
     FormErrorResponseForAdminUnlockAccountErrors,
     FormErrorResponseForArrangeRoundErrors,
     FormErrorResponseForChooseUsernameErrors,
@@ -95,6 +97,7 @@ import type {
     FormErrorResponseForDeletePasskeyErrors,
     FormErrorResponseForDisputeResultErrors,
     FormErrorResponseForDropErrors,
+    FormErrorResponseForEndImpersonationErrors,
     FormErrorResponseForFinishLoginErrors,
     FormErrorResponseForRegisterDeckErrors,
     FormErrorResponseForRegistrationErrors,
@@ -480,6 +483,17 @@ export interface AdminSetRoleOperationRequest {
      * 
      */
     AdminSetRoleRequest?: AdminSetRoleRequest;
+}
+
+export interface AdminStartImpersonationOperationRequest {
+    /**
+     * 
+     */
+    uuid: string;
+    /**
+     * 
+     */
+    AdminStartImpersonationRequest?: AdminStartImpersonationRequest;
 }
 
 export interface AdminUnlockAccountOperationRequest {
@@ -3554,6 +3568,56 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for adminStartImpersonation without sending the request
+     */
+    async adminStartImpersonationRequestOpts(requestParameters: AdminStartImpersonationOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['uuid'] == null) {
+            throw new runtime.RequiredError(
+                'uuid',
+                'Required parameter "uuid" was null or undefined when calling adminStartImpersonation().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/admin/accounts/{uuid}/impersonation`;
+        urlPath = urlPath.replace('{uuid}', encodeURIComponent(String(requestParameters['uuid'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['AdminStartImpersonationRequest'],
+        };
+    }
+
+    /**
+     * Start an Impersonation of a Member Account  From the session\'s next request on, it acts as the Account until the Admin ends the Impersonation, logs out, or it expires. Refused for the Admin\'s own Account and for another Admin; a locked Account can be impersonated.
+     * Start an Impersonation of a Member Account
+     */
+    async adminStartImpersonationRaw(requestParameters: AdminStartImpersonationOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FormErrorResponseForAdminStartImpersonationErrors>> {
+        const requestOptions = await this.adminStartImpersonationRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Start an Impersonation of a Member Account  From the session\'s next request on, it acts as the Account until the Admin ends the Impersonation, logs out, or it expires. Refused for the Admin\'s own Account and for another Admin; a locked Account can be impersonated.
+     * Start an Impersonation of a Member Account
+     */
+    async adminStartImpersonation(requestParameters: AdminStartImpersonationOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FormErrorResponseForAdminStartImpersonationErrors> {
+        const response = await this.adminStartImpersonationRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for adminUnlockAccount without sending the request
      */
     async adminUnlockAccountRequestOpts(requestParameters: AdminUnlockAccountOperationRequest): Promise<runtime.RequestOpts> {
@@ -5528,6 +5592,45 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async dropTournamentParticipant(requestParameters: DropTournamentParticipantRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FormErrorResponseForDropErrors> {
         const response = await this.dropTournamentParticipantRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for endImpersonation without sending the request
+     */
+    async endImpersonationRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/accounts/me/impersonation`;
+
+        return {
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * End the session\'s Impersonation, returning it to the impersonating Admin  Writes the end entry of the Admin log.
+     * End the session\'s Impersonation, returning it to the impersonating Admin
+     */
+    async endImpersonationRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<FormErrorResponseForEndImpersonationErrors>> {
+        const requestOptions = await this.endImpersonationRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * End the session\'s Impersonation, returning it to the impersonating Admin  Writes the end entry of the Admin log.
+     * End the session\'s Impersonation, returning it to the impersonating Admin
+     */
+    async endImpersonation(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FormErrorResponseForEndImpersonationErrors> {
+        const response = await this.endImpersonationRaw(initOverrides);
         return await response.value();
     }
 
@@ -9320,7 +9423,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Log out, dropping the session
+     * Log out, dropping the session  During an Impersonation the end entry of the Admin log is written first.
      * Log out, dropping the session
      */
     async logoutRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
@@ -9331,7 +9434,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Log out, dropping the session
+     * Log out, dropping the session  During an Impersonation the end entry of the Admin log is written first.
      * Log out, dropping the session
      */
     async logout(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
@@ -9358,8 +9461,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * The account the current session belongs to  The one route a locked Account\'s session still reaches: it answers with the `locked` flag, never the Lock reason, and logs the session out.
-     * The account the current session belongs to
+     * The account the current session acts as  During an Impersonation that is the impersonated Account, with the Impersonation reported alongside. The one route a locked Account\'s session still reaches: it answers with the `locked` flag, never the Lock reason, and logs the session out.
+     * The account the current session acts as
      */
     async meRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Me200Response>> {
         const requestOptions = await this.meRequestOpts();
@@ -9369,8 +9472,8 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * The account the current session belongs to  The one route a locked Account\'s session still reaches: it answers with the `locked` flag, never the Lock reason, and logs the session out.
-     * The account the current session belongs to
+     * The account the current session acts as  During an Impersonation that is the impersonated Account, with the Impersonation reported alongside. The one route a locked Account\'s session still reaches: it answers with the `locked` flag, never the Lock reason, and logs the session out.
+     * The account the current session acts as
      */
     async me(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Me200Response> {
         const response = await this.meRaw(initOverrides);

@@ -28,6 +28,7 @@ All URIs are relative to *http://localhost*
 | [**adminReopenBugReport**](DefaultApi.md#adminreopenbugreport) | **POST** /api/frontend/v1/admin/bug-reports/{number}/reopen | Open a done Bug report again |
 | [**adminSetBugReportNote**](DefaultApi.md#adminsetbugreportnoteoperation) | **PUT** /api/frontend/v1/admin/bug-reports/{number}/note | Set the Admins\&#39; internal note on a Bug report, an empty note removes it |
 | [**adminSetRole**](DefaultApi.md#adminsetroleoperation) | **PUT** /api/frontend/v1/admin/accounts/{uuid}/role | Change an Account\&#39;s Role |
+| [**adminStartImpersonation**](DefaultApi.md#adminstartimpersonationoperation) | **POST** /api/frontend/v1/admin/accounts/{uuid}/impersonation | Start an Impersonation of a Member Account |
 | [**adminUnlockAccount**](DefaultApi.md#adminunlockaccountoperation) | **POST** /api/frontend/v1/admin/accounts/{uuid}/unlock | Lift an Account\&#39;s Lock |
 | [**arrangeTournamentRound**](DefaultApi.md#arrangetournamentround) | **PUT** /api/frontend/v1/tournaments/{tournament}/rounds/{number}/layout | Lay out a previewed Round by hand, as an Organizer |
 | [**assignCollectionEntryTag**](DefaultApi.md#assigncollectionentrytag) | **POST** /api/frontend/v1/collections/{collection}/entries/{entry}/tags/{tag} | Put a card-wide tag on a stack |
@@ -67,6 +68,7 @@ All URIs are relative to *http://localhost*
 | [**disputeTournamentMatchResult**](DefaultApi.md#disputetournamentmatchresult) | **POST** /api/frontend/v1/tournaments/{tournament}/matches/{match}/dispute | Dispute the Result another Participant reported for one\&#39;s own Match |
 | [**dropOutOfTournament**](DefaultApi.md#dropoutoftournament) | **POST** /api/frontend/v1/tournaments/{tournament}/drop | Drop the logged-in Account out of a Tournament it plays in |
 | [**dropTournamentParticipant**](DefaultApi.md#droptournamentparticipant) | **POST** /api/frontend/v1/tournaments/{tournament}/participants/{participant}/drop | Drop a Participant, as an Organizer |
+| [**endImpersonation**](DefaultApi.md#endimpersonation) | **DELETE** /api/frontend/v1/accounts/me/impersonation | End the session\&#39;s Impersonation, returning it to the impersonating Admin |
 | [**endTournamentRound**](DefaultApi.md#endtournamentround) | **POST** /api/frontend/v1/tournaments/{tournament}/rounds/{number}/end | End a running Round once every Match has its Result, as an Organizer |
 | [**fileScannerSession**](DefaultApi.md#filescannersessionoperation) | **POST** /api/frontend/v1/scanner-sessions/{session}/file | Atomically file every staged stack and empty the session |
 | [**fillDeckCollection**](DefaultApi.md#filldeckcollectionoperation) | **POST** /api/frontend/v1/decks/{deck}/sourcing/fill | Declare that the deck holds what its list asks for |
@@ -147,7 +149,7 @@ All URIs are relative to *http://localhost*
 | [**listWatchListCopies**](DefaultApi.md#listwatchlistcopies) | **GET** /api/frontend/v1/watch-lists/{list}/entries/{entry}/copies | Where the copies of one watched card are |
 | [**listWatchListEntries**](DefaultApi.md#listwatchlistentries) | **GET** /api/frontend/v1/watch-lists/{list}/entries | Everything one watch list page is drawn from |
 | [**logout**](DefaultApi.md#logout) | **GET** /api/frontend/v1/auth/logout | Log out, dropping the session |
-| [**me**](DefaultApi.md#me) | **GET** /api/frontend/v1/accounts/me | The account the current session belongs to |
+| [**me**](DefaultApi.md#me) | **GET** /api/frontend/v1/accounts/me | The account the current session acts as |
 | [**mergeCollectionEntries**](DefaultApi.md#mergecollectionentriesoperation) | **POST** /api/frontend/v1/collections/{collection}/entries/merge | Combine stacks of the same cards into one |
 | [**offerTournamentHandover**](DefaultApi.md#offertournamenthandover) | **PUT** /api/frontend/v1/tournaments/{tournament}/handover | Offer a Tournament to an Account by its username, as its Owner |
 | [**pairTournamentRound**](DefaultApi.md#pairtournamentround) | **POST** /api/frontend/v1/tournaments/{tournament}/rounds | Pair the next Round as a preview, as an Organizer |
@@ -1940,6 +1942,79 @@ example().catch(console.error);
 ### Return type
 
 [**FormErrorResponseForAdminSetRoleErrors**](FormErrorResponseForAdminSetRoleErrors.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## adminStartImpersonation
+
+> FormErrorResponseForAdminStartImpersonationErrors adminStartImpersonation(uuid, AdminStartImpersonationRequest)
+
+Start an Impersonation of a Member Account
+
+Start an Impersonation of a Member Account  From the session\&#39;s next request on, it acts as the Account until the Admin ends the Impersonation, logs out, or it expires. Refused for the Admin\&#39;s own Account and for another Admin; a locked Account can be impersonated.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { AdminStartImpersonationOperationRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    uuid: 38400000-8cf0-11bd-b23e-10b96e4ef00d,
+    // AdminStartImpersonationRequest (optional)
+    AdminStartImpersonationRequest: ...,
+  } satisfies AdminStartImpersonationOperationRequest;
+
+  try {
+    const data = await api.adminStartImpersonation(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **uuid** | `string` |  | [Defaults to `undefined`] |
+| **AdminStartImpersonationRequest** | [AdminStartImpersonationRequest](AdminStartImpersonationRequest.md) |  | [Optional] |
+
+### Return type
+
+[**FormErrorResponseForAdminStartImpersonationErrors**](FormErrorResponseForAdminStartImpersonationErrors.md)
 
 ### Authorization
 
@@ -4726,6 +4801,68 @@ example().catch(console.error);
 ### Return type
 
 [**FormErrorResponseForDropErrors**](FormErrorResponseForDropErrors.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** |  |  -  |
+| **400** |  |  -  |
+| **500** |  |  -  |
+| **401** |  |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## endImpersonation
+
+> FormErrorResponseForEndImpersonationErrors endImpersonation()
+
+End the session\&#39;s Impersonation, returning it to the impersonating Admin
+
+End the session\&#39;s Impersonation, returning it to the impersonating Admin  Writes the end entry of the Admin log.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { EndImpersonationRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  try {
+    const data = await api.endImpersonation();
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+This endpoint does not need any parameter.
+
+### Return type
+
+[**FormErrorResponseForEndImpersonationErrors**](FormErrorResponseForEndImpersonationErrors.md)
 
 ### Authorization
 
@@ -10287,7 +10424,7 @@ No authorization required
 
 Log out, dropping the session
 
-Log out, dropping the session
+Log out, dropping the session  During an Impersonation the end entry of the Admin log is written first.
 
 ### Example
 
@@ -10347,9 +10484,9 @@ No authorization required
 
 > Me200Response me()
 
-The account the current session belongs to
+The account the current session acts as
 
-The account the current session belongs to  The one route a locked Account\&#39;s session still reaches: it answers with the &#x60;locked&#x60; flag, never the Lock reason, and logs the session out.
+The account the current session acts as  During an Impersonation that is the impersonated Account, with the Impersonation reported alongside. The one route a locked Account\&#39;s session still reaches: it answers with the &#x60;locked&#x60; flag, never the Lock reason, and logs the session out.
 
 ### Example
 

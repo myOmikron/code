@@ -8,6 +8,7 @@ The account the current session belongs to
 Name | Type
 ------------ | -------------
 `external` | boolean
+`impersonation` | [MeImpersonation](MeImpersonation.md)
 `role` | [Role](Role.md)
 `username` | string
 `uuid` | string

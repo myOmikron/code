@@ -7,6 +7,7 @@
 Name | Type
 ------------ | -------------
 `external` | boolean
+`impersonation` | [MeImpersonation](MeImpersonation.md)
 `role` | [Role](Role.md)
 `username` | string
 `uuid` | string
