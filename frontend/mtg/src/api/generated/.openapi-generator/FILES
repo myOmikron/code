@@ -34,6 +34,8 @@ docs/AdminLogActionOneOf1.md
 docs/AdminLogActionOneOf2.md
 docs/AdminLogActionOneOf3.md
 docs/AdminLogActionOneOf4.md
+docs/AdminLogActionOneOf5.md
+docs/AdminLogActionOneOf6.md
 docs/AdminLogEntryResponse.md
 docs/AdminOpenIdProvider.md
 docs/AdminPriceGuideStamp.md
@@ -43,6 +45,8 @@ docs/AdminRenameAccountRequest.md
 docs/AdminSetBugReportNoteRequest.md
 docs/AdminSetRoleErrors.md
 docs/AdminSetRoleRequest.md
+docs/AdminStartImpersonationErrors.md
+docs/AdminStartImpersonationRequest.md
 docs/AdminStatisticsResponse.md
 docs/AdminStatisticsSnapshot.md
 docs/AdminSyncRun.md
@@ -130,6 +134,7 @@ docs/DeletePasskeyErrors.md
 docs/DeletionMode.md
 docs/DisputeResultErrors.md
 docs/DropErrors.md
+docs/EndImpersonationErrors.md
 docs/EndTournamentRound200Response.md
 docs/EntryFeeSchema.md
 docs/EntrySort.md
@@ -161,6 +166,7 @@ docs/FormErrorResponseForAdminDeleteAccountErrors.md
 docs/FormErrorResponseForAdminLockAccountErrors.md
 docs/FormErrorResponseForAdminRenameAccountErrors.md
 docs/FormErrorResponseForAdminSetRoleErrors.md
+docs/FormErrorResponseForAdminStartImpersonationErrors.md
 docs/FormErrorResponseForAdminUnlockAccountErrors.md
 docs/FormErrorResponseForArrangeRoundErrors.md
 docs/FormErrorResponseForCheckInEveryoneErrors.md
@@ -169,6 +175,7 @@ docs/FormErrorResponseForDeleteAccountErrors.md
 docs/FormErrorResponseForDeletePasskeyErrors.md
 docs/FormErrorResponseForDisputeResultErrors.md
 docs/FormErrorResponseForDropErrors.md
+docs/FormErrorResponseForEndImpersonationErrors.md
 docs/FormErrorResponseForFinishLoginErrors.md
 docs/FormErrorResponseForMatchLifeErrors.md
 docs/FormErrorResponseForMeErrors.md
@@ -242,6 +249,7 @@ docs/MatchPlayResponse.md
 docs/MatchResponse.md
 docs/Me200Response.md
 docs/MeErrors.md
+docs/MeImpersonation.md
 docs/MeResponse.md
 docs/MergeCollectionEntriesRequest.md
 docs/MpcFillArtResponse.md
