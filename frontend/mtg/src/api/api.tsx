@@ -1,8 +1,7 @@
 import { redirect } from "@tanstack/react-router";
 import { SESSION_STORE } from "src/api/session";
 import { ERROR_STORE } from "src/context/error-context";
-import { isFormError, isImpersonationRefusal } from "src/utils/error";
-import i18n from "i18next";
+import { impersonationRefusal, isFormError } from "src/utils/error";
 import { DIAGNOSTICS } from "src/utils/diagnostics";
 import {
     AddDeckCardRequest,
@@ -860,9 +859,9 @@ export async function handleError<T>(promise: Promise<T>): Promise<T> {
             if (e.response.status === 401) {
                 SESSION_STORE.expired();
                 throw redirect({ to: "/auth/login", search: { redirect: window.location.pathname } });
-            } else if (await isImpersonationRefusal(e)) {
-                msg = i18n.t("error.impersonation-active");
-            } else {
+            }
+            msg = await impersonationRefusal(e);
+            if (msg === undefined) {
                 try {
                     const err = await e.response.json();
                     msg = `${e.response.statusText}. TraceId: ${err.trace_id}`;
