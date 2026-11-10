@@ -18,26 +18,22 @@ import { ProxyGroupRow } from "src/components/proxy-group-row";
 import {
     MPC_BRACKETS,
     MPC_MAX_NAMES,
-    loadMpcArtScope,
     loadMpcSort,
     mpcBracket,
-    mpcByDrives,
     mpcCards,
-    mpcChoose,
     mpcCount,
     mpcFaces,
-    mpcFavorite,
     mpcFillList,
-    mpcGroupsWith,
     mpcNeedsArt,
-    mpcPick,
     mpcQuery,
-    mpcStarred,
     mpcTiles,
-    saveMpcArtScope,
     saveMpcSort,
 } from "src/utils/mpcfill";
-import type { MpcArtScope, MpcFavoriteMatch, MpcFavoriteStatus, MpcPicks, MpcSort } from "src/utils/mpcfill";
+import type { MpcSort } from "src/utils/mpcfill";
+import { mpcByDrives, mpcFavorite, mpcStarOf } from "src/utils/mpcfill-favorites";
+import type { MpcFavoriteMatch, MpcFavoriteStatus } from "src/utils/mpcfill-favorites";
+import { loadMpcArtScope, mpcChoose, mpcGroupsWith, mpcPick, saveMpcArtScope } from "src/utils/mpcfill-picks";
+import type { MpcArtScope, MpcPicks } from "src/utils/mpcfill-picks";
 import { DEFAULT_MPC_STOCK, mpcFillReady, mpcFillXml } from "src/utils/mpcfill-xml";
 import type { MpcFillOrderCard, MpcStock } from "src/utils/mpcfill-xml";
 import { groupKey, showsHeadings } from "src/utils/proxy-list";
@@ -102,8 +98,8 @@ function RouteComponent() {
     const [cardbacks, setCardbacks] = useState<Array<MpcFillImageResponse>>([]);
     const [cardback, setCardback] = useState<string | null>(null);
     const favorites = useMpcFavorites();
-    const healed = useRef(new Set<string>());
-    const [renewed, setRenewed] = useState<ReadonlySet<string>>(new Set());
+    const movedStars = useRef(new Set<string>());
+    const [reuploadedIds, setReuploadedIds] = useState<ReadonlySet<string>>(new Set());
     const asking = useRef(new Set<string>());
 
     const [adding, setAdding] = useState(false);
@@ -147,7 +143,7 @@ function RouteComponent() {
     }
 
     /**
-     * How the account's favorite for one face was found, a healed re-upload staying "updated" for the visit
+     * How the account's favorite for one face was found, a re-upload staying "updated" for the visit
      *
      * @param face the name MPCFill is asked for
      *
@@ -155,7 +151,7 @@ function RouteComponent() {
      */
     function statusOf(face: string): MpcFavoriteStatus | null {
         const match = matchOf(face);
-        if (match?.status === "favorite" && match.image !== null && renewed.has(match.image.id)) return "updated";
+        if (match?.status === "favorite" && match.image !== null && reuploadedIds.has(match.image.id)) return "updated";
         return match?.status ?? null;
     }
 
@@ -227,26 +223,37 @@ function RouteComponent() {
     const knownDrives = [...new Set([...Object.values(art).flat(), ...cardbacks].map((image) => image.source))].sort(
         (left, right) => left.localeCompare(right),
     );
-    const browsingFace = browsing === null || browsing === "cardback" ? null : browsing.face;
     const backs = mpcByDrives(cardbacks, favorites.drives);
     const backMatch = mpcFavorite(cardbacks, favorites.images, null);
     const back = backs.find((image) => image.id === cardback) ?? backMatch?.image ?? backs[0] ?? null;
 
-    const updated = [...[...new Set(faces)].map(matchOf), backMatch].flatMap((match) =>
+    const browse =
+        browsing === null
+            ? null
+            : browsing === "cardback"
+              ? { face: null, title: t("heading.cardback"), images: backs, chosen: back, match: backMatch }
+              : {
+                    face: browsing.face,
+                    title: browsing.label,
+                    images: imagesOf(browsing.face),
+                    chosen: pickOf(browsing.group, browsing.face),
+                    match: matchOf(browsing.face),
+                };
+
+    const reuploads = [...[...new Set(faces)].map(matchOf), backMatch].flatMap((match) =>
         match?.status === "updated" && match.image !== null ? [{ favorite: match.favorite, image: match.image }] : [],
     );
-    const browsingMatch = browsing === null ? null : browsing === "cardback" ? backMatch : matchOf(browsing.face);
-    const healing = updated.map(({ favorite, image }) => `${favorite.image.drive_id}>${image.id}`).join("|");
+    const reuploadsKey = reuploads.map(({ favorite, image }) => `${favorite.uuid}>${image.id}`).join("|");
 
     useEffect(() => {
-        for (const { favorite, image } of updated) {
-            const key = `${favorite.image.drive_id}>${image.id}`;
-            if (healed.current.has(key)) continue;
-            healed.current.add(key);
-            setRenewed((previous) => new Set(previous).add(image.id));
+        for (const { favorite, image } of reuploads) {
+            const key = `${favorite.uuid}>${image.id}`;
+            if (movedStars.current.has(key)) continue;
+            movedStars.current.add(key);
+            setReuploadedIds((previous) => new Set(previous).add(image.id));
             favorites.replace(favorite, image);
         }
-    }, [healing]);
+    }, [reuploadsKey]);
 
     // Searched as the cards arrive rather than on a button: a card with no
     // picture on it is not an order yet, and the service caches per name, so
@@ -326,17 +333,17 @@ function RouteComponent() {
         if (confirming === null) return;
         const { group, face, id } = confirming;
 
+        setAnswered((previous) => ({ ...previous, [face]: everywhere }));
         if (remember) {
-            changeScope(everywhere ? "all" : "deck");
-        } else {
-            setAnswered((previous) => ({ ...previous, [face]: everywhere }));
+            setScope(everywhere ? "all" : "deck");
+            saveMpcArtScope(everywhere ? "all" : "deck");
         }
         setChosen((previous) => mpcChoose(previous, group, face, id, everywhere));
         setConfirming(null);
     }
 
     /**
-     * Changes whether new art is taken for every deck, and forgets the answers given per card
+     * Changes whether new art is taken for every deck from the settings, and forgets the answers given per card
      *
      * @param next the answer
      */
@@ -479,7 +486,7 @@ function RouteComponent() {
                             )}
                             <ul
                                 className={
-                                    "grid grid-cols-2 gap-x-3 gap-y-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
+                                    "grid grid-cols-2 gap-x-3 gap-y-4 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5"
                                 }
                             >
                                 {tiles.map((card) => {
@@ -550,19 +557,13 @@ function RouteComponent() {
             />
 
             <MpcFillArtDialog
-                open={browsing !== null}
-                title={browsing === null ? "" : browsing === "cardback" ? t("heading.cardback") : browsing.label}
-                images={browsing === null ? [] : browsing === "cardback" ? backs : imagesOf(browsing.face)}
-                chosen={
-                    browsing === null
-                        ? null
-                        : browsing === "cardback"
-                          ? (back?.id ?? null)
-                          : (pickOf(browsing.group, browsing.face)?.id ?? null)
-                }
-                notice={browsingMatch === null ? null : favoriteNotice(browsingMatch)}
-                starred={(image) => mpcStarred(favorites.images, browsingFace, image.id)}
-                onStar={(image) => favorites.toggle(browsingFace, image)}
+                open={browse !== null}
+                title={browse?.title ?? ""}
+                images={browse?.images ?? []}
+                chosen={browse?.chosen?.id ?? null}
+                notice={browse?.match == null ? null : favoriteNotice(browse.match)}
+                starred={(image) => mpcStarOf(favorites.images, browse?.face ?? null, image.id) !== undefined}
+                onStar={(image) => favorites.toggle(browse?.face ?? null, image)}
                 drives={favorites.drives}
                 onStarDrive={favorites.toggleDrive}
                 onChoose={choose}

@@ -20,8 +20,9 @@ import {
 import { useTranslation } from "react-i18next";
 import { ExternalLinkRow } from "src/components/external-link-row";
 import { MpcFillFavoriteDrives } from "src/components/mpcfill-favorite-drives";
-import { MPC_ART_SCOPES, MPC_FILL_URL } from "src/utils/mpcfill";
-import type { MpcArtScope } from "src/utils/mpcfill";
+import { MPC_FILL_URL } from "src/utils/mpcfill";
+import { MPC_ART_SCOPES } from "src/utils/mpcfill-picks";
+import type { MpcArtScope } from "src/utils/mpcfill-picks";
 import { MPC_STOCKS, mpcFoilable } from "src/utils/mpcfill-xml";
 import type { MpcStock } from "src/utils/mpcfill-xml";
 

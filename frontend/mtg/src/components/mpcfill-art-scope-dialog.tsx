@@ -36,8 +36,14 @@ export function MpcFillArtScopeDialog({ face, others, onAnswer, onClose }: MpcFi
         setRemember(false);
     }
 
+    /** Closes without an answer */
+    function dismiss() {
+        onClose();
+        setRemember(false);
+    }
+
     return (
-        <Alert open={face !== null} onClose={onClose}>
+        <Alert open={face !== null} onClose={dismiss}>
             <AlertTitle>{t("heading.art-everywhere")}</AlertTitle>
             <AlertDescription>{t("description.art-everywhere", { name: face ?? "", count: others })}</AlertDescription>
             <CheckboxField className={"mt-4"}>

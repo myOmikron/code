@@ -12,7 +12,7 @@ import clsx from "clsx";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { MpcFillImageResponse } from "src/api/generated";
-import type { MpcFavoriteStatus } from "src/utils/mpcfill";
+import type { MpcFavoriteStatus } from "src/utils/mpcfill-favorites";
 
 /** One side of a card and the art there is for it */
 export type MpcFillTileFace = {
