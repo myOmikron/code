@@ -27,7 +27,7 @@ import type { SendBugReportErrors } from "src/api/generated";
 import { PrimaryButton } from "src/components/primary-button";
 import { composeBugReport, DIAGNOSTICS, withoutQueryValues } from "src/utils/diagnostics";
 import type { Diagnostics, ReportContext, ReportStart } from "src/utils/diagnostics";
-import { isFormError } from "src/utils/error";
+import { isFormError, isImpersonationRefusal } from "src/utils/error";
 import { shrinkImage } from "src/utils/shrink-image";
 
 /** Most images a Bug report carries, the scanner crop included */
@@ -160,8 +160,10 @@ export function BugReportDialog({ open, onClose, start, initialText = "" }: BugR
             } else {
                 setNumber(response.number);
             }
-        } catch {
-            setError(tg("error.bug-report-failed"));
+        } catch (error) {
+            setError(
+                tg((await isImpersonationRefusal(error)) ? "error.impersonation-active" : "error.bug-report-failed"),
+            );
         } finally {
             setSending(false);
         }

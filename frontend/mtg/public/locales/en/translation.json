@@ -74,6 +74,7 @@
         "bug-report-text-missing": "Please write a few words about what happened.",
         "bug-report-text-too-long": "The text can be at most 5000 characters long.",
         "bug-report-too-many-images": "At most three images.",
+        "impersonation-active": "This stays out of reach during an impersonation.",
         "index-not-ready": "The reference index is not ready yet.",
         "provider-unavailable": "That login is not reachable right now. Try again later.",
         "username-charset": "Only letters, digits, underscore, hyphen and dot are allowed.",

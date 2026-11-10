@@ -1,3 +1,24 @@
+import { ResponseError } from "src/api/generated";
+
+/**
+ * Whether a failed request was refused because the session impersonates an Account
+ *
+ * Passkeys, the Account's own Deletion and Rename, Bug reports and push subscriptions
+ * answer `403` with `impersonation_active` during an Impersonation.
+ *
+ * @param error what the request threw
+ * @returns whether it is that refusal
+ */
+export async function isImpersonationRefusal(error: unknown): Promise<boolean> {
+    if (!(error instanceof ResponseError) || error.response.status !== 403) return false;
+    try {
+        const body: unknown = await error.response.clone().json();
+        return typeof body === "object" && body !== null && "impersonation_active" in body;
+    } catch {
+        return false;
+    }
+}
+
 /**
  * Errors that are returned to tanstack's form validator to display them
  */

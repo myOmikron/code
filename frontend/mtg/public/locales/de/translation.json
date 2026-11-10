@@ -74,6 +74,7 @@
         "bug-report-text-missing": "Schreib bitte ein paar Worte dazu, was passiert ist.",
         "bug-report-text-too-long": "Der Text darf höchstens 5000 Zeichen lang sein.",
         "bug-report-too-many-images": "Höchstens drei Bilder.",
+        "impersonation-active": "Das bleibt während einer Impersonation gesperrt.",
         "index-not-ready": "Der Referenzindex ist noch nicht bereit.",
         "provider-unavailable": "Die Anmeldung ist gerade nicht erreichbar. Versuch es später noch einmal.",
         "username-charset": "Erlaubt sind nur Buchstaben, Ziffern, Unterstrich, Bindestrich und Punkt.",
