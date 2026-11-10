@@ -46,7 +46,8 @@
         "edit": "Edit",
         "next": "Next",
         "replace": "Replace",
-        "submit": "Submit"
+        "submit": "Submit",
+        "end-impersonation": "End"
     },
     "description": {
         "access-ends-link": "The current link stops working for good.",
@@ -163,7 +164,8 @@
         "secret-not-set": "Not set",
         "secret-set": "Set",
         "step-x-of-y": "Step {{current}} of {{total}}",
-        "yes": "Yes"
+        "yes": "Yes",
+        "impersonation": "You are acting as {{username}}, at the latest until {{time}}."
     },
     "toast": {
         "account-locked": "Your account is locked.",

@@ -7,6 +7,7 @@ use serde_json::json;
 use uuid::Uuid;
 
 use crate::models::account::Role;
+use crate::tests::deletion::delete;
 use crate::tests::harness::TestAccount;
 use crate::tests::harness::TestClient;
 use crate::tests::harness::TestResponse;
@@ -378,6 +379,157 @@ fn the_members_own_session_is_unaffected_throughout() {
         client.get(&api("auth/logout")).await;
         let me = own.get(&api("accounts/me")).await.ok_json();
         assert_eq!(me["username"], member.username.as_str());
+    });
+}
+
+#[test]
+fn after_the_expiry_the_session_acts_as_the_admin_again_without_an_end_entry() {
+    run(async {
+        let member = create_account(Role::Member).await;
+        let (admin, mut client) = impersonating(&member).await;
+
+        client.expire_impersonation().await;
+
+        let me = client.get(&api("accounts/me")).await.ok_json();
+        assert_eq!(me["username"], admin.username.as_str());
+        assert!(me.get("impersonation").is_none(), "{me}");
+        assert_eq!(
+            client.get(&api("admin/accounts")).await.status,
+            StatusCode::OK
+        );
+        assert_eq!(kinds(&log_of(&member).await), ["ImpersonationStart"]);
+    });
+}
+
+/// Gives `account` the Role `role` as a fresh Admin
+async fn set_role(account: &TestAccount, role: &str) {
+    let other_admin = create_account(Role::Admin).await;
+    let body = TestClient::logged_in(&other_admin)
+        .await
+        .json(
+            Method::PUT,
+            &api(&format!(
+                "admin/accounts/{}/role",
+                account.uuid.into_inner()
+            )),
+            &json!({ "role": role }),
+        )
+        .await
+        .ok_json();
+    assert_eq!(body, Value::Null);
+}
+
+#[test]
+fn promoting_the_impersonated_account_ends_the_impersonation() {
+    run(async {
+        let member = create_account(Role::Member).await;
+        let (admin, mut client) = impersonating(&member).await;
+
+        set_role(&member, "Admin").await;
+
+        let me = client.get(&api("accounts/me")).await.ok_json();
+        assert_eq!(me["username"], admin.username.as_str());
+        assert!(me.get("impersonation").is_none(), "{me}");
+        assert_eq!(
+            kinds(&log_of(&member).await),
+            ["RoleChange", "ImpersonationStart"]
+        );
+    });
+}
+
+#[test]
+fn deleting_the_impersonated_account_ends_the_impersonation() {
+    run(async {
+        let member = create_account(Role::Member).await;
+        let (admin, mut client) = impersonating(&member).await;
+
+        let other_admin = create_account(Role::Admin).await;
+        let body = delete(
+            &mut TestClient::logged_in(&other_admin).await,
+            &member,
+            &member.username,
+            "Tombstone",
+        )
+        .await;
+        assert_eq!(body, Value::Null);
+
+        let me = client.get(&api("accounts/me")).await.ok_json();
+        assert_eq!(me["username"], admin.username.as_str());
+        assert!(me.get("impersonation").is_none(), "{me}");
+        assert_eq!(
+            client.get(&api("admin/accounts")).await.status,
+            StatusCode::OK
+        );
+    });
+}
+
+#[test]
+fn locking_the_impersonating_admin_fails_its_next_request_as_locked() {
+    run(async {
+        let member = create_account(Role::Member).await;
+        let (admin, mut client) = impersonating(&member).await;
+
+        let other_admin = create_account(Role::Admin).await;
+        lock(
+            &mut TestClient::logged_in(&other_admin).await,
+            &admin,
+            "Abuse",
+        )
+        .await;
+
+        let body = client.get(&api("accounts/me")).await.ok_json();
+        assert_eq!(body["result"], "Err");
+        assert_eq!(body["error"], json!({ "locked": true }));
+        assert_eq!(
+            client.get(&api("decks")).await.status,
+            StatusCode::UNAUTHORIZED
+        );
+    });
+}
+
+#[test]
+fn demoting_the_impersonating_admin_logs_its_session_out() {
+    run(async {
+        let member = create_account(Role::Member).await;
+        let (admin, mut client) = impersonating(&member).await;
+
+        set_role(&admin, "Member").await;
+
+        assert_eq!(
+            client.get(&api("decks")).await.status,
+            StatusCode::UNAUTHORIZED
+        );
+        assert_eq!(
+            client.get(&api("accounts/me")).await.status,
+            StatusCode::UNAUTHORIZED
+        );
+    });
+}
+
+#[test]
+fn deleting_the_impersonating_admin_logs_its_session_out() {
+    run(async {
+        let member = create_account(Role::Member).await;
+        let (admin, mut client) = impersonating(&member).await;
+
+        let other_admin = create_account(Role::Admin).await;
+        let body = delete(
+            &mut TestClient::logged_in(&other_admin).await,
+            &admin,
+            &admin.username,
+            "Tombstone",
+        )
+        .await;
+        assert_eq!(body, Value::Null);
+
+        assert_eq!(
+            client.get(&api("decks")).await.status,
+            StatusCode::UNAUTHORIZED
+        );
+        assert_eq!(
+            client.get(&api("accounts/me")).await.status,
+            StatusCode::UNAUTHORIZED
+        );
     });
 }
 

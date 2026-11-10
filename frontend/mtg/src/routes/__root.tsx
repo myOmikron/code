@@ -1,5 +1,6 @@
 import { createRootRoute, Outlet } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
+import { ImpersonationBanner } from "src/components/impersonation-banner";
 import { RouteError } from "src/components/route-error";
 import { VersionWarning } from "src/components/version-warning";
 import { TournamentParticipationProvider } from "src/context/tournament-participation-context";
@@ -24,6 +25,9 @@ function RootLayout() {
             <AccountProvider>
                 <TournamentParticipationProvider>
                     <ErrorContext />
+                    {/* First of all, and unlike the 0.x warning also on pages that took the
+                whole screen: an impersonating Admin must see it everywhere. */}
+                    <ImpersonationBanner />
                     {/* Above the outlet, so every layout — menu, scanner, auth — carries
                 the 0.x warning without knowing about it. The layouts all size
                 with `min-h-svh`, so a line before them just flows on top. */}

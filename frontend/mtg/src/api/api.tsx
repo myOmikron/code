@@ -148,6 +148,8 @@ export const Api = {
         },
         rename: async (username: string) =>
             handleError(defaultApi.renameAccount({ RenameAccountRequest: { username } })),
+        // Ends the session's Impersonation, after which it is the Admin's own again.
+        endImpersonation: async () => handleError(defaultApi.endImpersonation()),
         // Takes the account and everything private to it with it. Bypasses
         // `handleError`, since the typed username not matching is a message
         // next to the field rather than the error screen.
@@ -173,6 +175,8 @@ export const Api = {
                 handleError(
                     defaultApi.adminRenameAccount({ uuid, AdminRenameAccountRequest: { username, reason, language } }),
                 ),
+            impersonate: async (uuid: UUID, reason: string) =>
+                handleError(defaultApi.adminStartImpersonation({ uuid, AdminStartImpersonationRequest: { reason } })),
             delete: async (uuid: UUID, username: string, mode: DeletionMode) =>
                 handleError(defaultApi.adminDeleteAccount({ uuid, AdminDeleteAccountRequest: { username, mode } })),
         },

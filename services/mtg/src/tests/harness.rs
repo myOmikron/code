@@ -43,8 +43,10 @@ use galvyn::core::re_exports::axum::http::StatusCode;
 use galvyn::core::re_exports::axum::http::header;
 use galvyn::core::re_exports::axum::http::response::Parts;
 use galvyn::core::re_exports::axum::routing::post;
+use galvyn::core::re_exports::time::OffsetDateTime;
 use galvyn::core::session;
 use galvyn::core::session::Session;
+use galvyn::core::stuff::schema::SchemaDateTime;
 use galvyn::rorm;
 use galvyn::rorm::Database;
 use galvyn::rorm::DatabaseConfiguration;
@@ -66,6 +68,7 @@ use crate::models::account::Account;
 use crate::models::account::AccountUuid;
 use crate::models::account::Role;
 use crate::models::account::Username;
+use crate::models::account::impersonation::Impersonation;
 use crate::modules::web_push::RecordingSender;
 use crate::modules::web_push::VapidKey;
 use crate::modules::web_push::WebPushSetup;
@@ -159,6 +162,7 @@ impl App {
 
         let test_routes = Router::new()
             .route("/test/log-in/{username}", post(log_in))
+            .route("/test/expire-impersonation", post(expire_impersonation))
             .layer(session::layer());
 
         App {
@@ -186,6 +190,22 @@ async fn log_in(session: Session, Path(username): Path<String>) -> StatusCode {
 
     IdentityModule::global()
         .log_in_without_ceremony(&session, account.identity)
+        .await
+        .expect("write the session");
+    StatusCode::OK
+}
+
+/// Moves the expiry of the session's Impersonation to now, as if its hour had passed
+///
+/// Moves the clock of this one session only, since the tests share one app and run in parallel.
+async fn expire_impersonation(session: Session) -> StatusCode {
+    let mut impersonation = Impersonation::read(&session)
+        .await
+        .expect("read the session")
+        .expect("the session impersonates");
+    impersonation.expires_at = SchemaDateTime(OffsetDateTime::now_utc());
+    impersonation
+        .put_into(&session)
         .await
         .expect("write the session");
     StatusCode::OK
@@ -338,6 +358,23 @@ impl TestClient {
             .await;
         assert_eq!(response.status, StatusCode::OK, "log in: {response:?}");
         client
+    }
+
+    /// Lets the hour of the session's Impersonation pass
+    pub async fn expire_impersonation(&mut self) {
+        let response = self
+            .send(
+                request(
+                    Method::POST,
+                    &origin()
+                        .join("/test/expire-impersonation")
+                        .expect("valid path"),
+                )
+                .body(Body::empty())
+                .expect("valid request"),
+            )
+            .await;
+        assert_eq!(response.status, StatusCode::OK, "expire: {response:?}");
     }
 
     /// `GET`s the url
