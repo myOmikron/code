@@ -15,7 +15,12 @@
         "rebook-offer_other": "Letzter Treffer an {{player}}: {{count}} Leben. Als Commander-Schaden buchen?",
         "next-art": "Nächstes Bild für {{name}}",
         "previous-art": "Vorheriges Bild für {{name}}",
-        "starting-life-presets": "Übliche Startleben"
+        "starting-life-presets": "Übliche Startleben",
+        "star-art": "Als Favorit merken",
+        "unstar-art": "Favorit entfernen",
+        "star-drive": "Drive {{name}} bevorzugen",
+        "unstar-drive": "Drive {{name}} nicht mehr bevorzugen",
+        "raise-drive": "{{name}} nach oben"
     },
     "button": {
         "back-to-list": "Zurück zur Liste",
@@ -80,7 +85,10 @@
         "print-scale": "Neun Karten in Originalgröße je DIN-A4-Blatt. Im Druckdialog die Skalierung auf 100 % stellen.",
         "proxy-printer": "Karten in Originalgröße auf DIN A4, zum Ausschneiden.",
         "art-everywhere_one": "{{name}} steht noch in einem weiteren Deck dieser Bestellung.",
-        "art-everywhere_other": "{{name}} steht noch in {{count}} weiteren Decks dieser Bestellung."
+        "art-everywhere_other": "{{name}} steht noch in {{count}} weiteren Decks dieser Bestellung.",
+        "favorite-suggested": "Dein Favorit liegt jetzt in {{source}}. Setz dort den Stern, um ihn zu übernehmen.",
+        "favorite-missing": "Dein Favorit ist in keinem Drive mehr.",
+        "favorite-drives": "Ihre Bilder stehen zuerst."
     },
     "heading": {
         "add-cards": "Karten / Decks hinzufügen",
@@ -97,7 +105,9 @@
         "proxy-printer": "Proxy-Drucker",
         "settings": "Lifetracker einstellen",
         "life-game": "Spiel {{number}}",
-        "art-everywhere": "Auch in den anderen Decks ändern?"
+        "art-everywhere": "Auch in den anderen Decks ändern?",
+        "favorite-art": "Deine Favoriten",
+        "all-art": "Alle Bilder"
     },
     "label": {
         "find-card": "Karte finden",
@@ -163,12 +173,19 @@
         "art-scope": "Gleiche Karte in mehreren Decks",
         "art-scope-ask": "Jedes Mal fragen",
         "art-scope-all": "Bild überall ändern",
-        "art-scope-deck": "Nur in einem Deck ändern"
+        "art-scope-deck": "Nur in einem Deck ändern",
+        "favorite-updated": "aktualisiert",
+        "favorite-suggested": "Favorit verschoben",
+        "favorite-missing": "Favorit fehlt",
+        "favorite-drives": "Lieblings-Drives",
+        "no-favorite-drives": "Noch kein Drive gemerkt.",
+        "add-drive": "Drive hinzufügen"
     },
     "toast": {
         "art-not-searched": "MPCFill hat nicht geantwortet",
         "deck-nothing-to-add": "Aus {{name}} gibt es nichts hinzuzufügen",
         "list-copied": "Liste kopiert",
-        "list-not-copied": "Liste konnte nicht kopiert werden"
+        "list-not-copied": "Liste konnte nicht kopiert werden",
+        "favorite-not-saved": "Favorit nicht gespeichert"
     }
 }
