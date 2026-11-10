@@ -157,6 +157,17 @@ export function formatDateTime(iso: string): string {
 }
 
 /**
+ * Format the time of day of a timestamp, in German regardless of the browser locale
+ *
+ * @param iso the ISO timestamp
+ *
+ * @returns the formatted time
+ */
+export function formatTime(iso: string): string {
+    return new Intl.DateTimeFormat("de-DE", { timeStyle: "short" }).format(new Date(iso));
+}
+
+/**
  * Format a duration in the largest units that keep it readable, in German
  *
  * @param ms the duration in milliseconds
