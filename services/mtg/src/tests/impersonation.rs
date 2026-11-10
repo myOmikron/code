@@ -382,6 +382,25 @@ fn the_members_own_session_is_unaffected_throughout() {
 }
 
 #[test]
+fn after_the_expiry_the_session_acts_as_the_admin_again_without_an_end_entry() {
+    run(async {
+        let member = create_account(Role::Member).await;
+        let (admin, mut client) = impersonating(&member).await;
+
+        client.expire_impersonation().await;
+
+        let me = client.get(&api("accounts/me")).await.ok_json();
+        assert_eq!(me["username"], admin.username.as_str());
+        assert!(me.get("impersonation").is_none(), "{me}");
+        assert_eq!(
+            client.get(&api("admin/accounts")).await.status,
+            StatusCode::OK
+        );
+        assert_eq!(kinds(&log_of(&member).await), ["ImpersonationStart"]);
+    });
+}
+
+#[test]
 fn the_full_admin_log_lists_the_impersonation() {
     run(async {
         let member = create_account(Role::Member).await;

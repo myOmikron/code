@@ -94,6 +94,11 @@ impl Impersonation {
         Ok(())
     }
 
+    /// Whether its hour has passed, so the session acts as the Admin again
+    pub fn has_expired(&self) -> bool {
+        OffsetDateTime::now_utc() >= self.expires_at.0
+    }
+
     /// The Impersonation `session` is in, if any
     pub async fn read(session: &Session) -> Result<Option<Self>, session::Error> {
         session.get(SESSION_KEY).await
