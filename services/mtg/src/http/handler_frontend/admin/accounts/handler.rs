@@ -25,9 +25,9 @@ use crate::http::handler_frontend::admin::accounts::schema::AdminLockAccountRequ
 use crate::http::handler_frontend::admin::accounts::schema::AdminRenameAccountErrors;
 use crate::http::handler_frontend::admin::accounts::schema::AdminRenameAccountRequest;
 use crate::http::handler_frontend::admin::accounts::schema::AdminSetRoleErrors;
+use crate::http::handler_frontend::admin::accounts::schema::AdminSetRoleRequest;
 use crate::http::handler_frontend::admin::accounts::schema::AdminStartImpersonationErrors;
 use crate::http::handler_frontend::admin::accounts::schema::AdminStartImpersonationRequest;
-use crate::http::handler_frontend::admin::accounts::schema::AdminSetRoleRequest;
 use crate::http::handler_frontend::admin::accounts::schema::AdminUnlockAccountErrors;
 use crate::http::handler_frontend::admin::accounts::schema::AdminUnlockAccountRequest;
 use crate::http::handler_frontend::admin::page_limit;

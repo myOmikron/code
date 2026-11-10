@@ -33,7 +33,9 @@ async fn impersonate(client: &mut TestClient, account: &TestAccount, reason: &st
 async fn impersonating(account: &TestAccount) -> (TestAccount, TestClient) {
     let admin = create_account(Role::Admin).await;
     let mut client = TestClient::logged_in(&admin).await;
-    let body = impersonate(&mut client, account, "Debugging").await.ok_json();
+    let body = impersonate(&mut client, account, "Debugging")
+        .await
+        .ok_json();
     assert_eq!(body, Value::Null);
     (admin, client)
 }
@@ -59,7 +61,11 @@ async fn private_deck(client: &mut TestClient, name: &str) -> String {
 /// Ends the Impersonation of the session behind `client`
 async fn end(client: &mut TestClient) -> TestResponse {
     client
-        .json(Method::DELETE, &api("accounts/me/impersonation"), &json!({}))
+        .json(
+            Method::DELETE,
+            &api("accounts/me/impersonation"),
+            &json!({}),
+        )
         .await
 }
 
@@ -100,7 +106,10 @@ fn me_reports_the_impersonated_account_and_who_impersonates_it() {
             member.username.as_str(),
             "{me}"
         );
-        assert_eq!(me["impersonation"]["admin_username"], admin.username.as_str());
+        assert_eq!(
+            me["impersonation"]["admin_username"],
+            admin.username.as_str()
+        );
         assert!(me["impersonation"]["expires_at"].is_string(), "{me}");
     });
 }
@@ -126,7 +135,9 @@ fn an_admin_cannot_impersonate_another_admin() {
         let other = create_account(Role::Admin).await;
         let mut client = TestClient::logged_in(&admin).await;
 
-        let body = impersonate(&mut client, &other, "Debugging").await.ok_json();
+        let body = impersonate(&mut client, &other, "Debugging")
+            .await
+            .ok_json();
         assert_eq!(body["result"], "Err");
         assert_eq!(body["error"]["admin_account"], true);
 
@@ -142,7 +153,9 @@ fn an_admin_cannot_impersonate_itself() {
         let admin = create_account(Role::Admin).await;
         let mut client = TestClient::logged_in(&admin).await;
 
-        let body = impersonate(&mut client, &admin, "Debugging").await.ok_json();
+        let body = impersonate(&mut client, &admin, "Debugging")
+            .await
+            .ok_json();
         assert_eq!(body["result"], "Err");
         assert_eq!(body["error"]["own_account"], true);
     });
@@ -301,12 +314,12 @@ fn start_and_end_land_in_the_admin_log() {
         end(&mut client).await.ok_json();
 
         let entries = log_of(&member).await;
-        assert_eq!(
-            kinds(&entries),
-            ["ImpersonationEnd", "ImpersonationStart"]
-        );
+        assert_eq!(kinds(&entries), ["ImpersonationEnd", "ImpersonationStart"]);
         assert_eq!(entries[1]["action"]["reason"], "Debugging");
-        assert!(entries[1]["action"]["expires_at"].is_string(), "{entries:?}");
+        assert!(
+            entries[1]["action"]["expires_at"].is_string(),
+            "{entries:?}"
+        );
         for entry in &entries {
             assert_eq!(entry["admin_username"], admin.username.as_str());
             assert_eq!(entry["account_username"], member.username.as_str());
@@ -320,10 +333,7 @@ fn logging_out_ends_the_impersonation_and_logs_out() {
         let member = create_account(Role::Member).await;
         let (_, mut client) = impersonating(&member).await;
 
-        assert_eq!(
-            client.get(&api("auth/logout")).await.status,
-            StatusCode::OK
-        );
+        assert_eq!(client.get(&api("auth/logout")).await.status, StatusCode::OK);
 
         assert_eq!(
             client.get(&api("accounts/me")).await.status,
@@ -342,10 +352,7 @@ fn logging_out_without_an_impersonation_writes_no_entry() {
         let member = create_account(Role::Member).await;
         let mut client = TestClient::logged_in(&member).await;
 
-        assert_eq!(
-            client.get(&api("auth/logout")).await.status,
-            StatusCode::OK
-        );
+        assert_eq!(client.get(&api("auth/logout")).await.status, StatusCode::OK);
 
         assert_eq!(log_of(&member).await, Vec::<Value>::new());
     });
@@ -389,9 +396,6 @@ fn the_full_admin_log_lists_the_impersonation() {
             .filter(|entry| entry["admin_username"] == admin.username.as_str())
             .cloned()
             .collect();
-        assert_eq!(
-            kinds(&entries),
-            ["ImpersonationEnd", "ImpersonationStart"]
-        );
+        assert_eq!(kinds(&entries), ["ImpersonationEnd", "ImpersonationStart"]);
     });
 }
