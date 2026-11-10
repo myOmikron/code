@@ -78,7 +78,7 @@ pub async fn me(
         impersonation: impersonation.map(|impersonation| MeImpersonation {
             username: account.username.as_str().to_string(),
             admin_username: impersonation.admin.username.as_str().to_string(),
-            expires_at: impersonation.state.expires_at,
+            expires_at: impersonation.stored.expires_at,
         }),
     }))
 }
