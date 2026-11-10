@@ -40,6 +40,7 @@ use crate::models::tournament::Tournament;
 use crate::models::tournament::deletion::GuestNaming;
 pub(in crate::models) mod db;
 pub mod extractor;
+pub mod impersonation;
 pub mod overview;
 
 /// The login handle of an [`Account`]

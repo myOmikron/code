@@ -11,6 +11,7 @@ mod default_printing;
 mod deletion;
 mod external_accounts;
 pub mod harness;
+mod impersonation;
 mod lock;
 mod login_method;
 mod oidc;

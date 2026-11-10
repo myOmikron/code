@@ -207,3 +207,21 @@ pub struct AdminRenameAccountErrors {
     /// Another Account goes by this username already, case ignored
     pub username_taken: bool,
 }
+
+/// Request to start an Impersonation of an Account
+#[derive(Debug, Clone, Deserialize, JsonSchema)]
+pub struct AdminStartImpersonationRequest {
+    /// The Impersonation reason, shown to Admins only
+    pub reason: MaxStr<ADMIN_REASON_MAX_LEN>,
+}
+
+/// Why an Impersonation could not be started
+#[derive(Debug, Default, Serialize, JsonSchema)]
+pub struct AdminStartImpersonationErrors {
+    /// The Account is the Admin's own
+    pub own_account: bool,
+    /// The Account is an Admin, which nobody impersonates
+    pub admin_account: bool,
+    /// No reason was given
+    pub reason_missing: bool,
+}
