@@ -10,6 +10,9 @@ use uuid::Uuid;
 use crate::models::account::db::AccountModel;
 
 /// An MPCFill image an account starred
+///
+/// Unique per owner, face and drive id: the index `mpcfill_favorite_entry` is
+/// created by hand in migration 0073.
 #[derive(Model, Debug)]
 #[rorm(rename = "mpcfill_favorite")]
 pub struct MpcFillFavoriteModel {
@@ -33,12 +36,6 @@ pub struct MpcFillFavoriteModel {
     /// The drive it lies in
     pub source: MaxStr<255>,
 
-    /// Its resolution
-    pub dpi: i64,
-
-    /// Its size in bytes
-    pub size: i64,
-
     /// When it was starred
     #[rorm(auto_create_time)]
     pub starred_at: OffsetDateTime,
@@ -60,13 +57,12 @@ pub struct MpcFillFavoriteInsertPatch {
     pub file_name: MaxStr<255>,
     /// The drive
     pub source: MaxStr<255>,
-    /// The resolution
-    pub dpi: i64,
-    /// The size in bytes
-    pub size: i64,
 }
 
 /// An MPCFill drive an account starred
+///
+/// Unique per owner and drive: the index `mpcfill_favorite_drive_entry` is
+/// created by hand in migration 0073.
 #[derive(Model, Debug)]
 #[rorm(rename = "mpcfill_favorite_drive")]
 pub struct MpcFillFavoriteDriveModel {

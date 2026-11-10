@@ -5265,10 +5265,6 @@ export interface MpcFillCardbacksResponse {
  */
 export interface MpcFillFavoriteImage {
     /**
-     * Its resolution
-     */
-    dpi: number;
-    /**
      * The Google Drive file id
      */
     drive_id: string;
@@ -5276,10 +5272,6 @@ export interface MpcFillFavoriteImage {
      * The file's name in its drive
      */
     file_name: string;
-    /**
-     * Its size in bytes
-     */
-    size: number;
     /**
      * The drive it lies in
      */
@@ -5303,6 +5295,10 @@ export interface MpcFillFavoriteResponse {
      * When it was starred
      */
     starred_at: string;
+    /**
+     * Primary key
+     */
+    uuid: string;
 }
 /**
  * Everything the account starred
@@ -6482,7 +6478,7 @@ export interface RenamePasskeyRequest {
     label: string;
 }
 /**
- * Request to move a star to the file that replaced the starred one
+ * Request to move a star to the file that replaced its image
  * @export
  * @interface ReplaceMpcFillFavoriteRequest
  */

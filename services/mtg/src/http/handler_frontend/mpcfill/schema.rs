@@ -10,7 +10,8 @@ use serde::Deserialize;
 use serde::Serialize;
 
 use crate::models::mpcfill::MpcFillFavorite;
-use crate::models::mpcfill::MpcFillImage;
+use crate::models::mpcfill::MpcFillFavoriteImage;
+use crate::models::mpcfill::MpcFillFavoriteUuid;
 use crate::modules::mpcfill::Image;
 
 /// The cards to look for art for
@@ -86,21 +87,6 @@ impl From<&Arc<Image>> for MpcFillImageResponse {
     }
 }
 
-/// An MPCFill image as it was found when it was starred
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
-pub struct MpcFillFavoriteImage {
-    /// The Google Drive file id
-    pub drive_id: MaxStr<128>,
-    /// The file's name in its drive
-    pub file_name: MaxStr<255>,
-    /// The drive it lies in
-    pub source: MaxStr<255>,
-    /// Its resolution
-    pub dpi: i64,
-    /// Its size in bytes
-    pub size: i64,
-}
-
 /// Request to star an image
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct StarMpcFillImageRequest {
@@ -110,7 +96,7 @@ pub struct StarMpcFillImageRequest {
     pub image: MpcFillFavoriteImage,
 }
 
-/// Request to move a star to the file that replaced the starred one
+/// Request to move a star to the file that replaced its image
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct ReplaceMpcFillFavoriteRequest {
     /// The file that replaced it
@@ -127,6 +113,8 @@ pub struct SetMpcFillFavoriteDrivesRequest {
 /// An image the account starred
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct MpcFillFavoriteResponse {
+    /// Primary key
+    pub uuid: MpcFillFavoriteUuid,
     /// The card face it was starred for, `None` for a cardback
     pub face: Option<MaxStr<255>>,
     /// The image
@@ -144,35 +132,12 @@ pub struct MpcFillFavoritesResponse {
     pub drives: Vec<MaxStr<255>>,
 }
 
-impl From<MpcFillImage> for MpcFillFavoriteImage {
-    fn from(image: MpcFillImage) -> Self {
-        Self {
-            drive_id: image.drive_id,
-            file_name: image.file_name,
-            source: image.source,
-            dpi: image.dpi,
-            size: image.size,
-        }
-    }
-}
-
-impl From<MpcFillFavoriteImage> for MpcFillImage {
-    fn from(image: MpcFillFavoriteImage) -> Self {
-        Self {
-            drive_id: image.drive_id,
-            file_name: image.file_name,
-            source: image.source,
-            dpi: image.dpi,
-            size: image.size,
-        }
-    }
-}
-
 impl From<MpcFillFavorite> for MpcFillFavoriteResponse {
     fn from(favorite: MpcFillFavorite) -> Self {
         Self {
+            uuid: favorite.uuid,
             face: favorite.face,
-            image: MpcFillFavoriteImage::from(favorite.image),
+            image: favorite.image,
             starred_at: SchemaDateTime(favorite.starred_at),
         }
     }

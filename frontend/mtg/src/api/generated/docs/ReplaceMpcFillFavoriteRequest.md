@@ -1,7 +1,7 @@
 
 # ReplaceMpcFillFavoriteRequest
 
-Request to move a star to the file that replaced the starred one
+Request to move a star to the file that replaced its image
 
 ## Properties
 

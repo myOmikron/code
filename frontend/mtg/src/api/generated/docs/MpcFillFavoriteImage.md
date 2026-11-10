@@ -7,10 +7,8 @@ An MPCFill image as it was found when it was starred
 
 Name | Type
 ------------ | -------------
-`dpi` | number
 `drive_id` | string
 `file_name` | string
-`size` | number
 `source` | string
 
 

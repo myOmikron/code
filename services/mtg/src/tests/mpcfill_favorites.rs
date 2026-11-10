@@ -13,12 +13,12 @@ use crate::tests::harness::run;
 
 /// An image as MPCFill describes it
 fn image(drive_id: &str, file_name: &str, source: &str) -> Value {
-    json!({ "drive_id": drive_id, "file_name": file_name, "source": source, "dpi": 800, "size": 4_000_000 })
+    json!({ "drive_id": drive_id, "file_name": file_name, "source": source })
 }
 
-/// Stars `image` for `face`
-async fn star(client: &mut TestClient, face: Option<&str>, image: Value) {
-    client
+/// Stars `image` for `face`, returning the favorite's uuid
+async fn star(client: &mut TestClient, face: Option<&str>, image: Value) -> String {
+    let body = client
         .json(
             Method::PUT,
             &api("mpcfill/favorites/images"),
@@ -26,9 +26,10 @@ async fn star(client: &mut TestClient, face: Option<&str>, image: Value) {
         )
         .await
         .ok_json();
+    body["uuid"].as_str().expect("a uuid").to_owned()
 }
 
-/// The drive ids of the starred images, newest first
+/// Every starred image as `face/drive_id`, newest first
 async fn starred(client: &mut TestClient) -> Vec<String> {
     let body = client.get(&api("mpcfill/favorites")).await.ok_json();
     body["images"]
@@ -36,10 +37,11 @@ async fn starred(client: &mut TestClient) -> Vec<String> {
         .expect("a list")
         .iter()
         .map(|favorite| {
-            favorite["image"]["drive_id"]
-                .as_str()
-                .expect("an id")
-                .to_owned()
+            format!(
+                "{}/{}",
+                favorite["face"].as_str().unwrap_or("back"),
+                favorite["image"]["drive_id"].as_str().expect("an id")
+            )
         })
         .collect()
 }
@@ -49,82 +51,67 @@ fn starring_lists_newest_first_and_unstarring_removes() {
     run(async {
         let mut client = TestClient::logged_in(&create_account(Role::Member).await).await;
 
-        star(
-            &mut client,
-            Some("Sol Ring"),
-            image("a", "Sol Ring.png", "Drive A"),
-        )
-        .await;
-        star(
-            &mut client,
-            Some("Sol Ring"),
-            image("b", "Sol Ring (2).png", "Drive B"),
-        )
-        .await;
-        star(&mut client, None, image("back", "Back.png", "Drive A")).await;
-        assert_eq!(starred(&mut client).await, ["back", "b", "a"]);
+        star(&mut client, Some("Sol Ring"), image("a", "a.png", "A")).await;
+        let b = star(&mut client, Some("Sol Ring"), image("b", "b.png", "B")).await;
+        star(&mut client, None, image("back", "back.png", "A")).await;
+        assert_eq!(
+            starred(&mut client).await,
+            ["back/back", "Sol Ring/b", "Sol Ring/a"]
+        );
 
-        star(
-            &mut client,
-            Some("Sol Ring"),
-            image("a", "Sol Ring.png", "Drive A"),
-        )
-        .await;
-        assert_eq!(starred(&mut client).await, ["a", "back", "b"]);
-
-        let body = client.get(&api("mpcfill/favorites")).await.ok_json();
-        assert_eq!(body["images"][1]["face"], Value::Null, "{body}");
-        assert_eq!(body["images"][0]["face"], "Sol Ring", "{body}");
+        star(&mut client, Some("Sol Ring"), image("a", "a.png", "A")).await;
+        assert_eq!(
+            starred(&mut client).await,
+            ["Sol Ring/a", "back/back", "Sol Ring/b"]
+        );
 
         client
             .json(
                 Method::DELETE,
-                &api("mpcfill/favorites/images/b"),
+                &api(&format!("mpcfill/favorites/images/{b}")),
                 &json!({}),
             )
             .await
             .ok_json();
-        assert_eq!(starred(&mut client).await, ["a", "back"]);
+        assert_eq!(starred(&mut client).await, ["Sol Ring/a", "back/back"]);
     });
 }
 
 #[test]
-fn a_replacement_takes_over_the_star() {
+fn one_image_can_be_starred_for_two_faces() {
     run(async {
         let mut client = TestClient::logged_in(&create_account(Role::Member).await).await;
 
-        star(
-            &mut client,
-            Some("Sol Ring"),
-            image("old", "Sol Ring.png", "Drive A"),
-        )
-        .await;
-        star(
-            &mut client,
-            Some("Sol Ring"),
-            image("other", "Sol Ring (2).png", "Drive B"),
-        )
-        .await;
+        star(&mut client, Some("Fire // Ice"), image("x", "x.png", "A")).await;
+        star(&mut client, None, image("x", "x.png", "A")).await;
+        assert_eq!(starred(&mut client).await, ["back/x", "Fire // Ice/x"]);
+    });
+}
+
+#[test]
+fn a_replacement_takes_over_the_star_and_keeps_its_date() {
+    run(async {
+        let mut client = TestClient::logged_in(&create_account(Role::Member).await).await;
+
+        let old = star(&mut client, Some("Sol Ring"), image("old", "a.png", "A")).await;
+        star(&mut client, Some("Sol Ring"), image("new", "a.png", "A")).await;
+        star(&mut client, Some("Sol Ring"), image("other", "b.png", "B")).await;
 
         client
             .json(
                 Method::PUT,
-                &api("mpcfill/favorites/images/old/replacement"),
-                &json!({ "image": image("new", "Sol Ring.png", "Drive A") }),
+                &api(&format!("mpcfill/favorites/images/{old}/replacement")),
+                &json!({ "image": image("new", "a.png", "A") }),
             )
             .await
             .ok_json();
-        assert_eq!(starred(&mut client).await, ["other", "new"]);
 
-        client
-            .json(
-                Method::PUT,
-                &api("mpcfill/favorites/images/new/replacement"),
-                &json!({ "image": image("other", "Sol Ring (2).png", "Drive B") }),
-            )
-            .await
-            .ok_json();
-        assert_eq!(starred(&mut client).await, ["other"]);
+        assert_eq!(
+            starred(&mut client).await,
+            ["Sol Ring/other", "Sol Ring/new"]
+        );
+        let body = client.get(&api("mpcfill/favorites")).await.ok_json();
+        assert_eq!(body["images"][1]["uuid"], old.as_str(), "{body}");
     });
 }
 
@@ -162,16 +149,11 @@ fn favorites_are_the_accounts_own() {
         let mut mine = TestClient::logged_in(&create_account(Role::Member).await).await;
         let mut theirs = TestClient::logged_in(&create_account(Role::Member).await).await;
 
-        star(
-            &mut mine,
-            Some("Sol Ring"),
-            image("a", "Sol Ring.png", "Drive A"),
-        )
-        .await;
+        let a = star(&mut mine, Some("Sol Ring"), image("a", "a.png", "A")).await;
         mine.json(
             Method::PUT,
             &api("mpcfill/favorites/drives"),
-            &json!({ "sources": ["Drive A"] }),
+            &json!({ "sources": ["A"] }),
         )
         .await
         .ok_json();
@@ -182,12 +164,20 @@ fn favorites_are_the_accounts_own() {
         theirs
             .json(
                 Method::DELETE,
-                &api("mpcfill/favorites/images/a"),
+                &api(&format!("mpcfill/favorites/images/{a}")),
                 &json!({}),
             )
             .await
             .ok_json();
-        assert_eq!(starred(&mut mine).await, ["a"]);
+        theirs
+            .json(
+                Method::PUT,
+                &api(&format!("mpcfill/favorites/images/{a}/replacement")),
+                &json!({ "image": image("b", "b.png", "B") }),
+            )
+            .await
+            .ok_json();
+        assert_eq!(starred(&mut mine).await, ["Sol Ring/a"]);
     });
 }
 

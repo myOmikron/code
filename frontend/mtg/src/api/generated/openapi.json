@@ -8232,8 +8232,8 @@
         },
         "/api/frontend/v1/mpcfill/favorites/images": {
             "put": {
-                "summary": "Star an image, or star it again as the newest",
-                "description": "Star an image, or star it again as the newest",
+                "summary": "Star an image for a face, or star it again as the newest",
+                "description": "Star an image for a face, or star it again as the newest",
                 "operationId": "star_mpcfill_image",
                 "requestBody": {
                     "content": {
@@ -8250,7 +8250,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "nullable": true
+                                    "$ref": "#/components/schemas/MpcFillFavoriteResponse"
                                 }
                             }
                         }
@@ -8288,7 +8288,7 @@
                 }
             }
         },
-        "/api/frontend/v1/mpcfill/favorites/images/{drive_id}": {
+        "/api/frontend/v1/mpcfill/favorites/images/{favorite}": {
             "delete": {
                 "summary": "Take the star off an image",
                 "description": "Take the star off an image",
@@ -8296,11 +8296,12 @@
                 "parameters": [
                     {
                         "in": "path",
-                        "name": "drive_id",
+                        "name": "favorite",
                         "required": true,
                         "schema": {
+                            "description": "Wrapper for the primary key of [`MpcFillFavoriteModel`]",
                             "type": "string",
-                            "maxLength": 128
+                            "format": "uuid"
                         },
                         "style": "simple"
                     }
@@ -8349,19 +8350,20 @@
                 }
             }
         },
-        "/api/frontend/v1/mpcfill/favorites/images/{drive_id}/replacement": {
+        "/api/frontend/v1/mpcfill/favorites/images/{favorite}/replacement": {
             "put": {
-                "summary": "Move a star to the file that replaced the starred one",
-                "description": "Move a star to the file that replaced the starred one",
+                "summary": "Move a star to the file that replaced its image",
+                "description": "Move a star to the file that replaced its image",
                 "operationId": "replace_mpcfill_favorite",
                 "parameters": [
                     {
                         "in": "path",
-                        "name": "drive_id",
+                        "name": "favorite",
                         "required": true,
                         "schema": {
+                            "description": "Wrapper for the primary key of [`MpcFillFavoriteModel`]",
                             "type": "string",
-                            "maxLength": 128
+                            "format": "uuid"
                         },
                         "style": "simple"
                     }
@@ -22894,11 +22896,6 @@
                 "description": "An MPCFill image as it was found when it was starred",
                 "type": "object",
                 "properties": {
-                    "dpi": {
-                        "description": "Its resolution",
-                        "type": "integer",
-                        "format": "int64"
-                    },
                     "drive_id": {
                         "description": "The Google Drive file id",
                         "allOf": [
@@ -22915,11 +22912,6 @@
                             }
                         ]
                     },
-                    "size": {
-                        "description": "Its size in bytes",
-                        "type": "integer",
-                        "format": "int64"
-                    },
                     "source": {
                         "description": "The drive it lies in",
                         "allOf": [
@@ -22930,10 +22922,8 @@
                     }
                 },
                 "required": [
-                    "dpi",
                     "drive_id",
                     "file_name",
-                    "size",
                     "source"
                 ]
             },
@@ -22965,12 +22955,26 @@
                                 "$ref": "#/components/schemas/SchemaDateTime"
                             }
                         ]
+                    },
+                    "uuid": {
+                        "description": "Primary key",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MpcFillFavoriteUuid"
+                            }
+                        ]
                     }
                 },
                 "required": [
                     "image",
-                    "starred_at"
+                    "starred_at",
+                    "uuid"
                 ]
+            },
+            "MpcFillFavoriteUuid": {
+                "description": "Wrapper for the primary key of [`MpcFillFavoriteModel`]",
+                "type": "string",
+                "format": "uuid"
             },
             "MpcFillFavoritesResponse": {
                 "description": "Everything the account starred",
@@ -24580,7 +24584,7 @@
                 ]
             },
             "ReplaceMpcFillFavoriteRequest": {
-                "description": "Request to move a star to the file that replaced the starred one",
+                "description": "Request to move a star to the file that replaced its image",
                 "type": "object",
                 "properties": {
                     "image": {

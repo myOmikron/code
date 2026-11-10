@@ -26,7 +26,7 @@ use crate::http::handler_frontend::mpcfill::schema::StarMpcFillImageRequest;
 use crate::models::account::Account;
 use crate::models::mpcfill::MpcFillFavorite;
 use crate::models::mpcfill::MpcFillFavoriteDrives;
-use crate::models::mpcfill::MpcFillImage;
+use crate::models::mpcfill::MpcFillFavoriteUuid;
 use crate::modules::mpcfill::MpcFill;
 
 /// How many names one request may ask about
@@ -117,46 +117,46 @@ pub async fn get_mpcfill_favorites(
     }))
 }
 
-/// Star an image, or star it again as the newest
+/// Star an image for a face, or star it again as the newest
 #[put("/favorites/images")]
 pub async fn star_mpcfill_image(
     account: Account,
     ApiJson(StarMpcFillImageRequest { face, image }): ApiJson<StarMpcFillImageRequest>,
-) -> ApiResult<ApiJson<()>> {
+) -> ApiResult<ApiJson<MpcFillFavoriteResponse>> {
     let mut tx = Database::global().start_transaction().await?;
 
-    MpcFillFavorite::star(&mut tx, account.uuid, face, MpcFillImage::from(image)).await?;
+    let favorite = MpcFillFavorite::star(&mut tx, account.uuid, face, image).await?;
 
     tx.commit().await?;
 
-    Ok(ApiJson(()))
+    Ok(ApiJson(MpcFillFavoriteResponse::from(favorite)))
 }
 
 /// Take the star off an image
-#[delete("/favorites/images/{drive_id}")]
+#[delete("/favorites/images/{favorite}")]
 pub async fn unstar_mpcfill_image(
     account: Account,
-    Path(drive_id): Path<MaxStr<128>>,
+    Path(favorite): Path<MpcFillFavoriteUuid>,
 ) -> ApiResult<ApiJson<()>> {
     let mut tx = Database::global().start_transaction().await?;
 
-    MpcFillFavorite::unstar(&mut tx, account.uuid, &drive_id).await?;
+    MpcFillFavorite::unstar(&mut tx, account.uuid, favorite).await?;
 
     tx.commit().await?;
 
     Ok(ApiJson(()))
 }
 
-/// Move a star to the file that replaced the starred one
-#[put("/favorites/images/{drive_id}/replacement")]
+/// Move a star to the file that replaced its image
+#[put("/favorites/images/{favorite}/replacement")]
 pub async fn replace_mpcfill_favorite(
     account: Account,
-    Path(drive_id): Path<MaxStr<128>>,
+    Path(favorite): Path<MpcFillFavoriteUuid>,
     ApiJson(ReplaceMpcFillFavoriteRequest { image }): ApiJson<ReplaceMpcFillFavoriteRequest>,
 ) -> ApiResult<ApiJson<()>> {
     let mut tx = Database::global().start_transaction().await?;
 
-    MpcFillFavorite::replace(&mut tx, account.uuid, &drive_id, MpcFillImage::from(image)).await?;
+    MpcFillFavorite::replace(&mut tx, account.uuid, favorite, image).await?;
 
     tx.commit().await?;
 
