@@ -9,8 +9,7 @@ pub mod schema;
 
 /// Initializes the push routes; the caller wraps them in the account layer
 ///
-/// Subscribing a device is refused while impersonating, so it never keeps
-/// receiving the Account's pushes afterwards.
+/// Subscribing a device is refused while impersonating.
 pub fn initialize_routes() -> GalvynRouter {
     GalvynRouter::new()
         .handler(handler::get_push_settings)
