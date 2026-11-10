@@ -254,6 +254,9 @@ docs/MeResponse.md
 docs/MergeCollectionEntriesRequest.md
 docs/MpcFillArtResponse.md
 docs/MpcFillCardbacksResponse.md
+docs/MpcFillFavoriteImage.md
+docs/MpcFillFavoriteResponse.md
+docs/MpcFillFavoritesResponse.md
 docs/MpcFillImageResponse.md
 docs/MpcFillSearchRequest.md
 docs/MpcFillSearchResponse.md
@@ -308,6 +311,7 @@ docs/RenameAccountRequest.md
 docs/RenameAccountResponse.md
 docs/RenamePasskeyErrors.md
 docs/RenamePasskeyRequest.md
+docs/ReplaceMpcFillFavoriteRequest.md
 docs/ReportResultErrors.md
 docs/ReportResultRequest.md
 docs/ResolvePrintingsRequest.md
@@ -353,6 +357,7 @@ docs/SetDeckRuleZeroRequest.md
 docs/SetDeckVisibilityRequest.md
 docs/SetListSharingErrors.md
 docs/SetListSharingRequest.md
+docs/SetMpcFillFavoriteDrivesRequest.md
 docs/SetPaidErrors.md
 docs/SetPaidRequest.md
 docs/SetPushSettingsRequest.md
@@ -386,6 +391,7 @@ docs/SplitCollectionEntryRequest.md
 docs/SplitCollectionEntryResponse.md
 docs/StandingResponse.md
 docs/StandingsResponse.md
+docs/StarMpcFillImageRequest.md
 docs/StartAddPasskeyResponse.md
 docs/StartLogin200Response.md
 docs/StartLoginErrors.md

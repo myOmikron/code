@@ -21,6 +21,7 @@
 
 import type { MpcFillImageResponse } from "src/api/generated";
 import type { ProxyGroup } from "src/utils/proxy-list";
+import { loadChoice, saveChoice } from "src/utils/stored-choice";
 import type { ProxyCard } from "src/utils/proxy-print";
 
 /** Where the list is pasted in */
@@ -104,30 +105,6 @@ export function mpcTiles(group: ProxyGroup, sort: MpcSort, query: string): Array
 }
 
 /**
- * What an art pick is filed under: each deck picks its own art
- *
- * @param group the group the card is in
- * @param face the name MPCFill is asked for
- *
- * @returns the key
- */
-export function mpcPickKey(group: ProxyGroup, face: string): string {
-    return `${group.deck?.uuid ?? ""}|${face}`;
-}
-
-/**
- * The art taken for one face, the top hit until another is picked
- *
- * @param images what was found for the face
- * @param chosen the id of the image picked, if any
- *
- * @returns the image, `null` while there is none
- */
-export function mpcPick(images: Array<MpcFillImageResponse>, chosen: string | undefined): MpcFillImageResponse | null {
-    return images.find((image) => image.id === chosen) ?? images[0] ?? null;
-}
-
-/**
  * Whether a card has no art for one of its sides
  *
  * @param art what was found, by face
@@ -146,12 +123,7 @@ export function mpcNeedsArt(art: Record<string, Array<MpcFillImageResponse>>, ca
  * @returns the sort, newest cards first when there is none
  */
 export function loadMpcSort(): MpcSort {
-    try {
-        const stored = localStorage.getItem(SORT_KEY);
-        return MPC_SORTS.find((sort) => sort === stored) ?? "added";
-    } catch {
-        return "added";
-    }
+    return loadChoice(SORT_KEY, MPC_SORTS, "added");
 }
 
 /**
@@ -160,11 +132,7 @@ export function loadMpcSort(): MpcSort {
  * @param sort the sort
  */
 export function saveMpcSort(sort: MpcSort) {
-    try {
-        localStorage.setItem(SORT_KEY, sort);
-    } catch {
-        return;
-    }
+    saveChoice(SORT_KEY, sort);
 }
 
 /**

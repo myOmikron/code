@@ -15,6 +15,7 @@ mod impersonation;
 mod impersonation_refused;
 mod lock;
 mod login_method;
+mod mpcfill_favorites;
 mod oidc;
 mod passkeys;
 mod push;

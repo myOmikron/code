@@ -1,19 +1,32 @@
 //! Handlers for MPCFill's art index
 
 use galvyn::core::Module;
+use galvyn::core::re_exports::axum::extract::Path;
 use galvyn::core::stuff::api_error::ApiError;
 use galvyn::core::stuff::api_error::ApiResult;
 use galvyn::core::stuff::api_json::ApiJson;
+use galvyn::delete;
 use galvyn::get;
 use galvyn::post;
+use galvyn::put;
+use galvyn::rorm::Database;
 use galvyn::rorm::fields::types::MaxStr;
 use tracing::warn;
 
 use crate::http::handler_frontend::mpcfill::schema::MpcFillArtResponse;
 use crate::http::handler_frontend::mpcfill::schema::MpcFillCardbacksResponse;
+use crate::http::handler_frontend::mpcfill::schema::MpcFillFavoriteResponse;
+use crate::http::handler_frontend::mpcfill::schema::MpcFillFavoritesResponse;
 use crate::http::handler_frontend::mpcfill::schema::MpcFillImageResponse;
 use crate::http::handler_frontend::mpcfill::schema::MpcFillSearchRequest;
 use crate::http::handler_frontend::mpcfill::schema::MpcFillSearchResponse;
+use crate::http::handler_frontend::mpcfill::schema::ReplaceMpcFillFavoriteRequest;
+use crate::http::handler_frontend::mpcfill::schema::SetMpcFillFavoriteDrivesRequest;
+use crate::http::handler_frontend::mpcfill::schema::StarMpcFillImageRequest;
+use crate::models::account::Account;
+use crate::models::mpcfill::MpcFillFavorite;
+use crate::models::mpcfill::MpcFillFavoriteDrives;
+use crate::models::mpcfill::MpcFillFavoriteUuid;
 use crate::modules::mpcfill::MpcFill;
 
 /// How many names one request may ask about
@@ -22,6 +35,9 @@ use crate::modules::mpcfill::MpcFill;
 /// this takes the largest sensible order in one request while still being a
 /// bound on what one reader can ask MPCFill for at a time.
 const MAX_NAMES: usize = 300;
+
+/// How many drives an account may star
+const MAX_FAVORITE_DRIVES: usize = 64;
 
 /// The art MPCFill has for these cards
 ///
@@ -78,4 +94,90 @@ pub async fn get_mpcfill_cardbacks() -> ApiResult<ApiJson<MpcFillCardbacksRespon
     Ok(ApiJson(MpcFillCardbacksResponse {
         cardbacks: cardbacks.iter().map(MpcFillImageResponse::from).collect(),
     }))
+}
+
+/// Everything the account starred
+#[get("/favorites")]
+pub async fn get_mpcfill_favorites(
+    account: Account,
+) -> ApiResult<ApiJson<MpcFillFavoritesResponse>> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    let images = MpcFillFavorite::all_for(&mut tx, account.uuid).await?;
+    let drives = MpcFillFavoriteDrives::all_for(&mut tx, account.uuid).await?;
+
+    tx.commit().await?;
+
+    Ok(ApiJson(MpcFillFavoritesResponse {
+        images: images
+            .into_iter()
+            .map(MpcFillFavoriteResponse::from)
+            .collect(),
+        drives,
+    }))
+}
+
+/// Star an image for a face, or star it again as the newest
+#[put("/favorites/images")]
+pub async fn star_mpcfill_image(
+    account: Account,
+    ApiJson(StarMpcFillImageRequest { face, image }): ApiJson<StarMpcFillImageRequest>,
+) -> ApiResult<ApiJson<MpcFillFavoriteResponse>> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    let favorite = MpcFillFavorite::star(&mut tx, account.uuid, face, image).await?;
+
+    tx.commit().await?;
+
+    Ok(ApiJson(MpcFillFavoriteResponse::from(favorite)))
+}
+
+/// Take the star off an image
+#[delete("/favorites/images/{favorite}")]
+pub async fn unstar_mpcfill_image(
+    account: Account,
+    Path(favorite): Path<MpcFillFavoriteUuid>,
+) -> ApiResult<ApiJson<()>> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    MpcFillFavorite::unstar(&mut tx, account.uuid, favorite).await?;
+
+    tx.commit().await?;
+
+    Ok(ApiJson(()))
+}
+
+/// Move a star to the file that replaced its image
+#[put("/favorites/images/{favorite}/replacement")]
+pub async fn replace_mpcfill_favorite(
+    account: Account,
+    Path(favorite): Path<MpcFillFavoriteUuid>,
+    ApiJson(ReplaceMpcFillFavoriteRequest { image }): ApiJson<ReplaceMpcFillFavoriteRequest>,
+) -> ApiResult<ApiJson<()>> {
+    let mut tx = Database::global().start_transaction().await?;
+
+    MpcFillFavorite::replace(&mut tx, account.uuid, favorite, image).await?;
+
+    tx.commit().await?;
+
+    Ok(ApiJson(()))
+}
+
+/// Set the starred drives, first one first
+#[put("/favorites/drives")]
+pub async fn set_mpcfill_favorite_drives(
+    account: Account,
+    ApiJson(SetMpcFillFavoriteDrivesRequest { sources }): ApiJson<SetMpcFillFavoriteDrivesRequest>,
+) -> ApiResult<ApiJson<()>> {
+    if sources.len() > MAX_FAVORITE_DRIVES {
+        return Err(ApiError::bad_request("Too many drives"));
+    }
+
+    let mut tx = Database::global().start_transaction().await?;
+
+    MpcFillFavoriteDrives::set(&mut tx, account.uuid, sources).await?;
+
+    tx.commit().await?;
+
+    Ok(ApiJson(()))
 }

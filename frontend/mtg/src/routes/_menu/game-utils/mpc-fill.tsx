@@ -8,6 +8,7 @@ import { Api } from "src/api/api";
 import type { MpcFillImageResponse } from "src/api/generated";
 import { MpcFillAddDialog } from "src/components/mpcfill-add-dialog";
 import { MpcFillArtDialog } from "src/components/mpcfill-art-dialog";
+import { MpcFillArtScopeDialog } from "src/components/mpcfill-art-scope-dialog";
 import { MpcFillCardTile } from "src/components/mpcfill-card-tile";
 import type { MpcFillTileFace } from "src/components/mpcfill-card-tile";
 import { MpcFillOrderDialog } from "src/components/mpcfill-order-dialog";
@@ -24,17 +25,20 @@ import {
     mpcFaces,
     mpcFillList,
     mpcNeedsArt,
-    mpcPick,
-    mpcPickKey,
     mpcQuery,
     mpcTiles,
     saveMpcSort,
 } from "src/utils/mpcfill";
 import type { MpcSort } from "src/utils/mpcfill";
+import { mpcByDrives, mpcFavorite, mpcStarOf } from "src/utils/mpcfill-favorites";
+import type { MpcFavoriteMatch, MpcFavoriteStatus } from "src/utils/mpcfill-favorites";
+import { loadMpcArtScope, mpcChoose, mpcGroupsWith, mpcPick, saveMpcArtScope } from "src/utils/mpcfill-picks";
+import type { MpcArtScope, MpcPicks } from "src/utils/mpcfill-picks";
 import { DEFAULT_MPC_STOCK, mpcFillReady, mpcFillXml } from "src/utils/mpcfill-xml";
-import type { MpcFillOrderCard, MpcFillPick, MpcStock } from "src/utils/mpcfill-xml";
+import type { MpcFillOrderCard, MpcStock } from "src/utils/mpcfill-xml";
 import { groupKey, showsHeadings } from "src/utils/proxy-list";
 import type { ProxyGroup } from "src/utils/proxy-list";
+import { useMpcFavorites } from "src/utils/use-mpc-favorites";
 import { useProxyPicks } from "src/utils/use-proxy-picks";
 
 /** What the page can be opened on */
@@ -87,9 +91,15 @@ function RouteComponent() {
     const [foil, setFoil] = useState(false);
 
     const [art, setArt] = useState<Record<string, Array<MpcFillImageResponse>>>({});
-    const [chosen, setChosen] = useState<Record<string, string>>({});
+    const [chosen, setChosen] = useState<MpcPicks>({});
+    const [scope, setScope] = useState<MpcArtScope>(loadMpcArtScope);
+    const [answered, setAnswered] = useState<Record<string, boolean>>({});
+    const [confirming, setConfirming] = useState<{ group: ProxyGroup; face: string; id: string } | null>(null);
     const [cardbacks, setCardbacks] = useState<Array<MpcFillImageResponse>>([]);
-    const [cardback, setCardback] = useState<MpcFillPick | null>(null);
+    const [cardback, setCardback] = useState<string | null>(null);
+    const favorites = useMpcFavorites();
+    const movedStars = useRef(new Set<string>());
+    const [reuploadedIds, setReuploadedIds] = useState<ReadonlySet<string>>(new Set());
     const asking = useRef(new Set<string>());
 
     const [adding, setAdding] = useState(false);
@@ -111,6 +121,41 @@ function RouteComponent() {
     const list = mpcFillList(rows);
 
     /**
+     * What was found for one face, the starred drives first
+     *
+     * @param face the name MPCFill is asked for
+     *
+     * @returns the images
+     */
+    function imagesOf(face: string): Array<MpcFillImageResponse> {
+        return mpcByDrives(art[face] ?? [], favorites.drives);
+    }
+
+    /**
+     * What the account's favorites say about one face
+     *
+     * @param face the name MPCFill is asked for
+     *
+     * @returns the match, `null` when nothing for the face is starred
+     */
+    function matchOf(face: string): MpcFavoriteMatch | null {
+        return mpcFavorite(art[face] ?? [], favorites.images, face);
+    }
+
+    /**
+     * How the account's favorite for one face was found, a re-upload staying "updated" for the visit
+     *
+     * @param face the name MPCFill is asked for
+     *
+     * @returns the status, `null` when nothing for the face is starred
+     */
+    function statusOf(face: string): MpcFavoriteStatus | null {
+        const match = matchOf(face);
+        if (match?.status === "favorite" && match.image !== null && reuploadedIds.has(match.image.id)) return "updated";
+        return match?.status ?? null;
+    }
+
+    /**
      * The art taken for one face in one group
      *
      * @param group the group
@@ -119,7 +164,7 @@ function RouteComponent() {
      * @returns the image, `null` while there is none
      */
     function pickOf(group: ProxyGroup, face: string): MpcFillImageResponse | null {
-        return mpcPick(art[face] ?? [], chosen[mpcPickKey(group, face)]);
+        return mpcPick(chosen, imagesOf(face), group, face, matchOf(face)?.image ?? null);
     }
 
     /**
@@ -131,7 +176,13 @@ function RouteComponent() {
      * @returns the face
      */
     function faceOf(group: ProxyGroup, name: string): MpcFillTileFace {
-        return { name, images: art[name] ?? [], chosen: pickOf(group, name), searched: art[name] !== undefined };
+        return {
+            name,
+            images: imagesOf(name),
+            chosen: pickOf(group, name),
+            searched: art[name] !== undefined,
+            favorite: statusOf(name),
+        };
     }
 
     const orderCards: Array<MpcFillOrderCard> = sections.flatMap((section) =>
@@ -168,6 +219,41 @@ function RouteComponent() {
     });
     const unsearched = [...new Set(faces)].filter((name) => art[name] === undefined);
     const pending = unsearched.join("|");
+
+    const knownDrives = [...new Set([...Object.values(art).flat(), ...cardbacks].map((image) => image.source))].sort(
+        (left, right) => left.localeCompare(right),
+    );
+    const backs = mpcByDrives(cardbacks, favorites.drives);
+    const backMatch = mpcFavorite(cardbacks, favorites.images, null);
+    const back = backs.find((image) => image.id === cardback) ?? backMatch?.image ?? backs[0] ?? null;
+
+    const browse =
+        browsing === null
+            ? null
+            : browsing === "cardback"
+              ? { face: null, title: t("heading.cardback"), images: backs, chosen: back, match: backMatch }
+              : {
+                    face: browsing.face,
+                    title: browsing.label,
+                    images: imagesOf(browsing.face),
+                    chosen: pickOf(browsing.group, browsing.face),
+                    match: matchOf(browsing.face),
+                };
+
+    const reuploads = [...[...new Set(faces)].map(matchOf), backMatch].flatMap((match) =>
+        match?.status === "updated" && match.image !== null ? [{ favorite: match.favorite, image: match.image }] : [],
+    );
+    const reuploadsKey = reuploads.map(({ favorite, image }) => `${favorite.uuid}>${image.id}`).join("|");
+
+    useEffect(() => {
+        for (const { favorite, image } of reuploads) {
+            const key = `${favorite.uuid}>${image.id}`;
+            if (movedStars.current.has(key)) continue;
+            movedStars.current.add(key);
+            setReuploadedIds((previous) => new Set(previous).add(image.id));
+            favorites.replace(favorite, image);
+        }
+    }, [reuploadsKey]);
 
     // Searched as the cards arrive rather than on a button: a card with no
     // picture on it is not an order yet, and the service caches per name, so
@@ -213,8 +299,6 @@ function RouteComponent() {
                 return next;
             });
             setCardbacks(backs.cardbacks);
-            const back = backs.cardbacks[0];
-            if (cardback === null && back !== undefined) setCardback({ id: back.id, name: back.name });
         } catch {
             // The names stay unwritten, so the next card added asks again.
             notify.error(t("toast.art-not-searched"));
@@ -224,14 +308,49 @@ function RouteComponent() {
     }
 
     /**
-     * Takes an image for one face in one group
+     * Takes an image for one face in one group, or asks first whether every group takes it
      *
      * @param group the group
      * @param face the name MPCFill is asked for
      * @param image the image
      */
     function pick(group: ProxyGroup, face: string, image: MpcFillImageResponse) {
-        setChosen((previous) => ({ ...previous, [mpcPickKey(group, face)]: image.id }));
+        const everywhere = answered[face] ?? (scope === "ask" ? undefined : scope === "all");
+        if (everywhere === undefined && mpcGroupsWith(picks.groups, face) > 1) {
+            setConfirming({ group, face, id: image.id });
+            return;
+        }
+        setChosen((previous) => mpcChoose(previous, group, face, image.id, everywhere === true));
+    }
+
+    /**
+     * Takes the pick that was waiting on the question
+     *
+     * @param everywhere whether every group takes it
+     * @param remember whether this device stops asking
+     */
+    function answer(everywhere: boolean, remember: boolean) {
+        if (confirming === null) return;
+        const { group, face, id } = confirming;
+
+        setAnswered((previous) => ({ ...previous, [face]: everywhere }));
+        if (remember) {
+            setScope(everywhere ? "all" : "deck");
+            saveMpcArtScope(everywhere ? "all" : "deck");
+        }
+        setChosen((previous) => mpcChoose(previous, group, face, id, everywhere));
+        setConfirming(null);
+    }
+
+    /**
+     * Changes whether new art is taken for every deck from the settings, and forgets the answers given per card
+     *
+     * @param next the answer
+     */
+    function changeScope(next: MpcArtScope) {
+        setScope(next);
+        saveMpcArtScope(next);
+        setAnswered({});
     }
 
     /**
@@ -255,11 +374,24 @@ function RouteComponent() {
     function choose(image: MpcFillImageResponse) {
         if (browsing === null) return;
         if (browsing === "cardback") {
-            setCardback({ id: image.id, name: image.name });
+            setCardback(image.id);
         } else {
             pick(browsing.group, browsing.face, image);
         }
         setBrowsing(null);
+    }
+
+    /**
+     * What to tell the reader about a favorite that was not found as it was starred
+     *
+     * @param match what the favorites say about the face
+     *
+     * @returns the notice, `null` when there is nothing to say
+     */
+    function favoriteNotice(match: MpcFavoriteMatch): string | null {
+        if (match.status === "missing") return t("description.favorite-missing");
+        if (match.suggestion !== null) return t("description.favorite-suggested", { source: match.suggestion.source });
+        return null;
     }
 
     /** Shows only the cards still missing art, or everything again */
@@ -270,7 +402,15 @@ function RouteComponent() {
     /** Hands the order file to the browser as a download */
     function downloadXml() {
         const only = picks.groups.length === 1 ? picks.groups[0]?.deck : undefined;
-        download(`${filename(only?.name)}.xml`, mpcFillXml({ cards: orderCards, stock, foil, cardback }));
+        download(
+            `${filename(only?.name)}.xml`,
+            mpcFillXml({
+                cards: orderCards,
+                stock,
+                foil,
+                cardback: back === null ? null : { id: back.id, name: back.name },
+            }),
+        );
     }
 
     /** Puts the text list on the clipboard, which is what MPCFill's text import takes */
@@ -344,7 +484,11 @@ function RouteComponent() {
                                     onDropDeck={picks.dropDeck}
                                 />
                             )}
-                            <ul className={"grid grid-cols-2 gap-x-4 gap-y-5 md:grid-cols-3 xl:grid-cols-4"}>
+                            <ul
+                                className={
+                                    "grid grid-cols-2 gap-x-3 gap-y-4 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5"
+                                }
+                            >
                                 {tiles.map((card) => {
                                     const { front, back } = mpcFaces(card);
                                     return (
@@ -377,7 +521,7 @@ function RouteComponent() {
                     bracket={bracket}
                     missing={missing}
                     onMissing={toggleMissing}
-                    cardback={cardbacks.find((image) => image.id === cardback?.id)?.thumbnail_small ?? null}
+                    cardback={back?.thumbnail_small ?? null}
                     ready={ready.length > 0}
                     onCardback={() => setBrowsing("cardback")}
                     onSettings={() => setSettings(true)}
@@ -397,20 +541,31 @@ function RouteComponent() {
                 ready={ready.length > 0}
                 onDownload={downloadXml}
                 onCopyList={() => void copyList()}
+                artScope={scope}
+                onArtScope={changeScope}
+                drives={favorites.drives}
+                knownDrives={knownDrives}
+                onDrives={favorites.setDrives}
                 onClose={() => setSettings(false)}
             />
 
+            <MpcFillArtScopeDialog
+                face={confirming?.face ?? null}
+                others={confirming === null ? 0 : mpcGroupsWith(picks.groups, confirming.face) - 1}
+                onAnswer={answer}
+                onClose={() => setConfirming(null)}
+            />
+
             <MpcFillArtDialog
-                open={browsing !== null}
-                title={browsing === null ? "" : browsing === "cardback" ? t("heading.cardback") : browsing.label}
-                images={browsing === null ? [] : browsing === "cardback" ? cardbacks : (art[browsing.face] ?? [])}
-                chosen={
-                    browsing === null
-                        ? null
-                        : browsing === "cardback"
-                          ? (cardback?.id ?? null)
-                          : (pickOf(browsing.group, browsing.face)?.id ?? null)
-                }
+                open={browse !== null}
+                title={browse?.title ?? ""}
+                images={browse?.images ?? []}
+                chosen={browse?.chosen?.id ?? null}
+                notice={browse?.match == null ? null : favoriteNotice(browse.match)}
+                starred={(image) => mpcStarOf(favorites.images, browse?.face ?? null, image.id) !== undefined}
+                onStar={(image) => favorites.toggle(browse?.face ?? null, image)}
+                drives={favorites.drives}
+                onStarDrive={favorites.toggleDrive}
                 onChoose={choose}
                 onClose={() => setBrowsing(null)}
             />

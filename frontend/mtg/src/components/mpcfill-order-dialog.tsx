@@ -9,7 +9,9 @@ import {
     DialogTitle,
     Field,
     Label,
-    Select,
+    Listbox,
+    ListboxLabel,
+    ListboxOption,
     Switch,
     SwitchField,
     Text,
@@ -17,7 +19,10 @@ import {
 } from "components";
 import { useTranslation } from "react-i18next";
 import { ExternalLinkRow } from "src/components/external-link-row";
+import { MpcFillFavoriteDrives } from "src/components/mpcfill-favorite-drives";
 import { MPC_FILL_URL } from "src/utils/mpcfill";
+import { MPC_ART_SCOPES } from "src/utils/mpcfill-picks";
+import type { MpcArtScope } from "src/utils/mpcfill-picks";
 import { MPC_STOCKS, mpcFoilable } from "src/utils/mpcfill-xml";
 import type { MpcStock } from "src/utils/mpcfill-xml";
 
@@ -43,6 +48,16 @@ export type MpcFillOrderDialogProps = {
     onDownload: () => void;
     /** Puts the text list on the clipboard */
     onCopyList: () => void;
+    /** Whether new art for a card is taken for every deck holding it */
+    artScope: MpcArtScope;
+    /** Changes that */
+    onArtScope: (scope: MpcArtScope) => void;
+    /** The starred drives, first one first */
+    drives: Array<string>;
+    /** The drives the order's art came from */
+    knownDrives: Array<string>;
+    /** Sets the starred drives */
+    onDrives: (drives: Array<string>) => void;
     /** Closes the dialog */
     onClose: () => void;
 };
@@ -70,6 +85,11 @@ export function MpcFillOrderDialog({
     ready,
     onDownload,
     onCopyList,
+    artScope,
+    onArtScope,
+    drives,
+    knownDrives,
+    onDrives,
     onClose,
 }: MpcFillOrderDialogProps) {
     const [t] = useTranslation("game-utils");
@@ -83,13 +103,13 @@ export function MpcFillOrderDialog({
                 <div className={"flex flex-col gap-5"}>
                     <Field>
                         <Label>{t("label.stock")}</Label>
-                        <Select value={stock} onChange={(event) => onStock(event.target.value as MpcStock)}>
+                        <Listbox value={stock} onChange={onStock}>
                             {MPC_STOCKS.map((entry) => (
-                                <option key={entry} value={entry}>
-                                    {entry}
-                                </option>
+                                <ListboxOption key={entry} value={entry}>
+                                    <ListboxLabel>{entry}</ListboxLabel>
+                                </ListboxOption>
                             ))}
-                        </Select>
+                        </Listbox>
                     </Field>
 
                     <SwitchField disabled={!mpcFoilable(stock)}>
@@ -104,6 +124,19 @@ export function MpcFillOrderDialog({
                             disabled={!mpcFoilable(stock)}
                         />
                     </SwitchField>
+
+                    <Field>
+                        <Label>{t("label.art-scope")}</Label>
+                        <Listbox value={artScope} onChange={onArtScope}>
+                            {MPC_ART_SCOPES.map((entry) => (
+                                <ListboxOption key={entry} value={entry}>
+                                    <ListboxLabel>{t(`label.art-scope-${entry}`)}</ListboxLabel>
+                                </ListboxOption>
+                            ))}
+                        </Listbox>
+                    </Field>
+
+                    <MpcFillFavoriteDrives drives={drives} known={knownDrives} onChange={onDrives} />
 
                     <Field>
                         <Label>{t("label.card-list")}</Label>

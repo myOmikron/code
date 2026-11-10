@@ -8315,6 +8315,304 @@
                 }
             }
         },
+        "/api/frontend/v1/mpcfill/favorites": {
+            "get": {
+                "summary": "Everything the account starred",
+                "description": "Everything the account starred",
+                "operationId": "get_mpcfill_favorites",
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MpcFillFavoritesResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/mpcfill/favorites/images": {
+            "put": {
+                "summary": "Star an image for a face, or star it again as the newest",
+                "description": "Star an image for a face, or star it again as the newest",
+                "operationId": "star_mpcfill_image",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/StarMpcFillImageRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MpcFillFavoriteResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/mpcfill/favorites/images/{favorite}": {
+            "delete": {
+                "summary": "Take the star off an image",
+                "description": "Take the star off an image",
+                "operationId": "unstar_mpcfill_image",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "favorite",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of [`MpcFillFavoriteModel`]",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "nullable": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/mpcfill/favorites/images/{favorite}/replacement": {
+            "put": {
+                "summary": "Move a star to the file that replaced its image",
+                "description": "Move a star to the file that replaced its image",
+                "operationId": "replace_mpcfill_favorite",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "favorite",
+                        "required": true,
+                        "schema": {
+                            "description": "Wrapper for the primary key of [`MpcFillFavoriteModel`]",
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "style": "simple"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ReplaceMpcFillFavoriteRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "nullable": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/frontend/v1/mpcfill/favorites/drives": {
+            "put": {
+                "summary": "Set the starred drives, first one first",
+                "description": "Set the starred drives, first one first",
+                "operationId": "set_mpcfill_favorite_drives",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SetMpcFillFavoriteDrivesRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "nullable": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/frontend/v1/printings/resolve": {
             "post": {
                 "summary": "Place cards in the catalog",
@@ -22917,6 +23215,114 @@
                     "cardbacks"
                 ]
             },
+            "MpcFillFavoriteImage": {
+                "description": "An MPCFill image as it was found when it was starred",
+                "type": "object",
+                "properties": {
+                    "drive_id": {
+                        "description": "The Google Drive file id",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_128"
+                            }
+                        ]
+                    },
+                    "file_name": {
+                        "description": "The file's name in its drive",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_255"
+                            }
+                        ]
+                    },
+                    "source": {
+                        "description": "The drive it lies in",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_255"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "drive_id",
+                    "file_name",
+                    "source"
+                ]
+            },
+            "MpcFillFavoriteResponse": {
+                "description": "An image the account starred",
+                "type": "object",
+                "properties": {
+                    "face": {
+                        "nullable": true,
+                        "description": "The card face it was starred for, `None` for a cardback",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_255"
+                            }
+                        ]
+                    },
+                    "image": {
+                        "description": "The image",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MpcFillFavoriteImage"
+                            }
+                        ]
+                    },
+                    "starred_at": {
+                        "description": "When it was starred",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/SchemaDateTime"
+                            }
+                        ]
+                    },
+                    "uuid": {
+                        "description": "Primary key",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MpcFillFavoriteUuid"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "image",
+                    "starred_at",
+                    "uuid"
+                ]
+            },
+            "MpcFillFavoriteUuid": {
+                "description": "Wrapper for the primary key of [`MpcFillFavoriteModel`]",
+                "type": "string",
+                "format": "uuid"
+            },
+            "MpcFillFavoritesResponse": {
+                "description": "Everything the account starred",
+                "type": "object",
+                "properties": {
+                    "drives": {
+                        "description": "The starred drives, first one first",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/MaxStr_255"
+                        }
+                    },
+                    "images": {
+                        "description": "The starred images, newest first",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/MpcFillFavoriteResponse"
+                        }
+                    }
+                },
+                "required": [
+                    "drives",
+                    "images"
+                ]
+            },
             "MpcFillImageResponse": {
                 "description": "One image of one card",
                 "type": "object",
@@ -24500,6 +24906,23 @@
                     "label"
                 ]
             },
+            "ReplaceMpcFillFavoriteRequest": {
+                "description": "Request to move a star to the file that replaced its image",
+                "type": "object",
+                "properties": {
+                    "image": {
+                        "description": "The file that replaced it",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MpcFillFavoriteImage"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "image"
+                ]
+            },
             "ReportResultErrors": {
                 "description": "Why a Participant's report was refused",
                 "type": "object",
@@ -25906,6 +26329,22 @@
                     "shared"
                 ]
             },
+            "SetMpcFillFavoriteDrivesRequest": {
+                "description": "Request to set the starred drives",
+                "type": "object",
+                "properties": {
+                    "sources": {
+                        "description": "The drives' names, first one first",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/MaxStr_255"
+                        }
+                    }
+                },
+                "required": [
+                    "sources"
+                ]
+            },
             "SetPaidErrors": {
                 "description": "Why a Participant could not be marked paid or unpaid",
                 "type": "object",
@@ -26847,6 +27286,32 @@
                 "required": [
                     "standings",
                     "tiebreakers"
+                ]
+            },
+            "StarMpcFillImageRequest": {
+                "description": "Request to star an image",
+                "type": "object",
+                "properties": {
+                    "face": {
+                        "nullable": true,
+                        "description": "The card face it is starred for, `None` for a cardback",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MaxStr_255"
+                            }
+                        ]
+                    },
+                    "image": {
+                        "description": "The image",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MpcFillFavoriteImage"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "image"
                 ]
             },
             "StartAddPasskeyResponse": {

@@ -31,6 +31,7 @@ import {
     ListSharedCollectionCardsRequest,
     MailLanguage,
     MeResponse,
+    MpcFillFavoriteImage,
     NewCollectionEntry,
     PrintingLookupRequest,
     ReportResultRequest,
@@ -534,6 +535,20 @@ export const Api = {
     mpcfill: {
         art: (names: Array<string>) => defaultApi.searchMpcfillArt({ MpcFillSearchRequest: { names } }),
         cardbacks: () => defaultApi.getMpcfillCardbacks(),
+    },
+    /**
+     * The MPCFill art the account starred. Not through `handleError`: the
+     * caller undoes a failed save itself, where the error screen would cover the order.
+     */
+    mpcfillFavorites: {
+        list: () => defaultApi.getMpcfillFavorites(),
+        star: (face: string | null, image: MpcFillFavoriteImage) =>
+            defaultApi.starMpcfillImage({ StarMpcFillImageRequest: { face, image } }),
+        unstar: (favorite: string) => defaultApi.unstarMpcfillImage({ favorite }),
+        replace: (favorite: string, image: MpcFillFavoriteImage) =>
+            defaultApi.replaceMpcfillFavorite({ favorite, ReplaceMpcFillFavoriteRequest: { image } }),
+        setDrives: (sources: Array<string>) =>
+            defaultApi.setMpcfillFavoriteDrives({ SetMpcFillFavoriteDrivesRequest: { sources } }),
     },
     printings: {
         // The service's own copy of Scryfall's catalog, asked in bulk. This is

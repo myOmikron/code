@@ -140,6 +140,8 @@ import type {
     Me200Response,
     MergeCollectionEntriesRequest,
     MpcFillCardbacksResponse,
+    MpcFillFavoriteResponse,
+    MpcFillFavoritesResponse,
     MpcFillSearchRequest,
     MpcFillSearchResponse,
     MyMatchResponse,
@@ -167,6 +169,7 @@ import type {
     RenameAccount200Response,
     RenameAccountRequest,
     RenamePasskeyRequest,
+    ReplaceMpcFillFavoriteRequest,
     ReportResultRequest,
     ResolvePrintingsRequest,
     ResolvePrintingsResponse,
@@ -195,6 +198,7 @@ import type {
     SetDeckRuleZeroRequest,
     SetDeckVisibilityRequest,
     SetListSharingRequest,
+    SetMpcFillFavoriteDrivesRequest,
     SetPaidRequest,
     SetPushSettingsRequest,
     SetResultRequest,
@@ -210,6 +214,7 @@ import type {
     SplitCollectionEntryRequest,
     SplitCollectionEntryResponse,
     StandingsResponse,
+    StarMpcFillImageRequest,
     StartAddPasskeyResponse,
     StartLogin200Response,
     StartLoginRequest,
@@ -1652,6 +1657,17 @@ export interface RenamePasskeyOperationRequest {
     RenamePasskeyRequest?: RenamePasskeyRequest;
 }
 
+export interface ReplaceMpcfillFavoriteRequest {
+    /**
+     * 
+     */
+    favorite: string;
+    /**
+     * 
+     */
+    ReplaceMpcFillFavoriteRequest?: ReplaceMpcFillFavoriteRequest;
+}
+
 export interface ReportTournamentMatchResultRequest {
     /**
      * 
@@ -1870,6 +1886,13 @@ export interface SetDeckRuleZeroOperationRequest {
     SetDeckRuleZeroRequest?: SetDeckRuleZeroRequest;
 }
 
+export interface SetMpcfillFavoriteDrivesRequest {
+    /**
+     * 
+     */
+    SetMpcFillFavoriteDrivesRequest?: SetMpcFillFavoriteDrivesRequest;
+}
+
 export interface SetMyTournamentListSharingRequest {
     /**
      * 
@@ -2017,6 +2040,13 @@ export interface SplitCollectionEntryOperationRequest {
     SplitCollectionEntryRequest?: SplitCollectionEntryRequest;
 }
 
+export interface StarMpcfillImageRequest {
+    /**
+     * 
+     */
+    StarMpcFillImageRequest?: StarMpcFillImageRequest;
+}
+
 export interface StartLoginOperationRequest {
     /**
      * 
@@ -2143,6 +2173,13 @@ export interface UndoDeckChangeRequest {
      * 
      */
     deck: string;
+}
+
+export interface UnstarMpcfillImageRequest {
+    /**
+     * 
+     */
+    favorite: string;
 }
 
 export interface UnsubscribePushDeviceRequest {
@@ -6918,6 +6955,45 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for getMpcfillFavorites without sending the request
+     */
+    async getMpcfillFavoritesRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/mpcfill/favorites`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Everything the account starred
+     * Everything the account starred
+     */
+    async getMpcfillFavoritesRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MpcFillFavoritesResponse>> {
+        const requestOptions = await this.getMpcfillFavoritesRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Everything the account starred
+     * Everything the account starred
+     */
+    async getMpcfillFavorites(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MpcFillFavoritesResponse> {
+        const response = await this.getMpcfillFavoritesRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for getMyTournamentDeck without sending the request
      */
     async getMyTournamentDeckRequestOpts(requestParameters: GetMyTournamentDeckRequest): Promise<runtime.RequestOpts> {
@@ -10333,6 +10409,60 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for replaceMpcfillFavorite without sending the request
+     */
+    async replaceMpcfillFavoriteRequestOpts(requestParameters: ReplaceMpcfillFavoriteRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['favorite'] == null) {
+            throw new runtime.RequiredError(
+                'favorite',
+                'Required parameter "favorite" was null or undefined when calling replaceMpcfillFavorite().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/mpcfill/favorites/images/{favorite}/replacement`;
+        urlPath = urlPath.replace('{favorite}', encodeURIComponent(String(requestParameters['favorite'])));
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['ReplaceMpcFillFavoriteRequest'],
+        };
+    }
+
+    /**
+     * Move a star to the file that replaced its image
+     * Move a star to the file that replaced its image
+     */
+    async replaceMpcfillFavoriteRaw(requestParameters: ReplaceMpcfillFavoriteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
+        const requestOptions = await this.replaceMpcfillFavoriteRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<any>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     * Move a star to the file that replaced its image
+     * Move a star to the file that replaced its image
+     */
+    async replaceMpcfillFavorite(requestParameters: ReplaceMpcfillFavoriteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
+        const response = await this.replaceMpcfillFavoriteRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for reportTournamentMatchResult without sending the request
      */
     async reportTournamentMatchResultRequestOpts(requestParameters: ReportTournamentMatchResultRequest): Promise<runtime.RequestOpts> {
@@ -11314,6 +11444,52 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for setMpcfillFavoriteDrives without sending the request
+     */
+    async setMpcfillFavoriteDrivesRequestOpts(requestParameters: SetMpcfillFavoriteDrivesRequest): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/mpcfill/favorites/drives`;
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['SetMpcFillFavoriteDrivesRequest'],
+        };
+    }
+
+    /**
+     * Set the starred drives, first one first
+     * Set the starred drives, first one first
+     */
+    async setMpcfillFavoriteDrivesRaw(requestParameters: SetMpcfillFavoriteDrivesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
+        const requestOptions = await this.setMpcfillFavoriteDrivesRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<any>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     * Set the starred drives, first one first
+     * Set the starred drives, first one first
+     */
+    async setMpcfillFavoriteDrives(requestParameters: SetMpcfillFavoriteDrivesRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
+        const response = await this.setMpcfillFavoriteDrivesRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for setMyTournamentListSharing without sending the request
      */
     async setMyTournamentListSharingRequestOpts(requestParameters: SetMyTournamentListSharingRequest): Promise<runtime.RequestOpts> {
@@ -11994,6 +12170,48 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for starMpcfillImage without sending the request
+     */
+    async starMpcfillImageRequestOpts(requestParameters: StarMpcfillImageRequest): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/frontend/v1/mpcfill/favorites/images`;
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['StarMpcFillImageRequest'],
+        };
+    }
+
+    /**
+     * Star an image for a face, or star it again as the newest
+     * Star an image for a face, or star it again as the newest
+     */
+    async starMpcfillImageRaw(requestParameters: StarMpcfillImageRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MpcFillFavoriteResponse>> {
+        const requestOptions = await this.starMpcfillImageRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response);
+    }
+
+    /**
+     * Star an image for a face, or star it again as the newest
+     * Star an image for a face, or star it again as the newest
+     */
+    async starMpcfillImage(requestParameters: StarMpcfillImageRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MpcFillFavoriteResponse> {
+        const response = await this.starMpcfillImageRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for startAddPasskey without sending the request
      */
     async startAddPasskeyRequestOpts(): Promise<runtime.RequestOpts> {
@@ -12658,6 +12876,57 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async undoDeckChange(requestParameters: UndoDeckChangeRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DeckUndoResponse> {
         const response = await this.undoDeckChangeRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for unstarMpcfillImage without sending the request
+     */
+    async unstarMpcfillImageRequestOpts(requestParameters: UnstarMpcfillImageRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['favorite'] == null) {
+            throw new runtime.RequiredError(
+                'favorite',
+                'Required parameter "favorite" was null or undefined when calling unstarMpcfillImage().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/frontend/v1/mpcfill/favorites/images/{favorite}`;
+        urlPath = urlPath.replace('{favorite}', encodeURIComponent(String(requestParameters['favorite'])));
+
+        return {
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Take the star off an image
+     * Take the star off an image
+     */
+    async unstarMpcfillImageRaw(requestParameters: UnstarMpcfillImageRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
+        const requestOptions = await this.unstarMpcfillImageRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<any>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     * Take the star off an image
+     * Take the star off an image
+     */
+    async unstarMpcfillImage(requestParameters: UnstarMpcfillImageRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
+        const response = await this.unstarMpcfillImageRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

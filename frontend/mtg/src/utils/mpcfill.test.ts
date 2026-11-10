@@ -8,8 +8,6 @@ import {
     mpcCount,
     mpcFillList,
     mpcNeedsArt,
-    mpcPick,
-    mpcPickKey,
     mpcQuery,
     mpcTiles,
     saveMpcSort,
@@ -79,7 +77,7 @@ describe("mpcTiles", () => {
     });
 });
 
-describe("art picks", () => {
+describe("mpcNeedsArt", () => {
     /**
      * An image MPCFill found
      *
@@ -100,21 +98,6 @@ describe("art picks", () => {
     });
     const first = image("1");
     const second = image("2");
-
-    it("takes the top hit until another is picked", () => {
-        expect(mpcPick([first, second], undefined)).toBe(first);
-        expect(mpcPick([first, second], "2")).toBe(second);
-        expect(mpcPick([first, second], "gone")).toBe(first);
-        expect(mpcPick([], undefined)).toBeNull();
-    });
-
-    it("files a pick per deck", () => {
-        const atraxa: ProxyGroup = { deck: { uuid: "a", name: "Atraxa" }, cards: [] };
-        const hand: ProxyGroup = { deck: null, cards: [] };
-
-        expect(mpcPickKey(atraxa, "Sol Ring")).not.toBe(mpcPickKey(hand, "Sol Ring"));
-    });
-
     it("misses art when either side has none", () => {
         const delver = { ...card("Delver of Secrets // Insectile Aberration", 1), back: "back.jpg" };
 

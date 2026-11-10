@@ -15,11 +15,16 @@
         "previous-art": "Previous image for {{name}}",
         "rebook-offer_one": "{{player}} just took 1 life. Book it as commander damage?",
         "rebook-offer_other": "{{player}} just took {{count}} life. Book it as commander damage?",
-        "starting-life-presets": "Common starting totals"
+        "starting-life-presets": "Common starting totals",
+        "star-art": "Star as favorite",
+        "unstar-art": "Remove favorite",
+        "star-drive": "Prefer drive {{name}}",
+        "unstar-drive": "Stop preferring drive {{name}}",
+        "raise-drive": "Move {{name}} up"
     },
     "button": {
         "back-to-list": "Back to the list",
-        "add-cards": "Add cards",
+        "add-cards": "Add cards / decks",
         "back-to-life": "Back to the life total",
         "back-to-tools": "Back to the game tools",
         "change-commander-damage": "Change {{player}}'s commander damage from {{opponent}} by {{amount}}",
@@ -50,7 +55,9 @@
         "new-game": "New game",
         "keep-playing": "Keep playing",
         "won": "Won",
-        "pick-again": "Back"
+        "pick-again": "Back",
+        "art-this-deck": "No, only here",
+        "art-every-deck": "Yes, everywhere"
     },
     "description": {
         "no-matching-card": "No matching card.",
@@ -76,10 +83,15 @@
         "pick-art_one": "1 image in the drives.",
         "pick-art_other": "{{count}} images in the drives. The one you pick goes into the order file.",
         "print-scale": "Nine cards at their real size per A4 sheet. Set the print dialog to 100% scale.",
-        "proxy-printer": "Cards at their real size on A4, ready to cut out."
+        "proxy-printer": "Cards at their real size on A4, ready to cut out.",
+        "art-everywhere_one": "{{name}} is in one more deck of this order.",
+        "art-everywhere_other": "{{name}} is in {{count}} more decks of this order.",
+        "favorite-suggested": "Your favorite is now in {{source}}. Star it there to keep it.",
+        "favorite-missing": "Your favorite isn't in any drive any more.",
+        "favorite-drives": "Art from these drives comes first."
     },
     "heading": {
-        "add-cards": "Add cards",
+        "add-cards": "Add cards / decks",
         "cardback": "Card back",
         "commander-damage": "Commander damage",
         "life-counter": "Life counter",
@@ -92,7 +104,10 @@
         "print-list": "Print list",
         "proxy-printer": "Proxy printer",
         "settings": "Set up life tracker",
-        "life-game": "Game {{number}}"
+        "life-game": "Game {{number}}",
+        "art-everywhere": "Change it in the other decks too?",
+        "favorite-art": "Your favorites",
+        "all-art": "All images"
     },
     "label": {
         "find-card": "Find a card",
@@ -153,12 +168,24 @@
         "your-opponent": "Your opponent",
         "commander-damage-to-you": "Commander damage to you",
         "victory": "Victory",
-        "defeat": "Defeat"
+        "defeat": "Defeat",
+        "dont-ask-again": "Don't ask again",
+        "art-scope": "Same card in several decks",
+        "art-scope-ask": "Ask each time",
+        "art-scope-all": "Change the art everywhere",
+        "art-scope-deck": "Change it in one deck only",
+        "favorite-updated": "updated",
+        "favorite-suggested": "favorite moved",
+        "favorite-missing": "favorite missing",
+        "favorite-drives": "Favorite drives",
+        "no-favorite-drives": "No drive starred yet.",
+        "add-drive": "Add drive"
     },
     "toast": {
         "art-not-searched": "MPCFill did not answer",
         "deck-nothing-to-add": "Nothing to add from {{name}}",
         "list-copied": "List copied",
-        "list-not-copied": "Could not copy the list"
+        "list-not-copied": "Could not copy the list",
+        "favorite-not-saved": "Favorite not saved"
     }
 }

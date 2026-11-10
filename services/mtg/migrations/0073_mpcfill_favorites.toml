@@ -1,0 +1,231 @@
+[Migration]
+Hash = "11597396598802880512"
+Initial = false
+Dependency = 72
+Replaces = []
+
+[[Migration.Operations]]
+Type = "CreateModel"
+Name = "mpcfill_favorite"
+
+[[Migration.Operations.Fields]]
+Name = "uuid"
+Type = "uuid"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "primary_key"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/mpcfill/db.rs"
+Line = 18
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "face"
+Type = "text"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 255
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/mpcfill/db.rs"
+Line = 25
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "drive_id"
+Type = "text"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 128
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/mpcfill/db.rs"
+Line = 28
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "file_name"
+Type = "text"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 255
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/mpcfill/db.rs"
+Line = 31
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "source"
+Type = "text"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 255
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/mpcfill/db.rs"
+Line = 34
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "starred_at"
+Type = "datetime"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "auto_create_time"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/mpcfill/db.rs"
+Line = 38
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateModel"
+Name = "mpcfill_favorite_drive"
+
+[[Migration.Operations.Fields]]
+Name = "uuid"
+Type = "uuid"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "primary_key"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/mpcfill/db.rs"
+Line = 65
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "source"
+Type = "text"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "max_length"
+Value = 255
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/mpcfill/db.rs"
+Line = 72
+Column = 9
+
+[[Migration.Operations.Fields]]
+Name = "position"
+Type = "int32"
+
+[[Migration.Operations.Fields.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Fields.SourceDefinedAt]
+File = "services/mtg/src/models/mpcfill/db.rs"
+Line = 75
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "mpcfill_favorite"
+
+[Migration.Operations.Field]
+Name = "owner"
+Type = "uuid"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "foreign_key"
+
+[Migration.Operations.Field.Annotations.Value]
+TableName = "account"
+ColumnName = "uuid"
+OnDelete = "Cascade"
+OnUpdate = "Cascade"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/mpcfill/db.rs"
+Line = 22
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateField"
+Model = "mpcfill_favorite_drive"
+
+[Migration.Operations.Field]
+Name = "owner"
+Type = "uuid"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "foreign_key"
+
+[Migration.Operations.Field.Annotations.Value]
+TableName = "account"
+ColumnName = "uuid"
+OnDelete = "Cascade"
+OnUpdate = "Cascade"
+
+[[Migration.Operations.Field.Annotations]]
+Type = "not_null"
+
+[Migration.Operations.Field.SourceDefinedAt]
+File = "services/mtg/src/models/mpcfill/db.rs"
+Line = 69
+Column = 9
+
+[[Migration.Operations]]
+Type = "CreateIndex"
+Model = "mpcfill_favorite"
+
+[Migration.Operations.Index]
+Columns = ["owner"]
+
+[[Migration.Operations]]
+Type = "CreateIndex"
+Model = "mpcfill_favorite_drive"
+
+[Migration.Operations.Index]
+Columns = ["owner"]
+
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+CREATE UNIQUE INDEX mpcfill_favorite_entry ON mpcfill_favorite (owner, face, drive_id) NULLS NOT DISTINCT;
+"""
+
+[[Migration.Operations]]
+Type = "RawSQL"
+StructureSafe = true
+SQLite = """
+SELECT 1;
+"""
+MySQL = """
+SELECT 1;
+"""
+Postgres = """
+CREATE UNIQUE INDEX mpcfill_favorite_drive_entry ON mpcfill_favorite_drive (owner, source);
+"""

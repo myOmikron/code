@@ -5,12 +5,14 @@ import {
     MinusIcon,
     PhotoIcon,
     PlusIcon,
+    StarIcon,
     XMarkIcon,
 } from "@heroicons/react/20/solid";
 import clsx from "clsx";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { MpcFillImageResponse } from "src/api/generated";
+import type { MpcFavoriteStatus } from "src/utils/mpcfill-favorites";
 
 /** One side of a card and the art there is for it */
 export type MpcFillTileFace = {
@@ -22,6 +24,8 @@ export type MpcFillTileFace = {
     chosen: MpcFillImageResponse | null;
     /** Whether the search for this face has run yet */
     searched: boolean;
+    /** What became of the reader's favorite for it, `null` when none is starred */
+    favorite: MpcFavoriteStatus | null;
 };
 
 /**
@@ -198,8 +202,24 @@ export function MpcFillCardTile({
                 <span className={"block truncate text-xs font-medium text-zinc-950 dark:text-white"} title={label}>
                     {flipped && back !== null ? back.name : label}
                 </span>
-                <span className={"block truncate text-xs text-zinc-500 dark:text-zinc-400"} title={face.chosen?.name}>
-                    {face.chosen === null ? t("label.art-none-short") : face.chosen.source}
+                <span
+                    className={"flex min-w-0 items-center gap-1 text-xs text-zinc-500 dark:text-zinc-400"}
+                    title={face.chosen?.name}
+                >
+                    {(face.favorite === "favorite" || face.favorite === "updated") && (
+                        <StarIcon className={"size-3 shrink-0 text-yellow-500 dark:text-yellow-400"} />
+                    )}
+                    <span className={"truncate"}>
+                        {face.chosen === null ? t("label.art-none-short") : face.chosen.source}
+                    </span>
+                    {face.favorite === "updated" && (
+                        <span className={"shrink-0 text-(--color-info)"}>{t("label.favorite-updated")}</span>
+                    )}
+                    {(face.favorite === "suggested" || face.favorite === "missing") && (
+                        <span className={"shrink-0 text-(--color-warning)"}>
+                            {t(`label.favorite-${face.favorite}`)}
+                        </span>
+                    )}
                 </span>
             </figcaption>
         </figure>
