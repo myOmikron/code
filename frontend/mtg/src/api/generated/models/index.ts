@@ -5259,6 +5259,67 @@ export interface MpcFillCardbacksResponse {
     cardbacks: Array<MpcFillImageResponse>;
 }
 /**
+ * An MPCFill image as it was found when it was starred
+ * @export
+ * @interface MpcFillFavoriteImage
+ */
+export interface MpcFillFavoriteImage {
+    /**
+     * Its resolution
+     */
+    dpi: number;
+    /**
+     * The Google Drive file id
+     */
+    drive_id: string;
+    /**
+     * The file's name in its drive
+     */
+    file_name: string;
+    /**
+     * Its size in bytes
+     */
+    size: number;
+    /**
+     * The drive it lies in
+     */
+    source: string;
+}
+/**
+ * An image the account starred
+ * @export
+ * @interface MpcFillFavoriteResponse
+ */
+export interface MpcFillFavoriteResponse {
+    /**
+     * The card face it was starred for, `None` for a cardback
+     */
+    face?: string | null;
+    /**
+     * The image
+     */
+    image: MpcFillFavoriteImage;
+    /**
+     * When it was starred
+     */
+    starred_at: string;
+}
+/**
+ * Everything the account starred
+ * @export
+ * @interface MpcFillFavoritesResponse
+ */
+export interface MpcFillFavoritesResponse {
+    /**
+     * The starred drives, first one first
+     */
+    drives: Array<string>;
+    /**
+     * The starred images, newest first
+     */
+    images: Array<MpcFillFavoriteResponse>;
+}
+/**
  * One image of one card
  * @export
  * @interface MpcFillImageResponse
@@ -6421,6 +6482,17 @@ export interface RenamePasskeyRequest {
     label: string;
 }
 /**
+ * Request to move a star to the file that replaced the starred one
+ * @export
+ * @interface ReplaceMpcFillFavoriteRequest
+ */
+export interface ReplaceMpcFillFavoriteRequest {
+    /**
+     * The file that replaced it
+     */
+    image: MpcFillFavoriteImage;
+}
+/**
  * Why a Participant's report was refused
  * @export
  * @interface ReportResultErrors
@@ -7386,6 +7458,17 @@ export interface SetListSharingRequest {
     shared: boolean;
 }
 /**
+ * Request to set the starred drives
+ * @export
+ * @interface SetMpcFillFavoriteDrivesRequest
+ */
+export interface SetMpcFillFavoriteDrivesRequest {
+    /**
+     * The drives' names, first one first
+     */
+    sources: Array<string>;
+}
+/**
  * Why a Participant could not be marked paid or unpaid
  * @export
  * @interface SetPaidErrors
@@ -8084,6 +8167,21 @@ export interface StandingsResponse {
      * The Ruleset's Tiebreakers after Match points, the most significant first
      */
     tiebreakers: Array<Tiebreaker>;
+}
+/**
+ * Request to star an image
+ * @export
+ * @interface StarMpcFillImageRequest
+ */
+export interface StarMpcFillImageRequest {
+    /**
+     * The card face it is starred for, `None` for a cardback
+     */
+    face?: string | null;
+    /**
+     * The image
+     */
+    image: MpcFillFavoriteImage;
 }
 /**
  * Response to a started add-passkey ceremony
