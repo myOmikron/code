@@ -15,4 +15,5 @@ pub fn initialize_routes() -> GalvynRouter {
         .handler(handler::admin_unlock_account)
         .handler(handler::admin_rename_account)
         .handler(handler::admin_delete_account)
+        .handler(handler::admin_start_impersonation)
 }

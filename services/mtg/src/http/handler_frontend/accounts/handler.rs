@@ -26,6 +26,7 @@ use crate::http::handler_frontend::accounts::schema::DeletePasskeyErrors;
 use crate::http::handler_frontend::accounts::schema::FinishAddPasskeyRequest;
 use crate::http::handler_frontend::accounts::schema::ListPasskeysResponse;
 use crate::http::handler_frontend::accounts::schema::MeErrors;
+use crate::http::handler_frontend::accounts::schema::MeImpersonation;
 use crate::http::handler_frontend::accounts::schema::MeResponse;
 use crate::http::handler_frontend::accounts::schema::RenameAccountErrors;
 use crate::http::handler_frontend::accounts::schema::RenameAccountRequest;
@@ -38,38 +39,69 @@ use crate::http::handler_frontend::auth::handler::no_passkeys_for_external;
 use crate::models::account::Account;
 use crate::models::account::AccountPasskeyUuid;
 use crate::models::account::DeletionMode;
+use crate::models::account::extractor::Caller;
 use crate::models::tournament::deletion::GuestNaming;
 
-/// The account the current session belongs to
+/// The account the current session acts as
 ///
-/// The one route a locked Account's session still reaches: it answers with
-/// the `locked` flag, never the Lock reason, and logs the session out.
+/// During an Impersonation that is the impersonated Account, with the
+/// Impersonation reported alongside. The one route a locked Account's session
+/// still reaches: it answers with the `locked` flag, never the Lock reason,
+/// and logs the session out.
 #[get("/me")]
-pub async fn me(session: Session, identity: Identity) -> ApiResult<ApiJson<MeResponse>, MeErrors> {
+pub async fn me(
+    session: Session,
+    identity: Identity,
+    caller: Option<Caller>,
+) -> ApiResult<ApiJson<MeResponse>, MeErrors> {
+    let Some(Caller {
+        account,
+        impersonation,
+    }) = caller
+    else {
+        return refuse_without_account(&session, &identity).await;
+    };
+
     let mut tx = Database::global().start_transaction().await?;
-    let account = Account::get_by_identity(&mut tx, identity.uuid).await?;
     let login_method = IdentityModule::global()
         .login_method(&mut tx, identity.uuid)
         .await?;
     tx.commit().await?;
-
-    let account = account.ok_or(ApiError::unauthorized("No account for the identity"))?;
-    if account.locked {
-        IdentityModule::global()
-            .logout(&session)
-            .await
-            .map_err(ApiError::map_server_error("Failed to flush session"))?;
-        let mut errors = FormErrors::<MeErrors>::new();
-        errors.locked = true;
-        return errors.fail();
-    }
 
     Ok(ApiJson(MeResponse {
         uuid: account.uuid,
         username: account.username.as_str().to_string(),
         role: account.role,
         external: login_method.as_ref().is_some_and(LoginMethod::is_external),
+        impersonation: impersonation.map(|impersonation| MeImpersonation {
+            username: account.username.as_str().to_string(),
+            admin_username: impersonation.admin.username.as_str().to_string(),
+            expires_at: impersonation.state.expires_at,
+        }),
     }))
+}
+
+/// The answer of `accounts/me` to a session without an Account to act as
+///
+/// A locked Account's session learns why and is logged out.
+async fn refuse_without_account(
+    session: &Session,
+    identity: &Identity,
+) -> ApiResult<ApiJson<MeResponse>, MeErrors> {
+    let mut tx = Database::global().start_transaction().await?;
+    let account = Account::get_by_identity(&mut tx, identity.uuid).await?;
+    tx.commit().await?;
+
+    if !account.is_some_and(|account| account.locked) {
+        return Err(ApiError::unauthorized("No account for the identity"));
+    }
+    IdentityModule::global()
+        .logout(session)
+        .await
+        .map_err(ApiError::map_server_error("Failed to flush session"))?;
+    let mut errors = FormErrors::<MeErrors>::new();
+    errors.locked = true;
+    errors.fail()
 }
 
 /// Rename the logged-in account

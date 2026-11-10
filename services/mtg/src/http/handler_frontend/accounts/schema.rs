@@ -22,8 +22,23 @@ pub struct MeResponse {
     pub role: Role,
     /// Whether the account logs in through an OpenID provider (an External Account)
     ///
-    /// An External Account has no Passkeys and cannot add one.
+    /// An External Account has no Passkeys and cannot add one. During an
+    /// Impersonation it describes the impersonating Admin's login.
     pub external: bool,
+    /// The Impersonation the session is in, absent outside of one
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub impersonation: Option<MeImpersonation>,
+}
+
+/// An Admin's Impersonation of the Account `accounts/me` answers with
+#[derive(Serialize, JsonSchema)]
+pub struct MeImpersonation {
+    /// The impersonated Account's username
+    pub username: String,
+    /// The impersonating Admin's username
+    pub admin_username: String,
+    /// When the Impersonation ends at the latest
+    pub expires_at: SchemaDateTime,
 }
 
 /// Why the session has no account to answer with

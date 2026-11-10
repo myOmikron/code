@@ -1,6 +1,7 @@
 use galvyn::core::Module;
 use galvyn::core::re_exports::axum::extract::Path;
 use galvyn::core::re_exports::axum::extract::Query;
+use galvyn::core::session::Session;
 use galvyn::core::stuff::api_error::ApiError;
 use galvyn::core::stuff::api_error::ApiResult;
 use galvyn::core::stuff::api_error::FormErrors;
@@ -24,6 +25,8 @@ use crate::http::handler_frontend::admin::accounts::schema::AdminLockAccountRequ
 use crate::http::handler_frontend::admin::accounts::schema::AdminRenameAccountErrors;
 use crate::http::handler_frontend::admin::accounts::schema::AdminRenameAccountRequest;
 use crate::http::handler_frontend::admin::accounts::schema::AdminSetRoleErrors;
+use crate::http::handler_frontend::admin::accounts::schema::AdminStartImpersonationErrors;
+use crate::http::handler_frontend::admin::accounts::schema::AdminStartImpersonationRequest;
 use crate::http::handler_frontend::admin::accounts::schema::AdminSetRoleRequest;
 use crate::http::handler_frontend::admin::accounts::schema::AdminUnlockAccountErrors;
 use crate::http::handler_frontend::admin::accounts::schema::AdminUnlockAccountRequest;
@@ -32,6 +35,7 @@ use crate::models::account::ADMIN_REASON_MAX_LEN;
 use crate::models::account::Account;
 use crate::models::account::AccountUuid;
 use crate::models::account::Role;
+use crate::models::account::impersonation::Impersonation;
 use crate::models::account::overview::AccountDetail;
 use crate::models::account::overview::AccountFilter;
 use crate::models::account::overview::AccountOverview;
@@ -280,6 +284,47 @@ pub async fn admin_delete_account(
     .await?;
     Account::delete(&mut tx, uuid, request.mode, GuestNaming::Anonymous).await?;
     tx.commit().await?;
+
+    Ok(ApiJson(()))
+}
+
+/// Start an Impersonation of a Member Account
+///
+/// From the session's next request on, it acts as the Account until the Admin
+/// ends the Impersonation, logs out, or it expires. Refused for the Admin's own
+/// Account and for another Admin; a locked Account can be impersonated.
+#[post("/{uuid}/impersonation")]
+pub async fn admin_start_impersonation(
+    session: Session,
+    admin: Account,
+    Path(uuid): Path<AccountUuid>,
+    ApiJson(request): ApiJson<AdminStartImpersonationRequest>,
+) -> ApiResult<ApiJson<()>, AdminStartImpersonationErrors> {
+    let mut errors = FormErrors::<AdminStartImpersonationErrors>::new();
+    if uuid == admin.uuid {
+        errors.own_account = true;
+    }
+    let reason = trimmed_reason(&request.reason);
+    if reason.is_none() {
+        errors.reason_missing = true;
+    }
+    errors.check()?;
+    let Some(reason) = reason else {
+        unreachable!("a missing reason fails the check");
+    };
+
+    let mut tx = Database::global().start_transaction().await?;
+    let account = manageable_account(&mut tx, uuid).await?;
+    if account.role == Role::Admin {
+        tx.rollback().await?;
+        let mut errors = FormErrors::<AdminStartImpersonationErrors>::new();
+        errors.admin_account = true;
+        return errors.fail();
+    }
+    let impersonation = Impersonation::start(&mut tx, &admin, &account, reason).await?;
+    tx.commit().await?;
+
+    impersonation.put_into(&session).await?;
 
     Ok(ApiJson(()))
 }
