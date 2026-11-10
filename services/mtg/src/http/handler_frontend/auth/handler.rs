@@ -36,6 +36,8 @@ use crate::http::handler_frontend::auth::schema::StartRegistrationRequest;
 use crate::http::handler_frontend::auth::schema::StartRegistrationResponse;
 use crate::models::account::Account;
 use crate::models::account::Username;
+use crate::models::account::extractor::Caller;
+use crate::models::account::impersonation::Impersonation;
 use crate::utils::mail::send_recovery_link;
 use crate::utils::mail::send_registration_link;
 
@@ -270,8 +272,20 @@ pub async fn finish_login(
 }
 
 /// Log out, dropping the session
+///
+/// During an Impersonation the end entry of the Admin log is written first.
 #[get("/logout")]
-pub async fn logout(session: Session) -> ApiResult<()> {
+pub async fn logout(session: Session, caller: Option<Caller>) -> ApiResult<()> {
+    if let Some(Caller {
+        account,
+        impersonation: Some(impersonation),
+    }) = caller
+    {
+        let mut tx = Database::global().start_transaction().await?;
+        Impersonation::end(&mut tx, &impersonation.admin, &account).await?;
+        tx.commit().await?;
+    }
+
     IdentityModule::global()
         .logout(&session)
         .await

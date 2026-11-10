@@ -315,6 +315,66 @@ fn start_and_end_land_in_the_admin_log() {
 }
 
 #[test]
+fn logging_out_ends_the_impersonation_and_logs_out() {
+    run(async {
+        let member = create_account(Role::Member).await;
+        let (_, mut client) = impersonating(&member).await;
+
+        assert_eq!(
+            client.get(&api("auth/logout")).await.status,
+            StatusCode::OK
+        );
+
+        assert_eq!(
+            client.get(&api("accounts/me")).await.status,
+            StatusCode::UNAUTHORIZED
+        );
+        assert_eq!(
+            kinds(&log_of(&member).await),
+            ["ImpersonationEnd", "ImpersonationStart"]
+        );
+    });
+}
+
+#[test]
+fn logging_out_without_an_impersonation_writes_no_entry() {
+    run(async {
+        let member = create_account(Role::Member).await;
+        let mut client = TestClient::logged_in(&member).await;
+
+        assert_eq!(
+            client.get(&api("auth/logout")).await.status,
+            StatusCode::OK
+        );
+
+        assert_eq!(log_of(&member).await, Vec::<Value>::new());
+    });
+}
+
+#[test]
+fn the_members_own_session_is_unaffected_throughout() {
+    run(async {
+        let member = create_account(Role::Member).await;
+        let mut own = TestClient::logged_in(&member).await;
+        let deck = private_deck(&mut own, "Mine").await;
+
+        let (_, mut client) = impersonating(&member).await;
+        let me = own.get(&api("accounts/me")).await.ok_json();
+        assert_eq!(me["username"], member.username.as_str());
+        assert!(me.get("impersonation").is_none(), "{me}");
+
+        end(&mut client).await.ok_json();
+        let body = own.get(&api(&format!("decks/{deck}"))).await.ok_json();
+        assert_eq!(body["name"], "Mine");
+
+        impersonate(&mut client, &member, "Again").await.ok_json();
+        client.get(&api("auth/logout")).await;
+        let me = own.get(&api("accounts/me")).await.ok_json();
+        assert_eq!(me["username"], member.username.as_str());
+    });
+}
+
+#[test]
 fn the_full_admin_log_lists_the_impersonation() {
     run(async {
         let member = create_account(Role::Member).await;
