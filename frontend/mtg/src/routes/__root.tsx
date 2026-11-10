@@ -25,8 +25,6 @@ function RootLayout() {
             <AccountProvider>
                 <TournamentParticipationProvider>
                     <ErrorContext />
-                    {/* First of all, and unlike the 0.x warning also on pages that took the
-                whole screen: an impersonating Admin must see it everywhere. */}
                     <ImpersonationBanner />
                     {/* Above the outlet, so every layout — menu, scanner, auth — carries
                 the 0.x warning without knowing about it. The layouts all size
