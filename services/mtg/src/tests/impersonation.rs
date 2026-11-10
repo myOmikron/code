@@ -56,6 +56,35 @@ async fn private_deck(client: &mut TestClient, name: &str) -> String {
     body["uuid"].as_str().expect("deck uuid").to_string()
 }
 
+/// Ends the Impersonation of the session behind `client`
+async fn end(client: &mut TestClient) -> TestResponse {
+    client
+        .json(Method::DELETE, &api("accounts/me/impersonation"), &json!({}))
+        .await
+}
+
+/// The Admin log entries about `account`, newest first, as a fresh Admin reads them
+async fn log_of(account: &TestAccount) -> Vec<Value> {
+    let reader = create_account(Role::Admin).await;
+    let body = TestClient::logged_in(&reader)
+        .await
+        .get(&api(&format!(
+            "admin/log?account={}",
+            account.uuid.into_inner()
+        )))
+        .await
+        .ok_json();
+    body["entries"].as_array().expect("entries").clone()
+}
+
+/// The `kind` of each entry's action
+fn kinds(entries: &[Value]) -> Vec<&str> {
+    entries
+        .iter()
+        .map(|entry| entry["action"]["kind"].as_str().expect("a kind"))
+        .collect()
+}
+
 #[test]
 fn me_reports_the_impersonated_account_and_who_impersonates_it() {
     run(async {
@@ -229,6 +258,80 @@ fn an_impersonating_admin_cannot_reach_the_admin_routes() {
         assert_eq!(
             impersonate(&mut client, &other, "Nested").await.status,
             StatusCode::FORBIDDEN
+        );
+    });
+}
+
+#[test]
+fn ending_returns_the_session_to_the_admin() {
+    run(async {
+        let member = create_account(Role::Member).await;
+        let (admin, mut client) = impersonating(&member).await;
+
+        assert_eq!(end(&mut client).await.ok_json(), Value::Null);
+
+        let me = client.get(&api("accounts/me")).await.ok_json();
+        assert_eq!(me["username"], admin.username.as_str());
+        assert_eq!(me["role"], "Admin");
+        assert!(me.get("impersonation").is_none(), "{me}");
+        assert_eq!(
+            client.get(&api("admin/accounts")).await.status,
+            StatusCode::OK
+        );
+    });
+}
+
+#[test]
+fn ending_without_an_impersonation_is_an_error() {
+    run(async {
+        let admin = create_account(Role::Admin).await;
+        let mut client = TestClient::logged_in(&admin).await;
+
+        let body = end(&mut client).await.ok_json();
+        assert_eq!(body["result"], "Err");
+        assert_eq!(body["error"]["not_impersonating"], true);
+    });
+}
+
+#[test]
+fn start_and_end_land_in_the_admin_log() {
+    run(async {
+        let member = create_account(Role::Member).await;
+        let (admin, mut client) = impersonating(&member).await;
+        end(&mut client).await.ok_json();
+
+        let entries = log_of(&member).await;
+        assert_eq!(
+            kinds(&entries),
+            ["ImpersonationEnd", "ImpersonationStart"]
+        );
+        assert_eq!(entries[1]["action"]["reason"], "Debugging");
+        assert!(entries[1]["action"]["expires_at"].is_string(), "{entries:?}");
+        for entry in &entries {
+            assert_eq!(entry["admin_username"], admin.username.as_str());
+            assert_eq!(entry["account_username"], member.username.as_str());
+        }
+    });
+}
+
+#[test]
+fn the_full_admin_log_lists_the_impersonation() {
+    run(async {
+        let member = create_account(Role::Member).await;
+        let (admin, mut client) = impersonating(&member).await;
+        end(&mut client).await.ok_json();
+
+        let body = client.get(&api("admin/log?limit=100")).await.ok_json();
+        let entries: Vec<Value> = body["entries"]
+            .as_array()
+            .expect("entries")
+            .iter()
+            .filter(|entry| entry["admin_username"] == admin.username.as_str())
+            .cloned()
+            .collect();
+        assert_eq!(
+            kinds(&entries),
+            ["ImpersonationEnd", "ImpersonationStart"]
         );
     });
 }

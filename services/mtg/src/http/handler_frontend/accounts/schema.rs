@@ -41,6 +41,13 @@ pub struct MeImpersonation {
     pub expires_at: SchemaDateTime,
 }
 
+/// Why an Impersonation could not be ended
+#[derive(Debug, Default, Serialize, JsonSchema)]
+pub struct EndImpersonationErrors {
+    /// The session is in no Impersonation
+    pub not_impersonating: bool,
+}
+
 /// Why the session has no account to answer with
 #[derive(Debug, Default, Serialize, JsonSchema)]
 pub struct MeErrors {
