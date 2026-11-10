@@ -3,6 +3,7 @@
 use galvyn::core::re_exports::schemars;
 use galvyn::core::re_exports::schemars::JsonSchema;
 use galvyn::core::re_exports::time::OffsetDateTime;
+use galvyn::core::stuff::schema::SchemaDateTime;
 use galvyn::rorm;
 use galvyn::rorm::db::Executor;
 use galvyn::rorm::db::executor::All;
@@ -63,6 +64,15 @@ pub enum AdminLogAction {
         /// Why the Account was renamed
         reason: MaxStr<ADMIN_REASON_MAX_LEN>,
     },
+    /// Started an Impersonation of the Account
+    ImpersonationStart {
+        /// Why the Admin impersonates the Account
+        reason: MaxStr<ADMIN_REASON_MAX_LEN>,
+        /// When the Impersonation ends at the latest
+        expires_at: SchemaDateTime,
+    },
+    /// Ended an Impersonation of the Account, explicitly or by logging out
+    ImpersonationEnd,
 }
 
 /// The `action` column: which [`AdminLogAction`] an entry records
@@ -78,10 +88,14 @@ pub enum AdminAction {
     Deletion,
     /// [`AdminLogAction::Rename`]
     Rename,
+    /// [`AdminLogAction::ImpersonationStart`]
+    ImpersonationStart,
+    /// [`AdminLogAction::ImpersonationEnd`]
+    ImpersonationEnd,
 }
 custom_db_enum! {
     enum: AdminAction,
-    variants: [Lock, Unlock, RoleChange, Deletion, Rename],
+    variants: [Lock, Unlock, RoleChange, Deletion, Rename, ImpersonationStart, ImpersonationEnd],
     decoder: AdminActionDecoder,
 }
 
@@ -154,7 +168,7 @@ impl AdminLogEntry {
     pub async fn record(
         tx: &mut Transaction,
         entry: NewAdminLogEntry<'_>,
-    ) -> Result<(), rorm::Error> {
+    ) -> Result<AdminLogEntryUuid, rorm::Error> {
         let (admin, admin_username) = match entry.admin {
             AdminActor::Admin(admin) => (
                 Some(ForeignModelByField(admin.uuid.into_inner())),
@@ -162,41 +176,57 @@ impl AdminLogEntry {
             ),
             AdminActor::Cli => (None, username_field(CLI_ADMIN_USERNAME)),
         };
-        let (action, role, reason, deletion, new_username) = match entry.action {
-            AdminLogAction::Lock { reason } => (AdminAction::Lock, None, Some(reason), None, None),
-            AdminLogAction::Unlock { reason } => (AdminAction::Unlock, None, reason, None, None),
+        let mut payload = Payload::default();
+        let action = match entry.action {
+            AdminLogAction::Lock { reason } => {
+                payload.reason = Some(reason);
+                AdminAction::Lock
+            }
+            AdminLogAction::Unlock { reason } => {
+                payload.reason = reason;
+                AdminAction::Unlock
+            }
             AdminLogAction::RoleChange { role } => {
-                (AdminAction::RoleChange, Some(role), None, None, None)
+                payload.role = Some(role);
+                AdminAction::RoleChange
             }
             AdminLogAction::Deletion { mode } => {
-                (AdminAction::Deletion, None, None, Some(mode), None)
+                payload.deletion = Some(mode);
+                AdminAction::Deletion
             }
             AdminLogAction::Rename {
                 new_username,
                 reason,
-            } => (
-                AdminAction::Rename,
-                None,
-                Some(reason),
-                None,
-                Some(username_field(new_username.as_str())),
-            ),
+            } => {
+                payload.reason = Some(reason);
+                payload.new_username = Some(username_field(new_username.as_str()));
+                AdminAction::Rename
+            }
+            AdminLogAction::ImpersonationStart { reason, expires_at } => {
+                payload.reason = Some(reason);
+                payload.expires_at = Some(expires_at.0);
+                AdminAction::ImpersonationStart
+            }
+            AdminLogAction::ImpersonationEnd => AdminAction::ImpersonationEnd,
         };
+        let uuid = Uuid::now_v7();
         rorm::insert(tx, AdminLogEntryModel)
             .return_nothing()
             .single(&AdminLogEntryInsertPatch {
-                uuid: Uuid::now_v7(),
+                uuid,
                 admin,
                 admin_username,
                 account: Some(ForeignModelByField(entry.account.uuid.into_inner())),
                 account_username: username_field(entry.account.username.as_str()),
                 action,
-                role,
-                reason,
-                deletion,
-                new_username,
+                role: payload.role,
+                reason: payload.reason,
+                deletion: payload.deletion,
+                new_username: payload.new_username,
+                expires_at: payload.expires_at,
             })
-            .await
+            .await?;
+        Ok(AdminLogEntryUuid(uuid))
     }
 
     /// One page of the Admin log, newest first
@@ -226,7 +256,7 @@ impl AdminLogEntry {
         };
         let statement = format!(
             "SELECT uuid, created_at, admin, admin_username, account, account_username, \
-               action, role, reason, deletion, new_username \
+               action, role, reason, deletion, new_username, expires_at \
              FROM admin_log_entry {condition} ORDER BY uuid DESC LIMIT ${}",
             values.len()
         );
@@ -247,6 +277,21 @@ impl AdminLogEntry {
             next_cursor,
         })
     }
+}
+
+/// The payload columns of an entry, each set only by the actions that carry it
+#[derive(Default)]
+struct Payload {
+    /// The Role a Role change gave the Account
+    role: Option<Role>,
+    /// The reason the Admin gave
+    reason: Option<MaxStr<ADMIN_REASON_MAX_LEN>>,
+    /// What a Deletion did with the public decks
+    deletion: Option<DeletionMode>,
+    /// The username a Rename gave the Account
+    new_username: Option<MaxStr<32>>,
+    /// When an Impersonation ends at the latest
+    expires_at: Option<OffsetDateTime>,
 }
 
 /// A username as the log's columns store it
@@ -280,6 +325,7 @@ fn decode_action(row: &Row) -> Result<AdminLogAction, rorm::Error> {
     let reason: Option<String> = row.get("reason").map_err(decode)?;
     let deletion: Option<String> = row.get("deletion").map_err(decode)?;
     let new_username: Option<String> = row.get("new_username").map_err(decode)?;
+    let expires_at: Option<OffsetDateTime> = row.get("expires_at").map_err(decode)?;
     let reason = reason.map(|reason| {
         MaxStr::new(reason).unwrap_or_else(|_| unreachable!("the column holds at most the limit"))
     });
@@ -311,6 +357,15 @@ fn decode_action(row: &Row) -> Result<AdminLogAction, rorm::Error> {
                     .unwrap_or_else(|| unreachable!("a Rename is written with its username")),
                 reason: reason.unwrap_or_else(|| unreachable!("a Rename is written with a reason")),
             },
+            AdminAction::ImpersonationStart => AdminLogAction::ImpersonationStart {
+                reason: reason.unwrap_or_else(|| {
+                    unreachable!("an Impersonation start is written with a reason")
+                }),
+                expires_at: SchemaDateTime(expires_at.unwrap_or_else(|| {
+                    unreachable!("an Impersonation start is written with its expiry")
+                })),
+            },
+            AdminAction::ImpersonationEnd => AdminLogAction::ImpersonationEnd,
         },
     )
 }
