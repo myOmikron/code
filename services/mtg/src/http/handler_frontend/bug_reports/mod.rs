@@ -4,6 +4,7 @@ use galvyn::core::GalvynRouter;
 use galvyn::core::re_exports::axum::extract::DefaultBodyLimit;
 
 use crate::http::middleware::account_required::AccountRequiredLayer;
+use crate::http::middleware::impersonation_refused::ImpersonationRefusedLayer;
 use crate::models::bug_report::BUG_REPORT_MAX_IMAGE_BYTES;
 use crate::models::bug_report::BUG_REPORT_MAX_IMAGES;
 
@@ -17,6 +18,7 @@ const BODY_LIMIT: usize = BUG_REPORT_MAX_IMAGES * BUG_REPORT_MAX_IMAGE_BYTES + 1
 pub fn initialize_routes() -> GalvynRouter {
     GalvynRouter::new()
         .handler(handler::send_bug_report)
+        .wrap(ImpersonationRefusedLayer)
         .wrap(AccountRequiredLayer)
         .layer(DefaultBodyLimit::max(BODY_LIMIT))
 }

@@ -12,6 +12,7 @@ mod deletion;
 mod external_accounts;
 pub mod harness;
 mod impersonation;
+mod impersonation_refused;
 mod lock;
 mod login_method;
 mod mpcfill_favorites;
