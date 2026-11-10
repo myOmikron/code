@@ -23,6 +23,7 @@ use crate::http::handler_frontend::accounts::schema::AddPasskeyErrors;
 use crate::http::handler_frontend::accounts::schema::DeleteAccountErrors;
 use crate::http::handler_frontend::accounts::schema::DeleteAccountRequest;
 use crate::http::handler_frontend::accounts::schema::DeletePasskeyErrors;
+use crate::http::handler_frontend::accounts::schema::EndImpersonationErrors;
 use crate::http::handler_frontend::accounts::schema::FinishAddPasskeyRequest;
 use crate::http::handler_frontend::accounts::schema::ListPasskeysResponse;
 use crate::http::handler_frontend::accounts::schema::MeErrors;
@@ -40,6 +41,7 @@ use crate::models::account::Account;
 use crate::models::account::AccountPasskeyUuid;
 use crate::models::account::DeletionMode;
 use crate::models::account::extractor::Caller;
+use crate::models::account::impersonation::Impersonation;
 use crate::models::tournament::deletion::GuestNaming;
 
 /// The account the current session acts as
@@ -79,6 +81,29 @@ pub async fn me(
             expires_at: impersonation.state.expires_at,
         }),
     }))
+}
+
+/// End the session's Impersonation, returning it to the impersonating Admin
+///
+/// Writes the end entry of the Admin log.
+#[delete("/me/impersonation")]
+pub async fn end_impersonation(
+    session: Session,
+    caller: Caller,
+) -> ApiResult<ApiJson<()>, EndImpersonationErrors> {
+    let Some(impersonation) = caller.impersonation else {
+        let mut errors = FormErrors::<EndImpersonationErrors>::new();
+        errors.not_impersonating = true;
+        return errors.fail();
+    };
+
+    let mut tx = Database::global().start_transaction().await?;
+    Impersonation::end(&mut tx, &impersonation.admin, &caller.account).await?;
+    tx.commit().await?;
+
+    Impersonation::remove_from(&session).await?;
+
+    Ok(ApiJson(()))
 }
 
 /// The answer of `accounts/me` to a session without an Account to act as

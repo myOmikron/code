@@ -26,6 +26,7 @@ pub fn initialize_routes() -> GalvynRouter {
                 .handler(handler::rename_passkey)
                 .handler(handler::delete_passkey)
                 .handler(handler::delete_account)
+                .handler(handler::end_impersonation)
                 .merge(push::initialize_routes())
                 .wrap(AccountRequiredLayer),
         )
