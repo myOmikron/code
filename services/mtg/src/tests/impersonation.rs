@@ -400,6 +400,39 @@ fn after_the_expiry_the_session_acts_as_the_admin_again_without_an_end_entry() {
     });
 }
 
+/// Gives `account` the Role `role` as a fresh Admin
+async fn set_role(account: &TestAccount, role: &str) {
+    let other_admin = create_account(Role::Admin).await;
+    let body = TestClient::logged_in(&other_admin)
+        .await
+        .json(
+            Method::PUT,
+            &api(&format!(
+                "admin/accounts/{}/role",
+                account.uuid.into_inner()
+            )),
+            &json!({ "role": role }),
+        )
+        .await
+        .ok_json();
+    assert_eq!(body, Value::Null);
+}
+
+#[test]
+fn promoting_the_impersonated_account_ends_the_impersonation() {
+    run(async {
+        let member = create_account(Role::Member).await;
+        let (admin, mut client) = impersonating(&member).await;
+
+        set_role(&member, "Admin").await;
+
+        let me = client.get(&api("accounts/me")).await.ok_json();
+        assert_eq!(me["username"], admin.username.as_str());
+        assert!(me.get("impersonation").is_none(), "{me}");
+        assert_eq!(kinds(&log_of(&member).await), ["RoleChange", "ImpersonationStart"]);
+    });
+}
+
 #[test]
 fn the_full_admin_log_lists_the_impersonation() {
     run(async {

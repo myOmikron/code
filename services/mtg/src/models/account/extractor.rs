@@ -23,6 +23,7 @@ use galvyn_identity::Identity;
 
 use crate::models::account::Account;
 use crate::models::account::AccountUuid;
+use crate::models::account::Role;
 use crate::models::account::impersonation::Impersonation;
 
 /// Who a request comes from and which Account it acts as
@@ -61,7 +62,9 @@ impl Caller {
         let own = Account::get_by_identity(&mut tx, identity.uuid).await?;
         let impersonated = match &impersonation {
             Some(impersonation) if !impersonation.has_expired() => {
-                Account::get_manageable(&mut tx, impersonation.account).await?
+                Account::get_manageable(&mut tx, impersonation.account)
+                    .await?
+                    .filter(|account| account.role == Role::Member)
             }
             _ => None,
         };
