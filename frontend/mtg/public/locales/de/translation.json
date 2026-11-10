@@ -46,7 +46,8 @@
         "edit": "Bearbeiten",
         "next": "Weiter",
         "replace": "Ersetzen",
-        "submit": "Absenden"
+        "submit": "Absenden",
+        "end-impersonation": "Beenden"
     },
     "description": {
         "access-ends-link": "Der aktuelle Link funktioniert dann endgültig nicht mehr.",
@@ -162,7 +163,8 @@
         "secret-not-set": "Nicht gesetzt",
         "secret-set": "Gesetzt",
         "step-x-of-y": "Schritt {{current}} von {{total}}",
-        "yes": "Ja"
+        "yes": "Ja",
+        "impersonation": "Du handelst als {{username}}, längstens bis {{time}}."
     },
     "toast": {
         "account-locked": "Dein Konto ist gesperrt.",
