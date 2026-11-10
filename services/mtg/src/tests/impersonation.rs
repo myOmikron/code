@@ -30,7 +30,7 @@ async fn impersonate(client: &mut TestClient, account: &TestAccount, reason: &st
 }
 
 /// A client logged in as a fresh Admin, impersonating `account`
-async fn impersonating(account: &TestAccount) -> (TestAccount, TestClient) {
+pub(super) async fn impersonating(account: &TestAccount) -> (TestAccount, TestClient) {
     let admin = create_account(Role::Admin).await;
     let mut client = TestClient::logged_in(&admin).await;
     let body = impersonate(&mut client, account, "Debugging")

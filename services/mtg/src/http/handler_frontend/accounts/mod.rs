@@ -4,6 +4,7 @@ use galvyn::core::GalvynRouter;
 use galvyn_identity::AuthRequiredLayer;
 
 use crate::http::middleware::account_required::AccountRequiredLayer;
+use crate::http::middleware::impersonation_refused::ImpersonationRefusedLayer;
 
 pub mod handler;
 pub mod push;
@@ -19,15 +20,19 @@ pub fn initialize_routes() -> GalvynRouter {
         )
         .merge(
             GalvynRouter::new()
-                .handler(handler::rename_account)
-                .handler(handler::list_passkeys)
-                .handler(handler::start_add_passkey)
-                .handler(handler::finish_add_passkey)
-                .handler(handler::rename_passkey)
-                .handler(handler::delete_passkey)
-                .handler(handler::delete_account)
                 .handler(handler::end_impersonation)
                 .merge(push::initialize_routes())
+                .merge(
+                    GalvynRouter::new()
+                        .handler(handler::rename_account)
+                        .handler(handler::delete_account)
+                        .handler(handler::list_passkeys)
+                        .handler(handler::start_add_passkey)
+                        .handler(handler::finish_add_passkey)
+                        .handler(handler::rename_passkey)
+                        .handler(handler::delete_passkey)
+                        .wrap(ImpersonationRefusedLayer),
+                )
                 .wrap(AccountRequiredLayer),
         )
 }
