@@ -8,6 +8,7 @@ use crate::models::deck::DeckUuid;
 use crate::models::tournament::participant::ParticipantUuid;
 use crate::models::tournament::registered_deck::RegisterDeckRefusal;
 use crate::models::tournament::registered_deck::RegisteredDeck;
+use crate::models::tournament::registered_deck::RegisteredSlot;
 
 /// The deck a Participant plays in a Tournament
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
@@ -153,12 +154,33 @@ pub struct RegisteredListResponse {
     /// Whether it is a copy that no longer changes with the deck
     pub pinned: bool,
     /// Its Deck entries, joined against the card catalog
-    pub cards: Vec<DeckCardResponse>,
+    pub cards: Vec<RegisteredCardResponse>,
+}
+
+/// One Deck entry of a Registered deck's list
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct RegisteredCardResponse {
+    /// The Deck entry; its `proxy` flag is always `false`, `proxies` counts instead
+    #[serde(flatten)]
+    pub slot: DeckCardResponse,
+    /// How many of its copies are Proxies: those in the deck's Physical deck
+    /// while the Registered deck follows the deck, those frozen with the copy
+    /// once pinned, 0 for a deck without a Physical deck
+    pub proxies: i32,
+}
+
+impl From<RegisteredSlot> for RegisteredCardResponse {
+    fn from(value: RegisteredSlot) -> Self {
+        Self {
+            slot: DeckCardResponse::from(value.slot),
+            proxies: value.proxies,
+        }
+    }
 }
 
 impl RegisteredListResponse {
     /// Put a Registered deck and its list together
-    pub fn new(deck: RegisteredDeck, cards: Vec<DeckCardResponse>) -> Self {
+    pub fn new(deck: RegisteredDeck, cards: Vec<RegisteredCardResponse>) -> Self {
         let settings = deck.settings;
         Self {
             participant: deck.participant,

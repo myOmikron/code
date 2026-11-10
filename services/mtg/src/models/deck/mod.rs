@@ -57,6 +57,7 @@ pub mod drift;
 pub mod folder;
 pub mod history;
 pub mod listing;
+pub mod proxies;
 pub mod sourcing;
 pub mod tag;
 

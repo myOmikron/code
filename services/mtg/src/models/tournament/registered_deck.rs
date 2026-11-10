@@ -31,6 +31,7 @@ use crate::models::deck::db::DeckModel;
 use crate::models::deck::history::CHECKPOINT_LENGTH;
 use crate::models::deck::history::DeckHistory;
 use crate::models::deck::listing::ListedSlot;
+use crate::models::deck::proxies::DeckProxies;
 use crate::models::tournament::Tournament;
 use crate::models::tournament::TournamentState;
 use crate::models::tournament::db::TournamentModel;
@@ -103,6 +104,19 @@ pub struct RegisteredEntry {
     pub key: DeckEntryKey,
     /// How many copies it holds
     pub quantity: i32,
+    /// How many of them are Proxies, see [`RegisteredSlot::proxies`]
+    pub proxies: i32,
+}
+
+/// One line of a Registered deck's list
+#[derive(Debug, Clone)]
+pub struct RegisteredSlot {
+    /// The Deck entry, joined against the card catalog
+    pub slot: ListedSlot,
+    /// How many of its copies are Proxies: those of the deck's Physical deck
+    /// while it follows the deck, those frozen with the copy once pinned, and
+    /// zero for a deck without a Physical deck
+    pub proxies: i32,
 }
 
 /// Who changes a Registered deck
@@ -296,6 +310,7 @@ impl Tournament {
                 return Ok(Vec::new());
             };
             let cards = DeckCard::get_all_in_deck(tx, followed).await?;
+            let proxies = DeckProxies::read(tx, followed).await?;
             return Ok(cards
                 .into_iter()
                 .map(|card| RegisteredEntry {
@@ -306,6 +321,7 @@ impl Tournament {
                         proxy: card.proxy,
                     },
                     quantity: card.quantity,
+                    proxies: proxies.of(card.uuid),
                 })
                 .collect());
         }
@@ -326,9 +342,10 @@ impl Tournament {
                     printing: card.printing,
                     zone: card.zone,
                     foil: card.foil,
-                    proxy: card.proxy,
+                    proxy: false,
                 },
                 quantity: card.quantity,
+                proxies: card.proxies,
             })
             .collect())
     }
@@ -458,20 +475,36 @@ impl Tournament {
     /// The list of a Registered deck, its Deck entries joined against the card
     /// catalog: the copy once pinned, the deck's own until then
     ///
-    /// The caller decides with [`list_visible`] whether the reader may see it.
+    /// The caller decides with [`list_visible`] whether the reader may see it;
+    /// whoever sees the list sees its Proxy counts.
     #[instrument(name = "Tournament::registered_list", skip(tx, self, deck), fields(tournament = ?self.uuid))]
     pub async fn registered_list(
         &self,
         tx: &mut Transaction,
         deck: &RegisteredDeck,
-    ) -> Result<Vec<ListedSlot>, rorm::Error> {
+    ) -> Result<Vec<RegisteredSlot>, rorm::Error> {
         if deck.pinned_at.is_some() {
-            return ListedSlot::read_registered(tx, deck.participant.into_inner()).await;
+            let slots = ListedSlot::read_registered(tx, deck.participant.into_inner()).await?;
+            return Ok(slots
+                .into_iter()
+                .map(|(slot, proxies)| RegisteredSlot { slot, proxies })
+                .collect());
         }
-        match deck.deck {
-            Some(followed) => ListedSlot::read_deck(tx, followed).await,
-            None => Ok(Vec::new()),
-        }
+        let Some(followed) = deck.deck else {
+            return Ok(Vec::new());
+        };
+        let slots = ListedSlot::read_deck(tx, followed).await?;
+        let proxies = DeckProxies::read(tx, followed).await?;
+        Ok(slots
+            .into_iter()
+            .map(|slot| RegisteredSlot {
+                proxies: proxies.of(slot.uuid),
+                slot: ListedSlot {
+                    proxy: false,
+                    ..slot
+                },
+            })
+            .collect())
     }
 
     /// Take `participant`'s Registered deck away, so it plays without one
@@ -600,6 +633,7 @@ impl Tournament {
             .condition(TournamentRegisteredDeckModel.uuid.equals(row.uuid))
             .await?;
 
+        let proxies = DeckProxies::read(tx, edit.deck()).await?;
         let patches: Vec<_> = DeckCard::get_all_in_deck(tx, edit.deck())
             .await?
             .into_iter()
@@ -610,7 +644,7 @@ impl Tournament {
                 quantity: card.quantity,
                 zone: card.zone,
                 foil: card.foil,
-                proxy: card.proxy,
+                proxies: proxies.of(card.uuid),
             })
             .collect();
         for chunk in patches.chunks(COPY_CHUNK) {

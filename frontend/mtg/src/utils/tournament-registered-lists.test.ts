@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type {
     BracketRulesResponse,
-    DeckCardResponse,
+    RegisteredCardResponse,
     RegisteredListResponse,
     FormatRulesResponse,
 } from "src/api/generated";
@@ -50,7 +50,7 @@ const CORE: BracketRulesResponse = {
  *
  * @returns the slot
  */
-function slot(name: string, legal: Array<string>, gameChanger = false): DeckCardResponse {
+function slot(name: string, legal: Array<string>, gameChanger = false): RegisteredCardResponse {
     return {
         card: {
             oracle_id: `${name}-oracle`,
@@ -59,14 +59,15 @@ function slot(name: string, legal: Array<string>, gameChanger = false): DeckCard
             color_identity: "",
             legal_formats: legal,
             game_changer: gameChanger,
-        } as DeckCardResponse["card"],
+        } as RegisteredCardResponse["card"],
         foil: false,
         proxy: false,
+        proxies: 0,
         printing: `${name}-printing`,
         quantity: 4,
         tags: [],
         uuid: `${name}-slot`,
-        zone: "Main" as DeckCardResponse["zone"],
+        zone: "Main" as RegisteredCardResponse["zone"],
     };
 }
 

@@ -600,8 +600,9 @@ pub struct TournamentRegisteredCardModel {
     /// Whether the copies were the foil ones
     pub foil: bool,
 
-    /// Whether the copies were stand-ins rather than the real cards
-    pub proxy: bool,
+    /// How many of the copies were Proxies in the deck's Physical deck
+    #[rorm(default = 0)]
+    pub proxies: i32,
 }
 
 /// Insert patch for [`TournamentRegisteredCardModel`]
@@ -620,8 +621,8 @@ pub struct TournamentRegisteredCardInsertPatch {
     pub zone: DeckZone,
     /// Whether the copies were the foil ones
     pub foil: bool,
-    /// Whether the copies were stand-ins
-    pub proxy: bool,
+    /// How many of the copies were Proxies
+    pub proxies: i32,
 }
 
 /// One Match's durable Life history and private recording ownership.

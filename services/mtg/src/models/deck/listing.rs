@@ -116,7 +116,7 @@ impl ListedSlot {
         deck: DeckUuid,
     ) -> Result<Vec<ListedSlot>, rorm::Error> {
         let statement = format!(
-            "SELECT {SLOT_COLUMNS} \
+            "SELECT {SLOT_COLUMNS}, c.proxy, {CARD_COLUMNS} \
              FROM deckcard c \
              LEFT JOIN printing p ON p.id = c.printing \
              WHERE c.deck = $1 \
@@ -139,7 +139,8 @@ impl ListedSlot {
         Ok(slots)
     }
 
-    /// Read the copied Deck entries of a pinned Registered deck, by its Participant
+    /// Read the copied Deck entries of a pinned Registered deck, by its Participant,
+    /// each with its frozen Proxy count
     ///
     /// Read like a deck's own slots, but without tags: the copy carries none.
     /// The caller has to have established that the reader may see the list.
@@ -147,9 +148,9 @@ impl ListedSlot {
     pub async fn read_registered(
         tx: &mut Transaction,
         participant: Uuid,
-    ) -> Result<Vec<ListedSlot>, rorm::Error> {
+    ) -> Result<Vec<(ListedSlot, i32)>, rorm::Error> {
         let statement = format!(
-            "SELECT {SLOT_COLUMNS} \
+            "SELECT {SLOT_COLUMNS}, false AS proxy, c.proxies, {CARD_COLUMNS} \
              FROM tournament_registered_card c \
              JOIN tournament_registered_deck d ON d.uuid = c.registered_deck \
              LEFT JOIN printing p ON p.id = c.printing \
@@ -160,20 +161,29 @@ impl ListedSlot {
         let rows = (&mut *tx)
             .execute::<All>(statement, vec![Value::Uuid(participant)])
             .await?;
-        rows.iter().map(decode_slot).collect()
+        rows.iter()
+            .map(|row| {
+                let proxies = row
+                    .get("proxies")
+                    .map_err(|error| rorm::Error::RowError(error.into_owned()))?;
+                Ok((decode_slot(row)?, proxies))
+            })
+            .collect()
     }
 }
 
-/// The columns [`decode_slot`] reads: a slot `c` joined against its printing `p`
-const SLOT_COLUMNS: &str = "c.uuid, c.printing, c.quantity, c.zone, c.foil, c.proxy, \
-    p.name, p.oracle_id, p.set_code, p.set_name, p.collector_number, \
+/// The columns of a slot `c` [`decode_slot`] reads besides its `proxy` flag
+const SLOT_COLUMNS: &str = "c.uuid, c.printing, c.quantity, c.zone, c.foil";
+
+/// The columns of the printing `p` a slot is joined against that [`decode_slot`] reads
+const CARD_COLUMNS: &str = "p.name, p.oracle_id, p.set_code, p.set_name, p.collector_number, \
     p.lang, p.cardmarket_id, p.rarity, p.mana_value, p.mana_cost, \
     p.color_identity, p.type_line, p.legal_formats, \
     p.image_small, p.image_normal, p.image_back_small, p.image_back_normal, \
     p.price_eur, p.price_eur_foil, p.finishes, p.produced_mana, p.game_changer, \
     p.mass_land_denial, p.extra_turns, p.reserved";
 
-/// One slot out of a row holding [`SLOT_COLUMNS`], still without its tags
+/// One slot out of a row holding [`SLOT_COLUMNS`], `proxy` and [`CARD_COLUMNS`], still without its tags
 fn decode_slot(row: &Row) -> Result<ListedSlot, rorm::Error> {
     let decode = |error: rorm::db::row::RowError<'_>| rorm::Error::RowError(error.into_owned());
 

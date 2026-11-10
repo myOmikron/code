@@ -11,14 +11,13 @@ use galvyn::rorm;
 use galvyn::rorm::Database;
 use galvyn::rorm::db::transaction::Transaction;
 
-use crate::http::handler_frontend::decks::schema::DeckCardResponse;
-use crate::http::handler_frontend::shared::schema::redact_slot;
 use crate::http::handler_frontend::tournaments::decks::schema::ListParticipantDecksResponse;
 use crate::http::handler_frontend::tournaments::decks::schema::ListRegisteredDecksResponse;
 use crate::http::handler_frontend::tournaments::decks::schema::MyRegisteredDeckResponse;
 use crate::http::handler_frontend::tournaments::decks::schema::ParticipantDeckResponse;
 use crate::http::handler_frontend::tournaments::decks::schema::RegisterDeckErrors;
 use crate::http::handler_frontend::tournaments::decks::schema::RegisterDeckRequest;
+use crate::http::handler_frontend::tournaments::decks::schema::RegisteredCardResponse;
 use crate::http::handler_frontend::tournaments::decks::schema::RegisteredDeckResponse;
 use crate::http::handler_frontend::tournaments::decks::schema::RegisteredListResponse;
 use crate::http::handler_frontend::tournaments::decks::schema::RegisteredListsResponse;
@@ -304,7 +303,7 @@ pub async fn list_tournament_registered_lists(
 
 /// The lists of `tournament`'s Registered decks `reader` may see
 ///
-/// Somebody else's proxies stay out of the lists an Organizer does not read.
+/// A list comes with its Proxy counts: whoever may see the list sees them.
 pub async fn registered_lists_view(
     tx: &mut Transaction,
     tournament: &Tournament,
@@ -319,11 +318,7 @@ pub async fn registered_lists_view(
             .registered_list(tx, &deck)
             .await?
             .into_iter()
-            .map(DeckCardResponse::from)
-            .map(|slot| match reader {
-                ListReader::Organizer => slot,
-                ListReader::Other => redact_slot(slot),
-            })
+            .map(RegisteredCardResponse::from)
             .collect();
         decks.push(RegisteredListResponse::new(deck, cards));
     }

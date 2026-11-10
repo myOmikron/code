@@ -345,6 +345,8 @@
         "guest-name": "Name",
         "handover-username": "Neuer Besitzer per Benutzername",
         "late-from-round": "Ab Runde {{number}}",
+        "list-proxies_one": "{{count}} Proxy",
+        "list-proxies_other": "{{count}} Proxies",
         "list-zone": "{{zone}} ({{count}})",
         "location": "Ort",
         "match-points": "Matchpunkte",
