@@ -35,7 +35,6 @@ function card(name: string, copies: number, print: [string, string] | null = ["L
         back: null,
         copies,
         basic,
-        proxy: false,
     };
 }
 

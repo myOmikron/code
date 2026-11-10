@@ -11,7 +11,7 @@
  * both come out as, and the ordering list in `mpcfill.ts` reads the same rows.
  */
 
-import type { DeckCardResponse } from "src/api/generated";
+import type { DeckCardResponse, DeckDriftResponse } from "src/api/generated";
 
 /** A sheet of A4, in millimetres */
 export const SHEET = { width: 210, height: 297 };
@@ -57,8 +57,6 @@ export type ProxyCard = {
     copies: number;
     /** Whether it is a basic land, which a sheet is rarely printed for */
     basic: boolean;
-    /** Whether it counts as a proxy: marked so in its deck, or picked by hand */
-    proxy: boolean;
 };
 
 /** One picture on the paper */
@@ -175,17 +173,85 @@ export function isBasicLand(typeLine: string | null | undefined): boolean {
  * @returns the cards, in the order the deck lists them
  */
 export function deckProxyCards(cards: Array<DeckCardResponse>): Array<ProxyCard> {
-    return cards
-        .filter((slot) => slot.zone === "Main" || slot.zone === "Commander")
-        .map((slot) => ({
-            key: slot.uuid,
-            name: slot.card?.name ?? "",
-            set: slot.card?.set_code ?? "",
-            number: slot.card?.collector_number ?? "",
-            front: printableImage(slot.card?.image_normal),
-            back: printableImage(slot.card?.image_back_normal),
-            copies: Math.min(MAX_COPIES, slot.quantity),
-            basic: isBasicLand(slot.card?.type_line),
-            proxy: slot.proxy,
-        }));
+    return cards.filter(isPrinted).map((slot) => proxyCardOf(slot, slot.quantity));
+}
+
+/**
+ * The copies of a deck its Physical deck does not hold, to be proxied
+ *
+ * Read off the Deviation's missing copies rather than worked out again here, so
+ * the tools and the deck page never disagree about what is missing. Those are
+ * counted per printing and finish, so they are handed out to the deck's lines
+ * of that printing and finish in the order the deck lists them. The same lines
+ * as {@link deckProxyCards} take part.
+ *
+ * @param cards the deck's lines
+ * @param deviation where the deck list and the Physical deck disagree
+ *
+ * @returns the missing copies in the order the deck lists them, `null` for a
+ * deck without a Physical deck, which has no missing copies to tell
+ */
+export function missingProxyCards(
+    cards: Array<DeckCardResponse>,
+    deviation: DeckDriftResponse,
+): Array<ProxyCard> | null {
+    if (!deviation.keeps_collection) return null;
+
+    const open = new Map<string, number>();
+    for (const row of deviation.pending) {
+        const key = missingKey(row.printing, row.foil);
+        open.set(key, (open.get(key) ?? 0) + row.quantity);
+    }
+
+    return cards.filter(isPrinted).flatMap((slot) => {
+        const key = missingKey(slot.printing, slot.foil);
+        const copies = Math.min(slot.quantity, open.get(key) ?? 0);
+        if (copies === 0) return [];
+        open.set(key, (open.get(key) ?? 0) - copies);
+        return [proxyCardOf(slot, copies)];
+    });
+}
+
+/**
+ * Whether a deck's line is one a proxy run is made from
+ *
+ * @param slot the line
+ *
+ * @returns whether it sits in the deck proper
+ */
+function isPrinted(slot: DeckCardResponse): boolean {
+    return slot.zone === "Main" || slot.zone === "Commander";
+}
+
+/**
+ * A deck's line as a card to proxy
+ *
+ * @param slot the line
+ * @param copies how many of its copies to proxy
+ *
+ * @returns the card
+ */
+function proxyCardOf(slot: DeckCardResponse, copies: number): ProxyCard {
+    return {
+        key: slot.uuid,
+        name: slot.card?.name ?? "",
+        set: slot.card?.set_code ?? "",
+        number: slot.card?.collector_number ?? "",
+        front: printableImage(slot.card?.image_normal),
+        back: printableImage(slot.card?.image_back_normal),
+        copies: Math.min(MAX_COPIES, copies),
+        basic: isBasicLand(slot.card?.type_line),
+    };
+}
+
+/**
+ * What a missing copy is counted under
+ *
+ * @param printing Scryfall's id of the printing
+ * @param foil whether the copies are foils
+ *
+ * @returns the key
+ */
+function missingKey(printing: string, foil: boolean): string {
+    return `${printing}|${foil ? "foil" : "plain"}`;
 }

@@ -115,7 +115,6 @@ function RouteComponent() {
     const [dissolving, setDissolving] = useState(false);
     const [editingRuleZero, setEditingRuleZero] = useState(false);
     const [commanderIdentity, setCommanderIdentity] = useState<Array<string>>([]);
-    const [hasProxies, setHasProxies] = useState(false);
 
     const rights = deckRights(deck.role);
     const deviations = ruleZeroCount(deck);
@@ -123,6 +122,9 @@ function RouteComponent() {
     // header rather than on the sourcing tab alone: somebody swapping a
     // printing while building is exactly the person who will not open that tab.
     const drifted = drift === null ? 0 : driftCopies(drift);
+    // Whether the export dropdown offers to proxy only what the Physical deck
+    // lacks, beside the whole deck.
+    const lacking = drift !== null && drift.keeps_collection && drift.pending.length > 0;
     const rules = formats.find((format) => format.slug === deck.format);
 
     // This layout never loads the card list, but the Rule 0 picker should
@@ -144,22 +146,6 @@ function RouteComponent() {
             gone = true;
         };
     }, [editingRuleZero, deckUuid, deck.allowed_color_identity]);
-
-    // Whether the export dropdown offers "Print proxy slots" beside the plain
-    // "Print proxies" — a fetch of its own, since nothing else on this layout
-    // reads the card list unconditionally.
-    useEffect(() => {
-        let gone = false;
-        Api.decks.cards
-            .list(deckUuid)
-            .then(({ cards }) => {
-                if (!gone) setHasProxies(cards.some((card) => card.proxy));
-            })
-            .catch(() => undefined);
-        return () => {
-            gone = true;
-        };
-    }, [deckUuid]);
 
     useEffect(() => {
         if (sharing || !rights.owner) return;
@@ -345,33 +331,33 @@ function RouteComponent() {
                                     <DropdownLabel>{t("button.print-proxies")}</DropdownLabel>
                                     <DropdownDescription>{t("description.print-proxies")}</DropdownDescription>
                                 </DropdownItem>
-                                {hasProxies && (
+                                {lacking && (
                                     <DropdownItem
                                         onClick={() =>
                                             void navigate({
                                                 to: "/game-utils/proxy-printer",
-                                                search: { deck: deckUuid, proxies: true },
+                                                search: { deck: deckUuid, missing: true },
                                             })
                                         }
                                     >
                                         <DocumentDuplicateIcon />
-                                        <DropdownLabel>{t("button.print-proxy-slots")}</DropdownLabel>
-                                        <DropdownDescription>{t("description.print-proxy-slots")}</DropdownDescription>
+                                        <DropdownLabel>{t("button.print-missing")}</DropdownLabel>
+                                        <DropdownDescription>{t("description.print-missing")}</DropdownDescription>
                                     </DropdownItem>
                                 )}
                                 <DropdownItem
                                     onClick={() =>
                                         void navigate({
                                             to: "/game-utils/mpc-fill",
-                                            search: hasProxies ? { deck: deckUuid, proxies: true } : { deck: deckUuid },
+                                            search: lacking ? { deck: deckUuid, missing: true } : { deck: deckUuid },
                                         })
                                     }
                                 >
                                     <CubeIcon />
                                     <DropdownLabel>{t("button.order-mpc-fill")}</DropdownLabel>
                                     <DropdownDescription>
-                                        {hasProxies
-                                            ? t("description.order-mpc-fill-proxies")
+                                        {lacking
+                                            ? t("description.order-mpc-fill-missing")
                                             : t("description.order-mpc-fill")}
                                     </DropdownDescription>
                                 </DropdownItem>

@@ -3,13 +3,14 @@ import {
     deckProxyCards,
     isBasicLand,
     MAX_COPIES,
+    missingProxyCards,
     PER_SHEET,
     printableImage,
     proxyFaces,
     proxySheets,
 } from "src/utils/proxy-print";
 import type { ProxyCard } from "src/utils/proxy-print";
-import type { DeckCardResponse, DeckZone } from "src/api/generated";
+import type { DeckCardResponse, DeckDriftResponse, DeckDriftRowResponse, DeckZone } from "src/api/generated";
 
 /**
  * A card to print
@@ -31,7 +32,6 @@ function card(key: string, copies: number, back = false, basic = false): ProxyCa
         back: back ? `https://cards.scryfall.io/normal/back/a/b/${key}.jpg` : null,
         copies,
         basic,
-        proxy: false,
     };
 }
 
@@ -115,18 +115,18 @@ describe("printableImage", () => {
  * @param name the card's name, empty for a slot the catalog has not caught up with
  * @param zone which zone the slot sits in
  * @param quantity how many copies it holds
- * @param proxy whether the slot is marked as a proxy
+ * @param foil whether the slot asks for foils
  *
  * @returns the slot
  */
-function slot(name: string, zone: DeckZone, quantity = 1, proxy = false): DeckCardResponse {
+function slot(name: string, zone: DeckZone, quantity = 1, foil = false): DeckCardResponse {
     return {
-        uuid: `${zone}-${name}`,
-        printing: "printing",
+        uuid: `${zone}-${name}-${foil ? "foil" : "plain"}`,
+        printing: `printing-${name}`,
         quantity,
         zone,
-        foil: false,
-        proxy,
+        foil,
+        proxy: false,
         tags: [],
         card:
             name === ""
@@ -173,12 +173,6 @@ describe("deckProxyCards", () => {
         expect(deckProxyCards(cards).map((card) => card.name)).toStrictEqual(["Sol Ring", "Kenrith"]);
     });
 
-    it("says which slots are marked as proxies", () => {
-        const cards = [slot("Sol Ring", "Main", 1, true), slot("Ponder", "Main")];
-
-        expect(deckProxyCards(cards).map((card) => card.proxy)).toStrictEqual([true, false]);
-    });
-
     it("carries the print over, for a list that names it", () => {
         expect(deckProxyCards([slot("Sol Ring", "Main")])[0]).toMatchObject({ set: "LEB", number: "161" });
     });
@@ -191,5 +185,72 @@ describe("deckProxyCards", () => {
 
     it("holds a slot to what a list takes", () => {
         expect(deckProxyCards([slot("Sol Ring", "Main", MAX_COPIES + 5)])[0]?.copies).toBe(MAX_COPIES);
+    });
+});
+
+/**
+ * A Deviation answer for a deck with a Physical deck
+ *
+ * @param pending the copies the list asks for that the Physical deck does not hold
+ *
+ * @returns the answer as the service would send it
+ */
+function deviation(pending: Array<DeckDriftRowResponse>): DeckDriftResponse {
+    return { keeps_collection: true, pending, other_printing: [], not_in_deck: [], surplus: [] };
+}
+
+/**
+ * Copies of one card the Physical deck lacks
+ *
+ * @param name the card's name, as {@link slot} names its printing
+ * @param quantity how many copies are missing
+ * @param foil whether the missing copies are foils
+ *
+ * @returns the row
+ */
+function lacking(name: string, quantity: number, foil = false): DeckDriftRowResponse {
+    return { printing: `printing-${name}`, quantity, foil };
+}
+
+describe("missingProxyCards", () => {
+    it("offers only the copies the Physical deck does not hold", () => {
+        const cards = [slot("Sol Ring", "Main"), slot("Swamp", "Main", 10)];
+
+        const missing = missingProxyCards(cards, deviation([lacking("Swamp", 4)]));
+
+        expect(missing?.map((card) => [card.name, card.copies])).toStrictEqual([["Swamp", 4]]);
+    });
+
+    it("has nothing to tell for a deck without a Physical deck", () => {
+        const none = { ...deviation([]), keeps_collection: false };
+
+        expect(missingProxyCards([slot("Sol Ring", "Main")], none)).toBeNull();
+    });
+
+    it("tells the foil copies from the plain ones", () => {
+        const cards = [slot("Sol Ring", "Main", 1, true), slot("Sol Ring", "Commander", 1)];
+
+        const missing = missingProxyCards(cards, deviation([lacking("Sol Ring", 1)]));
+
+        expect(missing?.map((card) => card.key)).toStrictEqual(["Commander-Sol Ring-plain"]);
+    });
+
+    it("hands copies of one printing out to its lines in the deck's order", () => {
+        const cards = [slot("Swamp", "Commander", 2), slot("Swamp", "Main", 3)];
+
+        const missing = missingProxyCards(cards, deviation([lacking("Swamp", 4)]));
+
+        expect(missing?.map((card) => [card.key, card.copies])).toStrictEqual([
+            ["Commander-Swamp-plain", 2],
+            ["Main-Swamp-plain", 2],
+        ]);
+    });
+
+    it("leaves out the sideboard and the maybe board, as the whole deck does", () => {
+        const cards = [slot("Duress", "Side"), slot("Ponder", "Maybe")];
+
+        const missing = missingProxyCards(cards, deviation([lacking("Duress", 1), lacking("Ponder", 1)]));
+
+        expect(missing).toStrictEqual([]);
     });
 });

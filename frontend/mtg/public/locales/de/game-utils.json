@@ -77,7 +77,7 @@
         "no-art-hint": "In den Drives liegt kein Bild für diese Karte. Bei MPCFill lässt sich eins hochladen — oder die Karte bleibt aus der Bestelldatei.",
         "nothing-picked": "Noch keine Karte auf der Liste.",
         "nothing-to-order": "Noch hat keine Karte ein Bild — ohne das steht nichts in der Datei.",
-        "only-proxies": "Von den Decks bleiben nur die als Proxy markierten Karten.",
+        "only-missing": "Nimmt von einem Deck nur die Karten, die seinem Physischen Deck fehlen.",
         "order-too-large": "Mehr als {{cards}} Karten gehen nicht in eine Bestellung — teile die Liste auf.",
         "paste-into-mpc-fill": "Bei MPCFill unter „Add Cards → Text“ einfügen und abschicken.",
         "pick-art_one": "1 Bild in den Drives.",
@@ -141,7 +141,7 @@
         "life": "{{count}} Leben",
         "more-tools-soon": "Weitere Tools folgen",
         "navigation": "Game-Tools-Navigation",
-        "only-proxies": "Nur Proxy-Karten",
+        "only-missing": "Nur fehlende Karten",
         "on-the-list": "Auf der Liste",
         "player": "Spieler {{number}}",
         "player-short": "S{{number}}",
@@ -183,7 +183,9 @@
     },
     "toast": {
         "art-not-searched": "MPCFill hat nicht geantwortet",
+        "deck-nothing-missing": "{{name}} fehlt keine Karte",
         "deck-nothing-to-add": "Aus {{name}} gibt es nichts hinzuzufügen",
+        "deck-without-physical-deck": "{{name}} hat kein Physisches Deck, darum wurden alle Karten hinzugefügt",
         "list-copied": "Liste kopiert",
         "list-not-copied": "Liste konnte nicht kopiert werden",
         "favorite-not-saved": "Favorit nicht gespeichert"
