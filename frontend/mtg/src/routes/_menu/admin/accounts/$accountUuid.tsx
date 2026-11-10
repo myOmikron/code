@@ -16,6 +16,7 @@ import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import { Role } from "src/api/generated";
 import { AdminDeleteAccountDialog } from "src/components/admin-delete-account-dialog";
+import { AdminImpersonateDialog } from "src/components/admin-impersonate-dialog";
 import { AdminLockDialog } from "src/components/admin-lock-dialog";
 import { AdminLogEntries } from "src/components/admin-log-entries";
 import { AdminRenameDialog } from "src/components/admin-rename-dialog";
@@ -47,6 +48,7 @@ function RouteComponent() {
     const [locking, setLocking] = useState(false);
     const [renaming, setRenaming] = useState(false);
     const [deleting, setDeleting] = useState(false);
+    const [impersonating, setImpersonating] = useState(false);
     const [logVersion, setLogVersion] = useState(0);
 
     if (detail === null) return <Text>{t("label.loading")}</Text>;
@@ -89,6 +91,13 @@ function RouteComponent() {
         reload();
         setLogVersion((held) => held + 1);
         notify.success(t("toast.renamed"));
+    }
+
+    /**
+     * Loads the app afresh once the Impersonation started, so every page and cache shows the Account
+     */
+    function impersonationStarted() {
+        window.location.assign("/");
     }
 
     return (
@@ -153,6 +162,11 @@ function RouteComponent() {
                             {t("button.rename")}
                         </Button>
                     )}
+                    {!own && account.role === Role.Member && (
+                        <Button outline={true} onClick={() => setImpersonating(true)}>
+                            {t("button.impersonate")}
+                        </Button>
+                    )}
                     <Button color={"red"} disabled={own} onClick={() => setDeleting(true)}>
                         {t("button.delete")}
                     </Button>
@@ -168,6 +182,13 @@ function RouteComponent() {
             <AdminLockDialog open={locking} account={account} onClose={() => setLocking(false)} onDone={lockChanged} />
 
             <AdminRenameDialog open={renaming} account={account} onClose={() => setRenaming(false)} onDone={renamed} />
+
+            <AdminImpersonateDialog
+                open={impersonating}
+                account={account}
+                onClose={() => setImpersonating(false)}
+                onDone={impersonationStarted}
+            />
 
             <AdminDeleteAccountDialog
                 open={deleting}
