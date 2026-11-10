@@ -8,6 +8,12 @@
 //! A locked Account is refused like a missing one, so its sessions stop
 //! working on their next request. The Lock that counts is the session's own
 //! Account's: an Admin can impersonate a locked Account.
+//!
+//! An Impersonation is checked again on every request. The impersonating
+//! Account must still be an unlocked Admin, else the session fails as its own
+//! session would: locked, or logged out. The impersonated Account must still
+//! be a Member and the Impersonation unexpired, else the session drops it and
+//! acts as the Admin again, writing no end entry.
 
 use std::future::Future;
 
@@ -20,6 +26,7 @@ use galvyn::core::stuff::api_error::ApiError;
 use galvyn::core::stuff::api_error::core::ApiErrorStatusCode;
 use galvyn::rorm::Database;
 use galvyn_identity::Identity;
+use galvyn_identity::IdentityModule;
 
 use crate::models::account::Account;
 use crate::models::account::AccountUuid;
@@ -55,6 +62,8 @@ impl Caller {
     }
 
     /// The Account the request acts as and the Impersonation behind it, from the session
+    ///
+    /// Logs out a session whose impersonating Account lost the Admin Role.
     async fn resolve(session: &Session, identity: &Identity) -> Result<Self, ApiError> {
         let impersonation = Impersonation::read(session).await?;
 
@@ -73,6 +82,15 @@ impl Caller {
         let own = own.ok_or(ApiError::unauthorized("No account for the identity"))?;
         if own.locked {
             return Err(ApiError::unauthorized("The account is locked"));
+        }
+        if impersonation.is_some() && own.role != Role::Admin {
+            IdentityModule::global()
+                .logout(session)
+                .await
+                .map_err(ApiError::map_server_error("Failed to flush session"))?;
+            return Err(ApiError::unauthorized(
+                "The impersonating account is no Admin anymore",
+            ));
         }
 
         match (impersonation, impersonated) {
