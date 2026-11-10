@@ -109,13 +109,14 @@ impl<S> FromRequestParts<S> for Caller {
             }
 
             let identity = Identity::from_request_parts(parts, &()).await?;
-            let session = parts
-                .extensions
-                .get::<Session>()
-                .cloned()
-                .ok_or(ApiError::server_error(
-                    "Can't extract session. Is `SessionManagerLayer` enabled?",
-                ))?;
+            let session =
+                parts
+                    .extensions
+                    .get::<Session>()
+                    .cloned()
+                    .ok_or(ApiError::server_error(
+                        "Can't extract session. Is `SessionManagerLayer` enabled?",
+                    ))?;
 
             let caller = Self::resolve(&session, &identity).await?;
             parts.extensions.insert(caller.clone());
