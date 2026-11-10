@@ -1,4 +1,5 @@
 import { EyeIcon } from "@heroicons/react/20/solid";
+import { Button } from "components";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
@@ -16,7 +17,9 @@ const EXPIRY_SLACK_MS = 1_000;
  * way to put it away: an Admin must never forget they are not acting as themselves.
  *
  * Ending, and the expiry passing, load the app afresh, so no page or cache keeps showing
- * the Account's data to the Admin.
+ * the Account's data to the Admin. The reload waits until the backend no longer reports
+ * the Impersonation, so a clock running ahead cannot loop. Ending an Impersonation that
+ * is already over still leaves the session as the Admin's own.
  *
  * @returns the banner, or nothing outside an Impersonation
  */
@@ -32,7 +35,6 @@ export function ImpersonationBanner() {
         if (expiresAt === null) return;
         const delay = Math.max(Date.parse(expiresAt) - Date.now(), 0) + EXPIRY_SLACK_MS;
         const timer = window.setTimeout(async () => {
-            // Reloads only once the backend agrees, so a clock running ahead cannot loop
             const current = await refresh();
             if (current?.impersonation === null || current?.impersonation === undefined) window.location.reload();
         }, delay);
@@ -49,8 +51,6 @@ export function ImpersonationBanner() {
         const impersonated = account.uuid;
         setEnding(true);
         try {
-            // An Impersonation that is already over answers `not_impersonating`; either way
-            // the session is the Admin's own now.
             await Api.accounts.endImpersonation();
             window.location.assign(`/admin/accounts/${impersonated}`);
         } catch {
@@ -72,16 +72,9 @@ export function ImpersonationBanner() {
                     time: formatTime(impersonation.expires_at),
                 })}
             </span>
-            <button
-                type={"button"}
-                onClick={end}
-                disabled={ending}
-                className={
-                    "rounded-md bg-white px-2.5 py-0.5 text-sm font-semibold text-purple-700 transition hover:bg-purple-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:opacity-60 dark:bg-purple-100 dark:text-purple-900 dark:hover:bg-white"
-                }
-            >
+            <Button color={"white"} size={"sm"} onClick={end} loading={ending}>
                 {tg("button.end-impersonation")}
-            </button>
+            </Button>
         </div>
     );
 }
