@@ -2,7 +2,7 @@ import { redirect } from "@tanstack/react-router";
 import { SESSION_STORE } from "src/api/session";
 import { ERROR_STORE } from "src/context/error-context";
 import { isFormError, isImpersonationRefusal } from "src/utils/error";
-import i18n from "src/i18n";
+import i18n from "i18next";
 import { DIAGNOSTICS } from "src/utils/diagnostics";
 import {
     AddDeckCardRequest,
