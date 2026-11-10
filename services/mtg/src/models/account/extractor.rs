@@ -60,8 +60,10 @@ impl Caller {
         let mut tx = Database::global().start_transaction().await?;
         let own = Account::get_by_identity(&mut tx, identity.uuid).await?;
         let impersonated = match &impersonation {
-            Some(impersonation) => Account::get_manageable(&mut tx, impersonation.account).await?,
-            None => None,
+            Some(impersonation) if !impersonation.has_expired() => {
+                Account::get_manageable(&mut tx, impersonation.account).await?
+            }
+            _ => None,
         };
         tx.commit().await?;
 
