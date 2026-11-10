@@ -20,14 +20,14 @@ import { useProxyPicks } from "src/utils/use-proxy-picks";
 type ProxySearch = {
     /** The deck to start with, as a deck page links it over */
     deck?: string;
-    /** Whether to load only the deck's proxy-marked slots */
-    proxies?: boolean;
+    /** Whether to load only the copies the deck's Physical deck lacks */
+    missing?: boolean;
 };
 
 export const Route = createFileRoute("/_menu/game-utils/proxy-printer")({
     validateSearch: (search: Record<string, unknown>): ProxySearch => ({
         deck: typeof search.deck === "string" && search.deck !== "" ? search.deck : undefined,
-        proxies: search.proxies === true ? true : undefined,
+        missing: search.missing === true ? true : undefined,
     }),
     component: RouteComponent,
 });
@@ -45,8 +45,8 @@ export const Route = createFileRoute("/_menu/game-utils/proxy-printer")({
  */
 function RouteComponent() {
     const [t] = useTranslation("game-utils");
-    const { deck: opened, proxies } = Route.useSearch();
-    const picks = useProxyPicks({ deck: opened, proxies, needsImage: true });
+    const { deck: opened, missing } = Route.useSearch();
+    const picks = useProxyPicks({ deck: opened, missing, needsImage: true });
 
     const [backs, setBacks] = useState(true);
     const [cutLines, setCutLines] = useState(true);
@@ -139,10 +139,6 @@ function RouteComponent() {
                     )}
 
                     <div className={clsx("flex flex-col gap-4", searching && "hidden")}>
-                        <SwitchField>
-                            <Label>{t("label.only-proxies")}</Label>
-                            <Switch color={"lime"} checked={picks.onlyProxies} onChange={picks.setOnlyProxies} />
-                        </SwitchField>
                         <ProxyPickList
                             groups={picks.groups}
                             countOf={countOf}

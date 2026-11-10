@@ -45,14 +45,14 @@ import { useProxyPicks } from "src/utils/use-proxy-picks";
 type MpcFillSearch = {
     /** The deck to start with, as a deck page links it over */
     deck?: string;
-    /** Whether to load only the deck's proxy-marked slots */
-    proxies?: boolean;
+    /** Whether to load only the copies the deck's Physical deck lacks */
+    missing?: boolean;
 };
 
 export const Route = createFileRoute("/_menu/game-utils/mpc-fill")({
     validateSearch: (search: Record<string, unknown>): MpcFillSearch => ({
         deck: typeof search.deck === "string" && search.deck !== "" ? search.deck : undefined,
-        proxies: search.proxies === true ? true : undefined,
+        missing: search.missing === true ? true : undefined,
     }),
     component: RouteComponent,
 });
@@ -84,8 +84,8 @@ const SEARCH_DELAY_MS = 400;
  */
 function RouteComponent() {
     const [t] = useTranslation("game-utils");
-    const { deck: opened, proxies } = Route.useSearch();
-    const picks = useProxyPicks({ deck: opened, proxies, needsImage: false });
+    const { deck: opened, missing: openedMissing } = Route.useSearch();
+    const picks = useProxyPicks({ deck: opened, missing: openedMissing, needsImage: false });
 
     const [stock, setStock] = useState<MpcStock>(DEFAULT_MPC_STOCK);
     const [foil, setFoil] = useState(false);

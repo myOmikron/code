@@ -1,0 +1,3 @@
+kind: improved
+de: Proxy-Drucker und MPCFill-Bestellung nehmen von einem Deck alle Karten oder nur die, die seinem Physischen Deck fehlen, statt der als Proxy markierten Karten.
+en: The proxy printer and the MPCFill order take a deck's cards, or only those its Physical deck lacks, instead of the cards marked as proxies.

@@ -1,15 +1,4 @@
-import {
-    Button,
-    Description,
-    Dialog,
-    DialogActions,
-    DialogBody,
-    DialogDescription,
-    DialogTitle,
-    Label,
-    Switch,
-    SwitchField,
-} from "components";
+import { Button, Dialog, DialogActions, DialogBody, DialogDescription, DialogTitle } from "components";
 import { useTranslation } from "react-i18next";
 import { CardSearchPanel } from "src/components/card-search-panel";
 import { ProxyDeckPicker } from "src/components/proxy-deck-picker";
@@ -68,11 +57,6 @@ export function MpcFillAddDialog({ open, picks, onClose }: MpcFillAddDialogProps
                                     ))}
                                 </ul>
                             )}
-                            <SwitchField>
-                                <Label>{t("label.only-proxies")}</Label>
-                                <Description>{t("description.only-proxies")}</Description>
-                                <Switch color={"lime"} checked={picks.onlyProxies} onChange={picks.setOnlyProxies} />
-                            </SwitchField>
                         </div>
                     )}
 

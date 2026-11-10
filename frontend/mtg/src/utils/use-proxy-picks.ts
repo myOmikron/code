@@ -14,9 +14,9 @@ import { useTranslation } from "react-i18next";
 import { Api } from "src/api/api";
 import type { DeckOverviewResponse } from "src/api/generated";
 import { useAccount } from "src/context/account";
-import { addCard, addDeck, changeCopies, copiesOf, dropCard, dropDeck, onlyProxyCards } from "src/utils/proxy-list";
+import { addCard, addDeck, changeCopies, copiesOf, dropCard, dropDeck } from "src/utils/proxy-list";
 import type { ProxyGroup } from "src/utils/proxy-list";
-import { deckProxyCards, isBasicLand, printableImage } from "src/utils/proxy-print";
+import { deckProxyCards, isBasicLand, missingProxyCards, printableImage } from "src/utils/proxy-print";
 import type { ProxyCard } from "src/utils/proxy-print";
 import type { Printing } from "src/utils/scryfall";
 
@@ -24,15 +24,15 @@ import type { Printing } from "src/utils/scryfall";
 export type ProxyPickOptions = {
     /** The deck to start with, as a deck page links it over */
     deck?: string;
-    /** Whether that deck is taken with only its proxy-marked slots */
-    proxies?: boolean;
+    /** Whether that deck is taken with only the copies its Physical deck lacks */
+    missing?: boolean;
     /** Whether a card the catalog has no picture of is dropped, which printing needs */
     needsImage: boolean;
 };
 
 /** What {@link useProxyPicks} hands back */
 export type ProxyPicks = {
-    /** What is on the list, deck by deck, as the proxy filter leaves it */
+    /** What is on the list, deck by deck */
     groups: Array<ProxyGroup>;
     /** The same, as one list */
     picked: Array<ProxyCard>;
@@ -42,10 +42,10 @@ export type ProxyPicks = {
     deck: DeckOverviewResponse | null;
     /** Chooses a deck, without taking it yet */
     setDeck: (deck: DeckOverviewResponse | null) => void;
-    /** Whether the list is filtered down to its proxies */
-    onlyProxies: boolean;
-    /** Switches that over */
-    setOnlyProxies: (only: boolean) => void;
+    /** Whether a deck is taken with only the copies its Physical deck lacks, or with all its lines */
+    onlyMissing: boolean;
+    /** Switches that over, for the next deck taken */
+    setOnlyMissing: (only: boolean) => void;
     /** Whether a deck is being read right now */
     loading: boolean;
     /** How many copies of a card are on the list */
@@ -71,12 +71,12 @@ export type ProxyPicks = {
  *
  * @param options what the page was opened on
  * @param options.deck the deck to start with, nothing when the page was opened on none
- * @param options.proxies whether that deck is taken with only its proxy-marked slots
+ * @param options.missing whether that deck is taken with only the copies its Physical deck lacks
  * @param options.needsImage whether a card the catalog has no picture of is dropped
  *
  * @returns the list and its mutators
  */
-export function useProxyPicks({ deck: opened, proxies, needsImage }: ProxyPickOptions): ProxyPicks {
+export function useProxyPicks({ deck: opened, missing, needsImage }: ProxyPickOptions): ProxyPicks {
     const [t] = useTranslation("game-utils");
 
     // A deck handed over in the url is taken once. Without the mark, going back
@@ -87,25 +87,38 @@ export function useProxyPicks({ deck: opened, proxies, needsImage }: ProxyPickOp
     const [groups, setGroups] = useState<Array<ProxyGroup>>([]);
     const [decks, setDecks] = useState<Array<DeckOverviewResponse>>([]);
     const [deck, setDeck] = useState<DeckOverviewResponse | null>(null);
-    const [onlyProxies, setOnlyProxies] = useState(proxies === true);
+    const [onlyMissing, setOnlyMissing] = useState(missing === true);
     const [loading, setLoading] = useState(0);
     const { account } = useAccount();
 
     /**
      * Adds a deck to the list, or tops up one already on it
      *
+     * A deck without a Physical deck, or one only its owner may see the
+     * Physical deck of, has no missing copies to tell: it is taken with all its
+     * lines, and the toast says so.
+     *
      * @param chosen the deck to take
+     * @param onlyLacking whether to take only the copies its Physical deck lacks
      */
-    async function loadDeck(chosen: DeckOverviewResponse) {
+    async function loadDeck(chosen: DeckOverviewResponse, onlyLacking: boolean) {
         const { uuid, name } = chosen.deck;
         reading.current.add(uuid);
         setLoading((count) => count + 1);
         try {
-            const { cards } = await Api.decks.cards.list(uuid);
+            const [{ cards }, deviation] = await Promise.all([
+                Api.decks.cards.list(uuid),
+                onlyLacking ? Api.decks.driftIfOwner(uuid) : null,
+            ]);
             if (!reading.current.delete(uuid)) return;
 
-            const added = deckProxyCards(cards).filter((card) => !needsImage || card.front !== null);
-            if (added.length === 0) notify.info(t("toast.deck-nothing-to-add", { name }));
+            const lacking = deviation === null ? null : missingProxyCards(cards, deviation);
+            if (onlyLacking && lacking === null) notify.info(t("toast.deck-without-physical-deck", { name }));
+
+            const added = (lacking ?? deckProxyCards(cards)).filter((card) => !needsImage || card.front !== null);
+            if (added.length === 0) {
+                notify.info(t(lacking === null ? "toast.deck-nothing-to-add" : "toast.deck-nothing-missing", { name }));
+            }
 
             setGroups((previous) => addDeck(previous, { uuid, name }, added));
             setDeck((current) => (current?.deck.uuid === uuid ? null : current));
@@ -132,10 +145,10 @@ export function useProxyPicks({ deck: opened, proxies, needsImage }: ProxyPickOp
         if (listed === undefined) return;
 
         taken.current = opened;
-        setOnlyProxies(proxies === true);
-        void loadDeck(listed);
+        setOnlyMissing(missing === true);
+        void loadDeck(listed, missing === true);
         // Deliberately not keyed on `loadDeck`, which is rebuilt on every render.
-    }, [decks, opened, proxies]);
+    }, [decks, opened, missing]);
 
     /**
      * Puts one more copy of a searched card on the list
@@ -153,23 +166,20 @@ export function useProxyPicks({ deck: opened, proxies, needsImage }: ProxyPickOp
                 back: printableImage(printing.backLargeImageUrl),
                 copies: 1,
                 basic: isBasicLand(printing.typeLine),
-                proxy: true,
             }),
         );
     }
 
-    const shown = onlyProxies ? onlyProxyCards(groups) : groups;
-
     return {
-        groups: shown,
-        picked: shown.flatMap((group) => group.cards),
+        groups,
+        picked: groups.flatMap((group) => group.cards),
         decks,
         deck,
         setDeck,
-        onlyProxies,
-        setOnlyProxies,
+        onlyMissing,
+        setOnlyMissing,
         loading: loading > 0,
-        countOf: (key) => copiesOf(shown, key),
+        countOf: (key) => copiesOf(groups, key),
         add,
         more: (key) => setGroups((previous) => changeCopies(previous, key, 1)),
         fewer: (key) => setGroups((previous) => changeCopies(previous, key, -1)),
@@ -183,7 +193,7 @@ export function useProxyPicks({ deck: opened, proxies, needsImage }: ProxyPickOp
             setGroups([]);
         },
         addChosenDeck: () => {
-            if (deck !== null) void loadDeck(deck);
+            if (deck !== null) void loadDeck(deck, onlyMissing);
         },
     };
 }

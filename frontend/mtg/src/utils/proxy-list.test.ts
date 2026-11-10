@@ -7,7 +7,6 @@ import {
     dropCard,
     dropDeck,
     groupSheets,
-    onlyProxyCards,
     showsHeadings,
 } from "src/utils/proxy-list";
 import type { ProxyGroup } from "src/utils/proxy-list";
@@ -21,12 +20,11 @@ const KRENKO = { uuid: "k", name: "Krenko" };
  *
  * @param key what tells it apart
  * @param copies how many are wanted
- * @param proxy whether it counts as a proxy
  *
  * @returns the card
  */
-function card(key: string, copies = 1, proxy = false): ProxyCard {
-    return { key, name: key, set: "LEB", number: "161", front: "front.jpg", back: null, copies, basic: false, proxy };
+function card(key: string, copies = 1): ProxyCard {
+    return { key, name: key, set: "LEB", number: "161", front: "front.jpg", back: null, copies, basic: false };
 }
 
 /**
@@ -89,7 +87,7 @@ describe("dropCard and dropDeck", () => {
     });
 
     it("take the hand picks off too", () => {
-        const groups = addCard(addDeck([], ATRAXA, [card("a")]), card("bolt", 1, true));
+        const groups = addCard(addDeck([], ATRAXA, [card("a")]), card("bolt"));
 
         expect(shape(dropDeck(groups, null))).toStrictEqual(["Atraxa: a"]);
     });
@@ -123,21 +121,6 @@ describe("groupSheets", () => {
         const empty = { deck: ATRAXA, cards: [] };
 
         expect(spans([empty, ...addDeck([], KRENKO, [card("k")])])).toStrictEqual(["Krenko: 0-0"]);
-    });
-});
-
-describe("onlyProxyCards", () => {
-    it("filters a deck down to its proxies and leaves the source list alone", () => {
-        const groups = addDeck([], ATRAXA, [card("sol-ring", 1, true), card("ponder")]);
-
-        expect(shape(onlyProxyCards(groups))).toStrictEqual(["Atraxa: sol-ring"]);
-        expect(shape(groups)).toStrictEqual(["Atraxa: sol-ring,ponder"]);
-    });
-
-    it("keeps a deck without proxies, empty, and the cards picked by hand", () => {
-        const groups = addCard(addDeck([], ATRAXA, [card("ponder")]), card("bolt", 1, true));
-
-        expect(shape(onlyProxyCards(groups))).toStrictEqual(["Atraxa: ", "hand: bolt"]);
     });
 });
 
