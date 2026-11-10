@@ -8,6 +8,7 @@ import { Api } from "src/api/api";
 import type { MpcFillImageResponse } from "src/api/generated";
 import { MpcFillAddDialog } from "src/components/mpcfill-add-dialog";
 import { MpcFillArtDialog } from "src/components/mpcfill-art-dialog";
+import { MpcFillArtScopeDialog } from "src/components/mpcfill-art-scope-dialog";
 import { MpcFillCardTile } from "src/components/mpcfill-card-tile";
 import type { MpcFillTileFace } from "src/components/mpcfill-card-tile";
 import { MpcFillOrderDialog } from "src/components/mpcfill-order-dialog";
@@ -17,20 +18,23 @@ import { ProxyGroupRow } from "src/components/proxy-group-row";
 import {
     MPC_BRACKETS,
     MPC_MAX_NAMES,
+    loadMpcArtScope,
     loadMpcSort,
     mpcBracket,
     mpcCards,
+    mpcChoose,
     mpcCount,
     mpcFaces,
     mpcFillList,
+    mpcGroupsWith,
     mpcNeedsArt,
     mpcPick,
-    mpcPickKey,
     mpcQuery,
     mpcTiles,
+    saveMpcArtScope,
     saveMpcSort,
 } from "src/utils/mpcfill";
-import type { MpcSort } from "src/utils/mpcfill";
+import type { MpcArtScope, MpcPicks, MpcSort } from "src/utils/mpcfill";
 import { DEFAULT_MPC_STOCK, mpcFillReady, mpcFillXml } from "src/utils/mpcfill-xml";
 import type { MpcFillOrderCard, MpcFillPick, MpcStock } from "src/utils/mpcfill-xml";
 import { groupKey, showsHeadings } from "src/utils/proxy-list";
@@ -87,7 +91,10 @@ function RouteComponent() {
     const [foil, setFoil] = useState(false);
 
     const [art, setArt] = useState<Record<string, Array<MpcFillImageResponse>>>({});
-    const [chosen, setChosen] = useState<Record<string, string>>({});
+    const [chosen, setChosen] = useState<MpcPicks>({});
+    const [scope, setScope] = useState<MpcArtScope>(loadMpcArtScope);
+    const [answered, setAnswered] = useState<Record<string, boolean>>({});
+    const [confirming, setConfirming] = useState<{ group: ProxyGroup; face: string; id: string } | null>(null);
     const [cardbacks, setCardbacks] = useState<Array<MpcFillImageResponse>>([]);
     const [cardback, setCardback] = useState<MpcFillPick | null>(null);
     const asking = useRef(new Set<string>());
@@ -119,7 +126,7 @@ function RouteComponent() {
      * @returns the image, `null` while there is none
      */
     function pickOf(group: ProxyGroup, face: string): MpcFillImageResponse | null {
-        return mpcPick(art[face] ?? [], chosen[mpcPickKey(group, face)]);
+        return mpcPick(chosen, art[face] ?? [], group, face);
     }
 
     /**
@@ -224,14 +231,49 @@ function RouteComponent() {
     }
 
     /**
-     * Takes an image for one face in one group
+     * Takes an image for one face in one group, or asks first whether every group takes it
      *
      * @param group the group
      * @param face the name MPCFill is asked for
      * @param image the image
      */
     function pick(group: ProxyGroup, face: string, image: MpcFillImageResponse) {
-        setChosen((previous) => ({ ...previous, [mpcPickKey(group, face)]: image.id }));
+        const everywhere = answered[face] ?? (scope === "ask" ? undefined : scope === "all");
+        if (everywhere === undefined && mpcGroupsWith(picks.groups, face) > 1) {
+            setConfirming({ group, face, id: image.id });
+            return;
+        }
+        setChosen((previous) => mpcChoose(previous, group, face, image.id, everywhere === true));
+    }
+
+    /**
+     * Takes the pick that was waiting on the question
+     *
+     * @param everywhere whether every group takes it
+     * @param remember whether this device stops asking
+     */
+    function answer(everywhere: boolean, remember: boolean) {
+        if (confirming === null) return;
+        const { group, face, id } = confirming;
+
+        if (remember) {
+            changeScope(everywhere ? "all" : "deck");
+        } else {
+            setAnswered((previous) => ({ ...previous, [face]: everywhere }));
+        }
+        setChosen((previous) => mpcChoose(previous, group, face, id, everywhere));
+        setConfirming(null);
+    }
+
+    /**
+     * Changes whether new art is taken for every deck, and forgets the answers given per card
+     *
+     * @param next the answer
+     */
+    function changeScope(next: MpcArtScope) {
+        setScope(next);
+        saveMpcArtScope(next);
+        setAnswered({});
     }
 
     /**
@@ -344,7 +386,11 @@ function RouteComponent() {
                                     onDropDeck={picks.dropDeck}
                                 />
                             )}
-                            <ul className={"grid grid-cols-2 gap-x-4 gap-y-5 md:grid-cols-3 xl:grid-cols-4"}>
+                            <ul
+                                className={
+                                    "grid grid-cols-2 gap-x-3 gap-y-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
+                                }
+                            >
                                 {tiles.map((card) => {
                                     const { front, back } = mpcFaces(card);
                                     return (
@@ -397,7 +443,16 @@ function RouteComponent() {
                 ready={ready.length > 0}
                 onDownload={downloadXml}
                 onCopyList={() => void copyList()}
+                artScope={scope}
+                onArtScope={changeScope}
                 onClose={() => setSettings(false)}
+            />
+
+            <MpcFillArtScopeDialog
+                face={confirming?.face ?? null}
+                others={confirming === null ? 0 : mpcGroupsWith(picks.groups, confirming.face) - 1}
+                onAnswer={answer}
+                onClose={() => setConfirming(null)}
             />
 
             <MpcFillArtDialog
