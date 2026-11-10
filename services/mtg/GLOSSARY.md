@@ -29,8 +29,16 @@ An Admin's block on an Account: its Login and Registration link Enrollment are r
 _Avoid_: ban, suspension, disable
 
 **Admin log**:
-The record of what Admins did to Accounts: Lock, unlock, Role change, Deletion and Rename, each with the acting Admin (none for a Role change through the `set-role` cli, named `cli`), the affected Account's username, when, and the reason given; a Deletion also records whether it was full, a Rename the new username. Names both Accounts by their username at the time, so it outlives the Accounts it names.
+The record of what Admins did to Accounts: Lock, unlock, Role change, Deletion, Rename, and an Impersonation's start and end, each with the acting Admin (none for a Role change through the `set-role` cli, named `cli`), the affected Account's username, when, and the reason given; a Deletion also records whether it was full, a Rename the new username, an Impersonation start its expiry. Names both Accounts by their username at the time, so it outlives the Accounts it names.
 _Avoid_: audit log, history
+
+**Impersonation**:
+An Admin acting as a Member Account to debug what it sees: from its start until the Admin ends it, logs out, or one hour passes, every request of the Admin's session acts fully as the Account, with its data and rights, except for Passkeys, OIDC Enrollment, the Account's own Deletion and Rename, Bug reports and push subscriptions, which stay refused. A locked Member can be impersonated; an Admin, including the Admin itself, cannot. Kept in the Admin's session only. What the Admin does is the Account's, as if it had acted; the Admin log's start and end entries tell who acted when. The Account is not told.
+_Avoid_: view as, sudo, ghost login, user view
+
+**Impersonation reason**:
+Why an Admin starts an Impersonation. Required, seen only by Admins in the Admin log.
+_Avoid_: justification, note
 
 **Tombstone**:
 The one Account nobody can name, log into or sign up as, that holds the public decks of deleted Accounts so links to them keep working. Excluded from every Account list and count.
@@ -241,6 +249,7 @@ _Avoid_: status, phase, closed, completed
 - An **Account** has exactly one **Role**, and at most one **Lock** at a time
 - An **Account** is either a **Local Account** or an **External Account**, never both, never switching
 - Every **Lock**, unlock, **Role** change, **Deletion** and **Rename** by an **Admin** or the cli writes one **Admin log** entry
+- An **Impersonation** is one **Admin** acting as one Member **Account**; its start writes an **Admin log** entry with its **Impersonation reason** and expiry, and ending it or logging out writes an end entry, an expiry none
 - A **Deletion** hands the Account's public decks to the **Tombstone**, unless it is a full Deletion
 - A **Statistics snapshot** never counts the **Tombstone**
 - A deck has exactly one **Deck history**; handing the deck to the **Tombstone** empties it
